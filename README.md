@@ -4,28 +4,11 @@
 [![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
 [![semantic-release: angular](https://img.shields.io/badge/semantic--release-angular-e10079?logo=semantic-release)](https://github.com/semantic-release/semantic-release)
 
-Welcome to npm-cli-github-issue-tower-defence-management, this template os for npm command-line.
-
-## How to use this template
-
-1. Grant write permission to gh-actions
-
-   https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/settings/actions
-
-1. Set secrets (optional)
-
-   https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/settings/secrets/actions
-
-   - [GH_TOKEN](https://github.com/settings/tokens)
-   - [NPM_TOKEN](https://www.npmjs.com/settings/hiromi/tokens)
-   - [RELEASE_APP_PRIVATE_KEY](https://github.com/settings/apps/semantic-release-changelog)
-
-1. Remove `How to use this template` section from README.md
+Welcome to npm-cli-github-issue-tower-defence-management :tada:
 
 ## Usage 🛠️
 
-Here's how you can use npm-cli-github-issue-tower-defence-management:
-TODO: copy output of `npx npm-cli-github-issue-tower-defence-management --help`
+Here's how you can use github-issue-tower-defence-management:
 
 ```
 Usage: Replace all words [options] <targetDirectoryPath> <beforeWord> <afterWord>
