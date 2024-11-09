@@ -34,6 +34,54 @@ npx github-issue-tower-defence-management -t schedule -c ./config.yml
 npx github-issue-tower-defence-management -t issue -c ./config.yml -i https://github.com/HiromiShikata/test-repository/issues/1
 ```
 
+## Config
+
+The `config.yaml` must match the input type of `HandleScheduledEventUseCase.run()`. Below is the structure:
+
+```yaml
+org: string # Organization name
+projectUrl: string # URL of the target project
+manager: string # GitHub account name of the manager
+workingReport:
+  repo: string # Repository name
+  members: # Array of member's GitHub account names
+    - string
+    - string
+  warningThresholdHour?: number # Optional: Warning threshold in hours
+  spreadsheetUrl: string # URL of the Google Spreadsheet
+  reportIssueTemplate?: string # Optional: Template for issue reports
+  reportIssueLabels: # Array of issue labels
+    - string
+    - string
+```
+
+Example:
+
+```yaml
+org: 'my-org'
+projectUrl: 'https://github.com/orgs/my-org/projects/1'
+manager: 'HiromiShikata'
+workingReport:
+  repo: 'work-report'
+  members:
+    - 'HiromiShikata'
+    - 'octokit'
+  warningThresholdHour: 40
+  spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/xxx'
+  reportIssueTemplate: |
+    ## Working Time Report
+
+    ### Summary
+    Period: {period}
+    Team: {team}
+
+    ### Details
+    {details}
+  reportIssueLabels:
+    - 'report'
+    - 'working-time'
+```
+
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md)
