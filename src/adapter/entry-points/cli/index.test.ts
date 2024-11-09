@@ -6,23 +6,15 @@ describe('commander program', () => {
       'npx ts-node ./src/adapter/entry-points/cli/index.ts -h',
     ).toString();
 
-    expect(output.trim()).toEqual(`Usage: Example CLI [options] <path>
+    expect(output.trim())
+      .toEqual(`Usage: github-issue-tower-defence-management [options]
 
-This is an example
-
-Arguments:
-  path        Path of example
+CLI tool for GitHub Issue Tower Defence Management
 
 Options:
-  -h, --help  display help for command`);
-  });
-  it('should output file contents', () => {
-    const output = execSync(
-      'npx ts-node ./src/adapter/entry-points/cli/index.ts ./testdata/src/domain/entities',
-    ).toString();
-
-    expect(output.trim()).toEqual(
-      JSON.stringify('./testdata/src/domain/entities'),
-    );
+  -t, --trigger <type>  Trigger type: issue or schedule
+  -c, --config <path>   Path to config YAML file
+  -i, --issue <url>     GitHub Issue URL
+  -h, --help            display help for command`);
   });
 });
