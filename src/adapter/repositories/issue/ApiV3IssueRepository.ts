@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { BaseGitHubRepository } from './BaseGitHubRepository';
+import { BaseGitHubRepository } from '../BaseGitHubRepository';
 
 export class ApiV3IssueRepository extends BaseGitHubRepository {
   searchIssue = async (query: {

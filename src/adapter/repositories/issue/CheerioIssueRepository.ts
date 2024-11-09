@@ -1,6 +1,7 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-import { BaseGitHubRepository } from './BaseGitHubRepository';
+import { BaseGitHubRepository } from '../BaseGitHubRepository';
+import { WorkingTime } from '../../../domain/entities/WorkingTime';
 
 type Issue = {
   url: string;
@@ -10,7 +11,6 @@ type Issue = {
   labels: string[];
   project: string;
   statusTimeline: IssueStatusTimeline[];
-  // projectCustomFields: IssueProjectCustomField[]
 };
 type IssueStatusTimeline = {
   time: string;
@@ -18,11 +18,8 @@ type IssueStatusTimeline = {
   from: string;
   to: string;
 };
-type IssueInProgressTimeline = {
+type IssueInProgressTimeline = WorkingTime & {
   issueUrl: string;
-  author: string;
-  start: string;
-  end: string;
 };
 
 export class CheerioIssueRepository extends BaseGitHubRepository {
@@ -103,35 +100,42 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
     return res;
   };
 
-  getInProgressTimeline = async (
-    issueUrl: string,
-  ): Promise<IssueInProgressTimeline[]> => {
+  getInProgressTimeline = async (issueUrl: string): Promise<WorkingTime[]> => {
     const timelines = await this.getStatusTimelineEvents(issueUrl);
 
     const report: IssueInProgressTimeline[] = [];
     let currentInProgress:
-      | Pick<IssueInProgressTimeline, 'issueUrl' | 'author' | 'start'>
+      | Pick<IssueInProgressTimeline, 'issueUrl' | 'author' | 'startedAt'>
       | undefined = undefined;
     for (const timeline of timelines) {
+      const time = new Date(timeline.time);
       if (timeline.to.toLocaleLowerCase().includes('in progress')) {
         if (currentInProgress !== undefined) {
           report.push({
             ...currentInProgress,
-            end: timeline.time,
+            endedAt: time,
+            durationMinutes:
+              (time.getTime() - currentInProgress.startedAt.getTime()) /
+              1000 /
+              60,
           });
           currentInProgress = undefined;
         }
         currentInProgress = {
           issueUrl: issueUrl,
           author: timeline.author,
-          start: timeline.time,
+          startedAt: time,
         };
         continue;
       }
       if (currentInProgress != undefined) {
         report.push({
           ...currentInProgress,
-          end: timeline.time,
+          endedAt: time,
+          durationMinutes:
+            (time.getTime() - currentInProgress.startedAt.getTime()) /
+            1000 /
+            60,
         });
         currentInProgress = undefined;
       }
