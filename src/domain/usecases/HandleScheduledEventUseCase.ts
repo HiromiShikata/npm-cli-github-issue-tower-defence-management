@@ -24,14 +24,8 @@ export class HandleScheduledEventUseCase {
   ) {}
 
   run = async (input: {
-    project:
-      | {
-          projectId: Project['id'];
-        }
-      | {
-          projectUrl: string;
-        };
     org: string;
+    projectUrl: string;
     manager: Member['name'];
     workingReport: {
       repo: string;
@@ -42,7 +36,14 @@ export class HandleScheduledEventUseCase {
       reportIssueLabels: Label[];
     };
   }): Promise<void> => {
-    const projectId = await this.findProjectId(input.project);
+    const projectId = await this.projectRepository.findProjectIdByUrl(
+      input.projectUrl,
+    );
+    if (!projectId) {
+      throw new ProjectNotFoundError(
+        `Project not found. projectUrl: ${input.projectUrl}`,
+      );
+    }
     const project = await this.projectRepository.getProject(projectId);
     if (!project) {
       throw new ProjectNotFoundError(
@@ -95,28 +96,6 @@ export class HandleScheduledEventUseCase {
         ...input.workingReport,
       });
     }
-  };
-  findProjectId = async (
-    input:
-      | {
-          projectId: Project['id'];
-        }
-      | {
-          projectUrl: string;
-        },
-  ): Promise<Project['id']> => {
-    if ('projectId' in input) {
-      return input.projectId;
-    }
-    const projectId = await this.projectRepository.findProjectIdByUrl(
-      input.projectUrl,
-    );
-    if (!projectId) {
-      throw new ProjectNotFoundError(
-        `Project not found. projectUrl: ${input.projectUrl}`,
-      );
-    }
-    return projectId;
   };
   createTargetDateTimes = (from: Date, to: Date): Date[] => {
     const targetDateTimes: Date[] = [];
