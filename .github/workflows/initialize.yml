@@ -17,11 +17,11 @@ jobs:
       - run: git pull
 
       - name: Run replace-all-words
-        run: npx replace-all-words ./ 'template-typescript-npm-cli' "${{ github.event.repository.name }}"
-        if: ${{ github.event.repository.name }} != 'template-typescript-npm-cli'
+        run: npx replace-all-words ./ 'npm-cli-github-issue-tower-defence-management' "${{ github.event.repository.name }}"
+        if: ${{ github.event.repository.name }} != 'npm-cli-github-issue-tower-defence-management'
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: 'autogen: replace template with repository name and remove initialize / npx replace-all-words ./ template-typescript-npm-cli ${{ github.repository }}'
+          commit_message: 'autogen: replace template with repository name and remove initialize / npx replace-all-words ./ npm-cli-github-issue-tower-defence-management ${{ github.repository }}'
 
       - name: Remove job for initialize
         run: rm .github/workflows/initialize.yml
