@@ -11,15 +11,15 @@ Welcome to npm-cli-github-issue-tower-defence-management :tada:
 Here's how you can use github-issue-tower-defence-management:
 
 ```
-Usage: Replace all words [options] <targetDirectoryPath> <beforeWord> <afterWord>
+Usage: github-issue-tower-defence-management [options]
 
-Arguments:
-  targetDirectoryPath  Path to the target directory where replacements are to be made
-  beforeWord           Word to be replaced throughout the target directory
-  afterWord            Word to replace the beforeWord with
+CLI tool for GitHub Issue Tower Defence Management
 
 Options:
-
+  -t, --trigger <type>  Trigger type: issue or schedule
+  -c, --config <path>   Path to config YAML file
+  -i, --issue <url>     GitHub Issue URL
+  -h, --help            display help for command
 ```
 
 ## Example 📖
