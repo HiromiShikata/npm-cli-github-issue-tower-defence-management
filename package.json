@@ -1,5 +1,5 @@
 {
-  "name": "npm-cli-github-issue-tower-defence-management",
+  "name": "github-issue-tower-defence-management",
   "version": "1.0.0",
   "description": "",
   "main": "dist/index.js",
@@ -15,7 +15,7 @@
     "test": "jest"
   },
   "bin": {
-    "npm-cli-github-issue-tower-defence-management": "./bin/adapter/entry-points/cli/index.js"
+    "github-issue-tower-defence-management": "./bin/adapter/entry-points/cli/index.js"
   },
   "repository": {
     "type": "git",
