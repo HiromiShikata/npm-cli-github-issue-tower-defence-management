@@ -47,30 +47,37 @@ export class RestIssueRepository extends BaseGitHubRepository {
       throw new Error(`Failed to create issue: ${response.status}`);
     }
   };
-  public getIssue = async (
+  getIssue = async (
     issueUrl: string,
   ): Promise<{
-    labels: ReadonlyArray<string>;
-    assignees: ReadonlyArray<string>;
+    labels: string[];
+    assignees: string[];
+    title: string;
+    body: string;
+    number: number;
+    state: string;
   }> => {
     const { owner, repo, issueNumber } = this.extractIssueFromUrl(issueUrl);
     const response = await axios.get<{
       labels: Array<{ name: string }>;
       assignees: Array<{ login: string }>;
+      title: string;
+      body: string;
+      number: number;
+      state: string;
     }>(`https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`, {
       headers: {
         Authorization: `token ${this.ghToken}`,
         Accept: 'application/vnd.github.v3+json',
       },
     });
-
-    if (response.status !== 200) {
-      throw new Error(`Failed to fetch issue information: ${response.status}`);
-    }
-
     return {
       labels: response.data.labels.map((label) => label.name),
       assignees: response.data.assignees.map((assignee) => assignee.login),
+      title: response.data.title,
+      body: response.data.body,
+      number: response.data.number,
+      state: response.data.state,
     };
   };
 }
