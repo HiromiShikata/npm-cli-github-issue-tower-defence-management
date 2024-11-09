@@ -25,10 +25,13 @@ Options:
 ## Example 📖
 
 Here's a quick example to illustrate its usage:
-TODO:
 
 ```
-npx npm-cli-github-issue-tower-defence-management
+npx github-issue-tower-defence-management -t schedule -c ./config.yml
+```
+
+```
+npx github-issue-tower-defence-management -t issue -c ./config.yml -i https://github.com/HiromiShikata/test-repository/issues/1
 ```
 
 ## Contributing
