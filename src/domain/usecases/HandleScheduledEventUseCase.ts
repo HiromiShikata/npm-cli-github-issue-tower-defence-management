@@ -45,16 +45,13 @@ export class HandleScheduledEventUseCase {
       );
     }
     const now: Date = await this.dateRepository.now();
-    const lastExecutionDateTime: Date =
-      await this.findAndUpdateLastExecutionDateTime(
+    const targetDateTimes: Date[] =
+      await this.findTargetDateAndUpdateLastExecutionDateTime(
         input.workingReport.spreadsheetUrl,
         now,
       );
+
     const issues: Issue[] = await this.issueRepository.getAllIssues(projectId);
-    const targetDateTimes: Date[] = this.createTargetDateTimes(
-      lastExecutionDateTime,
-      now,
-    );
 
     for (const targetDateTime of targetDateTimes) {
       await this.runForTargetDateTime({
@@ -88,6 +85,7 @@ export class HandleScheduledEventUseCase {
       const yesterday = new Date(
         input.targetDateTime.getTime() - 24 * 60 * 60 * 1000,
       );
+
       await this.generateWorkingTimeReportUseCase.run({
         ...input,
         ...input.workingReport,
@@ -95,35 +93,34 @@ export class HandleScheduledEventUseCase {
       });
     }
   };
-  createTargetDateTimes = (from: Date, to: Date): Date[] => {
+  static createTargetDateTimes = (from: Date, to: Date): Date[] => {
     const targetDateTimes: Date[] = [];
+    if (from.getTime() > to.getTime()) {
+      const targetDate = new Date(to);
+      targetDate.setSeconds(0);
+      targetDate.setMilliseconds(0);
+      return [targetDate];
+    }
     const targetDate = new Date(from);
+    targetDate.setTime(targetDate.getTime() + 60 * 1000);
     targetDate.setSeconds(0);
     targetDate.setMilliseconds(0);
     while (
-      targetDate.getTime() <= to.getTime() ||
+      targetDate.getTime() <= to.getTime() &&
       targetDateTimes.length < 30
     ) {
-      targetDate.setMinutes(targetDate.getMinutes() + 1);
       targetDateTimes.push(new Date(targetDate));
+      targetDate.setMinutes(targetDate.getMinutes() + 1);
     }
     return targetDateTimes;
   };
-  findAndUpdateLastExecutionDateTime = async (
+  findTargetDateAndUpdateLastExecutionDateTime = async (
     spreadsheetUrl: string,
     now: Date,
-  ): Promise<Date> => {
+  ): Promise<Date[]> => {
     const sheetValues = await this.spreadsheetRepository.getSheet(
       spreadsheetUrl,
       'HandleScheduledEvent',
-    );
-
-    await this.spreadsheetRepository.updateCell(
-      spreadsheetUrl,
-      'HandleScheduledEvent',
-      1,
-      2,
-      now.toISOString(),
     );
     if (!sheetValues) {
       await this.spreadsheetRepository.updateCell(
@@ -133,8 +130,24 @@ export class HandleScheduledEventUseCase {
         1,
         'LastExecutionDateTime',
       );
-      return now;
     }
-    return new Date(sheetValues[1][2]);
+    const lastExecutionDateTime = sheetValues
+      ? new Date(sheetValues[1][2])
+      : now;
+
+    const targetDateTimes: Date[] =
+      HandleScheduledEventUseCase.createTargetDateTimes(
+        lastExecutionDateTime,
+        now,
+      );
+
+    await this.spreadsheetRepository.updateCell(
+      spreadsheetUrl,
+      'HandleScheduledEvent',
+      1,
+      2,
+      targetDateTimes[targetDateTimes.length - 1].toISOString(),
+    );
+    return targetDateTimes;
   };
 }
