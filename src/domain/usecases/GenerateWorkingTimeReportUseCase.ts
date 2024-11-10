@@ -34,10 +34,11 @@ export class GenerateWorkingTimeReportUseCase {
   }): Promise<void> => {
     const workingReportIssueTemplate =
       await this.getWorkingReportIssueTemplate(input);
+    const reportRows: string[][] = [];
 
     for (const member of input.members) {
       try {
-        await this.createIssueForEachAuthor(
+        const memberReportRows = await this.createIssueForEachAuthor(
           member,
           input.targetDate,
           input.issues,
@@ -46,8 +47,8 @@ export class GenerateWorkingTimeReportUseCase {
           input.reportIssueLabels,
           workingReportIssueTemplate,
           input.warningThresholdHour,
-          input.spreadsheetUrl,
         );
+        reportRows.push(...memberReportRows);
       } catch (e) {
         await this.issueRepository.createNewIssue(
           input.org,
@@ -55,10 +56,20 @@ export class GenerateWorkingTimeReportUseCase {
           `Error occured while creating working report for ${member}`,
           `${JSON.stringify(e)}`,
           [input.manager],
-          input.reportIssueLabels,
+          ['bug'],
         );
       }
     }
+    await this.spreadsheetRepository.appendSheetValues(
+      input.spreadsheetUrl,
+      'IssueLogEditable',
+      reportRows,
+    );
+    await this.spreadsheetRepository.appendSheetValues(
+      input.spreadsheetUrl,
+      'IssueLogRawData',
+      reportRows,
+    );
   };
   getWorkingReportIssueTemplate = async (input: {
     reportIssueTemplate?: string;
@@ -92,8 +103,7 @@ Summary of working report: ${input.spreadsheetUrl}
     labels: Label[],
     workingReportIssueTemplate: string,
     workingTimeThresholdHour = 6,
-    spreadsheetUrl: string,
-  ): Promise<void> => {
+  ): Promise<string[][]> => {
     const dateString = `${date.toISOString().split('T')[0]}`;
     const dateStringWithDoW = `${date.toISOString().split('T')[0]} (${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()]})`;
 
@@ -140,17 +150,9 @@ Summary of working report: ${input.spreadsheetUrl}
       event.issueUrl,
       event.labels.join(':'),
     ]);
-    await this.spreadsheetRepository.appendSheetValues(
-      spreadsheetUrl,
-      'IssueLogEditable',
-      issueLogRows,
-    );
-    await this.spreadsheetRepository.appendSheetValues(
-      spreadsheetUrl,
-      'IssueLogRawData',
-      issueLogRows,
-    );
+
     await new Promise((resolve) => setTimeout(resolve, 1000));
+    return issueLogRows;
   };
   filterTimelineAndSortByAuthor = (
     issues: Issue[],
