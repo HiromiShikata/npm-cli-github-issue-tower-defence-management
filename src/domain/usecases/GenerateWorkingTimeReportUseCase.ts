@@ -8,6 +8,7 @@ export type WorkingReportTimelineEvent = {
   endHhmm: string;
   durationHhmm: string;
   warning?: string;
+  labelUrls: string[];
 };
 
 export class GenerateWorkingTimeReportUseCase {
@@ -130,12 +131,17 @@ Summary of working report: ${input.spreadsheetUrl}
         const startHhmm = this.convertIsoToHhmm(start);
         const endHhmm = this.convertIsoToHhmm(end);
         const durationHhmm = this.calculateDuration(start, end);
+        const labelUrls = issue.labels.map(
+          (label) =>
+            `https://github.com/${issue.nameWithOwner}/labels/${label}`,
+        );
         timelineEvents.push({
           issueUrl: issue.url,
           startHhmm,
           endHhmm,
           durationHhmm,
           warning: '',
+          labelUrls: labelUrls,
         });
       }
     }
@@ -198,14 +204,14 @@ Summary of working report: ${input.spreadsheetUrl}
     timelineEvents: WorkingReportTimelineEvent[],
   ): string => {
     return `
-- Start, End, Duration, Issue title
+- Start, End, Duration, Issue title, Labels
 ${timelineEvents.map((event) => this.applyToTimelineDetail(event)).join('\n')}
 `;
   };
   applyToTimelineDetail = (
     timelineEvents: WorkingReportTimelineEvent,
   ): string => {
-    return `- ${timelineEvents.startHhmm}   ${timelineEvents.endHhmm}   ${timelineEvents.durationHhmm}   ${timelineEvents.warning ? `:warning: ${timelineEvents.warning}` : ''}   ${timelineEvents.issueUrl}`;
+    return `- ${timelineEvents.startHhmm}, ${timelineEvents.endHhmm}, ${timelineEvents.durationHhmm}, ${timelineEvents.warning ? `:warning: ${timelineEvents.warning}` : ''} ${timelineEvents.issueUrl}, ${timelineEvents.labelUrls.join(' ')}`;
   };
   applyReplacementToTemplate = (input: {
     template: string;

@@ -1,4 +1,4 @@
-import { Issue, Label } from '../entities/Issue';
+import { Issue } from '../entities/Issue';
 import { Member } from '../entities/Member';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import {
@@ -111,6 +111,7 @@ Summary of working report: https://example.com
             endHhmm: '12:00',
             durationHhmm: '03:00',
             warning: '',
+            labelUrls: [],
           },
         ],
       },
@@ -214,6 +215,7 @@ Summary of working report: https://example.com
             endHhmm: '12:00',
             durationHhmm: '03:00',
             warning: '',
+            labelUrls: [],
           },
           {
             issueUrl: 'https://example.com/2',
@@ -221,6 +223,7 @@ Summary of working report: https://example.com
             endHhmm: '15:30',
             durationHhmm: '02:30',
             warning: '',
+            labelUrls: [],
           },
         ],
         expected: '05:30',
