@@ -154,17 +154,19 @@ Summary of working report: ${input.spreadsheetUrl}
     for (let i = 0; i < sortedTimelineEvents.length - 1; i++) {
       const current = sortedTimelineEvents[i];
       const currentDuration = sortedTimelineEvents[i].durationHhmm;
+      const warnings: string[] = [];
       const [hh] = currentDuration.split(':').map(Number);
       if (hh >= workingTimeThresholdHour) {
-        current.warning += `Over ${workingTimeThresholdHour} hours,`;
+        warnings.push(`Over ${workingTimeThresholdHour} hours`);
       }
       if (i === 0) {
         continue;
       }
       const previous = sortedTimelineEvents[i - 1];
       if (previous.endHhmm > current.startHhmm) {
-        current.warning += `Overlap,`;
+        warnings.push(`Overlap`);
       }
+      current.warning = warnings.join(' & ');
     }
     return sortedTimelineEvents;
   };
