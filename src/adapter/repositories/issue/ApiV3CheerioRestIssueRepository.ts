@@ -20,13 +20,14 @@ export class ApiV3CheerioRestIssueRepository implements IssueRepository {
       await this.graphqlProjectItemRepository.fetchProjectItems(projectId);
     const issues = await Promise.all(
       items.map(async (item): Promise<Issue> => {
-        const timeline: WorkingTime[] =
-          await this.cheerioIssueRepository.getInProgressTimeline(item.url);
-        const restIssue = await this.restIssueRepository.getIssue(item.url);
+        const cheerioIssue = await this.cheerioIssueRepository.getIssue(
+          item.url,
+        );
+        const timeline: WorkingTime[] = cheerioIssue.inProgressTimeline;
         return {
           ...item,
-          labels: restIssue.labels,
-          assignees: restIssue.assignees,
+          labels: cheerioIssue.labels,
+          assignees: cheerioIssue.assignees,
           workingTimeline: timeline,
         };
       }),

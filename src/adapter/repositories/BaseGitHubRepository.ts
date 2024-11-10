@@ -47,7 +47,7 @@ export class BaseGitHubRepository {
     return { owner, repo, issueNumber, isIssue: pullOrIssue === 'issues' };
   };
 
-  protected createHeader = async (): Promise<object> => {
+  createHeader = async (): Promise<object> => {
     const cookie = await this.createCookieStringFromFile();
     const headers = {
       accept:

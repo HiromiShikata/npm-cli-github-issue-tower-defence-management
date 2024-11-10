@@ -1,5 +1,6 @@
 import { CheerioIssueRepository } from './CheerioIssueRepository';
 import * as cheerio from 'cheerio';
+import axios from 'axios';
 
 describe('CheerioIssueRepository', () => {
   class CheerioIssueRepositoryPublic extends CheerioIssueRepository {
@@ -22,6 +23,16 @@ describe('CheerioIssueRepository', () => {
       const issue = await repository.getIssue(issueUrl);
       expect(issue).toEqual({
         assignees: ['HiromiShikata'],
+        inProgressTimeline: [
+          {
+            author: 'HiromiShikata',
+            durationMinutes: 60.516666666666666,
+            endedAt: new Date('2024-04-21T11:13:38.000Z'),
+            issueUrl:
+              'https://github.com/HiromiShikata/test-repository/issues/38',
+            startedAt: new Date('2024-04-21T10:13:07.000Z'),
+          },
+        ],
         labels: ['enhancement'],
         project: 'V2 project on owner for testing',
         status: 'Todo',
@@ -87,7 +98,10 @@ describe('CheerioIssueRepository', () => {
   });
   describe('getStatusTimelineEvents', () => {
     it('should return status timeline events', async () => {
-      const statusTimeline = await repository.getStatusTimelineEvents(issueUrl);
+      const headers = await repository.createHeader();
+      const content = await axios.get<string>(issueUrl, { headers });
+      const $ = cheerio.load(content.data);
+      const statusTimeline = await repository.getStatusTimelineEvents($);
       expect(statusTimeline).toEqual([
         {
           author: 'HiromiShikata',
@@ -133,15 +147,22 @@ describe('CheerioIssueRepository', () => {
   });
   describe('getInProgressTimelineEvents', () => {
     it('should return in progress timeline events', async () => {
-      const inProgressTimeline =
-        await repository.getInProgressTimeline(issueUrl);
+      const headers = await repository.createHeader();
+      const content = await axios.get<string>(issueUrl, { headers });
+      const $ = cheerio.load(content.data);
+      const statusTimeline = await repository.getStatusTimelineEvents($);
+      const inProgressTimeline = await repository.getInProgressTimeline(
+        statusTimeline,
+        issueUrl,
+      );
       expect(inProgressTimeline).toEqual([
         {
           author: 'HiromiShikata',
-          end: '2024-04-21T11:13:38Z',
+          durationMinutes: 60.516666666666666,
+          endedAt: new Date('2024-04-21T11:13:38Z'),
           issueUrl:
             'https://github.com/HiromiShikata/test-repository/issues/38',
-          start: '2024-04-21T10:13:07Z',
+          startedAt: new Date('2024-04-21T10:13:07Z'),
         },
       ]);
     });
@@ -149,10 +170,10 @@ describe('CheerioIssueRepository', () => {
       describe(`fromToList | expectedStartEndList`, () => {
         test.each`
           caseName                                                       | fromToList                                                                                              | expectedStartEndList
-          ${'Normal'}                                                    | ${[['Todo', 'In Progress', 'user0'], ['In Progress', 'Todo', 'user0']]}                                 | ${[['2000-01-01T00:00:00Z', '2000-01-01T00:01:00Z', 'user0']]}
-          ${'Closed by other user'}                                      | ${[['Todo', 'In Progress', 'user0'], ['In Progress', 'Todo', 'user1']]}                                 | ${[['2000-01-01T00:00:00Z', '2000-01-01T00:01:00Z', 'user0']]}
-          ${'No record moved from In Progress'}                          | ${[['Todo', 'In Progress', 'user0'], ['In Review', 'Todo', 'user0']]}                                   | ${[['2000-01-01T00:00:00Z', '2000-01-01T00:01:00Z', 'user0']]}
-          ${'No record moved from In Progress and other user continued'} | ${[['Todo', 'In Progress', 'user0'], ['Todo', 'In Progress', 'user1'], ['In Review', 'Todo', 'user1']]} | ${[['2000-01-01T00:00:00Z', '2000-01-01T00:01:00Z', 'user0'], ['2000-01-01T00:01:00Z', '2000-01-01T00:02:00Z', 'user1']]}
+          ${'Normal'}                                                    | ${[['Todo', 'In Progress', 'user0'], ['In Progress', 'Todo', 'user0']]}                                 | ${[['2000-01-01T00:00:00Z', '2000-01-01T00:01:00Z', 'user0', 1]]}
+          ${'Closed by other user'}                                      | ${[['Todo', 'In Progress', 'user0'], ['In Progress', 'Todo', 'user1']]}                                 | ${[['2000-01-01T00:00:00Z', '2000-01-01T00:01:00Z', 'user0', 1]]}
+          ${'No record moved from In Progress'}                          | ${[['Todo', 'In Progress', 'user0'], ['In Review', 'Todo', 'user0']]}                                   | ${[['2000-01-01T00:00:00Z', '2000-01-01T00:01:00Z', 'user0', 1]]}
+          ${'No record moved from In Progress and other user continued'} | ${[['Todo', 'In Progress', 'user0'], ['Todo', 'In Progress', 'user1'], ['In Review', 'Todo', 'user1']]} | ${[['2000-01-01T00:00:00Z', '2000-01-01T00:01:00Z', 'user0', 1], ['2000-01-01T00:01:00Z', '2000-01-01T00:02:00Z', 'user1', 1]]}
         `(
           `$caseName, $fromToList, $expectedStartEndList`,
           async ({
@@ -162,23 +183,24 @@ describe('CheerioIssueRepository', () => {
             fromToList: string[][];
             expectedStartEndList: string[][];
           }) => {
-            repository.getStatusTimelineEvents = jest.fn().mockResolvedValue(
-              fromToList.map((fromTo: string[], index) => ({
-                time: `2000-01-01T00:0${index}:00Z`,
-                author: fromTo[2],
-                from: fromTo[0],
-                to: fromTo[1],
-              })),
+            const timeline = fromToList.map((fromTo: string[], index) => ({
+              time: `2000-01-01T00:0${index}:00Z`,
+              author: fromTo[2],
+              from: fromTo[0],
+              to: fromTo[1],
+            }));
+            const inProgressTimeline = await repository.getInProgressTimeline(
+              timeline,
+              issueUrl,
             );
-            const inProgressTimeline =
-              await repository.getInProgressTimeline(issueUrl);
             expect(inProgressTimeline).toEqual(
               expectedStartEndList.map((expectedStartEnd) => {
                 return {
                   author: expectedStartEnd[2],
-                  end: expectedStartEnd[1],
+                  endedAt: new Date(expectedStartEnd[1]),
                   issueUrl,
-                  start: expectedStartEnd[0],
+                  startedAt: new Date(expectedStartEnd[0]),
+                  durationMinutes: expectedStartEnd[3],
                 };
               }),
             );
