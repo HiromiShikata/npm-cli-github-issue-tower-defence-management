@@ -11,6 +11,7 @@ type Issue = {
   labels: string[];
   project: string;
   statusTimeline: IssueStatusTimeline[];
+  inProgressTimeline: WorkingTime[];
 };
 type IssueStatusTimeline = {
   time: string;
@@ -32,7 +33,11 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
     const assignees = this.getAssigneesFromCheerioObject($);
     const labels = this.getLabelsFromCheerioObject($);
     const project = this.getProjectFromCheerioObject($);
-    const statusTimeline = await this.getStatusTimelineEvents(issueUrl);
+    const statusTimeline = await this.getStatusTimelineEvents($);
+    const inProgressTimeline = await this.getInProgressTimeline(
+      statusTimeline,
+      issueUrl,
+    );
     return {
       url: issueUrl,
       title,
@@ -41,14 +46,12 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
       labels,
       project,
       statusTimeline,
+      inProgressTimeline,
     };
   };
   getStatusTimelineEvents = async (
-    issueUrl: string,
+    $: cheerio.CheerioAPI,
   ): Promise<IssueStatusTimeline[]> => {
-    const headers = await this.createHeader();
-    const content = await axios.get<string>(issueUrl, { headers });
-    const $ = cheerio.load(content.data);
     return this.getStatusTimelineEventsFromCheerioObject($);
   };
   protected getTitleFromCheerioObject = ($: cheerio.CheerioAPI): string => {
@@ -100,9 +103,10 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
     return res;
   };
 
-  getInProgressTimeline = async (issueUrl: string): Promise<WorkingTime[]> => {
-    const timelines = await this.getStatusTimelineEvents(issueUrl);
-
+  getInProgressTimeline = async (
+    timelines: IssueStatusTimeline[],
+    issueUrl: string,
+  ): Promise<WorkingTime[]> => {
     const report: IssueInProgressTimeline[] = [];
     let currentInProgress:
       | Pick<IssueInProgressTimeline, 'issueUrl' | 'author' | 'startedAt'>
