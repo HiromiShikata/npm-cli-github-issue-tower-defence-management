@@ -11,15 +11,13 @@ export class GraphqlProjectRepository
     projectUrl: string,
   ): {
     owner: string;
-    repo: string;
     projectNumber: number;
   } => {
     const url = new URL(projectUrl);
     const path = url.pathname.split('/');
-    const owner = path[1];
-    const repo = path[2];
+    const owner = path[2];
     const projectNumber = parseInt(path[4], 10);
-    return { owner, repo, projectNumber };
+    return { owner, projectNumber };
   };
   fetchProjectId = async (
     login: string,
