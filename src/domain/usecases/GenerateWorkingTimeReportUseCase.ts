@@ -30,15 +30,26 @@ export class GenerateWorkingTimeReportUseCase {
       await this.getWorkingReportIssueTemplate(input);
 
     for (const member of input.members) {
-      await this.createIssueForEachAuthor(
-        member,
-        input.targetDate,
-        input.issues,
-        input.org,
-        input.repo,
-        input.reportIssueLabels,
-        workingReportIssueTemplate,
-      );
+      try {
+        await this.createIssueForEachAuthor(
+          member,
+          input.targetDate,
+          input.issues,
+          input.org,
+          input.repo,
+          input.reportIssueLabels,
+          workingReportIssueTemplate,
+        );
+      } catch (e) {
+        await this.issueRepository.createNewIssue(
+          input.org,
+          input.repo,
+          `Error occured while creating working report for ${member}`,
+          `${JSON.stringify(e)}`,
+          [input.manager],
+          input.reportIssueLabels,
+        );
+      }
     }
   };
   getWorkingReportIssueTemplate = async (input: {
