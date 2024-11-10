@@ -44,19 +44,13 @@ export class HandleScheduledEventUseCase {
         `Project not found. projectUrl: ${input.projectUrl}`,
       );
     }
-    const project = await this.projectRepository.getProject(projectId);
-    if (!project) {
-      throw new ProjectNotFoundError(
-        `Project not found. projectId: ${projectId}`,
-      );
-    }
-    const issues: Issue[] = await this.issueRepository.getAllIssues(projectId);
     const now: Date = await this.dateRepository.now();
     const lastExecutionDateTime: Date =
       await this.findAndUpdateLastExecutionDateTime(
         input.workingReport.spreadsheetUrl,
         now,
       );
+    const issues: Issue[] = await this.issueRepository.getAllIssues(projectId);
     const targetDateTimes: Date[] = this.createTargetDateTimes(
       lastExecutionDateTime,
       now,
@@ -91,9 +85,13 @@ export class HandleScheduledEventUseCase {
     const targetHour = input.targetDateTime.getHours();
     const targetMinute = input.targetDateTime.getMinutes();
     if (targetHour === 0 && targetMinute === 0) {
+      const yesterday = new Date(
+        input.targetDateTime.getTime() - 24 * 60 * 60 * 1000,
+      );
       await this.generateWorkingTimeReportUseCase.run({
         ...input,
         ...input.workingReport,
+        targetDate: yesterday,
       });
     }
   };
@@ -102,9 +100,12 @@ export class HandleScheduledEventUseCase {
     const targetDate = new Date(from);
     targetDate.setSeconds(0);
     targetDate.setMilliseconds(0);
-    while (targetDate.getTime() <= to.getTime()) {
+    while (
+      targetDate.getTime() <= to.getTime() ||
+      targetDateTimes.length < 30
+    ) {
+      targetDate.setMinutes(targetDate.getMinutes() + 1);
       targetDateTimes.push(new Date(targetDate));
-      targetDate.setDate(targetDate.getDate() + 1);
     }
     return targetDateTimes;
   };
