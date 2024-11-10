@@ -70,6 +70,7 @@ export class GoogleSpreadsheetRepository implements SpreadsheetRepository {
     });
     const sheets = google.sheets({ version: 'v4', auth });
     const spreadsheetId = this.getSpreadsheetId(spreadsheetUrl);
+    await this.createNewSheetIfNotExists(spreadsheetUrl, sheetName);
     const response = await sheets.spreadsheets.values.update({
       spreadsheetId,
       range: `${sheetName}!${String.fromCharCode(65 + column)}${row + 1}`,
@@ -84,6 +85,41 @@ export class GoogleSpreadsheetRepository implements SpreadsheetRepository {
       );
     }
   };
+  createNewSheetIfNotExists = async (
+    spreadsheetUrl: string,
+    sheetName: string,
+  ): Promise<void> => {
+    const auth = new google.auth.GoogleAuth({
+      keyFile: this.keyFile,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+    const sheets = google.sheets({ version: 'v4', auth });
+    const spreadsheetId = this.getSpreadsheetId(spreadsheetUrl);
+    const sheet = await this.getSheet(spreadsheetUrl, sheetName);
+    if (sheet !== null) {
+      return;
+    }
+    const response = await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [
+          {
+            addSheet: {
+              properties: {
+                title: sheetName,
+              },
+            },
+          },
+        ],
+      },
+    });
+    if (response.status !== 200) {
+      throw new Error(
+        `Failed to create sheet: ${response.status}. ${JSON.stringify(response.data)}`,
+      );
+    }
+  };
+
   appendSheetValues = async (
     spreadsheetUrl: string,
     sheetName: string,
@@ -95,23 +131,8 @@ export class GoogleSpreadsheetRepository implements SpreadsheetRepository {
     });
     const sheets = google.sheets({ version: 'v4', auth });
     const spreadsheetId = this.getSpreadsheetId(spreadsheetUrl);
+    await this.createNewSheetIfNotExists(spreadsheetUrl, sheetName);
     const sheet = await this.getSheet(spreadsheetUrl, sheetName);
-    if (sheet === null) {
-      await sheets.spreadsheets.batchUpdate({
-        spreadsheetId,
-        requestBody: {
-          requests: [
-            {
-              addSheet: {
-                properties: {
-                  title: sheetName,
-                },
-              },
-            },
-          ],
-        },
-      });
-    }
     const range = `${sheetName}!A${sheet ? sheet.length + 1 : 1}:A`;
     const response = await sheets.spreadsheets.values.append({
       spreadsheetId,
