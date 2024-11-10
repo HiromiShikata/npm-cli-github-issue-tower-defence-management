@@ -1,18 +1,24 @@
 import { Issue, Label } from '../entities/Issue';
 import { Member } from '../entities/Member';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
+import { SpreadsheetRepository } from './adapter-interfaces/SpreadsheetRepository';
 
 export type WorkingReportTimelineEvent = {
   issueUrl: string;
+  issueTitle: string;
   startHhmm: string;
   endHhmm: string;
   durationHhmm: string;
-  warning?: string;
-  labelUrls: string[];
+  warnings: string[];
+  labels: string[];
+  nameWithOwner: string;
 };
 
 export class GenerateWorkingTimeReportUseCase {
-  constructor(readonly issueRepository: IssueRepository) {}
+  constructor(
+    readonly issueRepository: IssueRepository,
+    readonly spreadsheetRepository: SpreadsheetRepository,
+  ) {}
 
   run = async (input: {
     issues: Issue[];
@@ -39,6 +45,8 @@ export class GenerateWorkingTimeReportUseCase {
           input.repo,
           input.reportIssueLabels,
           workingReportIssueTemplate,
+          input.warningThresholdHour,
+          input.spreadsheetUrl,
         );
       } catch (e) {
         await this.issueRepository.createNewIssue(
@@ -84,7 +92,9 @@ Summary of working report: ${input.spreadsheetUrl}
     labels: Label[],
     workingReportIssueTemplate: string,
     workingTimeThresholdHour = 6,
+    spreadsheetUrl: string,
   ): Promise<void> => {
+    const dateString = `${date.toISOString().split('T')[0]}`;
     const dateStringWithDoW = `${date.toISOString().split('T')[0]} (${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()]})`;
 
     const timelineEvents: WorkingReportTimelineEvent[] =
@@ -120,6 +130,26 @@ Summary of working report: ${input.spreadsheetUrl}
       [author],
       labels,
     );
+    const issueLogRows: string[][] = timelineEvents.map((event) => [
+      dateString,
+      event.startHhmm,
+      event.endHhmm,
+      author,
+      event.warnings.join(':'),
+      event.issueTitle,
+      event.issueUrl,
+      event.labels.join(':'),
+    ]);
+    await this.spreadsheetRepository.appendSheetValues(
+      spreadsheetUrl,
+      'IssueLogEditable',
+      issueLogRows,
+    );
+    await this.spreadsheetRepository.appendSheetValues(
+      spreadsheetUrl,
+      'IssueLogRawData',
+      issueLogRows,
+    );
     await new Promise((resolve) => setTimeout(resolve, 1000));
   };
   filterTimelineAndSortByAuthor = (
@@ -143,17 +173,15 @@ Summary of working report: ${input.spreadsheetUrl}
         const startHhmm = this.convertIsoToHhmm(start);
         const endHhmm = this.convertIsoToHhmm(end);
         const durationHhmm = this.calculateDuration(start, end);
-        const labelUrls = issue.labels.map(
-          (label) =>
-            `https://github.com/${issue.nameWithOwner}/labels/${label}`,
-        );
         timelineEvents.push({
           issueUrl: issue.url,
+          issueTitle: issue.title,
           startHhmm,
           endHhmm,
           durationHhmm,
-          warning: '',
-          labelUrls: labelUrls,
+          warnings: [],
+          labels: issue.labels,
+          nameWithOwner: issue.nameWithOwner,
         });
       }
     }
@@ -166,19 +194,17 @@ Summary of working report: ${input.spreadsheetUrl}
     for (let i = 0; i < sortedTimelineEvents.length - 1; i++) {
       const current = sortedTimelineEvents[i];
       const currentDuration = sortedTimelineEvents[i].durationHhmm;
-      const warnings: string[] = [];
       const [hh] = currentDuration.split(':').map(Number);
       if (hh >= workingTimeThresholdHour) {
-        warnings.push(`Over ${workingTimeThresholdHour} hours`);
+        current.warnings.push(`Over ${workingTimeThresholdHour} hours`);
       }
       if (i === 0) {
         continue;
       }
       const previous = sortedTimelineEvents[i - 1];
       if (previous.endHhmm > current.startHhmm) {
-        warnings.push(`Overlap`);
+        current.warnings.push(`Overlap`);
       }
-      current.warning = warnings.join(' & ');
     }
     return sortedTimelineEvents;
   };
@@ -225,7 +251,11 @@ ${timelineEvents.map((event) => this.applyToTimelineDetail(event)).join('\n')}
   applyToTimelineDetail = (
     timelineEvents: WorkingReportTimelineEvent,
   ): string => {
-    return `- ${timelineEvents.startHhmm}, ${timelineEvents.endHhmm}, ${timelineEvents.durationHhmm}, ${timelineEvents.warning ? `:warning: ${timelineEvents.warning}` : ''} ${timelineEvents.issueUrl}, ${timelineEvents.labelUrls.join(' ')}`;
+    const labelUrls = timelineEvents.labels.map(
+      (label) =>
+        `https://github.com/${timelineEvents.nameWithOwner}/labels/${encodeURI(label)}`,
+    );
+    return `- ${timelineEvents.startHhmm}, ${timelineEvents.endHhmm}, ${timelineEvents.durationHhmm}, ${timelineEvents.warnings.length > 0 ? `:warning: ${timelineEvents.warnings.join(' ')}` : ''} ${timelineEvents.issueUrl}, ${labelUrls.join(' ')}`;
   };
   applyReplacementToTemplate = (input: {
     template: string;

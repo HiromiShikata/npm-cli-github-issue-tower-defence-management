@@ -41,7 +41,10 @@ export class HandleScheduledEventUseCaseHandler {
       graphqlProjectItemRepository,
     );
     const generateWorkingTimeReportUseCase =
-      new GenerateWorkingTimeReportUseCase(issueRepository);
+      new GenerateWorkingTimeReportUseCase(
+        issueRepository,
+        googleSpreadsheetRepository,
+      );
     const handleScheduledEventUseCase = new HandleScheduledEventUseCase(
       generateWorkingTimeReportUseCase,
       systemDateRepository,
