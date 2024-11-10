@@ -24,6 +24,7 @@ export class GenerateWorkingTimeReportUseCase {
     repo: string;
     reportIssueLabels: Label[];
     warningThresholdHour?: number;
+    targetDate: Date;
   }): Promise<void> => {
     const workingReportIssueTemplate =
       await this.getWorkingReportIssueTemplate(input);
@@ -31,7 +32,7 @@ export class GenerateWorkingTimeReportUseCase {
     for (const member of input.members) {
       await this.createIssueForEachAuthor(
         member,
-        new Date(),
+        input.targetDate,
         input.issues,
         input.org,
         input.repo,

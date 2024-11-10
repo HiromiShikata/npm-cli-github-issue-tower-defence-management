@@ -289,17 +289,7 @@ Summary of working report: https://example.com
   describe('run', () => {
     interface TestCase {
       name: string;
-      input: {
-        issues: Issue[];
-        members: Member['name'][];
-        manager: Member['name'];
-        spreadsheetUrl: string;
-        reportIssueTemplate?: string;
-        org: string;
-        repo: string;
-        reportIssueLabels: Label[];
-        warningThresholdHour?: number;
-      };
+      input: Parameters<GenerateWorkingTimeReportUseCase['run']>[0];
       expectedCalls: number;
     }
 
@@ -332,6 +322,8 @@ Summary of working report: https://example.com
           org: 'testOrg',
           repo: 'testRepo',
           reportIssueLabels: ['report'],
+          warningThresholdHour: 6,
+          targetDate: new Date(),
         },
         expectedCalls: 2,
       },
