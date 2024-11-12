@@ -59,6 +59,7 @@ export class GenerateWorkingTimeReportUseCase {
           ['bug'],
         );
       }
+      await new Promise((resolve) => setTimeout(resolve, 2000));
     }
     await this.spreadsheetRepository.appendSheetValues(
       input.spreadsheetUrl,
@@ -151,7 +152,6 @@ Summary of working report: ${input.spreadsheetUrl}
       event.labels.join(':'),
     ]);
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
     return issueLogRows;
   };
   filterTimelineAndSortByAuthor = (
