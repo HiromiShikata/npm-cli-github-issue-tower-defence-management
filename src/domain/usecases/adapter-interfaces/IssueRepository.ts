@@ -3,7 +3,10 @@ import { Project } from '../../entities/Project';
 import { Member } from '../../entities/Member';
 
 export interface IssueRepository {
-  getAllIssues: (projectId: Project['id']) => Promise<Issue[]>;
+  getAllIssues: (
+    projectId: Project['id'],
+    allowCacheMinutes: number,
+  ) => Promise<Issue[]>;
   createNewIssue: (
     org: string,
     repo: string,

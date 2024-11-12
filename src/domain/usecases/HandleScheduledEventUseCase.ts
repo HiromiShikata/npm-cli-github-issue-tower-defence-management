@@ -50,8 +50,11 @@ export class HandleScheduledEventUseCase {
         input.workingReport.spreadsheetUrl,
         now,
       );
-
-    const issues: Issue[] = await this.issueRepository.getAllIssues(projectId);
+    const allowIssueCacheMinutes = 60;
+    const issues: Issue[] = await this.issueRepository.getAllIssues(
+      projectId,
+      allowIssueCacheMinutes,
+    );
 
     for (const targetDateTime of targetDateTimes) {
       await this.runForTargetDateTime({
