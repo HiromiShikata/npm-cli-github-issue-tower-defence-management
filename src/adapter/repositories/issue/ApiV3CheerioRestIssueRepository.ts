@@ -6,6 +6,8 @@ import { CheerioIssueRepository } from './CheerioIssueRepository';
 import { RestIssueRepository } from './RestIssueRepository';
 import { GraphqlProjectItemRepository } from './GraphqlProjectItemRepository';
 import { WorkingTime } from '../../../domain/entities/WorkingTime';
+import { LocalStorageCacheRepository } from '../LocalStorageCacheRepository';
+import typia from 'typia';
 
 export class ApiV3CheerioRestIssueRepository implements IssueRepository {
   constructor(
@@ -13,9 +15,32 @@ export class ApiV3CheerioRestIssueRepository implements IssueRepository {
     readonly cheerioIssueRepository: CheerioIssueRepository,
     readonly restIssueRepository: RestIssueRepository,
     readonly graphqlProjectItemRepository: GraphqlProjectItemRepository,
+    readonly localStorageCacheRepository: LocalStorageCacheRepository,
   ) {}
 
-  getAllIssues = async (projectId: Project['id']): Promise<Issue[]> => {
+  getAllIssues = async (
+    projectId: Project['id'],
+    allowCacheMinutes: number,
+  ): Promise<Issue[]> => {
+    const cacheKey = `allIssues-${projectId}`;
+    const cache = await this.localStorageCacheRepository.getLatest(cacheKey);
+    if (cache) {
+      const now = new Date();
+      const cacheTimestamp = cache.timestamp;
+      const diff = now.getTime() - cacheTimestamp.getTime();
+      if (diff < allowCacheMinutes * 60 * 1000) {
+        if (typia.is<Issue[]>(cache.value)) {
+          return cache.value;
+        }
+      }
+    }
+    const issues = await this.getAllIssuesFromGitHub(projectId);
+    await this.localStorageCacheRepository.set(cacheKey, issues);
+    return issues;
+  };
+  getAllIssuesFromGitHub = async (
+    projectId: Project['id'],
+  ): Promise<Issue[]> => {
     const items =
       await this.graphqlProjectItemRepository.fetchProjectItems(projectId);
     const issues = await Promise.all(
