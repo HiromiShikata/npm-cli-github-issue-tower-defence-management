@@ -12,6 +12,9 @@ import { GraphqlProjectItemRepository } from '../../repositories/issue/GraphqlPr
 import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3CheerioRestIssueRepository';
 import { GenerateWorkingTimeReportUseCase } from '../../../domain/usecases/GenerateWorkingTimeReportUseCase';
 import { HandleScheduledEventUseCase } from '../../../domain/usecases/HandleScheduledEventUseCase';
+import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
+import { ActionAnnouncementUseCase } from '../../../domain/usecases/ActionAnnouncementUseCase';
+import { SetWorkflowManagementIssueToStoryUseCase } from '../../../domain/usecases/SetWorkflowManagementIssueToStoryUseCase';
 
 export class HandleScheduledEventUseCaseHandler {
   handle = async (configFilePath: string): Promise<void> => {
@@ -29,6 +32,9 @@ export class HandleScheduledEventUseCaseHandler {
     const googleSpreadsheetRepository = new GoogleSpreadsheetRepository(
       localStorageRepository,
     );
+    const localStorageCacheRepository = new LocalStorageCacheRepository(
+      localStorageRepository,
+    );
     const projectRepository = new GraphqlProjectRepository();
     const apiV3IssueRepository = new ApiV3IssueRepository();
     const cheerioIssueRepository = new CheerioIssueRepository();
@@ -39,14 +45,20 @@ export class HandleScheduledEventUseCaseHandler {
       cheerioIssueRepository,
       restIssueRepository,
       graphqlProjectItemRepository,
+      localStorageCacheRepository,
     );
     const generateWorkingTimeReportUseCase =
       new GenerateWorkingTimeReportUseCase(
         issueRepository,
         googleSpreadsheetRepository,
       );
+    const actionAnnouncement = new ActionAnnouncementUseCase(issueRepository);
+    const setWorkflowManagementIssueToStoryUseCase =
+      new SetWorkflowManagementIssueToStoryUseCase(issueRepository);
     const handleScheduledEventUseCase = new HandleScheduledEventUseCase(
       generateWorkingTimeReportUseCase,
+      actionAnnouncement,
+      setWorkflowManagementIssueToStoryUseCase,
       systemDateRepository,
       googleSpreadsheetRepository,
       projectRepository,
