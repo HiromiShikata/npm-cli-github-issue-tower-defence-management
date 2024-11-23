@@ -1,6 +1,18 @@
 import axios from 'axios';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
-
+export type ProjectItem = {
+  id: string;
+  nameWithOwner: string;
+  number: number;
+  title: string;
+  state: 'OPEN' | 'CLOSED' | 'MERGED';
+  url: string;
+  body: string;
+  customFields: {
+    name: string;
+    value: string | null;
+  }[];
+};
 export class GraphqlProjectItemRepository extends BaseGitHubRepository {
   fetchItemId = async (
     projectId: string,
@@ -68,35 +80,70 @@ export class GraphqlProjectItemRepository extends BaseGitHubRepository {
       return undefined;
     }
   };
-  fetchProjectItems = async (
-    projectId: string,
-  ): Promise<
-    {
-      nameWithOwner: string;
-      number: number;
-      title: string;
-      state: 'OPEN' | 'CLOSED' | 'MERGED';
-      url: string;
-    }[]
-  > => {
+  fetchProjectItems = async (projectId: string): Promise<ProjectItem[]> => {
     const graphqlQueryString = `
-    query GetProjectItems($after: String, $projectId: ID!) {
+query GetProjectItems($projectId: ID!, $after: String) {
   node(id: $projectId) {
     ... on ProjectV2 {
       items(first: 100, after: $after) {
         totalCount
         pageInfo {
           endCursor
-          startCursor
+          hasNextPage
         }
         nodes {
+          fieldValues(first: 10) {
+            nodes {
+              ... on ProjectV2ItemFieldTextValue {
+                text
+                field {
+                  ... on ProjectV2Field{
+                    name
+                  }
+                }
+              }
+              ... on ProjectV2ItemFieldNumberValue {
+                number
+                id
+                field {
+                  ... on ProjectV2Field{
+                    name
+                  }
+                }
+              }
+              ... on ProjectV2ItemFieldDateValue {
+                date
+                field {
+                  ... on ProjectV2Field{
+                    name
+                  }
+                }
+              }
+              ... on ProjectV2ItemFieldSingleSelectValue {
+                name
+                field {
+                  ... on ProjectV2SingleSelectField {
+                    name
+                  }
+                }
+              }
+              ... on ProjectV2ItemFieldIterationValue {
+                title
+                field {
+                  ... on ProjectV2Field{
+                    name
+                  }
+                }
+              }
+            }
+          }
           content {
             ... on Issue {
               number
               title
-              state
-              number
+              state 
               url
+              body
               repository {
                 nameWithOwner
               }
@@ -105,8 +152,8 @@ export class GraphqlProjectItemRepository extends BaseGitHubRepository {
               number
               title
               state
-              number
               url
+              body
               repository {
                 nameWithOwner
               }
@@ -130,12 +177,24 @@ export class GraphqlProjectItemRepository extends BaseGitHubRepository {
             startCursor: string;
           };
           nodes: {
+            id: string;
+            fieldValues: {
+              nodes: {
+                text: string;
+                number: number;
+                date: string;
+                field: {
+                  name: string;
+                };
+              }[];
+            };
             content: {
               repository: { nameWithOwner: string };
               number: number;
               title: string;
               state: string;
               url: string;
+              body: string;
             };
           }[];
         };
@@ -158,12 +217,24 @@ export class GraphqlProjectItemRepository extends BaseGitHubRepository {
                 startCursor: string;
               };
               nodes: {
+                id: string;
+                fieldValues: {
+                  nodes: {
+                    text: string;
+                    number: number;
+                    date: string;
+                    field: {
+                      name: string;
+                    };
+                  }[];
+                };
                 content: {
                   repository: { nameWithOwner: string };
                   number: number;
                   title: string;
                   state: string;
                   url: string;
+                  body: string;
                 };
               }[];
             };
@@ -178,14 +249,23 @@ export class GraphqlProjectItemRepository extends BaseGitHubRepository {
         },
         data: JSON.stringify(graphqlQuery),
       });
+      if (!response.data.data) {
+        throw new Error('No data returned from GitHub API');
+      }
       return response.data.data;
     };
     const issues: {
+      id: string;
       nameWithOwner: string;
       number: number;
       title: string;
       state: 'OPEN' | 'CLOSED' | 'MERGED';
       url: string;
+      body: string;
+      customFields: {
+        name: string;
+        value: string | null;
+      }[];
     }[] = [];
     let after: string | null = null;
     let totalCount = 1;
@@ -193,12 +273,25 @@ export class GraphqlProjectItemRepository extends BaseGitHubRepository {
     while (issues.length < totalCount) {
       const data = await callGraphql(projectId, after);
       const projectItems: {
+        id: string;
+        fieldValues: {
+          nodes: {
+            text?: string;
+            number?: number;
+            date?: string;
+            name?: string;
+            field: {
+              name: string;
+            };
+          }[];
+        };
         content: {
           repository: { nameWithOwner: string };
           number: number;
           title: string;
           state: string;
           url: string;
+          body: string;
         };
       }[] = data.node.items.nodes;
       projectItems
@@ -208,18 +301,26 @@ export class GraphqlProjectItemRepository extends BaseGitHubRepository {
             return;
           }
           issues.push({
+            id: item.id,
             nameWithOwner: item.content.repository.nameWithOwner,
             number: item.content.number,
             title: item.content.title,
-            state:
-              item.content.state === 'MERGED'
-                ? 'MERGED'
-                : item.content.state === 'CLOSED'
-                  ? 'CLOSED'
-                  : item.content.state === 'OPEN'
-                    ? 'OPEN'
-                    : 'OPEN',
+            state: this.convertStrToState(item.content.state),
             url: item.content.url,
+            body: item.content.body,
+            customFields: item.fieldValues.nodes
+              .filter((field) => !!field.field)
+              .map((field) => {
+                return {
+                  name: field.field.name,
+                  value:
+                    field.name ??
+                    field.text ??
+                    field.number?.toString() ??
+                    field.date ??
+                    null,
+                };
+              }),
           });
         });
       totalCount = data.node.items.totalCount;
@@ -389,5 +490,231 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       });
     });
     return issueFields;
+  };
+  fetchProjectItemByUrl = async (
+    issueUrl: string,
+  ): Promise<ProjectItem | null> => {
+    const { owner, repo, issueNumber } = this.extractIssueFromUrl(issueUrl);
+    const graphql = `query GetIssue($owner: String!, $repo: String!, $number: Int!) {
+  repository(owner: $owner, name: $repo) {
+    issue(number: $number) {
+      number
+      title
+      state
+      url
+      body
+      repository {
+        nameWithOwner
+      }
+      projectItems(first: 10) {
+        nodes {
+          fieldValues(first: 10) {
+            nodes {
+              ... on ProjectV2ItemFieldTextValue {
+                text
+                field {
+                  ... on ProjectV2Field {
+                    name
+                  }
+                }
+              }
+              ... on ProjectV2ItemFieldNumberValue {
+                number
+                id
+                field {
+                  ... on ProjectV2Field {
+                    name
+                  }
+                }
+              }
+              ... on ProjectV2ItemFieldDateValue {
+                date
+                field {
+                  ... on ProjectV2Field {
+                    name
+                  }
+                }
+              }
+              ... on ProjectV2ItemFieldSingleSelectValue {
+                name
+                field {
+                  ... on ProjectV2SingleSelectField {
+                    name
+                  }
+                }
+              }
+              ... on ProjectV2ItemFieldIterationValue {
+                title
+                field {
+                  ... on ProjectV2Field {
+                    name
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}`;
+    const graphqlQuery = {
+      query: graphql,
+      variables: {
+        owner: owner,
+        repo: repo,
+        number: issueNumber,
+      },
+    };
+    const response = await axios<{
+      data: {
+        repository: {
+          issue: {
+            number: number;
+            title: string;
+            state: string;
+            url: string;
+            body: string;
+            repository: { nameWithOwner: string };
+            projectItems: {
+              nodes: {
+                id: string;
+                fieldValues: {
+                  nodes: {
+                    text: string;
+                    number: number;
+                    date: string;
+                    name: string;
+                    field: {
+                      name: string;
+                    };
+                  }[];
+                };
+              }[];
+            };
+          };
+        };
+      };
+    }>({
+      url: 'https://api.github.com/graphql',
+      method: 'post',
+      headers: {
+        Authorization: `Bearer ${this.ghToken}`,
+        'Content-Type': 'application/json',
+      },
+      data: JSON.stringify(graphqlQuery),
+    });
+    const data = response.data.data;
+    if (!data.repository.issue) {
+      return null;
+    }
+    const projectItems: {
+      id: string;
+      fieldValues: {
+        nodes: {
+          text: string;
+          number: number;
+          date: string;
+          name: string;
+          field: {
+            name: string;
+          };
+        }[];
+      };
+    }[] = data.repository.issue.projectItems.nodes;
+    const item = projectItems[0];
+    return {
+      id: item.id,
+      nameWithOwner: data.repository.issue.repository.nameWithOwner,
+      number: data.repository.issue.number,
+      title: data.repository.issue.title,
+      state: this.convertStrToState(data.repository.issue.state),
+      url: data.repository.issue.url,
+      body: data.repository.issue.body,
+      customFields: item.fieldValues.nodes
+        .filter((field) => !!field.field)
+        .map((field) => {
+          return {
+            name: field.field.name,
+            value:
+              field.name ??
+              field.text ??
+              field.number?.toString() ??
+              field.date ??
+              null,
+          };
+        }),
+    };
+  };
+  convertStrToState = (state: string): 'OPEN' | 'CLOSED' | 'MERGED' => {
+    return state === 'MERGED'
+      ? 'MERGED'
+      : state === 'CLOSED'
+        ? 'CLOSED'
+        : state === 'OPEN'
+          ? 'OPEN'
+          : 'OPEN';
+  };
+
+  updateProjectField = async (
+    projectId: string,
+    fieldId: string,
+    itemId: string,
+    value:
+      | { text: string }
+      | { number: number }
+      | { date: string }
+      | { singleSelectOptionId: string },
+  ): Promise<void> => {
+    const graphqlQuery = {
+      query: `mutation {
+      updateProjectV2ItemFieldValue(input: {
+        projectId: "${projectId}"
+        fieldId: "${fieldId}"
+        itemId: "${itemId}"
+        value: ${JSON.stringify(value)}
+      }) {
+        clientMutationId
+      }
+    }`,
+    };
+
+    return axios({
+      url: 'https://api.github.com/graphql',
+      method: 'post',
+      headers: {
+        Authorization: `Bearer ${this.ghToken}`,
+        'Content-Type': 'application/json',
+      },
+      data: JSON.stringify(graphqlQuery),
+    });
+  };
+
+  clearProjectField = async (
+    projectId: string,
+    fieldId: string,
+    itemId: string,
+  ): Promise<void> => {
+    const graphqlQuery = {
+      query: `mutation {
+      clearProjectV2ItemFieldValue(input: {
+        projectId: "${projectId}"
+        fieldId: "${fieldId}"
+        itemId: "${itemId}"
+      }) {
+        clientMutationId
+      }
+    }`,
+    };
+
+    return axios({
+      url: 'https://api.github.com/graphql',
+      method: 'post',
+      headers: {
+        Authorization: `Bearer ${this.ghToken}`,
+        'Content-Type': 'application/json',
+      },
+      data: JSON.stringify(graphqlQuery),
+    });
   };
 }
