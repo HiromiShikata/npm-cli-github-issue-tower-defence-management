@@ -24,10 +24,13 @@ interface Cookie {
 }
 
 export class BaseGitHubRepository {
+  cookie: string | null;
   constructor(
     readonly jsonFilePath: string = './tmp/github.com.cookies.json',
     readonly ghToken: string = process.env.GH_TOKEN || 'dummy',
-  ) {}
+  ) {
+    this.cookie = null;
+  }
   protected extractIssueFromUrl = (
     issueUrl: string,
   ): { owner: string; repo: string; issueNumber: number; isIssue: boolean } => {
@@ -47,8 +50,14 @@ export class BaseGitHubRepository {
     return { owner, repo, issueNumber, isIssue: pullOrIssue === 'issues' };
   };
 
+  getCookie = async (): Promise<string> => {
+    if (!this.cookie) {
+      this.cookie = await this.createCookieStringFromFile();
+    }
+    return this.cookie;
+  };
   createHeader = async (): Promise<object> => {
-    const cookie = await this.createCookieStringFromFile();
+    const cookie = this.getCookie();
     const headers = {
       accept:
         'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
