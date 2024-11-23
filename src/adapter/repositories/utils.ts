@@ -39,3 +39,12 @@ export const totalDuration = (
 
   return `${String(totalHour).padStart(2, '0')}:${String(totalMinute).padStart(2, '0')}`;
 };
+
+export const normalizeFieldName = (fieldName: string) => {
+  return fieldName
+    .toLowerCase()
+    .replace(' ', '')
+    .replace('-', '')
+    .replace(' ', '')
+    .replace(' ', '');
+};
