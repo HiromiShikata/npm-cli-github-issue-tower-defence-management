@@ -2,6 +2,7 @@ import axios from 'axios';
 import { BaseGitHubRepository } from './BaseGitHubRepository';
 import { ProjectRepository } from '../../domain/usecases/adapter-interfaces/ProjectRepository';
 import { Project } from '../../domain/entities/Project';
+import { normalizeFieldName } from './utils';
 
 export class GraphqlProjectRepository
   extends BaseGitHubRepository
@@ -118,22 +119,9 @@ export class GraphqlProjectRepository
             options {
               id
               name
+              description
+              color
             }
-          }
-          ... on ProjectV2NumberField {
-            id
-            name
-            dataType
-          }
-          ... on ProjectV2DateField {
-            id
-            name
-            dataType
-          }
-          ... on ProjectV2TextField {
-            id
-            name
-            dataType
           }
         }
       }
@@ -194,9 +182,55 @@ export class GraphqlProjectRepository
     if (!project) {
       return null;
     }
+    const nextActionDate = project.fields.nodes.find(
+      (field) => normalizeFieldName(field.name) === 'nextactiondate',
+    );
+    const nextActionHour = project.fields.nodes.find(
+      (field) => normalizeFieldName(field.name) === 'nextactionhour',
+    );
+    const story = project.fields.nodes.find(
+      (field) => normalizeFieldName(field.name) === 'story',
+    );
+    const workflowManagementStory = story?.options.find((option) =>
+      normalizeFieldName(option.name).includes('workflowmanagement'),
+    );
+    const remainignEstimationMinutes = project.fields.nodes.find(
+      (field) =>
+        normalizeFieldName(field.name) === 'remainingestimationminutes',
+    );
     return {
       id: project.id,
       name: project.title,
+      nextActionDate: nextActionDate
+        ? {
+            name: nextActionDate.name,
+            fieldId: nextActionDate.id,
+          }
+        : null,
+      nextActionHour: nextActionHour
+        ? {
+            name: nextActionHour.name,
+            fieldId: nextActionHour.id,
+          }
+        : null,
+      story:
+        story && workflowManagementStory
+          ? {
+              name: story.name,
+              fieldId: story.id,
+              stories: story.options.map((option) => ({
+                id: option.id,
+                name: option.name,
+              })),
+              workflowManagementStory,
+            }
+          : null,
+      remainingEstimationMinutes: remainignEstimationMinutes
+        ? {
+            name: remainignEstimationMinutes.name,
+            fieldId: remainignEstimationMinutes.id,
+          }
+        : null,
     };
   };
 }
