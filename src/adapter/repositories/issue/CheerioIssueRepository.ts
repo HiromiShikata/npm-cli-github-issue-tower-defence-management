@@ -2,8 +2,13 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import { WorkingTime } from '../../../domain/entities/WorkingTime';
+import {
+  getInProgressTimeline,
+  IssueStatusTimeline,
+} from './issueTimelineUtils';
+import { InternalGraphqlIssueRepository } from './InternalGraphqlIssueRepository';
 
-type Issue = {
+export type Issue = {
   url: string;
   title: string;
   status: string;
@@ -13,28 +18,39 @@ type Issue = {
   statusTimeline: IssueStatusTimeline[];
   inProgressTimeline: WorkingTime[];
 };
-type IssueStatusTimeline = {
-  time: string;
-  author: string;
-  from: string;
-  to: string;
-};
-type IssueInProgressTimeline = WorkingTime & {
-  issueUrl: string;
-};
 
 export class CheerioIssueRepository extends BaseGitHubRepository {
+  constructor(
+    readonly internalGraphqlIssueRepository: InternalGraphqlIssueRepository,
+    readonly jsonFilePath: string = './tmp/github.com.cookies.json',
+    readonly ghToken: string = process.env.GH_TOKEN || 'dummy',
+  ) {
+    super(jsonFilePath, ghToken);
+  }
   getIssue = async (issueUrl: string): Promise<Issue> => {
     const headers = await this.createHeader();
     const content = await axios.get<string>(issueUrl, { headers });
-    const $ = cheerio.load(content.data);
+    const html = content.data;
+    const $ = cheerio.load(html);
+    if (html.includes('react-app.embeddedData')) {
+      return this.internalGraphqlIssueRepository.getIssueFromBetaFeatureView(
+        issueUrl,
+        html,
+      );
+    }
+    return this.getIssueFromNormalView(issueUrl, $);
+  };
+  getIssueFromNormalView = async (
+    issueUrl: string,
+    $: cheerio.CheerioAPI,
+  ): Promise<Issue> => {
     const title = this.getTitleFromCheerioObject($);
     const status = this.getStatusFromCheerioObject($);
     const assignees = this.getAssigneesFromCheerioObject($);
     const labels = this.getLabelsFromCheerioObject($);
     const project = this.getProjectFromCheerioObject($);
     const statusTimeline = await this.getStatusTimelineEvents($);
-    const inProgressTimeline = await this.getInProgressTimeline(
+    const inProgressTimeline = await getInProgressTimeline(
       statusTimeline,
       issueUrl,
     );
@@ -101,49 +117,5 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
     }
 
     return res;
-  };
-
-  getInProgressTimeline = async (
-    timelines: IssueStatusTimeline[],
-    issueUrl: string,
-  ): Promise<WorkingTime[]> => {
-    const report: IssueInProgressTimeline[] = [];
-    let currentInProgress:
-      | Pick<IssueInProgressTimeline, 'issueUrl' | 'author' | 'startedAt'>
-      | undefined = undefined;
-    for (const timeline of timelines) {
-      const time = new Date(timeline.time);
-      if (timeline.to.toLocaleLowerCase().includes('in progress')) {
-        if (currentInProgress !== undefined) {
-          report.push({
-            ...currentInProgress,
-            endedAt: time,
-            durationMinutes:
-              (time.getTime() - currentInProgress.startedAt.getTime()) /
-              1000 /
-              60,
-          });
-          currentInProgress = undefined;
-        }
-        currentInProgress = {
-          issueUrl: issueUrl,
-          author: timeline.author,
-          startedAt: time,
-        };
-        continue;
-      }
-      if (currentInProgress != undefined) {
-        report.push({
-          ...currentInProgress,
-          endedAt: time,
-          durationMinutes:
-            (time.getTime() - currentInProgress.startedAt.getTime()) /
-            1000 /
-            60,
-        });
-        currentInProgress = undefined;
-      }
-    }
-    return report;
   };
 }
