@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
+import { Issue } from '../../../domain/entities/Issue';
 
 export class RestIssueRepository extends BaseGitHubRepository {
   createComment = async (issueUrl: string, comment: string) => {
@@ -79,5 +80,26 @@ export class RestIssueRepository extends BaseGitHubRepository {
       number: response.data.number,
       state: response.data.state,
     };
+  };
+  updateIssue = async (issue: Issue) => {
+    const response = await axios.patch(
+      `https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}`,
+      {
+        title: issue.title,
+        body: issue.body,
+        assignees: issue.assignees,
+        labels: issue.labels,
+        state: issue.state,
+      },
+      {
+        headers: {
+          Authorization: `token ${this.ghToken}`,
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+    if (response.status !== 200) {
+      throw new Error(`Failed to update issue: ${response.status}`);
+    }
   };
 }
