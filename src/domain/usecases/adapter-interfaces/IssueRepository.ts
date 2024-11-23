@@ -6,7 +6,8 @@ export interface IssueRepository {
   getAllIssues: (
     projectId: Project['id'],
     allowCacheMinutes: number,
-  ) => Promise<Issue[]>;
+  ) => Promise<{ issues: Issue[]; cacheUsed: boolean }>;
+  getIssueByUrl: (url: string) => Promise<Issue | null>;
   createNewIssue: (
     org: string,
     repo: string,
@@ -14,5 +15,30 @@ export interface IssueRepository {
     body: string,
     assignees: Member['name'][],
     labels: Label[],
+  ) => Promise<void>;
+  updateIssue: (issue: Issue) => Promise<void>;
+  updateNextActionDate: (
+    project: Project & {
+      nextActionDate: NonNullable<Project['nextActionDate']>;
+    },
+    issue: Issue,
+    date: Date,
+  ) => Promise<void>;
+  updateNextActionHour: (
+    project: Project & {
+      nextActionHour: NonNullable<Project['nextActionHour']>;
+    },
+    issue: Issue,
+    hour: number,
+  ) => Promise<void>;
+  updateStory: (
+    project: Project & { story: NonNullable<Project['story']> },
+    issue: Issue,
+    storyId: string,
+  ) => Promise<void>;
+  clearProjectField: (
+    project: Project,
+    fieldId: string,
+    issue: Issue,
   ) => Promise<void>;
 }
