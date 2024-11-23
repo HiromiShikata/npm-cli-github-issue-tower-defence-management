@@ -6,6 +6,8 @@ import { GenerateWorkingTimeReportUseCase } from './GenerateWorkingTimeReportUse
 import { Member } from '../entities/Member';
 import { DateRepository } from './adapter-interfaces/DateRepository';
 import { SpreadsheetRepository } from './adapter-interfaces/SpreadsheetRepository';
+import { ActionAnnouncementUseCase } from './ActionAnnouncementUseCase';
+import { SetWorkflowManagementIssueToStoryUseCase } from './SetWorkflowManagementIssueToStoryUseCase';
 
 export class ProjectNotFoundError extends Error {
   constructor(message: string) {
@@ -17,6 +19,8 @@ export class ProjectNotFoundError extends Error {
 export class HandleScheduledEventUseCase {
   constructor(
     readonly generateWorkingTimeReportUseCase: GenerateWorkingTimeReportUseCase,
+    readonly actionAnnouncementUseCase: ActionAnnouncementUseCase,
+    readonly setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase,
     readonly dateRepository: DateRepository,
     readonly spreadsheetRepository: SpreadsheetRepository,
     readonly projectRepository: ProjectRepository,
@@ -44,6 +48,14 @@ export class HandleScheduledEventUseCase {
         `Project not found. projectUrl: ${input.projectUrl}`,
       );
     }
+    const project = await this.projectRepository.getProject(projectId);
+    if (!project) {
+      throw new ProjectNotFoundError(
+        `Project not found. projectId: ${
+          projectId
+        } projectUrl: ${input.projectUrl}`,
+      );
+    }
     const now: Date = await this.dateRepository.now();
     const targetDateTimes: Date[] =
       await this.findTargetDateAndUpdateLastExecutionDateTime(
@@ -51,10 +63,11 @@ export class HandleScheduledEventUseCase {
         now,
       );
     const allowIssueCacheMinutes = 60;
-    const issues: Issue[] = await this.issueRepository.getAllIssues(
-      projectId,
-      allowIssueCacheMinutes,
-    );
+    const { issues, cacheUsed }: { issues: Issue[]; cacheUsed: boolean } =
+      await this.issueRepository.getAllIssues(
+        projectId,
+        allowIssueCacheMinutes,
+      );
 
     for (const targetDateTime of targetDateTimes) {
       await this.runForTargetDateTime({
@@ -66,6 +79,20 @@ export class HandleScheduledEventUseCase {
         targetDateTime,
       });
     }
+    await this.actionAnnouncementUseCase.run({
+      targetDates: targetDateTimes,
+      project,
+      issues,
+      cacheUsed,
+      members: input.workingReport.members,
+      manager: input.manager,
+    });
+    await this.setWorkflowManagementIssueToStoryUseCase.run({
+      targetDates: targetDateTimes,
+      project,
+      issues,
+      cacheUsed,
+    });
   };
   runForTargetDateTime = async (input: {
     org: string;
@@ -134,15 +161,15 @@ export class HandleScheduledEventUseCase {
         'LastExecutionDateTime',
       );
     }
-    const lastExecutionDateTime = sheetValues
-      ? new Date(sheetValues[1][2])
-      : now;
+    const lastExecutionDateTime =
+      sheetValues && sheetValues[1][2] ? new Date(sheetValues[1][2]) : null;
 
-    const targetDateTimes: Date[] =
-      HandleScheduledEventUseCase.createTargetDateTimes(
-        lastExecutionDateTime,
-        now,
-      );
+    const targetDateTimes: Date[] = lastExecutionDateTime
+      ? HandleScheduledEventUseCase.createTargetDateTimes(
+          lastExecutionDateTime,
+          now,
+        )
+      : [now];
 
     await this.spreadsheetRepository.updateCell(
       spreadsheetUrl,
