@@ -8,6 +8,8 @@ import { DateRepository } from './adapter-interfaces/DateRepository';
 import { SpreadsheetRepository } from './adapter-interfaces/SpreadsheetRepository';
 import { ActionAnnouncementUseCase } from './ActionAnnouncementUseCase';
 import { SetWorkflowManagementIssueToStoryUseCase } from './SetWorkflowManagementIssueToStoryUseCase';
+import { ClearNextActionHourUseCase } from './ClearNextActionHourUseCase';
+import { AnalyzeProblemByIssueUseCase } from './AnalyzeProblemByIssueUseCase';
 
 export class ProjectNotFoundError extends Error {
   constructor(message: string) {
@@ -21,6 +23,8 @@ export class HandleScheduledEventUseCase {
     readonly generateWorkingTimeReportUseCase: GenerateWorkingTimeReportUseCase,
     readonly actionAnnouncementUseCase: ActionAnnouncementUseCase,
     readonly setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase,
+    readonly clearNextActionHourUseCase: ClearNextActionHourUseCase,
+    readonly analyzeProblemByIssueUseCase: AnalyzeProblemByIssueUseCase,
     readonly dateRepository: DateRepository,
     readonly spreadsheetRepository: SpreadsheetRepository,
     readonly projectRepository: ProjectRepository,
@@ -79,6 +83,15 @@ export class HandleScheduledEventUseCase {
         targetDateTime,
       });
     }
+    await this.analyzeProblemByIssueUseCase.run({
+      targetDates: targetDateTimes,
+      project,
+      issues,
+      cacheUsed,
+      manager: input.manager,
+      org: input.org,
+      repo: input.workingReport.repo,
+    });
     await this.actionAnnouncementUseCase.run({
       targetDates: targetDateTimes,
       project,
@@ -88,6 +101,12 @@ export class HandleScheduledEventUseCase {
       manager: input.manager,
     });
     await this.setWorkflowManagementIssueToStoryUseCase.run({
+      targetDates: targetDateTimes,
+      project,
+      issues,
+      cacheUsed,
+    });
+    await this.clearNextActionHourUseCase.run({
       targetDates: targetDateTimes,
       project,
       issues,
