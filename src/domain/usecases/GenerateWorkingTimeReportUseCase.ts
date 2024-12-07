@@ -89,7 +89,9 @@ If you have any questions, please put comment and assign to @${input.manager} :p
 
 ## Working report for {AUTHOR} on {DATE_WITH_DAY_OF_WEEK}
 ### Total
+\`\`\`
 {TOTAL_WORKING_TIME_HHMM}
+\`\`\`
 
 ### Detail
 {TIMELINE_DETAILS}
