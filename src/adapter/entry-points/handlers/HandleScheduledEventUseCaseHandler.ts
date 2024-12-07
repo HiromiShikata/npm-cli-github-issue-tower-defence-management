@@ -15,6 +15,9 @@ import { HandleScheduledEventUseCase } from '../../../domain/usecases/HandleSche
 import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
 import { ActionAnnouncementUseCase } from '../../../domain/usecases/ActionAnnouncementUseCase';
 import { SetWorkflowManagementIssueToStoryUseCase } from '../../../domain/usecases/SetWorkflowManagementIssueToStoryUseCase';
+import { InternalGraphqlIssueRepository } from '../../repositories/issue/InternalGraphqlIssueRepository';
+import { ClearNextActionHourUseCase } from '../../../domain/usecases/ClearNextActionHourUseCase';
+import { AnalyzeProblemByIssueUseCase } from '../../../domain/usecases/AnalyzeProblemByIssueUseCase';
 
 export class HandleScheduledEventUseCaseHandler {
   handle = async (configFilePath: string): Promise<void> => {
@@ -37,7 +40,10 @@ export class HandleScheduledEventUseCaseHandler {
     );
     const projectRepository = new GraphqlProjectRepository();
     const apiV3IssueRepository = new ApiV3IssueRepository();
-    const cheerioIssueRepository = new CheerioIssueRepository();
+    const internalGraphqlIssueRepository = new InternalGraphqlIssueRepository();
+    const cheerioIssueRepository = new CheerioIssueRepository(
+      internalGraphqlIssueRepository,
+    );
     const restIssueRepository = new RestIssueRepository();
     const graphqlProjectItemRepository = new GraphqlProjectItemRepository();
     const issueRepository = new ApiV3CheerioRestIssueRepository(
@@ -51,14 +57,24 @@ export class HandleScheduledEventUseCaseHandler {
       new GenerateWorkingTimeReportUseCase(
         issueRepository,
         googleSpreadsheetRepository,
+        systemDateRepository,
       );
     const actionAnnouncement = new ActionAnnouncementUseCase(issueRepository);
     const setWorkflowManagementIssueToStoryUseCase =
       new SetWorkflowManagementIssueToStoryUseCase(issueRepository);
+    const clearNextActionHourUseCase = new ClearNextActionHourUseCase(
+      issueRepository,
+    );
+    const analyzeProblemByIssueUseCase = new AnalyzeProblemByIssueUseCase(
+      issueRepository,
+      systemDateRepository,
+    );
     const handleScheduledEventUseCase = new HandleScheduledEventUseCase(
       generateWorkingTimeReportUseCase,
       actionAnnouncement,
       setWorkflowManagementIssueToStoryUseCase,
+      clearNextActionHourUseCase,
+      analyzeProblemByIssueUseCase,
       systemDateRepository,
       googleSpreadsheetRepository,
       projectRepository,
