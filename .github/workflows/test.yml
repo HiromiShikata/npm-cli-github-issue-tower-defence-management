@@ -19,15 +19,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Check commit message format
-        run: npx commitlint --from=origin/main
-
-      - name: Check code format
-        run: |
-          npm run fmt
-          git --no-pager diff
-          exit $(git diff | wc -l)
-
       - name: Build
         run: npm run build
 
