@@ -5,14 +5,20 @@ import {
   GenerateWorkingTimeReportUseCase,
   WorkingReportTimelineEvent,
 } from './GenerateWorkingTimeReportUseCase';
+import { SpreadsheetRepository } from './adapter-interfaces/SpreadsheetRepository';
+import { DateRepository } from './adapter-interfaces/DateRepository';
+import { mock } from 'jest-mock-extended';
 
 describe('GenerateWorkingTimeReportUseCase', () => {
-  const mockIssueRepository: IssueRepository = {
-    getAllIssues: jest.fn().mockResolvedValue([]),
-    createNewIssue: jest.fn().mockResolvedValue(undefined),
-  };
+  const mockIssueRepository = mock<IssueRepository>();
+  const mockSpreadsheetRepository = mock<SpreadsheetRepository>();
+  const mockDateRepository = mock<DateRepository>();
 
-  const useCase = new GenerateWorkingTimeReportUseCase(mockIssueRepository);
+  const useCase = new GenerateWorkingTimeReportUseCase(
+    mockIssueRepository,
+    mockSpreadsheetRepository,
+    mockDateRepository,
+  );
   describe('getWorkingReportIssueTemplate', () => {
     interface TestCase {
       name: string;
@@ -47,7 +53,9 @@ If you have any questions, please put comment and assign to @manager1 :pray:
 
 ## Working report for {AUTHOR} on {DATE_WITH_DAY_OF_WEEK}
 ### Total
+\`\`\`
 {TOTAL_WORKING_TIME_HHMM}
+\`\`\`
 
 ### Detail
 {TIMELINE_DETAILS}
@@ -98,6 +106,16 @@ Summary of working report: https://example.com
                   durationMinutes: 180,
                 },
               ],
+              status: 'In Progress',
+              story: 'test story',
+              nextActionDate: new Date('2024-01-02'),
+              nextActionHour: 10,
+              estimationMinutes: 180,
+              org: 'org',
+              repo: 'repo',
+              body: 'test body',
+              itemId: 'itemId',
+              isPr: false,
             },
           ],
           targetDate: new Date('2024-01-01'),
@@ -110,8 +128,10 @@ Summary of working report: https://example.com
             startHhmm: '09:00',
             endHhmm: '12:00',
             durationHhmm: '03:00',
-            warning: '',
-            labelUrls: [],
+            warnings: [],
+            labels: [],
+            nameWithOwner: 'org/repo',
+            issueTitle: 'Issue 1',
           },
         ],
       },
@@ -214,16 +234,20 @@ Summary of working report: https://example.com
             startHhmm: '09:00',
             endHhmm: '12:00',
             durationHhmm: '03:00',
-            warning: '',
-            labelUrls: [],
+            warnings: [],
+            labels: [],
+            issueTitle: 'Issue 1',
+            nameWithOwner: 'org/repo',
           },
           {
             issueUrl: 'https://example.com/2',
             startHhmm: '13:00',
             endHhmm: '15:30',
             durationHhmm: '02:30',
-            warning: '',
-            labelUrls: [],
+            warnings: [],
+            labels: [],
+            issueTitle: 'Issue 2',
+            nameWithOwner: 'org/repo',
           },
         ],
         expected: '05:30',
@@ -232,6 +256,12 @@ Summary of working report: https://example.com
 
     testCases.forEach(({ name, input, expected }) => {
       it(name, () => {
+        mockDateRepository.formatDurationToHHMM.mockImplementation(
+          (durationMinutes: number) => {
+            if (durationMinutes === 330) return '05:30';
+            return '';
+          },
+        );
         const result = useCase.calculateTotalHhmm(input);
         expect(result).toBe(expected);
       });
@@ -314,6 +344,16 @@ Summary of working report: https://example.com
                   durationMinutes: 60,
                 },
               ],
+              status: 'In Progress',
+              story: 'test story',
+              nextActionDate: new Date(),
+              nextActionHour: 10,
+              estimationMinutes: 60,
+              org: 'org',
+              repo: 'repo',
+              body: 'test body',
+              itemId: 'itemId',
+              isPr: false,
             },
           ],
           members: ['user1', 'user2'],
