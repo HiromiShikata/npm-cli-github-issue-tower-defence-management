@@ -51,6 +51,7 @@ export class GenerateWorkingTimeReportUseCase {
           input.warningThresholdHour,
         );
         reportRows.push(...memberReportRows);
+        await new Promise((resolve) => setTimeout(resolve, 5000));
       } catch (e) {
         await this.issueRepository.createNewIssue(
           input.org,
@@ -61,7 +62,6 @@ export class GenerateWorkingTimeReportUseCase {
           ['bug'],
         );
       }
-      await new Promise((resolve) => setTimeout(resolve, 2000));
     }
     await this.spreadsheetRepository.appendSheetValues(
       input.spreadsheetUrl,
