@@ -2,6 +2,7 @@ import { Issue, Label } from '../entities/Issue';
 import { Member } from '../entities/Member';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { SpreadsheetRepository } from './adapter-interfaces/SpreadsheetRepository';
+import { DateRepository } from './adapter-interfaces/DateRepository';
 
 export type WorkingReportTimelineEvent = {
   issueUrl: string;
@@ -18,6 +19,7 @@ export class GenerateWorkingTimeReportUseCase {
   constructor(
     readonly issueRepository: IssueRepository,
     readonly spreadsheetRepository: SpreadsheetRepository,
+    readonly dateRepository: DateRepository,
   ) {}
 
   run = async (input: {
@@ -147,7 +149,6 @@ Summary of working report: ${input.spreadsheetUrl}
       event.endHhmm,
       author,
       event.warnings.join(':'),
-      event.issueTitle,
       event.issueUrl,
       event.labels.join(':'),
     ]);
@@ -238,9 +239,7 @@ Summary of working report: ${input.spreadsheetUrl}
       const [hh, mm] = event.durationHhmm.split(':').map(Number);
       return acc + hh * 60 + mm;
     }, 0);
-    const totalHh = Math.floor(totalDuration / 60);
-    const totalMm = totalDuration % 60;
-    return `${String(totalHh).padStart(2, '0')}:${String(totalMm).padStart(2, '0')}`;
+    return this.dateRepository.formatDurationToHHMM(totalDuration);
   };
   applyToTimelineDetails = (
     timelineEvents: WorkingReportTimelineEvent[],
