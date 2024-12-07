@@ -63,7 +63,7 @@ Please take a look at the announcement in the issue ${issue.url} and take necess
             ['bug'],
           );
         }
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, 5000));
       }
       await this.issueRepository.updateIssue({
         ...issue,
