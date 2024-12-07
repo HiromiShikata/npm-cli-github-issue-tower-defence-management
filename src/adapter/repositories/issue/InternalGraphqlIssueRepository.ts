@@ -215,12 +215,14 @@ export class InternalGraphqlIssueRepository extends BaseGitHubRepository {
       issueData.frontTimelineItems.totalCount -
       issueData.frontTimelineItems.edges.length -
       issueData.backTimelineItems.edges.length;
-    const loadedMoreIssues = await this.getFrontTimelineItems(
-      issueUrl,
-      issueData.frontTimelineItems.pageInfo.endCursor,
-      issueData.id,
-      issueRemainingCount,
-    );
+    const loadedMoreIssues = issueUrl.includes('/pull/')
+      ? []
+      : await this.getFrontTimelineItems(
+          issueUrl,
+          issueData.frontTimelineItems.pageInfo.endCursor,
+          issueData.id,
+          issueRemainingCount,
+        );
     const statusTimeline = issueData.frontTimelineItems.edges
       .concat(loadedMoreIssues)
       .concat(issueData.backTimelineItems.edges)
