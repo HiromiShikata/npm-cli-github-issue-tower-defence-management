@@ -80,7 +80,24 @@ workingReport:
   reportIssueLabels:
     - 'report'
     - 'working-time'
+  slack:
+    userToken: 'xoxp-xxx'
 ```
+
+### Slack User Token
+
+#### scope
+
+- channels:read
+- groups:read
+- mpim:read
+- im:read
+- chat:write
+- identify
+- usergroups:read
+- users:read
+- files:write
+- files:read
 
 ## Contributing
 
