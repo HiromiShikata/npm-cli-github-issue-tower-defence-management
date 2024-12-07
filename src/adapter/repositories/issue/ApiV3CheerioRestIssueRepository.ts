@@ -251,13 +251,13 @@ export class ApiV3CheerioRestIssueRepository
   updateStory = async (
     project: Project & { story: NonNullable<Project['story']> },
     issue: Issue,
-    story: string,
+    storyOptionId: string,
   ): Promise<void> => {
-    return this.graphqlProjectItemRepository.updateProjectField(
+    await this.graphqlProjectItemRepository.updateProjectField(
       project.id,
       project.story.fieldId,
       issue.itemId,
-      { text: story },
+      { singleSelectOptionId: storyOptionId },
     );
   };
   clearProjectField = async (
