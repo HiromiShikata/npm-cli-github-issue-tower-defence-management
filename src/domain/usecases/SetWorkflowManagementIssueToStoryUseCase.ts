@@ -40,6 +40,7 @@ export class SetWorkflowManagementIssueToStoryUseCase {
         issue,
         story.workflowManagementStory.id,
       );
+      await new Promise((resolve) => setTimeout(resolve, 5000));
     }
   };
 }
