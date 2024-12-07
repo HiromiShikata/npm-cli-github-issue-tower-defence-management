@@ -92,6 +92,7 @@ query GetProjectItems($projectId: ID!, $after: String) {
           hasNextPage
         }
         nodes {
+          id
           fieldValues(first: 10) {
             nodes {
               ... on ProjectV2ItemFieldTextValue {
@@ -672,14 +673,21 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
         projectId: "${projectId}"
         fieldId: "${fieldId}"
         itemId: "${itemId}"
-        value: ${JSON.stringify(value)}
+        value: ${JSON.stringify(value).replace(/"([^"]+)":/g, '$1:')},
       }) {
         clientMutationId
       }
     }`,
     };
 
-    return axios({
+    const res = await axios<{
+      data: {
+        updateProjectV2ItemFieldValue: {
+          clientMutationId: string;
+        };
+      };
+      errors: { message: string }[];
+    }>({
       url: 'https://api.github.com/graphql',
       method: 'post',
       headers: {
@@ -688,6 +696,11 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       },
       data: JSON.stringify(graphqlQuery),
     });
+    if (res.status !== 200) {
+      throw new Error('Failed to update project field');
+    } else if (res.data.errors) {
+      throw new Error(res.data.errors.map((e) => e.message).join('\n'));
+    }
   };
 
   clearProjectField = async (
@@ -707,7 +720,14 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
     }`,
     };
 
-    return axios({
+    const res = await axios<{
+      data: {
+        clearProjectV2ItemFieldValue: {
+          clientMutationId: string;
+        };
+      };
+      errors: { message: string }[];
+    }>({
       url: 'https://api.github.com/graphql',
       method: 'post',
       headers: {
@@ -716,5 +736,10 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       },
       data: JSON.stringify(graphqlQuery),
     });
+    if (res.status !== 200) {
+      throw new Error('Failed to clear project field');
+    } else if (res.data.errors) {
+      throw new Error(res.data.errors.map((e) => e.message).join('\n'));
+    }
   };
 }
