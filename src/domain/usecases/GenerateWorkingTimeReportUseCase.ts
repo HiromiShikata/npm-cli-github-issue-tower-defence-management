@@ -256,7 +256,7 @@ ${timelineEvents.map((event) => this.applyToTimelineDetail(event)).join('\n')}
   ): string => {
     const labelUrls = timelineEvents.labels.map(
       (label) =>
-        `https://github.com/${timelineEvents.nameWithOwner}/labels/${encodeURI(label)}`,
+        `https://github.com/${timelineEvents.nameWithOwner}/labels/${encodeURI(label).replace(/:/g, '%3A')}`,
     );
     return `- ${timelineEvents.startHhmm}, ${timelineEvents.endHhmm}, ${timelineEvents.durationHhmm}, ${timelineEvents.warnings.length > 0 ? `:warning: ${timelineEvents.warnings.join(' ')}` : ''} ${timelineEvents.issueUrl}, ${labelUrls.join(' ')}`;
   };
