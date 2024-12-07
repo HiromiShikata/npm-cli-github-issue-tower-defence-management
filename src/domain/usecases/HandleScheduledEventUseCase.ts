@@ -61,16 +61,17 @@ export class HandleScheduledEventUseCase {
       );
     }
     const now: Date = await this.dateRepository.now();
-    const targetDateTimes: Date[] =
-      await this.findTargetDateAndUpdateLastExecutionDateTime(
-        input.workingReport.spreadsheetUrl,
-        now,
-      );
     const allowIssueCacheMinutes = 60;
     const { issues, cacheUsed }: { issues: Issue[]; cacheUsed: boolean } =
       await this.issueRepository.getAllIssues(
         projectId,
         allowIssueCacheMinutes,
+      );
+
+    const targetDateTimes: Date[] =
+      await this.findTargetDateAndUpdateLastExecutionDateTime(
+        input.workingReport.spreadsheetUrl,
+        now,
       );
 
     for (const targetDateTime of targetDateTimes) {
