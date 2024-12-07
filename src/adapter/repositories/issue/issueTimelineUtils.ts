@@ -26,9 +26,8 @@ export const getInProgressTimeline = async (
           ...currentInProgress,
           endedAt: time,
           durationMinutes:
-            (time.getTime() - currentInProgress.startedAt.getTime()) /
-            1000 /
-            60,
+            Math.floor(time.getTime() / 1000 / 60) -
+            Math.floor(currentInProgress.startedAt.getTime() / 1000 / 60),
         });
         currentInProgress = undefined;
       }
