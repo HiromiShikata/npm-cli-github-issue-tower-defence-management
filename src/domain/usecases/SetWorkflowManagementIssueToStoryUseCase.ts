@@ -27,7 +27,8 @@ export class SetWorkflowManagementIssueToStoryUseCase {
         (issue.nextActionDate === null ||
           issue.nextActionDate.getTime() <= input.targetDates[0].getTime()) &&
         issue.nextActionHour === null &&
-        issue.state === 'OPEN'
+        issue.state === 'OPEN' &&
+        issue.story === null
       );
     };
     for (const issue of input.issues) {
