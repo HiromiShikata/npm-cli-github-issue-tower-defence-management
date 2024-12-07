@@ -1,6 +1,8 @@
 import { promises as fsPromises } from 'fs';
 import { serialize } from 'cookie';
 import axios, { AxiosError } from 'axios';
+import { getCookieContent } from 'gh-cookie';
+import fs from 'fs';
 
 axios.interceptors.response.use(
   (response) => response,
@@ -28,6 +30,10 @@ export class BaseGitHubRepository {
   constructor(
     readonly jsonFilePath: string = './tmp/github.com.cookies.json',
     readonly ghToken: string = process.env.GH_TOKEN || 'dummy',
+    readonly ghUserName: string | undefined = process.env.GH_USER_NAME,
+    readonly ghUserPassword: string | undefined = process.env.GH_USER_PASSWORD,
+    readonly ghAuthenticatorKey: string | undefined = process.env
+      .GH_AUTHENTICATOR_KEY,
   ) {
     this.cookie = null;
   }
@@ -82,6 +88,21 @@ export class BaseGitHubRepository {
     };
   };
   protected createCookieStringFromFile = async (): Promise<string> => {
+    if (!fs.existsSync(this.jsonFilePath)) {
+      if (
+        !this.ghUserName ||
+        !this.ghUserPassword ||
+        !this.ghAuthenticatorKey
+      ) {
+        throw new Error('No cookie file and no credentials provided');
+      }
+      const cookie = await getCookieContent(
+        this.ghUserName,
+        this.ghUserPassword,
+        this.ghAuthenticatorKey,
+      );
+      await fsPromises.writeFile(this.jsonFilePath, JSON.stringify(cookie));
+    }
     const data = await fsPromises.readFile(this.jsonFilePath, {
       encoding: 'utf-8',
     });
