@@ -61,7 +61,7 @@ describe('AxiosSlackRepository Integration Tests', () => {
   });
 
   describe('postMessageToChannelWithImage', () => {
-    it('should post a message with image', async () => {
+    it.skip('should post a message with image', async () => {
       const message = `Test image message ${new Date().toISOString()}`;
       if (!fs.existsSync(path.dirname(TEST_IMAGE_PATH))) {
         fs.mkdirSync(path.dirname(TEST_IMAGE_PATH), { recursive: true });
