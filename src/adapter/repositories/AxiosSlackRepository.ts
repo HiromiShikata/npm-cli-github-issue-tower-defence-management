@@ -127,6 +127,7 @@ export class AxiosSlackRepository implements SlackRepository {
         `Failed to get upload URL: ${JSON.stringify(uploadUrlRes.data)}`,
       );
     }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     const fileContent = fs.readFileSync(imageFilePath);
     await axios.post(uploadUrlRes.data.upload_url, fileContent, {
@@ -134,6 +135,7 @@ export class AxiosSlackRepository implements SlackRepository {
         'Content-Type': 'application/octet-stream',
       },
     });
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     const completeRes = await this.client.post<{ ok: boolean }>(
       '/files.completeUploadExternal',
