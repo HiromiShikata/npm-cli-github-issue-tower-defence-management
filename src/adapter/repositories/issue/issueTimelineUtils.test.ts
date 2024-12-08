@@ -7,18 +7,18 @@ describe('issueTimelineUtils', () => {
       const statusTimeline = [
         {
           author: 'HiromiShikata',
-          from: 'In Progress',
-          time: '2024-04-21T09:31:46Z',
-          to: 'Todo',
-        },
-        {
-          author: 'HiromiShikata',
           from: 'Todo',
           time: '2024-04-21T10:13:07Z',
           to: 'In Progress',
         },
+        {
+          author: 'HiromiShikata',
+          from: 'In Progress',
+          time: '2024-04-21T11:13:38Z',
+          to: 'Todo',
+        },
       ];
-      const inProgressTimeline = getInProgressTimeline(
+      const inProgressTimeline = await getInProgressTimeline(
         statusTimeline,
         issueUrl,
       );

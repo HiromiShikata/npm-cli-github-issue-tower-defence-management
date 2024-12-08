@@ -39,6 +39,22 @@ describe('CheerioIssueRepository', () => {
               'https://github.com/HiromiShikata/test-repository/issues/38',
             startedAt: new Date('2024-04-21T10:13:07.000Z'),
           },
+          {
+            author: 'HiromiShikata',
+            durationMinutes: 0.05,
+            endedAt: new Date('2024-11-23T05:44:10.000Z'),
+            issueUrl:
+              'https://github.com/HiromiShikata/test-repository/issues/38',
+            startedAt: new Date('2024-11-23T05:44:07.000Z'),
+          },
+          {
+            author: 'HiromiShikata',
+            durationMinutes: 0.03333333333333333,
+            endedAt: new Date('2024-11-23T05:46:27.000Z'),
+            issueUrl:
+              'https://github.com/HiromiShikata/test-repository/issues/38',
+            startedAt: new Date('2024-11-23T05:46:25.000Z'),
+          },
         ],
         labels: ['enhancement'],
         project: 'V2 project on owner for testing',
@@ -60,6 +76,42 @@ describe('CheerioIssueRepository', () => {
             author: 'HiromiShikata',
             from: 'In Progress',
             time: '2024-04-21T11:13:38Z',
+            to: 'Todo',
+          },
+          {
+            author: 'HiromiShikata',
+            from: 'Todo',
+            time: '2024-11-23T05:44:07Z',
+            to: 'In Progress',
+          },
+          {
+            author: 'HiromiShikata',
+            from: 'In Progress',
+            time: '2024-11-23T05:44:10Z',
+            to: 'Todo',
+          },
+          {
+            author: 'github-project-automation',
+            from: 'Todo',
+            time: '2024-11-23T05:45:50Z',
+            to: 'Done',
+          },
+          {
+            author: 'HiromiShikata',
+            from: 'Done',
+            time: '2024-11-23T05:46:22Z',
+            to: 'Todo',
+          },
+          {
+            author: 'HiromiShikata',
+            from: 'Todo',
+            time: '2024-11-23T05:46:25Z',
+            to: 'In Progress',
+          },
+          {
+            author: 'HiromiShikata',
+            from: 'In Progress',
+            time: '2024-11-23T05:46:27Z',
             to: 'Todo',
           },
         ],
@@ -157,26 +209,41 @@ describe('CheerioIssueRepository', () => {
           time: '2024-04-21T11:13:38Z',
           to: 'Todo',
         },
-      ]);
-    });
-  });
-  describe('getStatusTimelineEventsFromCheerioObject', () => {
-    it('should return status timeline events', () => {
-      const $ = cheerio.load(issueHtml);
-      const statusTimeline =
-        repository.getStatusTimelineEventsFromCheerioObjectPublic($);
-      expect(statusTimeline).toEqual([
+        {
+          author: 'HiromiShikata',
+          from: 'Todo',
+          time: '2024-11-23T05:44:07Z',
+          to: 'In Progress',
+        },
         {
           author: 'HiromiShikata',
           from: 'In Progress',
-          time: '2024-04-21T09:31:46Z',
+          time: '2024-11-23T05:44:10Z',
+          to: 'Todo',
+        },
+        {
+          author: 'github-project-automation',
+          from: 'Todo',
+          time: '2024-11-23T05:45:50Z',
+          to: 'Done',
+        },
+        {
+          author: 'HiromiShikata',
+          from: 'Done',
+          time: '2024-11-23T05:46:22Z',
           to: 'Todo',
         },
         {
           author: 'HiromiShikata',
           from: 'Todo',
-          time: '2024-04-21T10:13:07Z',
+          time: '2024-11-23T05:46:25Z',
           to: 'In Progress',
+        },
+        {
+          author: 'HiromiShikata',
+          from: 'In Progress',
+          time: '2024-11-23T05:46:27Z',
+          to: 'Todo',
         },
       ]);
     });
