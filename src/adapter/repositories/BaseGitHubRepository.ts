@@ -101,7 +101,7 @@ export class BaseGitHubRepository {
         this.ghUserPassword,
         this.ghAuthenticatorKey,
       );
-      await fsPromises.writeFile(this.jsonFilePath, JSON.stringify(cookie));
+      await fsPromises.writeFile(this.jsonFilePath, cookie);
     }
     const data = await fsPromises.readFile(this.jsonFilePath, {
       encoding: 'utf-8',
