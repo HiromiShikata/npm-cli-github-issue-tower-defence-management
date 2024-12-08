@@ -65,9 +65,13 @@ describe('AxiosSlackRepository Integration Tests', () => {
       const message = `Test image message ${new Date().toISOString()}`;
       if (!fs.existsSync(path.dirname(TEST_IMAGE_PATH))) {
         fs.mkdirSync(path.dirname(TEST_IMAGE_PATH), { recursive: true });
-        https.get(TEST_IMAGE_URL, (res) =>
+        const res = https.get(TEST_IMAGE_URL, (res) =>
           res.pipe(fs.createWriteStream(TEST_IMAGE_PATH)),
         );
+        await new Promise((resolve, reject) => {
+          res.on('end', resolve);
+          res.on('error', reject);
+        });
       }
 
       await expect(
