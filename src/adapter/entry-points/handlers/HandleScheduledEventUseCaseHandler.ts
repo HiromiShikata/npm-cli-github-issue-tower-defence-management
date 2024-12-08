@@ -18,9 +18,18 @@ import { SetWorkflowManagementIssueToStoryUseCase } from '../../../domain/usecas
 import { InternalGraphqlIssueRepository } from '../../repositories/issue/InternalGraphqlIssueRepository';
 import { ClearNextActionHourUseCase } from '../../../domain/usecases/ClearNextActionHourUseCase';
 import { AnalyzeProblemByIssueUseCase } from '../../../domain/usecases/AnalyzeProblemByIssueUseCase';
+import { Issue } from '../../../domain/entities/Issue';
+import { Project } from '../../../domain/entities/Project';
 
 export class HandleScheduledEventUseCaseHandler {
-  handle = async (configFilePath: string): Promise<void> => {
+  handle = async (
+    configFilePath: string,
+  ): Promise<{
+    project: Project;
+    issues: Issue[];
+    cacheUsed: boolean;
+    targetDateTimes: Date[];
+  }> => {
     const configFileContent = fs.readFileSync(configFilePath, 'utf8');
     const input: unknown = YAML.parse(configFileContent);
     type inputType = Parameters<HandleScheduledEventUseCase['run']>[0];
@@ -81,6 +90,6 @@ export class HandleScheduledEventUseCaseHandler {
       issueRepository,
     );
 
-    await handleScheduledEventUseCase.run(input);
+    return await handleScheduledEventUseCase.run(input);
   };
 }

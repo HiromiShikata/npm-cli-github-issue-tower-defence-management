@@ -43,7 +43,12 @@ export class HandleScheduledEventUseCase {
       reportIssueTemplate?: string;
       reportIssueLabels: Label[];
     };
-  }): Promise<void> => {
+  }): Promise<{
+    project: Project;
+    issues: Issue[];
+    cacheUsed: boolean;
+    targetDateTimes: Date[];
+  }> => {
     const projectId = await this.projectRepository.findProjectIdByUrl(
       input.projectUrl,
     );
@@ -113,6 +118,7 @@ export class HandleScheduledEventUseCase {
       issues,
       cacheUsed,
     });
+    return { project, issues, cacheUsed, targetDateTimes };
   };
   runForTargetDateTime = async (input: {
     org: string;
