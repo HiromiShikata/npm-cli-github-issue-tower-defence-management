@@ -1,22 +1,24 @@
 {
-  "name": "npm-cli-github-issue-tower-defence-management",
+  "name": "github-issue-tower-defence-management",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/index.js",
+  "main": "bin/index.js",
   "scripts": {
     "prebuild": "npm run doctor",
-    "doctor:node-version": "check-node-version --node 20 --npx 10 --npm 10",
+    "doctor:node-version": "check-node-version --node 22 --npx 10 --npm 10",
     "doctor": "npm run doctor:node-version",
     "prettier": "prettier --write '**/*'",
     "lint": "eslint src",
     "lint-fix": "eslint src --fix",
     "fmt": "npm run prettier && npm run lint-fix",
     "build": "tsc -p ./tsconfig.build.json",
-    "test": "jest"
+    "test": "jest",
+    "prepare": "ts-patch install && typia patch"
   },
   "bin": {
-    "npm-cli-github-issue-tower-defence-management": "./bin/adapter/entry-points/cli/index.js"
+    "github-issue-tower-defence-management": "./bin/adapter/entry-points/cli/index.js"
   },
+  "types": "types/index.d.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management.git"
@@ -42,6 +44,7 @@
   "devDependencies": {
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/commit-analyzer": "^13.0.0",
+    "@types/cookie": "^1.0.0",
     "@types/jest": "^29.5.12",
     "@typescript-eslint/eslint-plugin": "^7.2.0",
     "@typescript-eslint/parser": "^7.2.0",
@@ -55,14 +58,23 @@
     "jest": "^29.7.0",
     "jest-html-reporter": "^3.10.2",
     "jest-junit": "^16.0.0",
+    "jest-mock-extended": "^4.0.0-beta1",
     "prettier": "^3.2.5",
     "semantic-release": "^24.0.0",
     "ts-jest": "^29.1.2",
-    "typescript": "^5.4.2"
+    "ts-patch": "^3.2.1",
+    "typescript": "^5.6.3"
   },
   "dependencies": {
     "@semantic-release/npm": "^12.0.1",
+    "axios": "^1.7.7",
+    "cheerio": "^1.0.0",
     "commander": "^12.0.0",
-    "dotenv": "^16.4.5"
+    "cookie": "^1.0.1",
+    "dotenv": "^16.4.5",
+    "gh-cookie": "^1.1.2",
+    "googleapis": "^144.0.0",
+    "typia": "^6.11.3",
+    "yaml": "^2.6.0"
   }
 }

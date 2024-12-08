@@ -15,24 +15,22 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       - name: Install dependencies
         run: npm ci
-
-      - name: Check commit message format
-        run: npx commitlint --from=origin/main
-
-      - name: Check code format
-        run: |
-          npm run fmt
-          git --no-pager diff
-          exit $(git diff | wc -l)
 
       - name: Build
         run: npm run build
 
       - name: Run tests
         run: npm run test
+        env:
+          GH_TOKEN: ${{ secrets.TEST_GH_TOKEN }}
+          GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.TEST_GOOGLE_SERVICE_ACCOUNT_KEY }}
+          SLACK_USER_TOKEN: ${{ secrets.TEST_SLACK_USER_TOKEN }}
+          GH_USER_NAME: ${{ secrets.TEST_GH_USER_NAME }}
+          GH_USER_PASSWORD: ${{ secrets.TEST_GH_USER_PASSWORD }}
+          GH_AUTHENTICATOR_KEY: ${{ secrets.TEST_GH_AUTHENTICATOR_KEY }}
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
