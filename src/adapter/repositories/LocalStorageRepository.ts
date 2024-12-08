@@ -2,6 +2,8 @@ import fs from 'fs';
 
 export class LocalStorageRepository {
   write = (path: string, value: string) => {
+    const dirPath = path.split('/').slice(0, -1).join('/');
+    this.mkdir(dirPath);
     fs.writeFileSync(path, value, 'utf8');
   };
   read = (path: string): string | null => {
