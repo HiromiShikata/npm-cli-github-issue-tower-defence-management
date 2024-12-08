@@ -32,7 +32,6 @@ jobs:
           GH_USER_PASSWORD: ${{ secrets.TEST_GH_USER_PASSWORD }}
           GH_AUTHENTICATOR_KEY: ${{ secrets.TEST_GH_AUTHENTICATOR_KEY }}
 
-
       - name: Upload test results
         uses: actions/upload-artifact@v4
         with:
