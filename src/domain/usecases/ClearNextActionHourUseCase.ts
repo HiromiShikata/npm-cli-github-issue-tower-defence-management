@@ -18,7 +18,7 @@ export class ClearNextActionHourUseCase {
       return;
     }
     const targetDates = input.targetDates
-      .filter((targetDate) => targetDate.getMinutes() === 55)
+      .filter((targetDate) => targetDate.getMinutes() === 45)
       .reverse();
     if (targetDates.length === 0) {
       return;
