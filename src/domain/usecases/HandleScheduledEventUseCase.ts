@@ -32,6 +32,7 @@ export class HandleScheduledEventUseCase {
   ) {}
 
   run = async (input: {
+    projectName: string;
     org: string;
     projectUrl: string;
     manager: Member['name'];

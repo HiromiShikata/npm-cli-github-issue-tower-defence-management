@@ -32,29 +32,72 @@ export class HandleScheduledEventUseCaseHandler {
   }> => {
     const configFileContent = fs.readFileSync(configFilePath, 'utf8');
     const input: unknown = YAML.parse(configFileContent);
-    type inputType = Parameters<HandleScheduledEventUseCase['run']>[0];
+    type inputType = Parameters<HandleScheduledEventUseCase['run']>[0] & {
+      credentials: {
+        manager: {
+          github: {
+            token: string;
+          };
+          slack: {
+            userToken: string;
+          };
+          googleServiceAccount: {
+            serviceAccountKey: string;
+          };
+        };
+        bot: {
+          github: {
+            token: string;
+            name: string;
+            password: string;
+            authenticatorKey: string;
+          };
+        };
+      };
+    };
+
     if (!TYPIA.is<inputType>(input)) {
       throw new Error(
         `Invalid input: ${JSON.stringify(input)}\n\n${JSON.stringify(TYPIA.validate<inputType>(input))}`,
       );
     }
-
     const systemDateRepository = new SystemDateRepository();
     const localStorageRepository = new LocalStorageRepository();
     const googleSpreadsheetRepository = new GoogleSpreadsheetRepository(
       localStorageRepository,
+      input.credentials.manager.googleServiceAccount.serviceAccountKey,
     );
+    const cachePath = `./tmp/cache/${input.projectName}`;
     const localStorageCacheRepository = new LocalStorageCacheRepository(
       localStorageRepository,
+      cachePath,
     );
-    const projectRepository = new GraphqlProjectRepository();
-    const apiV3IssueRepository = new ApiV3IssueRepository();
-    const internalGraphqlIssueRepository = new InternalGraphqlIssueRepository();
+    const githubRepositoryParams = [
+      `${cachePath}/github.com.cookie.json`,
+      input.credentials.bot.github.token,
+      input.credentials.bot.github.name,
+      input.credentials.bot.github.password,
+      input.credentials.bot.github.authenticatorKey,
+    ];
+    const projectRepository = new GraphqlProjectRepository(
+      ...githubRepositoryParams,
+    );
+    const apiV3IssueRepository = new ApiV3IssueRepository(
+      ...githubRepositoryParams,
+    );
+    const internalGraphqlIssueRepository = new InternalGraphqlIssueRepository(
+      ...githubRepositoryParams,
+    );
     const cheerioIssueRepository = new CheerioIssueRepository(
       internalGraphqlIssueRepository,
+      ...githubRepositoryParams,
     );
-    const restIssueRepository = new RestIssueRepository();
-    const graphqlProjectItemRepository = new GraphqlProjectItemRepository();
+    const restIssueRepository = new RestIssueRepository(
+      ...githubRepositoryParams,
+    );
+    const graphqlProjectItemRepository = new GraphqlProjectItemRepository(
+      ...githubRepositoryParams,
+    );
     const issueRepository = new ApiV3CheerioRestIssueRepository(
       apiV3IssueRepository,
       cheerioIssueRepository,

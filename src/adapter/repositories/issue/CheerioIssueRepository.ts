@@ -24,8 +24,18 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
     readonly internalGraphqlIssueRepository: InternalGraphqlIssueRepository,
     readonly jsonFilePath: string = './tmp/github.com.cookies.json',
     readonly ghToken: string = process.env.GH_TOKEN || 'dummy',
+    readonly ghUserName: string | undefined = process.env.GH_USER_NAME,
+    readonly ghUserPassword: string | undefined = process.env.GH_USER_PASSWORD,
+    readonly ghAuthenticatorKey: string | undefined = process.env
+      .GH_AUTHENTICATOR_KEY,
   ) {
-    super(jsonFilePath, ghToken);
+    super(
+      jsonFilePath,
+      ghToken,
+      ghUserName,
+      ghUserPassword,
+      ghAuthenticatorKey,
+    );
   }
   getIssue = async (issueUrl: string): Promise<Issue> => {
     const headers = await this.createHeader();
