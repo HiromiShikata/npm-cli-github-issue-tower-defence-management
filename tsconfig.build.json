@@ -3,6 +3,9 @@
   "include": ["src"],
   "exclude": ["node_modules", "**/__tests__/*", "**/*.test.ts"],
   "compilerOptions": {
-    "outDir": "bin"
+    "outDir": "bin",
+    "declaration": true,
+    "declarationMap": true,
+    "declarationDir": "types"
   }
 }
