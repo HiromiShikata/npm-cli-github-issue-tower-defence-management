@@ -45,7 +45,7 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
     $: cheerio.CheerioAPI,
   ): Promise<Issue> => {
     const title = this.getTitleFromCheerioObject($);
-    const status = this.getStatusFromCheerioObject($);
+    const statusOrig = this.getStatusFromCheerioObject($);
     const assignees = this.getAssigneesFromCheerioObject($);
     const labels = this.getLabelsFromCheerioObject($);
     const project = this.getProjectFromCheerioObject($);
@@ -54,6 +54,12 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
       statusTimeline,
       issueUrl,
     );
+    const status =
+      statusOrig !== ''
+        ? statusOrig
+        : statusTimeline.length > 0
+          ? statusTimeline[statusTimeline.length - 1].to
+          : '';
     return {
       url: issueUrl,
       title,
