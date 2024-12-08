@@ -2,6 +2,8 @@ import { CheerioIssueRepository } from './CheerioIssueRepository';
 import * as cheerio from 'cheerio';
 import axios from 'axios';
 import { InternalGraphqlIssueRepository } from './InternalGraphqlIssueRepository';
+import dotenv from 'dotenv';
+dotenv.config();
 
 describe('CheerioIssueRepository', () => {
   jest.setTimeout(60 * 1000);
