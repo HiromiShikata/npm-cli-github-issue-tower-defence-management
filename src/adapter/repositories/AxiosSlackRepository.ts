@@ -163,6 +163,7 @@ export class AxiosSlackRepository implements SlackRepository {
     }
 
     const imageUrl = fileInfo.data.file.url_private;
+    await new Promise((resolve) => setTimeout(resolve, 2000));
     const res = await this.client.post<{ ok: boolean }>('/chat.postMessage', {
       channel: channel.id,
       text: message,
