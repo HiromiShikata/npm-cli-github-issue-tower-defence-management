@@ -15,13 +15,13 @@ describe('CheerioIssueRepository', () => {
   }
 
   const internalGraphqlIssueRepository = new InternalGraphqlIssueRepository(
-    './tmp/test.github.com.cookies.json',
-    process.env.TEST_BOT_GH_TOKEN,
+    './tmp/github.com.cookies.json',
+    process.env.GH_TOKEN,
   );
   const repository = new CheerioIssueRepositoryPublic(
     internalGraphqlIssueRepository,
-    './tmp/test.github.com.cookies.json',
-    process.env.TEST_BOT_GH_TOKEN,
+    './tmp/github.com.cookies.json',
+    process.env.GH_TOKEN,
   );
 
   describe('getIssue', () => {

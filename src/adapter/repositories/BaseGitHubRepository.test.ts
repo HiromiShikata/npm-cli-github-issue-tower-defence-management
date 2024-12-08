@@ -2,10 +2,10 @@ import fs from 'fs';
 import { BaseGitHubRepository } from './BaseGitHubRepository';
 import resetAllMocks = jest.resetAllMocks;
 describe('BaseGitHubRepository', () => {
-  const jsonFilePath = './tmp/temporary.test.github.com.cookies.json';
+  const jsonFilePath = './tmp/github.com.cookies.json';
   class TestGitHubRepository extends BaseGitHubRepository {
     constructor() {
-      super(jsonFilePath, process.env.TEST_BOT_GH_TOKEN);
+      super(jsonFilePath, process.env.GH_TOKEN);
     }
     extractIssueFromUrlPublic = this.extractIssueFromUrl;
     createHeaderPublic = this.createHeader;

@@ -3,7 +3,7 @@ import { RestIssueRepository } from './RestIssueRepository';
 describe('RestIssueRepository', () => {
   const restIssueRepository: RestIssueRepository = new RestIssueRepository(
     '',
-    process.env.TEST_BOT_GH_TOKEN || 'dummy',
+    process.env.GH_TOKEN || 'dummy',
   );
 
   describe('createComment', () => {

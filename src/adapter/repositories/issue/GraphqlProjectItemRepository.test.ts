@@ -4,10 +4,7 @@ describe('GraphqlProjectItemRepository', () => {
   let repository: GraphqlProjectItemRepository;
 
   beforeEach(() => {
-    repository = new GraphqlProjectItemRepository(
-      '',
-      process.env.TEST_BOT_GH_TOKEN,
-    );
+    repository = new GraphqlProjectItemRepository('', process.env.GH_TOKEN);
   });
   describe('getProjectItemFields', () => {
     it('should return project item fields', async () => {

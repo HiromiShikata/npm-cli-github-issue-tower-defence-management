@@ -3,7 +3,7 @@ import { ApiV3IssueRepository } from './ApiV3IssueRepository';
 describe('ApiV3IssueRepository', () => {
   const repository = new ApiV3IssueRepository(
     '',
-    process.env.TEST_BOT_GH_TOKEN || 'dummy',
+    process.env.GH_TOKEN || 'dummy',
   );
   test('searchIssue', async () => {
     const result = await repository.searchIssue({
