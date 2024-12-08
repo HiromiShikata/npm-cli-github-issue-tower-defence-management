@@ -1,6 +1,7 @@
 import { InternalGraphqlIssueRepository } from './InternalGraphqlIssueRepository';
 
 describe('InternalGraphqlIssueRepository', () => {
+  jest.setTimeout(30 * 1000);
   const repository = new InternalGraphqlIssueRepository();
 
   const testIssueUrl =

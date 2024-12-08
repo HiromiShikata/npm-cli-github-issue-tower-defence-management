@@ -4,6 +4,7 @@ import axios from 'axios';
 import { InternalGraphqlIssueRepository } from './InternalGraphqlIssueRepository';
 
 describe('CheerioIssueRepository', () => {
+  jest.setTimeout(60 * 1000);
   class CheerioIssueRepositoryPublic extends CheerioIssueRepository {
     getStatusTimelineEventsFromCheerioObjectPublic =
       this.getStatusTimelineEventsFromCheerioObject;

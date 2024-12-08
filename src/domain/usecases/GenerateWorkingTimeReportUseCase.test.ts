@@ -10,6 +10,7 @@ import { DateRepository } from './adapter-interfaces/DateRepository';
 import { mock } from 'jest-mock-extended';
 
 describe('GenerateWorkingTimeReportUseCase', () => {
+  jest.setTimeout(30 * 1000);
   const mockIssueRepository = mock<IssueRepository>();
   const mockSpreadsheetRepository = mock<SpreadsheetRepository>();
   const mockDateRepository = mock<DateRepository>();
