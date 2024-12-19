@@ -20,6 +20,8 @@ import { ClearNextActionHourUseCase } from '../../../domain/usecases/ClearNextAc
 import { AnalyzeProblemByIssueUseCase } from '../../../domain/usecases/AnalyzeProblemByIssueUseCase';
 import { Issue } from '../../../domain/entities/Issue';
 import { Project } from '../../../domain/entities/Project';
+import { BaseGitHubRepository } from '../../repositories/BaseGitHubRepository';
+import { AnalyzeStoriesUseCase } from '../../../domain/usecases/AnalyzeStoriesUseCase';
 
 export class HandleScheduledEventUseCaseHandler {
   handle = async (
@@ -72,8 +74,11 @@ export class HandleScheduledEventUseCaseHandler {
       localStorageRepository,
       cachePath,
     );
-    const githubRepositoryParams = [
-      `${cachePath}/github.com.cookie.json`,
+    const githubRepositoryParams: ConstructorParameters<
+      typeof BaseGitHubRepository
+    > = [
+      localStorageRepository,
+      `${cachePath}/github.com.cookies.json`,
       input.credentials.bot.github.token,
       input.credentials.bot.github.name,
       input.credentials.bot.github.password,
@@ -104,6 +109,7 @@ export class HandleScheduledEventUseCaseHandler {
       restIssueRepository,
       graphqlProjectItemRepository,
       localStorageCacheRepository,
+      ...githubRepositoryParams,
     );
     const generateWorkingTimeReportUseCase =
       new GenerateWorkingTimeReportUseCase(
@@ -121,12 +127,17 @@ export class HandleScheduledEventUseCaseHandler {
       issueRepository,
       systemDateRepository,
     );
+    const analyzeStoriesUseCase = new AnalyzeStoriesUseCase(
+      issueRepository,
+      systemDateRepository,
+    );
     const handleScheduledEventUseCase = new HandleScheduledEventUseCase(
       generateWorkingTimeReportUseCase,
       actionAnnouncement,
       setWorkflowManagementIssueToStoryUseCase,
       clearNextActionHourUseCase,
       analyzeProblemByIssueUseCase,
+      analyzeStoriesUseCase,
       systemDateRepository,
       googleSpreadsheetRepository,
       projectRepository,
