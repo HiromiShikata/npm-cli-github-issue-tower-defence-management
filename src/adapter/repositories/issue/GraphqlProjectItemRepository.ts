@@ -624,6 +624,9 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       };
     }[] = data.repository.issue.projectItems.nodes;
     const item = projectItems[0];
+    if (!item) {
+      throw new Error(`No project item found for issue ${issueUrl}`);
+    }
     return {
       id: item.id,
       nameWithOwner: data.repository.issue.repository.nameWithOwner,

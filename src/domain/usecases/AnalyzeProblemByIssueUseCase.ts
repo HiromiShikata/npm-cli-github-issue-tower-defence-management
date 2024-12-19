@@ -3,11 +3,19 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
 import { Member } from '../entities/Member';
 import { DateRepository } from './adapter-interfaces/DateRepository';
+import { StoryObject, StoryObjectMap } from './HandleScheduledEventUseCase';
+import { isVisibleIssue } from './utils';
 
 export class AnalyzeProblemByIssueUseCase {
   constructor(
-    readonly issueRepository: Pick<IssueRepository, 'createNewIssue'>,
-    readonly dateRepository: Pick<DateRepository, 'formatDurationToHHMM'>,
+    readonly issueRepository: Pick<
+      IssueRepository,
+      'createNewIssue' | 'createComment'
+    >,
+    readonly dateRepository: Pick<
+      DateRepository,
+      'formatDurationToHHMM' | 'formatDateTimeWithDayOfWeek' | 'formatStartEnd'
+    >,
   ) {}
 
   run = async (input: {
@@ -16,8 +24,11 @@ export class AnalyzeProblemByIssueUseCase {
     issues: Issue[];
     cacheUsed: boolean;
     manager: Member['name'];
+    members: Member['name'][];
     org: string;
     repo: string;
+    storyObjectMap: StoryObjectMap;
+    disabledStatus: string;
   }): Promise<void> => {
     const story = input.project.story;
     if (
@@ -29,127 +40,108 @@ export class AnalyzeProblemByIssueUseCase {
     ) {
       return;
     }
-    const isTargetIssue = (issue: Issue): boolean => {
-      return (
-        !issue.isPr &&
-        (issue.nextActionDate === null ||
-          issue.nextActionDate.getTime() <= input.targetDates[0].getTime()) &&
-        issue.nextActionHour === null
+    const targetDate = input.targetDates[input.targetDates.length - 1];
+    if (!targetDate) {
+      return;
+    }
+    await this.checkInProgress({ ...input, targetDate });
+    for (const storyObject of input.storyObjectMap.values()) {
+      const storyIssue = storyObject.storyIssue;
+      if (!storyIssue) {
+        continue;
+      }
+      await this.issueRepository.createComment(
+        storyIssue,
+        this.createSummaryCommentBody({ ...storyObject, storyIssue }),
       );
-    };
-    const summaryStoryIssue = new Map<
-      string,
-      Map<
-        Issue,
-        {
-          totalWorkingTime: number;
-          totalWorkingTimeByAssignee: Map<string, number>;
-        }
-      >
-    >();
-    const targetStory = input.project.story?.stories.slice(0, 12) || [];
-    for (const story of targetStory) {
-      summaryStoryIssue.set(story.name, new Map());
-      for (const issue of input.issues) {
-        if (issue.story !== story.name || !isTargetIssue(issue)) {
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
+  };
+  checkInProgress = async (
+    input: Parameters<AnalyzeProblemByIssueUseCase['run']>[0] & {
+      targetDate: Date;
+    },
+  ) => {
+    const assigneeToNotify: Member['name'][] = [];
+    for (const member of input.members) {
+      let topIssue: Issue | null = null;
+      for (const story of input.storyObjectMap.values()) {
+        const storyIssueObject = input.storyObjectMap.get(story.story.name);
+        if (!storyIssueObject) {
           continue;
+        } else if (assigneeToNotify.includes(member)) {
+          break;
         }
-        const totalWorkingTimeByAssignee =
-          this.calculateTotalWorkingMinutesByAssignee(issue);
-        const totalWorkingTime = Math.round(
-          Array.from(totalWorkingTimeByAssignee.values()).reduce(
-            (a, b) => a + b,
-            0,
-          ),
-        );
-        const issueSummary: {
-          totalWorkingTime: number;
-          totalWorkingTimeByAssignee: Map<string, number>;
-        } = {
-          totalWorkingTime,
-          totalWorkingTimeByAssignee,
-        };
-        summaryStoryIssue.get(story.name)?.set(issue, issueSummary);
-        // if (totalWorkingTime < 240 || totalWorkingTime > 1440) {
-        //   continue;
-        // }
-        // await this.issueRepository.createNewIssue(
-        //   issue.org,
-        //   issue.repo,
-        //   `Please share the situation about #${issue.number} (${issue.title}) / total working time: ${totalWorkingTime} minutes`,
-        //   this.createQuestionIssueBody(
-        //     issue,
-        //     totalWorkingTime,
-        //     totalWorkingTimeByAssignee,
-        //   ),
-        //
-        //   [input.manager],
-        //   ['story:workflow-management'],
-        // );
+        for (const issue of storyIssueObject.issues) {
+          if (
+            !isVisibleIssue(
+              issue,
+              member,
+              input.targetDate,
+              input.disabledStatus,
+            ) ||
+            issue.status?.toLowerCase().includes('review') ||
+            issue.title.toLowerCase().includes('review')
+          ) {
+            continue;
+          }
+          if (topIssue === null) {
+            topIssue = issue;
+            break;
+          }
+          if (!issue.isInProgress) {
+            continue;
+          }
+          assigneeToNotify.push(member);
+          break;
+        }
       }
     }
     await this.issueRepository.createNewIssue(
       input.org,
       input.repo,
-      `Summary of story issues`,
-      this.createSummaryIssueBody(summaryStoryIssue),
-
+      'Check in progress',
+      `${assigneeToNotify.join('\n')}`,
       [input.manager],
       ['story:workflow-management'],
     );
   };
-  createSummaryIssueBody = (
-    summaryStoryIssue: Map<
-      string,
-      Map<
-        Issue,
-        {
-          totalWorkingTime: number;
-          totalWorkingTimeByAssignee: Map<string, number>;
-        }
-      >
-    >,
+  createSummaryCommentBody = (
+    storyObject: StoryObject & {
+      storyIssue: NonNullable<StoryObject['storyIssue']>;
+    },
   ): string => {
-    let noMultipleNewLineBody = `${Array.from(summaryStoryIssue)
-      .map(
-        ([story, issues]) =>
-          `## ${this.dateRepository.formatDurationToHHMM(Array.from(issues.values()).reduce((a, b) => a + b.totalWorkingTime, 0))} ${story}
-${Array.from(issues)
+    let noMultipleNewLineBody = `
+Total: ${this.dateRepository.formatDurationToHHMM(Array.from(storyObject.issues.values()).reduce((a, b) => a + b.totalWorkingTime, 0))}
+
+${storyObject.issues
   .map(
-    ([issue, { totalWorkingTime, totalWorkingTimeByAssignee }]) =>
-      `- ${this.dateRepository.formatDurationToHHMM(totalWorkingTime)} ${totalWorkingTime > 300 ? ':warning: over 300min' : ''} ${issue.url} ${issue.assignees.map((a) => `@${a}`).join(' ')} ${issue.labels
-        .map(
-          (label) =>
-            `https://github.com/${issue.nameWithOwner}/labels/${encodeURI(label).replace(/:/g, '%3A')}`,
-        )
-        .join(' ')}
-${issue.workingTimeline.length > 0 ? `  - Total` : ''}
-${Array.from(totalWorkingTimeByAssignee)
+    (
+      issue,
+    ) => `- ${this.dateRepository.formatDurationToHHMM(issue.totalWorkingTime)} ${issue.url}
+  - Total
+${Array.from(issue.totalWorkingTimeByAssignee)
   .map(
     ([author, workingMinutes]) =>
       `    - ${this.dateRepository.formatDurationToHHMM(workingMinutes)}, @${author}`,
   )
   .join('\n')}
-${issue.workingTimeline.length > 0 ? `  - Timeline` : ''}
+  - Timeline
 ${issue.workingTimeline
   .map(
     ({ startedAt, endedAt, durationMinutes, author }) =>
-      `    - ${this.dateRepository.formatDurationToHHMM(
-        startedAt.getMinutes(),
-      )}, ${this.dateRepository.formatDurationToHHMM(
-        endedAt.getMinutes(),
-      )}, ${this.dateRepository.formatDurationToHHMM(durationMinutes)}, @${author}`,
+      `    - ${this.dateRepository.formatStartEnd(startedAt, endedAt)} ${this.dateRepository.formatDurationToHHMM(durationMinutes)}, @${author}`,
   )
   .join('\n')}`,
   )
-  .join('\n')}`,
-      )
-      .join('\n')}`;
+  .join('\n')}`;
+
     while (noMultipleNewLineBody.includes('\n\n')) {
       noMultipleNewLineBody = noMultipleNewLineBody.replace('\n\n', '\n');
     }
     return noMultipleNewLineBody;
   };
+
   createQuestionIssueBody = (
     issue: Issue,
     totalWorkingTime: number,
@@ -185,25 +177,5 @@ ${issue.workingTimeline
   )
   .join('\n')}
 `;
-  };
-
-  calculateTotalWorkingMinutesByAssignee = (
-    issue: Issue,
-  ): Map<string, number> => {
-    const workingTimeLine = issue.workingTimeline;
-    const mapWorkingTimeByAssignee: Map<string, number> = new Map();
-    for (const workingTime of workingTimeLine) {
-      const author = workingTime.author;
-      const workingMinutes = workingTime.durationMinutes;
-      if (!mapWorkingTimeByAssignee.has(author)) {
-        mapWorkingTimeByAssignee.set(author, 0);
-      }
-      const currentWorkingMinutes = mapWorkingTimeByAssignee.get(author) || 0;
-      mapWorkingTimeByAssignee.set(
-        author,
-        currentWorkingMinutes + workingMinutes,
-      );
-    }
-    return mapWorkingTimeByAssignee;
   };
 }

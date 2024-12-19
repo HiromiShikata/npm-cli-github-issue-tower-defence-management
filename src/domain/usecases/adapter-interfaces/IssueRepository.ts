@@ -15,7 +15,7 @@ export interface IssueRepository {
     body: string,
     assignees: Member['name'][],
     labels: Label[],
-  ) => Promise<void>;
+  ) => Promise<number>;
   updateIssue: (issue: Issue) => Promise<void>;
   updateNextActionDate: (
     project: Project & {
@@ -41,4 +41,5 @@ export interface IssueRepository {
     fieldId: string,
     issue: Issue,
   ) => Promise<void>;
+  createComment: (issue: Issue, commentBody: string) => Promise<void>;
 }

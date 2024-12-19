@@ -16,6 +16,7 @@ import { LocalStorageCacheRepository } from '../LocalStorageCacheRepository';
 import typia from 'typia';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import { normalizeFieldName } from '../utils';
+import { LocalStorageRepository } from '../LocalStorageRepository';
 
 export class ApiV3CheerioRestIssueRepository
   extends BaseGitHubRepository
@@ -26,7 +27,7 @@ export class ApiV3CheerioRestIssueRepository
     readonly cheerioIssueRepository: Pick<CheerioIssueRepository, 'getIssue'>,
     readonly restIssueRepository: Pick<
       RestIssueRepository,
-      'createNewIssue' | 'updateIssue'
+      'createNewIssue' | 'updateIssue' | 'createComment'
     >,
     readonly graphqlProjectItemRepository: Pick<
       GraphqlProjectItemRepository,
@@ -39,8 +40,22 @@ export class ApiV3CheerioRestIssueRepository
       LocalStorageCacheRepository,
       'getLatest' | 'set'
     >,
+    readonly localStorageRepository: LocalStorageRepository,
+    readonly jsonFilePath: string = './tmp/github.com.cookies.json',
+    readonly ghToken: string = process.env.GH_TOKEN || 'dummy',
+    readonly ghUserName: string | undefined = process.env.GH_USER_NAME,
+    readonly ghUserPassword: string | undefined = process.env.GH_USER_PASSWORD,
+    readonly ghAuthenticatorKey: string | undefined = process.env
+      .GH_AUTHENTICATOR_KEY,
   ) {
-    super();
+    super(
+      localStorageRepository,
+      jsonFilePath,
+      ghToken,
+      ghUserName,
+      ghUserPassword,
+      ghAuthenticatorKey,
+    );
   }
 
   convertProjectItemAndCheerioIssueToIssue = async (
@@ -84,6 +99,10 @@ export class ApiV3CheerioRestIssueRepository
       body: item.body,
       itemId: item.id,
       isPr: item.url.includes('/pull/'),
+      isInProgress: normalizeFieldName(cheerioIssue.status).includes(
+        'progress',
+      ),
+      isClosed: item.state !== 'OPEN',
     };
   };
   getAllIssuesFromCache = async (
@@ -174,17 +193,50 @@ export class ApiV3CheerioRestIssueRepository
     const items =
       await this.graphqlProjectItemRepository.fetchProjectItems(projectId);
 
-    const issues = await Promise.all(
-      items.map(async (item): Promise<Issue> => {
-        const cheerioIssue = await this.cheerioIssueRepository.getIssue(
-          item.url,
+    const processItemsInBatches = async (
+      items: ProjectItem[],
+      batchSize: number,
+    ): Promise<Issue[]> => {
+      let result: Issue[] = [];
+
+      for (let i = 0; i < items.length; i += batchSize) {
+        const batch = items.slice(i, i + batchSize);
+        const issues = await Promise.all(
+          batch.map(async (item): Promise<Issue> => {
+            const cheerioIssue = await this.cheerioIssueRepository.getIssue(
+              item.url,
+            );
+            return this.convertProjectItemAndCheerioIssueToIssue(
+              item,
+              cheerioIssue,
+            );
+          }),
         );
-        return this.convertProjectItemAndCheerioIssueToIssue(
-          item,
-          cheerioIssue,
-        );
-      }),
-    );
+        result = result.concat(issues);
+      }
+
+      return result;
+    };
+    const issues = await processItemsInBatches(items, 10);
+
+    // const issues = await Promise.all(
+    //   items.map(async (item): Promise<Issue> => {
+    //     const cheerioIssue = await this.cheerioIssueRepository.getIssue(
+    //       item.url,
+    //     );
+    //     return this.convertProjectItemAndCheerioIssueToIssue(
+    //       item,
+    //       cheerioIssue,
+    //     );
+    //   }),
+    // );
+    // const issues: Issue[] = [];
+    // for (const item of items) {
+    //   const cheerioIssue = await this.cheerioIssueRepository.getIssue(item.url);
+    //   issues.push(
+    //     await this.convertProjectItemAndCheerioIssueToIssue(item, cheerioIssue),
+    //   );
+    // }
     return issues;
   };
   createNewIssue = async (
@@ -194,8 +246,8 @@ export class ApiV3CheerioRestIssueRepository
     body: string,
     assignees: string[],
     labels: string[],
-  ): Promise<void> => {
-    await this.restIssueRepository.createNewIssue(
+  ): Promise<number> => {
+    return await this.restIssueRepository.createNewIssue(
       org,
       repo,
       title,
@@ -265,10 +317,14 @@ export class ApiV3CheerioRestIssueRepository
     fieldId: string,
     issue: Issue,
   ): Promise<void> => {
-    return this.graphqlProjectItemRepository.clearProjectField(
+    await this.graphqlProjectItemRepository.clearProjectField(
       project.id,
       fieldId,
       issue.itemId,
     );
+    return;
+  };
+  createComment = async (issue: Issue, comment: string): Promise<void> => {
+    await this.restIssueRepository.createComment(issue.url, comment);
   };
 }

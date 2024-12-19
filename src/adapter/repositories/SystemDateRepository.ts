@@ -17,4 +17,13 @@ export class SystemDateRepository implements DateRepository {
     const minutes = String(date.getMinutes()).padStart(2, '0');
     return `${date.getFullYear()}/${month}/${day} (${dayOfWeek}) ${hours}:${minutes}`;
   };
+  formatStartEnd = (start: Date, end: Date): string => {
+    const endDate =
+      start.getFullYear() === end.getFullYear() &&
+      start.getMonth() === end.getMonth() &&
+      start.getDate() === end.getDate()
+        ? `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`
+        : this.formatDateTimeWithDayOfWeek(end);
+    return `${this.formatDateTimeWithDayOfWeek(start)} - ${endDate}`;
+  };
 }

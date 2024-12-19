@@ -20,4 +20,6 @@ export type Issue = {
   body: string;
   itemId: string;
   isPr: boolean;
+  isInProgress: boolean;
+  isClosed: boolean;
 };
