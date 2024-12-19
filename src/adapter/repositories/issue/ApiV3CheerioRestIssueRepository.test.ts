@@ -68,6 +68,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           title: 'test-title',
           url: 'https://github.com/HiromiShikata/test-repository/issues/38',
           workingTimeline: [],
+          dependedIssueUrls: [],
+          completionDate50PercentConfidence: null,
+          isInProgress: false,
+          isClosed: false,
         },
       },
     ];

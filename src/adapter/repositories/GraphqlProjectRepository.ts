@@ -200,6 +200,13 @@ export class GraphqlProjectRepository
       (field) =>
         normalizeFieldName(field.name) === 'remainingestimationminutes',
     );
+    const dependedIssueUrlSeparatedByComma = project.fields.nodes.find(
+      (field) =>
+        normalizeFieldName(field.name) === 'dependedissueurlseparatedbycomma',
+    );
+    const completionDate50PercentConfidence = project.fields.nodes.find(
+      (field) => normalizeFieldName(field.name) === 'completiondate',
+    );
     return {
       id: project.id,
       name: project.title,
@@ -233,6 +240,18 @@ export class GraphqlProjectRepository
         ? {
             name: remainignEstimationMinutes.name,
             fieldId: remainignEstimationMinutes.id,
+          }
+        : null,
+      dependedIssueUrlSeparatedByComma: dependedIssueUrlSeparatedByComma
+        ? {
+            name: dependedIssueUrlSeparatedByComma.name,
+            fieldId: dependedIssueUrlSeparatedByComma.id,
+          }
+        : null,
+      completionDate50PercentConfidence: completionDate50PercentConfidence
+        ? {
+            name: completionDate50PercentConfidence.name,
+            fieldId: completionDate50PercentConfidence.id,
           }
         : null,
     };

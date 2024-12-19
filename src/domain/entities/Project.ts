@@ -29,4 +29,12 @@ export type Project = {
     name: string;
     fieldId: string;
   } | null;
+  dependedIssueUrlSeparatedByComma: {
+    name: string;
+    fieldId: string;
+  } | null;
+  completionDate50PercentConfidence: {
+    name: string;
+    fieldId: string;
+  } | null;
 };

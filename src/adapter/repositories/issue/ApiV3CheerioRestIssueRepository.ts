@@ -72,6 +72,13 @@ export class ApiV3CheerioRestIssueRepository
     const estimationMinutes = item.customFields.find(
       (field) => normalizeFieldName(field.name) === 'estimationminutes',
     )?.value;
+    const dependedIssueUrls =
+      item.customFields
+        .find((field) => normalizeFieldName(field.name) === 'dependedissueurls')
+        ?.value?.split(',') || [];
+    const completionDate50PercentConfidence = item.customFields.find(
+      (field) => normalizeFieldName(field.name) === 'completiondate50',
+    )?.value;
     const story = item.customFields.find(
       (field) => normalizeFieldName(field.name) === 'story',
     )?.value;
@@ -92,6 +99,10 @@ export class ApiV3CheerioRestIssueRepository
       nextActionDate: nextActionDate ? new Date(nextActionDate) : null,
       nextActionHour: nextActionHour ? parseInt(nextActionHour) : null,
       estimationMinutes: estimationMinutes ? parseInt(estimationMinutes) : null,
+      dependedIssueUrls: dependedIssueUrls,
+      completionDate50PercentConfidence: completionDate50PercentConfidence
+        ? new Date(completionDate50PercentConfidence)
+        : null,
       status: status || null,
       story: story || null,
       org: owner,

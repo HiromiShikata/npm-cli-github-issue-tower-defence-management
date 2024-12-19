@@ -11,6 +11,8 @@ export type Issue = {
   nextActionDate: Date | null;
   nextActionHour: number | null;
   estimationMinutes: number | null;
+  dependedIssueUrls: string[];
+  completionDate50PercentConfidence: Date | null;
   url: string;
   assignees: Member['name'][];
   workingTimeline: WorkingTime[];

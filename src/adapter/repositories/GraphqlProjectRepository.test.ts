@@ -40,6 +40,8 @@ describe('GraphqlProjectRepository', () => {
         nextActionHour: null,
         remainingEstimationMinutes: null,
         story: null,
+        completionDate50PercentConfidence: null,
+        dependedIssueUrlSeparatedByComma: null,
       });
     });
   });
