@@ -1,3 +1,9 @@
+export type StoryOption = {
+  id: string;
+  name: string;
+  color: string;
+  description: string;
+};
 export type Project = {
   id: string;
   name: string;
@@ -13,10 +19,7 @@ export type Project = {
   story: {
     name: string;
     fieldId: string;
-    stories: {
-      id: string;
-      name: string;
-    }[];
+    stories: StoryOption[];
     workflowManagementStory: {
       id: string;
       name: string;
