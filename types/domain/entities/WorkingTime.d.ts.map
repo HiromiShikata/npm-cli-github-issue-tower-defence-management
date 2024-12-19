@@ -1,0 +1,1 @@
+{"version":3,"file":"WorkingTime.d.ts","sourceRoot":"","sources":["../../../src/domain/entities/WorkingTime.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,MAAM,EAAE,MAAM,UAAU,CAAC;AAElC,MAAM,MAAM,WAAW,GAAG;IACxB,MAAM,EAAE,MAAM,CAAC,MAAM,CAAC,CAAC;IACvB,SAAS,EAAE,IAAI,CAAC;IAChB,OAAO,EAAE,IAAI,CAAC;IACd,eAAe,EAAE,MAAM,CAAC;CACzB,CAAC"}

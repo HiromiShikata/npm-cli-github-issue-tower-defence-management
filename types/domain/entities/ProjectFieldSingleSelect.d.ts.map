@@ -1,0 +1,1 @@
+{"version":3,"file":"ProjectFieldSingleSelect.d.ts","sourceRoot":"","sources":["../../../src/domain/entities/ProjectFieldSingleSelect.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,8BAA8B,EAAE,MAAM,kCAAkC,CAAC;AAElF,MAAM,MAAM,wBAAwB,GAAG;IACrC,EAAE,EAAE,MAAM,CAAC;IACX,IAAI,EAAE,MAAM,CAAC;IACb,gBAAgB,EAAE,eAAe,CAAC;IAClC,OAAO,EAAE,8BAA8B,EAAE,CAAC;CAC3C,CAAC"}
