@@ -7,6 +7,7 @@ import {
   IssueStatusTimeline,
 } from './issueTimelineUtils';
 import { InternalGraphqlIssueRepository } from './InternalGraphqlIssueRepository';
+import { LocalStorageRepository } from '../LocalStorageRepository';
 
 export type Issue = {
   url: string;
@@ -22,6 +23,7 @@ export type Issue = {
 export class CheerioIssueRepository extends BaseGitHubRepository {
   constructor(
     readonly internalGraphqlIssueRepository: InternalGraphqlIssueRepository,
+    readonly localStorageRepository: LocalStorageRepository,
     readonly jsonFilePath: string = './tmp/github.com.cookies.json',
     readonly ghToken: string = process.env.GH_TOKEN || 'dummy',
     readonly ghUserName: string | undefined = process.env.GH_USER_NAME,
@@ -30,6 +32,7 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
       .GH_AUTHENTICATOR_KEY,
   ) {
     super(
+      localStorageRepository,
       jsonFilePath,
       ghToken,
       ghUserName,

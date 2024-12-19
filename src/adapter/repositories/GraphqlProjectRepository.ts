@@ -160,6 +160,8 @@ export class GraphqlProjectRepository
               options: {
                 id: string;
                 name: string;
+                description: string;
+                color: string;
               }[];
             }[];
           };
@@ -221,6 +223,8 @@ export class GraphqlProjectRepository
               stories: story.options.map((option) => ({
                 id: option.id,
                 name: option.name,
+                color: option.color,
+                description: option.description,
               })),
               workflowManagementStory,
             }
