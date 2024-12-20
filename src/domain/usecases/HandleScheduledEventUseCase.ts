@@ -11,6 +11,7 @@ import { SetWorkflowManagementIssueToStoryUseCase } from './SetWorkflowManagemen
 import { ClearNextActionHourUseCase } from './ClearNextActionHourUseCase';
 import { AnalyzeProblemByIssueUseCase } from './AnalyzeProblemByIssueUseCase';
 import { AnalyzeStoriesUseCase } from './AnalyzeStoriesUseCase';
+import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
 
 export class ProjectNotFoundError extends Error {
   constructor(message: string) {
@@ -37,6 +38,7 @@ export class HandleScheduledEventUseCase {
     readonly clearNextActionHourUseCase: ClearNextActionHourUseCase,
     readonly analyzeProblemByIssueUseCase: AnalyzeProblemByIssueUseCase,
     readonly analyzeStoriesUseCase: AnalyzeStoriesUseCase,
+    readonly clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase,
     readonly dateRepository: DateRepository,
     readonly spreadsheetRepository: SpreadsheetRepository,
     readonly projectRepository: ProjectRepository,
@@ -194,6 +196,11 @@ export class HandleScheduledEventUseCase {
       org: input.org,
       repo: input.workingReport.repo,
       storyObjectMap: storyIssues,
+    });
+    await this.clearDependedIssueURLUseCase.run({
+      project,
+      issues,
+      cacheUsed,
     });
     return { project, issues, cacheUsed, targetDateTimes, storyIssues };
   };

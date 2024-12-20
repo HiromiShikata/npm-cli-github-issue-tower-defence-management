@@ -31,6 +31,12 @@ export interface IssueRepository {
     issue: Issue,
     hour: number,
   ) => Promise<void>;
+  updateProjectTextField: (
+    project: Project,
+    fieldId: string,
+    issue: Issue,
+    text: string,
+  ) => Promise<void>;
   updateStory: (
     project: Project & { story: NonNullable<Project['story']> },
     issue: Issue,
