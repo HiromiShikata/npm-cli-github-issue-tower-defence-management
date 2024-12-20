@@ -35,6 +35,7 @@ export class ApiV3CheerioRestIssueRepository
       | 'fetchProjectItemByUrl'
       | 'updateProjectField'
       | 'clearProjectField'
+      | 'updateProjectTextField'
     >,
     readonly localStorageCacheRepository: Pick<
       LocalStorageCacheRepository,
@@ -337,5 +338,18 @@ export class ApiV3CheerioRestIssueRepository
   };
   createComment = async (issue: Issue, comment: string): Promise<void> => {
     await this.restIssueRepository.createComment(issue.url, comment);
+  };
+  updateProjectTextField = async (
+    project: Project,
+    fieldId: string,
+    issue: Issue,
+    text: string,
+  ): Promise<void> => {
+    await this.graphqlProjectItemRepository.updateProjectTextField(
+      project.id,
+      fieldId,
+      issue.itemId,
+      text,
+    );
   };
 }

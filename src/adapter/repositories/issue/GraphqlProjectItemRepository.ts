@@ -745,4 +745,12 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       throw new Error(res.data.errors.map((e) => e.message).join('\n'));
     }
   };
+  updateProjectTextField = async (
+    project: Project['id'],
+    fieldId: string,
+    issue: Issue['itemId'],
+    text: string,
+  ): Promise<void> => {
+    await this.updateProjectField(project, fieldId, issue, { text });
+  };
 }
