@@ -14,7 +14,10 @@ export class AnalyzeProblemByIssueUseCase {
     >,
     readonly dateRepository: Pick<
       DateRepository,
-      'formatDurationToHHMM' | 'formatDateTimeWithDayOfWeek' | 'formatStartEnd'
+      | 'formatDurationToHHMM'
+      | 'formatDateTimeWithDayOfWeek'
+      | 'formatStartEnd'
+      | 'formatDateWithDayOfWeek'
     >,
   ) {}
 
@@ -111,6 +114,60 @@ export class AnalyzeProblemByIssueUseCase {
       storyIssue: NonNullable<StoryObject['storyIssue']>;
     },
   ): string => {
+    const getFlowchartIdFromUrl = (url: string) => {
+      return url.split('/').slice(-3).join('/');
+    };
+    const issueTitleForFlowchart = (title: string) => {
+      return title.replace('"', "'");
+    };
+    const flowChart = `
+\`\`\`mermaid
+
+flowchart TD
+${storyObject.issues
+  .map(
+    (issue) =>
+      `    ${getFlowchartIdFromUrl(issue.url)}["${issue.isClosed ? '🟣' : '🟢'}#${issue.number} ${issue.isClosed ? 'Closed' : 'Open'}<br/>${issue.assignees.map((a) => `${a}`).join('<br/>')}<br/>${issueTitleForFlowchart(issue.title)}"]`,
+  )
+  .join('\n')}
+${storyObject.issues
+  .map((issue) =>
+    Array.from(issue.dependedIssueUrls)
+      .map((dependedIssueUrl) => {
+        if (issue.isClosed) {
+          issue.totalWorkingTimeByAssignee;
+          return `    ${getFlowchartIdFromUrl(dependedIssueUrl)} -->|total: ${this.dateRepository.formatDurationToHHMM(issue.totalWorkingTime)}<br/>${Array.from(
+            issue.totalWorkingTimeByAssignee,
+          )
+            .map(
+              ([author, workingMinutes]) =>
+                `@${author} ${this.dateRepository.formatDurationToHHMM(workingMinutes)}`,
+            )
+            .join('<br/>')}| ${getFlowchartIdFromUrl(issue.url)}`;
+        }
+        return `    ${getFlowchartIdFromUrl(dependedIssueUrl)} -->|${
+          issue.estimationMinutes
+            ? `Estimation: ${this.dateRepository.formatDurationToHHMM(issue.estimationMinutes)}<br/>`
+            : ''
+        }<br/>by ${
+          issue.completionDate50PercentConfidence
+            ? this.dateRepository.formatDateWithDayOfWeek(
+                issue.completionDate50PercentConfidence,
+              )
+            : 'Unknown'
+        }| ${getFlowchartIdFromUrl(issue.url)}`;
+      })
+      .join('\n'),
+  )
+  .join('\n')}
+    %% click event 
+    ${storyObject.issues
+      .map(
+        (issue) => `click ${getFlowchartIdFromUrl(issue.url)} "${issue.url}"`,
+      )
+      .join('\n')}
+    
+\`\`\``;
     let noMultipleNewLineBody = `
 Total: ${this.dateRepository.formatDurationToHHMM(Array.from(storyObject.issues.values()).reduce((a, b) => a + b.totalWorkingTime, 0))}
 
@@ -139,7 +196,10 @@ ${issue.workingTimeline
     while (noMultipleNewLineBody.includes('\n\n')) {
       noMultipleNewLineBody = noMultipleNewLineBody.replace('\n\n', '\n');
     }
-    return noMultipleNewLineBody;
+    return `${flowChart}
+
+${noMultipleNewLineBody}
+`;
   };
 
   createQuestionIssueBody = (
