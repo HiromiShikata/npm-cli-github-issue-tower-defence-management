@@ -18,4 +18,10 @@ export class LocalStorageRepository {
   mkdir = (dirPath: string) => {
     fs.mkdirSync(dirPath, { recursive: true });
   };
+  remove = (path: string) => {
+    fs.rmSync(path, {
+      force: true,
+      recursive: true,
+    });
+  };
 }
