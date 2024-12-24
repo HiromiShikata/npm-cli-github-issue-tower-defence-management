@@ -1,11 +1,13 @@
 import fs from 'fs';
 import { BaseGitHubRepository } from './BaseGitHubRepository';
 import resetAllMocks = jest.resetAllMocks;
+import { LocalStorageRepository } from './LocalStorageRepository';
 describe('BaseGitHubRepository', () => {
   const jsonFilePath = './tmp/github.com.cookies.json';
+  const localStorageRepository = new LocalStorageRepository();
   class TestGitHubRepository extends BaseGitHubRepository {
     constructor() {
-      super(jsonFilePath, process.env.GH_TOKEN);
+      super(localStorageRepository, jsonFilePath, process.env.GH_TOKEN);
     }
     extractIssueFromUrlPublic = this.extractIssueFromUrl;
     createHeaderPublic = this.createHeader;
