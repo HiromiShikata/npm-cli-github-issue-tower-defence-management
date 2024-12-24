@@ -202,10 +202,12 @@ export class GraphqlProjectRepository
     );
     const dependedIssueUrlSeparatedByComma = project.fields.nodes.find(
       (field) =>
-        normalizeFieldName(field.name) === 'dependedissueurlseparatedbycomma',
+        normalizeFieldName(field.name).startsWith(
+          'dependedissueurlseparatedbycomma',
+        ),
     );
     const completionDate50PercentConfidence = project.fields.nodes.find(
-      (field) => normalizeFieldName(field.name) === 'completiondate',
+      (field) => normalizeFieldName(field.name).startsWith('completiondate'),
     );
     return {
       id: project.id,

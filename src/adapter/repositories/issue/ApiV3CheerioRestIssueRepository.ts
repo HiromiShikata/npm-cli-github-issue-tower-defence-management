@@ -75,10 +75,12 @@ export class ApiV3CheerioRestIssueRepository
     )?.value;
     const dependedIssueUrls =
       item.customFields
-        .find((field) => normalizeFieldName(field.name) === 'dependedissueurls')
+        .find((field) =>
+          normalizeFieldName(field.name).startsWith('dependedissueurls'),
+        )
         ?.value?.split(',') || [];
-    const completionDate50PercentConfidence = item.customFields.find(
-      (field) => normalizeFieldName(field.name) === 'completiondate50',
+    const completionDate50PercentConfidence = item.customFields.find((field) =>
+      normalizeFieldName(field.name).startsWith('completiondate50'),
     )?.value;
     const story = item.customFields.find(
       (field) => normalizeFieldName(field.name) === 'story',
