@@ -1,5 +1,7 @@
 import axios from 'axios';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
+import { Project } from '../../../domain/entities/Project';
+import { Issue } from '../../../domain/entities/Issue';
 export type ProjectItem = {
   id: string;
   nameWithOwner: string;
@@ -429,6 +431,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
           issue: {
             projectItems: {
               nodes: {
+                id: string;
                 fieldValues: {
                   nodes: {
                     __typename: string;
@@ -509,6 +512,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       }
       projectItems(first: 10) {
         nodes {
+          id
           fieldValues(first: 10) {
             nodes {
               ... on ProjectV2ItemFieldTextValue {
