@@ -181,14 +181,14 @@ ${storyObject.issues
 ${Array.from(issue.totalWorkingTimeByAssignee)
   .map(
     ([author, workingMinutes]) =>
-      `    - ${this.dateRepository.formatDurationToHHMM(workingMinutes)}, @${author}`,
+      `    - ${this.dateRepository.formatDurationToHHMM(workingMinutes)}, ${author}`,
   )
   .join('\n')}
   - Timeline
 ${issue.workingTimeline
   .map(
     ({ startedAt, endedAt, durationMinutes, author }) =>
-      `    - ${this.dateRepository.formatStartEnd(startedAt, endedAt)} ${this.dateRepository.formatDurationToHHMM(durationMinutes)}, @${author}`,
+      `    - ${this.dateRepository.formatDurationToHHMM(durationMinutes)}, ${this.dateRepository.formatStartEnd(startedAt, endedAt)}}, ${author}`,
   )
   .join('\n')}`,
   )
