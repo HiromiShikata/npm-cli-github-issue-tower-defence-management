@@ -98,7 +98,7 @@ export class AnalyzeStoriesUseCase {
       } else if (storyIssue.labels.includes('story:phase:requirement:opened')) {
         phases.get('story:phase:requirement:opened')?.push(storyIssueObject);
       } else {
-        console.log('unhandled story', storyIssueObject);
+        phases.get('others')?.push(storyIssueObject);
       }
     }
     await this.issueRepository.createNewIssue(
