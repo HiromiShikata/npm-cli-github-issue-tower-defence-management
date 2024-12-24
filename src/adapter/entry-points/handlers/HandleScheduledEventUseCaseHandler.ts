@@ -22,6 +22,7 @@ import { Issue } from '../../../domain/entities/Issue';
 import { Project } from '../../../domain/entities/Project';
 import { BaseGitHubRepository } from '../../repositories/BaseGitHubRepository';
 import { AnalyzeStoriesUseCase } from '../../../domain/usecases/AnalyzeStoriesUseCase';
+import { ClearDependedIssueURLUseCase } from '../../../domain/usecases/ClearDependedIssueURLUseCase';
 
 export class HandleScheduledEventUseCaseHandler {
   handle = async (
@@ -131,6 +132,10 @@ export class HandleScheduledEventUseCaseHandler {
       issueRepository,
       systemDateRepository,
     );
+    const clearDependedIssueURLUseCase = new ClearDependedIssueURLUseCase(
+      issueRepository,
+    );
+
     const handleScheduledEventUseCase = new HandleScheduledEventUseCase(
       generateWorkingTimeReportUseCase,
       actionAnnouncement,
@@ -138,6 +143,7 @@ export class HandleScheduledEventUseCaseHandler {
       clearNextActionHourUseCase,
       analyzeProblemByIssueUseCase,
       analyzeStoriesUseCase,
+      clearDependedIssueURLUseCase,
       systemDateRepository,
       googleSpreadsheetRepository,
       projectRepository,
