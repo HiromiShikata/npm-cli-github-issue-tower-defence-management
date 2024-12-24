@@ -84,7 +84,8 @@ export class AnalyzeProblemByIssueUseCase {
               input.disabledStatus,
             ) ||
             issue.status?.toLowerCase().includes('review') ||
-            issue.title.toLowerCase().includes('review')
+            issue.title.toLowerCase().includes('review') ||
+            issue.isPr
           ) {
             continue;
           }
