@@ -1,8 +1,10 @@
 import { InternalGraphqlIssueRepository } from './InternalGraphqlIssueRepository';
+import { LocalStorageRepository } from '../LocalStorageRepository';
 
 describe('InternalGraphqlIssueRepository', () => {
   jest.setTimeout(30 * 1000);
-  const repository = new InternalGraphqlIssueRepository();
+  const localStorageRepository = new LocalStorageRepository();
+  const repository = new InternalGraphqlIssueRepository(localStorageRepository);
 
   const testIssueUrl =
     'https://github.com/HiromiShikata/test-repository/issues/38';

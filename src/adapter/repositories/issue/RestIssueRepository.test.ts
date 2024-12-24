@@ -1,7 +1,10 @@
 import { RestIssueRepository } from './RestIssueRepository';
+import { LocalStorageRepository } from '../LocalStorageRepository';
 
 describe('RestIssueRepository', () => {
+  const localStorageRepository = new LocalStorageRepository();
   const restIssueRepository: RestIssueRepository = new RestIssueRepository(
+    localStorageRepository,
     '',
     process.env.GH_TOKEN || 'dummy',
   );

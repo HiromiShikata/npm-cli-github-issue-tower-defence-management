@@ -1,6 +1,8 @@
 import { GraphqlProjectRepository } from './GraphqlProjectRepository';
+import { LocalStorageRepository } from './LocalStorageRepository';
 
 describe('GraphqlProjectRepository', () => {
+  const localStorageRepository = new LocalStorageRepository();
   let repository: GraphqlProjectRepository;
   const token = process.env.GH_TOKEN;
   const login = 'HiromiShikata';
@@ -9,7 +11,7 @@ describe('GraphqlProjectRepository', () => {
   const projectId = 'PVT_kwHOAGJHa84AFhgF';
 
   beforeEach(() => {
-    repository = new GraphqlProjectRepository(token);
+    repository = new GraphqlProjectRepository(localStorageRepository, token);
   });
 
   describe('fetchProjectId', () => {
@@ -40,6 +42,8 @@ describe('GraphqlProjectRepository', () => {
         nextActionHour: null,
         remainingEstimationMinutes: null,
         story: null,
+        completionDate50PercentConfidence: null,
+        dependedIssueUrlSeparatedByComma: null,
       });
     });
   });

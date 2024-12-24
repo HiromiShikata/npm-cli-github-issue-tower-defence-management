@@ -28,8 +28,10 @@ export class RestIssueRepository extends BaseGitHubRepository {
     body: string,
     assignees: string[],
     labels: string[],
-  ) => {
-    const response = await axios.post(
+  ): Promise<number> => {
+    const response = await axios.post<{
+      number: number;
+    }>(
       `https://api.github.com/repos/${owner}/${repo}/issues`,
       {
         title,
@@ -47,6 +49,7 @@ export class RestIssueRepository extends BaseGitHubRepository {
     if (response.status !== 201) {
       throw new Error(`Failed to create issue: ${response.status}`);
     }
+    return response.data.number;
   };
   getIssue = async (
     issueUrl: string,

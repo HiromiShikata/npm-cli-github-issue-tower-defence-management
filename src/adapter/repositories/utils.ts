@@ -46,5 +46,7 @@ export const normalizeFieldName = (fieldName: string) => {
     .replace(' ', '')
     .replace('-', '')
     .replace(' ', '')
-    .replace(' ', '');
+    .replace(' ', '')
+    .replace('(', '')
+    .replace(')', '');
 };

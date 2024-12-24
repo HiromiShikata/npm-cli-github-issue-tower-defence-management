@@ -1,10 +1,16 @@
 import { GraphqlProjectItemRepository } from './GraphqlProjectItemRepository';
+import { LocalStorageRepository } from '../LocalStorageRepository';
 
 describe('GraphqlProjectItemRepository', () => {
+  const localStorageRepository = new LocalStorageRepository();
   let repository: GraphqlProjectItemRepository;
 
   beforeEach(() => {
-    repository = new GraphqlProjectItemRepository('', process.env.GH_TOKEN);
+    repository = new GraphqlProjectItemRepository(
+      localStorageRepository,
+      '',
+      process.env.GH_TOKEN,
+    );
   });
   describe('getProjectItemFields', () => {
     it('should return project item fields', async () => {
