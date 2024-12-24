@@ -24,7 +24,10 @@ export class ApiV3CheerioRestIssueRepository
 {
   constructor(
     readonly apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>,
-    readonly cheerioIssueRepository: Pick<CheerioIssueRepository, 'getIssue'>,
+    readonly cheerioIssueRepository: Pick<
+      CheerioIssueRepository,
+      'getIssue' | 'refreshCookie'
+    >,
     readonly restIssueRepository: Pick<
       RestIssueRepository,
       'createNewIssue' | 'updateIssue' | 'createComment'
@@ -212,6 +215,7 @@ export class ApiV3CheerioRestIssueRepository
       batchSize: number,
     ): Promise<Issue[]> => {
       let result: Issue[] = [];
+      await this.cheerioIssueRepository.refreshCookie();
 
       for (let i = 0; i < items.length; i += batchSize) {
         const batch = items.slice(i, i + batchSize);
