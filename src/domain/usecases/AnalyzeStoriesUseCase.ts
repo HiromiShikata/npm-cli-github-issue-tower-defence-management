@@ -25,9 +25,16 @@ export class AnalyzeStoriesUseCase {
     storyObjectMap: StoryObjectMap;
   }): Promise<void> => {
     const story = input.project.story;
-    if (!story) {
+    if (
+      !story ||
+      !input.targetDates.find(
+        (targetDate) =>
+          targetDate.getHours() === 7 && targetDate.getMinutes() === 0,
+      )
+    ) {
       return;
     }
+
     const phases = new Map<
       string,
       (Issue & {
