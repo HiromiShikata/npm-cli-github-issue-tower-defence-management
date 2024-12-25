@@ -138,7 +138,7 @@ ${Array.from(summaryStoryIssue.keys())
 ${summaryStoryIssue
   .get(key)
   ?.map((issue) => {
-    const storyColor = `:${issue.color === 'BLUE' ? 'large_' : ''}${issue.color === 'GRAY' ? 'black' : issue.color.toLowerCase()}_circle:`;
+    const storyColor = `:${issue.color === 'BLUE' ? 'large_' : ''}${issue.color === 'GRAY' ? 'black' : issue.color === 'PINK' ? 'red' : issue.color.toLowerCase()}_circle:`;
     const stakeHolder = issue.labels.find(
       (label) => label === 'story:stakeholder:user',
     )
