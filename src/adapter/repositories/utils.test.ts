@@ -1,4 +1,4 @@
-import { calcrateDuration, totalDuration } from './utils';
+import { calcrateDuration, normalizeFieldName, totalDuration } from './utils';
 
 describe('utils', () => {
   describe('calculateDuration', () => {
@@ -33,6 +33,21 @@ describe('utils', () => {
       'should return $expected',
       ({ durations, expected }: { durations: string[]; expected: string }) => {
         const result = totalDuration(durations);
+        expect(result).toEqual(expected);
+      },
+    );
+  });
+  describe('normalizeFieldName', () => {
+    test.each`
+      fieldName                                  | expected
+      ${'Field Name'}                            | ${'fieldname'}
+      ${'Field-Name'}                            | ${'fieldname'}
+      ${'Field Name (with) ()'}                  | ${'fieldnamewith'}
+      ${'Depended Issue URL separated by comma'} | ${'dependedissueurlseparatedbycomma'}
+    `(
+      'should return $expected',
+      ({ fieldName, expected }: { fieldName: string; expected: string }) => {
+        const result = normalizeFieldName(fieldName);
         expect(result).toEqual(expected);
       },
     );
