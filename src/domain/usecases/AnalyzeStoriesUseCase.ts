@@ -4,6 +4,7 @@ import { Project } from '../entities/Project';
 import { Member } from '../entities/Member';
 import { DateRepository } from './adapter-interfaces/DateRepository';
 import { StoryObjectMap } from './HandleScheduledEventUseCase';
+import { encodeForURI } from './utils';
 
 export class AnalyzeStoriesUseCase {
   constructor(
@@ -148,11 +149,7 @@ ${summaryStoryIssue
                 )
               ? ':briefcase:'
               : ':question:';
-    const boardUrl =
-      `${urlOfStoryView}?filterQuery=story%3A%22${encodeURI(issue.story || '')}%22+is%3Aopen`.replace(
-        '#',
-        '%23',
-      );
+    const boardUrl = `${urlOfStoryView}?filterQuery=story%3A%22${encodeForURI(issue.story)}%22+is%3Aopen`;
 
     return `- ${storyColor} ${stakeHolder} ${issue.url} [:memo:](${boardUrl})`;
   })
