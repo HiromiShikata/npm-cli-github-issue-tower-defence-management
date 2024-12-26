@@ -12,6 +12,10 @@ describe('InternalGraphqlIssueRepository', () => {
   const testIssueId = 'I_kwDOCNXcUc6GaFia';
   const testCount = 10;
 
+  beforeAll(async () => {
+    await repository.getCookie();
+  });
+
   test('getFrontTimelineItems returns timeline with proper types', async () => {
     const result = await repository.getFrontTimelineItems(
       testIssueUrl,
