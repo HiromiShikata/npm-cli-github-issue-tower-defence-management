@@ -30,6 +30,9 @@ describe('CheerioIssueRepository', () => {
     './tmp/github.com.cookies.json',
     process.env.GH_TOKEN,
   );
+  beforeAll(async () => {
+    await repository.refreshCookie();
+  });
 
   describe('getIssue', () => {
     it('should return issue object', async () => {
