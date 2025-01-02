@@ -24,6 +24,12 @@ class LocalStorageRepository {
         this.mkdir = (dirPath) => {
             fs_1.default.mkdirSync(dirPath, { recursive: true });
         };
+        this.remove = (path) => {
+            fs_1.default.rmSync(path, {
+                force: true,
+                recursive: true,
+            });
+        };
     }
 }
 exports.LocalStorageRepository = LocalStorageRepository;

@@ -16,8 +16,9 @@ axios_1.default.interceptors.response.use((response) => response, (error) => {
     throw new Error('Network Error');
 });
 class BaseGitHubRepository {
-    constructor(jsonFilePath = './tmp/github.com.cookies.json', ghToken = process.env.GH_TOKEN || 'dummy', ghUserName = process.env.GH_USER_NAME, ghUserPassword = process.env.GH_USER_PASSWORD, ghAuthenticatorKey = process.env
+    constructor(localStorageRepository, jsonFilePath = './tmp/github.com.cookies.json', ghToken = process.env.GH_TOKEN || 'dummy', ghUserName = process.env.GH_USER_NAME, ghUserPassword = process.env.GH_USER_PASSWORD, ghAuthenticatorKey = process.env
         .GH_AUTHENTICATOR_KEY) {
+        this.localStorageRepository = localStorageRepository;
         this.jsonFilePath = jsonFilePath;
         this.ghToken = ghToken;
         this.ghUserName = ghUserName;
@@ -71,7 +72,7 @@ class BaseGitHubRepository {
                     throw new Error('No cookie file and no credentials provided');
                 }
                 const cookie = await (0, gh_cookie_1.getCookieContent)(this.ghUserName, this.ghUserPassword, this.ghAuthenticatorKey);
-                await fs_1.promises.writeFile(this.jsonFilePath, cookie);
+                this.localStorageRepository.write(this.jsonFilePath, cookie);
             }
             const data = await fs_1.promises.readFile(this.jsonFilePath, {
                 encoding: 'utf-8',

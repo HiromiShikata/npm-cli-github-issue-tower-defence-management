@@ -38,6 +38,7 @@ class RestIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
             if (response.status !== 201) {
                 throw new Error(`Failed to create issue: ${response.status}`);
             }
+            return response.data.number;
         };
         this.getIssue = async (issueUrl) => {
             const { owner, repo, issueNumber } = this.extractIssueFromUrl(issueUrl);

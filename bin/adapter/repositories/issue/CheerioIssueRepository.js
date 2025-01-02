@@ -32,11 +32,16 @@ const cheerio = __importStar(require("cheerio"));
 const BaseGitHubRepository_1 = require("../BaseGitHubRepository");
 const issueTimelineUtils_1 = require("./issueTimelineUtils");
 class CheerioIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
-    constructor(internalGraphqlIssueRepository, jsonFilePath = './tmp/github.com.cookies.json', ghToken = process.env.GH_TOKEN || 'dummy') {
-        super(jsonFilePath, ghToken);
+    constructor(internalGraphqlIssueRepository, localStorageRepository, jsonFilePath = './tmp/github.com.cookies.json', ghToken = process.env.GH_TOKEN || 'dummy', ghUserName = process.env.GH_USER_NAME, ghUserPassword = process.env.GH_USER_PASSWORD, ghAuthenticatorKey = process.env
+        .GH_AUTHENTICATOR_KEY) {
+        super(localStorageRepository, jsonFilePath, ghToken, ghUserName, ghUserPassword, ghAuthenticatorKey);
         this.internalGraphqlIssueRepository = internalGraphqlIssueRepository;
+        this.localStorageRepository = localStorageRepository;
         this.jsonFilePath = jsonFilePath;
         this.ghToken = ghToken;
+        this.ghUserName = ghUserName;
+        this.ghUserPassword = ghUserPassword;
+        this.ghAuthenticatorKey = ghAuthenticatorKey;
         this.getIssue = async (issueUrl) => {
             const headers = await this.createHeader();
             const content = await axios_1.default.get(issueUrl, { headers });
@@ -113,6 +118,27 @@ class CheerioIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository
                 res.push({ time, author, from, to });
             }
             return res;
+        };
+        this.refreshCookie = async () => {
+            if (!this.ghUserName || !this.ghUserPassword || !this.ghAuthenticatorKey) {
+                throw new Error('GitHub username, password, and authenticator key must be set');
+            }
+            const headers = await this.createHeader();
+            const content = await axios_1.default.get('https://github.com', { headers });
+            const html = content.data;
+            if (html.includes(this.ghUserName)) {
+                return;
+            }
+            this.localStorageRepository.remove(this.jsonFilePath);
+            const newHeaders = await this.createHeader();
+            const newContent = await axios_1.default.get('https://github.com', {
+                headers: newHeaders,
+            });
+            const newHtml = newContent.data;
+            if (newHtml.includes(this.ghUserName)) {
+                return;
+            }
+            throw new Error('Failed to refresh cookie');
         };
     }
 }

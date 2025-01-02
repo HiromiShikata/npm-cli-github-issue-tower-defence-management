@@ -127,6 +127,8 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             const story = project.fields.nodes.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'story');
             const workflowManagementStory = story?.options.find((option) => (0, utils_1.normalizeFieldName)(option.name).includes('workflowmanagement'));
             const remainignEstimationMinutes = project.fields.nodes.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'remainingestimationminutes');
+            const dependedIssueUrlSeparatedByComma = project.fields.nodes.find((field) => (0, utils_1.normalizeFieldName)(field.name).startsWith('dependedissueurlseparatedbycomma'));
+            const completionDate50PercentConfidence = project.fields.nodes.find((field) => (0, utils_1.normalizeFieldName)(field.name).startsWith('completiondate'));
             return {
                 id: project.id,
                 name: project.title,
@@ -149,6 +151,8 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
                         stories: story.options.map((option) => ({
                             id: option.id,
                             name: option.name,
+                            color: option.color,
+                            description: option.description,
                         })),
                         workflowManagementStory,
                     }
@@ -157,6 +161,18 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
                     ? {
                         name: remainignEstimationMinutes.name,
                         fieldId: remainignEstimationMinutes.id,
+                    }
+                    : null,
+                dependedIssueUrlSeparatedByComma: dependedIssueUrlSeparatedByComma
+                    ? {
+                        name: dependedIssueUrlSeparatedByComma.name,
+                        fieldId: dependedIssueUrlSeparatedByComma.id,
+                    }
+                    : null,
+                completionDate50PercentConfidence: completionDate50PercentConfidence
+                    ? {
+                        name: completionDate50PercentConfidence.name,
+                        fieldId: completionDate50PercentConfidence.id,
                     }
                     : null,
             };

@@ -318,6 +318,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       }
       projectItems(first: 10) {
         nodes {
+          id
           fieldValues(first: 10) {
             nodes {
               ... on ProjectV2ItemFieldTextValue {
@@ -391,6 +392,9 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
             }
             const projectItems = data.repository.issue.projectItems.nodes;
             const item = projectItems[0];
+            if (!item) {
+                throw new Error(`No project item found for issue ${issueUrl}`);
+            }
             return {
                 id: item.id,
                 nameWithOwner: data.repository.issue.repository.nameWithOwner,
@@ -478,6 +482,9 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
             else if (res.data.errors) {
                 throw new Error(res.data.errors.map((e) => e.message).join('\n'));
             }
+        };
+        this.updateProjectTextField = async (project, fieldId, issue, text) => {
+            await this.updateProjectField(project, fieldId, issue, { text });
         };
     }
 }

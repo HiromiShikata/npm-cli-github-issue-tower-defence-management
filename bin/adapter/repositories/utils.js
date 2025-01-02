@@ -34,12 +34,7 @@ const totalDuration = (durations) => {
 };
 exports.totalDuration = totalDuration;
 const normalizeFieldName = (fieldName) => {
-    return fieldName
-        .toLowerCase()
-        .replace(' ', '')
-        .replace('-', '')
-        .replace(' ', '')
-        .replace(' ', '');
+    return fieldName.toLowerCase().replace(/[\s-()]/g, '');
 };
 exports.normalizeFieldName = normalizeFieldName;
 //# sourceMappingURL=utils.js.map
