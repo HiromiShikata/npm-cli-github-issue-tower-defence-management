@@ -101,6 +101,9 @@ export class AnalyzeProblemByIssueUseCase {
         }
       }
     }
+    if (assigneeToNotify.length === 0) {
+      return;
+    }
     await this.issueRepository.createNewIssue(
       input.org,
       input.repo,
