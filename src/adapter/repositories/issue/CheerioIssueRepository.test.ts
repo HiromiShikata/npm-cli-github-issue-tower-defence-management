@@ -33,6 +33,9 @@ describe('CheerioIssueRepository', () => {
   beforeAll(async () => {
     await repository.refreshCookie();
   });
+  beforeEach(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  });
 
   describe('getIssue', () => {
     it('should return issue object', async () => {

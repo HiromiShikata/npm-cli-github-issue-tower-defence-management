@@ -23,6 +23,9 @@ describe('AxiosSlackRepository Integration Tests', () => {
   beforeAll(() => {
     slackRepository = new AxiosSlackRepository(SLACK_USER_TOKEN);
   });
+  beforeEach(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  });
 
   describe('postMessageToChannel', () => {
     it('should post a message to a channel', async () => {
