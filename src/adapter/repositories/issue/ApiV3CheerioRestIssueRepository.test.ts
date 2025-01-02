@@ -5,6 +5,7 @@ import { CheerioIssueRepository } from './CheerioIssueRepository';
 import { RestIssueRepository } from './RestIssueRepository';
 import { GraphqlProjectItemRepository } from './GraphqlProjectItemRepository';
 import { LocalStorageCacheRepository } from '../LocalStorageCacheRepository';
+import { LocalStorageRepository } from '../LocalStorageRepository';
 
 describe('ApiV3CheerioRestIssueRepository', () => {
   describe('convertProjectItemAndCheerioIssueToIssue', () => {
@@ -68,6 +69,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           title: 'test-title',
           url: 'https://github.com/HiromiShikata/test-repository/issues/38',
           workingTimeline: [],
+          dependedIssueUrls: [],
+          completionDate50PercentConfidence: null,
+          isInProgress: false,
+          isClosed: false,
         },
       },
     ];
@@ -139,12 +144,15 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     const restIssueRepository = mock<RestIssueRepository>();
     const graphqlProjectItemRepository = mock<GraphqlProjectItemRepository>();
     const localStorageCacheRepository = mock<LocalStorageCacheRepository>();
+    const localStorageRepository = mock<LocalStorageRepository>();
+
     const repository = new ApiV3CheerioRestIssueRepository(
       apiV3IssueRepository,
       cheerioIssueRepository,
       restIssueRepository,
       graphqlProjectItemRepository,
       localStorageCacheRepository,
+      localStorageRepository,
     );
     return {
       repository,

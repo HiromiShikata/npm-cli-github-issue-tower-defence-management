@@ -22,6 +22,7 @@ jobs:
       - name: Build
         run: npm run build
 
+      - run: mkdir -p tmp && npx -y gh-cookie '${{ secrets.TEST_GH_USER_NAME }}' '${{ secrets.TEST_GH_USER_PASSWORD }}' '${{ secrets.TEST_GH_AUTHENTICATOR_KEY }}' > tmp/github.com.cookies.json
       - name: Run tests
         run: npm run test
         env:

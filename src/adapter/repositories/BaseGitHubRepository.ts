@@ -3,6 +3,7 @@ import { serialize } from 'cookie';
 import axios, { AxiosError } from 'axios';
 import { getCookieContent } from 'gh-cookie';
 import fs from 'fs';
+import { LocalStorageRepository } from './LocalStorageRepository';
 
 axios.interceptors.response.use(
   (response) => response,
@@ -28,6 +29,7 @@ interface Cookie {
 export class BaseGitHubRepository {
   cookie: string | null;
   constructor(
+    readonly localStorageRepository: LocalStorageRepository,
     readonly jsonFilePath: string = './tmp/github.com.cookies.json',
     readonly ghToken: string = process.env.GH_TOKEN || 'dummy',
     readonly ghUserName: string | undefined = process.env.GH_USER_NAME,
@@ -101,7 +103,7 @@ export class BaseGitHubRepository {
         this.ghUserPassword,
         this.ghAuthenticatorKey,
       );
-      await fsPromises.writeFile(this.jsonFilePath, cookie);
+      this.localStorageRepository.write(this.jsonFilePath, cookie);
     }
     const data = await fsPromises.readFile(this.jsonFilePath, {
       encoding: 'utf-8',

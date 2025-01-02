@@ -3,6 +3,7 @@ import * as cheerio from 'cheerio';
 import axios from 'axios';
 import { InternalGraphqlIssueRepository } from './InternalGraphqlIssueRepository';
 import dotenv from 'dotenv';
+import { LocalStorageRepository } from '../LocalStorageRepository';
 dotenv.config();
 
 describe('CheerioIssueRepository', () => {
@@ -16,16 +17,25 @@ describe('CheerioIssueRepository', () => {
     getLabelsFromCheerioObjectPublic = this.getLabelsFromCheerioObject;
     getProjectFromCheerioObjectPublic = this.getProjectFromCheerioObject;
   }
+  const localStorageRepository = new LocalStorageRepository();
 
   const internalGraphqlIssueRepository = new InternalGraphqlIssueRepository(
+    localStorageRepository,
     './tmp/github.com.cookies.json',
     process.env.GH_TOKEN,
   );
   const repository = new CheerioIssueRepositoryPublic(
     internalGraphqlIssueRepository,
+    localStorageRepository,
     './tmp/github.com.cookies.json',
     process.env.GH_TOKEN,
   );
+  beforeAll(async () => {
+    await repository.refreshCookie();
+  });
+  beforeEach(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  });
 
   describe('getIssue', () => {
     it('should return issue object', async () => {

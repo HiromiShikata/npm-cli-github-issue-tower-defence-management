@@ -41,10 +41,5 @@ export const totalDuration = (
 };
 
 export const normalizeFieldName = (fieldName: string) => {
-  return fieldName
-    .toLowerCase()
-    .replace(' ', '')
-    .replace('-', '')
-    .replace(' ', '')
-    .replace(' ', '');
+  return fieldName.toLowerCase().replace(/[\s-()]/g, '');
 };

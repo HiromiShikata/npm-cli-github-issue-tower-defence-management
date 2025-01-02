@@ -16,6 +16,7 @@ describe('LocalStorageCacheRepository', () => {
       read: jest.fn(),
       write: jest.fn(),
       mkdir: jest.fn(),
+      remove: jest.fn(),
     };
     repository = new LocalStorageCacheRepository(localStorageRepository);
   });

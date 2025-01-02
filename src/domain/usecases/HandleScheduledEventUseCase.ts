@@ -1,6 +1,6 @@
 import { Issue, Label } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
-import { Project } from '../entities/Project';
+import { Project, StoryOption } from '../entities/Project';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { GenerateWorkingTimeReportUseCase } from './GenerateWorkingTimeReportUseCase';
 import { Member } from '../entities/Member';
@@ -10,6 +10,9 @@ import { ActionAnnouncementUseCase } from './ActionAnnouncementUseCase';
 import { SetWorkflowManagementIssueToStoryUseCase } from './SetWorkflowManagementIssueToStoryUseCase';
 import { ClearNextActionHourUseCase } from './ClearNextActionHourUseCase';
 import { AnalyzeProblemByIssueUseCase } from './AnalyzeProblemByIssueUseCase';
+import { AnalyzeStoriesUseCase } from './AnalyzeStoriesUseCase';
+import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
+import { CreateEstimationIssueUseCase } from './CreateEstimationIssueUseCase';
 
 export class ProjectNotFoundError extends Error {
   constructor(message: string) {
@@ -18,6 +21,16 @@ export class ProjectNotFoundError extends Error {
   }
 }
 
+export type StoryObject = {
+  story: StoryOption;
+  storyIssue: Issue | null;
+  issues: (Issue & {
+    totalWorkingTime: number;
+    totalWorkingTimeByAssignee: Map<string, number>;
+  })[];
+};
+export type StoryObjectMap = Map<string, StoryObject>;
+
 export class HandleScheduledEventUseCase {
   constructor(
     readonly generateWorkingTimeReportUseCase: GenerateWorkingTimeReportUseCase,
@@ -25,6 +38,9 @@ export class HandleScheduledEventUseCase {
     readonly setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase,
     readonly clearNextActionHourUseCase: ClearNextActionHourUseCase,
     readonly analyzeProblemByIssueUseCase: AnalyzeProblemByIssueUseCase,
+    readonly analyzeStoriesUseCase: AnalyzeStoriesUseCase,
+    readonly clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase,
+    readonly createEstimationIssueUseCase: CreateEstimationIssueUseCase,
     readonly dateRepository: DateRepository,
     readonly spreadsheetRepository: SpreadsheetRepository,
     readonly projectRepository: ProjectRepository,
@@ -32,6 +48,7 @@ export class HandleScheduledEventUseCase {
   ) {}
 
   run = async (input: {
+    projectName: string;
     org: string;
     projectUrl: string;
     manager: Member['name'];
@@ -43,11 +60,14 @@ export class HandleScheduledEventUseCase {
       reportIssueTemplate?: string;
       reportIssueLabels: Label[];
     };
+    urlOfStoryView: string;
+    disabledStatus: string;
   }): Promise<{
     project: Project;
     issues: Issue[];
     cacheUsed: boolean;
     targetDateTimes: Date[];
+    storyIssues: StoryObjectMap;
   }> => {
     const projectId = await this.projectRepository.findProjectIdByUrl(
       input.projectUrl,
@@ -72,6 +92,64 @@ export class HandleScheduledEventUseCase {
         projectId,
         allowIssueCacheMinutes,
       );
+    const storyIssues: StoryObjectMap = await this.storyIssues({
+      project,
+      issues,
+    });
+    for (const storyObject of storyIssues.values()) {
+      const projectStory = project.story;
+      if (!projectStory) {
+        break;
+      }
+      if (
+        storyObject.storyIssue ||
+        storyObject.story.name.startsWith('regular / ')
+      ) {
+        continue;
+      }
+      const issueNumber = await this.issueRepository.createNewIssue(
+        input.org,
+        input.workingReport.repo,
+        storyObject.story.name,
+        storyObject.story.description,
+        [input.manager],
+        ['story'],
+      );
+      const issueUrl = `https://github.com/${input.org}/${input.workingReport.repo}/issues/${issueNumber}`;
+      let issue: Issue | null = null;
+      for (let i = 0; i < 3; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 30 * 1000));
+        issue = await this.issueRepository.getIssueByUrl(issueUrl);
+        if (!issue) {
+          continue;
+        } else if (!issue.itemId) {
+          continue;
+        }
+        break;
+      }
+      if (!issue) {
+        throw new Error(`Issue not found. URL: ${issueUrl}`);
+      } else if (!issue.itemId) {
+        throw new Error(`Issue itemId not found. URL: ${issueUrl}`);
+      }
+      await this.issueRepository.updateStory(
+        { ...project, story: projectStory },
+        issue,
+        storyObject.story.id,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 10 * 1000));
+      const newIssue = await this.issueRepository.getIssueByUrl(issueUrl);
+      if (!newIssue) {
+        throw new Error(`Issue not found. URL: ${issueUrl}`);
+      }
+      storyObject.storyIssue = newIssue;
+      issues.push(newIssue);
+      storyObject.issues.push({
+        ...newIssue,
+        totalWorkingTime: 0,
+        totalWorkingTimeByAssignee: new Map(),
+      });
+    }
 
     const targetDateTimes: Date[] =
       await this.findTargetDateAndUpdateLastExecutionDateTime(
@@ -95,8 +173,11 @@ export class HandleScheduledEventUseCase {
       issues,
       cacheUsed,
       manager: input.manager,
+      members: input.workingReport.members,
       org: input.org,
       repo: input.workingReport.repo,
+      storyObjectMap: storyIssues,
+      disabledStatus: input.disabledStatus,
     });
     await this.actionAnnouncementUseCase.run({
       targetDates: targetDateTimes,
@@ -118,7 +199,35 @@ export class HandleScheduledEventUseCase {
       issues,
       cacheUsed,
     });
-    return { project, issues, cacheUsed, targetDateTimes };
+    await this.analyzeStoriesUseCase.run({
+      targetDates: targetDateTimes,
+      project,
+      issues,
+      cacheUsed,
+      ...input,
+      manager: input.manager,
+      org: input.org,
+      repo: input.workingReport.repo,
+      storyObjectMap: storyIssues,
+    });
+    await this.clearDependedIssueURLUseCase.run({
+      project,
+      issues,
+      cacheUsed,
+    });
+    await this.createEstimationIssueUseCase.run({
+      targetDates: targetDateTimes,
+      project,
+      issues,
+      cacheUsed,
+      manager: input.manager,
+      org: input.org,
+      repo: input.workingReport.repo,
+      urlOfStoryView: input.urlOfStoryView,
+      disabledStatus: input.disabledStatus,
+      storyObjectMap: storyIssues,
+    });
+    return { project, issues, cacheUsed, targetDateTimes, storyIssues };
   };
   runForTargetDateTime = async (input: {
     org: string;
@@ -205,5 +314,65 @@ export class HandleScheduledEventUseCase {
       targetDateTimes[targetDateTimes.length - 1].toISOString(),
     );
     return targetDateTimes;
+  };
+  storyIssues = async (input: {
+    project: Project;
+    issues: Issue[];
+  }): Promise<StoryObjectMap> => {
+    const summaryStoryIssue: StoryObjectMap = new Map();
+    const targetStory = input.project.story?.stories || [];
+    for (const story of targetStory) {
+      const storyIssue = input.issues.find((issue) =>
+        story.name.startsWith(issue.title),
+      );
+      summaryStoryIssue.set(story.name, {
+        story,
+        storyIssue: storyIssue || null,
+        issues: [],
+      });
+      for (const issue of input.issues) {
+        if (issue.story !== story.name) {
+          continue;
+        }
+        const totalWorkingTimeByAssignee =
+          this.calculateTotalWorkingMinutesByAssignee(issue);
+        const totalWorkingTime = Math.round(
+          Array.from(totalWorkingTimeByAssignee.values()).reduce(
+            (a, b) => a + b,
+            0,
+          ),
+        );
+        const issueSummary: {
+          totalWorkingTime: number;
+          totalWorkingTimeByAssignee: Map<string, number>;
+        } = {
+          totalWorkingTime,
+          totalWorkingTimeByAssignee,
+        };
+        summaryStoryIssue
+          .get(story.name)
+          ?.issues.push({ ...issue, ...issueSummary });
+      }
+    }
+    return summaryStoryIssue;
+  };
+  calculateTotalWorkingMinutesByAssignee = (
+    issue: Issue,
+  ): Map<string, number> => {
+    const workingTimeLine = issue.workingTimeline;
+    const mapWorkingTimeByAssignee: Map<string, number> = new Map();
+    for (const workingTime of workingTimeLine) {
+      const author = workingTime.author;
+      const workingMinutes = workingTime.durationMinutes;
+      if (!mapWorkingTimeByAssignee.has(author)) {
+        mapWorkingTimeByAssignee.set(author, 0);
+      }
+      const currentWorkingMinutes = mapWorkingTimeByAssignee.get(author) || 0;
+      mapWorkingTimeByAssignee.set(
+        author,
+        currentWorkingMinutes + workingMinutes,
+      );
+    }
+    return mapWorkingTimeByAssignee;
   };
 }

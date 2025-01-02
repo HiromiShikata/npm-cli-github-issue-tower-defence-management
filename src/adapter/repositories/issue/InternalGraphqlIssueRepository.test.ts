@@ -1,14 +1,20 @@
 import { InternalGraphqlIssueRepository } from './InternalGraphqlIssueRepository';
+import { LocalStorageRepository } from '../LocalStorageRepository';
 
 describe('InternalGraphqlIssueRepository', () => {
   jest.setTimeout(30 * 1000);
-  const repository = new InternalGraphqlIssueRepository();
+  const localStorageRepository = new LocalStorageRepository();
+  const repository = new InternalGraphqlIssueRepository(localStorageRepository);
 
   const testIssueUrl =
     'https://github.com/HiromiShikata/test-repository/issues/38';
   const testCursor = null;
   const testIssueId = 'I_kwDOCNXcUc6GaFia';
   const testCount = 10;
+
+  beforeAll(async () => {
+    await repository.getCookie();
+  });
 
   test('getFrontTimelineItems returns timeline with proper types', async () => {
     const result = await repository.getFrontTimelineItems(

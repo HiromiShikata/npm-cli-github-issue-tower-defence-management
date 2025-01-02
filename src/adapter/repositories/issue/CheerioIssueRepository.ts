@@ -7,6 +7,7 @@ import {
   IssueStatusTimeline,
 } from './issueTimelineUtils';
 import { InternalGraphqlIssueRepository } from './InternalGraphqlIssueRepository';
+import { LocalStorageRepository } from '../LocalStorageRepository';
 
 export type Issue = {
   url: string;
@@ -22,10 +23,22 @@ export type Issue = {
 export class CheerioIssueRepository extends BaseGitHubRepository {
   constructor(
     readonly internalGraphqlIssueRepository: InternalGraphqlIssueRepository,
+    readonly localStorageRepository: LocalStorageRepository,
     readonly jsonFilePath: string = './tmp/github.com.cookies.json',
     readonly ghToken: string = process.env.GH_TOKEN || 'dummy',
+    readonly ghUserName: string | undefined = process.env.GH_USER_NAME,
+    readonly ghUserPassword: string | undefined = process.env.GH_USER_PASSWORD,
+    readonly ghAuthenticatorKey: string | undefined = process.env
+      .GH_AUTHENTICATOR_KEY,
   ) {
-    super(jsonFilePath, ghToken);
+    super(
+      localStorageRepository,
+      jsonFilePath,
+      ghToken,
+      ghUserName,
+      ghUserPassword,
+      ghAuthenticatorKey,
+    );
   }
   getIssue = async (issueUrl: string): Promise<Issue> => {
     const headers = await this.createHeader();
@@ -123,5 +136,28 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
     }
 
     return res;
+  };
+  refreshCookie = async (): Promise<void> => {
+    if (!this.ghUserName || !this.ghUserPassword || !this.ghAuthenticatorKey) {
+      throw new Error(
+        'GitHub username, password, and authenticator key must be set',
+      );
+    }
+    const headers = await this.createHeader();
+    const content = await axios.get<string>('https://github.com', { headers });
+    const html = content.data;
+    if (html.includes(this.ghUserName)) {
+      return;
+    }
+    this.localStorageRepository.remove(this.jsonFilePath);
+    const newHeaders = await this.createHeader();
+    const newContent = await axios.get<string>('https://github.com', {
+      headers: newHeaders,
+    });
+    const newHtml = newContent.data;
+    if (newHtml.includes(this.ghUserName)) {
+      return;
+    }
+    throw new Error('Failed to refresh cookie');
   };
 }
