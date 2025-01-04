@@ -14,9 +14,10 @@ export class ClearNextActionHourUseCase {
     cacheUsed: boolean;
   }): Promise<void> => {
     const nextActionHour = input.project.nextActionHour;
-    if (!nextActionHour || input.cacheUsed) {
+    if (!nextActionHour) {
       return;
     }
+    const nextActionDate = input.project.nextActionDate;
     const targetDates = input.targetDates
       .filter((targetDate) => targetDate.getMinutes() === 45)
       .reverse();
@@ -26,7 +27,7 @@ export class ClearNextActionHourUseCase {
     const targetDate = new Date(
       targetDates[targetDates.length - 1].getTime() + 5 * 60 * 1000,
     );
-    const targetHour = targetDate.getHours();
+    const targetHour = targetDate.getHours() + 1;
     const isTargetIssue = (issue: Issue): boolean => {
       return (
         issue.nextActionHour !== null &&
@@ -43,6 +44,15 @@ export class ClearNextActionHourUseCase {
       await this.issueRepository.clearProjectField(
         input.project,
         nextActionHour.fieldId,
+        issue,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      if (!nextActionDate) {
+        continue;
+      }
+      await this.issueRepository.clearProjectField(
+        input.project,
+        nextActionDate.fieldId,
         issue,
       );
       await new Promise((resolve) => setTimeout(resolve, 5000));

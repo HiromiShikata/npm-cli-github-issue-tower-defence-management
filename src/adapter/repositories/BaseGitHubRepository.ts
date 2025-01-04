@@ -1,19 +1,8 @@
 import { promises as fsPromises } from 'fs';
 import { serialize } from 'cookie';
-import axios, { AxiosError } from 'axios';
 import { getCookieContent } from 'gh-cookie';
 import fs from 'fs';
 import { LocalStorageRepository } from './LocalStorageRepository';
-
-axios.interceptors.response.use(
-  (response) => response,
-  (error: AxiosError) => {
-    if (error.response) {
-      throw new Error(`API Error: ${error.response.status}`);
-    }
-    throw new Error('Network Error');
-  },
-);
 
 interface Cookie {
   name: string;
