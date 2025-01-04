@@ -268,7 +268,7 @@ export class GraphqlProjectRepository
         deletedItemId
       }
     }`;
-    
+
     await axios.post(
       'https://api.github.com/graphql',
       {
