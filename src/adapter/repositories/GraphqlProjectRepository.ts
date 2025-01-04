@@ -190,6 +190,12 @@ export class GraphqlProjectRepository
     const nextActionHour = project.fields.nodes.find(
       (field) => normalizeFieldName(field.name) === 'nextactionhour',
     );
+    const status = project.fields.nodes.find(
+      (field) => normalizeFieldName(field.name) === 'status',
+    );
+    if (!status) {
+      throw new Error('status field is not found');
+    }
     const story = project.fields.nodes.find(
       (field) => normalizeFieldName(field.name) === 'story',
     );
@@ -212,6 +218,16 @@ export class GraphqlProjectRepository
     return {
       id: project.id,
       name: project.title,
+      status: {
+        name: status.name,
+        fieldId: status.id,
+        statuses: status.options.map((option) => ({
+          id: option.id,
+          name: option.name,
+          color: option.color,
+          description: option.description,
+        })),
+      },
       nextActionDate: nextActionDate
         ? {
             name: nextActionDate.name,
