@@ -140,6 +140,8 @@ export class HandleScheduledEventUseCaseHandler {
       issueRepository,
       systemDateRepository,
     );
+    const convertCheckboxToIssueInStoryIssueUseCase =
+      new ConvertCheckboxToIssueInStoryIssueUseCase(issueRepository);
 
     const handleScheduledEventUseCase = new HandleScheduledEventUseCase(
       generateWorkingTimeReportUseCase,
@@ -150,6 +152,7 @@ export class HandleScheduledEventUseCaseHandler {
       analyzeStoriesUseCase,
       clearDependedIssueURLUseCase,
       createEstimationIssueUseCase,
+      convertCheckboxToIssueInStoryIssueUseCase,
       systemDateRepository,
       googleSpreadsheetRepository,
       projectRepository,
