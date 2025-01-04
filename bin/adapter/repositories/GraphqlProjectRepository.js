@@ -124,6 +124,10 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             }
             const nextActionDate = project.fields.nodes.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'nextactiondate');
             const nextActionHour = project.fields.nodes.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'nextactionhour');
+            const status = project.fields.nodes.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'status');
+            if (!status) {
+                throw new Error('status field is not found');
+            }
             const story = project.fields.nodes.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'story');
             const workflowManagementStory = story?.options.find((option) => (0, utils_1.normalizeFieldName)(option.name).includes('workflowmanagement'));
             const remainignEstimationMinutes = project.fields.nodes.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'remainingestimationminutes');
@@ -132,6 +136,16 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             return {
                 id: project.id,
                 name: project.title,
+                status: {
+                    name: status.name,
+                    fieldId: status.id,
+                    statuses: status.options.map((option) => ({
+                        id: option.id,
+                        name: option.name,
+                        color: option.color,
+                        description: option.description,
+                    })),
+                },
                 nextActionDate: nextActionDate
                     ? {
                         name: nextActionDate.name,

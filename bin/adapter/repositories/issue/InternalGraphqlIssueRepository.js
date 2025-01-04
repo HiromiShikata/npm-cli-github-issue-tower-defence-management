@@ -39,11 +39,25 @@ class InternalGraphqlIssueRepository extends BaseGitHubRepository_1.BaseGitHubRe
                     'x-requested-with': 'XMLHttpRequest',
                     cookie: await this.getCookie(),
                 };
-                const response = await axios_1.default.get(url, {
-                    headers: headers,
-                    withCredentials: true,
-                });
-                return response.data.data.node.frontTimelineItems;
+                for (let i = 0; i < 3; i++) {
+                    try {
+                        const response = await axios_1.default.get(url, {
+                            headers: headers,
+                            withCredentials: true,
+                        });
+                        if (!response.data?.data?.node?.frontTimelineItems) {
+                            throw new Error(`No frontTimelineItems found. URL: ${issueUrl}, Response: ${JSON.stringify(response.data)}`);
+                        }
+                        return response.data.data.node.frontTimelineItems;
+                    }
+                    catch (e) {
+                        if (i === 2) {
+                            throw e;
+                        }
+                        await new Promise((resolve) => setTimeout(resolve, 5000));
+                    }
+                }
+                throw new Error('Unreachable');
             };
             const frontTimelineItems = [];
             let nextCursor = cursor;

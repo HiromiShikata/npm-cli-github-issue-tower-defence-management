@@ -1,40 +1,46 @@
-export type StoryOption = {
-  id: string;
-  name: string;
-  color: string;
-  description: string;
+export type StoryOption = FieldOption;
+export type FieldOption = {
+    id: string;
+    name: string;
+    color: string;
+    description: string;
 };
 export type Project = {
-  id: string;
-  name: string;
-  nextActionDate: {
+    id: string;
     name: string;
-    fieldId: string;
-  } | null;
-  nextActionHour: {
-    name: string;
-    fieldId: string;
-  } | null;
-  story: {
-    name: string;
-    fieldId: string;
-    stories: StoryOption[];
-    workflowManagementStory: {
-      id: string;
-      name: string;
+    status: {
+        name: string;
+        fieldId: string;
+        statuses: FieldOption[];
     };
-  } | null;
-  remainingEstimationMinutes: {
-    name: string;
-    fieldId: string;
-  } | null;
-  dependedIssueUrlSeparatedByComma: {
-    name: string;
-    fieldId: string;
-  } | null;
-  completionDate50PercentConfidence: {
-    name: string;
-    fieldId: string;
-  } | null;
+    nextActionDate: {
+        name: string;
+        fieldId: string;
+    } | null;
+    nextActionHour: {
+        name: string;
+        fieldId: string;
+    } | null;
+    story: {
+        name: string;
+        fieldId: string;
+        stories: FieldOption[];
+        workflowManagementStory: {
+            id: string;
+            name: string;
+        };
+    } | null;
+    remainingEstimationMinutes: {
+        name: string;
+        fieldId: string;
+    } | null;
+    dependedIssueUrlSeparatedByComma: {
+        name: string;
+        fieldId: string;
+    } | null;
+    completionDate50PercentConfidence: {
+        name: string;
+        fieldId: string;
+    } | null;
 };
 //# sourceMappingURL=Project.d.ts.map

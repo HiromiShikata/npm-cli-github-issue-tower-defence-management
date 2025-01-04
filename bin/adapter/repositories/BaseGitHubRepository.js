@@ -6,15 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.BaseGitHubRepository = void 0;
 const fs_1 = require("fs");
 const cookie_1 = require("cookie");
-const axios_1 = __importDefault(require("axios"));
 const gh_cookie_1 = require("gh-cookie");
 const fs_2 = __importDefault(require("fs"));
-axios_1.default.interceptors.response.use((response) => response, (error) => {
-    if (error.response) {
-        throw new Error(`API Error: ${error.response.status}`);
-    }
-    throw new Error('Network Error');
-});
 class BaseGitHubRepository {
     constructor(localStorageRepository, jsonFilePath = './tmp/github.com.cookies.json', ghToken = process.env.GH_TOKEN || 'dummy', ghUserName = process.env.GH_USER_NAME, ghUserPassword = process.env.GH_USER_PASSWORD, ghAuthenticatorKey = process.env
         .GH_AUTHENTICATOR_KEY) {

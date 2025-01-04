@@ -9,7 +9,7 @@ class ProjectNotFoundError extends Error {
 }
 exports.ProjectNotFoundError = ProjectNotFoundError;
 class HandleScheduledEventUseCase {
-    constructor(generateWorkingTimeReportUseCase, actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
+    constructor(generateWorkingTimeReportUseCase, actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
         this.generateWorkingTimeReportUseCase = generateWorkingTimeReportUseCase;
         this.actionAnnouncementUseCase = actionAnnouncementUseCase;
         this.setWorkflowManagementIssueToStoryUseCase = setWorkflowManagementIssueToStoryUseCase;
@@ -18,6 +18,7 @@ class HandleScheduledEventUseCase {
         this.analyzeStoriesUseCase = analyzeStoriesUseCase;
         this.clearDependedIssueURLUseCase = clearDependedIssueURLUseCase;
         this.createEstimationIssueUseCase = createEstimationIssueUseCase;
+        this.convertCheckboxToIssueInStoryIssueUseCase = convertCheckboxToIssueInStoryIssueUseCase;
         this.dateRepository = dateRepository;
         this.spreadsheetRepository = spreadsheetRepository;
         this.projectRepository = projectRepository;
@@ -134,6 +135,7 @@ class HandleScheduledEventUseCase {
                 org: input.org,
                 repo: input.workingReport.repo,
                 storyObjectMap: storyIssues,
+                members: input.workingReport.members,
             });
             await this.clearDependedIssueURLUseCase.run({
                 project,
@@ -146,6 +148,16 @@ class HandleScheduledEventUseCase {
                 issues,
                 cacheUsed,
                 manager: input.manager,
+                org: input.org,
+                repo: input.workingReport.repo,
+                urlOfStoryView: input.urlOfStoryView,
+                disabledStatus: input.disabledStatus,
+                storyObjectMap: storyIssues,
+            });
+            await this.convertCheckboxToIssueInStoryIssueUseCase.run({
+                project,
+                issues,
+                cacheUsed,
                 org: input.org,
                 repo: input.workingReport.repo,
                 urlOfStoryView: input.urlOfStoryView,

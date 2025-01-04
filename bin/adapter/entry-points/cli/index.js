@@ -9,6 +9,7 @@ program
     .description('CLI tool for GitHub Issue Tower Defence Management')
     .requiredOption('-t, --trigger <type>', 'Trigger type: issue or schedule', /^(issue|schedule)$/i)
     .requiredOption('-c, --config <path>', 'Path to config YAML file')
+    .option('-v, --verbose', 'Verbose output')
     .option('-i, --issue <url>', 'GitHub Issue URL')
     .action(async (options) => {
     if (options.trigger === 'issue' && !options.issue) {
@@ -17,7 +18,7 @@ program
     }
     if (options.trigger === 'schedule') {
         const handler = new HandleScheduledEventUseCaseHandler_1.HandleScheduledEventUseCaseHandler();
-        await handler.handle(options.config);
+        await handler.handle(options.config, options.verbose);
     }
 });
 if (process.argv) {

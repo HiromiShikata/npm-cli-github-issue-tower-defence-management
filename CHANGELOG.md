@@ -1,3 +1,23 @@
+# [1.3.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.2.0...v1.3.0) (2025-01-04)
+
+
+### Bug Fixes
+
+* avoid to create issues on checkbox only issue number ([02422e2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/02422e269b4c5e530acf931ba12278dcf65e40d4))
+* calcuration of target next action hour ([5464b7a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5464b7aaa40d39f72e1daee10121bd651bab876a))
+* retry if internal graphql api returns error ([3015a52](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3015a527b2c4b00f4ed1165c520ace75043629d9))
+* run with cache to clear next action hour ([0253421](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0253421a97cf26dc8e14302fc50df01c66f31f69))
+* trim checkbox text before check issue should be created ([8cabea2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8cabea210bc4935a2f69b63325110ed35abe5669))
+* update issue body after a issue created everytime ([87d8baf](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/87d8bafadd7bc73c7ec65dd73806d7d7665caef5))
+
+
+### Features
+
+* add verbose option ([0ac6b07](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0ac6b071bbbc33fae62ecc9ae908f9a5ea86a5f7))
+* remove next action date if it is past date ([a887274](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a88727460e81c16774a322eb02c6a7c17a8038f3))
+* show table for story summary ([703e573](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/703e57304da6593a97f4e92253254f6ef81fabb2))
+* use ConvertCheckboxToIssueInStoryIssueUseCase ([7725461](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7725461e7f043b5196a350975447cfbfd5af6ed6))
+
 # [1.2.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.1.0...v1.2.0) (2025-01-02)
 
 

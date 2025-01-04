@@ -71,9 +71,44 @@ class AnalyzeStoriesUseCase {
                     phases.get('others')?.push(storyIssueObject);
                 }
             }
-            await this.issueRepository.createNewIssue(input.org, input.repo, `Story progress`, this.createSummaryIssueBody(phases, input.urlOfStoryView), [input.manager], ['story:workflow-management']);
+            await this.issueRepository.createNewIssue(input.org, input.repo, `Story progress`, this.createSummaryIssueBody(input.project, input.issues, phases, input.storyObjectMap, input.urlOfStoryView, input.members), [input.manager], ['story:workflow-management']);
         };
-        this.createSummaryIssueBody = (summaryStoryIssue, urlOfStoryView) => {
+        this.createSummaryIssueBody = (project, issues, summaryStoryIssue, storyObjectMap, urlOfStoryView, members) => {
+            return `${this.createSummaryIssueBodyPhase(summaryStoryIssue, urlOfStoryView)}
+${this.createSummaryIssueBodyAssignedIssueCount(project, issues, storyObjectMap, urlOfStoryView, members)}
+`;
+        };
+        this.createStoryMark = (urlOfStoryView, issue, storyOption) => {
+            const storyColor = `:${storyOption.color === 'BLUE' ? 'large_' : ''}${storyOption.color === 'GRAY' ? 'black' : storyOption.color === 'PINK' ? 'red' : storyOption.color.toLowerCase()}_circle:`;
+            const stakeHolder = issue === null
+                ? ' '
+                : issue.labels.find((label) => label === 'story:stakeholder:user')
+                    ? `:bust_in_silhouette:`
+                    : issue.labels.find((label) => label === 'story:stakeholder:engineer')
+                        ? `:gear:`
+                        : issue.labels.find((label) => label === 'story:stakeholder:cs-team')
+                            ? `:headphones:`
+                            : issue.labels.find((label) => label === 'story:stakeholder:potential-user')
+                                ? ':busts_in_silhouette:'
+                                : issue.labels.find((label) => label === 'story:stakeholder:sales-team')
+                                    ? ':briefcase:'
+                                    : ':question:';
+            const boardUrl = `${urlOfStoryView}?filterQuery=story%3A%22${(0, utils_1.encodeForURI)(storyOption.name)}%22+is%3Aopen`;
+            const boardIcon = `:memo:`;
+            const isScheduleControlled = issue !== null && issue.labels.includes('story:action:schedule-control');
+            const scheduleControlledIcon = `:calendar:`;
+            const scheduleControlledUrl = `${urlOfStoryView}?filterQuery=%22Put+estimation+fields%22+%22${(0, utils_1.encodeForURI)(storyOption.name)}%22`;
+            return {
+                storyColorIcon: storyColor,
+                stakeHolderIcon: stakeHolder,
+                boardUrl,
+                boardIcon,
+                isScheduleControlled,
+                scheduleControlledIcon,
+                scheduleControlledUrl,
+            };
+        };
+        this.createSummaryIssueBodyPhase = (summaryStoryIssue, urlOfStoryView) => {
             return `
 
 ${Array.from(summaryStoryIssue.keys())
@@ -83,24 +118,54 @@ ${Array.from(summaryStoryIssue.keys())
 ${summaryStoryIssue
                     .get(key)
                     ?.map((issue) => {
-                    const storyColor = `:${issue.color === 'BLUE' ? 'large_' : ''}${issue.color === 'GRAY' ? 'black' : issue.color === 'PINK' ? 'red' : issue.color.toLowerCase()}_circle:`;
-                    const stakeHolder = issue.labels.find((label) => label === 'story:stakeholder:user')
-                        ? `:bust_in_silhouette:`
-                        : issue.labels.find((label) => label === 'story:stakeholder:engineer')
-                            ? `:gear:`
-                            : issue.labels.find((label) => label === 'story:stakeholder:cs-team')
-                                ? `:headphones:`
-                                : issue.labels.find((label) => label === 'story:stakeholder:potential-user')
-                                    ? ':busts_in_silhouette:'
-                                    : issue.labels.find((label) => label === 'story:stakeholder:sales-team')
-                                        ? ':briefcase:'
-                                        : ':question:';
-                    const boardUrl = `${urlOfStoryView}?filterQuery=story%3A%22${(0, utils_1.encodeForURI)(issue.story)}%22+is%3Aopen`;
-                    return `- ${storyColor} ${stakeHolder} ${issue.url} [:memo:](${boardUrl})`;
+                    const { storyColorIcon, stakeHolderIcon, boardIcon, boardUrl, isScheduleControlled, scheduleControlledIcon, scheduleControlledUrl, } = this.createStoryMark(urlOfStoryView, issue, issue);
+                    const remainingIssueCount = summaryStoryIssue
+                        .get(key)
+                        ?.filter((issue) => !issue.isClosed && !issue.isPr).length || 0;
+                    return `- ${storyColorIcon} ${stakeHolderIcon} ${isScheduleControlled ? `[${scheduleControlledIcon}](${scheduleControlledUrl})` : ''} [(${remainingIssueCount})](${boardUrl}) ${issue.url} [${boardIcon}](${boardUrl})`;
                 })
                     .join('\n')}`;
             })
                 .join('\n')}`;
+        };
+        this.createSummaryIssueBodyAssignedIssueCount = (project, issues, storyObjectMap, urlOfStoryView, members) => {
+            return `
+ <table>
+ <thead>
+ <tr>
+ <th>story/<br/>assignee</th>
+${members.map((member) => `<th><img src="https://github.com/${member}.png?size=40" alt="${member}" /></th>`).join('\n')}
+</tr>
+</thead>
+<tbody>
+${Array.from(project.story?.stories.values() || [])
+                .map((storyOption) => {
+                const issue = issues.find((issue) => storyOption.name.startsWith(issue.title)) || null;
+                const { storyColorIcon, stakeHolderIcon, boardIcon, boardUrl, isScheduleControlled, scheduleControlledIcon, scheduleControlledUrl, } = this.createStoryMark(urlOfStoryView, issue, storyOption);
+                return `
+<tr>
+<td>
+${storyOption.name}<br/>
+<a href="${boardUrl}">${boardIcon}</a> ${storyColorIcon} ${stakeHolderIcon} ${isScheduleControlled ? `<a href="${scheduleControlledUrl}">${scheduleControlledIcon}</a>` : ''}
+</td>
+${members
+                    .map((member) => {
+                    const assignedIssuesInStory = issues.filter((issue) => issue.story === storyOption.name &&
+                        !issue.isClosed &&
+                        !issue.isPr &&
+                        issue.assignees.includes(member));
+                    return `<td>${assignedIssuesInStory.length > 0 ? assignedIssuesInStory.length : ''}</td>`;
+                })
+                    .join('\n')}
+</tr>
+ 
+ 
+`;
+            })
+                .join('\n')}
+</tbody>
+</table>
+`;
         };
     }
 }

@@ -22,6 +22,9 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         this.ghUserName = ghUserName;
         this.ghUserPassword = ghUserPassword;
         this.ghAuthenticatorKey = ghAuthenticatorKey;
+        this.updateStatus = async (project, issue, statusId) => {
+            await this.graphqlProjectItemRepository.updateProjectField(project.id, project.status.fieldId, issue.itemId, { singleSelectOptionId: statusId });
+        };
         this.convertProjectItemAndCheerioIssueToIssue = async (item, cheerioIssue) => {
             const timeline = cheerioIssue.inProgressTimeline;
             const nextActionDate = item.customFields.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'nextactiondate')?.value;
@@ -99,10 +102,15 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                                     endedAt,
                                 };
                             });
+                        const completionDate50PercentConfidence = !('completionDate50PercentConfidence' in issue) ||
+                            typeof issue.completionDate50PercentConfidence !== 'string'
+                            ? null
+                            : new Date(issue.completionDate50PercentConfidence);
                         return {
                             ...issue,
                             nextActionDate: nextActionDate,
                             workingTimeline: workingTimeline,
+                            completionDate50PercentConfidence: completionDate50PercentConfidence,
                         };
                     });
                     if ((() => { const $io0 = input => "string" === typeof input.nameWithOwner && "number" === typeof input.number && "string" === typeof input.title && ("OPEN" === input.state || "CLOSED" === input.state || "MERGED" === input.state) && (null === input.status || "string" === typeof input.status) && (null === input.story || "string" === typeof input.story) && (null === input.nextActionDate || input.nextActionDate instanceof Date) && (null === input.nextActionHour || "number" === typeof input.nextActionHour) && (null === input.estimationMinutes || "number" === typeof input.estimationMinutes) && (Array.isArray(input.dependedIssueUrls) && input.dependedIssueUrls.every(elem => "string" === typeof elem)) && (null === input.completionDate50PercentConfidence || input.completionDate50PercentConfidence instanceof Date) && "string" === typeof input.url && (Array.isArray(input.assignees) && input.assignees.every(elem => "string" === typeof elem)) && (Array.isArray(input.workingTimeline) && input.workingTimeline.every(elem => "object" === typeof elem && null !== elem && $io1(elem))) && (Array.isArray(input.labels) && input.labels.every(elem => "string" === typeof elem)) && "string" === typeof input.org && "string" === typeof input.repo && "string" === typeof input.body && "string" === typeof input.itemId && "boolean" === typeof input.isPr && "boolean" === typeof input.isInProgress && "boolean" === typeof input.isClosed; const $io1 = input => "string" === typeof input.author && input.startedAt instanceof Date && input.endedAt instanceof Date && "number" === typeof input.durationMinutes; return input => Array.isArray(input) && input.every(elem => "object" === typeof elem && null !== elem && $io0(elem)); })()(issues)) {
@@ -137,7 +145,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 }
                 return result;
             };
-            const issues = await processItemsInBatches(items, 10);
+            const issues = await processItemsInBatches(items, 15);
             // const issues = await Promise.all(
             //   items.map(async (item): Promise<Issue> => {
             //     const cheerioIssue = await this.cheerioIssueRepository.getIssue(

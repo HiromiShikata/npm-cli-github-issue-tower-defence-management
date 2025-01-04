@@ -27,9 +27,20 @@ const AnalyzeProblemByIssueUseCase_1 = require("../../../domain/usecases/Analyze
 const AnalyzeStoriesUseCase_1 = require("../../../domain/usecases/AnalyzeStoriesUseCase");
 const ClearDependedIssueURLUseCase_1 = require("../../../domain/usecases/ClearDependedIssueURLUseCase");
 const CreateEstimationIssueUseCase_1 = require("../../../domain/usecases/CreateEstimationIssueUseCase");
+const axios_1 = __importDefault(require("axios"));
+const ConvertCheckboxToIssueInStoryIssueUseCase_1 = require("../../../domain/usecases/ConvertCheckboxToIssueInStoryIssueUseCase");
 class HandleScheduledEventUseCaseHandler {
     constructor() {
-        this.handle = async (configFilePath) => {
+        this.handle = async (configFilePath, verbose) => {
+            axios_1.default.interceptors.response.use((response) => response, (error) => {
+                if (verbose) {
+                    throw new Error(`API Error: ${JSON.stringify(error)}`);
+                }
+                if (error.response) {
+                    throw new Error(`API Error: ${error.response.status}`);
+                }
+                throw new Error('Network Error');
+            });
             const configFileContent = fs_1.default.readFileSync(configFilePath, 'utf8');
             const input = yaml_1.default.parse(configFileContent);
             if (!(() => { const $io0 = input => "string" === typeof input.projectName && "string" === typeof input.org && "string" === typeof input.projectUrl && "string" === typeof input.manager && ("object" === typeof input.workingReport && null !== input.workingReport && $io1(input.workingReport)) && "string" === typeof input.urlOfStoryView && "string" === typeof input.disabledStatus && ("object" === typeof input.credentials && null !== input.credentials && $io2(input.credentials)); const $io1 = input => "string" === typeof input.repo && (Array.isArray(input.members) && input.members.every(elem => "string" === typeof elem)) && (undefined === input.warningThresholdHour || "number" === typeof input.warningThresholdHour) && "string" === typeof input.spreadsheetUrl && (undefined === input.reportIssueTemplate || "string" === typeof input.reportIssueTemplate) && (Array.isArray(input.reportIssueLabels) && input.reportIssueLabels.every(elem => "string" === typeof elem)); const $io2 = input => "object" === typeof input.manager && null !== input.manager && $io3(input.manager) && ("object" === typeof input.bot && null !== input.bot && $io7(input.bot)); const $io3 = input => "object" === typeof input.github && null !== input.github && $io4(input.github) && ("object" === typeof input.slack && null !== input.slack && $io5(input.slack)) && ("object" === typeof input.googleServiceAccount && null !== input.googleServiceAccount && $io6(input.googleServiceAccount)); const $io4 = input => "string" === typeof input.token; const $io5 = input => "string" === typeof input.userToken; const $io6 = input => "string" === typeof input.serviceAccountKey; const $io7 = input => "object" === typeof input.github && null !== input.github && $io8(input.github); const $io8 = input => "string" === typeof input.token && "string" === typeof input.name && "string" === typeof input.password && "string" === typeof input.authenticatorKey; return input => "object" === typeof input && null !== input && $io0(input); })()(input)) {
@@ -244,7 +255,8 @@ class HandleScheduledEventUseCaseHandler {
             const analyzeStoriesUseCase = new AnalyzeStoriesUseCase_1.AnalyzeStoriesUseCase(issueRepository, systemDateRepository);
             const clearDependedIssueURLUseCase = new ClearDependedIssueURLUseCase_1.ClearDependedIssueURLUseCase(issueRepository);
             const createEstimationIssueUseCase = new CreateEstimationIssueUseCase_1.CreateEstimationIssueUseCase(issueRepository, systemDateRepository);
-            const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(generateWorkingTimeReportUseCase, actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
+            const convertCheckboxToIssueInStoryIssueUseCase = new ConvertCheckboxToIssueInStoryIssueUseCase_1.ConvertCheckboxToIssueInStoryIssueUseCase(issueRepository);
+            const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(generateWorkingTimeReportUseCase, actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
             return await handleScheduledEventUseCase.run(input);
         };
     }
