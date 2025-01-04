@@ -182,11 +182,18 @@ export class ApiV3CheerioRestIssueRepository
                       endedAt,
                     };
                   });
+            const completionDate50PercentConfidence =
+              !('completionDate50PercentConfidence' in issue) ||
+              typeof issue.completionDate50PercentConfidence !== 'string'
+                ? null
+                : new Date(issue.completionDate50PercentConfidence);
 
             return {
               ...issue,
               nextActionDate: nextActionDate,
               workingTimeline: workingTimeline,
+              completionDate50PercentConfidence:
+                completionDate50PercentConfidence,
             };
           });
 
