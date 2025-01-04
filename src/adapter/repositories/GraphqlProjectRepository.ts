@@ -26,16 +26,12 @@ export class GraphqlProjectRepository
       },
     };
 
-    await axios.post(
-      'https://api.github.com/graphql',
-      mutation,
-      {
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          'Content-Type': 'application/json',
-        },
+    await axios.post('https://api.github.com/graphql', mutation, {
+      headers: {
+        Authorization: `Bearer ${this.ghToken}`,
+        'Content-Type': 'application/json',
       },
-    );
+    });
   };
 
   removeItemFromProjectByIssueUrl = async (
@@ -81,16 +77,12 @@ export class GraphqlProjectRepository
           };
         };
       };
-    }>(
-      'https://api.github.com/graphql',
-      query,
-      {
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          'Content-Type': 'application/json',
-        },
+    }>('https://api.github.com/graphql', query, {
+      headers: {
+        Authorization: `Bearer ${this.ghToken}`,
+        'Content-Type': 'application/json',
       },
-    );
+    });
 
     const item = response.data.data.node.items.nodes.find(
       (node) => node.content.url === issueUrl,
