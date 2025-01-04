@@ -1,8 +1,35 @@
 import { GraphqlProjectItemRepository } from './GraphqlProjectItemRepository';
 import { LocalStorageRepository } from '../LocalStorageRepository';
-import type { AxiosResponse } from 'axios';
+import { AxiosHeaders } from 'axios';
+import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
 jest.mock('axios');
+const mockHeaders = new AxiosHeaders({
+  'Content-Type': 'application/json',
+  Accept: 'application/json',
+});
+
+const mockConfig: InternalAxiosRequestConfig = {
+  headers: mockHeaders,
+  method: 'post',
+  url: 'https://api.github.com/graphql',
+  transitional: {
+    silentJSONParsing: true,
+    forcedJSONParsing: true,
+    clarifyTimeoutError: false,
+  },
+  transformRequest: [],
+  transformResponse: [],
+  timeout: 0,
+  xsrfCookieName: 'XSRF-TOKEN',
+  xsrfHeaderName: 'X-XSRF-TOKEN',
+  maxContentLength: -1,
+  maxBodyLength: -1,
+  env: {
+    FormData: undefined,
+  },
+  validateStatus: null,
+};
 const mockPost = jest.fn<Promise<AxiosResponse>, [string, unknown, unknown]>();
 
 describe('GraphqlProjectItemRepository', () => {
@@ -69,13 +96,14 @@ describe('GraphqlProjectItemRepository', () => {
         },
       };
 
-      mockPost.mockResolvedValueOnce({
+      const getFieldsResponse: AxiosResponse = {
         status: 200,
         statusText: 'OK',
-        headers: {},
-        config: {},
+        headers: mockHeaders,
+        config: mockConfig,
         data: mockResponse,
-      } as AxiosResponse);
+      };
+      mockPost.mockResolvedValueOnce(getFieldsResponse);
 
       const result = await repository.getProjectItemFields(
         owner,
@@ -124,13 +152,14 @@ describe('GraphqlProjectItemRepository', () => {
         },
       };
 
-      mockPost.mockResolvedValueOnce({
+      const removeItemResponse: AxiosResponse = {
         status: 200,
         statusText: 'OK',
-        headers: {},
-        config: {},
+        headers: mockHeaders,
+        config: mockConfig,
         data: mockResponse,
-      } as AxiosResponse);
+      };
+      mockPost.mockResolvedValueOnce(removeItemResponse);
 
       await repository.removeProjectItem(projectId, itemId);
 
@@ -151,7 +180,7 @@ describe('GraphqlProjectItemRepository', () => {
           },
         },
       };
-      
+
       expect(mockPost).toHaveBeenCalledWith(
         'https://api.github.com/graphql',
         expect.objectContaining(expectedPayload),
@@ -164,13 +193,14 @@ describe('GraphqlProjectItemRepository', () => {
       const itemId = 'test-item-id';
       const errorMessage = 'Failed to remove item';
 
-      mockPost.mockResolvedValueOnce({
+      const failedRemoveResponse: AxiosResponse = {
         status: 400,
         statusText: 'Bad Request',
-        headers: {},
-        config: {},
+        headers: mockHeaders,
+        config: mockConfig,
         data: { errors: [{ message: errorMessage }] },
-      } as AxiosResponse);
+      };
+      mockPost.mockResolvedValueOnce(failedRemoveResponse);
 
       await expect(
         repository.removeProjectItem(projectId, itemId),
@@ -182,13 +212,14 @@ describe('GraphqlProjectItemRepository', () => {
       const itemId = 'test-item-id';
       const errorMessage = 'GraphQL Error';
 
-      mockPost.mockResolvedValueOnce({
+      const graphqlErrorResponse: AxiosResponse = {
         status: 200,
         statusText: 'OK',
-        headers: {},
-        config: {},
+        headers: mockHeaders,
+        config: mockConfig,
         data: { errors: [{ message: errorMessage }] },
-      } as AxiosResponse);
+      };
+      mockPost.mockResolvedValueOnce(graphqlErrorResponse);
 
       await expect(
         repository.removeProjectItem(projectId, itemId),
