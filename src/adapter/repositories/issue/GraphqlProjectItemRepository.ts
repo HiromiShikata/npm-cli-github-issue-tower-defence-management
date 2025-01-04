@@ -799,4 +799,52 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       throw new Error(response.data.errors.map((e) => e.message).join('\n'));
     }
   };
+
+  addProjectItem = async (
+    projectId: string,
+    contentId: string,
+  ): Promise<string> => {
+    const graphqlQuery = {
+      query: `mutation AddProjectItem($input: AddProjectV2ItemByIdInput!) {
+        addProjectV2ItemById(input: $input) {
+          item {
+            id
+          }
+        }
+      }`,
+      variables: {
+        input: {
+          projectId,
+          contentId,
+        },
+      },
+    };
+
+    const response = await axios<{
+      data: {
+        addProjectV2ItemById: {
+          item: {
+            id: string;
+          };
+        };
+      };
+      errors?: { message: string }[];
+    }>({
+      url: 'https://api.github.com/graphql',
+      method: 'post',
+      headers: {
+        Authorization: `Bearer ${this.ghToken}`,
+        'Content-Type': 'application/json',
+      },
+      data: JSON.stringify(graphqlQuery),
+    });
+
+    if (response.status !== 200) {
+      throw new Error('Failed to add project item');
+    } else if (response.data.errors) {
+      throw new Error(response.data.errors.map((e) => e.message).join('\n'));
+    }
+
+    return response.data.data.addProjectV2ItemById.item.id;
+  };
 }

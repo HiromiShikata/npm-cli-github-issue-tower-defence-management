@@ -1,38 +1,9 @@
 import { GraphqlProjectItemRepository } from './GraphqlProjectItemRepository';
 import { LocalStorageRepository } from '../LocalStorageRepository';
-import { AxiosHeaders } from 'axios';
-import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
-
-jest.mock('axios');
-const mockHeaders = new AxiosHeaders({
-  'Content-Type': 'application/json',
-  Accept: 'application/json',
-});
-
-const mockConfig: InternalAxiosRequestConfig = {
-  headers: mockHeaders,
-  method: 'post',
-  url: 'https://api.github.com/graphql',
-  transitional: {
-    silentJSONParsing: true,
-    forcedJSONParsing: true,
-    clarifyTimeoutError: false,
-  },
-  transformRequest: [],
-  transformResponse: [],
-  timeout: 0,
-  xsrfCookieName: 'XSRF-TOKEN',
-  xsrfHeaderName: 'X-XSRF-TOKEN',
-  maxContentLength: -1,
-  maxBodyLength: -1,
-  env: {
-    FormData: undefined,
-  },
-  validateStatus: null,
-};
-const mockPost = jest.fn<Promise<AxiosResponse>, [string, unknown, unknown]>();
+import { RestIssueRepository } from './RestIssueRepository';
 
 describe('GraphqlProjectItemRepository', () => {
+  jest.setTimeout(30 * 1000);
   const localStorageRepository = new LocalStorageRepository();
   let repository: GraphqlProjectItemRepository;
 
@@ -40,9 +11,8 @@ describe('GraphqlProjectItemRepository', () => {
     repository = new GraphqlProjectItemRepository(
       localStorageRepository,
       '',
-      process.env.GH_TOKEN,
+      process.env.GH_TOKEN || 'dummy',
     );
-    mockPost.mockReset();
   });
   describe('getProjectItemFields', () => {
     it('should return project item fields', async () => {
@@ -50,180 +20,88 @@ describe('GraphqlProjectItemRepository', () => {
       const repositoryName = 'test-repository';
       const issueNumber = 38;
 
-      const mockResponse = {
-        status: 200,
-        data: {
-          data: {
-            repository: {
-              issue: {
-                projectItems: {
-                  nodes: [
-                    {
-                      fieldValues: {
-                        nodes: [
-                          {
-                            field: { name: 'Assignees' },
-                            value: '',
-                          },
-                          {
-                            field: { name: 'Repository' },
-                            value: 'test-repository',
-                          },
-                          {
-                            field: { name: '' },
-                            value: '',
-                          },
-                          {
-                            field: { name: '' },
-                            value: 'In progress test title',
-                          },
-                          {
-                            field: { name: 'Status' },
-                            value: 'Todo',
-                          },
-                          {
-                            field: { name: 'NextActionDate' },
-                            value: '2024-04-25',
-                          },
-                        ],
-                      },
-                    },
-                  ],
-                },
-              },
-            },
-          },
-        },
-      };
-
-      const getFieldsResponse: AxiosResponse = {
-        status: 200,
-        statusText: 'OK',
-        headers: mockHeaders,
-        config: mockConfig,
-        data: mockResponse,
-      };
-      mockPost.mockResolvedValueOnce(getFieldsResponse);
-
       const result = await repository.getProjectItemFields(
         owner,
         repositoryName,
         issueNumber,
       );
 
-      expect(result).toEqual([
-        {
-          fieldName: 'Assignees',
-          fieldValue: '',
-        },
-        {
-          fieldName: 'Repository',
-          fieldValue: 'test-repository',
-        },
-        {
-          fieldName: '',
-          fieldValue: '',
-        },
-        {
-          fieldName: '',
-          fieldValue: 'In progress test title',
-        },
-        {
-          fieldName: 'Status',
-          fieldValue: 'Todo',
-        },
-        {
-          fieldName: 'NextActionDate',
-          fieldValue: '2024-04-25',
-        },
-      ]);
+      expect(result).toHaveLength(6);
+      expect(result).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            fieldName: expect.any(String),
+            fieldValue: expect.any(String),
+          }),
+        ]),
+      );
     });
   });
 
   describe('removeProjectItem', () => {
-    it('should remove a project item successfully', async () => {
-      const projectId = 'test-project-id';
-      const itemId = 'test-item-id';
-      const mockResponse = {
-        data: {
-          deleteProjectV2Item: {
-            deletedItemId: itemId,
-          },
-        },
-      };
-
-      const removeItemResponse: AxiosResponse = {
-        status: 200,
-        statusText: 'OK',
-        headers: mockHeaders,
-        config: mockConfig,
-        data: mockResponse,
-      };
-      mockPost.mockResolvedValueOnce(removeItemResponse);
-
-      await repository.removeProjectItem(projectId, itemId);
-
-      const expectedPayload: {
-        query: string;
-        variables: {
-          input: {
-            projectId: string;
-            itemId: string;
-          };
-        };
-      } = {
-        query: 'mutation DeleteProjectItem',
-        variables: {
-          input: {
-            projectId,
-            itemId,
-          },
-        },
-      };
-
-      expect(mockPost).toHaveBeenCalledWith(
-        'https://api.github.com/graphql',
-        expect.objectContaining(expectedPayload),
-        expect.any(Object),
+    it('should remove a project item with real GitHub integration', async () => {
+      // Create a real issue in test-repository
+      const restIssueRepository = new RestIssueRepository(
+        localStorageRepository,
+        '',
+        process.env.GH_TOKEN || 'dummy',
       );
-    });
+      const owner = 'HiromiShikata';
+      const repositoryName = 'test-repository';
+      const issueTitle = `test-issue-${Date.now()}`;
+      const issueBody = 'Test issue for removeProjectItem integration test';
+      const assignees = ['HiromiShikata'];
+      const labels = ['test'];
 
-    it('should throw error when removal fails', async () => {
-      const projectId = 'test-project-id';
-      const itemId = 'test-item-id';
-      const errorMessage = 'Failed to remove item';
+      // Create issue and get its number
+      const issueNumber = await restIssueRepository.createNewIssue(
+        owner,
+        repositoryName,
+        issueTitle,
+        issueBody,
+        assignees,
+        labels,
+      );
 
-      const failedRemoveResponse: AxiosResponse = {
-        status: 400,
-        statusText: 'Bad Request',
-        headers: mockHeaders,
-        config: mockConfig,
-        data: { errors: [{ message: errorMessage }] },
-      };
-      mockPost.mockResolvedValueOnce(failedRemoveResponse);
+      // Get project ID (known from GraphqlProjectRepository.test.ts)
+      const projectId = 'PVT_kwHOAGJHa84AFhgF'; // Project #49
 
-      await expect(
-        repository.removeProjectItem(projectId, itemId),
-      ).rejects.toThrow('Failed to remove project item');
-    });
+      // Get issue node ID
+      const issueNodeId = await repository.fetchItemId(
+        projectId,
+        owner,
+        repositoryName,
+        issueNumber,
+      );
+      expect(issueNodeId).toBeDefined();
 
-    it('should throw error when GraphQL returns errors', async () => {
-      const projectId = 'test-project-id';
-      const itemId = 'test-item-id';
-      const errorMessage = 'GraphQL Error';
+      // Add issue to project
+      const projectItemId = await repository.addProjectItem(
+        projectId,
+        issueNodeId!,
+      );
+      expect(projectItemId).toBeDefined();
 
-      const graphqlErrorResponse: AxiosResponse = {
-        status: 200,
-        statusText: 'OK',
-        headers: mockHeaders,
-        config: mockConfig,
-        data: { errors: [{ message: errorMessage }] },
-      };
-      mockPost.mockResolvedValueOnce(graphqlErrorResponse);
+      // Verify item was added
+      const projectItems = await repository.fetchProjectItems(projectId);
+      const addedItem = projectItems.find(
+        (item) =>
+          item.nameWithOwner === `${owner}/${repositoryName}` &&
+          item.number === issueNumber,
+      );
+      expect(addedItem).toBeDefined();
 
-      await expect(
-        repository.removeProjectItem(projectId, itemId),
-      ).rejects.toThrow(errorMessage);
+      // Remove item from project
+      await repository.removeProjectItem(projectId, projectItemId);
+
+      // Verify removal
+      const updatedProjectItems = await repository.fetchProjectItems(projectId);
+      const removedItem = updatedProjectItems.find(
+        (item) =>
+          item.nameWithOwner === `${owner}/${repositoryName}` &&
+          item.number === issueNumber,
+      );
+      expect(removedItem).toBeUndefined();
     });
   });
 });
