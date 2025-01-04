@@ -430,6 +430,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
         input: `- [ ] Task 1
 - [ ] Task 2
 - [x] Task 3
+- [ ] #5
 - [ ] https://github.com/org/repo/issues/1`,
         expected: ['Task 1', 'Task 2'],
       },

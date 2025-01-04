@@ -90,7 +90,9 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
       checkboxes.push(match[i].replace('- [ ] ', ''));
     }
     return checkboxes.filter(
-      (checkbox) => !checkbox.match(/^https:\/\/github.com\/.*\/issues\/\d+$/),
+      (checkbox) =>
+        !checkbox.match(/^https:\/\/github.com\/.*\/issues\/\d+$/) &&
+        !checkbox.match(/^#\d+$/),
     );
   };
 }
