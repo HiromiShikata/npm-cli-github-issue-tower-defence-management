@@ -14,7 +14,7 @@ export class ClearNextActionHourUseCase {
     cacheUsed: boolean;
   }): Promise<void> => {
     const nextActionHour = input.project.nextActionHour;
-    if (!nextActionHour || input.cacheUsed) {
+    if (!nextActionHour) {
       return;
     }
     const targetDates = input.targetDates
