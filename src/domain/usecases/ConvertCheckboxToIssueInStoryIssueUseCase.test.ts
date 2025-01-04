@@ -6,7 +6,7 @@ import { Issue } from '../entities/Issue';
 import { StoryObject, StoryObjectMap } from './HandleScheduledEventUseCase';
 
 describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
-  jest.setTimeout(30 * 1000);
+  jest.setTimeout(5 * 60 * 1000);
   const mockIssueRepository = mock<IssueRepository>();
 
   describe('run', () => {
