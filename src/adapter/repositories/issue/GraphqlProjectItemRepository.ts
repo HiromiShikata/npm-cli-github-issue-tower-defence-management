@@ -758,7 +758,10 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
     await this.updateProjectField(project, fieldId, issue, { text });
   };
 
-  removeProjectItem = async (projectId: string, itemId: string): Promise<void> => {
+  removeProjectItem = async (
+    projectId: string,
+    itemId: string,
+  ): Promise<void> => {
     const graphqlQuery = {
       query: `mutation DeleteProjectItem($input: DeleteProjectV2ItemInput!) {
         deleteProjectV2Item(input: $input) {

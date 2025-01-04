@@ -69,7 +69,10 @@ describe('GraphqlProjectItemRepository', () => {
         },
       };
 
-      mockedAxios.post.mockResolvedValueOnce({ status: 200, data: mockResponse });
+      mockedAxios.post.mockResolvedValueOnce({
+        status: 200,
+        data: mockResponse,
+      });
 
       await repository.removeProjectItem(projectId, itemId);
 
@@ -92,30 +95,30 @@ describe('GraphqlProjectItemRepository', () => {
       const projectId = 'test-project-id';
       const itemId = 'test-item-id';
       const errorMessage = 'Failed to remove item';
-      
+
       mockedAxios.post.mockResolvedValueOnce({
         status: 400,
         data: { errors: [{ message: errorMessage }] },
       });
 
-      await expect(repository.removeProjectItem(projectId, itemId)).rejects.toThrow(
-        'Failed to remove project item',
-      );
+      await expect(
+        repository.removeProjectItem(projectId, itemId),
+      ).rejects.toThrow('Failed to remove project item');
     });
 
     it('should throw error when GraphQL returns errors', async () => {
       const projectId = 'test-project-id';
       const itemId = 'test-item-id';
       const errorMessage = 'GraphQL Error';
-      
+
       mockedAxios.post.mockResolvedValueOnce({
         status: 200,
         data: { errors: [{ message: errorMessage }] },
       });
 
-      await expect(repository.removeProjectItem(projectId, itemId)).rejects.toThrow(
-        errorMessage,
-      );
+      await expect(
+        repository.removeProjectItem(projectId, itemId),
+      ).rejects.toThrow(errorMessage);
     });
   });
 });
