@@ -62,6 +62,19 @@ export class ApiV3CheerioRestIssueRepository
     );
   }
 
+  updateStatus: (
+    project: Project,
+    issue: Issue,
+    statusId: string,
+  ) => Promise<void> = async (project, issue, statusId) => {
+    await this.graphqlProjectItemRepository.updateProjectField(
+      project.id,
+      project.status.fieldId,
+      issue.itemId,
+      { singleSelectOptionId: statusId },
+    );
+  };
+
   convertProjectItemAndCheerioIssueToIssue = async (
     item: ProjectItem,
     cheerioIssue: CheerioIssue,
