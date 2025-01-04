@@ -757,4 +757,43 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
   ): Promise<void> => {
     await this.updateProjectField(project, fieldId, issue, { text });
   };
+
+  removeProjectItem = async (projectId: string, itemId: string): Promise<void> => {
+    const graphqlQuery = {
+      query: `mutation DeleteProjectItem($input: DeleteProjectV2ItemInput!) {
+        deleteProjectV2Item(input: $input) {
+          deletedItemId
+        }
+      }`,
+      variables: {
+        input: {
+          projectId,
+          itemId,
+        },
+      },
+    };
+
+    const response = await axios<{
+      data: {
+        deleteProjectV2Item: {
+          deletedItemId: string;
+        };
+      };
+      errors?: { message: string }[];
+    }>({
+      url: 'https://api.github.com/graphql',
+      method: 'post',
+      headers: {
+        Authorization: `Bearer ${this.ghToken}`,
+        'Content-Type': 'application/json',
+      },
+      data: JSON.stringify(graphqlQuery),
+    });
+
+    if (response.status !== 200) {
+      throw new Error('Failed to remove project item');
+    } else if (response.data.errors) {
+      throw new Error(response.data.errors.map((e) => e.message).join('\n'));
+    }
+  };
 }
