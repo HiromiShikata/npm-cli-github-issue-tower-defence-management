@@ -209,6 +209,7 @@ export class HandleScheduledEventUseCase {
       org: input.org,
       repo: input.workingReport.repo,
       storyObjectMap: storyIssues,
+      members: input.workingReport.members,
     });
     await this.clearDependedIssueURLUseCase.run({
       project,
