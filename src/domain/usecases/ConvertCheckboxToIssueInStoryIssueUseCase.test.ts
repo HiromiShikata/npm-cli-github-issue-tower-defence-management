@@ -230,7 +230,21 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             {
               ...basicStoryIssue1,
               body: `- [ ] https://github.com/testOrg/testRepo/issues/1
+- [ ] Task 2`,
+            },
+          ],
+          [
+            {
+              ...basicStoryIssue1,
+              body: `- [ ] https://github.com/testOrg/testRepo/issues/1
 - [ ] https://github.com/testOrg/testRepo/issues/2`,
+            },
+          ],
+          [
+            {
+              ...basicStoryIssue2,
+              body: `- [ ] https://github.com/testOrg/testRepo/issues/3
+- [ ] Task 4`,
             },
           ],
           [
@@ -312,7 +326,21 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             {
               ...basicStoryIssue1,
               body: `- [ ] https://github.com/testOrg/testRepo/issues/1
+- [ ] Task 2 for \`STORYNAME\``,
+            },
+          ],
+          [
+            {
+              ...basicStoryIssue1,
+              body: `- [ ] https://github.com/testOrg/testRepo/issues/1
 - [ ] https://github.com/testOrg/testRepo/issues/2`,
+            },
+          ],
+          [
+            {
+              ...basicStoryIssue2,
+              body: `- [ ] https://github.com/testOrg/testRepo/issues/3
+- [ ] Task 4`,
             },
           ],
           [

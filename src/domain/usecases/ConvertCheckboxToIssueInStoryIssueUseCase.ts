@@ -64,7 +64,11 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
           `- [ ] ${checkboxText}`,
           `- [ ] ${newIssueUrl}`,
         );
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+        await this.issueRepository.updateIssue({
+          ...storyIssue,
+          body: newBody,
+        });
+        await new Promise((resolve) => setTimeout(resolve, 30 * 1000));
         const newIssue = await this.issueRepository.getIssueByUrl(newIssueUrl);
         if (!newIssue) {
           throw new Error(`Issue not found: ${newIssueUrl}`);
@@ -75,10 +79,6 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
           storyOption.id,
         );
       }
-      await this.issueRepository.updateIssue({
-        ...storyIssue,
-        body: newBody,
-      });
     }
   };
   findCheckboxTextsNotCreatedIssue = (storyIssueBody: string): string[] => {
