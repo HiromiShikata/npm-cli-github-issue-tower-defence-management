@@ -23,22 +23,14 @@ export class GraphqlProjectItemRepository extends BaseGitHubRepository {
     issueNumber: number,
   ): Promise<string | undefined> => {
     const graphqlQuery = {
-      query: `query GetProjectItemID( $owner: String!, $name: String!, $issueNumber: Int!) {
+      query: `query GetIssueNodeID($owner: String!, $name: String!, $issueNumber: Int!) {
   repository(owner: $owner, name: $name) {
     issue(number: $issueNumber) {
-      projectItems(first: 2) {
-        nodes {
-          id
-          project {
-            id
-          }
-        }
-      }
+      id
     }
   }
 }`,
       variables: {
-        projectID: projectId,
         owner: owner,
         name: repositoryName,
         issueNumber: issueNumber,
@@ -50,12 +42,7 @@ export class GraphqlProjectItemRepository extends BaseGitHubRepository {
         data: {
           repository: {
             issue: {
-              projectItems: {
-                nodes: {
-                  id: string;
-                  project: { id: string };
-                }[];
-              };
+              id: string;
             };
           };
         };
@@ -69,14 +56,8 @@ export class GraphqlProjectItemRepository extends BaseGitHubRepository {
         data: JSON.stringify(graphqlQuery),
       });
 
-      const projectItems: {
-        id: string;
-        project: { id: string };
-      }[] = response.data.data.repository.issue.projectItems.nodes;
-      const projectItemId = projectItems.find(
-        (item) => item.project.id === projectId,
-      )?.id;
-      return projectItemId;
+      const issueNodeId = response.data.data.repository.issue.id;
+      return issueNodeId;
     } catch (error) {
       console.error('Error fetching GitHub Project V2 ID:', error);
       return undefined;
@@ -448,6 +429,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
           };
         };
       };
+      errors?: { message: string }[];
     }>({
       url: 'https://api.github.com/graphql',
       method: 'post',
@@ -457,6 +439,10 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       },
       data: JSON.stringify(graphqlQuery),
     });
+
+    if (response.data.errors) {
+      throw new Error(response.data.errors.map((e) => e.message).join('\n'));
+    }
 
     const data = response.data.data;
     const issueFields: {
@@ -793,9 +779,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       data: JSON.stringify(graphqlQuery),
     });
 
-    if (response.status !== 200) {
-      throw new Error('Failed to remove project item');
-    } else if (response.data.errors) {
+    if (response.data.errors) {
       throw new Error(response.data.errors.map((e) => e.message).join('\n'));
     }
   };
