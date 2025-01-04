@@ -26,7 +26,7 @@ export class ClearNextActionHourUseCase {
     const targetDate = new Date(
       targetDates[targetDates.length - 1].getTime() + 5 * 60 * 1000,
     );
-    const targetHour = targetDate.getHours();
+    const targetHour = targetDate.getHours() + 1;
     const isTargetIssue = (issue: Issue): boolean => {
       return (
         issue.nextActionHour !== null &&
