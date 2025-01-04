@@ -258,4 +258,34 @@ export class GraphqlProjectRepository
         : null,
     };
   };
+
+  removeItemFromProject = async (
+    projectId: string,
+    itemId: string,
+  ): Promise<void> => {
+    const query = `mutation DeleteProjectItem($input: DeleteProjectV2ItemInput!) {
+      deleteProjectV2Item(input: $input) {
+        deletedItemId
+      }
+    }`;
+    
+    await axios.post(
+      'https://api.github.com/graphql',
+      {
+        query,
+        variables: {
+          input: {
+            projectId,
+            itemId,
+          },
+        },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${this.ghToken}`,
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+  };
 }
