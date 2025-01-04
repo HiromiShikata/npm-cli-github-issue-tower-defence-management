@@ -87,7 +87,7 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
     if (!match) return [];
     const checkboxes: string[] = [];
     for (let i = 0; i < match.length; i++) {
-      checkboxes.push(match[i].replace('- [ ] ', ''));
+      checkboxes.push(match[i].replace('- [ ] ', '').trim());
     }
     return checkboxes.filter(
       (checkbox) =>
