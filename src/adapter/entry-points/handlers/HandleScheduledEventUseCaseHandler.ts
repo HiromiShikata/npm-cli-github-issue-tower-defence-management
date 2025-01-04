@@ -24,16 +24,32 @@ import { BaseGitHubRepository } from '../../repositories/BaseGitHubRepository';
 import { AnalyzeStoriesUseCase } from '../../../domain/usecases/AnalyzeStoriesUseCase';
 import { ClearDependedIssueURLUseCase } from '../../../domain/usecases/ClearDependedIssueURLUseCase';
 import { CreateEstimationIssueUseCase } from '../../../domain/usecases/CreateEstimationIssueUseCase';
+import axios, { AxiosError } from 'axios';
+import { ConvertCheckboxToIssueInStoryIssueUseCase } from '../../../domain/usecases/ConvertCheckboxToIssueInStoryIssueUseCase';
 
 export class HandleScheduledEventUseCaseHandler {
   handle = async (
     configFilePath: string,
+    verbose: boolean,
   ): Promise<{
     project: Project;
     issues: Issue[];
     cacheUsed: boolean;
     targetDateTimes: Date[];
   }> => {
+    axios.interceptors.response.use(
+      (response) => response,
+      (error: AxiosError) => {
+        if (verbose) {
+          throw new Error(`API Error: ${JSON.stringify(error)}`);
+        }
+        if (error.response) {
+          throw new Error(`API Error: ${error.response.status}`);
+        }
+        throw new Error('Network Error');
+      },
+    );
+
     const configFileContent = fs.readFileSync(configFilePath, 'utf8');
     const input: unknown = YAML.parse(configFileContent);
     type inputType = Parameters<HandleScheduledEventUseCase['run']>[0] & {
@@ -140,6 +156,8 @@ export class HandleScheduledEventUseCaseHandler {
       issueRepository,
       systemDateRepository,
     );
+    const convertCheckboxToIssueInStoryIssueUseCase =
+      new ConvertCheckboxToIssueInStoryIssueUseCase(issueRepository);
 
     const handleScheduledEventUseCase = new HandleScheduledEventUseCase(
       generateWorkingTimeReportUseCase,
@@ -150,6 +168,7 @@ export class HandleScheduledEventUseCaseHandler {
       analyzeStoriesUseCase,
       clearDependedIssueURLUseCase,
       createEstimationIssueUseCase,
+      convertCheckboxToIssueInStoryIssueUseCase,
       systemDateRepository,
       googleSpreadsheetRepository,
       projectRepository,

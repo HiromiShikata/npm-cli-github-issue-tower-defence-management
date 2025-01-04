@@ -14,6 +14,7 @@ CLI tool for GitHub Issue Tower Defence Management
 Options:
   -t, --trigger <type>  Trigger type: issue or schedule
   -c, --config <path>   Path to config YAML file
+  -v, --verbose         Verbose output
   -i, --issue <url>     GitHub Issue URL
   -h, --help            display help for command`);
   });

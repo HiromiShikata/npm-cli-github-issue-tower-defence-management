@@ -44,6 +44,31 @@ describe('GraphqlProjectRepository', () => {
         story: null,
         completionDate50PercentConfidence: null,
         dependedIssueUrlSeparatedByComma: null,
+
+        status: {
+          fieldId: 'PVTSSF_lAHOAGJHa84AFhgFzgDLt0c',
+          name: 'Status',
+          statuses: [
+            {
+              color: 'GRAY',
+              description: '',
+              id: 'f75ad846',
+              name: 'Todo',
+            },
+            {
+              color: 'GRAY',
+              description: '',
+              id: '47fc9ee4',
+              name: 'In Progress',
+            },
+            {
+              color: 'GRAY',
+              description: '',
+              id: '98236657',
+              name: 'Done',
+            },
+          ],
+        },
       });
     });
   });

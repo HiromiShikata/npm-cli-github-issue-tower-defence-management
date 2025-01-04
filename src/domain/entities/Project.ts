@@ -1,4 +1,5 @@
-export type StoryOption = {
+export type StoryOption = FieldOption;
+export type FieldOption = {
   id: string;
   name: string;
   color: string;
@@ -8,6 +9,11 @@ export type Project = {
   id: string;
   name: string;
   // fields: ProjectField[];
+  status: {
+    name: string;
+    fieldId: string;
+    statuses: FieldOption[];
+  };
   nextActionDate: {
     name: string;
     fieldId: string;
@@ -19,7 +25,7 @@ export type Project = {
   story: {
     name: string;
     fieldId: string;
-    stories: StoryOption[];
+    stories: FieldOption[];
     workflowManagementStory: {
       id: string;
       name: string;

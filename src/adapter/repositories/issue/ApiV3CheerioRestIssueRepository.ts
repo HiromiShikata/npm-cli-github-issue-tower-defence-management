@@ -62,6 +62,19 @@ export class ApiV3CheerioRestIssueRepository
     );
   }
 
+  updateStatus: (
+    project: Project,
+    issue: Issue,
+    statusId: string,
+  ) => Promise<void> = async (project, issue, statusId) => {
+    await this.graphqlProjectItemRepository.updateProjectField(
+      project.id,
+      project.status.fieldId,
+      issue.itemId,
+      { singleSelectOptionId: statusId },
+    );
+  };
+
   convertProjectItemAndCheerioIssueToIssue = async (
     item: ProjectItem,
     cheerioIssue: CheerioIssue,
@@ -169,11 +182,18 @@ export class ApiV3CheerioRestIssueRepository
                       endedAt,
                     };
                   });
+            const completionDate50PercentConfidence =
+              !('completionDate50PercentConfidence' in issue) ||
+              typeof issue.completionDate50PercentConfidence !== 'string'
+                ? null
+                : new Date(issue.completionDate50PercentConfidence);
 
             return {
               ...issue,
               nextActionDate: nextActionDate,
               workingTimeline: workingTimeline,
+              completionDate50PercentConfidence:
+                completionDate50PercentConfidence,
             };
           });
 
@@ -235,7 +255,7 @@ export class ApiV3CheerioRestIssueRepository
 
       return result;
     };
-    const issues = await processItemsInBatches(items, 10);
+    const issues = await processItemsInBatches(items, 15);
 
     // const issues = await Promise.all(
     //   items.map(async (item): Promise<Issue> => {
