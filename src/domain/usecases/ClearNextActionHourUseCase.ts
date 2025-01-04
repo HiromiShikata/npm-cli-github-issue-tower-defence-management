@@ -17,6 +17,7 @@ export class ClearNextActionHourUseCase {
     if (!nextActionHour) {
       return;
     }
+    const nextActionDate = input.project.nextActionDate;
     const targetDates = input.targetDates
       .filter((targetDate) => targetDate.getMinutes() === 45)
       .reverse();
@@ -43,6 +44,15 @@ export class ClearNextActionHourUseCase {
       await this.issueRepository.clearProjectField(
         input.project,
         nextActionHour.fieldId,
+        issue,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      if (!nextActionDate) {
+        continue;
+      }
+      await this.issueRepository.clearProjectField(
+        input.project,
+        nextActionDate.fieldId,
         issue,
       );
       await new Promise((resolve) => setTimeout(resolve, 5000));
