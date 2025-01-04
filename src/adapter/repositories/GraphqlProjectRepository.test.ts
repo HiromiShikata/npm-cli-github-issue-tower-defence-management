@@ -1,5 +1,9 @@
 import { GraphqlProjectRepository } from './GraphqlProjectRepository';
 import { LocalStorageRepository } from './LocalStorageRepository';
+import axios from 'axios';
+
+jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('GraphqlProjectRepository', () => {
   const localStorageRepository = new LocalStorageRepository();
@@ -45,6 +49,38 @@ describe('GraphqlProjectRepository', () => {
         completionDate50PercentConfidence: null,
         dependedIssueUrlSeparatedByComma: null,
       });
+    });
+  });
+
+  describe('removeItemFromProject', () => {
+    it('should remove an item from the project', async () => {
+      const mockResponse = { data: { deleteProjectV2Item: { deletedItemId: 'test-item-id' } } };
+      mockedAxios.post.mockResolvedValueOnce(mockResponse);
+
+      await repository.removeItemFromProject(projectId, 'test-item-id');
+
+      expect(mockedAxios.post).toHaveBeenCalledWith(
+        'https://api.github.com/graphql',
+        {
+          query: expect.stringContaining('mutation DeleteProjectItem'),
+          variables: {
+            input: {
+              projectId,
+              itemId: 'test-item-id',
+            },
+          },
+        },
+        expect.any(Object)
+      );
+    });
+
+    it('should handle errors when removing an item', async () => {
+      const errorMessage = 'Failed to remove item';
+      mockedAxios.post.mockRejectedValueOnce(new Error(errorMessage));
+
+      await expect(repository.removeItemFromProject(projectId, 'test-item-id'))
+        .rejects
+        .toThrow(errorMessage);
     });
   });
 });
