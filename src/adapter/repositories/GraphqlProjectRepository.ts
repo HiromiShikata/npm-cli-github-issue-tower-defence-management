@@ -8,6 +8,99 @@ export class GraphqlProjectRepository
   extends BaseGitHubRepository
   implements ProjectRepository
 {
+  removeItemFromProject = async (
+    projectId: string,
+    itemId: string,
+  ): Promise<void> => {
+    const mutation = {
+      query: `mutation DeleteProjectItem($input: DeleteProjectV2ItemInput!) {
+        deleteProjectV2Item(input: $input) {
+          deletedItemId
+        }
+      }`,
+      variables: {
+        input: {
+          projectId,
+          itemId,
+        },
+      },
+    };
+
+    await axios.post(
+      'https://api.github.com/graphql',
+      mutation,
+      {
+        headers: {
+          Authorization: `Bearer ${this.ghToken}`,
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+  };
+
+  removeItemFromProjectByIssueUrl = async (
+    projectUrl: string,
+    issueUrl: string,
+  ): Promise<void> => {
+    const { owner, projectNumber } = this.extractProjectFromUrl(projectUrl);
+    const projectId = await this.fetchProjectId(owner, projectNumber);
+
+    const query = {
+      query: `query GetProjectItems($projectId: ID!, $query: String!) {
+        node(id: $projectId) {
+          ... on ProjectV2 {
+            items(first: 100, query: $query) {
+              nodes {
+                id
+                content {
+                  ... on Issue {
+                    url
+                  }
+                }
+              }
+            }
+          }
+        }
+      }`,
+      variables: {
+        projectId,
+        query: `is:issue ${issueUrl}`,
+      },
+    };
+
+    const response = await axios.post<{
+      data: {
+        node: {
+          items: {
+            nodes: {
+              id: string;
+              content: {
+                url: string;
+              };
+            }[];
+          };
+        };
+      };
+    }>(
+      'https://api.github.com/graphql',
+      query,
+      {
+        headers: {
+          Authorization: `Bearer ${this.ghToken}`,
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+
+    const item = response.data.data.node.items.nodes.find(
+      (node) => node.content.url === issueUrl,
+    );
+    if (!item) {
+      throw new Error('Item not found in project');
+    }
+
+    await this.removeItemFromProject(projectId, item.id);
+  };
   extractProjectFromUrl = (
     projectUrl: string,
   ): {
