@@ -42,6 +42,11 @@ export interface IssueRepository {
     issue: Issue,
     storyId: string,
   ) => Promise<void>;
+  updateStatus: (
+    project: Project,
+    issue: Issue,
+    statusId: string,
+  ) => Promise<void>;
   clearProjectField: (
     project: Project,
     fieldId: string,
