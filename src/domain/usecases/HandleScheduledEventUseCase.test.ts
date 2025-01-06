@@ -36,7 +36,7 @@ describe('HandleScheduledEventUseCase', () => {
       {
         lastExecutionDateTime: new Date('2021-01-01T00:00:00Z'),
         now: new Date('2022-01-01T00:00:00Z'),
-        expected: Array(30)
+        expected: Array(300)
           .fill(0)
           .map((_, i) => {
             const d = new Date('2021-01-01T00:00:00Z');

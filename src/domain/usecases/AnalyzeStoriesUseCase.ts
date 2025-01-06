@@ -30,7 +30,7 @@ export class AnalyzeStoriesUseCase {
       !story ||
       !input.targetDates.find(
         (targetDate) =>
-          targetDate.getHours() === 7 && targetDate.getMinutes() === 0,
+          targetDate.getHours() === 5 && targetDate.getMinutes() === 0,
       )
     ) {
       return;
@@ -141,7 +141,7 @@ export class AnalyzeStoriesUseCase {
     urlOfStoryView: string,
     members: Member['name'][],
   ) => {
-    return `${this.createSummaryIssueBodyPhase(summaryStoryIssue, urlOfStoryView)}
+    return `${this.createSummaryIssueBodyPhase(summaryStoryIssue, urlOfStoryView, storyObjectMap)}
 ${this.createSummaryIssueBodyAssignedIssueCount(project, issues, storyObjectMap, urlOfStoryView, members)}
 `;
   };
@@ -207,6 +207,7 @@ ${this.createSummaryIssueBodyAssignedIssueCount(project, issues, storyObjectMap,
       })[]
     >,
     urlOfStoryView: string,
+    storyObjectMap: StoryObjectMap,
   ): string => {
     return `
 
@@ -226,10 +227,11 @@ ${summaryStoryIssue
       scheduleControlledIcon,
       scheduleControlledUrl,
     } = this.createStoryMark(urlOfStoryView, issue, issue);
-    const remainingIssueCount =
-      summaryStoryIssue
-        .get(key)
-        ?.filter((issue) => !issue.isClosed && !issue.isPr).length || 0;
+    const issuesInStory =
+      storyObjectMap
+        .get(issue.name)
+        ?.issues.filter((issue) => !issue.isClosed && !issue.isPr) || [];
+    const remainingIssueCount = issuesInStory.length;
     return `- ${storyColorIcon} ${stakeHolderIcon} ${isScheduleControlled ? `[${scheduleControlledIcon}](${scheduleControlledUrl})` : ''} [(${remainingIssueCount})](${boardUrl}) ${issue.url} [${boardIcon}](${boardUrl})`;
   })
   .join('\n')}`;
