@@ -1,6 +1,115 @@
+import { mock } from 'jest-mock-extended';
 import { HandleScheduledEventUseCase } from './HandleScheduledEventUseCase';
+import { GenerateWorkingTimeReportUseCase } from './GenerateWorkingTimeReportUseCase';
+import { ActionAnnouncementUseCase } from './ActionAnnouncementUseCase';
+import { SetWorkflowManagementIssueToStoryUseCase } from './SetWorkflowManagementIssueToStoryUseCase';
+import { ClearNextActionHourUseCase } from './ClearNextActionHourUseCase';
+import { AnalyzeProblemByIssueUseCase } from './AnalyzeProblemByIssueUseCase';
+import { AnalyzeStoriesUseCase } from './AnalyzeStoriesUseCase';
+import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
+import { CreateEstimationIssueUseCase } from './CreateEstimationIssueUseCase';
+import { ConvertCheckboxToIssueInStoryIssueUseCase } from './ConvertCheckboxToIssueInStoryIssueUseCase';
+import { ChangeStatusLongInReviewIssueUseCase } from './ChangeStatusLongInReviewIssueUseCase';
+import { DateRepository } from './adapter-interfaces/DateRepository';
+import { SpreadsheetRepository } from './adapter-interfaces/SpreadsheetRepository';
+import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
+import { IssueRepository } from './adapter-interfaces/IssueRepository';
+import { Project, FieldOption } from '../entities/Project';
+import { Issue } from '../entities/Issue';
 
 describe('HandleScheduledEventUseCase', () => {
+  describe('run', () => {
+    it('should call changeStatusLongInReviewIssueUseCase.run with correct parameters', async () => {
+      // Mock all dependencies
+      const mockGenerateWorkingTimeReportUseCase = mock<GenerateWorkingTimeReportUseCase>();
+      const mockActionAnnouncementUseCase = mock<ActionAnnouncementUseCase>();
+      const mockSetWorkflowManagementIssueToStoryUseCase = mock<SetWorkflowManagementIssueToStoryUseCase>();
+      const mockClearNextActionHourUseCase = mock<ClearNextActionHourUseCase>();
+      const mockAnalyzeProblemByIssueUseCase = mock<AnalyzeProblemByIssueUseCase>();
+      const mockAnalyzeStoriesUseCase = mock<AnalyzeStoriesUseCase>();
+      const mockClearDependedIssueURLUseCase = mock<ClearDependedIssueURLUseCase>();
+      const mockCreateEstimationIssueUseCase = mock<CreateEstimationIssueUseCase>();
+      const mockConvertCheckboxToIssueInStoryIssueUseCase = mock<ConvertCheckboxToIssueInStoryIssueUseCase>();
+      const mockChangeStatusLongInReviewIssueUseCase = mock<ChangeStatusLongInReviewIssueUseCase>();
+      const mockDateRepository = mock<DateRepository>();
+      const mockSpreadsheetRepository = mock<SpreadsheetRepository>();
+      const mockProjectRepository = mock<ProjectRepository>();
+      const mockIssueRepository = mock<IssueRepository>();
+
+      // Set up test data
+      const testProject: Project = {
+        id: 'test-project-id',
+        name: 'Test Project',
+        status: {
+          name: 'Status',
+          fieldId: 'status-field-id',
+          statuses: Array<FieldOption>(),
+        },
+        nextActionDate: null,
+        nextActionHour: null,
+        story: null,
+        remainingEstimationMinutes: {
+          name: 'Remaining Estimation Minutes',
+          fieldId: 'remaining-estimation-minutes',
+        },
+        dependedIssueUrlSeparatedByComma: null,
+        completionDate50PercentConfidence: null,
+      };
+      const testIssues: Issue[] = [];
+
+      // Set up repository responses
+      mockProjectRepository.findProjectIdByUrl.mockResolvedValue('test-project-id');
+      mockProjectRepository.getProject.mockResolvedValue(testProject);
+      mockIssueRepository.getAllIssues.mockResolvedValue({ issues: testIssues, cacheUsed: false });
+      mockDateRepository.now.mockResolvedValue(new Date());
+      mockSpreadsheetRepository.getSheet.mockResolvedValue(null);
+
+      // Create use case instance
+      const useCase = new HandleScheduledEventUseCase(
+        mockGenerateWorkingTimeReportUseCase,
+        mockActionAnnouncementUseCase,
+        mockSetWorkflowManagementIssueToStoryUseCase,
+        mockClearNextActionHourUseCase,
+        mockAnalyzeProblemByIssueUseCase,
+        mockAnalyzeStoriesUseCase,
+        mockClearDependedIssueURLUseCase,
+        mockCreateEstimationIssueUseCase,
+        mockConvertCheckboxToIssueInStoryIssueUseCase,
+        mockDateRepository,
+        mockSpreadsheetRepository,
+        mockProjectRepository,
+        mockIssueRepository,
+        mockChangeStatusLongInReviewIssueUseCase,
+      );
+
+      // Execute
+      await useCase.run({
+        projectName: 'Test Project',
+        org: 'test-org',
+        projectUrl: 'https://example.com/project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: [],
+          spreadsheetUrl: 'https://example.com/sheet',
+          reportIssueLabels: [],
+        },
+        urlOfStoryView: 'https://example.com/story',
+        disabledStatus: 'disabled',
+      });
+
+      // Verify
+      expect(mockChangeStatusLongInReviewIssueUseCase.run).toHaveBeenCalledWith({
+        project: testProject,
+        issues: testIssues,
+        cacheUsed: false,
+        org: 'test-org',
+        repo: 'test-repo',
+      });
+    });
+  });
+
+
   describe('createTargetDateTimes', () => {
     const testCases: {
       lastExecutionDateTime: Date;
