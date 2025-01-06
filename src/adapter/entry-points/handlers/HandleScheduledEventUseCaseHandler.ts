@@ -160,7 +160,10 @@ export class HandleScheduledEventUseCaseHandler {
     const convertCheckboxToIssueInStoryIssueUseCase =
       new ConvertCheckboxToIssueInStoryIssueUseCase(issueRepository);
     const changeStatusLongInReviewIssueUseCase =
-      new ChangeStatusLongInReviewIssueUseCase(systemDateRepository, issueRepository);
+      new ChangeStatusLongInReviewIssueUseCase(
+        systemDateRepository,
+        issueRepository,
+      );
 
     const handleScheduledEventUseCase = new HandleScheduledEventUseCase(
       generateWorkingTimeReportUseCase,
