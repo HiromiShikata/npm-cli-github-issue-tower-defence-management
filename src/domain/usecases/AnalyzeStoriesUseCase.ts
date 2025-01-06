@@ -30,7 +30,7 @@ export class AnalyzeStoriesUseCase {
       !story ||
       !input.targetDates.find(
         (targetDate) =>
-          targetDate.getHours() === 7 && targetDate.getMinutes() === 0,
+          targetDate.getHours() === 5 && targetDate.getMinutes() === 0,
       )
     ) {
       return;
