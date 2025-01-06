@@ -21,16 +21,23 @@ describe('HandleScheduledEventUseCase', () => {
   describe('run', () => {
     it('should call changeStatusLongInReviewIssueUseCase.run with correct parameters', async () => {
       // Mock all dependencies
-      const mockGenerateWorkingTimeReportUseCase = mock<GenerateWorkingTimeReportUseCase>();
+      const mockGenerateWorkingTimeReportUseCase =
+        mock<GenerateWorkingTimeReportUseCase>();
       const mockActionAnnouncementUseCase = mock<ActionAnnouncementUseCase>();
-      const mockSetWorkflowManagementIssueToStoryUseCase = mock<SetWorkflowManagementIssueToStoryUseCase>();
+      const mockSetWorkflowManagementIssueToStoryUseCase =
+        mock<SetWorkflowManagementIssueToStoryUseCase>();
       const mockClearNextActionHourUseCase = mock<ClearNextActionHourUseCase>();
-      const mockAnalyzeProblemByIssueUseCase = mock<AnalyzeProblemByIssueUseCase>();
+      const mockAnalyzeProblemByIssueUseCase =
+        mock<AnalyzeProblemByIssueUseCase>();
       const mockAnalyzeStoriesUseCase = mock<AnalyzeStoriesUseCase>();
-      const mockClearDependedIssueURLUseCase = mock<ClearDependedIssueURLUseCase>();
-      const mockCreateEstimationIssueUseCase = mock<CreateEstimationIssueUseCase>();
-      const mockConvertCheckboxToIssueInStoryIssueUseCase = mock<ConvertCheckboxToIssueInStoryIssueUseCase>();
-      const mockChangeStatusLongInReviewIssueUseCase = mock<ChangeStatusLongInReviewIssueUseCase>();
+      const mockClearDependedIssueURLUseCase =
+        mock<ClearDependedIssueURLUseCase>();
+      const mockCreateEstimationIssueUseCase =
+        mock<CreateEstimationIssueUseCase>();
+      const mockConvertCheckboxToIssueInStoryIssueUseCase =
+        mock<ConvertCheckboxToIssueInStoryIssueUseCase>();
+      const mockChangeStatusLongInReviewIssueUseCase =
+        mock<ChangeStatusLongInReviewIssueUseCase>();
       const mockDateRepository = mock<DateRepository>();
       const mockSpreadsheetRepository = mock<SpreadsheetRepository>();
       const mockProjectRepository = mock<ProjectRepository>();
@@ -58,9 +65,14 @@ describe('HandleScheduledEventUseCase', () => {
       const testIssues: Issue[] = [];
 
       // Set up repository responses
-      mockProjectRepository.findProjectIdByUrl.mockResolvedValue('test-project-id');
+      mockProjectRepository.findProjectIdByUrl.mockResolvedValue(
+        'test-project-id',
+      );
       mockProjectRepository.getProject.mockResolvedValue(testProject);
-      mockIssueRepository.getAllIssues.mockResolvedValue({ issues: testIssues, cacheUsed: false });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        issues: testIssues,
+        cacheUsed: false,
+      });
       mockDateRepository.now.mockResolvedValue(new Date());
       mockSpreadsheetRepository.getSheet.mockResolvedValue(null);
 
@@ -99,16 +111,17 @@ describe('HandleScheduledEventUseCase', () => {
       });
 
       // Verify
-      expect(mockChangeStatusLongInReviewIssueUseCase.run).toHaveBeenCalledWith({
-        project: testProject,
-        issues: testIssues,
-        cacheUsed: false,
-        org: 'test-org',
-        repo: 'test-repo',
-      });
+      expect(mockChangeStatusLongInReviewIssueUseCase.run).toHaveBeenCalledWith(
+        {
+          project: testProject,
+          issues: testIssues,
+          cacheUsed: false,
+          org: 'test-org',
+          repo: 'test-repo',
+        },
+      );
     });
   });
-
 
   describe('createTargetDateTimes', () => {
     const testCases: {
