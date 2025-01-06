@@ -1,3 +1,18 @@
+# [1.4.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.3.0...v1.4.0) (2025-01-06)
+
+
+### Bug Fixes
+
+* bug of story issue conut in story progress issue ([57ffc8d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/57ffc8d4632188d207561c93512f763fbc653988))
+* change time to create story analysis issue ([8baf4ca](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8baf4ca4ccd0f1b150e304735868baaa58654143))
+
+
+### Features
+
+* add interface to search issues by query ([81276ad](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/81276adcd10bcff75520201e7e8c5d967b2032cf))
+* extend maximum targetDate to 300min ([da94661](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/da94661f2cd3e2a4c13f49b67f919ba9b3c55514))
+* remove values for estimation fields to update ([d05eab7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d05eab7e6e3ccad193be818e6eefb6334cbfc786))
+
 # [1.3.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.2.0...v1.3.0) (2025-01-04)
 
 

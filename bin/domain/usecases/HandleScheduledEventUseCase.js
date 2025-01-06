@@ -247,7 +247,7 @@ HandleScheduledEventUseCase.createTargetDateTimes = (from, to) => {
     targetDate.setSeconds(0);
     targetDate.setMilliseconds(0);
     while (targetDate.getTime() <= to.getTime() &&
-        targetDateTimes.length < 30) {
+        targetDateTimes.length < 300) {
         targetDateTimes.push(new Date(targetDate));
         targetDate.setMinutes(targetDate.getMinutes() + 1);
     }

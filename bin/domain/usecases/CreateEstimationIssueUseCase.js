@@ -24,6 +24,8 @@ class CreateEstimationIssueUseCase {
                 else if (!storyIssue.labels.includes('story:action:schedule-control')) {
                     continue;
                 }
+                const estimationMinutesField = input.project.remainingEstimationMinutes;
+                const completionDate50PercentConfidenceField = input.project.completionDate50PercentConfidence;
                 const assignees = new Set();
                 for (const issueInStory of storyObject.issues) {
                     if (issueInStory.isClosed ||
@@ -31,6 +33,19 @@ class CreateEstimationIssueUseCase {
                         issueInStory.labels.includes('story') ||
                         issueInStory.status === input.disabledStatus) {
                         continue;
+                    }
+                    if (estimationMinutesField &&
+                        !!issueInStory.estimationMinutes &&
+                        issueInStory.estimationMinutes > 0) {
+                        await this.issueRepository.createComment(issueInStory, `\`${estimationMinutesField.name}\` field value \`${issueInStory.estimationMinutes}\` is removed to re-estimate.`);
+                        await this.issueRepository.clearProjectField(input.project, estimationMinutesField.fieldId, issueInStory);
+                        await new Promise((resolve) => setTimeout(resolve, 5000));
+                    }
+                    if (completionDate50PercentConfidenceField &&
+                        !!issueInStory.completionDate50PercentConfidence) {
+                        await this.issueRepository.createComment(issueInStory, `\`${completionDate50PercentConfidenceField.name}\` field value \`${this.dateRepository.formatDateWithDayOfWeek(issueInStory.completionDate50PercentConfidence)}\` is removed to re-estimate.`);
+                        await this.issueRepository.clearProjectField(input.project, completionDate50PercentConfidenceField.fieldId, issueInStory);
+                        await new Promise((resolve) => setTimeout(resolve, 5000));
                     }
                     for (const assignee of issueInStory.assignees) {
                         assignees.add(assignee);

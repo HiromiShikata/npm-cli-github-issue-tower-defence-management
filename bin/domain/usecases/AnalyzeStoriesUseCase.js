@@ -9,7 +9,7 @@ class AnalyzeStoriesUseCase {
         this.run = async (input) => {
             const story = input.project.story;
             if (!story ||
-                !input.targetDates.find((targetDate) => targetDate.getHours() === 7 && targetDate.getMinutes() === 0)) {
+                !input.targetDates.find((targetDate) => targetDate.getHours() === 5 && targetDate.getMinutes() === 0)) {
                 return;
             }
             const phases = new Map();
@@ -74,7 +74,7 @@ class AnalyzeStoriesUseCase {
             await this.issueRepository.createNewIssue(input.org, input.repo, `Story progress`, this.createSummaryIssueBody(input.project, input.issues, phases, input.storyObjectMap, input.urlOfStoryView, input.members), [input.manager], ['story:workflow-management']);
         };
         this.createSummaryIssueBody = (project, issues, summaryStoryIssue, storyObjectMap, urlOfStoryView, members) => {
-            return `${this.createSummaryIssueBodyPhase(summaryStoryIssue, urlOfStoryView)}
+            return `${this.createSummaryIssueBodyPhase(summaryStoryIssue, urlOfStoryView, storyObjectMap)}
 ${this.createSummaryIssueBodyAssignedIssueCount(project, issues, storyObjectMap, urlOfStoryView, members)}
 `;
         };
@@ -108,7 +108,7 @@ ${this.createSummaryIssueBodyAssignedIssueCount(project, issues, storyObjectMap,
                 scheduleControlledUrl,
             };
         };
-        this.createSummaryIssueBodyPhase = (summaryStoryIssue, urlOfStoryView) => {
+        this.createSummaryIssueBodyPhase = (summaryStoryIssue, urlOfStoryView, storyObjectMap) => {
             return `
 
 ${Array.from(summaryStoryIssue.keys())
@@ -119,9 +119,10 @@ ${summaryStoryIssue
                     .get(key)
                     ?.map((issue) => {
                     const { storyColorIcon, stakeHolderIcon, boardIcon, boardUrl, isScheduleControlled, scheduleControlledIcon, scheduleControlledUrl, } = this.createStoryMark(urlOfStoryView, issue, issue);
-                    const remainingIssueCount = summaryStoryIssue
-                        .get(key)
-                        ?.filter((issue) => !issue.isClosed && !issue.isPr).length || 0;
+                    const issuesInStory = storyObjectMap
+                        .get(issue.name)
+                        ?.issues.filter((issue) => !issue.isClosed && !issue.isPr) || [];
+                    const remainingIssueCount = issuesInStory.length;
                     return `- ${storyColorIcon} ${stakeHolderIcon} ${isScheduleControlled ? `[${scheduleControlledIcon}](${scheduleControlledUrl})` : ''} [(${remainingIssueCount})](${boardUrl}) ${issue.url} [${boardIcon}](${boardUrl})`;
                 })
                     .join('\n')}`;

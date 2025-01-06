@@ -42,6 +42,23 @@ class ApiV3IssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
                 number: item.number,
             }));
         };
+        this.searchIssueByQuery = async (query) => {
+            const url = `https://api.github.com/search/issues?q=${query}`;
+            const response = await axios_1.default.get(url, {
+                headers: {
+                    Authorization: `token ${this.ghToken}`,
+                    Accept: 'application/vnd.github.v3+json',
+                },
+            });
+            if (response.status !== 200) {
+                throw new Error(`Failed to search issue: ${response.status}`);
+            }
+            return response.data.items.map((item) => ({
+                url: item.html_url,
+                title: item.title,
+                number: item.number,
+            }));
+        };
     }
 }
 exports.ApiV3IssueRepository = ApiV3IssueRepository;
