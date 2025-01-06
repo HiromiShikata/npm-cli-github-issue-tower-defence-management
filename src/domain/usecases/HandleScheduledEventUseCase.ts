@@ -14,6 +14,7 @@ import { AnalyzeStoriesUseCase } from './AnalyzeStoriesUseCase';
 import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
 import { CreateEstimationIssueUseCase } from './CreateEstimationIssueUseCase';
 import { ConvertCheckboxToIssueInStoryIssueUseCase } from './ConvertCheckboxToIssueInStoryIssueUseCase';
+import { ChangeStatusLongInReviewIssueUseCase } from './ChangeStatusLongInReviewIssueUseCase';
 
 export class ProjectNotFoundError extends Error {
   constructor(message: string) {
@@ -47,6 +48,7 @@ export class HandleScheduledEventUseCase {
     readonly spreadsheetRepository: SpreadsheetRepository,
     readonly projectRepository: ProjectRepository,
     readonly issueRepository: IssueRepository,
+    readonly changeStatusLongInReviewIssueUseCase: ChangeStatusLongInReviewIssueUseCase,
   ) {}
 
   run = async (input: {
@@ -240,6 +242,15 @@ export class HandleScheduledEventUseCase {
       disabledStatus: input.disabledStatus,
       storyObjectMap: storyIssues,
     });
+
+    await this.changeStatusLongInReviewIssueUseCase.run({
+      project,
+      issues,
+      cacheUsed,
+      org: input.org,
+      repo: input.workingReport.repo,
+    });
+
     return { project, issues, cacheUsed, targetDateTimes, storyIssues };
   };
   runForTargetDateTime = async (input: {
