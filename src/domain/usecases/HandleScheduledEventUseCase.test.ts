@@ -17,10 +17,9 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project, FieldOption } from '../entities/Project';
 import { Issue } from '../entities/Issue';
 
-describe('HandleScheduledEventUseCase', () => {
-  describe('run', () => {
-    it('should call changeStatusLongInReviewIssueUseCase.run with correct parameters', async () => {
-      // Mock all dependencies
+describe('HandleScheduledEventUseCase_run_method', () => {
+  describe('change_status_long_in_review_integration', () => {
+    it('calls_use_case_with_project_issues_and_cache_status', async () => {
       const mockGenerateWorkingTimeReportUseCase = mock<GenerateWorkingTimeReportUseCase>();
       const mockActionAnnouncementUseCase = mock<ActionAnnouncementUseCase>();
       const mockSetWorkflowManagementIssueToStoryUseCase = mock<SetWorkflowManagementIssueToStoryUseCase>();
@@ -35,8 +34,6 @@ describe('HandleScheduledEventUseCase', () => {
       const mockSpreadsheetRepository = mock<SpreadsheetRepository>();
       const mockProjectRepository = mock<ProjectRepository>();
       const mockIssueRepository = mock<IssueRepository>();
-
-      // Set up test data
       const testProject: Project = {
         id: 'test-project-id',
         name: 'Test Project',
@@ -57,14 +54,11 @@ describe('HandleScheduledEventUseCase', () => {
       };
       const testIssues: Issue[] = [];
 
-      // Set up repository responses
       mockProjectRepository.findProjectIdByUrl.mockResolvedValue('test-project-id');
       mockProjectRepository.getProject.mockResolvedValue(testProject);
       mockIssueRepository.getAllIssues.mockResolvedValue({ issues: testIssues, cacheUsed: false });
       mockDateRepository.now.mockResolvedValue(new Date());
       mockSpreadsheetRepository.getSheet.mockResolvedValue(null);
-
-      // Create use case instance
       const useCase = new HandleScheduledEventUseCase(
         mockGenerateWorkingTimeReportUseCase,
         mockActionAnnouncementUseCase,
@@ -82,7 +76,6 @@ describe('HandleScheduledEventUseCase', () => {
         mockChangeStatusLongInReviewIssueUseCase,
       );
 
-      // Execute
       await useCase.run({
         projectName: 'Test Project',
         org: 'test-org',
@@ -98,7 +91,6 @@ describe('HandleScheduledEventUseCase', () => {
         disabledStatus: 'disabled',
       });
 
-      // Verify
       expect(mockChangeStatusLongInReviewIssueUseCase.run).toHaveBeenCalledWith({
         project: testProject,
         issues: testIssues,
@@ -110,7 +102,7 @@ describe('HandleScheduledEventUseCase', () => {
   });
 
 
-  describe('createTargetDateTimes', () => {
+  describe('target_date_time_calculation', () => {
     const testCases: {
       lastExecutionDateTime: Date;
       now: Date;
@@ -155,7 +147,7 @@ describe('HandleScheduledEventUseCase', () => {
       },
     ];
     testCases.forEach((testCase) => {
-      it(`should return ${testCase.expected.map((d) => d.toISOString()).join(',')} when lastExecutionDateTime is ${testCase.lastExecutionDateTime.toISOString()} and now is ${testCase.now.toISOString()}`, () => {
+      it(`target_dates_from_${testCase.lastExecutionDateTime.toISOString()}_to_${testCase.now.toISOString()}`, () => {
         const result = HandleScheduledEventUseCase.createTargetDateTimes(
           testCase.lastExecutionDateTime,
           testCase.now,
