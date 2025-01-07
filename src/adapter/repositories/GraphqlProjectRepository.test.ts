@@ -104,7 +104,10 @@ describe('GraphqlProjectRepository', () => {
       const invalidProjectUrl =
         'https://github.com/users/HiromiShikata/projects/999';
       await expect(
-        repository.removeItemFromProjectByIssueUrl(invalidProjectUrl, testIssueUrl),
+        repository.removeItemFromProjectByIssueUrl(
+          invalidProjectUrl,
+          testIssueUrl,
+        ),
       ).rejects.toThrow('Project not found');
     });
 
@@ -112,7 +115,10 @@ describe('GraphqlProjectRepository', () => {
       const nonExistentIssueUrl =
         'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/999999';
       await expect(
-        repository.removeItemFromProjectByIssueUrl(projectUrl, nonExistentIssueUrl),
+        repository.removeItemFromProjectByIssueUrl(
+          projectUrl,
+          nonExistentIssueUrl,
+        ),
       ).rejects.toThrow('Item not found in project');
     });
   });
