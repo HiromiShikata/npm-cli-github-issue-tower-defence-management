@@ -274,4 +274,141 @@ export class GraphqlProjectRepository
         : null,
     };
   };
+
+  findProjectItemIdByIssue = async (
+    owner: string,
+    repo: string,
+    issueNumber: number,
+    projectId: Project['id'],
+  ): Promise<string | null> => {
+    const query = `query FindProjectItem($projectId: ID!, $query: String!) {
+      node(id: $projectId) {
+        ... on ProjectV2 {
+          items(first: 100, query: $query) {
+            nodes {
+              id
+              content {
+                ... on Issue {
+                  number
+                  repository {
+                    name
+                    owner {
+                      login
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }`;
+
+    const response = await axios.post<{
+      data: {
+        node: {
+          items: {
+            nodes: Array<{
+              id: string;
+              content: {
+                number: number;
+                repository: {
+                  name: string;
+                  owner: {
+                    login: string;
+                  };
+                };
+              };
+            }>;
+          };
+        };
+      };
+    }>(
+      'https://api.github.com/graphql',
+      {
+        query,
+        variables: {
+          projectId,
+          query: `repo:${owner}/${repo} number:${issueNumber}`,
+        },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${this.ghToken}`,
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+
+    const items = response.data.data.node.items.nodes;
+    const matchingItem = items.find(
+      (item) =>
+        item.content.repository.owner.login === owner &&
+        item.content.repository.name === repo &&
+        item.content.number === issueNumber,
+    );
+
+    return matchingItem?.id ?? null;
+  };
+
+  removeItemFromProjectByIssueUrl = async (
+    projectUrl: string,
+    issueUrl: string,
+  ): Promise<void> => {
+    const projectId = await this.findProjectIdByUrl(projectUrl);
+    if (!projectId) {
+      throw new Error('Project not found');
+    }
+
+    const { owner, repo, issueNumber } = this.extractIssueFromUrl(issueUrl);
+    const itemId = await this.findProjectItemIdByIssue(
+      owner,
+      repo,
+      issueNumber,
+      projectId,
+    );
+    if (!itemId) {
+      throw new Error('Item not found in project');
+    }
+
+    await this.removeItemFromProject(projectId, itemId);
+  };
+
+  removeItemFromProject = async (
+    projectId: Project['id'],
+    itemId: string,
+  ): Promise<void> => {
+    const query = `mutation RemoveProjectV2ItemById($projectId: ID!, $itemId: ID!) {
+      deleteProjectV2Item(input: { projectId: $projectId, itemId: $itemId }) {
+        deletedItemId
+      }
+    }`;
+
+    try {
+      await axios.post<{
+        data: {
+          deleteProjectV2Item: {
+            deletedItemId: string;
+          };
+        };
+      }>(
+        'https://api.github.com/graphql',
+        {
+          query,
+          variables: { projectId, itemId },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        throw new Error('Project or item not found');
+      }
+      throw error;
+    }
+  };
 }
