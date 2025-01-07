@@ -1,3 +1,15 @@
+# [1.5.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.4.0...v1.5.0) (2025-01-07)
+
+
+### Bug Fixes
+
+* correct constructor argument order for ChangeStatusLongInReviewIssueUseCase ([#21](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/21)) ([2a70ce0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2a70ce0f33f3f0ff40a7237a2231179694dcb086))
+
+
+### Features
+
+* integrate ChangeStatusLongInReviewIssueUseCase ([#21](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/21)) ([03d1527](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/03d15276e6a8247ffd15081abc921ff72ee5dff0))
+
 # [1.4.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.3.0...v1.4.0) (2025-01-06)
 
 

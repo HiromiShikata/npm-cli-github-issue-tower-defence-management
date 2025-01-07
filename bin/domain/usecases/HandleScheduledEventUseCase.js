@@ -9,7 +9,7 @@ class ProjectNotFoundError extends Error {
 }
 exports.ProjectNotFoundError = ProjectNotFoundError;
 class HandleScheduledEventUseCase {
-    constructor(generateWorkingTimeReportUseCase, actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
+    constructor(generateWorkingTimeReportUseCase, actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusLongInReviewIssueUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
         this.generateWorkingTimeReportUseCase = generateWorkingTimeReportUseCase;
         this.actionAnnouncementUseCase = actionAnnouncementUseCase;
         this.setWorkflowManagementIssueToStoryUseCase = setWorkflowManagementIssueToStoryUseCase;
@@ -19,6 +19,7 @@ class HandleScheduledEventUseCase {
         this.clearDependedIssueURLUseCase = clearDependedIssueURLUseCase;
         this.createEstimationIssueUseCase = createEstimationIssueUseCase;
         this.convertCheckboxToIssueInStoryIssueUseCase = convertCheckboxToIssueInStoryIssueUseCase;
+        this.changeStatusLongInReviewIssueUseCase = changeStatusLongInReviewIssueUseCase;
         this.dateRepository = dateRepository;
         this.spreadsheetRepository = spreadsheetRepository;
         this.projectRepository = projectRepository;
@@ -104,6 +105,13 @@ class HandleScheduledEventUseCase {
                 repo: input.workingReport.repo,
                 storyObjectMap: storyIssues,
                 disabledStatus: input.disabledStatus,
+            });
+            await this.changeStatusLongInReviewIssueUseCase.run({
+                project,
+                issues,
+                cacheUsed,
+                org: input.org,
+                repo: input.workingReport.repo,
             });
             await this.actionAnnouncementUseCase.run({
                 targetDates: targetDateTimes,
