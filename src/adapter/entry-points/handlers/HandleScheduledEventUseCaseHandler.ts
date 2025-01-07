@@ -26,6 +26,7 @@ import { ClearDependedIssueURLUseCase } from '../../../domain/usecases/ClearDepe
 import { CreateEstimationIssueUseCase } from '../../../domain/usecases/CreateEstimationIssueUseCase';
 import axios, { AxiosError } from 'axios';
 import { ConvertCheckboxToIssueInStoryIssueUseCase } from '../../../domain/usecases/ConvertCheckboxToIssueInStoryIssueUseCase';
+import { ChangeStatusLongInReviewIssueUseCase } from '../../../domain/usecases/ChangeStatusLongInReviewIssueUseCase';
 
 export class HandleScheduledEventUseCaseHandler {
   handle = async (
@@ -158,6 +159,11 @@ export class HandleScheduledEventUseCaseHandler {
     );
     const convertCheckboxToIssueInStoryIssueUseCase =
       new ConvertCheckboxToIssueInStoryIssueUseCase(issueRepository);
+    const changeStatusLongInReviewIssueUseCase =
+      new ChangeStatusLongInReviewIssueUseCase(
+        systemDateRepository,
+        issueRepository,
+      );
 
     const handleScheduledEventUseCase = new HandleScheduledEventUseCase(
       generateWorkingTimeReportUseCase,
@@ -169,6 +175,7 @@ export class HandleScheduledEventUseCaseHandler {
       clearDependedIssueURLUseCase,
       createEstimationIssueUseCase,
       convertCheckboxToIssueInStoryIssueUseCase,
+      changeStatusLongInReviewIssueUseCase,
       systemDateRepository,
       googleSpreadsheetRepository,
       projectRepository,
