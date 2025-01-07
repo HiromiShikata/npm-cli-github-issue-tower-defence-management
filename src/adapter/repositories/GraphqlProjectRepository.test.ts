@@ -72,4 +72,54 @@ describe('GraphqlProjectRepository', () => {
       });
     });
   });
+
+  describe('removeItemFromProject', () => {
+    const testItemId = 'PVTI_lAHOAGJHa84AFhgFzgM5rXY';
+
+    it('should remove item from project successfully', async () => {
+      await expect(
+        repository.removeItemFromProject(projectId, testItemId),
+      ).resolves.not.toThrow();
+    });
+
+    it('should throw error when project or item not found', async () => {
+      const invalidItemId = 'invalid_item_id';
+      await expect(
+        repository.removeItemFromProject(projectId, invalidItemId),
+      ).rejects.toThrow('Project or item not found');
+    });
+  });
+
+  describe('removeItemFromProjectByIssueUrl', () => {
+    const testIssueUrl =
+      'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/19';
+
+    it('should remove item by issue URL successfully', async () => {
+      await expect(
+        repository.removeItemFromProjectByIssueUrl(projectUrl, testIssueUrl),
+      ).resolves.not.toThrow();
+    });
+
+    it('should throw error when project not found', async () => {
+      const invalidProjectUrl =
+        'https://github.com/users/HiromiShikata/projects/999';
+      await expect(
+        repository.removeItemFromProjectByIssueUrl(
+          invalidProjectUrl,
+          testIssueUrl,
+        ),
+      ).rejects.toThrow('Project not found');
+    });
+
+    it('should throw error when issue not found in project', async () => {
+      const nonExistentIssueUrl =
+        'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/999999';
+      await expect(
+        repository.removeItemFromProjectByIssueUrl(
+          projectUrl,
+          nonExistentIssueUrl,
+        ),
+      ).rejects.toThrow('Item not found in project');
+    });
+  });
 });
