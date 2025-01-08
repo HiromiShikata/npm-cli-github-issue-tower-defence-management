@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.5.0...v1.6.0) (2025-01-08)
+
+
+### Features
+
+* add checkbox to story lines in story progress ([#41](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/41)) ([8ad67ba](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8ad67ba34e283b53a4d867e61d8d978d2666f8c8))
+
 # [1.5.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.4.0...v1.5.0) (2025-01-07)
 
 
