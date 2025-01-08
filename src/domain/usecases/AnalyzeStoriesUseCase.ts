@@ -232,7 +232,7 @@ ${summaryStoryIssue
         .get(issue.name)
         ?.issues.filter((issue) => !issue.isClosed && !issue.isPr) || [];
     const remainingIssueCount = issuesInStory.length;
-    return `- ${storyColorIcon} ${stakeHolderIcon} ${isScheduleControlled ? `[${scheduleControlledIcon}](${scheduleControlledUrl})` : ''} [(${remainingIssueCount})](${boardUrl}) ${issue.url} [${boardIcon}](${boardUrl})`;
+    return `- [ ] ${storyColorIcon} ${stakeHolderIcon} ${isScheduleControlled ? `[${scheduleControlledIcon}](${scheduleControlledUrl})` : ''} [(${remainingIssueCount})](${boardUrl}) ${issue.url} [${boardIcon}](${boardUrl})`;
   })
   .join('\n')}`;
   })
