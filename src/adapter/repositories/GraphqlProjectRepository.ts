@@ -70,7 +70,7 @@ export class GraphqlProjectRepository
       response.data.data.organization?.projectV2?.id ||
       response.data.data.user?.projectV2?.id;
     if (!projectId) {
-      throw new Error('projectId is not found');
+      throw new Error('Project not found');
     }
     return projectId;
   };
@@ -340,12 +340,15 @@ export class GraphqlProjectRepository
       },
     );
 
-    const items = response.data.data.node.items.nodes;
+    const items = response.data.data.node?.items?.nodes;
+    if (!items) {
+      return null;
+    }
     const matchingItem = items.find(
       (item) =>
-        item.content.repository.owner.login === owner &&
-        item.content.repository.name === repo &&
-        item.content.number === issueNumber,
+        item.content?.repository?.owner?.login === owner &&
+        item.content?.repository?.name === repo &&
+        item.content?.number === issueNumber,
     );
 
     return matchingItem?.id ?? null;
@@ -385,12 +388,17 @@ export class GraphqlProjectRepository
     }`;
 
     try {
-      await axios.post<{
+      const response = await axios.post<{
         data: {
           deleteProjectV2Item: {
             deletedItemId: string;
           };
         };
+        errors?: Array<{
+          type: string;
+          path: string[];
+          message: string;
+        }>;
       }>(
         'https://api.github.com/graphql',
         {
@@ -404,8 +412,12 @@ export class GraphqlProjectRepository
           },
         },
       );
+
+      if (response.data.errors) {
+        throw new Error('Project or item not found');
+      }
     } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
+      if (axios.isAxiosError(error)) {
         throw new Error('Project or item not found');
       }
       throw error;
