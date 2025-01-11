@@ -1,5 +1,8 @@
 import { GraphqlProjectRepository } from './GraphqlProjectRepository';
 import { LocalStorageRepository } from './LocalStorageRepository';
+import axios from 'axios';
+
+jest.mock('axios');
 
 describe('GraphqlProjectRepository', () => {
   const localStorageRepository = new LocalStorageRepository();
@@ -9,6 +12,7 @@ describe('GraphqlProjectRepository', () => {
   const projectUrl = `https://github.com/users/HiromiShikata/projects/49`;
   const projectNumber = 49;
   const projectId = 'PVT_kwHOAGJHa84AFhgF';
+  const testItemId = 'PVTI_lAHOAGJHa84AFhgFzgM5rXY';
 
   beforeEach(() => {
     repository = new GraphqlProjectRepository(localStorageRepository, token);
@@ -76,6 +80,23 @@ describe('GraphqlProjectRepository', () => {
   describe('removeItemFromProject', () => {
     const testItemId = 'PVTI_lAHOAGJHa84AFhgFzgM5rXY';
 
+    it('should remove item from project successfully', async () => {
+      const mockResponse = {
+        data: {
+          data: {
+            deleteProjectV2Item: {
+              deletedItemId: testItemId
+            }
+          }
+        }
+      };
+      jest.spyOn(axios, 'post').mockResolvedValueOnce(mockResponse);
+      
+      await expect(
+        repository.removeItemFromProject(projectId, testItemId),
+      ).resolves.not.toThrow();
+    });
+
     it('should throw error when project or item not found', async () => {
       const invalidItemId = 'invalid_item_id';
       await expect(
@@ -87,6 +108,48 @@ describe('GraphqlProjectRepository', () => {
   describe('removeItemFromProjectByIssueUrl', () => {
     const testIssueUrl =
       'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/19';
+
+    it('should remove item by issue URL successfully', async () => {
+      const mockFindResponse = {
+        data: {
+          data: {
+            node: {
+              items: {
+                nodes: [{
+                  id: testItemId,
+                  content: {
+                    number: 19,
+                    repository: {
+                      name: 'npm-cli-github-issue-tower-defence-management',
+                      owner: {
+                        login: 'HiromiShikata'
+                      }
+                    }
+                  }
+                }]
+              }
+            }
+          }
+        }
+      };
+      const mockDeleteResponse = {
+        data: {
+          data: {
+            deleteProjectV2Item: {
+              deletedItemId: testItemId
+            }
+          }
+        }
+      };
+      
+      jest.spyOn(axios, 'post')
+        .mockResolvedValueOnce(mockFindResponse)
+        .mockResolvedValueOnce(mockDeleteResponse);
+
+      await expect(
+        repository.removeItemFromProjectByIssueUrl(projectUrl, testIssueUrl),
+      ).resolves.not.toThrow();
+    });
 
     it('should throw error when project not found', async () => {
       const invalidProjectUrl =
