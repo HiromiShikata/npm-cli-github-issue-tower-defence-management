@@ -389,7 +389,7 @@ export class GraphqlProjectRepository
     }
 
     await this.removeItemFromProject(projectId, itemId);
-  };
+  }
 
   public async removeItemFromProject(
     projectId: Project['id'],
@@ -427,11 +427,14 @@ export class GraphqlProjectRepository
         },
       );
 
-      if (response.data.errors || !response.data.data?.deleteProjectV2Item?.deletedItemId) {
+      if (
+        response.data.errors ||
+        !response.data.data?.deleteProjectV2Item?.deletedItemId
+      ) {
         throw new Error('Project or item not found');
       }
     } catch (error) {
       throw new Error('Project or item not found');
     }
-  };
+  }
 }
