@@ -102,12 +102,12 @@ describe('GraphqlProjectRepository', () => {
       const mockResponse = {
         data: {
           data: {
-            deleteProjectV2Item: null
-          }
-        }
+            deleteProjectV2Item: null,
+          },
+        },
       };
       jest.spyOn(axios, 'post').mockResolvedValueOnce(mockResponse);
-      
+
       await expect(
         repository.removeItemFromProject(projectId, invalidItemId),
       ).rejects.toThrow('Project or item not found');
@@ -170,12 +170,12 @@ describe('GraphqlProjectRepository', () => {
         data: {
           data: {
             organization: null,
-            user: null
-          }
-        }
+            user: null,
+          },
+        },
       };
       jest.spyOn(axios, 'post').mockResolvedValueOnce(mockResponse);
-      
+
       await expect(
         repository.removeItemFromProjectByIssueUrl(
           invalidProjectUrl,
@@ -192,28 +192,29 @@ describe('GraphqlProjectRepository', () => {
           data: {
             organization: {
               projectV2: {
-                id: projectId
-              }
-            }
-          }
-        }
+                id: projectId,
+              },
+            },
+          },
+        },
       };
       const mockFindItemResponse = {
         data: {
           data: {
             node: {
               items: {
-                nodes: []
-              }
-            }
-          }
-        }
+                nodes: [],
+              },
+            },
+          },
+        },
       };
-      
-      jest.spyOn(axios, 'post')
+
+      jest
+        .spyOn(axios, 'post')
         .mockResolvedValueOnce(mockFindProjectResponse)
         .mockResolvedValueOnce(mockFindItemResponse);
-      
+
       await expect(
         repository.removeItemFromProjectByIssueUrl(
           projectUrl,
