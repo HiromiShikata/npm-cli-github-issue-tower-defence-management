@@ -85,13 +85,13 @@ describe('GraphqlProjectRepository', () => {
         data: {
           data: {
             deleteProjectV2Item: {
-              deletedItemId: testItemId
-            }
-          }
-        }
+              deletedItemId: testItemId,
+            },
+          },
+        },
       };
       jest.spyOn(axios, 'post').mockResolvedValueOnce(mockResponse);
-      
+
       await expect(
         repository.removeItemFromProject(projectId, testItemId),
       ).resolves.not.toThrow();
@@ -115,34 +115,37 @@ describe('GraphqlProjectRepository', () => {
           data: {
             node: {
               items: {
-                nodes: [{
-                  id: testItemId,
-                  content: {
-                    number: 19,
-                    repository: {
-                      name: 'npm-cli-github-issue-tower-defence-management',
-                      owner: {
-                        login: 'HiromiShikata'
-                      }
-                    }
-                  }
-                }]
-              }
-            }
-          }
-        }
+                nodes: [
+                  {
+                    id: testItemId,
+                    content: {
+                      number: 19,
+                      repository: {
+                        name: 'npm-cli-github-issue-tower-defence-management',
+                        owner: {
+                          login: 'HiromiShikata',
+                        },
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
       };
       const mockDeleteResponse = {
         data: {
           data: {
             deleteProjectV2Item: {
-              deletedItemId: testItemId
-            }
-          }
-        }
+              deletedItemId: testItemId,
+            },
+          },
+        },
       };
-      
-      jest.spyOn(axios, 'post')
+
+      jest
+        .spyOn(axios, 'post')
         .mockResolvedValueOnce(mockFindResponse)
         .mockResolvedValueOnce(mockDeleteResponse);
 
