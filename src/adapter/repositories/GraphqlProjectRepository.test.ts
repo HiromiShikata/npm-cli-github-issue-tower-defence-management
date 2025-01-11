@@ -99,6 +99,15 @@ describe('GraphqlProjectRepository', () => {
 
     it('should throw error when project or item not found', async () => {
       const invalidItemId = 'invalid_item_id';
+      const mockResponse = {
+        data: {
+          data: {
+            deleteProjectV2Item: null
+          }
+        }
+      };
+      jest.spyOn(axios, 'post').mockResolvedValueOnce(mockResponse);
+      
       await expect(
         repository.removeItemFromProject(projectId, invalidItemId),
       ).rejects.toThrow('Project or item not found');
@@ -157,6 +166,16 @@ describe('GraphqlProjectRepository', () => {
     it('should throw error when project not found', async () => {
       const invalidProjectUrl =
         'https://github.com/users/HiromiShikata/projects/999';
+      const mockResponse = {
+        data: {
+          data: {
+            organization: null,
+            user: null
+          }
+        }
+      };
+      jest.spyOn(axios, 'post').mockResolvedValueOnce(mockResponse);
+      
       await expect(
         repository.removeItemFromProjectByIssueUrl(
           invalidProjectUrl,
@@ -168,6 +187,33 @@ describe('GraphqlProjectRepository', () => {
     it('should throw error when issue not found in project', async () => {
       const nonExistentIssueUrl =
         'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/999999';
+      const mockFindProjectResponse = {
+        data: {
+          data: {
+            organization: {
+              projectV2: {
+                id: projectId
+              }
+            }
+          }
+        }
+      };
+      const mockFindItemResponse = {
+        data: {
+          data: {
+            node: {
+              items: {
+                nodes: []
+              }
+            }
+          }
+        }
+      };
+      
+      jest.spyOn(axios, 'post')
+        .mockResolvedValueOnce(mockFindProjectResponse)
+        .mockResolvedValueOnce(mockFindItemResponse);
+      
       await expect(
         repository.removeItemFromProjectByIssueUrl(
           projectUrl,
