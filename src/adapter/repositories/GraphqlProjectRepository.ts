@@ -347,12 +347,12 @@ export class GraphqlProjectRepository
       );
 
       if (response.data.errors) {
-        return null;
+        throw new Error('Project not found');
       }
 
       const items = response.data.data?.node?.items?.nodes;
       if (!items) {
-        return null;
+        throw new Error('Project not found');
       }
 
       const matchingItem = items.find(
@@ -364,7 +364,7 @@ export class GraphqlProjectRepository
 
       return matchingItem?.id ?? null;
     } catch (error) {
-      return null;
+      throw new Error('Project not found');
     }
   };
 

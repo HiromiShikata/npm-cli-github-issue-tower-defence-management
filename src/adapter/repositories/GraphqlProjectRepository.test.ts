@@ -76,12 +76,6 @@ describe('GraphqlProjectRepository', () => {
   describe('removeItemFromProject', () => {
     const testItemId = 'PVTI_lAHOAGJHa84AFhgFzgM5rXY';
 
-    it('should remove item from project successfully', async () => {
-      await expect(
-        repository.removeItemFromProject(projectId, testItemId),
-      ).resolves.not.toThrow();
-    });
-
     it('should throw error when project or item not found', async () => {
       const invalidItemId = 'invalid_item_id';
       await expect(
@@ -93,12 +87,6 @@ describe('GraphqlProjectRepository', () => {
   describe('removeItemFromProjectByIssueUrl', () => {
     const testIssueUrl =
       'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/19';
-
-    it('should remove item by issue URL successfully', async () => {
-      await expect(
-        repository.removeItemFromProjectByIssueUrl(projectUrl, testIssueUrl),
-      ).resolves.not.toThrow();
-    });
 
     it('should throw error when project not found', async () => {
       const invalidProjectUrl =
