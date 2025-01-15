@@ -45,6 +45,25 @@ export class AnalyzeProblemByIssueUseCase {
       return;
     }
     await this.checkInProgress({ ...input, targetDate });
+    await this.createWorkflowIssueAlert(
+      targetDate,
+      input.manager,
+      input.members,
+      input.org,
+      input.repo,
+      input.storyObjectMap,
+      input.disabledStatus,
+    );
+
+    if (
+      !input.targetDates.find(
+        (targetDate) =>
+          targetDate.getHours() === 5 && targetDate.getMinutes() === 0,
+      )
+    ) {
+      return;
+    }
+
     for (const storyObject of input.storyObjectMap.values()) {
       const storyIssue = storyObject.storyIssue;
       if (!storyIssue) {
@@ -56,6 +75,53 @@ export class AnalyzeProblemByIssueUseCase {
       );
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }
+  };
+  createWorkflowIssueAlert = async (
+    targetDate: Date,
+    manager: Member['name'],
+    members: Member['name'][],
+    org: string,
+    repo: string,
+    storyObjectMap: StoryObjectMap,
+    disabledStatus: string,
+  ) => {
+    const workflowIssues = Array.from(storyObjectMap.values()).find(
+      (storyObject) =>
+        storyObject.story.name.startsWith('regular / ') &&
+        storyObject.story.name.toLowerCase().includes('workflow'),
+    );
+    if (!workflowIssues) {
+      return;
+    }
+    const assigneeWorkflowIssues: Map<Member['name'], Issue[]> = new Map(
+      members
+        .map((member): [string, Issue[]] => {
+          const issues = workflowIssues.issues.filter(
+            (issue) =>
+              isVisibleIssue(issue, member, targetDate, disabledStatus) &&
+              !issue.isPr,
+          );
+          return [member, issues];
+        })
+        .sort((a, b) => b[1].length - a[1].length),
+    );
+
+    await this.issueRepository.createNewIssue(
+      org,
+      repo,
+      'Workflow Issues Count Alert',
+      Array.from(assigneeWorkflowIssues)
+        .map(([assignee, issues]) => {
+          if (issues.length <= 1) {
+            return ``;
+          }
+          return `- @${assignee} ${issues.length}
+${issues.map((issue) => `  - ${issue.url}`).join('\n')}`;
+        })
+        .join('\n'),
+      [manager],
+      ['story:workflow-management'],
+    );
   };
   checkInProgress = async (
     input: Parameters<AnalyzeProblemByIssueUseCase['run']>[0] & {
