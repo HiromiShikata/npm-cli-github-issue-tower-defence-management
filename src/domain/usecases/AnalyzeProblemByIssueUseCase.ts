@@ -104,8 +104,8 @@ export class AnalyzeProblemByIssueUseCase {
     await this.issueRepository.createNewIssue(
       input.org,
       input.repo,
-      'Check in progress',
-      `${assigneeToNotify.join('\n')}`,
+      '`In progress` Violation Recorded',
+      `${assigneeToNotify.map((assignee) => `@${assignee}`).join('\n')}`,
       [input.manager],
       ['story:workflow-management'],
     );
