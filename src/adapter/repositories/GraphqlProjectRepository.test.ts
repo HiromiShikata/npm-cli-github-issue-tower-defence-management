@@ -3,7 +3,7 @@ import { LocalStorageRepository } from './LocalStorageRepository';
 import axios from 'axios';
 
 jest.mock('axios');
-const mockedAxios = axios as jest.Mocked<typeof axios>;
+const mockedAxios = jest.mocked(axios, { shallow: false });
 
 describe('GraphqlProjectRepository', () => {
   const localStorageRepository = new LocalStorageRepository();
