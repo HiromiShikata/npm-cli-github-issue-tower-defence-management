@@ -34,7 +34,7 @@ describe('GraphqlProjectRepository', () => {
           },
         },
       };
-      mockedAxios.post.mockResolvedValueOnce(mockResponse);
+      mockedAxios.post.mockResolvedValueOnce({ data: mockResponse });
 
       const response = await repository.fetchProjectId(login, projectNumber);
       expect(response).toEqual(projectId);
@@ -55,7 +55,7 @@ describe('GraphqlProjectRepository', () => {
           },
         },
       };
-      mockedAxios.post.mockResolvedValueOnce(mockResponse);
+      mockedAxios.post.mockResolvedValueOnce({ data: mockResponse });
 
       const response = await repository.findProjectIdByUrl(projectUrl);
       expect(response).toEqual(projectId);
@@ -115,7 +115,7 @@ describe('GraphqlProjectRepository', () => {
           },
         },
       };
-      mockedAxios.post.mockResolvedValueOnce(mockResponse);
+      mockedAxios.post.mockResolvedValueOnce({ data: mockResponse });
 
       const project = await repository.getProject(projectId);
       expect(project).toEqual({
@@ -171,7 +171,7 @@ describe('GraphqlProjectRepository', () => {
           },
         },
       };
-      mockedAxios.post.mockResolvedValueOnce(mockResponse);
+      mockedAxios.post.mockResolvedValueOnce({ data: mockResponse });
 
       await expect(
         repository.removeItemFromProject(projectId, testItemId),
@@ -187,7 +187,7 @@ describe('GraphqlProjectRepository', () => {
           },
         },
       };
-      mockedAxios.post.mockResolvedValueOnce(mockResponse);
+      mockedAxios.post.mockResolvedValueOnce({ data: mockResponse });
 
       await expect(
         repository.removeItemFromProject(projectId, invalidItemId),
