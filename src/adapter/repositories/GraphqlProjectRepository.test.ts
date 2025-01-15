@@ -16,10 +16,6 @@ interface ProjectItemNode {
   };
 }
 
-interface GraphQLResponse<T> {
-  data: T;
-}
-
 interface ProjectItemsData {
   data: {
     node: {
