@@ -36,10 +36,7 @@ export class AnalyzeProblemByIssueUseCase {
     const story = input.project.story;
     if (
       !story ||
-      !input.targetDates.find(
-        (targetDate) =>
-          targetDate.getHours() === 0 && targetDate.getMinutes() === 0,
-      )
+      !input.targetDates.find((targetDate) => targetDate.getMinutes() === 0)
     ) {
       return;
     }
