@@ -1,13 +1,5 @@
 import { jest } from '@jest/globals';
 
-interface GoogleAuthClient {
-  getClient: jest.Mock<Promise<Record<string, never>>>;
-}
-
-interface GoogleAuth {
-  GoogleAuth: jest.Mock<GoogleAuthClient, []>;
-}
-
 interface SpreadsheetResponse {
   status: number;
   data: {
@@ -18,15 +10,30 @@ interface SpreadsheetResponse {
   };
 }
 
-const mockGoogleAuth = jest
-  .fn<GoogleAuthClient, []>()
-  .mockImplementation(() => ({
-    getClient: jest
-      .fn<Promise<Record<string, never>>, []>()
-      .mockResolvedValue({}),
-  }));
+interface GetValuesParams {
+  range: string;
+}
 
-const mockAuth: GoogleAuth = {
+interface UpdateValuesParams {
+  range: string;
+  requestBody?: { values?: string[][] };
+}
+
+interface BatchUpdateParams {
+  requestBody?: {
+    requests?: Array<{ addSheet?: { properties: { title: string } } }>;
+  };
+}
+
+const mockGoogleAuth = jest.fn(() => {
+  return {
+    getClient() {
+      return Promise.resolve({});
+    },
+  };
+});
+
+const mockAuth = {
   GoogleAuth: mockGoogleAuth,
 };
 
@@ -51,10 +58,10 @@ const sheetData = new Map<string, string[][]>(initialSheetData);
 
 const mockSpreadsheets = {
   values: {
-    get: jest
-      .fn()
-      .mockImplementation(
-        ({ range }: { range: string }): Promise<SpreadsheetResponse> => {
+    get: jest.fn(function get(
+      params: { range: string },
+    ): Promise<SpreadsheetResponse> {
+      const { range } = params;
           const sheetName = range.split('!')[0];
           const values = sheetData.get(sheetName);
           const response: SpreadsheetResponse = {
@@ -66,16 +73,10 @@ const mockSpreadsheets = {
           return Promise.resolve(response);
         },
       ),
-    update: jest
-      .fn()
-      .mockImplementation(
-        ({
-          range,
-          requestBody,
-        }: {
-          range: string;
-          requestBody?: { values?: string[][] };
-        }): Promise<SpreadsheetResponse> => {
+    update: jest.fn(function update(
+      params: { range: string; requestBody?: { values?: string[][] } },
+    ): Promise<SpreadsheetResponse> {
+      const { range, requestBody } = params;
           const [sheetName, cellRange] = range.split('!');
           const match = cellRange.match(/([A-Z]+)(\d+)/);
           if (!match) return Promise.reject(new Error('Invalid range'));
@@ -108,16 +109,10 @@ const mockSpreadsheets = {
           });
         },
       ),
-    append: jest
-      .fn()
-      .mockImplementation(
-        ({
-          range,
-          requestBody,
-        }: {
-          range: string;
-          requestBody?: { values?: string[][] };
-        }): Promise<SpreadsheetResponse> => {
+    append: jest.fn(function append(
+      params: { range: string; requestBody?: { values?: string[][] } },
+    ): Promise<SpreadsheetResponse> {
+      const { range, requestBody } = params;
           const sheetName = range.split('!')[0];
           if (requestBody?.values) {
             let sheetValues = sheetData.get(sheetName);
@@ -147,14 +142,10 @@ const mockSpreadsheets = {
       },
     });
   }),
-  batchUpdate: jest.fn().mockImplementation(
-    ({
-      requestBody,
-    }: {
-      requestBody?: {
-        requests?: Array<{ addSheet?: { properties: { title: string } } }>;
-      };
-    }): Promise<SpreadsheetResponse> => {
+  batchUpdate: jest.fn(function batchUpdate(
+    params: { requestBody?: { requests?: Array<{ addSheet?: { properties: { title: string } } }> } },
+  ): Promise<SpreadsheetResponse> {
+    const { requestBody } = params;
       if (requestBody?.requests) {
         const addSheetRequest = requestBody.requests.find(
           (request) => request.addSheet,
