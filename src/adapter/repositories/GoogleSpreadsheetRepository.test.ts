@@ -1,6 +1,8 @@
 import { GoogleSpreadsheetRepository } from './GoogleSpreadsheetRepository';
-import { describe, test, expect } from '@jest/globals';
+import { describe, test, expect, jest } from '@jest/globals';
 import { LocalStorageRepository } from './LocalStorageRepository';
+
+jest.mock('googleapis');
 
 describe('GoogleSpreadsheetRepository', () => {
   const localStorageRepository = new LocalStorageRepository();
