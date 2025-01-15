@@ -34,7 +34,7 @@ describe('GraphqlProjectRepository', () => {
           },
         },
       };
-      mockedAxios.post.mockResolvedValueOnce({ data: mockResponse });
+      mockedAxios.post.mockResolvedValueOnce(mockResponse);
 
       const response = await repository.fetchProjectId(login, projectNumber);
       expect(response).toEqual(projectId);
@@ -55,7 +55,7 @@ describe('GraphqlProjectRepository', () => {
           },
         },
       };
-      mockedAxios.post.mockResolvedValueOnce({ data: mockResponse });
+      mockedAxios.post.mockResolvedValueOnce(mockResponse);
 
       const response = await repository.findProjectIdByUrl(projectUrl);
       expect(response).toEqual(projectId);
@@ -115,7 +115,7 @@ describe('GraphqlProjectRepository', () => {
           },
         },
       };
-      mockedAxios.post.mockResolvedValueOnce({ data: mockResponse });
+      mockedAxios.post.mockResolvedValueOnce(mockResponse);
 
       const project = await repository.getProject(projectId);
       expect(project).toEqual({
@@ -164,10 +164,8 @@ describe('GraphqlProjectRepository', () => {
     it('should remove item from project successfully', async () => {
       const mockResponse = {
         data: {
-          data: {
-            deleteProjectV2Item: {
-              deletedItemId: testItemId,
-            },
+          deleteProjectV2Item: {
+            deletedItemId: testItemId,
           },
         },
       };
@@ -182,12 +180,10 @@ describe('GraphqlProjectRepository', () => {
       const invalidItemId = 'invalid_item_id';
       const mockResponse = {
         data: {
-          data: {
-            deleteProjectV2Item: null,
-          },
+          deleteProjectV2Item: null,
         },
       };
-      mockedAxios.post.mockResolvedValueOnce({ data: mockResponse });
+      mockedAxios.post.mockResolvedValueOnce(mockResponse);
 
       await expect(
         repository.removeItemFromProject(projectId, invalidItemId),
@@ -261,10 +257,8 @@ describe('GraphqlProjectRepository', () => {
         'https://github.com/users/HiromiShikata/projects/999';
       const mockResponse = {
         data: {
-          data: {
-            organization: null,
-            user: null,
-          },
+          organization: null,
+          user: null,
         },
       };
       mockedAxios.post.mockResolvedValueOnce(mockResponse);
