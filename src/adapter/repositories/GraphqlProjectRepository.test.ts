@@ -3,6 +3,7 @@ import { LocalStorageRepository } from './LocalStorageRepository';
 import axios from 'axios';
 
 jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('GraphqlProjectRepository', () => {
   const localStorageRepository = new LocalStorageRepository();
@@ -16,18 +17,46 @@ describe('GraphqlProjectRepository', () => {
 
   beforeEach(() => {
     repository = new GraphqlProjectRepository(localStorageRepository, token);
+    jest.clearAllMocks();
   });
 
   describe('fetchProjectId', () => {
     it('should fetch project ID using GraphQL API', async () => {
-      const response = await repository.fetchProjectId(login, projectNumber);
+      const mockResponse = {
+        data: {
+          data: {
+            organization: {
+              projectV2: {
+                id: projectId,
+              },
+            },
+            user: null,
+          },
+        },
+      };
+      mockedAxios.post.mockResolvedValueOnce(mockResponse);
 
+      const response = await repository.fetchProjectId(login, projectNumber);
       expect(response).toEqual(projectId);
     });
   });
 
   describe('findProjectIdByUrl', () => {
     it('should extract project ID from URL and fetch it', async () => {
+      const mockResponse = {
+        data: {
+          data: {
+            organization: {
+              projectV2: {
+                id: projectId,
+              },
+            },
+            user: null,
+          },
+        },
+      };
+      mockedAxios.post.mockResolvedValueOnce(mockResponse);
+
       const response = await repository.findProjectIdByUrl(projectUrl);
       expect(response).toEqual(projectId);
     });
@@ -35,6 +64,59 @@ describe('GraphqlProjectRepository', () => {
 
   describe('getProject', () => {
     it('should retrieve project details', async () => {
+      const mockResponse = {
+        data: {
+          data: {
+            node: {
+              id: 'PVT_kwHOAGJHa84AFhgF',
+              title: 'V2 project on owner for testing',
+              shortDescription: '',
+              public: true,
+              closed: false,
+              createdAt: '2024-01-01T00:00:00Z',
+              updatedAt: '2024-01-01T00:00:00Z',
+              number: 49,
+              url: projectUrl,
+              fields: {
+                nodes: [
+                  {
+                    id: 'PVTF_lAHOAGJHa84AFhgFzgVlnK4',
+                    name: 'NextActionDate',
+                    dataType: 'DATE',
+                  },
+                  {
+                    id: 'PVTSSF_lAHOAGJHa84AFhgFzgDLt0c',
+                    name: 'Status',
+                    dataType: 'SINGLE_SELECT',
+                    options: [
+                      {
+                        id: 'f75ad846',
+                        name: 'Todo',
+                        description: '',
+                        color: 'GRAY',
+                      },
+                      {
+                        id: '47fc9ee4',
+                        name: 'In Progress',
+                        description: '',
+                        color: 'GRAY',
+                      },
+                      {
+                        id: '98236657',
+                        name: 'Done',
+                        description: '',
+                        color: 'GRAY',
+                      },
+                    ],
+                  },
+                ],
+              },
+            },
+          },
+        },
+      };
+      mockedAxios.post.mockResolvedValueOnce(mockResponse);
+
       const project = await repository.getProject(projectId);
       expect(project).toEqual({
         id: 'PVT_kwHOAGJHa84AFhgF',
@@ -48,7 +130,6 @@ describe('GraphqlProjectRepository', () => {
         story: null,
         completionDate50PercentConfidence: null,
         dependedIssueUrlSeparatedByComma: null,
-
         status: {
           fieldId: 'PVTSSF_lAHOAGJHa84AFhgFzgDLt0c',
           name: 'Status',
