@@ -164,12 +164,14 @@ describe('GraphqlProjectRepository', () => {
     it('should remove item from project successfully', async () => {
       const mockResponse = {
         data: {
-          deleteProjectV2Item: {
-            deletedItemId: testItemId,
+          data: {
+            deleteProjectV2Item: {
+              deletedItemId: testItemId,
+            },
           },
         },
       };
-      mockedAxios.post.mockResolvedValueOnce({ data: mockResponse });
+      mockedAxios.post.mockResolvedValueOnce(mockResponse);
 
       await expect(
         repository.removeItemFromProject(projectId, testItemId),
@@ -180,10 +182,12 @@ describe('GraphqlProjectRepository', () => {
       const invalidItemId = 'invalid_item_id';
       const mockResponse = {
         data: {
-          deleteProjectV2Item: null,
+          data: {
+            deleteProjectV2Item: null,
+          },
         },
       };
-      mockedAxios.post.mockResolvedValueOnce({ data: mockResponse });
+      mockedAxios.post.mockResolvedValueOnce(mockResponse);
 
       await expect(
         repository.removeItemFromProject(projectId, invalidItemId),
@@ -198,30 +202,34 @@ describe('GraphqlProjectRepository', () => {
     it('should remove item by issue URL successfully', async () => {
       const mockFindResponse = {
         data: {
-          node: {
-            items: {
-              nodes: [
-                {
-                  id: testItemId,
-                  content: {
-                    number: 19,
-                    repository: {
-                      name: 'npm-cli-github-issue-tower-defence-management',
-                      owner: {
-                        login: 'HiromiShikata',
+          data: {
+            node: {
+              items: {
+                nodes: [
+                  {
+                    id: testItemId,
+                    content: {
+                      number: 19,
+                      repository: {
+                        name: 'npm-cli-github-issue-tower-defence-management',
+                        owner: {
+                          login: 'HiromiShikata',
+                        },
                       },
                     },
                   },
-                },
-              ],
+                ],
+              },
             },
           },
         },
       };
       const mockDeleteResponse = {
         data: {
-          deleteProjectV2Item: {
-            deletedItemId: testItemId,
+          data: {
+            deleteProjectV2Item: {
+              deletedItemId: testItemId,
+            },
           },
         },
       };
@@ -240,11 +248,13 @@ describe('GraphqlProjectRepository', () => {
         'https://github.com/users/HiromiShikata/projects/999';
       const mockResponse = {
         data: {
-          organization: null,
-          user: null,
+          data: {
+            organization: null,
+            user: null,
+          },
         },
       };
-      mockedAxios.post.mockResolvedValueOnce({ data: mockResponse });
+      mockedAxios.post.mockResolvedValueOnce(mockResponse);
 
       await expect(
         repository.removeItemFromProjectByIssueUrl(
@@ -259,18 +269,22 @@ describe('GraphqlProjectRepository', () => {
         'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/999999';
       const mockFindProjectResponse = {
         data: {
-          organization: {
-            projectV2: {
-              id: projectId,
+          data: {
+            organization: {
+              projectV2: {
+                id: projectId,
+              },
             },
           },
         },
       };
       const mockFindItemResponse = {
         data: {
-          node: {
-            items: {
-              nodes: [],
+          data: {
+            node: {
+              items: {
+                nodes: [],
+              },
             },
           },
         },
