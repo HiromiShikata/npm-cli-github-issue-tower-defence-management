@@ -257,11 +257,13 @@ describe('GraphqlProjectRepository', () => {
         'https://github.com/users/HiromiShikata/projects/999';
       const mockResponse = {
         data: {
-          organization: null,
-          user: null,
+          data: {
+            organization: null,
+            user: null,
+          },
         },
       };
-      mockedAxios.post.mockResolvedValueOnce(mockResponse);
+      mockedAxios.post.mockResolvedValueOnce({ data: mockResponse });
 
       await expect(
         repository.removeItemFromProjectByIssueUrl(
@@ -299,8 +301,8 @@ describe('GraphqlProjectRepository', () => {
       };
 
       mockedAxios.post
-        .mockResolvedValueOnce({ data: mockFindProjectResponse })
-        .mockResolvedValueOnce({ data: mockFindItemResponse });
+        .mockResolvedValueOnce(mockFindProjectResponse)
+        .mockResolvedValueOnce(mockFindItemResponse);
 
       await expect(
         repository.removeItemFromProjectByIssueUrl(
