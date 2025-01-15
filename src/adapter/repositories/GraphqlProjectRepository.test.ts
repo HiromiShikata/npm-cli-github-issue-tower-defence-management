@@ -164,14 +164,12 @@ describe('GraphqlProjectRepository', () => {
     it('should remove item from project successfully', async () => {
       const mockResponse = {
         data: {
-          data: {
-            deleteProjectV2Item: {
-              deletedItemId: testItemId,
-            },
+          deleteProjectV2Item: {
+            deletedItemId: testItemId,
           },
         },
       };
-      jest.spyOn(axios, 'post').mockResolvedValueOnce(mockResponse);
+      mockedAxios.post.mockResolvedValueOnce({ data: mockResponse });
 
       await expect(
         repository.removeItemFromProject(projectId, testItemId),
@@ -182,12 +180,10 @@ describe('GraphqlProjectRepository', () => {
       const invalidItemId = 'invalid_item_id';
       const mockResponse = {
         data: {
-          data: {
-            deleteProjectV2Item: null,
-          },
+          deleteProjectV2Item: null,
         },
       };
-      jest.spyOn(axios, 'post').mockResolvedValueOnce(mockResponse);
+      mockedAxios.post.mockResolvedValueOnce({ data: mockResponse });
 
       await expect(
         repository.removeItemFromProject(projectId, invalidItemId),
@@ -202,42 +198,37 @@ describe('GraphqlProjectRepository', () => {
     it('should remove item by issue URL successfully', async () => {
       const mockFindResponse = {
         data: {
-          data: {
-            node: {
-              items: {
-                nodes: [
-                  {
-                    id: testItemId,
-                    content: {
-                      number: 19,
-                      repository: {
-                        name: 'npm-cli-github-issue-tower-defence-management',
-                        owner: {
-                          login: 'HiromiShikata',
-                        },
+          node: {
+            items: {
+              nodes: [
+                {
+                  id: testItemId,
+                  content: {
+                    number: 19,
+                    repository: {
+                      name: 'npm-cli-github-issue-tower-defence-management',
+                      owner: {
+                        login: 'HiromiShikata',
                       },
                     },
                   },
-                ],
-              },
+                },
+              ],
             },
           },
         },
       };
       const mockDeleteResponse = {
         data: {
-          data: {
-            deleteProjectV2Item: {
-              deletedItemId: testItemId,
-            },
+          deleteProjectV2Item: {
+            deletedItemId: testItemId,
           },
         },
       };
 
-      jest
-        .spyOn(axios, 'post')
-        .mockResolvedValueOnce(mockFindResponse)
-        .mockResolvedValueOnce(mockDeleteResponse);
+      mockedAxios.post
+        .mockResolvedValueOnce({ data: mockFindResponse })
+        .mockResolvedValueOnce({ data: mockDeleteResponse });
 
       await expect(
         repository.removeItemFromProjectByIssueUrl(projectUrl, testIssueUrl),
@@ -249,13 +240,11 @@ describe('GraphqlProjectRepository', () => {
         'https://github.com/users/HiromiShikata/projects/999';
       const mockResponse = {
         data: {
-          data: {
-            organization: null,
-            user: null,
-          },
+          organization: null,
+          user: null,
         },
       };
-      jest.spyOn(axios, 'post').mockResolvedValueOnce(mockResponse);
+      mockedAxios.post.mockResolvedValueOnce({ data: mockResponse });
 
       await expect(
         repository.removeItemFromProjectByIssueUrl(
@@ -270,31 +259,26 @@ describe('GraphqlProjectRepository', () => {
         'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/999999';
       const mockFindProjectResponse = {
         data: {
-          data: {
-            organization: {
-              projectV2: {
-                id: projectId,
-              },
+          organization: {
+            projectV2: {
+              id: projectId,
             },
           },
         },
       };
       const mockFindItemResponse = {
         data: {
-          data: {
-            node: {
-              items: {
-                nodes: [],
-              },
+          node: {
+            items: {
+              nodes: [],
             },
           },
         },
       };
 
-      jest
-        .spyOn(axios, 'post')
-        .mockResolvedValueOnce(mockFindProjectResponse)
-        .mockResolvedValueOnce(mockFindItemResponse);
+      mockedAxios.post
+        .mockResolvedValueOnce({ data: mockFindProjectResponse })
+        .mockResolvedValueOnce({ data: mockFindItemResponse });
 
       await expect(
         repository.removeItemFromProjectByIssueUrl(
