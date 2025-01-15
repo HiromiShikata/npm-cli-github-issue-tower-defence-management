@@ -249,7 +249,15 @@ describe('GraphqlProjectRepository', () => {
       mockedAxios.post
         .mockResolvedValueOnce(mockProjectResponse)
         .mockResolvedValueOnce(mockFindResponse)
-        .mockResolvedValueOnce(mockDeleteResponse);
+        .mockResolvedValueOnce({
+          data: {
+            data: {
+              deleteProjectV2Item: {
+                deletedItemId: testItemId,
+              },
+            },
+          },
+        });
 
       await expect(
         repository.removeItemFromProjectByIssueUrl(projectUrl, testIssueUrl),
@@ -305,8 +313,29 @@ describe('GraphqlProjectRepository', () => {
       };
 
       mockedAxios.post
-        .mockResolvedValueOnce(mockFindProjectResponse)
-        .mockResolvedValueOnce(mockFindItemResponse);
+        .mockResolvedValueOnce({
+          data: {
+            data: {
+              organization: {
+                projectV2: {
+                  id: projectId,
+                },
+              },
+              user: null,
+            },
+          },
+        })
+        .mockResolvedValueOnce({
+          data: {
+            data: {
+              node: {
+                items: {
+                  nodes: [],
+                },
+              },
+            },
+          },
+        });
 
       await expect(
         repository.removeItemFromProjectByIssueUrl(
