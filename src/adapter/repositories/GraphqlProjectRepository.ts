@@ -274,4 +274,136 @@ export class GraphqlProjectRepository
         : null,
     };
   };
+
+  removeItemFromProject = async (
+    projectId: string,
+    itemId: string,
+  ): Promise<void> => {
+    const query = `mutation DeleteProjectItem($input: DeleteProjectV2ItemInput!) {
+      deleteProjectV2Item(input: $input) {
+        deletedItemId
+      }
+    }`;
+
+    const variables = {
+      input: {
+        projectId,
+        itemId,
+      },
+    };
+
+    const response = await axios.post<{
+      data: {
+        deleteProjectV2Item: {
+          deletedItemId: string;
+        } | null;
+      };
+    }>(
+      'https://api.github.com/graphql',
+      {
+        query,
+        variables,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${this.ghToken}`,
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+
+    if (!response.data.data.deleteProjectV2Item) {
+      throw new Error('Project or item not found');
+    }
+  };
+
+  removeItemFromProjectByIssueUrl = async (
+    projectUrl: string,
+    issueUrl: string,
+  ): Promise<void> => {
+    const { owner, projectNumber } = this.extractProjectFromUrl(projectUrl);
+    const projectId = await this.fetchProjectId(owner, projectNumber);
+    if (!projectId) {
+      throw new Error('Project not found');
+    }
+
+    const query = `query FindProjectItem($projectId: ID!, $first: Int!) {
+      node(id: $projectId) {
+        ... on ProjectV2 {
+          items(first: $first) {
+            nodes {
+              id
+              content {
+                ... on Issue {
+                  number
+                  repository {
+                    name
+                    owner {
+                      login
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }`;
+
+    const variables = {
+      projectId,
+      first: 100,
+    };
+
+    const response = await axios.post<{
+      data: {
+        node: {
+          items: {
+            nodes: Array<{
+              id: string;
+              content: {
+                number: number;
+                repository: {
+                  name: string;
+                  owner: {
+                    login: string;
+                  };
+                };
+              };
+            }>;
+          };
+        };
+      };
+    }>(
+      'https://api.github.com/graphql',
+      {
+        query,
+        variables,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${this.ghToken}`,
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+
+    const issueUrlParts = issueUrl.split('/');
+    const issueNumber = parseInt(issueUrlParts[issueUrlParts.length - 1], 10);
+    const issueOwner = issueUrlParts[3];
+    const issueRepo = issueUrlParts[4];
+
+    const matchingItem = response.data.data.node.items.nodes.find(
+      (item) =>
+        item.content.number === issueNumber &&
+        item.content.repository.name === issueRepo &&
+        item.content.repository.owner.login === issueOwner,
+    );
+
+    if (!matchingItem) {
+      throw new Error('Item not found in project');
+    }
+
+    await this.removeItemFromProject(projectId, matchingItem.id);
+  };
 }
