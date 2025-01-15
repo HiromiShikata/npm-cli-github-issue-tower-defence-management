@@ -219,25 +219,28 @@ describe('GraphqlProjectRepository', () => {
         }
       }`;
 
-      const verifyResponse = await axios.post<GraphQLSimpleProjectItemsResponse>(
-        'https://api.github.com/graphql',
-        {
-          query,
-          variables: {
-            projectId,
-            first: 100,
+      const verifyResponse =
+        await axios.post<GraphQLSimpleProjectItemsResponse>(
+          'https://api.github.com/graphql',
+          {
+            query,
+            variables: {
+              projectId,
+              first: 100,
+            },
           },
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
           },
-        },
-      );
+        );
 
       const items = verifyResponse.data.data.data.node.items.nodes;
-      expect(items.find((item: SimpleProjectItemNodeType) => item.id === testItemId)).toBeUndefined();
+      expect(
+        items.find((item: SimpleProjectItemNodeType) => item.id === testItemId),
+      ).toBeUndefined();
     });
 
     it('should throw error when project or item not found', async () => {
@@ -302,37 +305,42 @@ describe('GraphqlProjectRepository', () => {
         }
       }`;
 
-      const verifyRemovalResponse = await axios.post<GraphQLProjectItemsResponse>(
-        'https://api.github.com/graphql',
-        {
-          query,
-          variables: {
-            projectId,
-            first: 100,
+      const verifyRemovalResponse =
+        await axios.post<GraphQLProjectItemsResponse>(
+          'https://api.github.com/graphql',
+          {
+            query,
+            variables: {
+              projectId,
+              first: 100,
+            },
           },
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
           },
-        },
-      );
+        );
 
       const items = verifyRemovalResponse.data.data.data.node.items.nodes;
       const matchingItem = items.find(
         (item: ProjectItemNodeType) =>
           item.content.number === testIssueNumber &&
           item.content.repository.name === 'test-repository' &&
-          item.content.repository.owner.login === 'HiromiShikata'
+          item.content.repository.owner.login === 'HiromiShikata',
       );
       expect(matchingItem).toBeUndefined();
     });
 
     it('should throw error when project not found', async () => {
-      const invalidProjectUrl = 'https://github.com/users/HiromiShikata/projects/999';
+      const invalidProjectUrl =
+        'https://github.com/users/HiromiShikata/projects/999';
       await expect(
-        repository.removeItemFromProjectByIssueUrl(invalidProjectUrl, testIssueUrl),
+        repository.removeItemFromProjectByIssueUrl(
+          invalidProjectUrl,
+          testIssueUrl,
+        ),
       ).rejects.toThrow('Project not found');
     });
 
@@ -340,7 +348,10 @@ describe('GraphqlProjectRepository', () => {
       const nonExistentIssueUrl =
         'https://github.com/HiromiShikata/test-repository/issues/999999';
       await expect(
-        repository.removeItemFromProjectByIssueUrl(projectUrl, nonExistentIssueUrl),
+        repository.removeItemFromProjectByIssueUrl(
+          projectUrl,
+          nonExistentIssueUrl,
+        ),
       ).rejects.toThrow('Item not found in project');
     });
   });
