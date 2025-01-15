@@ -200,6 +200,18 @@ describe('GraphqlProjectRepository', () => {
       'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/19';
 
     it('should remove item by issue URL successfully', async () => {
+      const mockProjectResponse = {
+        data: {
+          data: {
+            organization: {
+              projectV2: {
+                id: projectId,
+              },
+            },
+            user: null,
+          },
+        },
+      };
       const mockFindResponse = {
         data: {
           data: {
@@ -235,8 +247,9 @@ describe('GraphqlProjectRepository', () => {
       };
 
       mockedAxios.post
-        .mockResolvedValueOnce({ data: mockFindResponse })
-        .mockResolvedValueOnce({ data: mockDeleteResponse });
+        .mockResolvedValueOnce(mockProjectResponse)
+        .mockResolvedValueOnce(mockFindResponse)
+        .mockResolvedValueOnce(mockDeleteResponse);
 
       await expect(
         repository.removeItemFromProjectByIssueUrl(projectUrl, testIssueUrl),
@@ -254,7 +267,7 @@ describe('GraphqlProjectRepository', () => {
           },
         },
       };
-      mockedAxios.post.mockResolvedValueOnce(mockResponse);
+      mockedAxios.post.mockResolvedValueOnce({ data: mockResponse });
 
       await expect(
         repository.removeItemFromProjectByIssueUrl(
@@ -275,6 +288,7 @@ describe('GraphqlProjectRepository', () => {
                 id: projectId,
               },
             },
+            user: null,
           },
         },
       };
@@ -291,8 +305,8 @@ describe('GraphqlProjectRepository', () => {
       };
 
       mockedAxios.post
-        .mockResolvedValueOnce({ data: mockFindProjectResponse })
-        .mockResolvedValueOnce({ data: mockFindItemResponse });
+        .mockResolvedValueOnce(mockFindProjectResponse)
+        .mockResolvedValueOnce(mockFindItemResponse);
 
       await expect(
         repository.removeItemFromProjectByIssueUrl(
