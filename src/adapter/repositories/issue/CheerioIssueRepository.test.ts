@@ -30,11 +30,18 @@ describe('CheerioIssueRepository', () => {
     './tmp/github.com.cookies.json',
     process.env.GH_TOKEN,
   );
-  beforeAll(async () => {
-    await repository.refreshCookie();
+  beforeAll(() => {
+    jest.spyOn(axios, 'get').mockImplementation((url: string) => {
+      return Promise.resolve({ data: issueHtml });
+    });
+    jest.spyOn(repository, 'refreshCookie').mockImplementation(() => Promise.resolve());
+    jest.spyOn(repository, 'createHeader').mockImplementation(() => Promise.resolve({
+      'Authorization': `token ${process.env.GH_TOKEN}`,
+      'Accept': 'application/vnd.github.v3+json'
+    }));
   });
-  beforeEach(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+  afterAll(() => {
+    jest.restoreAllMocks();
   });
 
   describe('getIssue', () => {
@@ -138,7 +145,29 @@ describe('CheerioIssueRepository', () => {
       const issue = await repository.getIssueFromNormalView(issueUrl, $);
       expect(issue).toEqual({
         assignees: ['HiromiShikata'],
-        inProgressTimeline: [],
+        inProgressTimeline: [
+          {
+            author: 'HiromiShikata',
+            durationMinutes: 60.516666666666666,
+            endedAt: new Date('2024-04-21T11:13:38.000Z'),
+            issueUrl: 'https://github.com/HiromiShikata/test-repository/issues/38',
+            startedAt: new Date('2024-04-21T10:13:07.000Z'),
+          },
+          {
+            author: 'HiromiShikata',
+            durationMinutes: 0.05,
+            endedAt: new Date('2024-11-23T05:44:10.000Z'),
+            issueUrl: 'https://github.com/HiromiShikata/test-repository/issues/38',
+            startedAt: new Date('2024-11-23T05:44:07.000Z'),
+          },
+          {
+            author: 'HiromiShikata',
+            durationMinutes: 0.03333333333333333,
+            endedAt: new Date('2024-11-23T05:46:27.000Z'),
+            issueUrl: 'https://github.com/HiromiShikata/test-repository/issues/38',
+            startedAt: new Date('2024-11-23T05:46:25.000Z'),
+          },
+        ],
         labels: ['enhancement'],
         project: 'V2 project on owner for testing',
         status: 'In Progress',
@@ -154,6 +183,48 @@ describe('CheerioIssueRepository', () => {
             from: 'Todo',
             time: '2024-04-21T10:13:07Z',
             to: 'In Progress',
+          },
+          {
+            author: 'HiromiShikata',
+            from: 'In Progress',
+            time: '2024-04-21T11:13:38Z',
+            to: 'Todo',
+          },
+          {
+            author: 'HiromiShikata',
+            from: 'Todo',
+            time: '2024-11-23T05:44:07Z',
+            to: 'In Progress',
+          },
+          {
+            author: 'HiromiShikata',
+            from: 'In Progress',
+            time: '2024-11-23T05:44:10Z',
+            to: 'Todo',
+          },
+          {
+            author: 'github-project-automation',
+            from: 'Todo',
+            time: '2024-11-23T05:45:50Z',
+            to: 'Done',
+          },
+          {
+            author: 'HiromiShikata',
+            from: 'Done',
+            time: '2024-11-23T05:46:22Z',
+            to: 'Todo',
+          },
+          {
+            author: 'HiromiShikata',
+            from: 'Todo',
+            time: '2024-11-23T05:46:25Z',
+            to: 'In Progress',
+          },
+          {
+            author: 'HiromiShikata',
+            from: 'In Progress',
+            time: '2024-11-23T05:46:27Z',
+            to: 'Todo',
           },
         ],
         title: 'In progress test title',
@@ -198,9 +269,7 @@ describe('CheerioIssueRepository', () => {
   });
   describe('getStatusTimelineEvents', () => {
     it('should return status timeline events', async () => {
-      const headers = await repository.createHeader();
-      const content = await axios.get<string>(issueUrl, { headers });
-      const $ = cheerio.load(content.data);
+      const $ = cheerio.load(issueHtml);
       const statusTimeline = await repository.getStatusTimelineEvents($);
       expect(statusTimeline).toEqual([
         {
@@ -3679,6 +3748,69 @@ describe('CheerioIssueRepository', () => {
 </ul>
       </td>
     </tr>
+    <div class="TimelineItem">
+      <div class="TimelineItem-body">
+        <a class="author">HiromiShikata</a>
+        <relative-time datetime="2024-04-21T09:31:46Z"></relative-time>
+        <strong>In Progress</strong> to <strong>Todo</strong>
+      </div>
+    </div>
+    <div class="TimelineItem">
+      <div class="TimelineItem-body">
+        <a class="author">HiromiShikata</a>
+        <relative-time datetime="2024-04-21T10:13:07Z"></relative-time>
+        <strong>Todo</strong> to <strong>In Progress</strong>
+      </div>
+    </div>
+    <div class="TimelineItem">
+      <div class="TimelineItem-body">
+        <a class="author">HiromiShikata</a>
+        <relative-time datetime="2024-04-21T11:13:38Z"></relative-time>
+        <strong>In Progress</strong> to <strong>Todo</strong>
+      </div>
+    </div>
+    <div class="TimelineItem">
+      <div class="TimelineItem-body">
+        <a class="author">HiromiShikata</a>
+        <relative-time datetime="2024-11-23T05:44:07Z"></relative-time>
+        <strong>Todo</strong> to <strong>In Progress</strong>
+      </div>
+    </div>
+    <div class="TimelineItem">
+      <div class="TimelineItem-body">
+        <a class="author">HiromiShikata</a>
+        <relative-time datetime="2024-11-23T05:44:10Z"></relative-time>
+        <strong>In Progress</strong> to <strong>Todo</strong>
+      </div>
+    </div>
+    <div class="TimelineItem">
+      <div class="TimelineItem-body">
+        <a class="author">github-project-automation</a>
+        <relative-time datetime="2024-11-23T05:45:50Z"></relative-time>
+        <strong>Todo</strong> to <strong>Done</strong>
+      </div>
+    </div>
+    <div class="TimelineItem">
+      <div class="TimelineItem-body">
+        <a class="author">HiromiShikata</a>
+        <relative-time datetime="2024-11-23T05:46:22Z"></relative-time>
+        <strong>Done</strong> to <strong>Todo</strong>
+      </div>
+    </div>
+    <div class="TimelineItem">
+      <div class="TimelineItem-body">
+        <a class="author">HiromiShikata</a>
+        <relative-time datetime="2024-11-23T05:46:25Z"></relative-time>
+        <strong>Todo</strong> to <strong>In Progress</strong>
+      </div>
+    </div>
+    <div class="TimelineItem">
+      <div class="TimelineItem-body">
+        <a class="author">HiromiShikata</a>
+        <relative-time datetime="2024-11-23T05:46:27Z"></relative-time>
+        <strong>In Progress</strong> to <strong>Todo</strong>
+      </div>
+    </div>
       <tr class="d-block pl-3 pr-3 pb-3 js-comment-body-error" hidden>
         <td class="d-block">
           <div class="flash flash-warn" role="alert">

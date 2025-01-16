@@ -37,6 +37,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             const story = item.customFields.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'story')?.value;
             const status = item.customFields.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'status')?.value;
             const { owner, repo } = this.extractIssueFromUrl(item.url);
+            const restIssueData = await this.restIssueRepository.getIssue(item.url);
             return {
                 nameWithOwner: item.nameWithOwner,
                 url: item.url,
@@ -62,6 +63,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 isPr: item.url.includes('/pull/'),
                 isInProgress: (0, utils_1.normalizeFieldName)(cheerioIssue.status).includes('progress'),
                 isClosed: item.state !== 'OPEN',
+                createdAt: new Date(restIssueData.created_at),
             };
         };
         this.getAllIssuesFromCache = async (cacheKey, allowCacheMinutes) => {
@@ -113,7 +115,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                             completionDate50PercentConfidence: completionDate50PercentConfidence,
                         };
                     });
-                    if ((() => { const $io0 = input => "string" === typeof input.nameWithOwner && "number" === typeof input.number && "string" === typeof input.title && ("OPEN" === input.state || "CLOSED" === input.state || "MERGED" === input.state) && (null === input.status || "string" === typeof input.status) && (null === input.story || "string" === typeof input.story) && (null === input.nextActionDate || input.nextActionDate instanceof Date) && (null === input.nextActionHour || "number" === typeof input.nextActionHour) && (null === input.estimationMinutes || "number" === typeof input.estimationMinutes) && (Array.isArray(input.dependedIssueUrls) && input.dependedIssueUrls.every(elem => "string" === typeof elem)) && (null === input.completionDate50PercentConfidence || input.completionDate50PercentConfidence instanceof Date) && "string" === typeof input.url && (Array.isArray(input.assignees) && input.assignees.every(elem => "string" === typeof elem)) && (Array.isArray(input.workingTimeline) && input.workingTimeline.every(elem => "object" === typeof elem && null !== elem && $io1(elem))) && (Array.isArray(input.labels) && input.labels.every(elem => "string" === typeof elem)) && "string" === typeof input.org && "string" === typeof input.repo && "string" === typeof input.body && "string" === typeof input.itemId && "boolean" === typeof input.isPr && "boolean" === typeof input.isInProgress && "boolean" === typeof input.isClosed; const $io1 = input => "string" === typeof input.author && input.startedAt instanceof Date && input.endedAt instanceof Date && "number" === typeof input.durationMinutes; return input => Array.isArray(input) && input.every(elem => "object" === typeof elem && null !== elem && $io0(elem)); })()(issues)) {
+                    if ((() => { const $io0 = input => "string" === typeof input.nameWithOwner && "number" === typeof input.number && "string" === typeof input.title && ("OPEN" === input.state || "CLOSED" === input.state || "MERGED" === input.state) && (null === input.status || "string" === typeof input.status) && (null === input.story || "string" === typeof input.story) && (null === input.nextActionDate || input.nextActionDate instanceof Date) && (null === input.nextActionHour || "number" === typeof input.nextActionHour) && (null === input.estimationMinutes || "number" === typeof input.estimationMinutes) && (Array.isArray(input.dependedIssueUrls) && input.dependedIssueUrls.every(elem => "string" === typeof elem)) && (null === input.completionDate50PercentConfidence || input.completionDate50PercentConfidence instanceof Date) && "string" === typeof input.url && (Array.isArray(input.assignees) && input.assignees.every(elem => "string" === typeof elem)) && (Array.isArray(input.workingTimeline) && input.workingTimeline.every(elem => "object" === typeof elem && null !== elem && $io1(elem))) && (Array.isArray(input.labels) && input.labels.every(elem => "string" === typeof elem)) && "string" === typeof input.org && "string" === typeof input.repo && "string" === typeof input.body && "string" === typeof input.itemId && "boolean" === typeof input.isPr && "boolean" === typeof input.isInProgress && "boolean" === typeof input.isClosed && input.createdAt instanceof Date; const $io1 = input => "string" === typeof input.author && input.startedAt instanceof Date && input.endedAt instanceof Date && "number" === typeof input.durationMinutes; return input => Array.isArray(input) && input.every(elem => "object" === typeof elem && null !== elem && $io0(elem)); })()(issues)) {
                         return issues;
                     }
                 }

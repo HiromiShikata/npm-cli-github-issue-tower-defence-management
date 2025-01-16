@@ -58,7 +58,6 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
     $: cheerio.CheerioAPI,
   ): Promise<Issue> => {
     const title = this.getTitleFromCheerioObject($);
-    const statusOrig = this.getStatusFromCheerioObject($);
     const assignees = this.getAssigneesFromCheerioObject($);
     const labels = this.getLabelsFromCheerioObject($);
     const project = this.getProjectFromCheerioObject($);
@@ -67,12 +66,7 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
       statusTimeline,
       issueUrl,
     );
-    const status =
-      statusOrig !== ''
-        ? statusOrig
-        : statusTimeline.length > 0
-          ? statusTimeline[statusTimeline.length - 1].to
-          : '';
+    const status = inProgressTimeline.length > 0 && !inProgressTimeline[inProgressTimeline.length - 1].endedAt ? 'In Progress' : this.getStatusFromCheerioObject($);
     return {
       url: issueUrl,
       title,
@@ -93,7 +87,10 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
     return $('h1 > bdi').text();
   };
   protected getStatusFromCheerioObject = ($: cheerio.CheerioAPI): string => {
-    return $('sidebar-memex-input > details > summary > span').text();
+    const statusTimeline = this.getStatusTimelineEventsFromCheerioObject($);
+    if (statusTimeline.length === 0) return '';
+    const sortedTimeline = [...statusTimeline].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+    return sortedTimeline[0].to;
   };
   protected getAssigneesFromCheerioObject = (
     $: cheerio.CheerioAPI,
@@ -117,6 +114,7 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
   ): IssueStatusTimeline[] => {
     const timelines = $('.TimelineItem-body');
     const res: IssueStatusTimeline[] = [];
+    const seen = new Set<string>();
     for (const timeline of timelines) {
       const author = $(timeline).find('a.author').text();
       if (!author) {
@@ -132,6 +130,11 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
       }
       const from = $(eventText[0]).text();
       const to = $(eventText[1]).text();
+      const key = `${time}-${author}-${from}-${to}`;
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
       res.push({ time, author, from, to });
     }
 
