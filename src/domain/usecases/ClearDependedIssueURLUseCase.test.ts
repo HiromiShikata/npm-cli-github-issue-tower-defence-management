@@ -20,18 +20,21 @@ describe('ClearDependedIssueURLUseCase', () => {
       url: 'url1',
       dependedIssueUrls: [],
       isClosed: true,
+      createdAt: new Date('2024-01-01'),
     };
     const basicIssueTwo = {
       ...mock<Issue>(),
       url: 'url2',
       dependedIssueUrls: ['url1'],
       isClosed: false,
+      createdAt: new Date('2024-01-01'),
     };
     const basicIssueThree = {
       ...mock<Issue>(),
       url: 'url3',
       dependedIssueUrls: ['url1', 'url2'],
       isClosed: false,
+      createdAt: new Date('2024-01-01'),
     };
     const testCases: {
       name: string;

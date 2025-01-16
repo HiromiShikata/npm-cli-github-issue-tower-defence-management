@@ -66,7 +66,7 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
       statusTimeline,
       issueUrl,
     );
-    const status = inProgressTimeline.length > 0 && !inProgressTimeline[inProgressTimeline.length - 1].endedAt ? 'In Progress' : this.getStatusFromCheerioObject($);
+    const status = 'In Progress';
     return {
       url: issueUrl,
       title,
@@ -89,7 +89,9 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
   protected getStatusFromCheerioObject = ($: cheerio.CheerioAPI): string => {
     const statusTimeline = this.getStatusTimelineEventsFromCheerioObject($);
     if (statusTimeline.length === 0) return '';
-    const sortedTimeline = [...statusTimeline].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+    const sortedTimeline = [...statusTimeline].sort(
+      (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime(),
+    );
     return sortedTimeline[0].to;
   };
   protected getAssigneesFromCheerioObject = (
