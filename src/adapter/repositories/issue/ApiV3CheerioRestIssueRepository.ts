@@ -134,7 +134,7 @@ export class ApiV3CheerioRestIssueRepository
         'progress',
       ),
       isClosed: item.state !== 'OPEN',
-      createdAt: new Date(restIssueData.created_at),
+      createdAt: new Date(restIssueData.created_at || '2000-01-01'),
     };
   };
   getAllIssuesFromCache = async (

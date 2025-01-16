@@ -48,6 +48,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             project: '',
             statusTimeline: [],
             inProgressTimeline: [],
+            createdAt: new Date('2000-01-01'),
           },
         ],
         expected: {

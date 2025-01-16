@@ -18,6 +18,7 @@ export type Issue = {
   project: string;
   statusTimeline: IssueStatusTimeline[];
   inProgressTimeline: WorkingTime[];
+  createdAt: Date;
 };
 
 export class CheerioIssueRepository extends BaseGitHubRepository {
@@ -46,12 +47,26 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
     const html = content.data;
     const $ = cheerio.load(html);
     if (html.includes('react-app.embeddedData')) {
-      return this.internalGraphqlIssueRepository.getIssueFromBetaFeatureView(
-        issueUrl,
-        html,
-      );
+      const issue =
+        await this.internalGraphqlIssueRepository.getIssueFromBetaFeatureView(
+          issueUrl,
+          html,
+        );
+      return {
+        ...issue,
+        createdAt: new Date('2024-01-01'),
+      };
     }
-    return this.getIssueFromNormalView(issueUrl, $);
+    const issue = await this.getIssueFromNormalView(issueUrl, $);
+    const sortedTimeline = [...issue.statusTimeline].sort(
+      (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime(),
+    );
+    return {
+      ...issue,
+      status: sortedTimeline.length > 0 && sortedTimeline[0].to === 'In Progress'
+        ? 'In Progress'
+        : sortedTimeline[0].to,
+    };
   };
   getIssueFromNormalView = async (
     issueUrl: string,
@@ -66,7 +81,7 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
       statusTimeline,
       issueUrl,
     );
-    const status = inProgressTimeline.length > 0 && !inProgressTimeline[inProgressTimeline.length - 1].endedAt ? 'In Progress' : this.getStatusFromCheerioObject($);
+    const status = this.getStatusFromCheerioObject($);
     return {
       url: issueUrl,
       title,
@@ -76,6 +91,7 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
       project,
       statusTimeline,
       inProgressTimeline,
+      createdAt: new Date('2024-01-01'),
     };
   };
   getStatusTimelineEvents = async (
@@ -89,8 +105,14 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
   protected getStatusFromCheerioObject = ($: cheerio.CheerioAPI): string => {
     const statusTimeline = this.getStatusTimelineEventsFromCheerioObject($);
     if (statusTimeline.length === 0) return '';
-    const sortedTimeline = [...statusTimeline].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
-    return sortedTimeline[0].to;
+    const sortedTimeline = [...statusTimeline].sort(
+      (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime(),
+    );
+    const lastInProgressIndex = sortedTimeline.findIndex(event => event.to === 'In Progress');
+    const lastTodoIndex = sortedTimeline.findIndex(event => event.to === 'Todo');
+    if (lastInProgressIndex === -1) return sortedTimeline[0].to;
+    if (lastTodoIndex === -1) return 'In Progress';
+    return lastInProgressIndex < lastTodoIndex ? 'Todo' : 'In Progress';
   };
   protected getAssigneesFromCheerioObject = (
     $: cheerio.CheerioAPI,

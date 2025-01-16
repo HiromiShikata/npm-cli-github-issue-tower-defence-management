@@ -37,6 +37,7 @@ describe('InternalGraphqlIssueRepository', () => {
     );
     expect(result).toEqual({
       assignees: ['HiromiShikata'],
+      createdAt: new Date('2024-01-01'),
       inProgressTimeline: [
         {
           author: 'HiromiShikata',

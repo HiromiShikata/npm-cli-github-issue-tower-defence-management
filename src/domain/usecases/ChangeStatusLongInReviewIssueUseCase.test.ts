@@ -34,6 +34,7 @@ describe('ChangeStatusLongInReviewIssueUseCase', () => {
     status: 'InReview',
     assignees: ['user1', 'user2'],
     workingTimeline: [],
+    createdAt: new Date('2024-01-01'),
   };
 
   const useCase = new ChangeStatusLongInReviewIssueUseCase(

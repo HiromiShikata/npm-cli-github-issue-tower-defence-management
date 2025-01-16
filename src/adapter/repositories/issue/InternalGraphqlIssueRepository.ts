@@ -258,23 +258,26 @@ export class InternalGraphqlIssueRepository extends BaseGitHubRepository {
           from: edge.node.previousStatus,
           to: edge.node.status,
         }),
-      );
+      )
+      .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
     const inProgressTimeline = await getInProgressTimeline(
       statusTimeline,
       issueUrl,
     );
+    const status = inProgressTimeline.length > 0 &&
+      inProgressTimeline[inProgressTimeline.length - 1].endedAt === null
+      ? 'In Progress'
+      : statusTimeline[statusTimeline.length - 1].to;
     return {
       url: issueUrl,
       title: issueData.title,
-      status:
-        statusTimeline.length > 0
-          ? statusTimeline[statusTimeline.length - 1].to
-          : '',
+      status,
       assignees: issueData.assignees.nodes.map((node) => node.login),
       labels: issueData.labels.edges.map((edge) => edge.node.name),
       project: issueData.projectItemsNext.edges[0].node.project.title,
       statusTimeline,
       inProgressTimeline,
+      createdAt: new Date('2024-01-01'),
     };
   };
 }

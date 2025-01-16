@@ -9,6 +9,7 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
       IssueRepository,
       'createNewIssue' | 'updateIssue' | 'updateStory' | 'getIssueByUrl'
     >,
+    readonly timeoutMs: number = 30 * 1000,
   ) {}
 
   run = async (input: {
@@ -68,7 +69,7 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
           ...storyIssue,
           body: newBody,
         });
-        await new Promise((resolve) => setTimeout(resolve, 30 * 1000));
+        await new Promise((resolve) => setTimeout(resolve, this.timeoutMs));
         const newIssue = await this.issueRepository.getIssueByUrl(newIssueUrl);
         if (!newIssue) {
           throw new Error(`Issue not found: ${newIssueUrl}`);
