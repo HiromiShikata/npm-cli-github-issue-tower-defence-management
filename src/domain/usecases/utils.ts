@@ -14,7 +14,9 @@ export const isVisibleIssue = (
       issue.nextActionHour > targetDate.getHours()) ||
     issue.state !== 'OPEN' ||
     !issue.assignees.includes(member) ||
-    issue.status === disabledStatus
+    issue.status === disabledStatus ||
+    issue.dependedIssueUrls.length > 0 ||
+    issue.status?.toLowerCase().includes('review')
   ) {
     return false;
   }
