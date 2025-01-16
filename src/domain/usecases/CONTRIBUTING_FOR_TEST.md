@@ -1,4 +1,8 @@
 # Test Guidelines
+## Basic rules
+- Follow ./CONTRIBUTING.md
+- use '2000-01-01T00:00:00Z' as datetime to make easy to check by human
+
 
 ## 1. Basic Structure
 
