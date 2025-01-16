@@ -60,6 +60,7 @@ export class RestIssueRepository extends BaseGitHubRepository {
     body: string;
     number: number;
     state: string;
+    created_at: string;
   }> => {
     const { owner, repo, issueNumber } = this.extractIssueFromUrl(issueUrl);
     const response = await axios.get<{
@@ -69,6 +70,7 @@ export class RestIssueRepository extends BaseGitHubRepository {
       body: string;
       number: number;
       state: string;
+      created_at: string;
     }>(`https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`, {
       headers: {
         Authorization: `token ${this.ghToken}`,
@@ -82,6 +84,7 @@ export class RestIssueRepository extends BaseGitHubRepository {
       body: response.data.body,
       number: response.data.number,
       state: response.data.state,
+      created_at: response.data.created_at,
     };
   };
   updateIssue = async (issue: Issue) => {

@@ -55,6 +55,7 @@ class RestIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
                 body: response.data.body,
                 number: response.data.number,
                 state: response.data.state,
+                created_at: response.data.created_at,
             };
         };
         this.updateIssue = async (issue) => {

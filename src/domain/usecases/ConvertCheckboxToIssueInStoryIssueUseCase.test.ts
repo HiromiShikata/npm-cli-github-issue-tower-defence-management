@@ -31,6 +31,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
       body: `- [ ] Task 1
 - [ ] Task 2`,
       url: 'https://github.com/org/repo/issues/123',
+      createdAt: new Date('2024-01-01'),
     };
 
     const basicStoryIssue2 = {
@@ -40,6 +41,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
       body: `- [ ] Task 3
 - [ ] Task 4`,
       url: 'https://github.com/org/repo/issues/456',
+      createdAt: new Date('2024-01-01'),
     };
 
     const basicStoryObject1: StoryObject = {
@@ -189,10 +191,12 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
               ...basicStoryIssue1,
               state: 'CLOSED',
               isClosed: true,
+              createdAt: new Date('2024-01-01'),
             },
             {
               ...basicStoryIssue2,
               status: 'Disabled',
+              createdAt: new Date('2024-01-01'),
             },
           ],
           cacheUsed: false,
@@ -261,6 +265,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             {
               ...mock<Issue>(),
               url: 'https://github.com/testOrg/testRepo/issues/1',
+              createdAt: new Date('2024-01-01'),
             },
             'story1',
           ],
@@ -269,6 +274,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             {
               ...mock<Issue>(),
               url: 'https://github.com/testOrg/testRepo/issues/2',
+              createdAt: new Date('2024-01-01'),
             },
             'story1',
           ],
@@ -277,6 +283,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             {
               ...mock<Issue>(),
               url: 'https://github.com/testOrg/testRepo/issues/3',
+              createdAt: new Date('2024-01-01'),
             },
             'story2',
           ],
@@ -285,6 +292,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             {
               ...mock<Issue>(),
               url: 'https://github.com/testOrg/testRepo/issues/4',
+              createdAt: new Date('2024-01-01'),
             },
             'story2',
           ],
@@ -357,6 +365,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             {
               ...mock<Issue>(),
               url: 'https://github.com/testOrg/testRepo/issues/1',
+              createdAt: new Date('2024-01-01'),
             },
             'story1',
           ],
@@ -365,6 +374,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             {
               ...mock<Issue>(),
               url: 'https://github.com/testOrg/testRepo/issues/2',
+              createdAt: new Date('2024-01-01'),
             },
             'story1',
           ],
@@ -373,6 +383,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             {
               ...mock<Issue>(),
               url: 'https://github.com/testOrg/testRepo/issues/3',
+              createdAt: new Date('2024-01-01'),
             },
             'story2',
           ],
@@ -381,6 +392,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             {
               ...mock<Issue>(),
               url: 'https://github.com/testOrg/testRepo/issues/4',
+              createdAt: new Date('2024-01-01'),
             },
             'story2',
           ],
@@ -414,6 +426,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           mockIssueRepository.getIssueByUrl.mockImplementation(async (url) => ({
             ...mock<Issue>(),
             url,
+            createdAt: new Date('2024-01-01'),
           }));
 
           const useCase = new ConvertCheckboxToIssueInStoryIssueUseCase(
