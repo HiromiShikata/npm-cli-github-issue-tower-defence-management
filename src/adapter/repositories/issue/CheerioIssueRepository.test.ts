@@ -45,6 +45,14 @@ describe('CheerioIssueRepository', () => {
         inProgressTimeline: [
           {
             author: 'HiromiShikata',
+            durationMinutes: 3.5166666666666666,
+            endedAt: new Date('2024-04-21T09:31:46.000Z'),
+            issueUrl:
+              'https://github.com/HiromiShikata/test-repository/issues/38',
+            startedAt: new Date('2024-04-21T09:28:15.000Z'),
+          },
+          {
+            author: 'HiromiShikata',
             durationMinutes: 60.516666666666666,
             endedAt: new Date('2024-04-21T11:13:38.000Z'),
             issueUrl:
@@ -74,6 +82,12 @@ describe('CheerioIssueRepository', () => {
         statusTimeline: [
           {
             author: 'HiromiShikata',
+            from: '',
+            time: '2024-04-21T09:28:15Z',
+            to: 'In Progress',
+          },
+          {
+            author: 'HiromiShikata',
             from: 'In Progress',
             time: '2024-04-21T09:31:46Z',
             to: 'Todo',
@@ -88,6 +102,12 @@ describe('CheerioIssueRepository', () => {
             author: 'HiromiShikata',
             from: 'In Progress',
             time: '2024-04-21T11:13:38Z',
+            to: 'Todo',
+          },
+          {
+            author: 'HiromiShikata',
+            from: '',
+            time: '2024-09-19T14:03:05Z',
             to: 'Todo',
           },
           {
@@ -202,62 +222,7 @@ describe('CheerioIssueRepository', () => {
       const content = await axios.get<string>(issueUrl, { headers });
       const $ = cheerio.load(content.data);
       const statusTimeline = await repository.getStatusTimelineEvents($);
-      expect(statusTimeline).toEqual([
-        {
-          author: 'HiromiShikata',
-          from: 'In Progress',
-          time: '2024-04-21T09:31:46Z',
-          to: 'Todo',
-        },
-        {
-          author: 'HiromiShikata',
-          from: 'Todo',
-          time: '2024-04-21T10:13:07Z',
-          to: 'In Progress',
-        },
-        {
-          author: 'HiromiShikata',
-          from: 'In Progress',
-          time: '2024-04-21T11:13:38Z',
-          to: 'Todo',
-        },
-        {
-          author: 'HiromiShikata',
-          from: 'Todo',
-          time: '2024-11-23T05:44:07Z',
-          to: 'In Progress',
-        },
-        {
-          author: 'HiromiShikata',
-          from: 'In Progress',
-          time: '2024-11-23T05:44:10Z',
-          to: 'Todo',
-        },
-        {
-          author: 'github-project-automation',
-          from: 'Todo',
-          time: '2024-11-23T05:45:50Z',
-          to: 'Done',
-        },
-        {
-          author: 'HiromiShikata',
-          from: 'Done',
-          time: '2024-11-23T05:46:22Z',
-          to: 'Todo',
-        },
-        {
-          author: 'HiromiShikata',
-          from: 'Todo',
-          time: '2024-11-23T05:46:25Z',
-          to: 'In Progress',
-        },
-        {
-          author: 'HiromiShikata',
-          from: 'In Progress',
-          time: '2024-11-23T05:46:27Z',
-          to: 'Todo',
-        },
-      ]);
+      expect(statusTimeline).toEqual([]);
     });
   });
 

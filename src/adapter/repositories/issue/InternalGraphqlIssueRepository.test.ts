@@ -24,6 +24,7 @@ describe('InternalGraphqlIssueRepository', () => {
       testCount,
     );
     expect(result).toBeDefined();
+    expect(result.length).toEqual(testCount);
   });
 
   test('getIssueFromBetaFeatureView returns typed Issue object', async () => {

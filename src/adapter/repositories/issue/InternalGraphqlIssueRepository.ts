@@ -185,19 +185,20 @@ export class InternalGraphqlIssueRepository extends BaseGitHubRepository {
     const frontTimelineItems: GraphqlResponse['data']['node']['frontTimelineItems']['edges'] =
       [];
     let nextCursor = cursor;
-    let remainingCount = maxCount;
+    const maxCountPerRequest = 250;
     while (frontTimelineItems.length < maxCount) {
       const response = await callQuery(
         query,
-        remainingCount,
+        maxCountPerRequest,
         nextCursor,
         issueId,
       );
-      frontTimelineItems.push(...response.edges);
-      if (response.totalCount < remainingCount) {
-        remainingCount = response.totalCount;
+      for (const edge of response.edges) {
+        frontTimelineItems.push(edge);
+        if (frontTimelineItems.length >= maxCount) {
+          return frontTimelineItems;
+        }
       }
-      remainingCount -= response.edges.length;
       nextCursor = response.pageInfo.endCursor;
       if (!response.pageInfo.hasNextPage) {
         break;
