@@ -1,3 +1,10 @@
+## [1.7.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.7.0...v1.7.1) (2025-01-19)
+
+
+### Bug Fixes
+
+* update version in package.json ([f413ba6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f413ba6cf6ca8ea824280d1236e6809f70974ac1))
+
 # [1.6.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.5.0...v1.6.0) (2025-01-08)
 
 

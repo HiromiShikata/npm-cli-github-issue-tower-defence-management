@@ -36,57 +36,10 @@ We aim for a type-safe programming style, so please avoid using `any` or `as`. I
 
 ### Code Style
 
-- As a general rule, please refrain from writing comments whenever possible.
+- As a general rule, please refrain from writing comments in source code whenever possible.
   - Your first approach should be to make your variable and function names as descriptive and self-explanatory as possible.
   - Only when this is not sufficient, and the functionality or purpose of the code is not immediately clear, should comments be used.
 - We encourage the use of the arrow function style as much as possible. It offers a more concise syntax and aligns with contemporary JavaScript practices. Please favor this style when contributing to our codebase.
-
-## Writing Tests
-
-Testing is a crucial part of our development process. We expect all code contributions to be accompanied by corresponding tests. This helps us maintain the quality of the project and catch any potential issues early.
-
-### Unit Test Template
-
-```
-import { ReplaceAllWords } from './ReplaceAllWords';
-import { FileRepository } from './adapter-interfaces/FileRepository';
-import { StringConvertor } from './adapter-interfaces/StringConvertor';
-type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>
-
-describe('ReplaceAllWords', () => {
-
-  beforeEach(() => {
-   jest.resetAllMocks();
-  });
-
-  const createUseCaseAndMockRepositories = ()=>{
-    const  fileRepository: Mocked<FileRepository> = {
-      readdirSync: jest.fn(),
-      renameSync: jest.fn(),
-      lstatSync: jest.fn(),
-      statSync: jest.fn(),
-      readFileSync: jest.fn(),
-      writeFileSync: jest.fn(),
-    };
-
-    const stringConvertor: Mocked<StringConvertor> = {
-      camelCase: jest.fn(),
-      snakeCase: jest.fn(),
-      pascalCase: jest.fn(),
-      kebabCase: jest.fn(),
-      screamSnakeCase: jest.fn(),
-    };
-
-    const  useCase: ReplaceAllWords =  new ReplaceAllWords(fileRepository, stringConvertor);
-    return  {
-      fileRepository,
-      stringConvertor,
-      useCase
-    }
-  }
-});
-
-```
 
 ## How to Submit Changes
 
