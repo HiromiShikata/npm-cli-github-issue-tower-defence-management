@@ -49,7 +49,7 @@ describe('CheerioIssueRepository', () => {
             endedAt: new Date('2024-04-21T09:31:46.000Z'),
             issueUrl:
               'https://github.com/HiromiShikata/test-repository/issues/38',
-            startedAt: new Date('2024-04-21T09:28:15.000Z')
+            startedAt: new Date('2024-04-21T09:28:15.000Z'),
           },
           {
             author: 'HiromiShikata',
