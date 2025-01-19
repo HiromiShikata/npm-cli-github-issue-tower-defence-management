@@ -61,14 +61,15 @@ class InternalGraphqlIssueRepository extends BaseGitHubRepository_1.BaseGitHubRe
             };
             const frontTimelineItems = [];
             let nextCursor = cursor;
-            let remainingCount = maxCount;
+            const maxCountPerRequest = 250;
             while (frontTimelineItems.length < maxCount) {
-                const response = await callQuery(query, remainingCount, nextCursor, issueId);
-                frontTimelineItems.push(...response.edges);
-                if (response.totalCount < remainingCount) {
-                    remainingCount = response.totalCount;
+                const response = await callQuery(query, maxCountPerRequest, nextCursor, issueId);
+                for (const edge of response.edges) {
+                    frontTimelineItems.push(edge);
+                    if (frontTimelineItems.length >= maxCount) {
+                        return frontTimelineItems;
+                    }
                 }
-                remainingCount -= response.edges.length;
                 nextCursor = response.pageInfo.endCursor;
                 if (!response.pageInfo.hasNextPage) {
                     break;
