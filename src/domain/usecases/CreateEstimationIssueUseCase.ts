@@ -37,6 +37,10 @@ export class CreateEstimationIssueUseCase {
     ) {
       return;
     }
+    const targetDate = input.targetDates[input.targetDates.length - 1];
+    if (!targetDate) {
+      return;
+    }
 
     for (const story of input.project.story?.stories || []) {
       const storyIssue = input.issues.find((issue) =>
@@ -81,7 +85,10 @@ export class CreateEstimationIssueUseCase {
         }
         if (
           completionDate50PercentConfidenceField &&
-          !!issueInStory.completionDate50PercentConfidence
+          !!issueInStory.completionDate50PercentConfidence &&
+          (issueInStory.completionDate50PercentConfidence.getTime() <
+            targetDate.getTime() + 7 * 24 * 60 * 60 * 1000 ||
+            targetDate.getDay() === 1)
         ) {
           await this.issueRepository.createComment(
             issueInStory,
