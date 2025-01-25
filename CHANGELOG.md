@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.7.1...v1.8.0) (2025-01-25)
+
+
+### Features
+
+* check once in a week if completion date is 1 week after / close https://github.com/HiromiShikata/7sea.world/issues/1864 ([d8e1630](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d8e1630c0f89883c92e6a6e44dc4a8ad21a55605))
+
 ## [1.7.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.7.0...v1.7.1) (2025-01-19)
 
 

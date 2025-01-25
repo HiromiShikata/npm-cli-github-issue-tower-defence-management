@@ -12,6 +12,10 @@ class CreateEstimationIssueUseCase {
                 !input.targetDates.find((targetDate) => targetDate.getHours() === 7 && targetDate.getMinutes() === 0)) {
                 return;
             }
+            const targetDate = input.targetDates[input.targetDates.length - 1];
+            if (!targetDate) {
+                return;
+            }
             for (const story of input.project.story?.stories || []) {
                 const storyIssue = input.issues.find((issue) => story.name.startsWith(issue.title));
                 const storyObject = input.storyObjectMap.get(story.name);
@@ -42,7 +46,10 @@ class CreateEstimationIssueUseCase {
                         await new Promise((resolve) => setTimeout(resolve, 5000));
                     }
                     if (completionDate50PercentConfidenceField &&
-                        !!issueInStory.completionDate50PercentConfidence) {
+                        !!issueInStory.completionDate50PercentConfidence &&
+                        (issueInStory.completionDate50PercentConfidence.getTime() <
+                            targetDate.getTime() + 7 * 24 * 60 * 60 * 1000 ||
+                            targetDate.getDay() === 1)) {
                         await this.issueRepository.createComment(issueInStory, `\`${completionDate50PercentConfidenceField.name}\` field value \`${this.dateRepository.formatDateWithDayOfWeek(issueInStory.completionDate50PercentConfidence)}\` is removed to re-estimate.`);
                         await this.issueRepository.clearProjectField(input.project, completionDate50PercentConfidenceField.fieldId, issueInStory);
                         await new Promise((resolve) => setTimeout(resolve, 5000));
