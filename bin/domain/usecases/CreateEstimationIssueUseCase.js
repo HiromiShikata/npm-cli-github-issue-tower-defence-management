@@ -16,6 +16,9 @@ class CreateEstimationIssueUseCase {
             if (!targetDate) {
                 return;
             }
+            if (targetDate.getDay() === 0 || targetDate.getDay() === 6) {
+                return;
+            }
             for (const story of input.project.story?.stories || []) {
                 const storyIssue = input.issues.find((issue) => story.name.startsWith(issue.title));
                 const storyObject = input.storyObjectMap.get(story.name);

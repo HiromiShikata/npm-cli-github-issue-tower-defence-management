@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.8.0...v1.9.0) (2025-01-25)
+
+
+### Features
+
+* stop creating estimation issues on weekends ([71ca29b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/71ca29b950932068709849d20dc4de2c07299cfd))
+
 # [1.8.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.7.1...v1.8.0) (2025-01-25)
 
 
