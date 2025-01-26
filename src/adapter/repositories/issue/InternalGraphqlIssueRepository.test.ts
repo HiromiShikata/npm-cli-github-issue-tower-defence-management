@@ -38,6 +38,7 @@ describe('InternalGraphqlIssueRepository', () => {
     );
     expect(result).toEqual({
       assignees: ['HiromiShikata'],
+      createdAt: new Date('2024-01-01'),
       inProgressTimeline: [
         {
           author: 'HiromiShikata',
@@ -73,6 +74,16 @@ describe('InternalGraphqlIssueRepository', () => {
       ],
       title: 'Test title',
       url: 'https://github.com/HiromiShikata/test-repository/issues/38',
+      workingTimeline: [
+        {
+          author: 'HiromiShikata',
+          durationMinutes: 0.08333333333333333,
+          endedAt: new Date('2024-11-23T06:12:51.000Z'),
+          issueUrl:
+            'https://github.com/HiromiShikata/test-repository/issues/38',
+          startedAt: new Date('2024-11-23T06:12:46.000Z'),
+        },
+      ],
     });
   });
 });

@@ -276,6 +276,8 @@ export class InternalGraphqlIssueRepository extends BaseGitHubRepository {
       project: issueData.projectItemsNext.edges[0].node.project.title,
       statusTimeline,
       inProgressTimeline,
+      createdAt: new Date('2024-01-01'),
+      workingTimeline: inProgressTimeline,
     };
   };
 }

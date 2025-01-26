@@ -30,7 +30,7 @@ export class ApiV3CheerioRestIssueRepository
     >,
     readonly restIssueRepository: Pick<
       RestIssueRepository,
-      'createNewIssue' | 'updateIssue' | 'createComment'
+      'createNewIssue' | 'updateIssue' | 'createComment' | 'getIssue'
     >,
     readonly graphqlProjectItemRepository: Pick<
       GraphqlProjectItemRepository,
@@ -105,6 +105,7 @@ export class ApiV3CheerioRestIssueRepository
       (field) => normalizeFieldName(field.name) === 'status',
     )?.value;
     const { owner, repo } = this.extractIssueFromUrl(item.url);
+    const restIssueData = await this.restIssueRepository.getIssue(item.url);
 
     return {
       nameWithOwner: item.nameWithOwner,
@@ -133,6 +134,7 @@ export class ApiV3CheerioRestIssueRepository
         'progress',
       ),
       isClosed: item.state !== 'OPEN',
+      createdAt: new Date(restIssueData.created_at || '2000-01-01'),
     };
   };
   getAllIssuesFromCache = async (
@@ -187,6 +189,10 @@ export class ApiV3CheerioRestIssueRepository
               typeof issue.completionDate50PercentConfidence !== 'string'
                 ? null
                 : new Date(issue.completionDate50PercentConfidence);
+            const createdAt =
+              !('createdAt' in issue) || typeof issue.createdAt !== 'string'
+                ? new Date() // Fallback to current date if missing
+                : new Date(issue.createdAt);
 
             return {
               ...issue,
@@ -194,6 +200,7 @@ export class ApiV3CheerioRestIssueRepository
               workingTimeline: workingTimeline,
               completionDate50PercentConfidence:
                 completionDate50PercentConfidence,
+              createdAt: createdAt,
             };
           });
 

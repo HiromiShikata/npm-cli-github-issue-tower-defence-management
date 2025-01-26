@@ -9,6 +9,8 @@ import {
 import { InternalGraphqlIssueRepository } from './InternalGraphqlIssueRepository';
 import { LocalStorageRepository } from '../LocalStorageRepository';
 
+import { Issue as DomainIssue } from '../../../domain/entities/Issue';
+
 export type Issue = {
   url: string;
   title: string;
@@ -18,6 +20,8 @@ export type Issue = {
   project: string;
   statusTimeline: IssueStatusTimeline[];
   inProgressTimeline: WorkingTime[];
+  createdAt: Date;
+  workingTimeline: WorkingTime[];
 };
 
 export class CheerioIssueRepository extends BaseGitHubRepository {
@@ -46,10 +50,15 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
     const html = content.data;
     const $ = cheerio.load(html);
     if (html.includes('react-app.embeddedData')) {
-      return this.internalGraphqlIssueRepository.getIssueFromBetaFeatureView(
+      const issue = await this.internalGraphqlIssueRepository.getIssueFromBetaFeatureView(
         issueUrl,
         html,
       );
+      return {
+        ...issue,
+        createdAt: new Date('2024-01-01'),
+        workingTimeline: issue.inProgressTimeline,
+      };
     }
     return this.getIssueFromNormalView(issueUrl, $);
   };
@@ -82,6 +91,8 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
       project,
       statusTimeline,
       inProgressTimeline,
+      createdAt: new Date('2024-01-01'),
+      workingTimeline: inProgressTimeline,
     };
   };
   getStatusTimelineEvents = async (
