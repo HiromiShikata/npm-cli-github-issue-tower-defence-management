@@ -48,7 +48,12 @@ class CheerioIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository
             const html = content.data;
             const $ = cheerio.load(html);
             if (html.includes('react-app.embeddedData')) {
-                return this.internalGraphqlIssueRepository.getIssueFromBetaFeatureView(issueUrl, html);
+                const issue = await this.internalGraphqlIssueRepository.getIssueFromBetaFeatureView(issueUrl, html);
+                return {
+                    ...issue,
+                    createdAt: new Date('2024-01-01'),
+                    workingTimeline: issue.inProgressTimeline,
+                };
             }
             return this.getIssueFromNormalView(issueUrl, $);
         };
@@ -74,6 +79,8 @@ class CheerioIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository
                 project,
                 statusTimeline,
                 inProgressTimeline,
+                createdAt: new Date('2024-01-01'),
+                workingTimeline: inProgressTimeline,
             };
         };
         this.getStatusTimelineEvents = async ($) => {

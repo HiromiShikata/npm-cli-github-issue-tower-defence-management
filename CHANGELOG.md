@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.9.0...v1.10.0) (2025-01-26)
+
+
+### Features
+
+* add createdAt field to Issue entity ([cc2929e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cc2929ef4ab96c20c306ac9faaeeb98868065f6e)), closes [#63](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/63)
+
 # [1.9.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.8.0...v1.9.0) (2025-01-25)
 
 
