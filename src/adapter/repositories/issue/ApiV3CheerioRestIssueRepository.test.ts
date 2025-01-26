@@ -154,6 +154,15 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       localStorageCacheRepository,
       localStorageRepository,
     );
+    restIssueRepository.getIssue.mockResolvedValue({
+      labels: [],
+      assignees: [],
+      title: 'test-title',
+      body: 'test-body',
+      number: 38,
+      state: 'OPEN',
+      created_at: '2024-01-01T00:00:00Z',
+    });
     return {
       repository,
       apiV3IssueRepository,

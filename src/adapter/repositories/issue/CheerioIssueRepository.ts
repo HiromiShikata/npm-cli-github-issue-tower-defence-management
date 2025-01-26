@@ -18,6 +18,7 @@ export type Issue = {
   project: string;
   statusTimeline: IssueStatusTimeline[];
   inProgressTimeline: WorkingTime[];
+  createdAt: Date;
 };
 
 export class CheerioIssueRepository extends BaseGitHubRepository {
@@ -46,10 +47,14 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
     const html = content.data;
     const $ = cheerio.load(html);
     if (html.includes('react-app.embeddedData')) {
-      return this.internalGraphqlIssueRepository.getIssueFromBetaFeatureView(
+      const issue = await this.internalGraphqlIssueRepository.getIssueFromBetaFeatureView(
         issueUrl,
         html,
       );
+      return {
+        ...issue,
+        createdAt: new Date('2024-01-01'),
+      };
     }
     return this.getIssueFromNormalView(issueUrl, $);
   };
@@ -82,6 +87,7 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
       project,
       statusTimeline,
       inProgressTimeline,
+      createdAt: new Date('2024-01-01'),
     };
   };
   getStatusTimelineEvents = async (
