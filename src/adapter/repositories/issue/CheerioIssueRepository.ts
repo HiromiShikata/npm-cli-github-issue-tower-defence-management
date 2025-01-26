@@ -9,7 +9,6 @@ import {
 import { InternalGraphqlIssueRepository } from './InternalGraphqlIssueRepository';
 import { LocalStorageRepository } from '../LocalStorageRepository';
 
-
 export type Issue = {
   url: string;
   title: string;
