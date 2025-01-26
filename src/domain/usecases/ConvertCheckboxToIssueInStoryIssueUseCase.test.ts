@@ -14,7 +14,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
     // Mock setTimeout to execute immediately
     jest.spyOn(global, 'setTimeout').mockImplementation((fn) => {
       fn();
-      return 0 as any;
+      return setTimeout(() => {}, 0);
     });
   });
 

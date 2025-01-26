@@ -63,9 +63,10 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
     );
     return {
       ...issue,
-      status: sortedTimeline.length > 0 && sortedTimeline[0].to === 'In Progress'
-        ? 'In Progress'
-        : sortedTimeline[0].to,
+      status:
+        sortedTimeline.length > 0 && sortedTimeline[0].to === 'In Progress'
+          ? 'In Progress'
+          : sortedTimeline[0].to,
     };
   };
   getIssueFromNormalView = async (
@@ -108,8 +109,12 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
     const sortedTimeline = [...statusTimeline].sort(
       (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime(),
     );
-    const lastInProgressIndex = sortedTimeline.findIndex(event => event.to === 'In Progress');
-    const lastTodoIndex = sortedTimeline.findIndex(event => event.to === 'Todo');
+    const lastInProgressIndex = sortedTimeline.findIndex(
+      (event) => event.to === 'In Progress',
+    );
+    const lastTodoIndex = sortedTimeline.findIndex(
+      (event) => event.to === 'Todo',
+    );
     if (lastInProgressIndex === -1) return sortedTimeline[0].to;
     if (lastTodoIndex === -1) return 'In Progress';
     return lastInProgressIndex < lastTodoIndex ? 'Todo' : 'In Progress';

@@ -31,7 +31,7 @@ describe('CheerioIssueRepository', () => {
     process.env.GH_TOKEN,
   );
   beforeAll(() => {
-    jest.spyOn(axios, 'get').mockImplementation((url: string) => {
+    jest.spyOn(axios, 'get').mockImplementation((_url: string) => {
       return Promise.resolve({ data: issueHtml });
     });
     jest

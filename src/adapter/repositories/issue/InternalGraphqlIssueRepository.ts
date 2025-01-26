@@ -264,10 +264,11 @@ export class InternalGraphqlIssueRepository extends BaseGitHubRepository {
       statusTimeline,
       issueUrl,
     );
-    const status = inProgressTimeline.length > 0 &&
+    const status =
+      inProgressTimeline.length > 0 &&
       inProgressTimeline[inProgressTimeline.length - 1].endedAt === null
-      ? 'In Progress'
-      : statusTimeline[statusTimeline.length - 1].to;
+        ? 'In Progress'
+        : statusTimeline[statusTimeline.length - 1].to;
     return {
       url: issueUrl,
       title: issueData.title,
