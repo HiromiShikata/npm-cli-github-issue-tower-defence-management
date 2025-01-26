@@ -477,7 +477,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
                 [Symbol.toPrimitive]: () => 0,
                 [Symbol.dispose]: () => {},
               };
-              return timeout as NodeJS.Timeout;
+              return timeout satisfies NodeJS.Timeout;
             });
 
             // Run the use case and wait for completion

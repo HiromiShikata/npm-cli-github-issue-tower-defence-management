@@ -1,10 +1,18 @@
 import { InternalGraphqlIssueRepository } from './InternalGraphqlIssueRepository';
 import { LocalStorageRepository } from '../LocalStorageRepository';
-import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import axios from 'axios';
 
 jest.mock('axios');
-const mockedAxios = axios as jest.Mocked<typeof axios>;
+const mockedAxios: jest.Mocked<typeof axios> = {
+  ...jest.mocked(axios),
+  post: jest.fn(),
+  get: jest.fn(),
+  isAxiosError: jest.fn().mockImplementation((payload: any): payload is import('axios').AxiosError => {
+    return Boolean(payload && typeof payload === 'object' && 'isAxiosError' in payload);
+  }) as unknown as typeof axios.isAxiosError,
+  create: jest.fn(),
+  defaults: {} as typeof axios.defaults,
+};
 
 // Mock all axios calls to return empty successful responses by default
 beforeAll(() => {
@@ -24,16 +32,20 @@ describe('InternalGraphqlIssueRepository', () => {
   const mockLocalStorageRepository = {
     ...localStorageRepository,
     write: jest.fn(),
-    read: jest.fn().mockResolvedValue(JSON.stringify([{
-      name: 'test-cookie',
-      value: 'test-value',
-      domain: 'github.com',
-      path: '/',
-      expires: Math.floor(Date.now() / 1000) + 3600,
-      httpOnly: true,
-      secure: true,
-      sameSite: 'lax'
-    }]))
+    read: jest.fn().mockResolvedValue(
+      JSON.stringify([
+        {
+          name: 'test-cookie',
+          value: 'test-value',
+          domain: 'github.com',
+          path: '/',
+          expires: Math.floor(Date.now() / 1000) + 3600,
+          httpOnly: true,
+          secure: true,
+          sameSite: 'lax',
+        },
+      ]),
+    ),
   };
 
   const repository = new InternalGraphqlIssueRepository(
@@ -42,67 +54,87 @@ describe('InternalGraphqlIssueRepository', () => {
     process.env.GH_TOKEN || 'dummy-token',
     process.env.GH_USER_NAME || 'dummy-user',
     process.env.GH_USER_PASSWORD || 'dummy-pass',
-    process.env.GH_AUTHENTICATOR_KEY || 'dummy-key'
+    process.env.GH_AUTHENTICATOR_KEY || 'dummy-key',
   );
 
   // Mock the getCookie method after instantiation
-  jest.spyOn(repository, 'getCookie').mockResolvedValue('test-cookie=test-value');
+  jest
+    .spyOn(repository, 'getCookie')
+    .mockResolvedValue('test-cookie=test-value');
 
   beforeEach(() => {
     jest.clearAllMocks();
     mockedAxios.post.mockReset();
-    jest.spyOn(repository, 'getCookie').mockResolvedValue('test-cookie=test-value');
-    
+    jest
+      .spyOn(repository, 'getCookie')
+      .mockResolvedValue('test-cookie=test-value');
+
     // Mock successful authentication
     mockedAxios.post.mockResolvedValueOnce({
       data: {
         data: {
           viewer: {
-            login: 'test-user'
-          }
-        }
-      }
+            login: 'test-user',
+          },
+        },
+      },
     });
 
     // Mock successful node query for getFrontTimelineItems
-    mockedAxios.post.mockImplementation(async (url: string, data?: any) => {
-      if (!data?.query) return { data: { data: {} } };
+    mockedAxios.post.mockImplementation(
+      async (_url: string, data?: unknown) => {
+        if (!data || typeof data !== 'object') return { data: { data: {} } };
 
-      // Mock for GetProjectItem query
-      if (data.query.includes('GetProjectItem')) {
-        const variables = data.variables as { owner: string; repo: string; number: number; projectId: string };
-        if (variables.owner === 'HiromiShikata' && variables.repo === 'test-repository' && variables.number === 38) {
+        const graphqlData = data as { query?: unknown };
+        if (typeof graphqlData.query !== 'string') return { data: { data: {} } };
+
+        // Mock for GetProjectItem query
+        if (graphqlData.query.includes('GetProjectItem')) {
+          const variables = (data as { variables?: unknown }).variables;
+          if (!variables || typeof variables !== 'object') return { data: { data: {} } };
+          const typedVars = variables as {
+            owner?: string;
+            repo?: string;
+            number?: number;
+            projectId?: string;
+          };
+          if (
+            typedVars.owner === 'HiromiShikata' &&
+            typedVars.repo === 'test-repository' &&
+            typedVars.number === 38
+          ) {
+            return Promise.resolve({
+              data: {
+                data: {
+                  repository: {
+                    issue: {
+                      projectItems: {
+                        nodes: [{ id: 'PVTI_lADOCNXcUc4AXA1NzgA' }],
+                      },
+                    },
+                  },
+                },
+              },
+            });
+          }
+        }
+
+        // Mock for RemoveProjectItem mutation
+        if (graphqlData.query.includes('RemoveProjectItem')) {
           return Promise.resolve({
             data: {
               data: {
-                repository: {
-                  issue: {
-                    projectItems: {
-                      nodes: [{ id: 'PVTI_lADOCNXcUc4AXA1NzgA' }]
-                    }
-                  }
-                }
-              }
-            }
+                removeProjectV2ItemFromProject: {
+                  clientMutationId: 'test-mutation-id',
+                },
+              },
+            },
           });
         }
-      }
 
-      // Mock for RemoveProjectItem mutation
-      if (data.query.includes('RemoveProjectItem')) {
-        return Promise.resolve({
-          data: {
-            data: {
-              removeProjectV2ItemFromProject: {
-                clientMutationId: 'test-mutation-id'
-              }
-            }
-          }
-        });
-      }
-
-      return Promise.resolve({ data: { data: {} } });
-    });
+        return Promise.resolve({ data: { data: {} } });
+      },
+    );
   });
 
   const testIssueUrl =
@@ -121,7 +153,9 @@ describe('InternalGraphqlIssueRepository', () => {
     mockedAxios.post.mockReset();
 
     // Mock the cookie response
-    jest.spyOn(repository, 'getCookie').mockResolvedValue('test-cookie=test-value');
+    jest
+      .spyOn(repository, 'getCookie')
+      .mockResolvedValue('test-cookie=test-value');
 
     // Mock the timeline items response
     mockedAxios.get.mockResolvedValueOnce({
@@ -142,23 +176,23 @@ describe('InternalGraphqlIssueRepository', () => {
                     login: 'test-user',
                     id: 'test-user-id',
                     __isActor: 'User',
-                    avatarUrl: 'https://example.com/avatar.png'
+                    avatarUrl: 'https://example.com/avatar.png',
                   },
                   __isIssueTimelineItems: 'IssueComment',
                   __isTimelineEvent: 'IssueComment',
-                  __isNode: 'IssueComment'
-                }
+                  __isNode: 'IssueComment',
+                },
               }),
               pageInfo: {
                 hasNextPage: false,
-                endCursor: null
-              }
-            }
-          }
-        }
-      }
+                endCursor: null,
+              },
+            },
+          },
+        },
+      },
     });
-    
+
     const result = await repository.getFrontTimelineItems(
       testIssueUrl,
       testCursor,
@@ -237,20 +271,20 @@ describe('InternalGraphqlIssueRepository', () => {
     mockedAxios.post.mockReset();
 
     // Mock for GetProjectItem query
-    mockedAxios.post.mockImplementationOnce(() => 
+    mockedAxios.post.mockImplementationOnce(() =>
       Promise.resolve({
         data: {
           data: {
             repository: {
               issue: {
                 projectItems: {
-                  nodes: [{ id: testItemId }]
-                }
-              }
-            }
-          }
-        }
-      })
+                  nodes: [{ id: testItemId }],
+                },
+              },
+            },
+          },
+        },
+      }),
     );
 
     // Mock for RemoveProjectItem mutation
@@ -259,11 +293,11 @@ describe('InternalGraphqlIssueRepository', () => {
         data: {
           data: {
             removeProjectV2ItemFromProject: {
-              clientMutationId: 'test-mutation-id'
-            }
-          }
-        }
-      })
+              clientMutationId: 'test-mutation-id',
+            },
+          },
+        },
+      }),
     );
 
     await repository.removeIssueFromProject(testIssueUrl, testProjectId);
@@ -316,13 +350,13 @@ describe('InternalGraphqlIssueRepository', () => {
             repository: {
               issue: {
                 projectItems: {
-                  nodes: []
-                }
-              }
-            }
-          }
-        }
-      })
+                  nodes: [],
+                },
+              },
+            },
+          },
+        },
+      }),
     );
 
     await expect(
