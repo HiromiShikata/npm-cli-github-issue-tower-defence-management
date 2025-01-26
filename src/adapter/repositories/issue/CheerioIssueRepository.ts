@@ -9,7 +9,6 @@ import {
 import { InternalGraphqlIssueRepository } from './InternalGraphqlIssueRepository';
 import { LocalStorageRepository } from '../LocalStorageRepository';
 
-import { Issue as DomainIssue } from '../../../domain/entities/Issue';
 
 export type Issue = {
   url: string;
@@ -50,10 +49,11 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
     const html = content.data;
     const $ = cheerio.load(html);
     if (html.includes('react-app.embeddedData')) {
-      const issue = await this.internalGraphqlIssueRepository.getIssueFromBetaFeatureView(
-        issueUrl,
-        html,
-      );
+      const issue =
+        await this.internalGraphqlIssueRepository.getIssueFromBetaFeatureView(
+          issueUrl,
+          html,
+        );
       return {
         ...issue,
         createdAt: new Date('2024-01-01'),
