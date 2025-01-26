@@ -22,6 +22,9 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         this.ghUserName = ghUserName;
         this.ghUserPassword = ghUserPassword;
         this.ghAuthenticatorKey = ghAuthenticatorKey;
+        this.removeIssueFromProject = async (_issueUrl, _projectId) => {
+            throw new Error('Method not supported in REST API v3 repository');
+        };
         this.updateStatus = async (project, issue, statusId) => {
             await this.graphqlProjectItemRepository.updateProjectField(project.id, project.status.fieldId, issue.itemId, { singleSelectOptionId: statusId });
         };

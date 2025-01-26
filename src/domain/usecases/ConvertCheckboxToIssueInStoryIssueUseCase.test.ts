@@ -6,8 +6,21 @@ import { Issue } from '../entities/Issue';
 import { StoryObject, StoryObjectMap } from './HandleScheduledEventUseCase';
 
 describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
-  jest.setTimeout(5 * 60 * 1000);
-  const mockIssueRepository = mock<IssueRepository>();
+  jest.setTimeout(30 * 1000);
+
+  let mockIssueRepository: jest.Mocked<IssueRepository>;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    mockIssueRepository = mock<IssueRepository>();
+    // Clear all mocks before each test
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.clearAllTimers();
+  });
 
   describe('run', () => {
     const basicProject = {
@@ -261,6 +274,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             {
               ...mock<Issue>(),
               url: 'https://github.com/testOrg/testRepo/issues/1',
+              number: 1,
             },
             'story1',
           ],
@@ -269,6 +283,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             {
               ...mock<Issue>(),
               url: 'https://github.com/testOrg/testRepo/issues/2',
+              number: 2,
             },
             'story1',
           ],
@@ -277,6 +292,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             {
               ...mock<Issue>(),
               url: 'https://github.com/testOrg/testRepo/issues/3',
+              number: 3,
             },
             'story2',
           ],
@@ -285,6 +301,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             {
               ...mock<Issue>(),
               url: 'https://github.com/testOrg/testRepo/issues/4',
+              number: 4,
             },
             'story2',
           ],
@@ -357,6 +374,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             {
               ...mock<Issue>(),
               url: 'https://github.com/testOrg/testRepo/issues/1',
+              number: 1,
             },
             'story1',
           ],
@@ -365,6 +383,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             {
               ...mock<Issue>(),
               url: 'https://github.com/testOrg/testRepo/issues/2',
+              number: 2,
             },
             'story1',
           ],
@@ -373,6 +392,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             {
               ...mock<Issue>(),
               url: 'https://github.com/testOrg/testRepo/issues/3',
+              number: 3,
             },
             'story2',
           ],
@@ -381,6 +401,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             {
               ...mock<Issue>(),
               url: 'https://github.com/testOrg/testRepo/issues/4',
+              number: 4,
             },
             'story2',
           ],
@@ -406,20 +427,60 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
       }) => {
         it(name, async () => {
           jest.clearAllMocks();
+          jest.useFakeTimers();
 
           let issueCounter = 1;
-          mockIssueRepository.createNewIssue.mockImplementation(
-            async () => issueCounter++,
-          );
-          mockIssueRepository.getIssueByUrl.mockImplementation(async (url) => ({
-            ...mock<Issue>(),
-            url,
-          }));
+          const createdIssues = new Map<string, Issue>();
+
+          // Simple mock implementations without promise tracking
+          mockIssueRepository.createNewIssue.mockImplementation(async () => {
+            return issueCounter++;
+          });
+
+          mockIssueRepository.getIssueByUrl.mockImplementation(async (url) => {
+            if (createdIssues.has(url)) {
+              return createdIssues.get(url) || null;
+            }
+            const issue = {
+              ...mock<Issue>(),
+              url,
+              number: parseInt(url.split('/').pop() || '0'),
+            };
+            createdIssues.set(url, issue);
+            return issue;
+          });
+
+          mockIssueRepository.updateIssue.mockImplementation(async (issue) => {
+            if (issue.url) {
+              createdIssues.set(issue.url, issue);
+            }
+          });
+
+          mockIssueRepository.updateStory.mockImplementation(async () => {});
 
           const useCase = new ConvertCheckboxToIssueInStoryIssueUseCase(
             mockIssueRepository,
           );
+
           try {
+            // Set a longer timeout for this test case
+            jest.setTimeout(120000);
+
+            // Mock the 30-second delay to be instant
+            jest.spyOn(global, 'setTimeout').mockImplementation((fn) => {
+              fn();
+              const timeout = {
+                hasRef: () => false,
+                ref: () => timeout,
+                refresh: () => timeout,
+                unref: () => timeout,
+                [Symbol.toPrimitive]: () => 0,
+                [Symbol.dispose]: () => {},
+              };
+              return timeout as NodeJS.Timeout;
+            });
+
+            // Run the use case and wait for completion
             await useCase.run(input);
           } catch (e) {
             if (expectedThrowError === undefined) {

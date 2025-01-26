@@ -113,6 +113,85 @@ type GraphqlResponse = {
   };
 };
 export class InternalGraphqlIssueRepository extends BaseGitHubRepository {
+  removeIssueFromProject = async (
+    issueUrl: string,
+    projectId: string,
+  ): Promise<void> => {
+    const { owner, repo, issueNumber } = this.extractIssueFromUrl(issueUrl);
+    const getItemQuery = `query GetProjectItem($owner: String!, $repo: String!, $number: Int!, $projectId: ID!) {
+      repository(owner: $owner, name: $repo) {
+        issue(number: $number) {
+          projectItems(first: 1, filter: { projectId: $projectId }) {
+            nodes {
+              id
+            }
+          }
+        }
+      }
+    }`;
+
+    const getItemResponse = await axios.post<{
+      data: {
+        repository: {
+          issue: {
+            projectItems: {
+              nodes: Array<{
+                id: string;
+              }>;
+            };
+          };
+        };
+      };
+    }>(
+      'https://api.github.com/graphql',
+      {
+        query: getItemQuery,
+        variables: {
+          owner,
+          repo,
+          number: issueNumber,
+          projectId,
+        },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${this.ghToken}`,
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+
+    const itemId =
+      getItemResponse.data.data.repository.issue.projectItems.nodes[0]?.id;
+    if (!itemId) {
+      throw new Error(
+        `Issue not found in project. URL: ${issueUrl}, Project ID: ${projectId}`,
+      );
+    }
+
+    const removeMutation = `mutation RemoveProjectItem($projectId: ID!, $itemId: ID!) {
+      removeProjectV2ItemFromProject(input: { projectId: $projectId, itemId: $itemId }) {
+        clientMutationId
+      }
+    }`;
+
+    await axios.post(
+      'https://api.github.com/graphql',
+      {
+        query: removeMutation,
+        variables: {
+          projectId,
+          itemId,
+        },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${this.ghToken}`,
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+  };
   getFrontTimelineItems = async (
     issueUrl: string,
     cursor: string | null,

@@ -53,4 +53,8 @@ export interface IssueRepository {
     issue: Issue,
   ) => Promise<void>;
   createComment: (issue: Issue, commentBody: string) => Promise<void>;
+  removeIssueFromProject: (
+    issueUrl: string,
+    projectId: Project['id'],
+  ) => Promise<void>;
 }

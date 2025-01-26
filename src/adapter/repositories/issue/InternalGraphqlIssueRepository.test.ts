@@ -1,10 +1,109 @@
 import { InternalGraphqlIssueRepository } from './InternalGraphqlIssueRepository';
 import { LocalStorageRepository } from '../LocalStorageRepository';
+import { BaseGitHubRepository } from '../BaseGitHubRepository';
+import axios from 'axios';
+
+jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
+
+// Mock all axios calls to return empty successful responses by default
+beforeAll(() => {
+  mockedAxios.post.mockResolvedValue({ data: { data: {} } });
+  mockedAxios.get.mockResolvedValue({ data: {} });
+});
+
+interface GraphQLRequestData {
+  query: string;
+  variables: Record<string, unknown>;
+}
 
 describe('InternalGraphqlIssueRepository', () => {
   jest.setTimeout(30 * 1000);
   const localStorageRepository = new LocalStorageRepository();
-  const repository = new InternalGraphqlIssueRepository(localStorageRepository);
+  // Mock LocalStorageRepository
+  const mockLocalStorageRepository = {
+    ...localStorageRepository,
+    write: jest.fn(),
+    read: jest.fn().mockResolvedValue(JSON.stringify([{
+      name: 'test-cookie',
+      value: 'test-value',
+      domain: 'github.com',
+      path: '/',
+      expires: Math.floor(Date.now() / 1000) + 3600,
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax'
+    }]))
+  };
+
+  const repository = new InternalGraphqlIssueRepository(
+    mockLocalStorageRepository,
+    './tmp/github.com.cookies.json',
+    process.env.GH_TOKEN || 'dummy-token',
+    process.env.GH_USER_NAME || 'dummy-user',
+    process.env.GH_USER_PASSWORD || 'dummy-pass',
+    process.env.GH_AUTHENTICATOR_KEY || 'dummy-key'
+  );
+
+  // Mock the getCookie method after instantiation
+  jest.spyOn(repository, 'getCookie').mockResolvedValue('test-cookie=test-value');
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockedAxios.post.mockReset();
+    jest.spyOn(repository, 'getCookie').mockResolvedValue('test-cookie=test-value');
+    
+    // Mock successful authentication
+    mockedAxios.post.mockResolvedValueOnce({
+      data: {
+        data: {
+          viewer: {
+            login: 'test-user'
+          }
+        }
+      }
+    });
+
+    // Mock successful node query for getFrontTimelineItems
+    mockedAxios.post.mockImplementation(async (url: string, data?: any) => {
+      if (!data?.query) return { data: { data: {} } };
+
+      // Mock for GetProjectItem query
+      if (data.query.includes('GetProjectItem')) {
+        const variables = data.variables as { owner: string; repo: string; number: number; projectId: string };
+        if (variables.owner === 'HiromiShikata' && variables.repo === 'test-repository' && variables.number === 38) {
+          return Promise.resolve({
+            data: {
+              data: {
+                repository: {
+                  issue: {
+                    projectItems: {
+                      nodes: [{ id: 'PVTI_lADOCNXcUc4AXA1NzgA' }]
+                    }
+                  }
+                }
+              }
+            }
+          });
+        }
+      }
+
+      // Mock for RemoveProjectItem mutation
+      if (data.query.includes('RemoveProjectItem')) {
+        return Promise.resolve({
+          data: {
+            data: {
+              removeProjectV2ItemFromProject: {
+                clientMutationId: 'test-mutation-id'
+              }
+            }
+          }
+        });
+      }
+
+      return Promise.resolve({ data: { data: {} } });
+    });
+  });
 
   const testIssueUrl =
     'https://github.com/HiromiShikata/test-repository/issues/38';
@@ -17,6 +116,49 @@ describe('InternalGraphqlIssueRepository', () => {
   });
 
   test('getFrontTimelineItems returns timeline with proper types', async () => {
+    // Reset mock implementation for this specific test
+    mockedAxios.get.mockReset();
+    mockedAxios.post.mockReset();
+
+    // Mock the cookie response
+    jest.spyOn(repository, 'getCookie').mockResolvedValue('test-cookie=test-value');
+
+    // Mock the timeline items response
+    mockedAxios.get.mockResolvedValueOnce({
+      data: {
+        data: {
+          node: {
+            id: testIssueId,
+            frontTimelineItems: {
+              edges: Array(testCount).fill({
+                node: {
+                  __typename: 'IssueComment',
+                  createdAt: '2024-01-26T12:00:00Z',
+                  body: 'Test comment',
+                  id: 'test-comment-id',
+                  databaseId: 1,
+                  actor: {
+                    __typename: 'User',
+                    login: 'test-user',
+                    id: 'test-user-id',
+                    __isActor: 'User',
+                    avatarUrl: 'https://example.com/avatar.png'
+                  },
+                  __isIssueTimelineItems: 'IssueComment',
+                  __isTimelineEvent: 'IssueComment',
+                  __isNode: 'IssueComment'
+                }
+              }),
+              pageInfo: {
+                hasNextPage: false,
+                endCursor: null
+              }
+            }
+          }
+        }
+      }
+    });
+    
     const result = await repository.getFrontTimelineItems(
       testIssueUrl,
       testCursor,
@@ -85,5 +227,110 @@ describe('InternalGraphqlIssueRepository', () => {
         },
       ],
     });
+  });
+
+  test('removeIssueFromProject removes issue from project successfully', async () => {
+    const testProjectId = 'PVT_kwDOCNXcUc4AXA1N';
+    const testItemId = 'PVTI_lADOCNXcUc4AXA1NzgA';
+
+    // Reset mock implementation for this test
+    mockedAxios.post.mockReset();
+
+    // Mock for GetProjectItem query
+    mockedAxios.post.mockImplementationOnce(() => 
+      Promise.resolve({
+        data: {
+          data: {
+            repository: {
+              issue: {
+                projectItems: {
+                  nodes: [{ id: testItemId }]
+                }
+              }
+            }
+          }
+        }
+      })
+    );
+
+    // Mock for RemoveProjectItem mutation
+    mockedAxios.post.mockImplementationOnce(() =>
+      Promise.resolve({
+        data: {
+          data: {
+            removeProjectV2ItemFromProject: {
+              clientMutationId: 'test-mutation-id'
+            }
+          }
+        }
+      })
+    );
+
+    await repository.removeIssueFromProject(testIssueUrl, testProjectId);
+
+    const mockCalls = mockedAxios.post.mock.calls;
+    void expect(mockedAxios.post.mock.calls).toHaveLength(2);
+
+    // Verify first call (get project item)
+    const isGraphQLRequestData = (data: unknown): data is GraphQLRequestData =>
+      typeof data === 'object' &&
+      data !== null &&
+      'variables' in data &&
+      typeof data.variables === 'object';
+
+    const firstCallData = mockCalls[0]?.[1];
+    if (!firstCallData || !isGraphQLRequestData(firstCallData)) {
+      throw new Error('First call data is not a valid GraphQLRequestData');
+    }
+
+    expect(firstCallData.variables).toEqual({
+      owner: 'HiromiShikata',
+      repo: 'test-repository',
+      number: 38,
+      projectId: testProjectId,
+    });
+
+    // Verify second call (remove item)
+    const secondCallData = mockCalls[1]?.[1];
+    if (!secondCallData || !isGraphQLRequestData(secondCallData)) {
+      throw new Error('Second call data is not a valid GraphQLRequestData');
+    }
+
+    expect(secondCallData.variables).toEqual({
+      projectId: testProjectId,
+      itemId: testItemId,
+    });
+  });
+
+  test('removeIssueFromProject throws error when issue not found in project', async () => {
+    const testProjectId = 'PVT_kwDOCNXcUc4AXA1N';
+
+    // Reset mock implementation for this test
+    mockedAxios.post.mockReset();
+
+    // Mock empty project items response for error case
+    mockedAxios.post.mockImplementationOnce(() =>
+      Promise.resolve({
+        data: {
+          data: {
+            repository: {
+              issue: {
+                projectItems: {
+                  nodes: []
+                }
+              }
+            }
+          }
+        }
+      })
+    );
+
+    await expect(
+      repository.removeIssueFromProject(testIssueUrl, testProjectId),
+    ).rejects.toThrow(
+      `Issue not found in project. URL: ${testIssueUrl}, Project ID: ${testProjectId}`,
+    );
+
+    void expect(mockedAxios.post.mock.calls).toHaveLength(1);
   });
 });
