@@ -48,6 +48,8 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             project: '',
             statusTimeline: [],
             inProgressTimeline: [],
+            createdAt: new Date('2024-01-01'),
+            workingTimeline: [],
           },
         ],
         expected: {
@@ -73,6 +75,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           completionDate50PercentConfidence: null,
           isInProgress: false,
           isClosed: false,
+          createdAt: new Date('2024-01-01'),
         },
       },
     ];
@@ -154,6 +157,15 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       localStorageCacheRepository,
       localStorageRepository,
     );
+    restIssueRepository.getIssue.mockResolvedValue({
+      labels: [],
+      assignees: [],
+      title: 'test-title',
+      body: 'test-body',
+      number: 38,
+      state: 'OPEN',
+      created_at: '2024-01-01T00:00:00Z',
+    });
     return {
       repository,
       apiV3IssueRepository,
