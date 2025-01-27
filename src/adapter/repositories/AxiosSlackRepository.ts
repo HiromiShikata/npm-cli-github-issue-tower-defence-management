@@ -38,12 +38,24 @@ export class AxiosSlackRepository implements SlackRepository {
         ) {
           const retryAfter = Number(error.response.headers['retry-after']) || 1;
           await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
-          if (
-            error.config &&
-            typeof error.config === 'object' &&
-            'method' in error.config &&
-            'url' in error.config
-          ) {
+          interface AxiosErrorConfig {
+            method: string;
+            url: string;
+          }
+
+          function isAxiosErrorConfig(config: unknown): config is AxiosErrorConfig {
+            return (
+              config !== null &&
+              typeof config === 'object' &&
+              'method' in config &&
+              'method' in config &&
+              typeof config.method === 'string' &&
+              'url' in config &&
+              typeof config.url === 'string'
+            );
+          }
+
+          if (error.config && isAxiosErrorConfig(error.config)) {
             return this.client.request({
               ...error.config,
               method: error.config.method,

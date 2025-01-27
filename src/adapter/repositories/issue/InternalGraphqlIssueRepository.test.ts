@@ -6,10 +6,9 @@ jest.mock('axios');
 const mockedAxios: jest.Mocked<typeof axios> = {
   post: jest.fn(),
   get: jest.fn(),
-  isAxiosError: jest.fn().mockImplementation((payload: unknown): payload is import('axios').AxiosError => {
-    return Boolean(
-      payload && typeof payload === 'object' && 'isAxiosError' in payload,
-    );
+  isAxiosError: jest.fn().mockImplementation((payload: unknown): boolean => {
+    if (!payload || typeof payload !== 'object') return false;
+    return 'isAxiosError' in payload && 'response' in payload;
   }),
   create: jest.fn(),
   defaults: {
@@ -41,8 +40,9 @@ const mockedAxios: jest.Mocked<typeof axios> = {
   getUri: jest.fn(),
   all: jest.fn(),
   spread: jest.fn(),
-  isCancel: jest.fn().mockImplementation((value: unknown): value is import('axios').Cancel => {
-    return Boolean(value && typeof value === 'object' && 'message' in value);
+  isCancel: jest.fn().mockImplementation((value: unknown): boolean => {
+    if (!value || typeof value !== 'object') return false;
+    return 'message' in value;
   }),
   toFormData: jest.fn(),
   formToJSON: jest.fn(),
