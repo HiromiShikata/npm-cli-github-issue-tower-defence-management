@@ -1,3 +1,10 @@
+# [1.11.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.10.0...v1.11.0) (2025-01-27)
+
+
+### Features
+
+* exclude 'story' label from estimation issues ([90f89d5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/90f89d5ebccdaeae0b833bcf009c453727e433d1))
+
 # [1.10.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.9.0...v1.10.0) (2025-01-26)
 
 
