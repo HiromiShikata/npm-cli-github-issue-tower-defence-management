@@ -486,6 +486,42 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
         this.updateProjectTextField = async (project, fieldId, issue, text) => {
             await this.updateProjectField(project, fieldId, issue, { text });
         };
+        this.removeItemFromProject = async (projectId, itemId) => {
+            const graphqlQuery = {
+                query: `mutation RemoveProjectV2Item($projectId: ID!, $itemId: ID!) {
+        deleteProjectV2Item(input: { projectId: $projectId, itemId: $itemId }) {
+          clientMutationId
+        }
+      }`,
+                variables: {
+                    projectId,
+                    itemId,
+                },
+            };
+            const res = await (0, axios_1.default)({
+                url: 'https://api.github.com/graphql',
+                method: 'post',
+                headers: {
+                    Authorization: `Bearer ${this.ghToken}`,
+                    'Content-Type': 'application/json',
+                },
+                data: JSON.stringify(graphqlQuery),
+            });
+            if (res.status !== 200) {
+                throw new Error('Failed to remove item from project');
+            }
+            else if (res.data.errors) {
+                throw new Error(res.data.errors.map((e) => e.message).join('\n'));
+            }
+        };
+        this.removeItemFromProjectByIssueUrl = async (issueUrl, projectId) => {
+            const { owner, repo, issueNumber } = this.extractIssueFromUrl(issueUrl);
+            const itemId = await this.fetchItemId(projectId, owner, repo, issueNumber);
+            if (!itemId) {
+                throw new Error(`Issue not found in project. URL: ${issueUrl}, Project ID: ${projectId}`);
+            }
+            await this.removeItemFromProject(projectId, itemId);
+        };
     }
 }
 exports.GraphqlProjectItemRepository = GraphqlProjectItemRepository;

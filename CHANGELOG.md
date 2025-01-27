@@ -1,3 +1,10 @@
+# [1.12.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.11.0...v1.12.0) (2025-01-27)
+
+
+### Features
+
+* add methods to remove items from project ([#117](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/117)) ([fb96e67](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/fb96e673532e6b666201f50124aae9cb03573991))
+
 # [1.11.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.10.0...v1.11.0) (2025-01-27)
 
 
