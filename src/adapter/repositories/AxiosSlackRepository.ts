@@ -16,6 +16,18 @@ export class AxiosSlackRepository implements SlackRepository {
         Authorization: `Bearer ${userToken}`,
       },
     });
+
+    this.client.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        if (error.response?.status === 429) {
+          const retryAfter = error.response.headers['retry-after'] || 1;
+          await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+          return this.client.request(error.config);
+        }
+        return Promise.reject(error);
+      },
+    );
   }
 
   async postMessageToChannel(

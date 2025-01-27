@@ -3,20 +3,36 @@ import { LocalStorageRepository } from '../LocalStorageRepository';
 import axios from 'axios';
 
 jest.mock('axios');
-const mockedAxios: jest.Mocked<typeof axios> = {
-  ...jest.mocked(axios),
+const mockedAxios = {
   post: jest.fn(),
   get: jest.fn(),
-  isAxiosError: jest.fn().mockImplementation(function (
-    payload: unknown,
-  ): payload is import('axios').AxiosError {
+  isAxiosError: jest.fn().mockImplementation((payload: unknown): payload is import('axios').AxiosError => {
     return Boolean(
       payload && typeof payload === 'object' && 'isAxiosError' in payload,
     );
   }),
   create: jest.fn(),
-  defaults: jest.mocked(axios).defaults,
-};
+  defaults: {
+    headers: {
+      common: {},
+      delete: {},
+      get: {},
+      head: {},
+      post: {},
+      put: {},
+      patch: {},
+    },
+    transformRequest: [],
+    transformResponse: [],
+    timeout: 0,
+    adapter: jest.fn(),
+    xsrfCookieName: '',
+    xsrfHeaderName: '',
+    maxContentLength: -1,
+    maxBodyLength: -1,
+    env: {},
+  },
+} as unknown as jest.Mocked<typeof axios>;
 
 // Mock all axios calls to return empty successful responses by default
 beforeAll(() => {
