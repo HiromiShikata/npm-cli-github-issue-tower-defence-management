@@ -138,9 +138,9 @@ This issue is experimental workflow :pray:
 - Target story: ${storyObject.storyIssue.url}
 
 ## Tasks
-- [ ] 1. Fill \`50% confidence completion date\` to all issues on ${urlObStoryView}?filterQuery=story%3A%22${encodeForURI(storyObject.storyIssue.story)}%22+is%3Aopen+no%3A%22${encodeForURI(project.completionDate50PercentConfidence?.name)}%22+assignee%3A%40me
-- [ ] 2. Fill \`Remaining Estimation (minutes)\` to all issues on ${urlObStoryView}?filterQuery=story%3A%22${encodeForURI(storyObject.storyIssue.story)}%22+is%3Aopen+no%3A%22${encodeForURI(project.remainingEstimationMinutes?.name)}%22+assignee%3A%40me
-- [ ] 3. Take screenshot and comment to this issue about ${urlObStoryView}?filterQuery=story%3A%22${encodeForURI(storyObject.storyIssue.story)}%22+is%3Aopen+assignee%3A%40me
+- [ ] 1. Fill \`50% confidence completion date\` to all issues on ${urlObStoryView}?filterQuery=story%3A%22${encodeForURI(storyObject.storyIssue.story)}%22+is%3Aopen+no%3A%22${encodeForURI(project.completionDate50PercentConfidence?.name)}%22+assignee%3A%40me+-label%3Astory
+- [ ] 2. Fill \`Remaining Estimation (minutes)\` to all issues on ${urlObStoryView}?filterQuery=story%3A%22${encodeForURI(storyObject.storyIssue.story)}%22+is%3Aopen+no%3A%22${encodeForURI(project.remainingEstimationMinutes?.name)}%22+assignee%3A%40me+-label%3Astory
+- [ ] 3. Take screenshot and comment to this issue about ${urlObStoryView}?filterQuery=story%3A%22${encodeForURI(storyObject.storyIssue.story)}%22+is%3Aopen+assignee%3A%40me+-label%3Astory
 - [ ] 4. Close
 
 ⚡⚡⚡
