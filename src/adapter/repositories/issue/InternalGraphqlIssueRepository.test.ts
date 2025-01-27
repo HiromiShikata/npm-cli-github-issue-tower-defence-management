@@ -87,6 +87,7 @@ describe('InternalGraphqlIssueRepository', () => {
       async (_url: string, data?: unknown) => {
         if (!data || typeof data !== 'object') return { data: { data: {} } };
 
+<<<<<<< HEAD
         if (!('query' in data) || typeof data.query !== 'string')
           return { data: { data: {} } };
 
@@ -145,6 +146,49 @@ describe('InternalGraphqlIssueRepository', () => {
 
         // Mock for RemoveProjectItem mutation
         if (data.query.includes('RemoveProjectItem')) {
+||||||| 6704be8
+      // Mock for GetProjectItem query
+      if (data.query.includes('GetProjectItem')) {
+        const variables = data.variables as { owner: string; repo: string; number: number; projectId: string };
+        if (variables.owner === 'HiromiShikata' && variables.repo === 'test-repository' && variables.number === 38) {
+=======
+        const graphqlData = data as { query?: unknown };
+        if (typeof graphqlData.query !== 'string') return { data: { data: {} } };
+
+        // Mock for GetProjectItem query
+        if (graphqlData.query.includes('GetProjectItem')) {
+          const variables = (data as { variables?: unknown }).variables;
+          if (!variables || typeof variables !== 'object') return { data: { data: {} } };
+          const typedVars = variables as {
+            owner?: string;
+            repo?: string;
+            number?: number;
+            projectId?: string;
+          };
+          if (
+            typedVars.owner === 'HiromiShikata' &&
+            typedVars.repo === 'test-repository' &&
+            typedVars.number === 38
+          ) {
+            return Promise.resolve({
+              data: {
+                data: {
+                  repository: {
+                    issue: {
+                      projectItems: {
+                        nodes: [{ id: 'PVTI_lADOCNXcUc4AXA1NzgA' }],
+                      },
+                    },
+                  },
+                },
+              },
+            });
+          }
+        }
+
+        // Mock for RemoveProjectItem mutation
+        if (graphqlData.query.includes('RemoveProjectItem')) {
+>>>>>>> origin/devin/1737934731-add-remove-issue-from-project
           return Promise.resolve({
             data: {
               data: {
