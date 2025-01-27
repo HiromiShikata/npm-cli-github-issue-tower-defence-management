@@ -7,11 +7,11 @@ const mockedAxios: jest.Mocked<typeof axios> = {
   ...jest.mocked(axios),
   post: jest.fn(),
   get: jest.fn(),
-  isAxiosError: jest.fn().mockImplementation((payload: unknown): payload is import('axios').AxiosError => {
+  isAxiosError: jest.fn().mockImplementation(function <T = any, D = any>(payload: any): payload is import('axios').AxiosError<T, D> {
     return Boolean(
       payload && typeof payload === 'object' && 'isAxiosError' in payload,
     );
-  }),
+  }) as unknown as typeof axios.isAxiosError,
   create: jest.fn(),
   defaults: jest.mocked(axios).defaults,
 };
