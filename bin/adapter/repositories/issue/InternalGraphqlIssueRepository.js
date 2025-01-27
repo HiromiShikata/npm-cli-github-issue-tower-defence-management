@@ -11,6 +11,55 @@ const issueTimelineUtils_1 = require("./issueTimelineUtils");
 class InternalGraphqlIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
     constructor() {
         super(...arguments);
+        this.removeIssueFromProject = async (issueUrl, projectId) => {
+            const { owner, repo, issueNumber } = this.extractIssueFromUrl(issueUrl);
+            const getItemQuery = `query GetProjectItem($owner: String!, $repo: String!, $number: Int!, $projectId: ID!) {
+      repository(owner: $owner, name: $repo) {
+        issue(number: $number) {
+          projectItems(first: 1, filter: { projectId: $projectId }) {
+            nodes {
+              id
+            }
+          }
+        }
+      }
+    }`;
+            const getItemResponse = await axios_1.default.post('https://api.github.com/graphql', {
+                query: getItemQuery,
+                variables: {
+                    owner,
+                    repo,
+                    number: issueNumber,
+                    projectId,
+                },
+            }, {
+                headers: {
+                    Authorization: `Bearer ${this.ghToken}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            const itemId = getItemResponse.data.data.repository.issue.projectItems.nodes[0]?.id;
+            if (!itemId) {
+                throw new Error(`Issue not found in project. URL: ${issueUrl}, Project ID: ${projectId}`);
+            }
+            const removeMutation = `mutation RemoveProjectItem($projectId: ID!, $itemId: ID!) {
+      removeProjectV2ItemFromProject(input: { projectId: $projectId, itemId: $itemId }) {
+        clientMutationId
+      }
+    }`;
+            await axios_1.default.post('https://api.github.com/graphql', {
+                query: removeMutation,
+                variables: {
+                    projectId,
+                    itemId,
+                },
+            }, {
+                headers: {
+                    Authorization: `Bearer ${this.ghToken}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+        };
         this.getFrontTimelineItems = async (issueUrl, cursor, issueId, maxCount = 9999) => {
             const query = 'f6ff036f8e215bd07d00516664e8725c';
             const callQuery = async (query, count, cursor, issueId) => {
