@@ -22,6 +22,12 @@ export class ApiV3CheerioRestIssueRepository
   extends BaseGitHubRepository
   implements IssueRepository
 {
+  removeIssueFromProject = async (
+    _issueUrl: string,
+    _projectId: Project['id'],
+  ): Promise<void> => {
+    throw new Error('Method not supported in REST API v3 repository');
+  };
   constructor(
     readonly apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>,
     readonly cheerioIssueRepository: Pick<
