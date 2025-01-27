@@ -6,21 +6,21 @@ jest.mock('axios');
 const mockedAxios: jest.Mocked<typeof axios> = {
   post: jest.fn(),
   get: jest.fn(),
-  isAxiosError: jest.fn().mockImplementation((payload: unknown): payload is import('axios').AxiosError => {
+  isAxiosError: jest.fn((payload: unknown) => {
     return Boolean(
       payload && typeof payload === 'object' && 'isAxiosError' in payload,
     );
-  }),
+  }) as jest.MockedFunction<typeof axios.isAxiosError>,
   create: jest.fn(),
   defaults: {
     headers: {
-      common: { Accept: '*/*' },
-      delete: {},
-      get: {},
-      head: {},
-      post: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      put: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      patch: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      common: '*/*',
+      delete: null,
+      get: null,
+      head: null,
+      post: 'application/x-www-form-urlencoded',
+      put: 'application/x-www-form-urlencoded',
+      patch: 'application/x-www-form-urlencoded',
     },
     transformRequest: [],
     transformResponse: [],
@@ -41,9 +41,9 @@ const mockedAxios: jest.Mocked<typeof axios> = {
   getUri: jest.fn(),
   all: jest.fn(),
   spread: jest.fn(),
-  isCancel: jest.fn().mockImplementation((value: unknown): value is import('axios').Cancel => {
+  isCancel: jest.fn((value: unknown) => {
     return Boolean(value && typeof value === 'object' && 'message' in value);
-  }),
+  }) as jest.MockedFunction<typeof axios.isCancel>,
   toFormData: jest.fn(),
   formToJSON: jest.fn(),
 };
@@ -114,7 +114,7 @@ describe('InternalGraphqlIssueRepository', () => {
       },
     });
 
-    // Mock successful node query for getFrontTimelineItems
+    // Mock successful node query for getFrontTimelineItems and other queries
     mockedAxios.post.mockImplementation(
       async (_url: string, data?: unknown) => {
         if (!data || typeof data !== 'object') return { data: { data: {} } };
@@ -188,6 +188,43 @@ describe('InternalGraphqlIssueRepository', () => {
           });
         }
 
+        // Mock for getFrontTimelineItems query
+        if (data.query.includes('frontTimelineItems')) {
+          return Promise.resolve({
+            data: {
+              data: {
+                node: {
+                  frontTimelineItems: {
+                    edges: Array(10).fill({
+                      node: {
+                        __typename: 'IssueComment',
+                        createdAt: '2024-01-26T12:00:00Z',
+                        body: 'Test comment',
+                        id: 'test-comment-id',
+                        databaseId: 1,
+                        actor: {
+                          __typename: 'User',
+                          login: 'test-user',
+                          id: 'test-user-id',
+                          __isActor: 'User',
+                          avatarUrl: 'https://example.com/avatar.png',
+                        },
+                        __isIssueTimelineItems: 'IssueComment',
+                        __isTimelineEvent: 'IssueComment',
+                        __isNode: 'IssueComment',
+                      },
+                    }),
+                    pageInfo: {
+                      hasNextPage: false,
+                      endCursor: null,
+                    },
+                  },
+                },
+              },
+            },
+          });
+        }
+
         return Promise.resolve({ data: { data: {} } });
       },
     );
@@ -205,7 +242,6 @@ describe('InternalGraphqlIssueRepository', () => {
 
   test('getFrontTimelineItems returns timeline with proper types', async () => {
     // Reset mock implementation for this specific test
-    mockedAxios.get.mockReset();
     mockedAxios.post.mockReset();
 
     // Mock the cookie response
@@ -214,11 +250,10 @@ describe('InternalGraphqlIssueRepository', () => {
       .mockResolvedValue('test-cookie=test-value');
 
     // Mock the timeline items response
-    mockedAxios.get.mockResolvedValueOnce({
+    mockedAxios.post.mockResolvedValueOnce({
       data: {
         data: {
           node: {
-            id: testIssueId,
             frontTimelineItems: {
               edges: Array(testCount).fill({
                 node: {
@@ -257,6 +292,63 @@ describe('InternalGraphqlIssueRepository', () => {
     );
     expect(result).toBeDefined();
     expect(result.length).toEqual(testCount);
+  });
+
+  test('removeIssueFromProject removes issue from project successfully', async () => {
+    const testProjectId = 'PVT_kwDOCNXcUc4AXA1N';
+    
+    // Mock GetProjectItem query response
+    mockedAxios.post.mockResolvedValueOnce({
+      data: {
+        data: {
+          repository: {
+            issue: {
+              projectItems: {
+                nodes: [{ id: 'PVTI_lADOCNXcUc4AXA1NzgA' }],
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Mock RemoveProjectItem mutation response
+    mockedAxios.post.mockResolvedValueOnce({
+      data: {
+        data: {
+          removeProjectV2ItemFromProject: {
+            clientMutationId: 'test-mutation-id',
+          },
+        },
+      },
+    });
+
+    await repository.removeIssueFromProject(testIssueUrl, testProjectId);
+  });
+
+  test('removeIssueFromProject throws error when issue not found in project', async () => {
+    const testProjectId = 'PVT_kwDOCNXcUc4AXA1N';
+    
+    // Mock GetProjectItem query response with no items
+    mockedAxios.post.mockResolvedValueOnce({
+      data: {
+        data: {
+          repository: {
+            issue: {
+              projectItems: {
+                nodes: [],
+              },
+            },
+          },
+        },
+      },
+    });
+
+    await expect(
+      repository.removeIssueFromProject(testIssueUrl, testProjectId),
+    ).rejects.toThrow(
+      `Issue not found in project. URL: ${testIssueUrl}, Project ID: ${testProjectId}`,
+    );
   });
 
   test('getIssueFromBetaFeatureView returns typed Issue object', async () => {
