@@ -1,4 +1,4 @@
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import fs from 'fs';
 import { SlackRepository } from '../../domain/usecases/adapter-interfaces/SlackRepository';
 
@@ -19,11 +19,26 @@ export class AxiosSlackRepository implements SlackRepository {
 
     this.client.interceptors.response.use(
       (response) => response,
-      async (error) => {
-        if (error.response?.status === 429) {
-          const retryAfter = error.response.headers['retry-after'] || 1;
+      async (error: unknown) => {
+        if (
+          error &&
+          typeof error === 'object' &&
+          'response' in error &&
+          error.response &&
+          typeof error.response === 'object' &&
+          'status' in error.response &&
+          error.response.status === 429 &&
+          'headers' in error.response &&
+          error.response.headers &&
+          typeof error.response.headers === 'object' &&
+          'retry-after' in error.response.headers &&
+          'config' in error &&
+          error.config &&
+          typeof error.config === 'object'
+        ) {
+          const retryAfter = Number(error.response.headers['retry-after']) || 1;
           await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
-          return this.client.request(error.config);
+          return this.client.request(error.config as AxiosRequestConfig);
         }
         return Promise.reject(error);
       },

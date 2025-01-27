@@ -3,7 +3,7 @@ import { LocalStorageRepository } from '../LocalStorageRepository';
 import axios from 'axios';
 
 jest.mock('axios');
-const mockedAxios = {
+const mockedAxios: jest.Mocked<typeof axios> = {
   post: jest.fn(),
   get: jest.fn(),
   isAxiosError: jest.fn().mockImplementation((payload: unknown): payload is import('axios').AxiosError => {
@@ -14,13 +14,13 @@ const mockedAxios = {
   create: jest.fn(),
   defaults: {
     headers: {
-      common: {},
+      common: { Accept: '*/*' },
       delete: {},
       get: {},
       head: {},
-      post: {},
-      put: {},
-      patch: {},
+      post: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      put: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      patch: { 'Content-Type': 'application/x-www-form-urlencoded' },
     },
     transformRequest: [],
     transformResponse: [],
@@ -32,7 +32,21 @@ const mockedAxios = {
     maxBodyLength: -1,
     env: {},
   },
-} as unknown as jest.Mocked<typeof axios>;
+  request: jest.fn(),
+  delete: jest.fn(),
+  head: jest.fn(),
+  options: jest.fn(),
+  put: jest.fn(),
+  patch: jest.fn(),
+  getUri: jest.fn(),
+  all: jest.fn(),
+  spread: jest.fn(),
+  isCancel: jest.fn().mockImplementation((value: unknown): value is import('axios').Cancel => {
+    return Boolean(value && typeof value === 'object' && 'message' in value);
+  }),
+  toFormData: jest.fn(),
+  formToJSON: jest.fn(),
+};
 
 // Mock all axios calls to return empty successful responses by default
 beforeAll(() => {
