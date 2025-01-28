@@ -161,6 +161,27 @@ export class HandleScheduledEventUseCase {
         now,
       );
 
+    await this.runEachUseCases(
+      input,
+      project,
+      issues,
+      cacheUsed,
+      targetDateTimes,
+      storyIssues,
+    );
+
+    return { project, issues, cacheUsed, targetDateTimes, storyIssues };
+  };
+  runEachUseCases = async (
+    input: Parameters<HandleScheduledEventUseCase['run']>[0],
+    project: Project,
+    issues: Issue[],
+    cacheUsed: boolean,
+    targetDateTimes: Date[],
+    storyObjectMap: StoryObjectMap,
+  ): Promise<void> => {
+    const projectId = project.id;
+
     for (const targetDateTime of targetDateTimes) {
       await this.runForGenerateWorkingTimeReportUseCase({
         org: input.org,
@@ -180,7 +201,7 @@ export class HandleScheduledEventUseCase {
       members: input.workingReport.members,
       org: input.org,
       repo: input.workingReport.repo,
-      storyObjectMap: storyIssues,
+      storyObjectMap: storyObjectMap,
       disabledStatus: input.disabledStatus,
     });
     await this.changeStatusLongInReviewIssueUseCase.run({
@@ -219,7 +240,7 @@ export class HandleScheduledEventUseCase {
       manager: input.manager,
       org: input.org,
       repo: input.workingReport.repo,
-      storyObjectMap: storyIssues,
+      storyObjectMap: storyObjectMap,
       members: input.workingReport.members,
     });
     await this.clearDependedIssueURLUseCase.run({
@@ -237,7 +258,7 @@ export class HandleScheduledEventUseCase {
       repo: input.workingReport.repo,
       urlOfStoryView: input.urlOfStoryView,
       disabledStatus: input.disabledStatus,
-      storyObjectMap: storyIssues,
+      storyObjectMap: storyObjectMap,
     });
     await this.convertCheckboxToIssueInStoryIssueUseCase.run({
       project,
@@ -247,9 +268,8 @@ export class HandleScheduledEventUseCase {
       repo: input.workingReport.repo,
       urlOfStoryView: input.urlOfStoryView,
       disabledStatus: input.disabledStatus,
-      storyObjectMap: storyIssues,
+      storyObjectMap: storyObjectMap,
     });
-    return { project, issues, cacheUsed, targetDateTimes, storyIssues };
   };
   runForGenerateWorkingTimeReportUseCase = async (input: {
     org: string;
