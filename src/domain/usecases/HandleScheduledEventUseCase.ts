@@ -161,14 +161,37 @@ export class HandleScheduledEventUseCase {
         now,
       );
 
-    await this.runEachUseCases(
-      input,
-      project,
-      issues,
-      cacheUsed,
-      targetDateTimes,
-      storyIssues,
-    );
+    try {
+      await this.runEachUseCases(
+        input,
+        project,
+        issues,
+        cacheUsed,
+        targetDateTimes,
+        storyIssues,
+      );
+    } catch (e) {
+      if (!(e instanceof Error)) {
+        throw e;
+      }
+      await this.issueRepository.createNewIssue(
+        input.org,
+        input.workingReport.repo,
+        `Error in HandleScheduledEvent / workflow incident`,
+        `${e.message}
+\`\`\`
+${e.stack}
+\`\`\`
+\`\`\`
+${JSON.stringify(e)}
+\`\`\`
+
+`,
+        [input.manager],
+        ['error'],
+      );
+      throw e;
+    }
 
     return { project, issues, cacheUsed, targetDateTimes, storyIssues };
   };
