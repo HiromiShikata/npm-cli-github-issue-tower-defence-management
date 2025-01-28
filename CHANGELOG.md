@@ -1,3 +1,10 @@
+# [1.13.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.12.0...v1.13.0) (2025-01-28)
+
+
+### Features
+
+* create an issue when failed to complete usecases / close / https://github.com/HiromiShikata/umino-corporait-operation/issues/13641 ([a81cf0d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a81cf0db6cb112feea8a3274d17094b58f4d6550))
+
 # [1.12.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.11.0...v1.12.0) (2025-01-27)
 
 
