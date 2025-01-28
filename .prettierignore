@@ -20,3 +20,5 @@ LICENSE
 *.diff
 *.log
 CODEOWNERS
+types
+bin
