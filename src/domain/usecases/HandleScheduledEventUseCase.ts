@@ -162,7 +162,7 @@ export class HandleScheduledEventUseCase {
       );
 
     for (const targetDateTime of targetDateTimes) {
-      await this.runForTargetDateTime({
+      await this.runForGenerateWorkingTimeReportUseCase({
         org: input.org,
         manager: input.manager,
         workingReport: input.workingReport,
@@ -251,7 +251,7 @@ export class HandleScheduledEventUseCase {
     });
     return { project, issues, cacheUsed, targetDateTimes, storyIssues };
   };
-  runForTargetDateTime = async (input: {
+  runForGenerateWorkingTimeReportUseCase = async (input: {
     org: string;
     manager: Member['name'];
     workingReport: {
