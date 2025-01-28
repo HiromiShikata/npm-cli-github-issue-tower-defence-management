@@ -161,8 +161,52 @@ export class HandleScheduledEventUseCase {
         now,
       );
 
+    try {
+      await this.runEachUseCases(
+        input,
+        project,
+        issues,
+        cacheUsed,
+        targetDateTimes,
+        storyIssues,
+      );
+    } catch (e) {
+      if (!(e instanceof Error)) {
+        throw e;
+      }
+      await this.issueRepository.createNewIssue(
+        input.org,
+        input.workingReport.repo,
+        `Error in HandleScheduledEvent / workflow incident`,
+        `${e.message}
+\`\`\`
+${e.stack}
+\`\`\`
+\`\`\`
+${JSON.stringify(e)}
+\`\`\`
+
+`,
+        [input.manager],
+        ['error'],
+      );
+      throw e;
+    }
+
+    return { project, issues, cacheUsed, targetDateTimes, storyIssues };
+  };
+  runEachUseCases = async (
+    input: Parameters<HandleScheduledEventUseCase['run']>[0],
+    project: Project,
+    issues: Issue[],
+    cacheUsed: boolean,
+    targetDateTimes: Date[],
+    storyObjectMap: StoryObjectMap,
+  ): Promise<void> => {
+    const projectId = project.id;
+
     for (const targetDateTime of targetDateTimes) {
-      await this.runForTargetDateTime({
+      await this.runForGenerateWorkingTimeReportUseCase({
         org: input.org,
         manager: input.manager,
         workingReport: input.workingReport,
@@ -180,7 +224,7 @@ export class HandleScheduledEventUseCase {
       members: input.workingReport.members,
       org: input.org,
       repo: input.workingReport.repo,
-      storyObjectMap: storyIssues,
+      storyObjectMap: storyObjectMap,
       disabledStatus: input.disabledStatus,
     });
     await this.changeStatusLongInReviewIssueUseCase.run({
@@ -219,7 +263,7 @@ export class HandleScheduledEventUseCase {
       manager: input.manager,
       org: input.org,
       repo: input.workingReport.repo,
-      storyObjectMap: storyIssues,
+      storyObjectMap: storyObjectMap,
       members: input.workingReport.members,
     });
     await this.clearDependedIssueURLUseCase.run({
@@ -237,7 +281,7 @@ export class HandleScheduledEventUseCase {
       repo: input.workingReport.repo,
       urlOfStoryView: input.urlOfStoryView,
       disabledStatus: input.disabledStatus,
-      storyObjectMap: storyIssues,
+      storyObjectMap: storyObjectMap,
     });
     await this.convertCheckboxToIssueInStoryIssueUseCase.run({
       project,
@@ -247,11 +291,10 @@ export class HandleScheduledEventUseCase {
       repo: input.workingReport.repo,
       urlOfStoryView: input.urlOfStoryView,
       disabledStatus: input.disabledStatus,
-      storyObjectMap: storyIssues,
+      storyObjectMap: storyObjectMap,
     });
-    return { project, issues, cacheUsed, targetDateTimes, storyIssues };
   };
-  runForTargetDateTime = async (input: {
+  runForGenerateWorkingTimeReportUseCase = async (input: {
     org: string;
     manager: Member['name'];
     workingReport: {
