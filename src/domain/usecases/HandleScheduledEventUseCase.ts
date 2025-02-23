@@ -15,6 +15,7 @@ import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
 import { CreateEstimationIssueUseCase } from './CreateEstimationIssueUseCase';
 import { ConvertCheckboxToIssueInStoryIssueUseCase } from './ConvertCheckboxToIssueInStoryIssueUseCase';
 import { ChangeStatusLongInReviewIssueUseCase } from './ChangeStatusLongInReviewIssueUseCase';
+import { ChangeStatusByStoryColorUseCase } from './ChangeStatusByStoryColorUseCase';
 
 export class ProjectNotFoundError extends Error {
   constructor(message: string) {
@@ -48,6 +49,7 @@ export class HandleScheduledEventUseCase {
     readonly createEstimationIssueUseCase: CreateEstimationIssueUseCase,
     readonly convertCheckboxToIssueInStoryIssueUseCase: ConvertCheckboxToIssueInStoryIssueUseCase,
     readonly changeStatusLongInReviewIssueUseCase: ChangeStatusLongInReviewIssueUseCase,
+    readonly changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase,
     readonly dateRepository: DateRepository,
     readonly spreadsheetRepository: SpreadsheetRepository,
     readonly projectRepository: ProjectRepository,
@@ -293,6 +295,14 @@ ${JSON.stringify(e)}
       org: input.org,
       repo: input.workingReport.repo,
       urlOfStoryView: input.urlOfStoryView,
+      disabledStatus: input.disabledStatus,
+      storyObjectMap: storyObjectMap,
+    });
+    await this.changeStatusByStoryColorUseCase.run({
+      project,
+      cacheUsed,
+      org: input.org,
+      repo: input.workingReport.repo,
       disabledStatus: input.disabledStatus,
       storyObjectMap: storyObjectMap,
     });
