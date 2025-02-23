@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { BaseGitHubRepository } from './BaseGitHubRepository';
 import { ProjectRepository } from '../../domain/usecases/adapter-interfaces/ProjectRepository';
-import { Project } from '../../domain/entities/Project';
+import { FieldOption, Project } from '../../domain/entities/Project';
 import { normalizeFieldName } from './utils';
 
 export class GraphqlProjectRepository
@@ -215,6 +215,19 @@ export class GraphqlProjectRepository
     const completionDate50PercentConfidence = project.fields.nodes.find(
       (field) => normalizeFieldName(field.name).startsWith('completiondate'),
     );
+    const convertToFieldOptionColor = (color: string): FieldOption['color'] => {
+      switch (color) {
+        case 'RED':
+        case 'YELLOW':
+        case 'GREEN':
+        case 'BLUE':
+        case 'PURPLE':
+        case 'GRAY':
+          return color;
+        default:
+          return 'GRAY';
+      }
+    };
     return {
       id: project.id,
       name: project.title,
@@ -224,7 +237,7 @@ export class GraphqlProjectRepository
         statuses: status.options.map((option) => ({
           id: option.id,
           name: option.name,
-          color: option.color,
+          color: convertToFieldOptionColor(option.color),
           description: option.description,
         })),
       },
@@ -248,7 +261,7 @@ export class GraphqlProjectRepository
               stories: story.options.map((option) => ({
                 id: option.id,
                 name: option.name,
-                color: option.color,
+                color: convertToFieldOptionColor(option.color),
                 description: option.description,
               })),
               workflowManagementStory,

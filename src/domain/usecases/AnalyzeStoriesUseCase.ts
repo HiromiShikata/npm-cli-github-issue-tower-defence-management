@@ -1,6 +1,6 @@
 import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
-import { Project, StoryOption } from '../entities/Project';
+import { FieldOption, Project, StoryOption } from '../entities/Project';
 import { Member } from '../entities/Member';
 import { DateRepository } from './adapter-interfaces/DateRepository';
 import { StoryObjectMap } from './HandleScheduledEventUseCase';
@@ -40,7 +40,7 @@ export class AnalyzeStoriesUseCase {
       string,
       (Issue & {
         name: string;
-        color: string;
+        color: FieldOption['color'];
         description: string;
       })[]
     >();
@@ -133,7 +133,7 @@ export class AnalyzeStoriesUseCase {
       string,
       (Issue & {
         name: string;
-        color: string;
+        color: FieldOption['color'];
         description: string;
       })[]
     >,
@@ -202,7 +202,7 @@ ${this.createSummaryIssueBodyAssignedIssueCount(project, issues, storyObjectMap,
       string,
       (Issue & {
         name: string;
-        color: string;
+        color: FieldOption['color'];
         description: string;
       })[]
     >,
