@@ -1,3 +1,10 @@
+## [1.14.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.14.0...v1.14.1) (2025-02-23)
+
+
+### Bug Fixes
+
+* use id for disable status ([1b852fb](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1b852fbf25696c033e231ea484015a96ab80979d))
+
 # [1.14.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.13.0...v1.14.0) (2025-02-23)
 
 

@@ -13,6 +13,10 @@ class ChangeStatusByStoryColorUseCase {
             else if (input.cacheUsed) {
                 return;
             }
+            const disabledStatusObject = input.project.status.statuses.find((status) => status.name === input.disabledStatus);
+            if (!disabledStatusObject) {
+                throw new Error('Disabled status is not found');
+            }
             for (const storyObject of Array.from(input.storyObjectMap.values())) {
                 const isStoryDisabled = storyObject.story.color === 'GRAY';
                 for (const issue of storyObject.issues) {
@@ -20,7 +24,7 @@ class ChangeStatusByStoryColorUseCase {
                         if (issue.status && issue.status === input.disabledStatus) {
                             continue;
                         }
-                        await this.issueRepository.updateStatus(input.project, issue, input.disabledStatus);
+                        await this.issueRepository.updateStatus(input.project, issue, disabledStatusObject.id);
                         await this.issueRepository.createComment(issue, `This issue status is changed because the story is disabled.`);
                     }
                     else if (!isStoryDisabled) {
