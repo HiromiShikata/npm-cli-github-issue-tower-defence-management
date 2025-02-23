@@ -18,6 +18,10 @@ describe('ChangeStatusByStoryColorUseCase', () => {
   mockReviewStatus.id = 'status2';
   mockReviewStatus.name = 'InReview';
 
+  const mockIceboxStatus = mock<FieldOption>();
+  mockIceboxStatus.id = 'status3';
+  mockIceboxStatus.name = 'Icebox';
+
   const basicProject = {
     ...mock<Project>(),
     story: {
@@ -33,7 +37,7 @@ describe('ChangeStatusByStoryColorUseCase', () => {
     status: {
       name: 'Status Field',
       fieldId: 'statusFieldId',
-      statuses: [mockStatus, mockReviewStatus],
+      statuses: [mockStatus, mockReviewStatus, mockIceboxStatus],
     },
   };
 
@@ -183,7 +187,7 @@ describe('ChangeStatusByStoryColorUseCase', () => {
             'This issue status is changed because the story is disabled.',
           ],
         ],
-        updateStatus: [[expect.anything(), expect.anything(), 'Icebox']],
+        updateStatus: [[expect.anything(), expect.anything(), 'status3']],
       },
     },
     {
