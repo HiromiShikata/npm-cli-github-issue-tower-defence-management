@@ -16,6 +16,7 @@ import { CreateEstimationIssueUseCase } from './CreateEstimationIssueUseCase';
 import { ConvertCheckboxToIssueInStoryIssueUseCase } from './ConvertCheckboxToIssueInStoryIssueUseCase';
 import { ChangeStatusLongInReviewIssueUseCase } from './ChangeStatusLongInReviewIssueUseCase';
 import { ChangeStatusByStoryColorUseCase } from './ChangeStatusByStoryColorUseCase';
+import { SetNoStoryIssueToStoryUseCase } from './SetNoStoryIssueToStoryUseCase';
 
 export class ProjectNotFoundError extends Error {
   constructor(message: string) {
@@ -50,6 +51,7 @@ export class HandleScheduledEventUseCase {
     readonly convertCheckboxToIssueInStoryIssueUseCase: ConvertCheckboxToIssueInStoryIssueUseCase,
     readonly changeStatusLongInReviewIssueUseCase: ChangeStatusLongInReviewIssueUseCase,
     readonly changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase,
+    readonly setNoStoryIssueToStoryUseCase: SetNoStoryIssueToStoryUseCase,
     readonly dateRepository: DateRepository,
     readonly spreadsheetRepository: SpreadsheetRepository,
     readonly projectRepository: ProjectRepository,
@@ -305,6 +307,12 @@ ${JSON.stringify(e)}
       repo: input.workingReport.repo,
       disabledStatus: input.disabledStatus,
       storyObjectMap: storyObjectMap,
+    });
+    await this.setNoStoryIssueToStoryUseCase.run({
+      targetDates: targetDateTimes,
+      project,
+      issues,
+      cacheUsed,
     });
   };
   runForGenerateWorkingTimeReportUseCase = async (input: {

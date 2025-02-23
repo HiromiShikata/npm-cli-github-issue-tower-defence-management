@@ -28,6 +28,7 @@ import axios, { AxiosError } from 'axios';
 import { ConvertCheckboxToIssueInStoryIssueUseCase } from '../../../domain/usecases/ConvertCheckboxToIssueInStoryIssueUseCase';
 import { ChangeStatusLongInReviewIssueUseCase } from '../../../domain/usecases/ChangeStatusLongInReviewIssueUseCase';
 import { ChangeStatusByStoryColorUseCase } from '../../../domain/usecases/ChangeStatusByStoryColorUseCase';
+import { SetNoStoryIssueToStoryUseCase } from '../../../domain/usecases/SetNoStoryIssueToStoryUseCase';
 
 export class HandleScheduledEventUseCaseHandler {
   handle = async (
@@ -170,6 +171,9 @@ export class HandleScheduledEventUseCaseHandler {
       issueRepository,
     );
 
+    const setNoStoryIssueToStoryUseCase = new SetNoStoryIssueToStoryUseCase(
+      issueRepository,
+    );
     const handleScheduledEventUseCase = new HandleScheduledEventUseCase(
       generateWorkingTimeReportUseCase,
       actionAnnouncement,
@@ -182,6 +186,7 @@ export class HandleScheduledEventUseCaseHandler {
       convertCheckboxToIssueInStoryIssueUseCase,
       changeStatusLongInReviewIssueUseCase,
       changeStatusByStoryColorUseCase,
+      setNoStoryIssueToStoryUseCase,
       systemDateRepository,
       googleSpreadsheetRepository,
       projectRepository,

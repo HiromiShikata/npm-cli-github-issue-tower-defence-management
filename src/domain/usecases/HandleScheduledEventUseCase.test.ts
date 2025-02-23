@@ -16,6 +16,7 @@ import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
 import { ChangeStatusByStoryColorUseCase } from './ChangeStatusByStoryColorUseCase';
+import { SetNoStoryIssueToStoryUseCase } from './SetNoStoryIssueToStoryUseCase';
 
 describe('HandleScheduledEventUseCase', () => {
   describe('createTargetDateTimes', () => {
@@ -93,6 +94,8 @@ describe('HandleScheduledEventUseCase', () => {
       mock<ChangeStatusLongInReviewIssueUseCase>();
     const mockChangeStatusByStoryColorUseCase =
       mock<ChangeStatusByStoryColorUseCase>();
+    const mockSetNoStoryIssueToStoryUseCase =
+      mock<SetNoStoryIssueToStoryUseCase>();
     const mockDateRepository = mock<DateRepository>();
     const mockSpreadsheetRepository = mock<SpreadsheetRepository>();
     const mockProjectRepository = mock<ProjectRepository>();
@@ -110,6 +113,7 @@ describe('HandleScheduledEventUseCase', () => {
       mockConvertCheckboxToIssueInStoryIssueUseCase,
       mockChangeStatusLongInReviewIssueUseCase,
       mockChangeStatusByStoryColorUseCase,
+      mockSetNoStoryIssueToStoryUseCase,
       mockDateRepository,
       mockSpreadsheetRepository,
       mockProjectRepository,
