@@ -31,7 +31,10 @@ export type StoryObject = {
     totalWorkingTimeByAssignee: Map<string, number>;
   })[];
 };
-export type StoryObjectMap = Map<string, StoryObject>;
+export type StoryObjectMap = Map<
+  NonNullable<Project['story']>['stories'][0]['name'],
+  StoryObject
+>;
 
 export class HandleScheduledEventUseCase {
   constructor(
