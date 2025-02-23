@@ -133,6 +133,19 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             const remainignEstimationMinutes = project.fields.nodes.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'remainingestimationminutes');
             const dependedIssueUrlSeparatedByComma = project.fields.nodes.find((field) => (0, utils_1.normalizeFieldName)(field.name).startsWith('dependedissueurlseparatedbycomma'));
             const completionDate50PercentConfidence = project.fields.nodes.find((field) => (0, utils_1.normalizeFieldName)(field.name).startsWith('completiondate'));
+            const convertToFieldOptionColor = (color) => {
+                switch (color) {
+                    case 'RED':
+                    case 'YELLOW':
+                    case 'GREEN':
+                    case 'BLUE':
+                    case 'PURPLE':
+                    case 'GRAY':
+                        return color;
+                    default:
+                        return 'GRAY';
+                }
+            };
             return {
                 id: project.id,
                 name: project.title,
@@ -142,7 +155,7 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
                     statuses: status.options.map((option) => ({
                         id: option.id,
                         name: option.name,
-                        color: option.color,
+                        color: convertToFieldOptionColor(option.color),
                         description: option.description,
                     })),
                 },
@@ -165,7 +178,7 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
                         stories: story.options.map((option) => ({
                             id: option.id,
                             name: option.name,
-                            color: option.color,
+                            color: convertToFieldOptionColor(option.color),
                             description: option.description,
                         })),
                         workflowManagementStory,

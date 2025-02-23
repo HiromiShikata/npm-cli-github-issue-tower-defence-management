@@ -1,6 +1,6 @@
 import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
-import { Project, StoryOption } from '../entities/Project';
+import { FieldOption, Project, StoryOption } from '../entities/Project';
 import { Member } from '../entities/Member';
 import { DateRepository } from './adapter-interfaces/DateRepository';
 import { StoryObjectMap } from './HandleScheduledEventUseCase';
@@ -23,7 +23,7 @@ export declare class AnalyzeStoriesUseCase {
     }) => Promise<void>;
     createSummaryIssueBody: (project: Project, issues: Issue[], summaryStoryIssue: Map<string, (Issue & {
         name: string;
-        color: string;
+        color: FieldOption["color"];
         description: string;
     })[]>, storyObjectMap: StoryObjectMap, urlOfStoryView: string, members: Member["name"][]) => string;
     createStoryMark: (urlOfStoryView: string, issue: Issue | null, storyOption: Omit<StoryOption, "id">) => {
@@ -37,7 +37,7 @@ export declare class AnalyzeStoriesUseCase {
     };
     createSummaryIssueBodyPhase: (summaryStoryIssue: Map<string, (Issue & {
         name: string;
-        color: string;
+        color: FieldOption["color"];
         description: string;
     })[]>, urlOfStoryView: string, storyObjectMap: StoryObjectMap) => string;
     createSummaryIssueBodyAssignedIssueCount: (project: Project, issues: Issue[], storyObjectMap: StoryObjectMap, urlOfStoryView: string, members: Member["name"][]) => string;

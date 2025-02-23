@@ -9,7 +9,7 @@ class ProjectNotFoundError extends Error {
 }
 exports.ProjectNotFoundError = ProjectNotFoundError;
 class HandleScheduledEventUseCase {
-    constructor(generateWorkingTimeReportUseCase, actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusLongInReviewIssueUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
+    constructor(generateWorkingTimeReportUseCase, actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusLongInReviewIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
         this.generateWorkingTimeReportUseCase = generateWorkingTimeReportUseCase;
         this.actionAnnouncementUseCase = actionAnnouncementUseCase;
         this.setWorkflowManagementIssueToStoryUseCase = setWorkflowManagementIssueToStoryUseCase;
@@ -20,6 +20,8 @@ class HandleScheduledEventUseCase {
         this.createEstimationIssueUseCase = createEstimationIssueUseCase;
         this.convertCheckboxToIssueInStoryIssueUseCase = convertCheckboxToIssueInStoryIssueUseCase;
         this.changeStatusLongInReviewIssueUseCase = changeStatusLongInReviewIssueUseCase;
+        this.changeStatusByStoryColorUseCase = changeStatusByStoryColorUseCase;
+        this.setNoStoryIssueToStoryUseCase = setNoStoryIssueToStoryUseCase;
         this.dateRepository = dateRepository;
         this.spreadsheetRepository = spreadsheetRepository;
         this.projectRepository = projectRepository;
@@ -193,6 +195,20 @@ ${JSON.stringify(e)}
                 urlOfStoryView: input.urlOfStoryView,
                 disabledStatus: input.disabledStatus,
                 storyObjectMap: storyObjectMap,
+            });
+            await this.changeStatusByStoryColorUseCase.run({
+                project,
+                cacheUsed,
+                org: input.org,
+                repo: input.workingReport.repo,
+                disabledStatus: input.disabledStatus,
+                storyObjectMap: storyObjectMap,
+            });
+            await this.setNoStoryIssueToStoryUseCase.run({
+                targetDates: targetDateTimes,
+                project,
+                issues,
+                cacheUsed,
             });
         };
         this.runForGenerateWorkingTimeReportUseCase = async (input) => {

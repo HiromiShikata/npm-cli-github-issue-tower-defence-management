@@ -1,3 +1,11 @@
+# [1.14.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.13.0...v1.14.0) (2025-02-23)
+
+
+### Features
+
+* change status by story color / close [#134](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/134) ([ff647b4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ff647b4032d74c1bb7870ada94e1014be6a4bb03))
+* set first story if issue has no story / close [#110](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/110) ([8cec4bb](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8cec4bb606ba6b707b59e020923c7fd4a8cb8445))
+
 # [1.13.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.12.0...v1.13.0) (2025-01-28)
 
 
