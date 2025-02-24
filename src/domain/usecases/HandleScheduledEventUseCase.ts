@@ -314,7 +314,7 @@ ${JSON.stringify(e)}
       disabledStatus: input.disabledStatus,
       storyObjectMap: storyObjectMap,
     });
- };
+  };
   runForGenerateWorkingTimeReportUseCase = async (input: {
     org: string;
     manager: Member['name'];
