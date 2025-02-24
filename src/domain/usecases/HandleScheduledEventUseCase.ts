@@ -222,6 +222,12 @@ ${JSON.stringify(e)}
         targetDateTime,
       });
     }
+    await this.setNoStoryIssueToStoryUseCase.run({
+      targetDates: targetDateTimes,
+      project,
+      issues,
+      cacheUsed,
+    });
     await this.analyzeProblemByIssueUseCase.run({
       targetDates: targetDateTimes,
       project,
@@ -308,13 +314,7 @@ ${JSON.stringify(e)}
       disabledStatus: input.disabledStatus,
       storyObjectMap: storyObjectMap,
     });
-    await this.setNoStoryIssueToStoryUseCase.run({
-      targetDates: targetDateTimes,
-      project,
-      issues,
-      cacheUsed,
-    });
-  };
+ };
   runForGenerateWorkingTimeReportUseCase = async (input: {
     org: string;
     manager: Member['name'];
