@@ -1,3 +1,10 @@
+## [1.14.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.14.1...v1.14.2) (2025-02-25)
+
+
+### Bug Fixes
+
+* change order to update story / close [#148](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/148) ([2f951c0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2f951c077f8f46de04e253e05f062d7e8d8f5637))
+
 ## [1.14.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.14.0...v1.14.1) (2025-02-23)
 
 
