@@ -1,3 +1,10 @@
+# [1.15.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.14.2...v1.15.0) (2025-02-25)
+
+
+### Features
+
+* removed useless phase ([bbaae9e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bbaae9ed55d6cb751002e08c2b35d3dc57bb3949))
+
 ## [1.14.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.14.1...v1.14.2) (2025-02-25)
 
 
