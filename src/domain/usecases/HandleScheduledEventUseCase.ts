@@ -222,6 +222,12 @@ ${JSON.stringify(e)}
         targetDateTime,
       });
     }
+    await this.setNoStoryIssueToStoryUseCase.run({
+      targetDates: targetDateTimes,
+      project,
+      issues,
+      cacheUsed,
+    });
     await this.analyzeProblemByIssueUseCase.run({
       targetDates: targetDateTimes,
       project,
@@ -307,12 +313,6 @@ ${JSON.stringify(e)}
       repo: input.workingReport.repo,
       disabledStatus: input.disabledStatus,
       storyObjectMap: storyObjectMap,
-    });
-    await this.setNoStoryIssueToStoryUseCase.run({
-      targetDates: targetDateTimes,
-      project,
-      issues,
-      cacheUsed,
     });
   };
   runForGenerateWorkingTimeReportUseCase = async (input: {
