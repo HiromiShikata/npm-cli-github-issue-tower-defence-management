@@ -48,8 +48,6 @@ export class AnalyzeStoriesUseCase {
     phases.set('story:phase:requirement:opened', []);
     phases.set('story:phase:requirement:finished-prd', []);
     phases.set('story:phase:requirement:finished-figma', []);
-    phases.set('story:phase:requirement:finished-testcase', []);
-    phases.set('story:phase:requirement:finished-deviding-task', []);
     phases.set('story:phase:implementation-finished', []);
     phases.set('story:phase:finished-qa', []);
     phases.set('others', []);
