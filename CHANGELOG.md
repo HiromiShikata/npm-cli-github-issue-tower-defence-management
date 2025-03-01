@@ -1,3 +1,10 @@
+## [1.15.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.15.0...v1.15.1) (2025-03-01)
+
+
+### Bug Fixes
+
+* **deps:** update dependency googleapis to v146 ([804f340](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/804f34036d6c98846972009e45ebd577f4071892))
+
 # [1.15.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.14.2...v1.15.0) (2025-02-25)
 
 
