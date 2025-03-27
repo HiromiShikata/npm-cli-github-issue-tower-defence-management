@@ -2,7 +2,15 @@ export type StoryOption = FieldOption;
 export type FieldOption = {
   id: string;
   name: string;
-  color: 'GRAY' | 'BLUE' | 'GREEN' | 'YELLOW' | 'ORANGE' | 'RED' | 'PINK' | 'PURPLE';
+  color:
+    | 'GRAY'
+    | 'BLUE'
+    | 'GREEN'
+    | 'YELLOW'
+    | 'ORANGE'
+    | 'RED'
+    | 'PINK'
+    | 'PURPLE';
   description: string;
 };
 export type Project = {
