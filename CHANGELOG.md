@@ -1,3 +1,10 @@
+## [1.15.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.15.1...v1.15.2) (2025-03-27)
+
+
+### Bug Fixes
+
+* missing orange of color ([00d149c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/00d149c13fd2beb183bec0e4d0584b711068337e))
+
 ## [1.15.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.15.0...v1.15.1) (2025-03-01)
 
 
