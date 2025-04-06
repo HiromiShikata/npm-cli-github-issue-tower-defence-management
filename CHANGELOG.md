@@ -1,3 +1,10 @@
+## [1.15.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.15.2...v1.15.3) (2025-04-06)
+
+
+### Bug Fixes
+
+* **deps:** update dependency axios to v1.8.2 [security] ([8aef3d5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8aef3d5c51012adb2d0117931223e742727cdaa3))
+
 ## [1.15.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.15.1...v1.15.2) (2025-03-27)
 
 
