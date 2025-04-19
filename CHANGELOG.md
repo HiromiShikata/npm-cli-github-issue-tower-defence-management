@@ -1,3 +1,10 @@
+## [1.15.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.15.3...v1.15.4) (2025-04-19)
+
+
+### Bug Fixes
+
+* **deps:** update dependency typia to v9 ([b2508ef](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b2508ef4cbe85604f4699f48570a96c5d31c63ac))
+
 ## [1.15.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.15.2...v1.15.3) (2025-04-06)
 
 
