@@ -7,107 +7,478 @@ import {
 } from './issueTimelineUtils';
 import { Issue } from './CheerioIssueRepository';
 
-type GitHubBetaFeatureViewData = {
-  payload: {
-    preloadedQueries: [
-      {
-        variables: {
-          owner: string;
-          repo: string;
-          number: number;
-        };
-        result: {
-          data: {
-            repository: {
-              issue: {
-                id: string;
-                title: string;
-                state: string;
-                assignees: {
-                  nodes: Array<{
-                    login: string;
-                  }>;
-                };
-                labels: {
-                  edges: Array<{
-                    node: {
-                      name: string;
-                    };
-                  }>;
-                };
-                projectItemsNext: {
-                  edges: Array<{
-                    node: {
-                      project: {
-                        title: string;
-                      };
-                    };
-                  }>;
-                };
-                frontTimelineItems: {
-                  edges: Array<{
-                    node: {
-                      __typename: string;
-                      id: string;
-                    };
-                  }>;
-                  pageInfo: {
-                    hasNextPage: boolean;
-                    endCursor: string;
-                  };
-                  totalCount: number;
-                };
-                backTimelineItems: {
-                  edges: Array<{
-                    node: {
-                      __typename: string;
-                      id: string;
-                    };
-                  }>;
-                };
-              };
-            };
-          };
-        };
-      },
-    ];
-  };
-};
-
-type ProjectV2ItemStatusChangedEvent = BaseTimelineItem & {
-  __typename: 'ProjectV2ItemStatusChangedEvent';
-  id: string;
-  createdAt: string;
-  actor: {
-    login: string;
-  };
-  previousStatus: string;
-  status: string;
-};
-type BaseUser = {
-  __typename: 'User';
+type TimelineActor = {
+  __typename: 'User' | 'Bot' | 'Organization';
   login: string;
   id: string;
-  __isActor: 'User';
+  __isActor: string;
   avatarUrl: string;
+  profileResourcePath?: string;
+  isCopilot?: boolean;
 };
 
-type BaseTimelineItem = {
+type BaseTimelineNode = {
   __typename: string;
   __isIssueTimelineItems: string;
-  __isTimelineEvent: string;
+  __isTimelineEvent?: string;
   databaseId: number;
   createdAt: string;
-  actor: BaseUser;
+  actor: TimelineActor;
   __isNode: string;
   id: string;
+};
+
+type AssignedEventNode = BaseTimelineNode & {
+  __typename: 'AssignedEvent';
+  assignee: {
+    __typename: string;
+    id: string;
+    __isNode: string;
+    __isActor: string;
+    login: string;
+    resourcePath: string;
+  };
+};
+
+type AddedToProjectV2EventNode = BaseTimelineNode & {
+  __typename: 'AddedToProjectV2Event';
+  project: {
+    title: string;
+    url: string;
+    id: string;
+  };
+};
+
+type RemovedFromProjectV2EventNode = BaseTimelineNode & {
+  __typename: 'RemovedFromProjectV2Event';
+  project: {
+    title: string;
+    url: string;
+    id: string;
+  };
+};
+
+type ProjectV2ItemStatusChangedEventNode = BaseTimelineNode & {
+  __typename: 'ProjectV2ItemStatusChangedEvent';
+  previousStatus: string;
+  status: string;
+  project: {
+    title: string;
+    url: string;
+    id: string;
+  };
+};
+
+type RenamedTitleEventNode = BaseTimelineNode & {
+  __typename: 'RenamedTitleEvent';
+  currentTitle: string;
+  previousTitle: string;
+};
+
+type LabeledEventNode = BaseTimelineNode & {
+  __typename: 'LabeledEvent';
+  label: {
+    id: string;
+    nameHTML: string;
+    name: string;
+    color: string;
+    description: string;
+  };
+};
+
+type UnlabeledEventNode = BaseTimelineNode & {
+  __typename: 'UnlabeledEvent';
+  label: {
+    id: string;
+    nameHTML: string;
+    name: string;
+    color: string;
+    description: string;
+  };
+};
+
+type IssueCommentNode = {
+  __typename: 'IssueComment';
+  __isIssueTimelineItems: string;
+  databaseId: number;
+  viewerDidAuthor: boolean;
+  issue: {
+    author: {
+      __typename: string;
+      login: string;
+      id: string;
+    };
+    id: string;
+    number: number;
+    locked: boolean;
+    databaseId: number;
+  };
+  author: {
+    __typename: string;
+    login: string;
+    avatarUrl: string;
+    profileUrl: string;
+    id: string;
+  };
+  id: string;
+  body: string;
+  bodyHTML: string;
+  bodyVersion: string;
+  viewerCanUpdate: boolean;
+  url: string;
+  createdAt: string;
+  authorAssociation: string;
+  viewerCanDelete: boolean;
+  viewerCanMinimize: boolean;
+  viewerCanReport: boolean;
+  viewerCanReportToMaintainer: boolean;
+  viewerCanBlockFromOrg: boolean;
+  viewerCanUnblockFromOrg: boolean;
+  isHidden: boolean;
+  minimizedReason: string | null;
+  showSpammyBadge: boolean;
+  createdViaEmail: boolean;
+  repository: {
+    id: string;
+    name: string;
+    owner: {
+      __typename: string;
+      id: string;
+      login: string;
+      url: string;
+    };
+    isPrivate: boolean;
+    slashCommandsEnabled: boolean;
+    nameWithOwner: string;
+    databaseId: number;
+  };
+  __isComment: string;
+  viewerCanReadUserContentEdits: boolean;
+  lastEditedAt: string | null;
+  __isReactable: string;
+  reactionGroups: Array<{
+    content: string;
+    viewerHasReacted: boolean;
+    reactors: {
+      totalCount: number;
+      nodes: Array<unknown>;
+    };
+  }>;
+  __isNode: string;
+};
+
+type TimelineItem =
+  | AssignedEventNode
+  | AddedToProjectV2EventNode
+  | RemovedFromProjectV2EventNode
+  | ProjectV2ItemStatusChangedEventNode
+  | RenamedTitleEventNode
+  | LabeledEventNode
+  | UnlabeledEventNode
+  | IssueCommentNode;
+
+type LabelNode = {
+  id: string;
+  color: string;
+  name: string;
+  nameHTML: string;
+  description: string;
+  url: string;
+  __typename: string;
+};
+
+type IssueData = {
+  id: string;
+  updatedAt: string;
+  title: string;
+  number: number;
+  repository: {
+    nameWithOwner: string;
+    id: string;
+    name: string;
+    owner: {
+      __typename: 'User' | 'Organization';
+      login: string;
+      id: string;
+      url: string;
+    };
+    isArchived: boolean;
+    isPrivate: boolean;
+    databaseId: number;
+    slashCommandsEnabled: boolean;
+    viewerCanInteract: boolean;
+    viewerInteractionLimitReasonHTML: string;
+    planFeatures: {
+      maximumAssignees: number;
+    };
+    visibility: string;
+    pinnedIssues: {
+      totalCount: number;
+    };
+    viewerCanPinIssues: boolean;
+    issueTypes: null | {
+      edges: Array<{
+        node: {
+          id: string;
+        };
+      }>;
+    };
+  };
+  titleHTML: string;
+  url: string;
+  viewerCanUpdateNext: boolean;
+  issueType: null | string;
+  state: 'OPEN' | 'CLOSED';
+  stateReason: string | null;
+  linkedPullRequests: {
+    nodes: Array<unknown>;
+  };
+  subIssuesSummary: {
+    total: number;
+    completed: number;
+  };
+  __isLabelable: string;
+  labels: {
+    edges: Array<{
+      node: LabelNode;
+      cursor: string;
+    }>;
+    pageInfo: {
+      endCursor: string | null;
+      hasNextPage: boolean;
+    };
+  };
+  __isNode: string;
+  assignedActors: {
+    nodes: Array<{
+      __typename: string;
+      __isActor: string;
+      id: string;
+      login: string;
+      name: string;
+      profileResourcePath: string;
+      avatarUrl: string;
+      __isNode: string;
+    }>;
+  };
+  databaseId: number;
+  viewerDidAuthor: boolean;
+  locked: boolean;
+  author: {
+    __typename: string;
+    __isActor: string;
+    login: string;
+    id: string;
+    profileUrl: string;
+    avatarUrl: string;
+  };
+  __isComment: string;
+  body: string;
+  bodyHTML: string;
+  bodyVersion: string;
+  createdAt: string;
+  __isReactable: string;
+  reactionGroups: Array<{
+    content: string;
+    viewerHasReacted: boolean;
+    reactors: {
+      totalCount: number;
+      nodes: Array<unknown>;
+    };
+  }>;
+  viewerCanUpdateMetadata: boolean;
+  viewerCanComment: boolean;
+  viewerCanAssign: boolean;
+  viewerCanLabel: boolean;
+  __isIssueOrPullRequest: string;
+  projectItemsNext: {
+    edges: Array<{
+      node: {
+        id: string;
+        isArchived: boolean;
+        project: {
+          id: string;
+          title: string;
+          template: boolean;
+          viewerCanUpdate: boolean;
+          url: string;
+          field: {
+            __typename: string;
+            id: string;
+            name: string;
+            options: Array<{
+              id: string;
+              optionId: string;
+              name: string;
+              nameHTML: string;
+              color: string;
+              descriptionHTML: string;
+              description: string;
+            }>;
+            __isNode: string;
+          };
+          closed: boolean;
+          number: number;
+          hasReachedItemsLimit: boolean;
+          __typename: string;
+        };
+        fieldValueByName: {
+          __typename: string;
+          id: string;
+          optionId: string;
+          name: string;
+          nameHTML: string;
+          color: string;
+          __isNode: string;
+        };
+        __typename: string;
+      };
+      cursor: string;
+    }>;
+    pageInfo: {
+      endCursor: string;
+      hasNextPage: boolean;
+    };
+  };
+  viewerCanSetMilestone: boolean;
+  isPinned: boolean;
+  viewerCanDelete: boolean;
+  viewerCanTransfer: boolean;
+  viewerCanConvertToDiscussion: boolean;
+  viewerCanLock: boolean;
+  viewerCanType: boolean;
+  frontTimelineItems: {
+    pageInfo: {
+      hasNextPage: boolean;
+      endCursor: string;
+    };
+    totalCount: number;
+    edges: Array<{
+      node: TimelineItem;
+      cursor: string;
+    }>;
+  };
+  backTimelineItems: {
+    pageInfo: {
+      hasPreviousPage: boolean;
+      startCursor: string | null;
+    };
+    totalCount: number;
+    edges: Array<{
+      node: TimelineItem;
+      cursor: string;
+    }>;
+  };
+};
+
+type GitHubIssueQuery = {
+  queryId: string;
+  queryName: string;
+  variables: {
+    id: string;
+    number: number;
+    owner: string;
+    repo: string;
+  };
+  result: {
+    data: {
+      repository: {
+        isOwnerEnterpriseManaged: boolean;
+        issue: IssueData;
+        id: string;
+      };
+      safeViewer: {
+        isEnterpriseManagedUser: boolean;
+        enterpriseManagedEnterpriseId: null;
+        login: string;
+        id: string;
+        avatarUrl: string;
+        __isActor: string;
+        __typename: string;
+        name: string | null;
+        profileResourcePath: string;
+      };
+    };
+  };
+  timestamp: number;
+};
+
+type IssueUpdateSubscriptionResponse = {
+  response: {
+    data: {
+      issueUpdated: {
+        deletedCommentId: null;
+        issueBodyUpdated: null;
+        issueMetadataUpdated: null;
+        issueStateUpdated: null;
+        issueTimelineUpdated: null;
+        issueTitleUpdated: null;
+        issueReactionUpdated: null;
+        issueTransferStateUpdated: null;
+        issueTypeUpdated: null;
+        commentReactionUpdated: null;
+        commentUpdated: null;
+        subIssuesUpdated: null;
+        subIssuesSummaryUpdated: null;
+        parentIssueUpdated: null;
+        issueDependenciesSummaryUpdated: null;
+      };
+    };
+  };
+  subscriptionId: string;
+};
+
+type GitHubBetaFeatureViewData = {
+  payload: {
+    preloaded_records?: Record<string, unknown>;
+    preloadedQueries: [GitHubIssueQuery];
+    preloadedSubscriptions?: Record<
+      string,
+      Record<string, IssueUpdateSubscriptionResponse>
+    >;
+  };
+  title?: null;
+  appPayload?: {
+    initial_view_content?: {
+      team_id: null;
+      can_edit_view: boolean;
+    };
+    current_user?: {
+      id: string;
+      login: string;
+      avatarUrl: string;
+      is_staff: boolean;
+      is_emu: boolean;
+    };
+    current_user_settings?: {
+      use_monospace_font: boolean;
+      use_single_key_shortcut: boolean;
+      preferred_emoji_skin_tone: number;
+    };
+    paste_url_link_as_plain_text?: boolean;
+    base_avatar_url?: string;
+    help_url?: string;
+    sso_organizations?: null;
+    multi_tenant?: boolean;
+    tracing?: boolean;
+    tracing_flamegraph?: boolean;
+    catalog_service?: string;
+    scoped_repository?: {
+      id: string;
+      owner: string;
+      name: string;
+      is_archived: boolean;
+    };
+    copilot_api_url?: null;
+    enabled_features?: Record<string, boolean>;
+  };
 };
 
 type GraphqlResponse = {
   data: {
     node: {
       __typename: 'Issue';
-      frontTimelineItems: GitHubBetaFeatureViewData['payload']['preloadedQueries'][0]['result']['data']['repository']['issue']['frontTimelineItems'];
+      frontTimelineItems: IssueData['frontTimelineItems'];
       id: string;
     };
   };
@@ -249,15 +620,19 @@ export class InternalGraphqlIssueRepository extends BaseGitHubRepository {
           self.findIndex((t) => t.node.id === edge.node.id) === index,
       )
       .filter(
-        (edge): edge is { node: ProjectV2ItemStatusChangedEvent } =>
-          edge.node.__typename === 'ProjectV2ItemStatusChangedEvent',
+        (
+          edge,
+        ): edge is {
+          node: ProjectV2ItemStatusChangedEventNode;
+          cursor: string;
+        } => edge.node.__typename === 'ProjectV2ItemStatusChangedEvent',
       )
       .map(
         (edge): IssueStatusTimeline => ({
           time: edge.node.createdAt,
           author: edge.node.actor?.login || '',
-          from: edge.node.previousStatus,
-          to: edge.node.status,
+          from: edge.node.previousStatus || '',
+          to: edge.node.status || '',
         }),
       );
     const inProgressTimeline = await getInProgressTimeline(
@@ -271,12 +646,12 @@ export class InternalGraphqlIssueRepository extends BaseGitHubRepository {
         statusTimeline.length > 0
           ? statusTimeline[statusTimeline.length - 1].to
           : '',
-      assignees: issueData.assignees.nodes.map((node) => node.login),
+      assignees: issueData.assignedActors.nodes.map((node) => node.login),
       labels: issueData.labels.edges.map((edge) => edge.node.name),
       project: issueData.projectItemsNext.edges[0].node.project.title,
       statusTimeline,
       inProgressTimeline,
-      createdAt: new Date('2024-01-01'),
+      createdAt: new Date(issueData.createdAt),
       workingTimeline: inProgressTimeline,
     };
   };
