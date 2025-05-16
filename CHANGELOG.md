@@ -1,3 +1,10 @@
+## [1.15.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.15.4...v1.15.5) (2025-05-16)
+
+
+### Bug Fixes
+
+* follow internal api changes ([07d552e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/07d552eb2727de5a887500b77dbef17557ab55aa))
+
 ## [1.15.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.15.3...v1.15.4) (2025-04-19)
 
 
