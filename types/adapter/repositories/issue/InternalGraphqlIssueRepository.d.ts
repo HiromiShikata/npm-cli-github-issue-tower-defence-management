@@ -1,163 +1,23 @@
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import { Issue } from './CheerioIssueRepository';
-type TimelineActor = {
-    __typename: 'User' | 'Bot' | 'Organization';
-    login: string;
+type IssueTypeData = {
+    name: string;
+    color: string;
     id: string;
-    __isActor: string;
-    avatarUrl: string;
-    profileResourcePath?: string;
-    isCopilot?: boolean;
+    isEnabled?: boolean;
+    description?: string;
 };
-type BaseTimelineNode = {
-    __typename: string;
-    __isIssueTimelineItems: string;
-    __isTimelineEvent?: string;
-    databaseId: number;
-    createdAt: string;
-    actor: TimelineActor;
-    __isNode: string;
-    id: string;
-};
-type AssignedEventNode = BaseTimelineNode & {
-    __typename: 'AssignedEvent';
-    assignee: {
-        __typename: string;
-        id: string;
-        __isNode: string;
-        __isActor: string;
-        login: string;
-        resourcePath: string;
-    };
-};
-type AddedToProjectV2EventNode = BaseTimelineNode & {
-    __typename: 'AddedToProjectV2Event';
-    project: {
-        title: string;
-        url: string;
-        id: string;
-    };
-};
-type RemovedFromProjectV2EventNode = BaseTimelineNode & {
-    __typename: 'RemovedFromProjectV2Event';
-    project: {
-        title: string;
-        url: string;
-        id: string;
-    };
-};
-type ProjectV2ItemStatusChangedEventNode = BaseTimelineNode & {
-    __typename: 'ProjectV2ItemStatusChangedEvent';
-    previousStatus: string;
-    status: string;
-    project: {
-        title: string;
-        url: string;
-        id: string;
-    };
-};
-type RenamedTitleEventNode = BaseTimelineNode & {
-    __typename: 'RenamedTitleEvent';
-    currentTitle: string;
-    previousTitle: string;
-};
-type LabeledEventNode = BaseTimelineNode & {
-    __typename: 'LabeledEvent';
-    label: {
-        id: string;
-        nameHTML: string;
-        name: string;
-        color: string;
-        description: string;
-    };
-};
-type UnlabeledEventNode = BaseTimelineNode & {
-    __typename: 'UnlabeledEvent';
-    label: {
-        id: string;
-        nameHTML: string;
-        name: string;
-        color: string;
-        description: string;
-    };
-};
-type IssueCommentNode = {
-    __typename: 'IssueComment';
-    __isIssueTimelineItems: string;
-    databaseId: number;
-    viewerDidAuthor: boolean;
-    issue: {
-        author: {
-            __typename: string;
-            login: string;
-            id: string;
-        };
-        id: string;
-        number: number;
-        locked: boolean;
-        databaseId: number;
-    };
-    author: {
-        __typename: string;
-        login: string;
-        avatarUrl: string;
-        profileUrl: string;
-        id: string;
-    };
-    id: string;
-    body: string;
-    bodyHTML: string;
-    bodyVersion: string;
-    viewerCanUpdate: boolean;
-    url: string;
-    createdAt: string;
-    authorAssociation: string;
-    viewerCanDelete: boolean;
-    viewerCanMinimize: boolean;
-    viewerCanReport: boolean;
-    viewerCanReportToMaintainer: boolean;
-    viewerCanBlockFromOrg: boolean;
-    viewerCanUnblockFromOrg: boolean;
-    isHidden: boolean;
-    minimizedReason: string | null;
-    showSpammyBadge: boolean;
-    createdViaEmail: boolean;
-    repository: {
-        id: string;
-        name: string;
-        owner: {
-            __typename: string;
-            id: string;
-            login: string;
-            url: string;
-        };
-        isPrivate: boolean;
-        slashCommandsEnabled: boolean;
-        nameWithOwner: string;
-        databaseId: number;
-    };
-    __isComment: string;
-    viewerCanReadUserContentEdits: boolean;
-    lastEditedAt: string | null;
-    __isReactable: string;
-    reactionGroups: Array<{
-        content: string;
-        viewerHasReacted: boolean;
-        reactors: {
-            totalCount: number;
-            nodes: Array<unknown>;
-        };
-    }>;
-    __isNode: string;
-};
-type TimelineItem = AssignedEventNode | AddedToProjectV2EventNode | RemovedFromProjectV2EventNode | ProjectV2ItemStatusChangedEventNode | RenamedTitleEventNode | LabeledEventNode | UnlabeledEventNode | IssueCommentNode;
 type LabelNode = {
     id: string;
     color: string;
     name: string;
     nameHTML: string;
-    description: string;
+    description: string | null;
     url: string;
+    __typename: string;
+};
+type TimelineItem = {
+    id: string;
     __typename: string;
 };
 type IssueData = {
@@ -200,7 +60,7 @@ type IssueData = {
     titleHTML: string;
     url: string;
     viewerCanUpdateNext: boolean;
-    issueType: null | string;
+    issueType: null | IssueTypeData;
     state: 'OPEN' | 'CLOSED';
     stateReason: string | null;
     linkedPullRequests: {
@@ -222,18 +82,6 @@ type IssueData = {
         };
     };
     __isNode: string;
-    assignedActors: {
-        nodes: Array<{
-            __typename: string;
-            __isActor: string;
-            id: string;
-            login: string;
-            name: string;
-            profileResourcePath: string;
-            avatarUrl: string;
-            __isNode: string;
-        }>;
-    };
     databaseId: number;
     viewerDidAuthor: boolean;
     locked: boolean;
@@ -327,7 +175,7 @@ type IssueData = {
         };
         totalCount: number;
         edges: Array<{
-            node: TimelineItem;
+            node: TimelineItem | null;
             cursor: string;
         }>;
     };
@@ -338,8 +186,20 @@ type IssueData = {
         };
         totalCount: number;
         edges: Array<{
-            node: TimelineItem;
+            node: TimelineItem | null;
             cursor: string;
+        }>;
+    };
+    assignedActors: {
+        nodes: Array<{
+            __typename: string;
+            __isActor: string;
+            id: string;
+            login: string;
+            name: string | null;
+            profileResourcePath: string;
+            avatarUrl: string;
+            __isNode: string;
         }>;
     };
 };

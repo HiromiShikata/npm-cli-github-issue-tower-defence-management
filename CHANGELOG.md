@@ -1,3 +1,10 @@
+## [1.15.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.15.5...v1.15.6) (2025-05-17)
+
+
+### Bug Fixes
+
+* failed to correct timeline from internal api ([163285c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/163285ce184ff34c3897281f8cc52120445d24bd))
+
 ## [1.15.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.15.4...v1.15.5) (2025-05-16)
 
 
