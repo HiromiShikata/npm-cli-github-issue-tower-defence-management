@@ -1,3 +1,10 @@
+## [1.15.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.15.6...v1.15.7) (2025-05-18)
+
+
+### Bug Fixes
+
+* **deps:** update dependency commander to v14 ([7de04f6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7de04f6c7c4741a4b8663d21415d8839591c926a))
+
 ## [1.15.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.15.5...v1.15.6) (2025-05-17)
 
 
