@@ -1,3 +1,10 @@
+## [1.15.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.15.7...v1.15.8) (2025-07-15)
+
+
+### Bug Fixes
+
+* `npm i gh-cookie@1.3.9` / close [#178](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/178) ([528139f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/528139f0b07005c114e0a95c8b0898413ad5f4c3))
+
 ## [1.15.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.15.6...v1.15.7) (2025-05-18)
 
 
