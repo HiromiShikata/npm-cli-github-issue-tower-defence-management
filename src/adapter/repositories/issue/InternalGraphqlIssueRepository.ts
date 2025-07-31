@@ -281,21 +281,21 @@ type IssueUpdateSubscriptionResponse = {
   response: {
     data: {
       issueUpdated: {
-        deletedCommentId: null;
-        issueBodyUpdated: null;
-        issueMetadataUpdated: null;
-        issueStateUpdated: null;
-        issueTimelineUpdated: null;
-        issueTitleUpdated: null;
-        issueReactionUpdated: null;
-        issueTransferStateUpdated: null;
-        issueTypeUpdated: null;
-        commentReactionUpdated: null;
-        commentUpdated: null;
-        subIssuesUpdated: null;
-        subIssuesSummaryUpdated: null;
-        parentIssueUpdated: null;
-        issueDependenciesSummaryUpdated: null;
+        deletedCommentId: unknown;
+        issueBodyUpdated: unknown;
+        issueMetadataUpdated: unknown;
+        issueStateUpdated: unknown;
+        issueTimelineUpdated: unknown;
+        issueTitleUpdated: unknown;
+        issueReactionUpdated: unknown;
+        issueTransferStateUpdated: unknown;
+        issueTypeUpdated: unknown;
+        commentReactionUpdated: unknown;
+        commentUpdated: unknown;
+        subIssuesUpdated: unknown;
+        subIssuesSummaryUpdated: unknown;
+        parentIssueUpdated: unknown;
+        issueDependenciesSummaryUpdated: unknown;
       };
     };
   };
@@ -311,10 +311,10 @@ type GitHubBetaFeatureViewData = {
       Record<string, IssueUpdateSubscriptionResponse>
     >;
   };
-  title?: null;
+  title?: unknown;
   appPayload?: {
     initial_view_content?: {
-      team_id: null;
+      team_id: unknown;
       can_edit_view: boolean;
     };
     current_user?: {
@@ -332,7 +332,7 @@ type GitHubBetaFeatureViewData = {
     paste_url_link_as_plain_text?: boolean;
     base_avatar_url?: string;
     help_url?: string;
-    sso_organizations?: null;
+    sso_organizations?: unknown;
     multi_tenant?: boolean;
     tracing?: boolean;
     tracing_flamegraph?: boolean;
@@ -343,7 +343,7 @@ type GitHubBetaFeatureViewData = {
       name: string;
       is_archived: boolean;
     };
-    copilot_api_url?: null;
+    copilot_api_url?: unknown;
     enabled_features?: Record<string, boolean>;
   };
 };
