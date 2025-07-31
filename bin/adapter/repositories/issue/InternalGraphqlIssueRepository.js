@@ -113,7 +113,7 @@ class InternalGraphqlIssueRepository extends BaseGitHubRepository_1.BaseGitHubRe
                 throw new Error('No script content found');
             }
             const data = JSON.parse(scriptContent);
-            if (!(() => { const _io0 = input => "object" === typeof input.payload && null !== input.payload && _io1(input.payload) && (null === input.title || undefined === input.title) && (undefined === input.appPayload || "object" === typeof input.appPayload && null !== input.appPayload && false === Array.isArray(input.appPayload) && _io50(input.appPayload)); const _io1 = input => (undefined === input.preloaded_records || "object" === typeof input.preloaded_records && null !== input.preloaded_records && false === Array.isArray(input.preloaded_records) && _io2(input.preloaded_records)) && (Array.isArray(input.preloadedQueries) && (input.preloadedQueries.length === 1 && ("object" === typeof input.preloadedQueries[0] && null !== input.preloadedQueries[0] && _io3(input.preloadedQueries[0])))) && (undefined === input.preloadedSubscriptions || "object" === typeof input.preloadedSubscriptions && null !== input.preloadedSubscriptions && false === Array.isArray(input.preloadedSubscriptions) && _io44(input.preloadedSubscriptions)); const _io2 = input => Object.keys(input).every(key => {
+            if (!(() => { const _io0 = input => "object" === typeof input.payload && null !== input.payload && _io1(input.payload) && true && (undefined === input.appPayload || "object" === typeof input.appPayload && null !== input.appPayload && false === Array.isArray(input.appPayload) && _io50(input.appPayload)); const _io1 = input => (undefined === input.preloaded_records || "object" === typeof input.preloaded_records && null !== input.preloaded_records && false === Array.isArray(input.preloaded_records) && _io2(input.preloaded_records)) && (Array.isArray(input.preloadedQueries) && (input.preloadedQueries.length === 1 && ("object" === typeof input.preloadedQueries[0] && null !== input.preloadedQueries[0] && _io3(input.preloadedQueries[0])))) && (undefined === input.preloadedSubscriptions || "object" === typeof input.preloadedSubscriptions && null !== input.preloadedSubscriptions && false === Array.isArray(input.preloadedSubscriptions) && _io44(input.preloadedSubscriptions)); const _io2 = input => Object.keys(input).every(key => {
                 const value = input[key];
                 if (undefined === value)
                     return true;
@@ -128,13 +128,13 @@ class InternalGraphqlIssueRepository extends BaseGitHubRepository_1.BaseGitHubRe
                 if (undefined === value)
                     return true;
                 return "object" === typeof value && null !== value && _io46(value);
-            }); const _io46 = input => "object" === typeof input.response && null !== input.response && _io47(input.response) && "string" === typeof input.subscriptionId; const _io47 = input => "object" === typeof input.data && null !== input.data && _io48(input.data); const _io48 = input => "object" === typeof input.issueUpdated && null !== input.issueUpdated && _io49(input.issueUpdated); const _io49 = input => undefined !== input.deletedCommentId && null === input.deletedCommentId && (undefined !== input.issueBodyUpdated && null === input.issueBodyUpdated) && (undefined !== input.issueMetadataUpdated && null === input.issueMetadataUpdated) && (undefined !== input.issueStateUpdated && null === input.issueStateUpdated) && (undefined !== input.issueTimelineUpdated && null === input.issueTimelineUpdated) && (undefined !== input.issueTitleUpdated && null === input.issueTitleUpdated) && (undefined !== input.issueReactionUpdated && null === input.issueReactionUpdated) && (undefined !== input.issueTransferStateUpdated && null === input.issueTransferStateUpdated) && (undefined !== input.issueTypeUpdated && null === input.issueTypeUpdated) && (undefined !== input.commentReactionUpdated && null === input.commentReactionUpdated) && (undefined !== input.commentUpdated && null === input.commentUpdated) && (undefined !== input.subIssuesUpdated && null === input.subIssuesUpdated) && (undefined !== input.subIssuesSummaryUpdated && null === input.subIssuesSummaryUpdated) && (undefined !== input.parentIssueUpdated && null === input.parentIssueUpdated) && (undefined !== input.issueDependenciesSummaryUpdated && null === input.issueDependenciesSummaryUpdated); const _io50 = input => (undefined === input.initial_view_content || "object" === typeof input.initial_view_content && null !== input.initial_view_content && _io51(input.initial_view_content)) && (undefined === input.current_user || "object" === typeof input.current_user && null !== input.current_user && _io52(input.current_user)) && (undefined === input.current_user_settings || "object" === typeof input.current_user_settings && null !== input.current_user_settings && _io53(input.current_user_settings)) && (undefined === input.paste_url_link_as_plain_text || "boolean" === typeof input.paste_url_link_as_plain_text) && (undefined === input.base_avatar_url || "string" === typeof input.base_avatar_url) && (undefined === input.help_url || "string" === typeof input.help_url) && (null === input.sso_organizations || undefined === input.sso_organizations) && (undefined === input.multi_tenant || "boolean" === typeof input.multi_tenant) && (undefined === input.tracing || "boolean" === typeof input.tracing) && (undefined === input.tracing_flamegraph || "boolean" === typeof input.tracing_flamegraph) && (undefined === input.catalog_service || "string" === typeof input.catalog_service) && (undefined === input.scoped_repository || "object" === typeof input.scoped_repository && null !== input.scoped_repository && _io54(input.scoped_repository)) && (null === input.copilot_api_url || undefined === input.copilot_api_url) && (undefined === input.enabled_features || "object" === typeof input.enabled_features && null !== input.enabled_features && false === Array.isArray(input.enabled_features) && _io55(input.enabled_features)); const _io51 = input => undefined !== input.team_id && null === input.team_id && "boolean" === typeof input.can_edit_view; const _io52 = input => "string" === typeof input.id && "string" === typeof input.login && "string" === typeof input.avatarUrl && "boolean" === typeof input.is_staff && "boolean" === typeof input.is_emu; const _io53 = input => "boolean" === typeof input.use_monospace_font && "boolean" === typeof input.use_single_key_shortcut && "number" === typeof input.preferred_emoji_skin_tone; const _io54 = input => "string" === typeof input.id && "string" === typeof input.owner && "string" === typeof input.name && "boolean" === typeof input.is_archived; const _io55 = input => Object.keys(input).every(key => {
+            }); const _io46 = input => "object" === typeof input.response && null !== input.response && _io47(input.response) && "string" === typeof input.subscriptionId; const _io47 = input => "object" === typeof input.data && null !== input.data && _io48(input.data); const _io48 = input => "object" === typeof input.issueUpdated && null !== input.issueUpdated && _io49(input.issueUpdated); const _io49 = input => true && true && true && true && true && true && true && true && true && true && true && true && true && true && true; const _io50 = input => (undefined === input.initial_view_content || "object" === typeof input.initial_view_content && null !== input.initial_view_content && _io51(input.initial_view_content)) && (undefined === input.current_user || "object" === typeof input.current_user && null !== input.current_user && _io52(input.current_user)) && (undefined === input.current_user_settings || "object" === typeof input.current_user_settings && null !== input.current_user_settings && _io53(input.current_user_settings)) && (undefined === input.paste_url_link_as_plain_text || "boolean" === typeof input.paste_url_link_as_plain_text) && (undefined === input.base_avatar_url || "string" === typeof input.base_avatar_url) && (undefined === input.help_url || "string" === typeof input.help_url) && true && (undefined === input.multi_tenant || "boolean" === typeof input.multi_tenant) && (undefined === input.tracing || "boolean" === typeof input.tracing) && (undefined === input.tracing_flamegraph || "boolean" === typeof input.tracing_flamegraph) && (undefined === input.catalog_service || "string" === typeof input.catalog_service) && (undefined === input.scoped_repository || "object" === typeof input.scoped_repository && null !== input.scoped_repository && _io54(input.scoped_repository)) && true && (undefined === input.enabled_features || "object" === typeof input.enabled_features && null !== input.enabled_features && false === Array.isArray(input.enabled_features) && _io55(input.enabled_features)); const _io51 = input => true && "boolean" === typeof input.can_edit_view; const _io52 = input => "string" === typeof input.id && "string" === typeof input.login && "string" === typeof input.avatarUrl && "boolean" === typeof input.is_staff && "boolean" === typeof input.is_emu; const _io53 = input => "boolean" === typeof input.use_monospace_font && "boolean" === typeof input.use_single_key_shortcut && "number" === typeof input.preferred_emoji_skin_tone; const _io54 = input => "string" === typeof input.id && "string" === typeof input.owner && "string" === typeof input.name && "boolean" === typeof input.is_archived; const _io55 = input => Object.keys(input).every(key => {
                 const value = input[key];
                 if (undefined === value)
                     return true;
                 return "boolean" === typeof value;
             }); return input => "object" === typeof input && null !== input && _io0(input); })()(data)) {
-                const validateResult = (() => { const _io0 = input => "object" === typeof input.payload && null !== input.payload && _io1(input.payload) && (null === input.title || undefined === input.title) && (undefined === input.appPayload || "object" === typeof input.appPayload && null !== input.appPayload && false === Array.isArray(input.appPayload) && _io50(input.appPayload)); const _io1 = input => (undefined === input.preloaded_records || "object" === typeof input.preloaded_records && null !== input.preloaded_records && false === Array.isArray(input.preloaded_records) && _io2(input.preloaded_records)) && (Array.isArray(input.preloadedQueries) && (input.preloadedQueries.length === 1 && ("object" === typeof input.preloadedQueries[0] && null !== input.preloadedQueries[0] && _io3(input.preloadedQueries[0])))) && (undefined === input.preloadedSubscriptions || "object" === typeof input.preloadedSubscriptions && null !== input.preloadedSubscriptions && false === Array.isArray(input.preloadedSubscriptions) && _io44(input.preloadedSubscriptions)); const _io2 = input => Object.keys(input).every(key => {
+                const validateResult = (() => { const _io0 = input => "object" === typeof input.payload && null !== input.payload && _io1(input.payload) && true && (undefined === input.appPayload || "object" === typeof input.appPayload && null !== input.appPayload && false === Array.isArray(input.appPayload) && _io50(input.appPayload)); const _io1 = input => (undefined === input.preloaded_records || "object" === typeof input.preloaded_records && null !== input.preloaded_records && false === Array.isArray(input.preloaded_records) && _io2(input.preloaded_records)) && (Array.isArray(input.preloadedQueries) && (input.preloadedQueries.length === 1 && ("object" === typeof input.preloadedQueries[0] && null !== input.preloadedQueries[0] && _io3(input.preloadedQueries[0])))) && (undefined === input.preloadedSubscriptions || "object" === typeof input.preloadedSubscriptions && null !== input.preloadedSubscriptions && false === Array.isArray(input.preloadedSubscriptions) && _io44(input.preloadedSubscriptions)); const _io2 = input => Object.keys(input).every(key => {
                     const value = input[key];
                     if (undefined === value)
                         return true;
@@ -149,7 +149,7 @@ class InternalGraphqlIssueRepository extends BaseGitHubRepository_1.BaseGitHubRe
                     if (undefined === value)
                         return true;
                     return "object" === typeof value && null !== value && _io46(value);
-                }); const _io46 = input => "object" === typeof input.response && null !== input.response && _io47(input.response) && "string" === typeof input.subscriptionId; const _io47 = input => "object" === typeof input.data && null !== input.data && _io48(input.data); const _io48 = input => "object" === typeof input.issueUpdated && null !== input.issueUpdated && _io49(input.issueUpdated); const _io49 = input => undefined !== input.deletedCommentId && null === input.deletedCommentId && (undefined !== input.issueBodyUpdated && null === input.issueBodyUpdated) && (undefined !== input.issueMetadataUpdated && null === input.issueMetadataUpdated) && (undefined !== input.issueStateUpdated && null === input.issueStateUpdated) && (undefined !== input.issueTimelineUpdated && null === input.issueTimelineUpdated) && (undefined !== input.issueTitleUpdated && null === input.issueTitleUpdated) && (undefined !== input.issueReactionUpdated && null === input.issueReactionUpdated) && (undefined !== input.issueTransferStateUpdated && null === input.issueTransferStateUpdated) && (undefined !== input.issueTypeUpdated && null === input.issueTypeUpdated) && (undefined !== input.commentReactionUpdated && null === input.commentReactionUpdated) && (undefined !== input.commentUpdated && null === input.commentUpdated) && (undefined !== input.subIssuesUpdated && null === input.subIssuesUpdated) && (undefined !== input.subIssuesSummaryUpdated && null === input.subIssuesSummaryUpdated) && (undefined !== input.parentIssueUpdated && null === input.parentIssueUpdated) && (undefined !== input.issueDependenciesSummaryUpdated && null === input.issueDependenciesSummaryUpdated); const _io50 = input => (undefined === input.initial_view_content || "object" === typeof input.initial_view_content && null !== input.initial_view_content && _io51(input.initial_view_content)) && (undefined === input.current_user || "object" === typeof input.current_user && null !== input.current_user && _io52(input.current_user)) && (undefined === input.current_user_settings || "object" === typeof input.current_user_settings && null !== input.current_user_settings && _io53(input.current_user_settings)) && (undefined === input.paste_url_link_as_plain_text || "boolean" === typeof input.paste_url_link_as_plain_text) && (undefined === input.base_avatar_url || "string" === typeof input.base_avatar_url) && (undefined === input.help_url || "string" === typeof input.help_url) && (null === input.sso_organizations || undefined === input.sso_organizations) && (undefined === input.multi_tenant || "boolean" === typeof input.multi_tenant) && (undefined === input.tracing || "boolean" === typeof input.tracing) && (undefined === input.tracing_flamegraph || "boolean" === typeof input.tracing_flamegraph) && (undefined === input.catalog_service || "string" === typeof input.catalog_service) && (undefined === input.scoped_repository || "object" === typeof input.scoped_repository && null !== input.scoped_repository && _io54(input.scoped_repository)) && (null === input.copilot_api_url || undefined === input.copilot_api_url) && (undefined === input.enabled_features || "object" === typeof input.enabled_features && null !== input.enabled_features && false === Array.isArray(input.enabled_features) && _io55(input.enabled_features)); const _io51 = input => undefined !== input.team_id && null === input.team_id && "boolean" === typeof input.can_edit_view; const _io52 = input => "string" === typeof input.id && "string" === typeof input.login && "string" === typeof input.avatarUrl && "boolean" === typeof input.is_staff && "boolean" === typeof input.is_emu; const _io53 = input => "boolean" === typeof input.use_monospace_font && "boolean" === typeof input.use_single_key_shortcut && "number" === typeof input.preferred_emoji_skin_tone; const _io54 = input => "string" === typeof input.id && "string" === typeof input.owner && "string" === typeof input.name && "boolean" === typeof input.is_archived; const _io55 = input => Object.keys(input).every(key => {
+                }); const _io46 = input => "object" === typeof input.response && null !== input.response && _io47(input.response) && "string" === typeof input.subscriptionId; const _io47 = input => "object" === typeof input.data && null !== input.data && _io48(input.data); const _io48 = input => "object" === typeof input.issueUpdated && null !== input.issueUpdated && _io49(input.issueUpdated); const _io49 = input => true && true && true && true && true && true && true && true && true && true && true && true && true && true && true; const _io50 = input => (undefined === input.initial_view_content || "object" === typeof input.initial_view_content && null !== input.initial_view_content && _io51(input.initial_view_content)) && (undefined === input.current_user || "object" === typeof input.current_user && null !== input.current_user && _io52(input.current_user)) && (undefined === input.current_user_settings || "object" === typeof input.current_user_settings && null !== input.current_user_settings && _io53(input.current_user_settings)) && (undefined === input.paste_url_link_as_plain_text || "boolean" === typeof input.paste_url_link_as_plain_text) && (undefined === input.base_avatar_url || "string" === typeof input.base_avatar_url) && (undefined === input.help_url || "string" === typeof input.help_url) && true && (undefined === input.multi_tenant || "boolean" === typeof input.multi_tenant) && (undefined === input.tracing || "boolean" === typeof input.tracing) && (undefined === input.tracing_flamegraph || "boolean" === typeof input.tracing_flamegraph) && (undefined === input.catalog_service || "string" === typeof input.catalog_service) && (undefined === input.scoped_repository || "object" === typeof input.scoped_repository && null !== input.scoped_repository && _io54(input.scoped_repository)) && true && (undefined === input.enabled_features || "object" === typeof input.enabled_features && null !== input.enabled_features && false === Array.isArray(input.enabled_features) && _io55(input.enabled_features)); const _io51 = input => true && "boolean" === typeof input.can_edit_view; const _io52 = input => "string" === typeof input.id && "string" === typeof input.login && "string" === typeof input.avatarUrl && "boolean" === typeof input.is_staff && "boolean" === typeof input.is_emu; const _io53 = input => "boolean" === typeof input.use_monospace_font && "boolean" === typeof input.use_single_key_shortcut && "number" === typeof input.preferred_emoji_skin_tone; const _io54 = input => "string" === typeof input.id && "string" === typeof input.owner && "string" === typeof input.name && "boolean" === typeof input.is_archived; const _io55 = input => Object.keys(input).every(key => {
                     const value = input[key];
                     if (undefined === value)
                         return true;
@@ -162,11 +162,7 @@ class InternalGraphqlIssueRepository extends BaseGitHubRepository_1.BaseGitHubRe
                         path: _path + ".payload",
                         expected: "__type",
                         value: input.payload
-                    }), null === input.title || undefined === input.title || _report(_exceptionable, {
-                        path: _path + ".title",
-                        expected: "(null | undefined)",
-                        value: input.title
-                    }), undefined === input.appPayload || ("object" === typeof input.appPayload && null !== input.appPayload && false === Array.isArray(input.appPayload) || _report(_exceptionable, {
+                    }), true, undefined === input.appPayload || ("object" === typeof input.appPayload && null !== input.appPayload && false === Array.isArray(input.appPayload) || _report(_exceptionable, {
                         path: _path + ".appPayload",
                         expected: "(__type.o40 | undefined)",
                         value: input.appPayload
@@ -1255,127 +1251,7 @@ class InternalGraphqlIssueRepository extends BaseGitHubRepository_1.BaseGitHubRe
                         path: _path + ".issueUpdated",
                         expected: "__type.o39",
                         value: input.issueUpdated
-                    })].every(flag => flag); const _vo49 = (input, _path, _exceptionable = true) => [(undefined !== input.deletedCommentId || _report(_exceptionable, {
-                        path: _path + ".deletedCommentId",
-                        expected: "null",
-                        value: input.deletedCommentId
-                    })) && (null === input.deletedCommentId || _report(_exceptionable, {
-                        path: _path + ".deletedCommentId",
-                        expected: "null",
-                        value: input.deletedCommentId
-                    })), (undefined !== input.issueBodyUpdated || _report(_exceptionable, {
-                        path: _path + ".issueBodyUpdated",
-                        expected: "null",
-                        value: input.issueBodyUpdated
-                    })) && (null === input.issueBodyUpdated || _report(_exceptionable, {
-                        path: _path + ".issueBodyUpdated",
-                        expected: "null",
-                        value: input.issueBodyUpdated
-                    })), (undefined !== input.issueMetadataUpdated || _report(_exceptionable, {
-                        path: _path + ".issueMetadataUpdated",
-                        expected: "null",
-                        value: input.issueMetadataUpdated
-                    })) && (null === input.issueMetadataUpdated || _report(_exceptionable, {
-                        path: _path + ".issueMetadataUpdated",
-                        expected: "null",
-                        value: input.issueMetadataUpdated
-                    })), (undefined !== input.issueStateUpdated || _report(_exceptionable, {
-                        path: _path + ".issueStateUpdated",
-                        expected: "null",
-                        value: input.issueStateUpdated
-                    })) && (null === input.issueStateUpdated || _report(_exceptionable, {
-                        path: _path + ".issueStateUpdated",
-                        expected: "null",
-                        value: input.issueStateUpdated
-                    })), (undefined !== input.issueTimelineUpdated || _report(_exceptionable, {
-                        path: _path + ".issueTimelineUpdated",
-                        expected: "null",
-                        value: input.issueTimelineUpdated
-                    })) && (null === input.issueTimelineUpdated || _report(_exceptionable, {
-                        path: _path + ".issueTimelineUpdated",
-                        expected: "null",
-                        value: input.issueTimelineUpdated
-                    })), (undefined !== input.issueTitleUpdated || _report(_exceptionable, {
-                        path: _path + ".issueTitleUpdated",
-                        expected: "null",
-                        value: input.issueTitleUpdated
-                    })) && (null === input.issueTitleUpdated || _report(_exceptionable, {
-                        path: _path + ".issueTitleUpdated",
-                        expected: "null",
-                        value: input.issueTitleUpdated
-                    })), (undefined !== input.issueReactionUpdated || _report(_exceptionable, {
-                        path: _path + ".issueReactionUpdated",
-                        expected: "null",
-                        value: input.issueReactionUpdated
-                    })) && (null === input.issueReactionUpdated || _report(_exceptionable, {
-                        path: _path + ".issueReactionUpdated",
-                        expected: "null",
-                        value: input.issueReactionUpdated
-                    })), (undefined !== input.issueTransferStateUpdated || _report(_exceptionable, {
-                        path: _path + ".issueTransferStateUpdated",
-                        expected: "null",
-                        value: input.issueTransferStateUpdated
-                    })) && (null === input.issueTransferStateUpdated || _report(_exceptionable, {
-                        path: _path + ".issueTransferStateUpdated",
-                        expected: "null",
-                        value: input.issueTransferStateUpdated
-                    })), (undefined !== input.issueTypeUpdated || _report(_exceptionable, {
-                        path: _path + ".issueTypeUpdated",
-                        expected: "null",
-                        value: input.issueTypeUpdated
-                    })) && (null === input.issueTypeUpdated || _report(_exceptionable, {
-                        path: _path + ".issueTypeUpdated",
-                        expected: "null",
-                        value: input.issueTypeUpdated
-                    })), (undefined !== input.commentReactionUpdated || _report(_exceptionable, {
-                        path: _path + ".commentReactionUpdated",
-                        expected: "null",
-                        value: input.commentReactionUpdated
-                    })) && (null === input.commentReactionUpdated || _report(_exceptionable, {
-                        path: _path + ".commentReactionUpdated",
-                        expected: "null",
-                        value: input.commentReactionUpdated
-                    })), (undefined !== input.commentUpdated || _report(_exceptionable, {
-                        path: _path + ".commentUpdated",
-                        expected: "null",
-                        value: input.commentUpdated
-                    })) && (null === input.commentUpdated || _report(_exceptionable, {
-                        path: _path + ".commentUpdated",
-                        expected: "null",
-                        value: input.commentUpdated
-                    })), (undefined !== input.subIssuesUpdated || _report(_exceptionable, {
-                        path: _path + ".subIssuesUpdated",
-                        expected: "null",
-                        value: input.subIssuesUpdated
-                    })) && (null === input.subIssuesUpdated || _report(_exceptionable, {
-                        path: _path + ".subIssuesUpdated",
-                        expected: "null",
-                        value: input.subIssuesUpdated
-                    })), (undefined !== input.subIssuesSummaryUpdated || _report(_exceptionable, {
-                        path: _path + ".subIssuesSummaryUpdated",
-                        expected: "null",
-                        value: input.subIssuesSummaryUpdated
-                    })) && (null === input.subIssuesSummaryUpdated || _report(_exceptionable, {
-                        path: _path + ".subIssuesSummaryUpdated",
-                        expected: "null",
-                        value: input.subIssuesSummaryUpdated
-                    })), (undefined !== input.parentIssueUpdated || _report(_exceptionable, {
-                        path: _path + ".parentIssueUpdated",
-                        expected: "null",
-                        value: input.parentIssueUpdated
-                    })) && (null === input.parentIssueUpdated || _report(_exceptionable, {
-                        path: _path + ".parentIssueUpdated",
-                        expected: "null",
-                        value: input.parentIssueUpdated
-                    })), (undefined !== input.issueDependenciesSummaryUpdated || _report(_exceptionable, {
-                        path: _path + ".issueDependenciesSummaryUpdated",
-                        expected: "null",
-                        value: input.issueDependenciesSummaryUpdated
-                    })) && (null === input.issueDependenciesSummaryUpdated || _report(_exceptionable, {
-                        path: _path + ".issueDependenciesSummaryUpdated",
-                        expected: "null",
-                        value: input.issueDependenciesSummaryUpdated
-                    }))].every(flag => flag); const _vo50 = (input, _path, _exceptionable = true) => [undefined === input.initial_view_content || ("object" === typeof input.initial_view_content && null !== input.initial_view_content || _report(_exceptionable, {
+                    })].every(flag => flag); const _vo49 = (input, _path, _exceptionable = true) => [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true].every(flag => flag); const _vo50 = (input, _path, _exceptionable = true) => [undefined === input.initial_view_content || ("object" === typeof input.initial_view_content && null !== input.initial_view_content || _report(_exceptionable, {
                         path: _path + ".initial_view_content",
                         expected: "(__type.o41 | undefined)",
                         value: input.initial_view_content
@@ -1411,11 +1287,7 @@ class InternalGraphqlIssueRepository extends BaseGitHubRepository_1.BaseGitHubRe
                         path: _path + ".help_url",
                         expected: "(string | undefined)",
                         value: input.help_url
-                    }), null === input.sso_organizations || undefined === input.sso_organizations || _report(_exceptionable, {
-                        path: _path + ".sso_organizations",
-                        expected: "(null | undefined)",
-                        value: input.sso_organizations
-                    }), undefined === input.multi_tenant || "boolean" === typeof input.multi_tenant || _report(_exceptionable, {
+                    }), true, undefined === input.multi_tenant || "boolean" === typeof input.multi_tenant || _report(_exceptionable, {
                         path: _path + ".multi_tenant",
                         expected: "(boolean | undefined)",
                         value: input.multi_tenant
@@ -1439,11 +1311,7 @@ class InternalGraphqlIssueRepository extends BaseGitHubRepository_1.BaseGitHubRe
                         path: _path + ".scoped_repository",
                         expected: "(__type.o44 | undefined)",
                         value: input.scoped_repository
-                    }), null === input.copilot_api_url || undefined === input.copilot_api_url || _report(_exceptionable, {
-                        path: _path + ".copilot_api_url",
-                        expected: "(null | undefined)",
-                        value: input.copilot_api_url
-                    }), undefined === input.enabled_features || ("object" === typeof input.enabled_features && null !== input.enabled_features && false === Array.isArray(input.enabled_features) || _report(_exceptionable, {
+                    }), true, undefined === input.enabled_features || ("object" === typeof input.enabled_features && null !== input.enabled_features && false === Array.isArray(input.enabled_features) || _report(_exceptionable, {
                         path: _path + ".enabled_features",
                         expected: "(Record<string, boolean> | undefined)",
                         value: input.enabled_features
@@ -1451,15 +1319,7 @@ class InternalGraphqlIssueRepository extends BaseGitHubRepository_1.BaseGitHubRe
                         path: _path + ".enabled_features",
                         expected: "(Record<string, boolean> | undefined)",
                         value: input.enabled_features
-                    })].every(flag => flag); const _vo51 = (input, _path, _exceptionable = true) => [(undefined !== input.team_id || _report(_exceptionable, {
-                        path: _path + ".team_id",
-                        expected: "null",
-                        value: input.team_id
-                    })) && (null === input.team_id || _report(_exceptionable, {
-                        path: _path + ".team_id",
-                        expected: "null",
-                        value: input.team_id
-                    })), "boolean" === typeof input.can_edit_view || _report(_exceptionable, {
+                    })].every(flag => flag); const _vo51 = (input, _path, _exceptionable = true) => [true, "boolean" === typeof input.can_edit_view || _report(_exceptionable, {
                         path: _path + ".can_edit_view",
                         expected: "boolean",
                         value: input.can_edit_view

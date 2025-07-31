@@ -1,3 +1,11 @@
+## [1.15.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.15.8...v1.15.9) (2025-07-31)
+
+
+### Bug Fixes
+
+* disable dotenv warning ([840f613](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/840f61384ce55d1841c04ddcc0d3474f5be70188))
+* internal api type error ([25bd25c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/25bd25cb89f6ff70ac341f1ef6e14fd5ed858e78))
+
 ## [1.15.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.15.7...v1.15.8) (2025-07-15)
 
 
