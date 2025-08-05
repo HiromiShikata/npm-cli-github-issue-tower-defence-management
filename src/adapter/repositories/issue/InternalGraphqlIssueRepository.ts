@@ -416,6 +416,7 @@ export class InternalGraphqlIssueRepository extends BaseGitHubRepository {
               )}`,
             );
           }
+          await new Promise((resolve) => setTimeout(resolve, 2000));
           return response.data.data.node.frontTimelineItems;
         } catch (e) {
           if (i === 2) {
