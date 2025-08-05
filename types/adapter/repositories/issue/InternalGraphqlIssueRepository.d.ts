@@ -151,13 +151,13 @@ type IssueData = {
                     nameHTML: string;
                     color: string;
                     __isNode: string;
-                };
+                } | null;
                 __typename: string;
             };
             cursor: string;
         }>;
         pageInfo: {
-            endCursor: string;
+            endCursor: string | null;
             hasNextPage: boolean;
         };
     };
@@ -171,7 +171,7 @@ type IssueData = {
     frontTimelineItems: {
         pageInfo: {
             hasNextPage: boolean;
-            endCursor: string;
+            endCursor: string | null;
         };
         totalCount: number;
         edges: Array<{

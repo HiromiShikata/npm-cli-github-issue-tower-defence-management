@@ -1,3 +1,11 @@
+## [1.15.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.15.9...v1.15.10) (2025-08-05)
+
+
+### Bug Fixes
+
+* make fields optional for internal api ([bd84bf1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bd84bf16a29f4eeab6d5d61c6d88467a8e09fd52))
+* wait 2sec for internal api ([ee84101](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ee84101e59e45d8ae90607ce89dff869a37db100))
+
 ## [1.15.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.15.8...v1.15.9) (2025-07-31)
 
 
