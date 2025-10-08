@@ -1,5 +1,5 @@
 import { Issue, Label } from '../../entities/Issue';
-import { Project } from '../../entities/Project';
+import { FieldOption, Project } from '../../entities/Project';
 import { Member } from '../../entities/Member';
 
 export interface IssueRepository {
@@ -40,7 +40,7 @@ export interface IssueRepository {
   updateStory: (
     project: Project & { story: NonNullable<Project['story']> },
     issue: Issue,
-    storyId: string,
+    storyId: FieldOption['id'],
   ) => Promise<void>;
   updateStatus: (
     project: Project,
@@ -53,4 +53,5 @@ export interface IssueRepository {
     issue: Issue,
   ) => Promise<void>;
   createComment: (issue: Issue, commentBody: string) => Promise<void>;
+  updateLabels: (issue: Issue, labels: Issue['labels']) => Promise<void>;
 }

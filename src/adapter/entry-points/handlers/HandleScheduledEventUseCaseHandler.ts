@@ -29,6 +29,7 @@ import { ConvertCheckboxToIssueInStoryIssueUseCase } from '../../../domain/useca
 import { ChangeStatusLongInReviewIssueUseCase } from '../../../domain/usecases/ChangeStatusLongInReviewIssueUseCase';
 import { ChangeStatusByStoryColorUseCase } from '../../../domain/usecases/ChangeStatusByStoryColorUseCase';
 import { SetNoStoryIssueToStoryUseCase } from '../../../domain/usecases/SetNoStoryIssueToStoryUseCase';
+import { CreateNewStoryByLabelUseCase } from '../../../domain/usecases/CreateNewStoryByLabelUseCase';
 
 export class HandleScheduledEventUseCaseHandler {
   handle = async (
@@ -174,6 +175,10 @@ export class HandleScheduledEventUseCaseHandler {
     const setNoStoryIssueToStoryUseCase = new SetNoStoryIssueToStoryUseCase(
       issueRepository,
     );
+    const createNewStoryByLabel = new CreateNewStoryByLabelUseCase(
+      projectRepository,
+      issueRepository,
+    );
     const handleScheduledEventUseCase = new HandleScheduledEventUseCase(
       generateWorkingTimeReportUseCase,
       actionAnnouncement,
@@ -187,6 +192,7 @@ export class HandleScheduledEventUseCaseHandler {
       changeStatusLongInReviewIssueUseCase,
       changeStatusByStoryColorUseCase,
       setNoStoryIssueToStoryUseCase,
+      createNewStoryByLabel,
       systemDateRepository,
       googleSpreadsheetRepository,
       projectRepository,
