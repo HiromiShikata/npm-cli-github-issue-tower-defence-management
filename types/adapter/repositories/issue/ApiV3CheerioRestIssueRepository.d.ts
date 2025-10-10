@@ -11,7 +11,7 @@ import { LocalStorageRepository } from '../LocalStorageRepository';
 export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository implements IssueRepository {
     readonly apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>;
     readonly cheerioIssueRepository: Pick<CheerioIssueRepository, 'getIssue' | 'refreshCookie'>;
-    readonly restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'createComment' | 'getIssue'>;
+    readonly restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'createComment' | 'getIssue' | 'updateLabels'>;
     readonly graphqlProjectItemRepository: Pick<GraphqlProjectItemRepository, 'fetchProjectItems' | 'fetchProjectItemByUrl' | 'updateProjectField' | 'clearProjectField' | 'updateProjectTextField'>;
     readonly localStorageCacheRepository: Pick<LocalStorageCacheRepository, 'getLatest' | 'set'>;
     readonly localStorageRepository: LocalStorageRepository;
@@ -20,7 +20,7 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     readonly ghUserName: string | undefined;
     readonly ghUserPassword: string | undefined;
     readonly ghAuthenticatorKey: string | undefined;
-    constructor(apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>, cheerioIssueRepository: Pick<CheerioIssueRepository, 'getIssue' | 'refreshCookie'>, restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'createComment' | 'getIssue'>, graphqlProjectItemRepository: Pick<GraphqlProjectItemRepository, 'fetchProjectItems' | 'fetchProjectItemByUrl' | 'updateProjectField' | 'clearProjectField' | 'updateProjectTextField'>, localStorageCacheRepository: Pick<LocalStorageCacheRepository, 'getLatest' | 'set'>, localStorageRepository: LocalStorageRepository, jsonFilePath?: string, ghToken?: string, ghUserName?: string | undefined, ghUserPassword?: string | undefined, ghAuthenticatorKey?: string | undefined);
+    constructor(apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>, cheerioIssueRepository: Pick<CheerioIssueRepository, 'getIssue' | 'refreshCookie'>, restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'createComment' | 'getIssue' | 'updateLabels'>, graphqlProjectItemRepository: Pick<GraphqlProjectItemRepository, 'fetchProjectItems' | 'fetchProjectItemByUrl' | 'updateProjectField' | 'clearProjectField' | 'updateProjectTextField'>, localStorageCacheRepository: Pick<LocalStorageCacheRepository, 'getLatest' | 'set'>, localStorageRepository: LocalStorageRepository, jsonFilePath?: string, ghToken?: string, ghUserName?: string | undefined, ghUserPassword?: string | undefined, ghAuthenticatorKey?: string | undefined);
     updateStatus: (project: Project, issue: Issue, statusId: string) => Promise<void>;
     convertProjectItemAndCheerioIssueToIssue: (item: ProjectItem, cheerioIssue: CheerioIssue) => Promise<Issue>;
     getAllIssuesFromCache: (cacheKey: string, allowCacheMinutes: number) => Promise<Issue[] | null>;
@@ -44,5 +44,6 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     clearProjectField: (project: Project, fieldId: string, issue: Issue) => Promise<void>;
     createComment: (issue: Issue, comment: string) => Promise<void>;
     updateProjectTextField: (project: Project, fieldId: string, issue: Issue, text: string) => Promise<void>;
+    updateLabels: (issue: Issue, labels: Issue["labels"]) => Promise<void>;
 }
 //# sourceMappingURL=ApiV3CheerioRestIssueRepository.d.ts.map

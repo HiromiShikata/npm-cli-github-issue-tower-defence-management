@@ -1,5 +1,5 @@
 import { Issue, Label } from '../../entities/Issue';
-import { Project } from '../../entities/Project';
+import { FieldOption, Project } from '../../entities/Project';
 import { Member } from '../../entities/Member';
 export interface IssueRepository {
     getAllIssues: (projectId: Project['id'], allowCacheMinutes: number) => Promise<{
@@ -18,9 +18,10 @@ export interface IssueRepository {
     updateProjectTextField: (project: Project, fieldId: string, issue: Issue, text: string) => Promise<void>;
     updateStory: (project: Project & {
         story: NonNullable<Project['story']>;
-    }, issue: Issue, storyId: string) => Promise<void>;
+    }, issue: Issue, storyId: FieldOption['id']) => Promise<void>;
     updateStatus: (project: Project, issue: Issue, statusId: string) => Promise<void>;
     clearProjectField: (project: Project, fieldId: string, issue: Issue) => Promise<void>;
     createComment: (issue: Issue, commentBody: string) => Promise<void>;
+    updateLabels: (issue: Issue, labels: Issue['labels']) => Promise<void>;
 }
 //# sourceMappingURL=IssueRepository.d.ts.map

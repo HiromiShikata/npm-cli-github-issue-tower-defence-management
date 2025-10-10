@@ -17,6 +17,7 @@ import { ConvertCheckboxToIssueInStoryIssueUseCase } from './ConvertCheckboxToIs
 import { ChangeStatusLongInReviewIssueUseCase } from './ChangeStatusLongInReviewIssueUseCase';
 import { ChangeStatusByStoryColorUseCase } from './ChangeStatusByStoryColorUseCase';
 import { SetNoStoryIssueToStoryUseCase } from './SetNoStoryIssueToStoryUseCase';
+import { CreateNewStoryByLabelUseCase } from './CreateNewStoryByLabelUseCase';
 export declare class ProjectNotFoundError extends Error {
     constructor(message: string);
 }
@@ -42,11 +43,12 @@ export declare class HandleScheduledEventUseCase {
     readonly changeStatusLongInReviewIssueUseCase: ChangeStatusLongInReviewIssueUseCase;
     readonly changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase;
     readonly setNoStoryIssueToStoryUseCase: SetNoStoryIssueToStoryUseCase;
+    readonly createNewStoryByLabelUseCase: CreateNewStoryByLabelUseCase;
     readonly dateRepository: DateRepository;
     readonly spreadsheetRepository: SpreadsheetRepository;
     readonly projectRepository: ProjectRepository;
     readonly issueRepository: IssueRepository;
-    constructor(generateWorkingTimeReportUseCase: GenerateWorkingTimeReportUseCase, actionAnnouncementUseCase: ActionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase: ClearNextActionHourUseCase, analyzeProblemByIssueUseCase: AnalyzeProblemByIssueUseCase, analyzeStoriesUseCase: AnalyzeStoriesUseCase, clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase, createEstimationIssueUseCase: CreateEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase: ConvertCheckboxToIssueInStoryIssueUseCase, changeStatusLongInReviewIssueUseCase: ChangeStatusLongInReviewIssueUseCase, changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase: SetNoStoryIssueToStoryUseCase, dateRepository: DateRepository, spreadsheetRepository: SpreadsheetRepository, projectRepository: ProjectRepository, issueRepository: IssueRepository);
+    constructor(generateWorkingTimeReportUseCase: GenerateWorkingTimeReportUseCase, actionAnnouncementUseCase: ActionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase: ClearNextActionHourUseCase, analyzeProblemByIssueUseCase: AnalyzeProblemByIssueUseCase, analyzeStoriesUseCase: AnalyzeStoriesUseCase, clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase, createEstimationIssueUseCase: CreateEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase: ConvertCheckboxToIssueInStoryIssueUseCase, changeStatusLongInReviewIssueUseCase: ChangeStatusLongInReviewIssueUseCase, changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase: SetNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase: CreateNewStoryByLabelUseCase, dateRepository: DateRepository, spreadsheetRepository: SpreadsheetRepository, projectRepository: ProjectRepository, issueRepository: IssueRepository);
     run: (input: {
         projectName: string;
         org: string;

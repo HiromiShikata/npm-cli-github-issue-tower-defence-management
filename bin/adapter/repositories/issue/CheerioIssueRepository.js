@@ -147,6 +147,29 @@ class CheerioIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository
             }
             throw new Error('Failed to refresh cookie');
         };
+        this.addNewStory = async (project, newStoryList) => {
+            const headers = await this.createHeader();
+            const res = await axios_1.default.put(`https://github.com/memexes/${project.databaseId}/columns`, {
+                memexProjectColumnId: project.story?.databaseId,
+                settings: {
+                    width: 200,
+                    options: newStoryList,
+                },
+            }, {
+                headers: {
+                    'github-verified-fetch': 'true',
+                    origin: 'https://github.com',
+                    'x-requested-with': 'XMLHttpRequest',
+                    ...headers,
+                },
+            });
+            return res.data.memexProjectColumn.settings.options.map((v) => ({
+                id: v.id,
+                name: v.name,
+                color: v.color,
+                description: v.description,
+            }));
+        };
     }
 }
 exports.CheerioIssueRepository = CheerioIssueRepository;

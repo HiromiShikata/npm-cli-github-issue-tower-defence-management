@@ -56,6 +56,7 @@ const ConvertCheckboxToIssueInStoryIssueUseCase_1 = require("../../../domain/use
 const ChangeStatusLongInReviewIssueUseCase_1 = require("../../../domain/usecases/ChangeStatusLongInReviewIssueUseCase");
 const ChangeStatusByStoryColorUseCase_1 = require("../../../domain/usecases/ChangeStatusByStoryColorUseCase");
 const SetNoStoryIssueToStoryUseCase_1 = require("../../../domain/usecases/SetNoStoryIssueToStoryUseCase");
+const CreateNewStoryByLabelUseCase_1 = require("../../../domain/usecases/CreateNewStoryByLabelUseCase");
 class HandleScheduledEventUseCaseHandler {
     constructor() {
         this.handle = async (configFilePath, verbose) => {
@@ -288,7 +289,8 @@ class HandleScheduledEventUseCaseHandler {
             const changeStatusLongInReviewIssueUseCase = new ChangeStatusLongInReviewIssueUseCase_1.ChangeStatusLongInReviewIssueUseCase(systemDateRepository, issueRepository);
             const changeStatusByStoryColorUseCase = new ChangeStatusByStoryColorUseCase_1.ChangeStatusByStoryColorUseCase(systemDateRepository, issueRepository);
             const setNoStoryIssueToStoryUseCase = new SetNoStoryIssueToStoryUseCase_1.SetNoStoryIssueToStoryUseCase(issueRepository);
-            const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(generateWorkingTimeReportUseCase, actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusLongInReviewIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
+            const createNewStoryByLabel = new CreateNewStoryByLabelUseCase_1.CreateNewStoryByLabelUseCase(projectRepository, issueRepository);
+            const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(generateWorkingTimeReportUseCase, actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusLongInReviewIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabel, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
             return await handleScheduledEventUseCase.run(input);
         };
     }

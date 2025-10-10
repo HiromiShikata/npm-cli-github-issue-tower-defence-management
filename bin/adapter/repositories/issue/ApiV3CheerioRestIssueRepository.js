@@ -208,6 +208,9 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         this.updateProjectTextField = async (project, fieldId, issue, text) => {
             await this.graphqlProjectItemRepository.updateProjectTextField(project.id, fieldId, issue.itemId, text);
         };
+        this.updateLabels = (issue, labels) => {
+            return this.restIssueRepository.updateLabels(issue, labels);
+        };
     }
 }
 exports.ApiV3CheerioRestIssueRepository = ApiV3CheerioRestIssueRepository;

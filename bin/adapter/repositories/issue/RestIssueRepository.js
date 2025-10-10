@@ -75,6 +75,21 @@ class RestIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
                 throw new Error(`Failed to update issue: ${response.status}`);
             }
         };
+        this.updateLabels = async (issue, labels) => {
+            const response = await axios_1.default.put(`https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}/labels`, {
+                labels: labels,
+            }, {
+                headers: {
+                    Authorization: `token ${this.ghToken}`,
+                    'Content-Type': 'application/json',
+                    Accept: 'application/vnd.github.v3+json',
+                },
+            });
+            if (response.status !== 200) {
+                throw new Error(`Failed to update issue labels: ${response.status}`);
+            }
+            return;
+        };
     }
 }
 exports.RestIssueRepository = RestIssueRepository;
