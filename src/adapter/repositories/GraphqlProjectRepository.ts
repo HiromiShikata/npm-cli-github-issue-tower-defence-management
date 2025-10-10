@@ -6,7 +6,7 @@ import { normalizeFieldName } from './utils';
 
 export class GraphqlProjectRepository
   extends BaseGitHubRepository
-  implements ProjectRepository
+  implements Pick<ProjectRepository, 'getProject' | 'findProjectIdByUrl'>
 {
   extractProjectFromUrl = (
     projectUrl: string,
