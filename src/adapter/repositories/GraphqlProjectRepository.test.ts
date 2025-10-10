@@ -42,7 +42,37 @@ describe('GraphqlProjectRepository', () => {
         },
         nextActionHour: null,
         remainingEstimationMinutes: null,
-        story: null,
+        story: {
+          fieldId: 'PVTSSF_lAHOAGJHa84AFhgFzg1oBms',
+          databaseId: 224921195,
+          name: 'Story',
+          stories: [
+            {
+              color: 'GRAY',
+              description: '',
+              id: 'af410dae',
+              name: 'story1',
+            },
+            {
+              color: 'GRAY',
+              description: '',
+              id: '696ccdef',
+              name: 'Workflow Management',
+            },
+            {
+              color: 'GRAY',
+              description: '',
+              id: 'c6920f94',
+              name: 'aaa',
+            },
+          ],
+          workflowManagementStory: {
+            color: 'GRAY',
+            description: '',
+            id: '696ccdef',
+            name: 'Workflow Management',
+          },
+        },
         completionDate50PercentConfidence: null,
         dependedIssueUrlSeparatedByComma: null,
 
