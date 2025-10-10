@@ -30,7 +30,11 @@ export class ApiV3CheerioRestIssueRepository
     >,
     readonly restIssueRepository: Pick<
       RestIssueRepository,
-      'createNewIssue' | 'updateIssue' | 'createComment' | 'getIssue'
+      | 'createNewIssue'
+      | 'updateIssue'
+      | 'createComment'
+      | 'getIssue'
+      | 'updateLabels'
     >,
     readonly graphqlProjectItemRepository: Pick<
       GraphqlProjectItemRepository,
@@ -384,5 +388,9 @@ export class ApiV3CheerioRestIssueRepository
       issue.itemId,
       text,
     );
+  };
+
+  updateLabels = (issue: Issue, labels: Issue['labels']): Promise<void> => {
+    return this.restIssueRepository.updateLabels(issue, labels);
   };
 }
