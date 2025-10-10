@@ -34,6 +34,7 @@ describe('GraphqlProjectRepository', () => {
       const project = await repository.getProject(projectId);
       expect(project).toEqual({
         id: 'PVT_kwHOAGJHa84AFhgF',
+        databaseId: 1447941,
         name: 'V2 project on owner for testing',
         nextActionDate: {
           fieldId: 'PVTF_lAHOAGJHa84AFhgFzgVlnK4',
