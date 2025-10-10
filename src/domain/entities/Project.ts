@@ -15,6 +15,7 @@ export type FieldOption = {
 };
 export type Project = {
   id: string;
+  databaseId: number;
   name: string;
   // fields: ProjectField[];
   status: {
@@ -33,6 +34,7 @@ export type Project = {
   story: {
     name: string;
     fieldId: string;
+    databaseId: number;
     stories: FieldOption[];
     workflowManagementStory: {
       id: string;

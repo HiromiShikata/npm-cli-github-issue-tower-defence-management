@@ -10,10 +10,11 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
   const mockIssueRepository = mock<IssueRepository>();
 
   describe('run', () => {
-    const basicProject = {
+    const basicProject: Project = {
       ...mock<Project>(),
       story: {
         name: 'Story Field',
+        databaseId: 1,
         fieldId: 'storyFieldId',
         stories: [
           { ...mock<StoryOption>(), id: 'story1', name: 'Story 1' },
@@ -63,6 +64,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
       story: {
         name: 'Story Field',
         fieldId: 'storyFieldId',
+        databaseId: 1,
         stories: [
           { ...mock<StoryOption>(), id: 'regular1', name: 'regular / Story 1' },
         ],
