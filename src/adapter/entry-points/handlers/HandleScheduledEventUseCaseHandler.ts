@@ -30,6 +30,7 @@ import { ChangeStatusLongInReviewIssueUseCase } from '../../../domain/usecases/C
 import { ChangeStatusByStoryColorUseCase } from '../../../domain/usecases/ChangeStatusByStoryColorUseCase';
 import { SetNoStoryIssueToStoryUseCase } from '../../../domain/usecases/SetNoStoryIssueToStoryUseCase';
 import { CreateNewStoryByLabelUseCase } from '../../../domain/usecases/CreateNewStoryByLabelUseCase';
+import { CheerioProjectRepository } from '../../repositories/CheerioProjectRepository';
 
 export class HandleScheduledEventUseCaseHandler {
   handle = async (
@@ -106,9 +107,10 @@ export class HandleScheduledEventUseCaseHandler {
       input.credentials.bot.github.password,
       input.credentials.bot.github.authenticatorKey,
     ];
-    const projectRepository = new GraphqlProjectRepository(
-      ...githubRepositoryParams,
-    );
+    const projectRepository = {
+      ...new GraphqlProjectRepository(...githubRepositoryParams),
+      ...new CheerioProjectRepository(...githubRepositoryParams),
+    };
     const apiV3IssueRepository = new ApiV3IssueRepository(
       ...githubRepositoryParams,
     );
