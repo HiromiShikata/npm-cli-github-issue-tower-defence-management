@@ -111,6 +111,11 @@ describe('CheerioProjectRepository', () => {
       expect(res[2].name).toEqual(newStoryList[2].name);
       expect(res[2].color).toEqual(newStoryList[2].color);
       expect(res[2].description).toEqual(newStoryList[2].description);
+      const resRemoved = await repository.updateStoryList(
+        project,
+        story.stories,
+      );
+      expect(resRemoved).toEqual(story.stories);
     });
   });
 });

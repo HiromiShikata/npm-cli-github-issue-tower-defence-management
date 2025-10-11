@@ -62,8 +62,8 @@ describe('GraphqlProjectRepository', () => {
             {
               color: 'GRAY',
               description: '',
-              id: 'c6920f94',
-              name: 'aaa',
+              id: '4fa21881',
+              name: 'test',
             },
           ],
           workflowManagementStory: {
