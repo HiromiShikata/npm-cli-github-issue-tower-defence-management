@@ -15,7 +15,7 @@ class CreateNewStoryByLabelUseCase {
                 return;
             }
             const newStoryList = this.createNewStoryList(projectStory, input.storyObjectMap);
-            const savedNewStoryList = await this.projectRepository.addNewStory(input.project, newStoryList);
+            const savedNewStoryList = await this.projectRepository.updateStoryList(input.project, newStoryList);
             for (const issue of newStoryIssues) {
                 const linkedStory = savedNewStoryList.find((s) => s.name === issue.title);
                 if (!linkedStory) {

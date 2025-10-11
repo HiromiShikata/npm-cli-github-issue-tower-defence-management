@@ -1,6 +1,8 @@
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import { Issue } from '../../../domain/entities/Issue';
-export declare class RestIssueRepository extends BaseGitHubRepository {
+import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+import { Member } from '../../../domain/entities/Member';
+export declare class RestIssueRepository extends BaseGitHubRepository implements Pick<IssueRepository, 'updateAssigneeList'> {
     createComment: (issueUrl: string, comment: string) => Promise<void>;
     createNewIssue: (owner: string, repo: string, title: string, body: string, assignees: string[], labels: string[]) => Promise<number>;
     getIssue: (issueUrl: string) => Promise<{
@@ -14,5 +16,6 @@ export declare class RestIssueRepository extends BaseGitHubRepository {
     }>;
     updateIssue: (issue: Issue) => Promise<void>;
     updateLabels: (issue: Issue, labels: Issue["labels"]) => Promise<void>;
+    updateAssigneeList: (issue: Issue, assigneeList: Member["name"][]) => Promise<void>;
 }
 //# sourceMappingURL=RestIssueRepository.d.ts.map

@@ -4,9 +4,9 @@ import { StoryObjectMap } from './HandleScheduledEventUseCase';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { Issue } from '../entities/Issue';
 export declare class CreateNewStoryByLabelUseCase {
-    readonly projectRepository: Pick<ProjectRepository, 'addNewStory'>;
+    readonly projectRepository: Pick<ProjectRepository, 'updateStoryList'>;
     readonly issueRepository: Pick<IssueRepository, 'updateLabels' | 'updateStory'>;
-    constructor(projectRepository: Pick<ProjectRepository, 'addNewStory'>, issueRepository: Pick<IssueRepository, 'updateLabels' | 'updateStory'>);
+    constructor(projectRepository: Pick<ProjectRepository, 'updateStoryList'>, issueRepository: Pick<IssueRepository, 'updateLabels' | 'updateStory'>);
     run: (input: {
         project: Project;
         cacheUsed: boolean;

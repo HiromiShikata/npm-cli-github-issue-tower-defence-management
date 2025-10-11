@@ -1,3 +1,12 @@
+# [1.16.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.15.10...v1.16.0) (2025-10-11)
+
+
+### Features
+
+* assign manager to no assignee issues ([249db2f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/249db2f4a11a942689d035d5eb92b133e6142ca8))
+* create CreateNewStoryByLabelUseCase ([ac93f5b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ac93f5b1bd367704b561f4a8cf168ea7d3132ee3))
+* integrate CreateNewStoryByLabelUseCase ([bbf611a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bbf611a978d34443254d0fc949c7e8b4ae822746))
+
 ## [1.15.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.15.9...v1.15.10) (2025-08-05)
 
 

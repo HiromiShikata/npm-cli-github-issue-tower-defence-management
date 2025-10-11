@@ -126,50 +126,6 @@ class CheerioIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository
             }
             return res;
         };
-        this.refreshCookie = async () => {
-            if (!this.ghUserName || !this.ghUserPassword || !this.ghAuthenticatorKey) {
-                throw new Error('GitHub username, password, and authenticator key must be set');
-            }
-            const headers = await this.createHeader();
-            const content = await axios_1.default.get('https://github.com', { headers });
-            const html = content.data;
-            if (html.includes(this.ghUserName)) {
-                return;
-            }
-            this.localStorageRepository.remove(this.jsonFilePath);
-            const newHeaders = await this.createHeader();
-            const newContent = await axios_1.default.get('https://github.com', {
-                headers: newHeaders,
-            });
-            const newHtml = newContent.data;
-            if (newHtml.includes(this.ghUserName)) {
-                return;
-            }
-            throw new Error('Failed to refresh cookie');
-        };
-        this.addNewStory = async (project, newStoryList) => {
-            const headers = await this.createHeader();
-            const res = await axios_1.default.put(`https://github.com/memexes/${project.databaseId}/columns`, {
-                memexProjectColumnId: project.story?.databaseId,
-                settings: {
-                    width: 200,
-                    options: newStoryList,
-                },
-            }, {
-                headers: {
-                    'github-verified-fetch': 'true',
-                    origin: 'https://github.com',
-                    'x-requested-with': 'XMLHttpRequest',
-                    ...headers,
-                },
-            });
-            return res.data.memexProjectColumn.settings.options.map((v) => ({
-                id: v.id,
-                name: v.name,
-                color: v.color,
-                description: v.description,
-            }));
-        };
     }
 }
 exports.CheerioIssueRepository = CheerioIssueRepository;

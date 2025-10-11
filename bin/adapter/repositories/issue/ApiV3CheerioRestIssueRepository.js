@@ -151,7 +151,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 }
                 return result;
             };
-            const issues = await processItemsInBatches(items, 15);
+            const issues = await processItemsInBatches(items, 10);
             // const issues = await Promise.all(
             //   items.map(async (item): Promise<Issue> => {
             //     const cheerioIssue = await this.cheerioIssueRepository.getIssue(
@@ -210,6 +210,9 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         };
         this.updateLabels = (issue, labels) => {
             return this.restIssueRepository.updateLabels(issue, labels);
+        };
+        this.updateAssigneeList = (issue, assigneeList) => {
+            return this.restIssueRepository.updateAssigneeList(issue, assigneeList);
         };
     }
 }

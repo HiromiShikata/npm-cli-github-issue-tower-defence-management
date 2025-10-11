@@ -29,6 +29,7 @@ export declare class BaseGitHubRepository {
     protected createCookieStringFromFile: () => Promise<string>;
     protected isCookie: (cookie: object) => cookie is Cookie;
     protected generateCookieHeaderFromJson: (cookieData: unknown) => Promise<string>;
+    refreshCookie: () => Promise<void>;
 }
 export {};
 //# sourceMappingURL=BaseGitHubRepository.d.ts.map

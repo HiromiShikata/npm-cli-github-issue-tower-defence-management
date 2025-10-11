@@ -90,6 +90,19 @@ class RestIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
             }
             return;
         };
+        this.updateAssigneeList = async (issue, assigneeList) => {
+            const response = await axios_1.default.patch(`https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}`, {
+                assignees: assigneeList,
+            }, {
+                headers: {
+                    Authorization: `token ${this.ghToken}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            if (response.status !== 200) {
+                throw new Error(`Failed to update issue assignees: ${response.status}`);
+            }
+        };
     }
 }
 exports.RestIssueRepository = RestIssueRepository;

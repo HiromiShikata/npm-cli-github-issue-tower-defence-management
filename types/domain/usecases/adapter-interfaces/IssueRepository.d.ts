@@ -23,5 +23,6 @@ export interface IssueRepository {
     clearProjectField: (project: Project, fieldId: string, issue: Issue) => Promise<void>;
     createComment: (issue: Issue, commentBody: string) => Promise<void>;
     updateLabels: (issue: Issue, labels: Issue['labels']) => Promise<void>;
+    updateAssigneeList: (issue: Issue, assigneeList: Member['name'][]) => Promise<void>;
 }
 //# sourceMappingURL=IssueRepository.d.ts.map

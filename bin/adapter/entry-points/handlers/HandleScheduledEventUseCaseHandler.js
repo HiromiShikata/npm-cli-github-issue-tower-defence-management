@@ -57,6 +57,8 @@ const ChangeStatusLongInReviewIssueUseCase_1 = require("../../../domain/usecases
 const ChangeStatusByStoryColorUseCase_1 = require("../../../domain/usecases/ChangeStatusByStoryColorUseCase");
 const SetNoStoryIssueToStoryUseCase_1 = require("../../../domain/usecases/SetNoStoryIssueToStoryUseCase");
 const CreateNewStoryByLabelUseCase_1 = require("../../../domain/usecases/CreateNewStoryByLabelUseCase");
+const CheerioProjectRepository_1 = require("../../repositories/CheerioProjectRepository");
+const AssignNoAssigneeIssueToManagerUseCase_1 = require("../../../domain/usecases/AssignNoAssigneeIssueToManagerUseCase");
 class HandleScheduledEventUseCaseHandler {
     constructor() {
         this.handle = async (configFilePath, verbose) => {
@@ -270,7 +272,10 @@ class HandleScheduledEventUseCaseHandler {
                 input.credentials.bot.github.password,
                 input.credentials.bot.github.authenticatorKey,
             ];
-            const projectRepository = new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams);
+            const projectRepository = {
+                ...new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams),
+                ...new CheerioProjectRepository_1.CheerioProjectRepository(...githubRepositoryParams),
+            };
             const apiV3IssueRepository = new ApiV3IssueRepository_1.ApiV3IssueRepository(...githubRepositoryParams);
             const internalGraphqlIssueRepository = new InternalGraphqlIssueRepository_1.InternalGraphqlIssueRepository(...githubRepositoryParams);
             const cheerioIssueRepository = new CheerioIssueRepository_1.CheerioIssueRepository(internalGraphqlIssueRepository, ...githubRepositoryParams);
@@ -290,7 +295,8 @@ class HandleScheduledEventUseCaseHandler {
             const changeStatusByStoryColorUseCase = new ChangeStatusByStoryColorUseCase_1.ChangeStatusByStoryColorUseCase(systemDateRepository, issueRepository);
             const setNoStoryIssueToStoryUseCase = new SetNoStoryIssueToStoryUseCase_1.SetNoStoryIssueToStoryUseCase(issueRepository);
             const createNewStoryByLabel = new CreateNewStoryByLabelUseCase_1.CreateNewStoryByLabelUseCase(projectRepository, issueRepository);
-            const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(generateWorkingTimeReportUseCase, actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusLongInReviewIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabel, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
+            const assignNoAssigneeIssueToManagerUseCase = new AssignNoAssigneeIssueToManagerUseCase_1.AssignNoAssigneeIssueToManagerUseCase(issueRepository);
+            const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(generateWorkingTimeReportUseCase, actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusLongInReviewIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabel, assignNoAssigneeIssueToManagerUseCase, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
             return await handleScheduledEventUseCase.run(input);
         };
     }

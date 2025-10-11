@@ -8,6 +8,7 @@ const fs_1 = require("fs");
 const cookie_1 = require("cookie");
 const gh_cookie_1 = require("gh-cookie");
 const fs_2 = __importDefault(require("fs"));
+const axios_1 = __importDefault(require("axios"));
 class BaseGitHubRepository {
     constructor(localStorageRepository, jsonFilePath = './tmp/github.com.cookies.json', ghToken = process.env.GH_TOKEN || 'dummy', ghUserName = process.env.GH_USER_NAME, ghUserPassword = process.env.GH_USER_PASSWORD, ghAuthenticatorKey = process.env
         .GH_AUTHENTICATOR_KEY) {
@@ -122,6 +123,27 @@ class BaseGitHubRepository {
             }))
                 .join('; ');
             return cookieHeader;
+        };
+        this.refreshCookie = async () => {
+            if (!this.ghUserName || !this.ghUserPassword || !this.ghAuthenticatorKey) {
+                throw new Error('GitHub username, password, and authenticator key must be set');
+            }
+            const headers = await this.createHeader();
+            const content = await axios_1.default.get('https://github.com', { headers });
+            const html = content.data;
+            if (html.includes(this.ghUserName)) {
+                return;
+            }
+            this.localStorageRepository.remove(this.jsonFilePath);
+            const newHeaders = await this.createHeader();
+            const newContent = await axios_1.default.get('https://github.com', {
+                headers: newHeaders,
+            });
+            const newHtml = newContent.data;
+            if (newHtml.includes(this.ghUserName)) {
+                return;
+            }
+            throw new Error('Failed to refresh cookie');
         };
         this.cookie = null;
     }
