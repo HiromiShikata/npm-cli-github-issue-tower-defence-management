@@ -4,6 +4,7 @@ import { WorkingTime } from '../../../domain/entities/WorkingTime';
 import { IssueStatusTimeline } from './issueTimelineUtils';
 import { InternalGraphqlIssueRepository } from './InternalGraphqlIssueRepository';
 import { LocalStorageRepository } from '../LocalStorageRepository';
+import { FieldOption, Project } from '../../../domain/entities/Project';
 export type Issue = {
     url: string;
     title: string;
@@ -35,5 +36,8 @@ export declare class CheerioIssueRepository extends BaseGitHubRepository {
     protected getProjectFromCheerioObject: ($: cheerio.CheerioAPI) => string;
     protected getStatusTimelineEventsFromCheerioObject: ($: cheerio.CheerioAPI) => IssueStatusTimeline[];
     refreshCookie: () => Promise<void>;
+    addNewStory: (project: Project, newStoryList: (Omit<FieldOption, "id"> & {
+        id: FieldOption["id"] | null;
+    })[]) => Promise<FieldOption[]>;
 }
 //# sourceMappingURL=CheerioIssueRepository.d.ts.map

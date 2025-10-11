@@ -23,11 +23,13 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
   organization(login: $login) {
     projectV2(number: $number) {
       id
+      databaseId
     }
   }
   user(login: $login){
     projectV2(number: $number){
       id
+      databaseId
     }
   }
 }`,
@@ -61,6 +63,7 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
   node(id: $projectId) {
     ... on ProjectV2 {
       id
+      databaseId
       title
       shortDescription
       public
@@ -73,11 +76,13 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
         nodes {
           ... on ProjectV2Field {
             id
+            databaseId
             name
             dataType
           }
           ... on ProjectV2IterationField {
             id
+            databaseId
             name
             dataType
             configuration {
@@ -90,6 +95,7 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
           }
           ... on ProjectV2SingleSelectField {
             id
+            databaseId
             name
             dataType
             options {
@@ -148,6 +154,7 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             };
             return {
                 id: project.id,
+                databaseId: project.databaseId,
                 name: project.title,
                 status: {
                     name: status.name,
@@ -175,6 +182,7 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
                     ? {
                         name: story.name,
                         fieldId: story.id,
+                        databaseId: story.databaseId,
                         stories: story.options.map((option) => ({
                             id: option.id,
                             name: option.name,
@@ -203,6 +211,107 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
                     }
                     : null,
             };
+        };
+        this.addNewStory = async (project, storyOptions) => {
+            if (!project.story) {
+                throw new Error('Project does not have a story field');
+            }
+            const convertToFieldOptionColor = (color) => {
+                switch (color) {
+                    case 'RED':
+                    case 'YELLOW':
+                    case 'GREEN':
+                    case 'BLUE':
+                    case 'PURPLE':
+                    case 'PINK':
+                    case 'ORANGE':
+                    case 'GRAY':
+                        return color;
+                    default:
+                        return 'GRAY';
+                }
+            };
+            // For new stories (id: null), we need to create them first
+            const optionIds = [];
+            for (const option of storyOptions) {
+                if (option.id) {
+                    optionIds.push(option.id);
+                }
+                else {
+                    // Create new story option
+                    const createMutation = `mutation AddProjectV2SingleSelectOption($fieldId: ID!, $name: String!, $description: String!, $color: ProjectV2SingleSelectFieldOptionColor!) {
+  addProjectV2FieldOption(input: {
+    fieldId: $fieldId
+    name: $name
+    description: $description
+    color: $color
+  }) {
+    projectV2FieldOption {
+      id
+      name
+      description
+      color
+    }
+  }
+}`;
+                    const createResponse = await axios_1.default.post('https://api.github.com/graphql', {
+                        query: createMutation,
+                        variables: {
+                            fieldId: project.story.fieldId,
+                            name: option.name,
+                            description: option.description,
+                            color: option.color,
+                        },
+                    }, {
+                        headers: {
+                            Authorization: `Bearer ${this.ghToken}`,
+                            'Content-Type': 'application/json',
+                        },
+                    });
+                    const newOption = createResponse.data.data.addProjectV2FieldOption.projectV2FieldOption;
+                    optionIds.push(newOption.id);
+                }
+            }
+            // Update the field with the new order
+            const mutation = `mutation UpdateProjectV2Field($fieldId: ID!, $optionIds: [String!]!) {
+  updateProjectV2Field(input: {
+    fieldId: $fieldId
+    singleSelectOptions: {
+      ids: $optionIds
+    }
+  }) {
+    projectV2Field {
+      ... on ProjectV2SingleSelectField {
+        id
+        options {
+          id
+          name
+          description
+          color
+        }
+      }
+    }
+  }
+}`;
+            const response = await axios_1.default.post('https://api.github.com/graphql', {
+                query: mutation,
+                variables: {
+                    fieldId: project.story.fieldId,
+                    optionIds: optionIds,
+                },
+            }, {
+                headers: {
+                    Authorization: `Bearer ${this.ghToken}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            const updatedOptions = response.data.data.updateProjectV2Field.projectV2Field.options;
+            return updatedOptions.map((option) => ({
+                id: option.id,
+                name: option.name,
+                description: option.description,
+                color: convertToFieldOptionColor(option.color),
+            }));
         };
     }
 }

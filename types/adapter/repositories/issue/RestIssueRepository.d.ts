@@ -13,5 +13,6 @@ export declare class RestIssueRepository extends BaseGitHubRepository {
         created_at: string;
     }>;
     updateIssue: (issue: Issue) => Promise<void>;
+    updateLabels: (issue: Issue, labels: Issue["labels"]) => Promise<void>;
 }
 //# sourceMappingURL=RestIssueRepository.d.ts.map

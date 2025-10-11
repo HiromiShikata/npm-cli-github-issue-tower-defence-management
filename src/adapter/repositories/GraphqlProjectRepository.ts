@@ -6,7 +6,7 @@ import { normalizeFieldName } from './utils';
 
 export class GraphqlProjectRepository
   extends BaseGitHubRepository
-  implements ProjectRepository
+  implements Pick<ProjectRepository, 'getProject' | 'findProjectIdByUrl'>
 {
   extractProjectFromUrl = (
     projectUrl: string,
@@ -29,11 +29,13 @@ export class GraphqlProjectRepository
   organization(login: $login) {
     projectV2(number: $number) {
       id
+      databaseId
     }
   }
   user(login: $login){
     projectV2(number: $number){
       id
+      databaseId
     }
   }
 }`,
@@ -48,11 +50,13 @@ export class GraphqlProjectRepository
         organization: {
           projectV2: {
             id: string;
+            databaseId: number;
           };
         };
         user: {
           projectV2: {
             id: string;
+            databaseId: number;
           };
         };
       };
@@ -85,6 +89,7 @@ export class GraphqlProjectRepository
   node(id: $projectId) {
     ... on ProjectV2 {
       id
+      databaseId
       title
       shortDescription
       public
@@ -97,11 +102,13 @@ export class GraphqlProjectRepository
         nodes {
           ... on ProjectV2Field {
             id
+            databaseId
             name
             dataType
           }
           ... on ProjectV2IterationField {
             id
+            databaseId
             name
             dataType
             configuration {
@@ -114,6 +121,7 @@ export class GraphqlProjectRepository
           }
           ... on ProjectV2SingleSelectField {
             id
+            databaseId
             name
             dataType
             options {
@@ -137,6 +145,7 @@ export class GraphqlProjectRepository
       data: {
         node: {
           id: string;
+          databaseId: number;
           title: string;
           shortDescription: string;
           public: boolean;
@@ -148,6 +157,7 @@ export class GraphqlProjectRepository
           fields: {
             nodes: {
               id: string;
+              databaseId: number;
               name: string;
               dataType: string;
               configuration: {
@@ -230,6 +240,7 @@ export class GraphqlProjectRepository
     };
     return {
       id: project.id,
+      databaseId: project.databaseId,
       name: project.title,
       status: {
         name: status.name,
@@ -258,6 +269,7 @@ export class GraphqlProjectRepository
           ? {
               name: story.name,
               fieldId: story.id,
+              databaseId: story.databaseId,
               stories: story.options.map((option) => ({
                 id: option.id,
                 name: option.name,

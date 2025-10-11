@@ -27,6 +27,7 @@ describe('ChangeStatusByStoryColorUseCase', () => {
     story: {
       name: 'Story Field',
       fieldId: 'storyFieldId',
+      databaseId: 1,
       stories: [
         { ...mock<StoryOption>(), id: 'story1', name: 'Story 1' },
         { ...mock<StoryOption>(), id: 'story2', name: 'Story 2' },

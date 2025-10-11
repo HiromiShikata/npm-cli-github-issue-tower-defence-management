@@ -17,6 +17,7 @@ import typia from 'typia';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import { normalizeFieldName } from '../utils';
 import { LocalStorageRepository } from '../LocalStorageRepository';
+import { Member } from '../../../domain/entities/Member';
 
 export class ApiV3CheerioRestIssueRepository
   extends BaseGitHubRepository
@@ -30,7 +31,12 @@ export class ApiV3CheerioRestIssueRepository
     >,
     readonly restIssueRepository: Pick<
       RestIssueRepository,
-      'createNewIssue' | 'updateIssue' | 'createComment' | 'getIssue'
+      | 'createNewIssue'
+      | 'updateIssue'
+      | 'createComment'
+      | 'getIssue'
+      | 'updateLabels'
+      | 'updateAssigneeList'
     >,
     readonly graphqlProjectItemRepository: Pick<
       GraphqlProjectItemRepository,
@@ -262,7 +268,7 @@ export class ApiV3CheerioRestIssueRepository
 
       return result;
     };
-    const issues = await processItemsInBatches(items, 15);
+    const issues = await processItemsInBatches(items, 10);
 
     // const issues = await Promise.all(
     //   items.map(async (item): Promise<Issue> => {
@@ -384,5 +390,15 @@ export class ApiV3CheerioRestIssueRepository
       issue.itemId,
       text,
     );
+  };
+
+  updateLabels = (issue: Issue, labels: Issue['labels']): Promise<void> => {
+    return this.restIssueRepository.updateLabels(issue, labels);
+  };
+  updateAssigneeList = (
+    issue: Issue,
+    assigneeList: Member['name'][],
+  ): Promise<void> => {
+    return this.restIssueRepository.updateAssigneeList(issue, assigneeList);
   };
 }
