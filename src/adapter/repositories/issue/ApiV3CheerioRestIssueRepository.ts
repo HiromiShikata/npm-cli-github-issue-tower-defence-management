@@ -17,6 +17,7 @@ import typia from 'typia';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import { normalizeFieldName } from '../utils';
 import { LocalStorageRepository } from '../LocalStorageRepository';
+import { Member } from '../../../domain/entities/Member';
 
 export class ApiV3CheerioRestIssueRepository
   extends BaseGitHubRepository
@@ -35,6 +36,7 @@ export class ApiV3CheerioRestIssueRepository
       | 'createComment'
       | 'getIssue'
       | 'updateLabels'
+      | 'updateAssigneeList'
     >,
     readonly graphqlProjectItemRepository: Pick<
       GraphqlProjectItemRepository,
@@ -392,5 +394,11 @@ export class ApiV3CheerioRestIssueRepository
 
   updateLabels = (issue: Issue, labels: Issue['labels']): Promise<void> => {
     return this.restIssueRepository.updateLabels(issue, labels);
+  };
+  updateAssigneeList = (
+    issue: Issue,
+    assigneeList: Member['name'][],
+  ): Promise<void> => {
+    return this.restIssueRepository.updateAssigneeList(issue, assigneeList);
   };
 }

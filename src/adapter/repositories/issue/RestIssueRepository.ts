@@ -1,8 +1,13 @@
 import axios from 'axios';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import { Issue } from '../../../domain/entities/Issue';
+import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+import { Member } from '../../../domain/entities/Member';
 
-export class RestIssueRepository extends BaseGitHubRepository {
+export class RestIssueRepository
+  extends BaseGitHubRepository
+  implements Pick<IssueRepository, 'updateAssigneeList'>
+{
   createComment = async (issueUrl: string, comment: string) => {
     const { owner, repo, issueNumber } = this.extractIssueFromUrl(issueUrl);
     const response = await axios.post(
@@ -130,5 +135,26 @@ export class RestIssueRepository extends BaseGitHubRepository {
       throw new Error(`Failed to update issue labels: ${response.status}`);
     }
     return;
+  };
+
+  updateAssigneeList = async (
+    issue: Issue,
+    assigneeList: Member['name'][],
+  ): Promise<void> => {
+    const response = await axios.patch(
+      `https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}`,
+      {
+        assignees: assigneeList,
+      },
+      {
+        headers: {
+          Authorization: `token ${this.ghToken}`,
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+    if (response.status !== 200) {
+      throw new Error(`Failed to update issue assignees: ${response.status}`);
+    }
   };
 }

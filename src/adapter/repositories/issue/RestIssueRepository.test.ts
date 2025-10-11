@@ -68,4 +68,41 @@ describe('RestIssueRepository', () => {
       expect(updatedIssue.labels).not.toContain('default');
     });
   });
+  describe('updateAssigneeList', () => {
+    it('should update issue assignees', async () => {
+      const issue: Issue = {
+        nameWithOwner: 'HiromiShikata/test-repository',
+        number: 40,
+        title: 'Test Issue',
+        state: 'OPEN',
+        status: null,
+        story: null,
+        nextActionDate: null,
+        nextActionHour: null,
+        estimationMinutes: null,
+        dependedIssueUrls: [],
+        completionDate50PercentConfidence: null,
+        url: 'https://github.com/HiromiShikata/test-repository/issues/40',
+        assignees: [],
+        workingTimeline: [],
+        labels: ['test'],
+        org: 'HiromiShikata',
+        repo: 'test-repository',
+        body: 'Test body',
+        itemId: '',
+        isPr: false,
+        isInProgress: false,
+        isClosed: false,
+        createdAt: new Date(),
+      };
+      await restIssueRepository.updateAssigneeList(issue, ['HiromiShikata']);
+      const issueWithAssignee = await restIssueRepository.getIssue(issue.url);
+      expect(issueWithAssignee.assignees).toContain('HiromiShikata');
+      await restIssueRepository.updateAssigneeList(issue, []);
+      const issueWithoutAssignee = await restIssueRepository.getIssue(
+        issue.url,
+      );
+      expect(issueWithoutAssignee.assignees).not.toContain('HiromiShikata');
+    });
+  });
 });
