@@ -31,6 +31,7 @@ import { ChangeStatusByStoryColorUseCase } from '../../../domain/usecases/Change
 import { SetNoStoryIssueToStoryUseCase } from '../../../domain/usecases/SetNoStoryIssueToStoryUseCase';
 import { CreateNewStoryByLabelUseCase } from '../../../domain/usecases/CreateNewStoryByLabelUseCase';
 import { CheerioProjectRepository } from '../../repositories/CheerioProjectRepository';
+import { AssignNoAssigneeIssueToManagerUseCase } from '../../../domain/usecases/AssignNoAssigneeIssueToManagerUseCase';
 
 export class HandleScheduledEventUseCaseHandler {
   handle = async (
@@ -181,6 +182,9 @@ export class HandleScheduledEventUseCaseHandler {
       projectRepository,
       issueRepository,
     );
+    const assignNoAssigneeIssueToManagerUseCase =
+      new AssignNoAssigneeIssueToManagerUseCase(issueRepository);
+
     const handleScheduledEventUseCase = new HandleScheduledEventUseCase(
       generateWorkingTimeReportUseCase,
       actionAnnouncement,
@@ -195,6 +199,7 @@ export class HandleScheduledEventUseCaseHandler {
       changeStatusByStoryColorUseCase,
       setNoStoryIssueToStoryUseCase,
       createNewStoryByLabel,
+      assignNoAssigneeIssueToManagerUseCase,
       systemDateRepository,
       googleSpreadsheetRepository,
       projectRepository,
