@@ -138,6 +138,7 @@ describe('CreateNewStoryByLabelUseCase', () => {
           color: 'RED',
         },
         { id: 'story2', name: 'Middle Story', color: 'GREEN', description: '' },
+        { id: 'story3', name: 'Last Story', color: 'YELLOW', description: '' },
       ];
 
       mockProjectRepository.updateStoryList.mockResolvedValue(savedStories);
@@ -177,6 +178,12 @@ describe('CreateNewStoryByLabelUseCase', () => {
             id: 'story2',
             name: 'Middle Story',
             color: 'GREEN',
+            description: '',
+          },
+          {
+            id: 'story3',
+            name: 'Last Story',
+            color: 'YELLOW',
             description: '',
           },
         ],
@@ -427,6 +434,12 @@ describe('CreateNewStoryByLabelUseCase', () => {
             color: 'GREEN',
             description: '',
           },
+          {
+            id: 'story3',
+            name: 'Last Story',
+            color: 'YELLOW',
+            description: '',
+          },
         ],
       },
       {
@@ -476,6 +489,12 @@ describe('CreateNewStoryByLabelUseCase', () => {
             id: 'story2',
             name: 'Middle Story',
             color: 'GREEN',
+            description: '',
+          },
+          {
+            id: 'story3',
+            name: 'Last Story',
+            color: 'YELLOW',
             description: '',
           },
         ],
@@ -557,6 +576,12 @@ describe('CreateNewStoryByLabelUseCase', () => {
             color: 'RED',
             description: '',
           },
+          {
+            id: 'story2',
+            name: 'Second Story',
+            color: 'GREEN',
+            description: '',
+          },
         ],
       },
       {
@@ -594,6 +619,12 @@ describe('CreateNewStoryByLabelUseCase', () => {
             id: 'story2',
             name: 'Middle Story',
             color: 'GREEN',
+            description: '',
+          },
+          {
+            id: 'story3',
+            name: 'Last Story',
+            color: 'YELLOW',
             description: '',
           },
         ],
