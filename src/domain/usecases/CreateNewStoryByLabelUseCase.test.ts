@@ -185,7 +185,7 @@ describe('CreateNewStoryByLabelUseCase', () => {
             name: 'Last Story',
             color: 'YELLOW',
             description: '',
-          }
+          },
         ],
       );
 
@@ -439,7 +439,7 @@ describe('CreateNewStoryByLabelUseCase', () => {
             name: 'Last Story',
             color: 'YELLOW',
             description: '',
-          }
+          },
         ],
       },
       {
@@ -496,7 +496,7 @@ describe('CreateNewStoryByLabelUseCase', () => {
             name: 'Last Story',
             color: 'YELLOW',
             description: '',
-          }
+          },
         ],
       },
       {
@@ -581,7 +581,7 @@ describe('CreateNewStoryByLabelUseCase', () => {
             name: 'Second Story',
             color: 'GREEN',
             description: '',
-          }
+          },
         ],
       },
       {
@@ -626,7 +626,7 @@ describe('CreateNewStoryByLabelUseCase', () => {
             name: 'Last Story',
             color: 'YELLOW',
             description: '',
-          }
+          },
         ],
       },
     ];
