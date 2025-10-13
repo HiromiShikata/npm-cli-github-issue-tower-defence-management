@@ -1,3 +1,10 @@
+## [1.16.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.16.0...v1.16.1) (2025-10-13)
+
+
+### Bug Fixes
+
+* removed last story when create new story by labe ([1a19173](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1a19173adc42f6be5da5dc6181ebf9c4b7902ea6))
+
 # [1.16.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.15.10...v1.16.0) (2025-10-11)
 
 

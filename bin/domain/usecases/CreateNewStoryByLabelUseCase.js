@@ -45,7 +45,7 @@ class CreateNewStoryByLabelUseCase {
                 description: '',
             })));
             if (projectStory.stories.length > 1) {
-                newStoryList.push(...projectStory.stories.slice(1, projectStory.stories.length - 1));
+                newStoryList.push(...projectStory.stories.slice(1, projectStory.stories.length));
             }
             return newStoryList;
         };
