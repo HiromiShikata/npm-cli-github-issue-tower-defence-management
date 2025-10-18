@@ -82,7 +82,7 @@ type IssueData = {
     slashCommandsEnabled: boolean;
     viewerCanInteract: boolean;
     viewerInteractionLimitReasonHTML: string;
-    planFeatures: {
+    planFeatures?: {
       maximumAssignees: number;
     };
     visibility: string;
