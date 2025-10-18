@@ -1,3 +1,10 @@
+## [1.16.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.16.1...v1.16.2) (2025-10-18)
+
+
+### Bug Fixes
+
+* failed to get issue data ([042e9c7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/042e9c700fc39069766b3698106ee37f77b7e973))
+
 ## [1.16.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.16.0...v1.16.1) (2025-10-13)
 
 
