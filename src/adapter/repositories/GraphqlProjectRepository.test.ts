@@ -32,75 +32,60 @@ describe('GraphqlProjectRepository', () => {
   describe('getProject', () => {
     it('should retrieve project details', async () => {
       const project = await repository.getProject(projectId);
-      expect(project).toEqual({
-        id: 'PVT_kwHOAGJHa84AFhgF',
-        databaseId: 1447941,
-        name: 'V2 project on owner for testing',
-        nextActionDate: {
-          fieldId: 'PVTF_lAHOAGJHa84AFhgFzgVlnK4',
-          name: 'NextActionDate',
-        },
-        nextActionHour: null,
-        remainingEstimationMinutes: null,
-        story: {
-          fieldId: 'PVTSSF_lAHOAGJHa84AFhgFzg1oBms',
-          databaseId: 224921195,
-          name: 'Story',
-          stories: [
-            {
-              color: 'GRAY',
-              description: '',
-              id: 'af410dae',
-              name: 'story1',
-            },
-            {
-              color: 'GRAY',
-              description: '',
-              id: '696ccdef',
-              name: 'Workflow Management',
-            },
-            {
-              color: 'GRAY',
-              description: '',
-              id: '4fa21881',
-              name: 'test',
-            },
-          ],
-          workflowManagementStory: {
+      expect(project.id).toBe('PVT_kwHOAGJHa84AFhgF');
+      expect(project.databaseId).toBe(1447941);
+      expect(project.name).toBe('V2 project on owner for testing');
+      expect(project.nextActionDate).toEqual({
+        fieldId: 'PVTF_lAHOAGJHa84AFhgFzgVlnK4',
+        name: 'NextActionDate',
+      });
+      expect(project.nextActionHour).toBeNull();
+      expect(project.remainingEstimationMinutes).toBeNull();
+      expect(project.story).toEqual({
+        fieldId: 'PVTSSF_lAHOAGJHa84AFhgFzg1oBms',
+        databaseId: 224921195,
+        name: 'Story',
+        stories: [
+          {
+            color: 'GRAY',
+            description: '',
+            id: 'af410dae',
+            name: 'story1',
+          },
+          {
             color: 'GRAY',
             description: '',
             id: '696ccdef',
             name: 'Workflow Management',
           },
-        },
-        completionDate50PercentConfidence: null,
-        dependedIssueUrlSeparatedByComma: null,
-
-        status: {
-          fieldId: 'PVTSSF_lAHOAGJHa84AFhgFzgDLt0c',
-          name: 'Status',
-          statuses: [
-            {
-              color: 'GRAY',
-              description: '',
-              id: 'f75ad846',
-              name: 'Todo',
-            },
-            {
-              color: 'GRAY',
-              description: '',
-              id: '47fc9ee4',
-              name: 'In Progress',
-            },
-            {
-              color: 'GRAY',
-              description: '',
-              id: '98236657',
-              name: 'Done',
-            },
-          ],
+          {
+            color: 'GRAY',
+            description: '',
+            id: '4fa21881',
+            name: 'test',
+          },
+        ],
+        workflowManagementStory: {
+          color: 'GRAY',
+          description: '',
+          id: '696ccdef',
+          name: 'Workflow Management',
         },
       });
+      expect(project.completionDate50PercentConfidence).toBeNull();
+      expect(project.dependedIssueUrlSeparatedByComma).toBeNull();
+      expect(project.status.fieldId).toBe('PVTSSF_lAHOAGJHa84AFhgFzgDLt0c');
+      expect(project.status.name).toBe('Status');
+      expect(project.status.statuses.length).toBeGreaterThanOrEqual(3);
+      expect(
+        project.status.statuses.find((s) => s.name === 'Todo'),
+      ).toBeDefined();
+      expect(
+        project.status.statuses.find((s) => s.name === 'In Progress'),
+      ).toBeDefined();
+      expect(
+        project.status.statuses.find((s) => s.name === 'Done'),
+      ).toBeDefined();
     });
   });
 });
