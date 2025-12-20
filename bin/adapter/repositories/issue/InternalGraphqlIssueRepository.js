@@ -114,6 +114,16 @@ class InternalGraphqlIssueRepository extends BaseGitHubRepository_1.BaseGitHubRe
                 throw new Error('No script content found');
             }
             const data = JSON.parse(scriptContent);
+            const isValidStructure = (d) => {
+                return (typeof d === 'object' &&
+                    d !== null &&
+                    'payload' in d &&
+                    typeof d.payload === 'object' &&
+                    d.payload !== null &&
+                    'preloadedQueries' in d.payload &&
+                    Array.isArray(d.payload.preloadedQueries) &&
+                    d.payload.preloadedQueries.length > 0);
+            };
             if (!(() => { const _io0 = input => "object" === typeof input.payload && null !== input.payload && _io1(input.payload) && true && (undefined === input.appPayload || "object" === typeof input.appPayload && null !== input.appPayload && false === Array.isArray(input.appPayload) && _io50(input.appPayload)); const _io1 = input => (undefined === input.preloaded_records || "object" === typeof input.preloaded_records && null !== input.preloaded_records && false === Array.isArray(input.preloaded_records) && _io2(input.preloaded_records)) && (Array.isArray(input.preloadedQueries) && (input.preloadedQueries.length === 1 && ("object" === typeof input.preloadedQueries[0] && null !== input.preloadedQueries[0] && _io3(input.preloadedQueries[0])))) && (undefined === input.preloadedSubscriptions || "object" === typeof input.preloadedSubscriptions && null !== input.preloadedSubscriptions && false === Array.isArray(input.preloadedSubscriptions) && _io44(input.preloadedSubscriptions)); const _io2 = input => Object.keys(input).every(key => {
                 const value = input[key];
                 if (undefined === value)
@@ -170,14 +180,7 @@ class InternalGraphqlIssueRepository extends BaseGitHubRepository_1.BaseGitHubRe
                     return true;
                 return "boolean" === typeof value;
             }); return input => "object" === typeof input && null !== input && _io0(input); })()(data)) {
-                if (typeof data !== 'object' ||
-                    data === null ||
-                    !('payload' in data) ||
-                    typeof data.payload !== 'object' ||
-                    data.payload === null ||
-                    !('preloadedQueries' in data.payload) ||
-                    !Array.isArray(data.payload.preloadedQueries) ||
-                    data.payload.preloadedQueries.length === 0) {
+                if (!isValidStructure(data)) {
                     const validateResult = (() => { const _io0 = input => "object" === typeof input.payload && null !== input.payload && _io1(input.payload) && true && (undefined === input.appPayload || "object" === typeof input.appPayload && null !== input.appPayload && false === Array.isArray(input.appPayload) && _io50(input.appPayload)); const _io1 = input => (undefined === input.preloaded_records || "object" === typeof input.preloaded_records && null !== input.preloaded_records && false === Array.isArray(input.preloaded_records) && _io2(input.preloaded_records)) && (Array.isArray(input.preloadedQueries) && (input.preloadedQueries.length === 1 && ("object" === typeof input.preloadedQueries[0] && null !== input.preloadedQueries[0] && _io3(input.preloadedQueries[0])))) && (undefined === input.preloadedSubscriptions || "object" === typeof input.preloadedSubscriptions && null !== input.preloadedSubscriptions && false === Array.isArray(input.preloadedSubscriptions) && _io44(input.preloadedSubscriptions)); const _io2 = input => Object.keys(input).every(key => {
                         const value = input[key];
                         if (undefined === value)
@@ -1533,8 +1536,10 @@ class InternalGraphqlIssueRepository extends BaseGitHubRepository_1.BaseGitHubRe
                     throw new Error(`Invalid data: validateResult: ${JSON.stringify(validateResult)}, data: ${JSON.stringify(data)}`);
                 }
             }
-            const issueData = data.payload.preloadedQueries[0].result
-                .data.repository.issue;
+            if (!isValidStructure(data)) {
+                throw new Error('Data structure validation failed');
+            }
+            const issueData = data.payload.preloadedQueries[0].result.data.repository.issue;
             const issueRemainingCount = issueData.frontTimelineItems.totalCount -
                 issueData.frontTimelineItems.edges.length -
                 issueData.backTimelineItems.edges.length;
