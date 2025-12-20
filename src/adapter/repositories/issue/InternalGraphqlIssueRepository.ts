@@ -481,13 +481,25 @@ export class InternalGraphqlIssueRepository extends BaseGitHubRepository {
     }
     const data: unknown = JSON.parse(scriptContent);
     if (!typia.is<GitHubBetaFeatureViewData>(data)) {
-      const validateResult = typia.validate<GitHubBetaFeatureViewData>(data);
-      throw new Error(
-        `Invalid data: validateResult: ${JSON.stringify(validateResult)}, data: ${JSON.stringify(data)}`,
-      );
+      if (
+        typeof data !== 'object' ||
+        data === null ||
+        !('payload' in data) ||
+        typeof data.payload !== 'object' ||
+        data.payload === null ||
+        !('preloadedQueries' in data.payload) ||
+        !Array.isArray(data.payload.preloadedQueries) ||
+        data.payload.preloadedQueries.length === 0
+      ) {
+        const validateResult = typia.validate<GitHubBetaFeatureViewData>(data);
+        throw new Error(
+          `Invalid data: validateResult: ${JSON.stringify(validateResult)}, data: ${JSON.stringify(data)}`,
+        );
+      }
     }
     const issueData =
-      data.payload.preloadedQueries[0].result.data.repository.issue;
+      (data as GitHubBetaFeatureViewData).payload.preloadedQueries[0].result
+        .data.repository.issue;
     const issueRemainingCount =
       issueData.frontTimelineItems.totalCount -
       issueData.frontTimelineItems.edges.length -
