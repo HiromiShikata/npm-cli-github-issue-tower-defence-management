@@ -314,8 +314,9 @@ type GitHubBetaFeatureViewData = {
   title?: unknown;
   appPayload?: {
     initial_view_content?: {
-      team_id: unknown;
-      can_edit_view: boolean;
+      team_id?: unknown;
+      can_edit_view?: boolean;
+      [key: string]: unknown;
     };
     current_user?: {
       id: string;
@@ -323,16 +324,21 @@ type GitHubBetaFeatureViewData = {
       avatarUrl: string;
       is_staff: boolean;
       is_emu: boolean;
+      name?: unknown;
+      [key: string]: unknown;
     };
     current_user_settings?: {
       use_monospace_font?: boolean;
       use_single_key_shortcut?: boolean;
       preferred_emoji_skin_tone?: number;
+      copilot_show_functionality?: boolean;
+      [key: string]: unknown;
     };
     paste_url_link_as_plain_text?: boolean;
     base_avatar_url?: string;
     help_url?: string;
     sso_organizations?: unknown;
+    current_sso_orgs_match_dismissed_cookie?: unknown;
     multi_tenant?: boolean;
     tracing?: boolean;
     tracing_flamegraph?: boolean;
@@ -342,9 +348,13 @@ type GitHubBetaFeatureViewData = {
       owner: string;
       name: string;
       is_archived: boolean;
+      [key: string]: unknown;
     };
+    semantic_search_enrolled?: boolean;
+    semantic_search_feedback_url?: unknown;
     copilot_api_url?: unknown;
     enabled_features?: Record<string, boolean>;
+    [key: string]: unknown;
   };
 };
 
@@ -470,12 +480,32 @@ export class InternalGraphqlIssueRepository extends BaseGitHubRepository {
       throw new Error('No script content found');
     }
     const data: unknown = JSON.parse(scriptContent);
-    if (!typia.is<GitHubBetaFeatureViewData>(data)) {
-      const validateResult = typia.validate<GitHubBetaFeatureViewData>(data);
-      throw new Error(
-        `Invalid data: validateResult: ${JSON.stringify(validateResult)}, data: ${JSON.stringify(data)}`,
+    const isValidStructure = (d: unknown): d is GitHubBetaFeatureViewData => {
+      return (
+        typeof d === 'object' &&
+        d !== null &&
+        'payload' in d &&
+        typeof d.payload === 'object' &&
+        d.payload !== null &&
+        'preloadedQueries' in d.payload &&
+        Array.isArray(d.payload.preloadedQueries) &&
+        d.payload.preloadedQueries.length > 0
       );
+    };
+
+    if (!typia.is<GitHubBetaFeatureViewData>(data)) {
+      if (!isValidStructure(data)) {
+        const validateResult = typia.validate<GitHubBetaFeatureViewData>(data);
+        throw new Error(
+          `Invalid data: validateResult: ${JSON.stringify(validateResult)}, data: ${JSON.stringify(data)}`,
+        );
+      }
     }
+
+    if (!isValidStructure(data)) {
+      throw new Error('Data structure validation failed');
+    }
+
     const issueData =
       data.payload.preloadedQueries[0].result.data.repository.issue;
     const issueRemainingCount =

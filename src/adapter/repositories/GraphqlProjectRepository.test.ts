@@ -89,6 +89,24 @@ describe('GraphqlProjectRepository', () => {
             {
               color: 'GRAY',
               description: '',
+              id: 'f4f72ee7',
+              name: 'Awaiting workspace',
+            },
+            {
+              color: 'GRAY',
+              description: '',
+              id: '2f2cb4db',
+              name: 'Preparation',
+            },
+            {
+              color: 'GRAY',
+              description: '',
+              id: '3249fa24',
+              name: 'Awaiting quality check',
+            },
+            {
+              color: 'GRAY',
+              description: '',
               id: '47fc9ee4',
               name: 'In Progress',
             },
