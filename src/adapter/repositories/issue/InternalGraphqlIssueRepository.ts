@@ -315,7 +315,8 @@ type GitHubBetaFeatureViewData = {
   appPayload?: {
     initial_view_content?: {
       team_id?: unknown;
-      can_edit_view: boolean;
+      can_edit_view?: boolean;
+      [key: string]: unknown;
     };
     current_user?: {
       id: string;
@@ -324,12 +325,14 @@ type GitHubBetaFeatureViewData = {
       is_staff: boolean;
       is_emu: boolean;
       name?: unknown;
+      [key: string]: unknown;
     };
     current_user_settings?: {
       use_monospace_font?: boolean;
       use_single_key_shortcut?: boolean;
       preferred_emoji_skin_tone?: number;
       copilot_show_functionality?: boolean;
+      [key: string]: unknown;
     };
     paste_url_link_as_plain_text?: boolean;
     base_avatar_url?: string;
@@ -345,11 +348,13 @@ type GitHubBetaFeatureViewData = {
       owner: string;
       name: string;
       is_archived: boolean;
+      [key: string]: unknown;
     };
     semantic_search_enrolled?: boolean;
     semantic_search_feedback_url?: unknown;
     copilot_api_url?: unknown;
     enabled_features?: Record<string, boolean>;
+    [key: string]: unknown;
   };
 };
 

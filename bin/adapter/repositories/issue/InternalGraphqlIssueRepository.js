@@ -129,7 +129,42 @@ class InternalGraphqlIssueRepository extends BaseGitHubRepository_1.BaseGitHubRe
                 if (undefined === value)
                     return true;
                 return "object" === typeof value && null !== value && _io46(value);
-            }); const _io46 = input => "object" === typeof input.response && null !== input.response && _io47(input.response) && "string" === typeof input.subscriptionId; const _io47 = input => "object" === typeof input.data && null !== input.data && _io48(input.data); const _io48 = input => "object" === typeof input.issueUpdated && null !== input.issueUpdated && _io49(input.issueUpdated); const _io49 = input => true && true && true && true && true && true && true && true && true && true && true && true && true && true && true; const _io50 = input => (undefined === input.initial_view_content || "object" === typeof input.initial_view_content && null !== input.initial_view_content && _io51(input.initial_view_content)) && (undefined === input.current_user || "object" === typeof input.current_user && null !== input.current_user && _io52(input.current_user)) && (undefined === input.current_user_settings || "object" === typeof input.current_user_settings && null !== input.current_user_settings && false === Array.isArray(input.current_user_settings) && _io53(input.current_user_settings)) && (undefined === input.paste_url_link_as_plain_text || "boolean" === typeof input.paste_url_link_as_plain_text) && (undefined === input.base_avatar_url || "string" === typeof input.base_avatar_url) && (undefined === input.help_url || "string" === typeof input.help_url) && true && true && (undefined === input.multi_tenant || "boolean" === typeof input.multi_tenant) && (undefined === input.tracing || "boolean" === typeof input.tracing) && (undefined === input.tracing_flamegraph || "boolean" === typeof input.tracing_flamegraph) && (undefined === input.catalog_service || "string" === typeof input.catalog_service) && (undefined === input.scoped_repository || "object" === typeof input.scoped_repository && null !== input.scoped_repository && _io54(input.scoped_repository)) && (undefined === input.semantic_search_enrolled || "boolean" === typeof input.semantic_search_enrolled) && true && true && (undefined === input.enabled_features || "object" === typeof input.enabled_features && null !== input.enabled_features && false === Array.isArray(input.enabled_features) && _io55(input.enabled_features)); const _io51 = input => true && "boolean" === typeof input.can_edit_view; const _io52 = input => "string" === typeof input.id && "string" === typeof input.login && "string" === typeof input.avatarUrl && "boolean" === typeof input.is_staff && "boolean" === typeof input.is_emu && true; const _io53 = input => (undefined === input.use_monospace_font || "boolean" === typeof input.use_monospace_font) && (undefined === input.use_single_key_shortcut || "boolean" === typeof input.use_single_key_shortcut) && (undefined === input.preferred_emoji_skin_tone || "number" === typeof input.preferred_emoji_skin_tone) && (undefined === input.copilot_show_functionality || "boolean" === typeof input.copilot_show_functionality); const _io54 = input => "string" === typeof input.id && "string" === typeof input.owner && "string" === typeof input.name && "boolean" === typeof input.is_archived; const _io55 = input => Object.keys(input).every(key => {
+            }); const _io46 = input => "object" === typeof input.response && null !== input.response && _io47(input.response) && "string" === typeof input.subscriptionId; const _io47 = input => "object" === typeof input.data && null !== input.data && _io48(input.data); const _io48 = input => "object" === typeof input.issueUpdated && null !== input.issueUpdated && _io49(input.issueUpdated); const _io49 = input => true && true && true && true && true && true && true && true && true && true && true && true && true && true && true; const _io50 = input => (undefined === input.initial_view_content || "object" === typeof input.initial_view_content && null !== input.initial_view_content && false === Array.isArray(input.initial_view_content) && _io51(input.initial_view_content)) && (undefined === input.current_user || "object" === typeof input.current_user && null !== input.current_user && _io52(input.current_user)) && (undefined === input.current_user_settings || "object" === typeof input.current_user_settings && null !== input.current_user_settings && false === Array.isArray(input.current_user_settings) && _io53(input.current_user_settings)) && (undefined === input.paste_url_link_as_plain_text || "boolean" === typeof input.paste_url_link_as_plain_text) && (undefined === input.base_avatar_url || "string" === typeof input.base_avatar_url) && (undefined === input.help_url || "string" === typeof input.help_url) && true && true && (undefined === input.multi_tenant || "boolean" === typeof input.multi_tenant) && (undefined === input.tracing || "boolean" === typeof input.tracing) && (undefined === input.tracing_flamegraph || "boolean" === typeof input.tracing_flamegraph) && (undefined === input.catalog_service || "string" === typeof input.catalog_service) && (undefined === input.scoped_repository || "object" === typeof input.scoped_repository && null !== input.scoped_repository && _io54(input.scoped_repository)) && (undefined === input.semantic_search_enrolled || "boolean" === typeof input.semantic_search_enrolled) && true && true && (undefined === input.enabled_features || "object" === typeof input.enabled_features && null !== input.enabled_features && false === Array.isArray(input.enabled_features) && _io55(input.enabled_features)) && Object.keys(input).every(key => {
+                if (["initial_view_content", "current_user", "current_user_settings", "paste_url_link_as_plain_text", "base_avatar_url", "help_url", "sso_organizations", "current_sso_orgs_match_dismissed_cookie", "multi_tenant", "tracing", "tracing_flamegraph", "catalog_service", "scoped_repository", "semantic_search_enrolled", "semantic_search_feedback_url", "copilot_api_url", "enabled_features"].some(prop => key === prop))
+                    return true;
+                const value = input[key];
+                if (undefined === value)
+                    return true;
+                return true;
+            }); const _io51 = input => true && (undefined === input.can_edit_view || "boolean" === typeof input.can_edit_view) && Object.keys(input).every(key => {
+                if (["team_id", "can_edit_view"].some(prop => key === prop))
+                    return true;
+                const value = input[key];
+                if (undefined === value)
+                    return true;
+                return true;
+            }); const _io52 = input => "string" === typeof input.id && "string" === typeof input.login && "string" === typeof input.avatarUrl && "boolean" === typeof input.is_staff && "boolean" === typeof input.is_emu && true && Object.keys(input).every(key => {
+                if (["id", "login", "avatarUrl", "is_staff", "is_emu", "name"].some(prop => key === prop))
+                    return true;
+                const value = input[key];
+                if (undefined === value)
+                    return true;
+                return true;
+            }); const _io53 = input => (undefined === input.use_monospace_font || "boolean" === typeof input.use_monospace_font) && (undefined === input.use_single_key_shortcut || "boolean" === typeof input.use_single_key_shortcut) && (undefined === input.preferred_emoji_skin_tone || "number" === typeof input.preferred_emoji_skin_tone) && (undefined === input.copilot_show_functionality || "boolean" === typeof input.copilot_show_functionality) && Object.keys(input).every(key => {
+                if (["use_monospace_font", "use_single_key_shortcut", "preferred_emoji_skin_tone", "copilot_show_functionality"].some(prop => key === prop))
+                    return true;
+                const value = input[key];
+                if (undefined === value)
+                    return true;
+                return true;
+            }); const _io54 = input => "string" === typeof input.id && "string" === typeof input.owner && "string" === typeof input.name && "boolean" === typeof input.is_archived && Object.keys(input).every(key => {
+                if (["id", "owner", "name", "is_archived"].some(prop => key === prop))
+                    return true;
+                const value = input[key];
+                if (undefined === value)
+                    return true;
+                return true;
+            }); const _io55 = input => Object.keys(input).every(key => {
                 const value = input[key];
                 if (undefined === value)
                     return true;
@@ -150,7 +185,42 @@ class InternalGraphqlIssueRepository extends BaseGitHubRepository_1.BaseGitHubRe
                     if (undefined === value)
                         return true;
                     return "object" === typeof value && null !== value && _io46(value);
-                }); const _io46 = input => "object" === typeof input.response && null !== input.response && _io47(input.response) && "string" === typeof input.subscriptionId; const _io47 = input => "object" === typeof input.data && null !== input.data && _io48(input.data); const _io48 = input => "object" === typeof input.issueUpdated && null !== input.issueUpdated && _io49(input.issueUpdated); const _io49 = input => true && true && true && true && true && true && true && true && true && true && true && true && true && true && true; const _io50 = input => (undefined === input.initial_view_content || "object" === typeof input.initial_view_content && null !== input.initial_view_content && _io51(input.initial_view_content)) && (undefined === input.current_user || "object" === typeof input.current_user && null !== input.current_user && _io52(input.current_user)) && (undefined === input.current_user_settings || "object" === typeof input.current_user_settings && null !== input.current_user_settings && false === Array.isArray(input.current_user_settings) && _io53(input.current_user_settings)) && (undefined === input.paste_url_link_as_plain_text || "boolean" === typeof input.paste_url_link_as_plain_text) && (undefined === input.base_avatar_url || "string" === typeof input.base_avatar_url) && (undefined === input.help_url || "string" === typeof input.help_url) && true && true && (undefined === input.multi_tenant || "boolean" === typeof input.multi_tenant) && (undefined === input.tracing || "boolean" === typeof input.tracing) && (undefined === input.tracing_flamegraph || "boolean" === typeof input.tracing_flamegraph) && (undefined === input.catalog_service || "string" === typeof input.catalog_service) && (undefined === input.scoped_repository || "object" === typeof input.scoped_repository && null !== input.scoped_repository && _io54(input.scoped_repository)) && (undefined === input.semantic_search_enrolled || "boolean" === typeof input.semantic_search_enrolled) && true && true && (undefined === input.enabled_features || "object" === typeof input.enabled_features && null !== input.enabled_features && false === Array.isArray(input.enabled_features) && _io55(input.enabled_features)); const _io51 = input => true && "boolean" === typeof input.can_edit_view; const _io52 = input => "string" === typeof input.id && "string" === typeof input.login && "string" === typeof input.avatarUrl && "boolean" === typeof input.is_staff && "boolean" === typeof input.is_emu && true; const _io53 = input => (undefined === input.use_monospace_font || "boolean" === typeof input.use_monospace_font) && (undefined === input.use_single_key_shortcut || "boolean" === typeof input.use_single_key_shortcut) && (undefined === input.preferred_emoji_skin_tone || "number" === typeof input.preferred_emoji_skin_tone) && (undefined === input.copilot_show_functionality || "boolean" === typeof input.copilot_show_functionality); const _io54 = input => "string" === typeof input.id && "string" === typeof input.owner && "string" === typeof input.name && "boolean" === typeof input.is_archived; const _io55 = input => Object.keys(input).every(key => {
+                }); const _io46 = input => "object" === typeof input.response && null !== input.response && _io47(input.response) && "string" === typeof input.subscriptionId; const _io47 = input => "object" === typeof input.data && null !== input.data && _io48(input.data); const _io48 = input => "object" === typeof input.issueUpdated && null !== input.issueUpdated && _io49(input.issueUpdated); const _io49 = input => true && true && true && true && true && true && true && true && true && true && true && true && true && true && true; const _io50 = input => (undefined === input.initial_view_content || "object" === typeof input.initial_view_content && null !== input.initial_view_content && false === Array.isArray(input.initial_view_content) && _io51(input.initial_view_content)) && (undefined === input.current_user || "object" === typeof input.current_user && null !== input.current_user && _io52(input.current_user)) && (undefined === input.current_user_settings || "object" === typeof input.current_user_settings && null !== input.current_user_settings && false === Array.isArray(input.current_user_settings) && _io53(input.current_user_settings)) && (undefined === input.paste_url_link_as_plain_text || "boolean" === typeof input.paste_url_link_as_plain_text) && (undefined === input.base_avatar_url || "string" === typeof input.base_avatar_url) && (undefined === input.help_url || "string" === typeof input.help_url) && true && true && (undefined === input.multi_tenant || "boolean" === typeof input.multi_tenant) && (undefined === input.tracing || "boolean" === typeof input.tracing) && (undefined === input.tracing_flamegraph || "boolean" === typeof input.tracing_flamegraph) && (undefined === input.catalog_service || "string" === typeof input.catalog_service) && (undefined === input.scoped_repository || "object" === typeof input.scoped_repository && null !== input.scoped_repository && _io54(input.scoped_repository)) && (undefined === input.semantic_search_enrolled || "boolean" === typeof input.semantic_search_enrolled) && true && true && (undefined === input.enabled_features || "object" === typeof input.enabled_features && null !== input.enabled_features && false === Array.isArray(input.enabled_features) && _io55(input.enabled_features)) && Object.keys(input).every(key => {
+                    if (["initial_view_content", "current_user", "current_user_settings", "paste_url_link_as_plain_text", "base_avatar_url", "help_url", "sso_organizations", "current_sso_orgs_match_dismissed_cookie", "multi_tenant", "tracing", "tracing_flamegraph", "catalog_service", "scoped_repository", "semantic_search_enrolled", "semantic_search_feedback_url", "copilot_api_url", "enabled_features"].some(prop => key === prop))
+                        return true;
+                    const value = input[key];
+                    if (undefined === value)
+                        return true;
+                    return true;
+                }); const _io51 = input => true && (undefined === input.can_edit_view || "boolean" === typeof input.can_edit_view) && Object.keys(input).every(key => {
+                    if (["team_id", "can_edit_view"].some(prop => key === prop))
+                        return true;
+                    const value = input[key];
+                    if (undefined === value)
+                        return true;
+                    return true;
+                }); const _io52 = input => "string" === typeof input.id && "string" === typeof input.login && "string" === typeof input.avatarUrl && "boolean" === typeof input.is_staff && "boolean" === typeof input.is_emu && true && Object.keys(input).every(key => {
+                    if (["id", "login", "avatarUrl", "is_staff", "is_emu", "name"].some(prop => key === prop))
+                        return true;
+                    const value = input[key];
+                    if (undefined === value)
+                        return true;
+                    return true;
+                }); const _io53 = input => (undefined === input.use_monospace_font || "boolean" === typeof input.use_monospace_font) && (undefined === input.use_single_key_shortcut || "boolean" === typeof input.use_single_key_shortcut) && (undefined === input.preferred_emoji_skin_tone || "number" === typeof input.preferred_emoji_skin_tone) && (undefined === input.copilot_show_functionality || "boolean" === typeof input.copilot_show_functionality) && Object.keys(input).every(key => {
+                    if (["use_monospace_font", "use_single_key_shortcut", "preferred_emoji_skin_tone", "copilot_show_functionality"].some(prop => key === prop))
+                        return true;
+                    const value = input[key];
+                    if (undefined === value)
+                        return true;
+                    return true;
+                }); const _io54 = input => "string" === typeof input.id && "string" === typeof input.owner && "string" === typeof input.name && "boolean" === typeof input.is_archived && Object.keys(input).every(key => {
+                    if (["id", "owner", "name", "is_archived"].some(prop => key === prop))
+                        return true;
+                    const value = input[key];
+                    if (undefined === value)
+                        return true;
+                    return true;
+                }); const _io55 = input => Object.keys(input).every(key => {
                     const value = input[key];
                     if (undefined === value)
                         return true;
@@ -1252,7 +1322,7 @@ class InternalGraphqlIssueRepository extends BaseGitHubRepository_1.BaseGitHubRe
                         path: _path + ".issueUpdated",
                         expected: "__type.o39",
                         value: input.issueUpdated
-                    })].every(flag => flag); const _vo49 = (input, _path, _exceptionable = true) => [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true].every(flag => flag); const _vo50 = (input, _path, _exceptionable = true) => [undefined === input.initial_view_content || ("object" === typeof input.initial_view_content && null !== input.initial_view_content || _report(_exceptionable, {
+                    })].every(flag => flag); const _vo49 = (input, _path, _exceptionable = true) => [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true].every(flag => flag); const _vo50 = (input, _path, _exceptionable = true) => [undefined === input.initial_view_content || ("object" === typeof input.initial_view_content && null !== input.initial_view_content && false === Array.isArray(input.initial_view_content) || _report(_exceptionable, {
                         path: _path + ".initial_view_content",
                         expected: "(__type.o41 | undefined)",
                         value: input.initial_view_content
@@ -1324,11 +1394,25 @@ class InternalGraphqlIssueRepository extends BaseGitHubRepository_1.BaseGitHubRe
                         path: _path + ".enabled_features",
                         expected: "(Record<string, boolean> | undefined)",
                         value: input.enabled_features
-                    })].every(flag => flag); const _vo51 = (input, _path, _exceptionable = true) => [true, "boolean" === typeof input.can_edit_view || _report(_exceptionable, {
+                    }), false === _exceptionable || Object.keys(input).map(key => {
+                        if (["initial_view_content", "current_user", "current_user_settings", "paste_url_link_as_plain_text", "base_avatar_url", "help_url", "sso_organizations", "current_sso_orgs_match_dismissed_cookie", "multi_tenant", "tracing", "tracing_flamegraph", "catalog_service", "scoped_repository", "semantic_search_enrolled", "semantic_search_feedback_url", "copilot_api_url", "enabled_features"].some(prop => key === prop))
+                            return true;
+                        const value = input[key];
+                        if (undefined === value)
+                            return true;
+                        return true;
+                    }).every(flag => flag)].every(flag => flag); const _vo51 = (input, _path, _exceptionable = true) => [true, undefined === input.can_edit_view || "boolean" === typeof input.can_edit_view || _report(_exceptionable, {
                         path: _path + ".can_edit_view",
-                        expected: "boolean",
+                        expected: "(boolean | undefined)",
                         value: input.can_edit_view
-                    })].every(flag => flag); const _vo52 = (input, _path, _exceptionable = true) => ["string" === typeof input.id || _report(_exceptionable, {
+                    }), false === _exceptionable || Object.keys(input).map(key => {
+                        if (["team_id", "can_edit_view"].some(prop => key === prop))
+                            return true;
+                        const value = input[key];
+                        if (undefined === value)
+                            return true;
+                        return true;
+                    }).every(flag => flag)].every(flag => flag); const _vo52 = (input, _path, _exceptionable = true) => ["string" === typeof input.id || _report(_exceptionable, {
                         path: _path + ".id",
                         expected: "string",
                         value: input.id
@@ -1348,7 +1432,14 @@ class InternalGraphqlIssueRepository extends BaseGitHubRepository_1.BaseGitHubRe
                         path: _path + ".is_emu",
                         expected: "boolean",
                         value: input.is_emu
-                    }), true].every(flag => flag); const _vo53 = (input, _path, _exceptionable = true) => [undefined === input.use_monospace_font || "boolean" === typeof input.use_monospace_font || _report(_exceptionable, {
+                    }), true, false === _exceptionable || Object.keys(input).map(key => {
+                        if (["id", "login", "avatarUrl", "is_staff", "is_emu", "name"].some(prop => key === prop))
+                            return true;
+                        const value = input[key];
+                        if (undefined === value)
+                            return true;
+                        return true;
+                    }).every(flag => flag)].every(flag => flag); const _vo53 = (input, _path, _exceptionable = true) => [undefined === input.use_monospace_font || "boolean" === typeof input.use_monospace_font || _report(_exceptionable, {
                         path: _path + ".use_monospace_font",
                         expected: "(boolean | undefined)",
                         value: input.use_monospace_font
@@ -1364,7 +1455,14 @@ class InternalGraphqlIssueRepository extends BaseGitHubRepository_1.BaseGitHubRe
                         path: _path + ".copilot_show_functionality",
                         expected: "(boolean | undefined)",
                         value: input.copilot_show_functionality
-                    })].every(flag => flag); const _vo54 = (input, _path, _exceptionable = true) => ["string" === typeof input.id || _report(_exceptionable, {
+                    }), false === _exceptionable || Object.keys(input).map(key => {
+                        if (["use_monospace_font", "use_single_key_shortcut", "preferred_emoji_skin_tone", "copilot_show_functionality"].some(prop => key === prop))
+                            return true;
+                        const value = input[key];
+                        if (undefined === value)
+                            return true;
+                        return true;
+                    }).every(flag => flag)].every(flag => flag); const _vo54 = (input, _path, _exceptionable = true) => ["string" === typeof input.id || _report(_exceptionable, {
                         path: _path + ".id",
                         expected: "string",
                         value: input.id
@@ -1380,7 +1478,14 @@ class InternalGraphqlIssueRepository extends BaseGitHubRepository_1.BaseGitHubRe
                         path: _path + ".is_archived",
                         expected: "boolean",
                         value: input.is_archived
-                    })].every(flag => flag); const _vo55 = (input, _path, _exceptionable = true) => [false === _exceptionable || Object.keys(input).map(key => {
+                    }), false === _exceptionable || Object.keys(input).map(key => {
+                        if (["id", "owner", "name", "is_archived"].some(prop => key === prop))
+                            return true;
+                        const value = input[key];
+                        if (undefined === value)
+                            return true;
+                        return true;
+                    }).every(flag => flag)].every(flag => flag); const _vo55 = (input, _path, _exceptionable = true) => [false === _exceptionable || Object.keys(input).map(key => {
                         const value = input[key];
                         if (undefined === value)
                             return true;
