@@ -91,6 +91,7 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
     }
     return checkboxes.filter(
       (checkbox) =>
+        checkbox !== '' &&
         !checkbox.match(/^https:\/\/github.com\/.*\/issues\/\d+$/) &&
         !checkbox.match(/^#\d+$/),
     );
