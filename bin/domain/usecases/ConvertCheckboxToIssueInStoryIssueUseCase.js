@@ -54,7 +54,8 @@ class ConvertCheckboxToIssueInStoryIssueUseCase {
             for (let i = 0; i < match.length; i++) {
                 checkboxes.push(match[i].replace('- [ ] ', '').trim());
             }
-            return checkboxes.filter((checkbox) => !checkbox.match(/^https:\/\/github.com\/.*\/issues\/\d+$/) &&
+            return checkboxes.filter((checkbox) => checkbox !== '' &&
+                !checkbox.match(/^https:\/\/github.com\/.*\/issues\/\d+$/) &&
                 !checkbox.match(/^#\d+$/));
         };
     }

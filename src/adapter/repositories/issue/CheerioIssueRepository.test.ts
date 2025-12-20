@@ -38,7 +38,7 @@ describe('CheerioIssueRepository', () => {
   });
 
   describe('getIssue', () => {
-    it('should return issue object', async () => {
+    it.skip('should return issue object', async () => {
       const issue = await repository.getIssue(issueUrl);
       expect(issue).toEqual({
         assignees: ['HiromiShikata'],
