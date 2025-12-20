@@ -497,9 +497,8 @@ export class InternalGraphqlIssueRepository extends BaseGitHubRepository {
         );
       }
     }
-    const issueData =
-      (data as GitHubBetaFeatureViewData).payload.preloadedQueries[0].result
-        .data.repository.issue;
+    const issueData = (data as GitHubBetaFeatureViewData).payload
+      .preloadedQueries[0].result.data.repository.issue;
     const issueRemainingCount =
       issueData.frontTimelineItems.totalCount -
       issueData.frontTimelineItems.edges.length -
