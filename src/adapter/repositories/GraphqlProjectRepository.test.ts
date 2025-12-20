@@ -32,6 +32,8 @@ describe('GraphqlProjectRepository', () => {
   describe('getProject', () => {
     it('should retrieve project details', async () => {
       const project = await repository.getProject(projectId);
+      expect(project).not.toBeNull();
+      if (!project) return;
       expect(project.id).toBe('PVT_kwHOAGJHa84AFhgF');
       expect(project.databaseId).toBe(1447941);
       expect(project.name).toBe('V2 project on owner for testing');
