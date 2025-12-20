@@ -178,6 +178,7 @@ query GetProjectItems($projectId: ID!, $after: String) {
           pageInfo: {
             endCursor: string;
             startCursor: string;
+            hasNextPage: boolean;
           };
           nodes: {
             id: string;
@@ -218,6 +219,7 @@ query GetProjectItems($projectId: ID!, $after: String) {
               pageInfo: {
                 endCursor: string;
                 startCursor: string;
+                hasNextPage: boolean;
               };
               nodes: {
                 id: string;
@@ -271,9 +273,9 @@ query GetProjectItems($projectId: ID!, $after: String) {
       }[];
     }[] = [];
     let after: string | null = null;
-    let totalCount = 1;
+    let hasNextPage = true;
 
-    while (issues.length < totalCount) {
+    while (hasNextPage) {
       const data = await callGraphql(projectId, after);
       const projectItems: {
         id: string;
@@ -326,8 +328,8 @@ query GetProjectItems($projectId: ID!, $after: String) {
               }),
           });
         });
-      totalCount = data.node.items.totalCount;
       const pageInfo = data.node.items.pageInfo;
+      hasNextPage = pageInfo.hasNextPage;
       after = pageInfo.endCursor;
     }
     return issues;
