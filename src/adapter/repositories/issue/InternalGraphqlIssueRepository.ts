@@ -480,9 +480,7 @@ export class InternalGraphqlIssueRepository extends BaseGitHubRepository {
       throw new Error('No script content found');
     }
     const data: unknown = JSON.parse(scriptContent);
-    const isValidStructure = (
-      d: unknown,
-    ): d is GitHubBetaFeatureViewData => {
+    const isValidStructure = (d: unknown): d is GitHubBetaFeatureViewData => {
       return (
         typeof d === 'object' &&
         d !== null &&
@@ -494,7 +492,7 @@ export class InternalGraphqlIssueRepository extends BaseGitHubRepository {
         d.payload.preloadedQueries.length > 0
       );
     };
-    
+
     if (!typia.is<GitHubBetaFeatureViewData>(data)) {
       if (!isValidStructure(data)) {
         const validateResult = typia.validate<GitHubBetaFeatureViewData>(data);
@@ -503,11 +501,11 @@ export class InternalGraphqlIssueRepository extends BaseGitHubRepository {
         );
       }
     }
-    
+
     if (!isValidStructure(data)) {
       throw new Error('Data structure validation failed');
     }
-    
+
     const issueData =
       data.payload.preloadedQueries[0].result.data.repository.issue;
     const issueRemainingCount =
