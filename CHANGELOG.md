@@ -1,3 +1,14 @@
+## [1.16.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.16.2...v1.16.3) (2025-12-22)
+
+
+### Bug Fixes
+
+* **core:** use hasNextPage for pagination to prevent infinite loop ([9fc8907](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9fc890774c66f9dd116f1f4ba23b885067d3777f))
+* **lint:** remove type assertion to satisfy no-type-assertion rule ([4cef9df](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4cef9df488c7b163c16e5e7e0b1ac5617e1d011f))
+* **test:** make GitHubBetaFeatureViewData type more flexible ([b625775](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b625775fde4776f3175cb56fc3ec1c5e307a9fba))
+* **test:** relax GitHubBetaFeatureViewData validation ([57b9049](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/57b904962810ec2c5115e16cac12f268f96c42b3))
+* **test:** update integration tests for GitHub data structure changes ([adf808b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/adf808b450c92156547d3f57fb92743d11af0174))
+
 ## [1.16.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.16.1...v1.16.2) (2025-10-18)
 
 
