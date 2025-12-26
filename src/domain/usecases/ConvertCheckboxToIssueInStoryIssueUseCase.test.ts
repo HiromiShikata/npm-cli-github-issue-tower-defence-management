@@ -477,6 +477,14 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
 - [ ] https://github.com/org/repo/issues/2`,
         expected: [],
       },
+      {
+        name: 'should ignore empty checkboxes',
+        input: `- [ ] Task 1
+- [ ] 
+- [ ] Task 2
+- [ ]`,
+        expected: ['Task 1', 'Task 2'],
+      },
     ];
 
     testCases.forEach(({ name, input, expected }) => {
