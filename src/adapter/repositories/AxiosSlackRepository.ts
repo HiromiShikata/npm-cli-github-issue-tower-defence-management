@@ -1,6 +1,24 @@
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosError, AxiosHeaders, AxiosInstance } from 'axios';
+import axiosRetry from 'axios-retry';
 import fs from 'fs';
 import { SlackRepository } from '../../domain/usecases/adapter-interfaces/SlackRepository';
+
+const getRetryAfterDelay = (error: AxiosError): number | null => {
+  const headers = error.response?.headers;
+  if (!headers) {
+    return null;
+  }
+  if (headers instanceof AxiosHeaders) {
+    const retryAfter = headers.get('retry-after');
+    if (typeof retryAfter === 'string') {
+      const parsed = parseInt(retryAfter, 10);
+      if (!isNaN(parsed)) {
+        return parsed * 1000;
+      }
+    }
+  }
+  return null;
+};
 
 export class AxiosSlackRepository implements SlackRepository {
   private readonly client: AxiosInstance;
@@ -14,6 +32,22 @@ export class AxiosSlackRepository implements SlackRepository {
       baseURL: this.baseUrl,
       headers: {
         Authorization: `Bearer ${userToken}`,
+      },
+    });
+    axiosRetry(this.client, {
+      retries: 3,
+      retryDelay: (retryCount, error) => {
+        const retryAfterDelay = getRetryAfterDelay(error);
+        if (retryAfterDelay !== null) {
+          return retryAfterDelay;
+        }
+        return axiosRetry.exponentialDelay(retryCount);
+      },
+      retryCondition: (error) => {
+        return (
+          axiosRetry.isNetworkOrIdempotentRequestError(error) ||
+          error.response?.status === 429
+        );
       },
     });
   }
