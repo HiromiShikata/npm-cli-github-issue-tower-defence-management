@@ -182,7 +182,7 @@ type IssueData = {
           closed: boolean;
           number: number;
           hasReachedItemsLimit: boolean;
-          __typename: string;
+          __typename?: string;
         };
         fieldValueByName: {
           __typename: string;
@@ -249,7 +249,8 @@ type GitHubIssueQuery = {
   queryId: string;
   queryName: string;
   variables: {
-    id: string;
+    id?: string;
+    count?: number;
     number: number;
     owner: string;
     repo: string;
