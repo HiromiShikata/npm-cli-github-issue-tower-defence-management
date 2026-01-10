@@ -182,7 +182,7 @@ type IssueData = {
           closed: boolean;
           number: number;
           hasReachedItemsLimit: boolean;
-          __typename: string;
+          __typename?: string;
         };
         fieldValueByName: {
           __typename: string;
@@ -249,7 +249,8 @@ type GitHubIssueQuery = {
   queryId: string;
   queryName: string;
   variables: {
-    id: string;
+    id?: string;
+    count?: number;
     number: number;
     owner: string;
     repo: string;
@@ -413,8 +414,15 @@ export class InternalGraphqlIssueRepository extends BaseGitHubRepository {
         cookie: await this.getCookie(),
       };
 
-      for (let i = 0; i < 3; i++) {
+      const maxRetries = 5;
+      const getRetryDelay = (attempt: number): number => {
+        const baseDelay = 5000;
+        return baseDelay * Math.pow(2, attempt);
+      };
+
+      for (let i = 0; i < maxRetries; i++) {
         try {
+          console.log(url);
           const response = await axios.get<GraphqlResponse>(url, {
             headers: headers,
             withCredentials: true,
@@ -429,10 +437,22 @@ export class InternalGraphqlIssueRepository extends BaseGitHubRepository {
           await new Promise((resolve) => setTimeout(resolve, 2000));
           return response.data.data.node.frontTimelineItems;
         } catch (e) {
-          if (i === 2) {
+          const statusCode =
+            axios.isAxiosError(e) && e.response?.status !== undefined
+              ? e.response.status
+              : null;
+          const isRetryableError =
+            statusCode !== null && [500, 502, 503, 504].includes(statusCode);
+
+          if (i === maxRetries - 1) {
             throw e;
           }
-          await new Promise((resolve) => setTimeout(resolve, 5000));
+
+          const delay = getRetryDelay(i);
+          console.log(
+            `Request failed (attempt ${i + 1}/${maxRetries}). ${isRetryableError ? `Status: ${statusCode}. ` : ''}Retrying in ${delay / 1000}s...`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, delay));
         }
       }
       throw new Error('Unreachable');
