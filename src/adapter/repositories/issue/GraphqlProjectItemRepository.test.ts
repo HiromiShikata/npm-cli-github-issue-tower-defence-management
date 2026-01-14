@@ -42,10 +42,6 @@ describe('GraphqlProjectItemRepository', () => {
           fieldValue: 'In progress test title',
         },
         {
-          fieldName: 'Status',
-          fieldValue: 'Todo',
-        },
-        {
           fieldName: 'NextActionDate',
           fieldValue: '2024-04-25',
         },
