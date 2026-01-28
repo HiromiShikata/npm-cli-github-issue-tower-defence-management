@@ -151,7 +151,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 }
                 return result;
             };
-            const issues = await processItemsInBatches(items, 10);
+            const issues = await processItemsInBatches(items, 5);
             // const issues = await Promise.all(
             //   items.map(async (item): Promise<Issue> => {
             //     const cheerioIssue = await this.cheerioIssueRepository.getIssue(

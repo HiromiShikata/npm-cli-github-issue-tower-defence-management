@@ -268,7 +268,7 @@ export class ApiV3CheerioRestIssueRepository
 
       return result;
     };
-    const issues = await processItemsInBatches(items, 10);
+    const issues = await processItemsInBatches(items, 5);
 
     // const issues = await Promise.all(
     //   items.map(async (item): Promise<Issue> => {
