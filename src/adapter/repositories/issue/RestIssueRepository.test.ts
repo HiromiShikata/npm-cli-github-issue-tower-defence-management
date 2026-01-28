@@ -68,6 +68,45 @@ describe('RestIssueRepository', () => {
       expect(updatedIssue.labels).not.toContain('default');
     });
   });
+  describe('removeLabel', () => {
+    it('should remove a specific label from issue', async () => {
+      const issue: Issue = {
+        nameWithOwner: 'HiromiShikata/test-repository',
+        number: 40,
+        title: 'Test Issue',
+        state: 'OPEN',
+        status: null,
+        story: null,
+        nextActionDate: null,
+        nextActionHour: null,
+        estimationMinutes: null,
+        dependedIssueUrls: [],
+        completionDate50PercentConfidence: null,
+        url: 'https://github.com/HiromiShikata/test-repository/issues/40',
+        assignees: [],
+        workingTimeline: [],
+        labels: ['test'],
+        org: 'HiromiShikata',
+        repo: 'test-repository',
+        body: 'Test body',
+        itemId: '',
+        isPr: false,
+        isInProgress: false,
+        isClosed: false,
+        createdAt: new Date(),
+      };
+
+      await restIssueRepository.updateLabels(issue, ['test', 'to-remove']);
+      const issueBefore = await restIssueRepository.getIssue(issue.url);
+      expect(issueBefore.labels).toContain('to-remove');
+      expect(issueBefore.labels).toContain('test');
+
+      await restIssueRepository.removeLabel(issue, 'to-remove');
+      const issueAfter = await restIssueRepository.getIssue(issue.url);
+      expect(issueAfter.labels).not.toContain('to-remove');
+      expect(issueAfter.labels).toContain('test');
+    });
+  });
   describe('updateAssigneeList', () => {
     it('should update issue assignees', async () => {
       const issue: Issue = {

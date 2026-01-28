@@ -141,7 +141,7 @@ type IssueData = {
                     closed: boolean;
                     number: number;
                     hasReachedItemsLimit: boolean;
-                    __typename: string;
+                    __typename?: string;
                 };
                 fieldValueByName: {
                     __typename: string;

@@ -36,6 +36,7 @@ export class ApiV3CheerioRestIssueRepository
       | 'createComment'
       | 'getIssue'
       | 'updateLabels'
+      | 'removeLabel'
       | 'updateAssigneeList'
     >,
     readonly graphqlProjectItemRepository: Pick<
@@ -394,6 +395,9 @@ export class ApiV3CheerioRestIssueRepository
 
   updateLabels = (issue: Issue, labels: Issue['labels']): Promise<void> => {
     return this.restIssueRepository.updateLabels(issue, labels);
+  };
+  removeLabel = (issue: Issue, label: string): Promise<void> => {
+    return this.restIssueRepository.removeLabel(issue, label);
   };
   updateAssigneeList = (
     issue: Issue,

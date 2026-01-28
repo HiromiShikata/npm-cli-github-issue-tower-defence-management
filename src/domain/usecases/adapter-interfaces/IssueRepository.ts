@@ -54,6 +54,7 @@ export interface IssueRepository {
   ) => Promise<void>;
   createComment: (issue: Issue, commentBody: string) => Promise<void>;
   updateLabels: (issue: Issue, labels: Issue['labels']) => Promise<void>;
+  removeLabel: (issue: Issue, label: Label) => Promise<void>;
   updateAssigneeList: (
     issue: Issue,
     assigneeList: Member['name'][],
