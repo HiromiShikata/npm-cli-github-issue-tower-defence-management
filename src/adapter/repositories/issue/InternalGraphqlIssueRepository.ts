@@ -414,7 +414,7 @@ export class InternalGraphqlIssueRepository extends BaseGitHubRepository {
         cookie: await this.getCookie(),
       };
 
-      const maxRetries = 5;
+      const maxRetries = 10;
       const getRetryDelay = (attempt: number): number => {
         const baseDelay = 5000;
         return baseDelay * Math.pow(2, attempt);
