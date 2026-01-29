@@ -6,7 +6,7 @@ import { Member } from '../../../domain/entities/Member';
 
 export class RestIssueRepository
   extends BaseGitHubRepository
-  implements Pick<IssueRepository, 'updateAssigneeList'>
+  implements Pick<IssueRepository, 'updateAssigneeList' | 'removeLabel'>
 {
   createComment = async (issueUrl: string, comment: string) => {
     const { owner, repo, issueNumber } = this.extractIssueFromUrl(issueUrl);
@@ -133,6 +133,22 @@ export class RestIssueRepository
     );
     if (response.status !== 200) {
       throw new Error(`Failed to update issue labels: ${response.status}`);
+    }
+    return;
+  };
+
+  removeLabel = async (issue: Issue, label: string): Promise<void> => {
+    const response = await axios.delete(
+      `https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}/labels/${encodeURIComponent(label)}`,
+      {
+        headers: {
+          Authorization: `token ${this.ghToken}`,
+          Accept: 'application/vnd.github.v3+json',
+        },
+      },
+    );
+    if (response.status !== 200) {
+      throw new Error(`Failed to remove label: ${response.status}`);
     }
     return;
   };

@@ -90,6 +90,18 @@ class RestIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
             }
             return;
         };
+        this.removeLabel = async (issue, label) => {
+            const response = await axios_1.default.delete(`https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}/labels/${encodeURIComponent(label)}`, {
+                headers: {
+                    Authorization: `token ${this.ghToken}`,
+                    Accept: 'application/vnd.github.v3+json',
+                },
+            });
+            if (response.status !== 200) {
+                throw new Error(`Failed to remove label: ${response.status}`);
+            }
+            return;
+        };
         this.updateAssigneeList = async (issue, assigneeList) => {
             const response = await axios_1.default.patch(`https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}`, {
                 assignees: assigneeList,
