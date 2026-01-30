@@ -153,7 +153,7 @@ type IssueData = {
   viewerCanAssign: boolean;
   viewerCanLabel: boolean;
   __isIssueOrPullRequest: string;
-  projectItemsNext: {
+  projectItemsNext?: {
     edges: Array<{
       node: {
         id: string;
@@ -580,7 +580,7 @@ export class InternalGraphqlIssueRepository extends BaseGitHubRepository {
           : '',
       assignees: issueData.assignedActors.nodes.map((node) => node.login),
       labels: issueData.labels.edges.map((edge) => edge.node.name),
-      project: issueData.projectItemsNext.edges[0].node.project.title,
+      project: issueData.projectItemsNext?.edges[0]?.node.project.title ?? '',
       statusTimeline,
       inProgressTimeline,
       createdAt: new Date(issueData.createdAt),

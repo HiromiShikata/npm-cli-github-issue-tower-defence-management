@@ -78,7 +78,7 @@ describe('CheerioIssueRepository', () => {
           },
         ],
         labels: ['enhancement'],
-        project: 'V2 project on owner for testing',
+        project: '',
         status: 'Todo',
         statusTimeline: [
           {

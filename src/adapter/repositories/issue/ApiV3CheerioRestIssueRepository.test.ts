@@ -141,6 +141,70 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('updateStatus', () => {
+    it('should call graphqlProjectItemRepository.updateProjectField with correct parameters', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue();
+
+      const project = {
+        id: 'test-project-id',
+        databaseId: 1,
+        name: 'test-project',
+        status: {
+          name: 'Status',
+          fieldId: 'test-status-field-id',
+          statuses: [],
+        },
+        nextActionDate: null,
+        nextActionHour: null,
+        story: null,
+        remainingEstimationMinutes: null,
+        dependedIssueUrlSeparatedByComma: null,
+        completionDate50PercentConfidence: null,
+      };
+      const issue = {
+        nameWithOwner: 'HiromiShikata/test-repository',
+        number: 38,
+        title: 'test-title',
+        state: 'OPEN' as const,
+        status: 'test-status',
+        story: null,
+        nextActionDate: null,
+        nextActionHour: null,
+        estimationMinutes: null,
+        dependedIssueUrls: [],
+        completionDate50PercentConfidence: null,
+        url: 'https://github.com/HiromiShikata/test-repository/issues/38',
+        assignees: [],
+        workingTimeline: [],
+        labels: [],
+        org: 'HiromiShikata',
+        repo: 'test-repository',
+        body: 'test-body',
+        itemId: 'test-item-id',
+        isPr: false,
+        isInProgress: false,
+        isClosed: false,
+        createdAt: new Date('2024-01-01'),
+      };
+      const statusId = 'new-status-id';
+
+      await repository.updateStatus(project, issue, statusId);
+
+      expect(
+        graphqlProjectItemRepository.updateProjectField,
+      ).toHaveBeenCalledWith(
+        'test-project-id',
+        'test-status-field-id',
+        'test-item-id',
+        {
+          singleSelectOptionId: 'new-status-id',
+        },
+      );
+    });
+  });
+
   const createApiV3CheerioRestIssueRepository = () => {
     const apiV3IssueRepository = mock<ApiV3IssueRepository>();
     const cheerioIssueRepository = mock<CheerioIssueRepository>();
