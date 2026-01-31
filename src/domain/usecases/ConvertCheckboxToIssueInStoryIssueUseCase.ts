@@ -15,8 +15,6 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
     project: Project;
     issues: Issue[];
     cacheUsed: boolean;
-    org: string;
-    repo: string;
     urlOfStoryView: string;
     disabledStatus: string;
     storyObjectMap: StoryObjectMap;
@@ -52,14 +50,14 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
           `${storyOption.name} #${storyIssue.number}`,
         );
         const newIssueNumber = await this.issueRepository.createNewIssue(
-          input.org,
-          input.repo,
+          storyIssue.org,
+          storyIssue.repo,
           issueTitle,
           '',
           [],
           [],
         );
-        const newIssueUrl = `https://github.com/${input.org}/${input.repo}/issues/${newIssueNumber}`;
+        const newIssueUrl = `https://github.com/${storyIssue.org}/${storyIssue.repo}/issues/${newIssueNumber}`;
         newBody = newBody.replace(
           `- [ ] ${checkboxText}`,
           `- [ ] ${newIssueUrl}`,

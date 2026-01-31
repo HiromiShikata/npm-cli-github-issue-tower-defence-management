@@ -271,8 +271,6 @@ ${JSON.stringify(e)}
       project,
       issues,
       cacheUsed,
-      org: input.org,
-      repo: input.workingReport.repo,
       urlOfStoryView: input.urlOfStoryView,
       disabledStatus: input.disabledStatus,
       storyObjectMap: storyObjectMap,

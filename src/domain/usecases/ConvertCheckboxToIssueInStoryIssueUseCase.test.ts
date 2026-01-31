@@ -32,6 +32,8 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
       body: `- [ ] Task 1
 - [ ] Task 2`,
       url: 'https://github.com/org/repo/issues/123',
+      org: 'org',
+      repo: 'repo',
     };
 
     const basicStoryIssue2 = {
@@ -41,6 +43,8 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
       body: `- [ ] Task 3
 - [ ] Task 4`,
       url: 'https://github.com/org/repo/issues/456',
+      org: 'org',
+      repo: 'repo',
     };
 
     const basicStoryObject1: StoryObject = {
@@ -93,8 +97,6 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
         project: Project;
         issues: Issue[];
         cacheUsed: boolean;
-        org: string;
-        repo: string;
         urlOfStoryView: string;
         disabledStatus: string;
         storyObjectMap: StoryObjectMap;
@@ -118,8 +120,6 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           project: { ...basicProject, story: null },
           issues: [basicStoryIssue1],
           cacheUsed: false,
-          org: 'testOrg',
-          repo: 'testRepo',
           urlOfStoryView: 'https://example.com',
           disabledStatus: 'Closed',
           storyObjectMap: basicStoryObjectMap,
@@ -135,8 +135,6 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           project: basicProject,
           issues: [basicStoryIssue1],
           cacheUsed: true,
-          org: 'testOrg',
-          repo: 'testRepo',
           urlOfStoryView: 'https://example.com',
           disabledStatus: 'Closed',
           storyObjectMap: basicStoryObjectMap,
@@ -152,8 +150,6 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           project: regularStoryProject,
           issues: [basicStoryIssue1],
           cacheUsed: false,
-          org: 'testOrg',
-          repo: 'testRepo',
           urlOfStoryView: 'https://example.com',
           disabledStatus: 'Closed',
           storyObjectMap: regularStoryObjectMap,
@@ -169,8 +165,6 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           project: basicProject,
           issues: [],
           cacheUsed: false,
-          org: 'testOrg',
-          repo: 'testRepo',
           urlOfStoryView: 'https://example.com',
           disabledStatus: 'Closed',
           storyObjectMap: basicStoryObjectMap,
@@ -198,8 +192,6 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             },
           ],
           cacheUsed: false,
-          org: 'testOrg',
-          repo: 'testRepo',
           urlOfStoryView: 'https://example.com',
           disabledStatus: 'Disabled',
           storyObjectMap: basicStoryObjectMap,
@@ -215,45 +207,43 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           project: basicProject,
           issues: [basicStoryIssue1, basicStoryIssue2],
           cacheUsed: false,
-          org: 'testOrg',
-          repo: 'testRepo',
           urlOfStoryView: 'https://example.com',
           disabledStatus: 'Closed',
           storyObjectMap: basicStoryObjectMap,
         },
         expectedCreateNewIssueCalls: [
-          ['testOrg', 'testRepo', 'Task 1', '', [], []],
-          ['testOrg', 'testRepo', 'Task 2', '', [], []],
-          ['testOrg', 'testRepo', 'Task 3', '', [], []],
-          ['testOrg', 'testRepo', 'Task 4', '', [], []],
+          ['org', 'repo', 'Task 1', '', [], []],
+          ['org', 'repo', 'Task 2', '', [], []],
+          ['org', 'repo', 'Task 3', '', [], []],
+          ['org', 'repo', 'Task 4', '', [], []],
         ],
         expectedUpdateIssueCalls: [
           [
             {
               ...basicStoryIssue1,
-              body: `- [ ] https://github.com/testOrg/testRepo/issues/1
+              body: `- [ ] https://github.com/org/repo/issues/1
 - [ ] Task 2`,
             },
           ],
           [
             {
               ...basicStoryIssue1,
-              body: `- [ ] https://github.com/testOrg/testRepo/issues/1
-- [ ] https://github.com/testOrg/testRepo/issues/2`,
+              body: `- [ ] https://github.com/org/repo/issues/1
+- [ ] https://github.com/org/repo/issues/2`,
             },
           ],
           [
             {
               ...basicStoryIssue2,
-              body: `- [ ] https://github.com/testOrg/testRepo/issues/3
+              body: `- [ ] https://github.com/org/repo/issues/3
 - [ ] Task 4`,
             },
           ],
           [
             {
               ...basicStoryIssue2,
-              body: `- [ ] https://github.com/testOrg/testRepo/issues/3
-- [ ] https://github.com/testOrg/testRepo/issues/4`,
+              body: `- [ ] https://github.com/org/repo/issues/3
+- [ ] https://github.com/org/repo/issues/4`,
             },
           ],
         ],
@@ -262,7 +252,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             basicProject,
             {
               ...mock<Issue>(),
-              url: 'https://github.com/testOrg/testRepo/issues/1',
+              url: 'https://github.com/org/repo/issues/1',
             },
             'story1',
           ],
@@ -270,7 +260,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             basicProject,
             {
               ...mock<Issue>(),
-              url: 'https://github.com/testOrg/testRepo/issues/2',
+              url: 'https://github.com/org/repo/issues/2',
             },
             'story1',
           ],
@@ -278,7 +268,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             basicProject,
             {
               ...mock<Issue>(),
-              url: 'https://github.com/testOrg/testRepo/issues/3',
+              url: 'https://github.com/org/repo/issues/3',
             },
             'story2',
           ],
@@ -286,16 +276,16 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             basicProject,
             {
               ...mock<Issue>(),
-              url: 'https://github.com/testOrg/testRepo/issues/4',
+              url: 'https://github.com/org/repo/issues/4',
             },
             'story2',
           ],
         ],
         expectedGetIssueByUrlCalls: [
-          ['https://github.com/testOrg/testRepo/issues/1'],
-          ['https://github.com/testOrg/testRepo/issues/2'],
-          ['https://github.com/testOrg/testRepo/issues/3'],
-          ['https://github.com/testOrg/testRepo/issues/4'],
+          ['https://github.com/org/repo/issues/1'],
+          ['https://github.com/org/repo/issues/2'],
+          ['https://github.com/org/repo/issues/3'],
+          ['https://github.com/org/repo/issues/4'],
         ],
       },
       {
@@ -311,45 +301,43 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             basicStoryIssue2,
           ],
           cacheUsed: false,
-          org: 'testOrg',
-          repo: 'testRepo',
           urlOfStoryView: 'https://example.com',
           disabledStatus: 'Closed',
           storyObjectMap: basicStoryObjectMap,
         },
         expectedCreateNewIssueCalls: [
-          ['testOrg', 'testRepo', 'Task 1', '', [], []],
-          ['testOrg', 'testRepo', 'Task 2 for `Story 1 #123`', '', [], []],
-          ['testOrg', 'testRepo', 'Task 3', '', [], []],
-          ['testOrg', 'testRepo', 'Task 4', '', [], []],
+          ['org', 'repo', 'Task 1', '', [], []],
+          ['org', 'repo', 'Task 2 for `Story 1 #123`', '', [], []],
+          ['org', 'repo', 'Task 3', '', [], []],
+          ['org', 'repo', 'Task 4', '', [], []],
         ],
         expectedUpdateIssueCalls: [
           [
             {
               ...basicStoryIssue1,
-              body: `- [ ] https://github.com/testOrg/testRepo/issues/1
+              body: `- [ ] https://github.com/org/repo/issues/1
 - [ ] Task 2 for \`STORYNAME\``,
             },
           ],
           [
             {
               ...basicStoryIssue1,
-              body: `- [ ] https://github.com/testOrg/testRepo/issues/1
-- [ ] https://github.com/testOrg/testRepo/issues/2`,
+              body: `- [ ] https://github.com/org/repo/issues/1
+- [ ] https://github.com/org/repo/issues/2`,
             },
           ],
           [
             {
               ...basicStoryIssue2,
-              body: `- [ ] https://github.com/testOrg/testRepo/issues/3
+              body: `- [ ] https://github.com/org/repo/issues/3
 - [ ] Task 4`,
             },
           ],
           [
             {
               ...basicStoryIssue2,
-              body: `- [ ] https://github.com/testOrg/testRepo/issues/3
-- [ ] https://github.com/testOrg/testRepo/issues/4`,
+              body: `- [ ] https://github.com/org/repo/issues/3
+- [ ] https://github.com/org/repo/issues/4`,
             },
           ],
         ],
@@ -358,7 +346,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             basicProject,
             {
               ...mock<Issue>(),
-              url: 'https://github.com/testOrg/testRepo/issues/1',
+              url: 'https://github.com/org/repo/issues/1',
             },
             'story1',
           ],
@@ -366,7 +354,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             basicProject,
             {
               ...mock<Issue>(),
-              url: 'https://github.com/testOrg/testRepo/issues/2',
+              url: 'https://github.com/org/repo/issues/2',
             },
             'story1',
           ],
@@ -374,7 +362,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             basicProject,
             {
               ...mock<Issue>(),
-              url: 'https://github.com/testOrg/testRepo/issues/3',
+              url: 'https://github.com/org/repo/issues/3',
             },
             'story2',
           ],
@@ -382,16 +370,119 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             basicProject,
             {
               ...mock<Issue>(),
-              url: 'https://github.com/testOrg/testRepo/issues/4',
+              url: 'https://github.com/org/repo/issues/4',
             },
             'story2',
           ],
         ],
         expectedGetIssueByUrlCalls: [
-          ['https://github.com/testOrg/testRepo/issues/1'],
-          ['https://github.com/testOrg/testRepo/issues/2'],
-          ['https://github.com/testOrg/testRepo/issues/3'],
-          ['https://github.com/testOrg/testRepo/issues/4'],
+          ['https://github.com/org/repo/issues/1'],
+          ['https://github.com/org/repo/issues/2'],
+          ['https://github.com/org/repo/issues/3'],
+          ['https://github.com/org/repo/issues/4'],
+        ],
+      },
+      {
+        name: 'should create new issues in same repo as parent story issue when different stories have different repos',
+        input: {
+          project: basicProject,
+          issues: [
+            {
+              ...basicStoryIssue1,
+              org: 'orgA',
+              repo: 'repoA',
+              body: `- [ ] Task 1`,
+            },
+            {
+              ...basicStoryIssue2,
+              org: 'orgB',
+              repo: 'repoB',
+              body: `- [ ] Task 2`,
+            },
+          ],
+          cacheUsed: false,
+          urlOfStoryView: 'https://example.com',
+          disabledStatus: 'Closed',
+          storyObjectMap: new Map([
+            [
+              'Story 1',
+              {
+                story: {
+                  ...mock<StoryOption>(),
+                  id: 'story1',
+                  name: 'Story 1',
+                },
+                storyIssue: {
+                  ...basicStoryIssue1,
+                  org: 'orgA',
+                  repo: 'repoA',
+                  body: `- [ ] Task 1`,
+                },
+                issues: [],
+              },
+            ],
+            [
+              'Story 2',
+              {
+                story: {
+                  ...mock<StoryOption>(),
+                  id: 'story2',
+                  name: 'Story 2',
+                },
+                storyIssue: {
+                  ...basicStoryIssue2,
+                  org: 'orgB',
+                  repo: 'repoB',
+                  body: `- [ ] Task 2`,
+                },
+                issues: [],
+              },
+            ],
+          ]),
+        },
+        expectedCreateNewIssueCalls: [
+          ['orgA', 'repoA', 'Task 1', '', [], []],
+          ['orgB', 'repoB', 'Task 2', '', [], []],
+        ],
+        expectedUpdateIssueCalls: [
+          [
+            {
+              ...basicStoryIssue1,
+              org: 'orgA',
+              repo: 'repoA',
+              body: `- [ ] https://github.com/orgA/repoA/issues/1`,
+            },
+          ],
+          [
+            {
+              ...basicStoryIssue2,
+              org: 'orgB',
+              repo: 'repoB',
+              body: `- [ ] https://github.com/orgB/repoB/issues/2`,
+            },
+          ],
+        ],
+        expectedUpdateStoryCalls: [
+          [
+            basicProject,
+            {
+              ...mock<Issue>(),
+              url: 'https://github.com/orgA/repoA/issues/1',
+            },
+            'story1',
+          ],
+          [
+            basicProject,
+            {
+              ...mock<Issue>(),
+              url: 'https://github.com/orgB/repoB/issues/2',
+            },
+            'story2',
+          ],
+        ],
+        expectedGetIssueByUrlCalls: [
+          ['https://github.com/orgA/repoA/issues/1'],
+          ['https://github.com/orgB/repoB/issues/2'],
         ],
       },
     ];
