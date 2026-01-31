@@ -80,16 +80,7 @@ describe('ChangeStatusByStoryColorUseCase', () => {
       color: 'RED',
     },
     storyIssue: basicStoryIssue1,
-    issues: [
-      {
-        ...basicIssue1,
-        totalWorkingTime: 120,
-        totalWorkingTimeByAssignee: new Map<string, number>([
-          ['user1', 60],
-          ['user2', 60],
-        ]),
-      },
-    ],
+    issues: [basicIssue1],
   };
   const basicStoryObject2: StoryObject = {
     story: {
@@ -99,16 +90,7 @@ describe('ChangeStatusByStoryColorUseCase', () => {
       color: 'BLUE',
     },
     storyIssue: basicStoryIssue2,
-    issues: [
-      {
-        ...basicIssue2,
-        totalWorkingTime: 120,
-        totalWorkingTimeByAssignee: new Map<string, number>([
-          ['user1', 60],
-          ['user2', 60],
-        ]),
-      },
-    ],
+    issues: [basicIssue2],
   };
 
   const basicStoryObjectMap: StoryObjectMap = new Map([

@@ -1,4 +1,3 @@
-import { WorkingTime } from './WorkingTime';
 import { Member } from './Member';
 export type Label = string;
 export type Issue = {
@@ -15,7 +14,6 @@ export type Issue = {
   completionDate50PercentConfidence: Date | null;
   url: string;
   assignees: Member['name'][];
-  workingTimeline: WorkingTime[];
   labels: Label[];
   org: string;
   repo: string;

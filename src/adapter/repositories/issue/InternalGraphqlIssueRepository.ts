@@ -1,11 +1,7 @@
 import axios from 'axios';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import typia from 'typia';
-import {
-  getInProgressTimeline,
-  IssueStatusTimeline,
-} from './issueTimelineUtils';
-import { Issue } from './CheerioIssueRepository';
+import { Issue, IssueStatusTimeline } from './CheerioIssueRepository';
 
 type IssueTypeData = {
   name: string;
@@ -567,10 +563,6 @@ export class InternalGraphqlIssueRepository extends BaseGitHubRepository {
           to: edge.node.status || '',
         }),
       );
-    const inProgressTimeline = await getInProgressTimeline(
-      statusTimeline,
-      issueUrl,
-    );
     return {
       url: issueUrl,
       title: issueData.title,
@@ -582,9 +574,7 @@ export class InternalGraphqlIssueRepository extends BaseGitHubRepository {
       labels: issueData.labels.edges.map((edge) => edge.node.name),
       project: issueData.projectItemsNext?.edges[0]?.node.project.title ?? '',
       statusTimeline,
-      inProgressTimeline,
       createdAt: new Date(issueData.createdAt),
-      workingTimeline: inProgressTimeline,
     };
   };
 }

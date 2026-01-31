@@ -11,7 +11,6 @@ import {
   GraphqlProjectItemRepository,
   ProjectItem,
 } from './GraphqlProjectItemRepository';
-import { WorkingTime } from '../../../domain/entities/WorkingTime';
 import { LocalStorageCacheRepository } from '../LocalStorageCacheRepository';
 import typia from 'typia';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
@@ -86,7 +85,6 @@ export class ApiV3CheerioRestIssueRepository
     item: ProjectItem,
     cheerioIssue: CheerioIssue,
   ): Promise<Issue> => {
-    const timeline: WorkingTime[] = cheerioIssue.inProgressTimeline;
     const nextActionDate = item.customFields.find(
       (field) => normalizeFieldName(field.name) === 'nextactiondate',
     )?.value;
@@ -122,7 +120,6 @@ export class ApiV3CheerioRestIssueRepository
       state: item.state,
       labels: cheerioIssue.labels,
       assignees: cheerioIssue.assignees,
-      workingTimeline: timeline,
       nextActionDate: nextActionDate ? new Date(nextActionDate) : null,
       nextActionHour: nextActionHour ? parseInt(nextActionHour) : null,
       estimationMinutes: estimationMinutes ? parseInt(estimationMinutes) : null,
@@ -168,29 +165,6 @@ export class ApiV3CheerioRestIssueRepository
               issue.nextActionDate === null
                 ? null
                 : new Date(issue.nextActionDate);
-            const workingTimeline =
-              !('workingTimeline' in issue) ||
-              !Array.isArray(issue.workingTimeline)
-                ? []
-                : issue.workingTimeline.map((event: object): object => {
-                    const startedAt =
-                      !('startedAt' in event) ||
-                      typeof event.startedAt !== 'string' ||
-                      event.startedAt === null
-                        ? null
-                        : new Date(event.startedAt);
-                    const endedAt =
-                      !('endedAt' in event) ||
-                      typeof event.endedAt !== 'string' ||
-                      event.endedAt === null
-                        ? null
-                        : new Date(event.endedAt);
-                    return {
-                      ...event,
-                      startedAt,
-                      endedAt,
-                    };
-                  });
             const completionDate50PercentConfidence =
               !('completionDate50PercentConfidence' in issue) ||
               typeof issue.completionDate50PercentConfidence !== 'string'
@@ -198,13 +172,12 @@ export class ApiV3CheerioRestIssueRepository
                 : new Date(issue.completionDate50PercentConfidence);
             const createdAt =
               !('createdAt' in issue) || typeof issue.createdAt !== 'string'
-                ? new Date() // Fallback to current date if missing
+                ? new Date()
                 : new Date(issue.createdAt);
 
             return {
               ...issue,
               nextActionDate: nextActionDate,
-              workingTimeline: workingTimeline,
               completionDate50PercentConfidence:
                 completionDate50PercentConfidence,
               createdAt: createdAt,

@@ -1,8 +1,7 @@
-import { Issue, Label } from '../entities/Issue';
+import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project, StoryOption } from '../entities/Project';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
-import { GenerateWorkingTimeReportUseCase } from './GenerateWorkingTimeReportUseCase';
 import { Member } from '../entities/Member';
 import { DateRepository } from './adapter-interfaces/DateRepository';
 import { SpreadsheetRepository } from './adapter-interfaces/SpreadsheetRepository';
@@ -14,7 +13,6 @@ import { AnalyzeStoriesUseCase } from './AnalyzeStoriesUseCase';
 import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
 import { CreateEstimationIssueUseCase } from './CreateEstimationIssueUseCase';
 import { ConvertCheckboxToIssueInStoryIssueUseCase } from './ConvertCheckboxToIssueInStoryIssueUseCase';
-import { ChangeStatusLongInReviewIssueUseCase } from './ChangeStatusLongInReviewIssueUseCase';
 import { ChangeStatusByStoryColorUseCase } from './ChangeStatusByStoryColorUseCase';
 import { SetNoStoryIssueToStoryUseCase } from './SetNoStoryIssueToStoryUseCase';
 import { CreateNewStoryByLabelUseCase } from './CreateNewStoryByLabelUseCase';
@@ -30,10 +28,7 @@ export class ProjectNotFoundError extends Error {
 export type StoryObject = {
   story: StoryOption;
   storyIssue: Issue | null;
-  issues: (Issue & {
-    totalWorkingTime: number;
-    totalWorkingTimeByAssignee: Map<string, number>;
-  })[];
+  issues: Issue[];
 };
 export type StoryObjectMap = Map<
   NonNullable<Project['story']>['stories'][0]['name'],
@@ -42,7 +37,6 @@ export type StoryObjectMap = Map<
 
 export class HandleScheduledEventUseCase {
   constructor(
-    readonly generateWorkingTimeReportUseCase: GenerateWorkingTimeReportUseCase,
     readonly actionAnnouncementUseCase: ActionAnnouncementUseCase,
     readonly setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase,
     readonly clearNextActionHourUseCase: ClearNextActionHourUseCase,
@@ -51,7 +45,6 @@ export class HandleScheduledEventUseCase {
     readonly clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase,
     readonly createEstimationIssueUseCase: CreateEstimationIssueUseCase,
     readonly convertCheckboxToIssueInStoryIssueUseCase: ConvertCheckboxToIssueInStoryIssueUseCase,
-    readonly changeStatusLongInReviewIssueUseCase: ChangeStatusLongInReviewIssueUseCase,
     readonly changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase,
     readonly setNoStoryIssueToStoryUseCase: SetNoStoryIssueToStoryUseCase,
     readonly createNewStoryByLabelUseCase: CreateNewStoryByLabelUseCase,
@@ -70,10 +63,7 @@ export class HandleScheduledEventUseCase {
     workingReport: {
       repo: string;
       members: Member['name'][];
-      warningThresholdHour?: number;
       spreadsheetUrl: string;
-      reportIssueTemplate?: string;
-      reportIssueLabels: Label[];
     };
     urlOfStoryView: string;
     disabledStatus: string;
@@ -159,11 +149,7 @@ export class HandleScheduledEventUseCase {
       }
       storyObject.storyIssue = newIssue;
       issues.push(newIssue);
-      storyObject.issues.push({
-        ...newIssue,
-        totalWorkingTime: 0,
-        totalWorkingTimeByAssignee: new Map(),
-      });
+      storyObject.issues.push(newIssue);
     }
 
     const targetDateTimes: Date[] =
@@ -214,18 +200,6 @@ ${JSON.stringify(e)}
     targetDateTimes: Date[],
     storyObjectMap: StoryObjectMap,
   ): Promise<void> => {
-    const projectId = project.id;
-
-    for (const targetDateTime of targetDateTimes) {
-      await this.runForGenerateWorkingTimeReportUseCase({
-        org: input.org,
-        manager: input.manager,
-        workingReport: input.workingReport,
-        projectId,
-        issues,
-        targetDateTime,
-      });
-    }
     await this.setNoStoryIssueToStoryUseCase.run({
       targetDates: targetDateTimes,
       project,
@@ -243,13 +217,6 @@ ${JSON.stringify(e)}
       repo: input.workingReport.repo,
       storyObjectMap: storyObjectMap,
       disabledStatus: input.disabledStatus,
-    });
-    await this.changeStatusLongInReviewIssueUseCase.run({
-      project,
-      issues,
-      cacheUsed,
-      org: input.org,
-      repo: input.workingReport.repo,
     });
     await this.actionAnnouncementUseCase.run({
       targetDates: targetDateTimes,
@@ -332,35 +299,6 @@ ${JSON.stringify(e)}
       cacheUsed,
     });
   };
-  runForGenerateWorkingTimeReportUseCase = async (input: {
-    org: string;
-    manager: Member['name'];
-    workingReport: {
-      repo: string;
-      members: Member['name'][];
-      warningThresholdHour?: number;
-      spreadsheetUrl: string;
-      reportIssueTemplate?: string;
-      reportIssueLabels: Label[];
-    };
-    projectId: Project['id'];
-    issues: Issue[];
-    targetDateTime: Date;
-  }): Promise<void> => {
-    const targetHour = input.targetDateTime.getHours();
-    const targetMinute = input.targetDateTime.getMinutes();
-    if (targetHour === 0 && targetMinute === 0) {
-      const yesterday = new Date(
-        input.targetDateTime.getTime() - 24 * 60 * 60 * 1000,
-      );
-
-      await this.generateWorkingTimeReportUseCase.run({
-        ...input,
-        ...input.workingReport,
-        targetDate: yesterday,
-      });
-    }
-  };
   static createTargetDateTimes = (from: Date, to: Date): Date[] => {
     const targetDateTimes: Date[] = [];
     if (from.getTime() > to.getTime()) {
@@ -437,45 +375,9 @@ ${JSON.stringify(e)}
         if (issue.story !== story.name) {
           continue;
         }
-        const totalWorkingTimeByAssignee =
-          this.calculateTotalWorkingMinutesByAssignee(issue);
-        const totalWorkingTime = Math.round(
-          Array.from(totalWorkingTimeByAssignee.values()).reduce(
-            (a, b) => a + b,
-            0,
-          ),
-        );
-        const issueSummary: {
-          totalWorkingTime: number;
-          totalWorkingTimeByAssignee: Map<string, number>;
-        } = {
-          totalWorkingTime,
-          totalWorkingTimeByAssignee,
-        };
-        summaryStoryIssue
-          .get(story.name)
-          ?.issues.push({ ...issue, ...issueSummary });
+        summaryStoryIssue.get(story.name)?.issues.push(issue);
       }
     }
     return summaryStoryIssue;
-  };
-  calculateTotalWorkingMinutesByAssignee = (
-    issue: Issue,
-  ): Map<string, number> => {
-    const workingTimeLine = issue.workingTimeline;
-    const mapWorkingTimeByAssignee: Map<string, number> = new Map();
-    for (const workingTime of workingTimeLine) {
-      const author = workingTime.author;
-      const workingMinutes = workingTime.durationMinutes;
-      if (!mapWorkingTimeByAssignee.has(author)) {
-        mapWorkingTimeByAssignee.set(author, 0);
-      }
-      const currentWorkingMinutes = mapWorkingTimeByAssignee.get(author) || 0;
-      mapWorkingTimeByAssignee.set(
-        author,
-        currentWorkingMinutes + workingMinutes,
-      );
-    }
-    return mapWorkingTimeByAssignee;
   };
 }

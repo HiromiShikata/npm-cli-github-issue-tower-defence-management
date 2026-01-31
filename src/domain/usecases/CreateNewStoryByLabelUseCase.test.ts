@@ -31,8 +31,6 @@ describe('CreateNewStoryByLabelUseCase', () => {
     title: 'New Feature Request',
     number: 999,
     labels: ['bug', 'new-story', 'priority-high'],
-    totalWorkingTime: 0,
-    totalWorkingTimeByAssignee: new Map<string, number>(),
   };
 
   const issueWithNewStoryLabelVariant = {
@@ -40,8 +38,6 @@ describe('CreateNewStoryByLabelUseCase', () => {
     title: 'Another New Story',
     number: 1000,
     labels: ['newstory', 'enhancement'],
-    totalWorkingTime: 0,
-    totalWorkingTimeByAssignee: new Map<string, number>(),
   };
 
   const regularIssue = {
@@ -49,8 +45,6 @@ describe('CreateNewStoryByLabelUseCase', () => {
     title: 'Regular Issue',
     number: 888,
     labels: ['bug', 'priority-low'],
-    totalWorkingTime: 0,
-    totalWorkingTimeByAssignee: new Map<string, number>(),
   };
 
   const storyObjectWithNewStoryIssues: StoryObject = {
@@ -222,8 +216,6 @@ describe('CreateNewStoryByLabelUseCase', () => {
         title: 'Unmatched Title',
         number: 1001,
         labels: ['new-story'],
-        totalWorkingTime: 0,
-        totalWorkingTimeByAssignee: new Map<string, number>(),
       };
 
       const storyObject: StoryObject = {
@@ -263,8 +255,6 @@ describe('CreateNewStoryByLabelUseCase', () => {
       title: 'No Hyphen Issue',
       number: 1002,
       labels: ['newstory'],
-      totalWorkingTime: 0,
-      totalWorkingTimeByAssignee: new Map<string, number>(),
     };
 
     const issueWithMixedCase = {
@@ -272,8 +262,6 @@ describe('CreateNewStoryByLabelUseCase', () => {
       title: 'Mixed Case Issue',
       number: 1003,
       labels: ['NEW-STORY'],
-      totalWorkingTime: 0,
-      totalWorkingTimeByAssignee: new Map<string, number>(),
     };
 
     const anotherIssueWithLabel = {
@@ -281,8 +269,6 @@ describe('CreateNewStoryByLabelUseCase', () => {
       title: 'Another Issue',
       number: 1004,
       labels: ['newstory'],
-      totalWorkingTime: 0,
-      totalWorkingTimeByAssignee: new Map<string, number>(),
     };
 
     const storyObjectWithRegularIssue: StoryObject = {
@@ -313,10 +299,7 @@ describe('CreateNewStoryByLabelUseCase', () => {
       description: string;
       storyObjectMap: Map<string, StoryObject>;
       expectedLength: number;
-      expectedIssues: (Issue & {
-        totalWorkingTime: number;
-        totalWorkingTimeByAssignee: Map<string, number>;
-      })[];
+      expectedIssues: Issue[];
     }> = [
       {
         description:

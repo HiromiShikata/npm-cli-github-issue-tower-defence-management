@@ -10,7 +10,6 @@ import { CheerioIssueRepository } from '../../repositories/issue/CheerioIssueRep
 import { RestIssueRepository } from '../../repositories/issue/RestIssueRepository';
 import { GraphqlProjectItemRepository } from '../../repositories/issue/GraphqlProjectItemRepository';
 import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3CheerioRestIssueRepository';
-import { GenerateWorkingTimeReportUseCase } from '../../../domain/usecases/GenerateWorkingTimeReportUseCase';
 import { HandleScheduledEventUseCase } from '../../../domain/usecases/HandleScheduledEventUseCase';
 import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
 import { ActionAnnouncementUseCase } from '../../../domain/usecases/ActionAnnouncementUseCase';
@@ -26,7 +25,6 @@ import { ClearDependedIssueURLUseCase } from '../../../domain/usecases/ClearDepe
 import { CreateEstimationIssueUseCase } from '../../../domain/usecases/CreateEstimationIssueUseCase';
 import axios, { AxiosError } from 'axios';
 import { ConvertCheckboxToIssueInStoryIssueUseCase } from '../../../domain/usecases/ConvertCheckboxToIssueInStoryIssueUseCase';
-import { ChangeStatusLongInReviewIssueUseCase } from '../../../domain/usecases/ChangeStatusLongInReviewIssueUseCase';
 import { ChangeStatusByStoryColorUseCase } from '../../../domain/usecases/ChangeStatusByStoryColorUseCase';
 import { SetNoStoryIssueToStoryUseCase } from '../../../domain/usecases/SetNoStoryIssueToStoryUseCase';
 import { CreateNewStoryByLabelUseCase } from '../../../domain/usecases/CreateNewStoryByLabelUseCase';
@@ -136,12 +134,6 @@ export class HandleScheduledEventUseCaseHandler {
       localStorageCacheRepository,
       ...githubRepositoryParams,
     );
-    const generateWorkingTimeReportUseCase =
-      new GenerateWorkingTimeReportUseCase(
-        issueRepository,
-        googleSpreadsheetRepository,
-        systemDateRepository,
-      );
     const actionAnnouncement = new ActionAnnouncementUseCase(issueRepository);
     const setWorkflowManagementIssueToStoryUseCase =
       new SetWorkflowManagementIssueToStoryUseCase(issueRepository);
@@ -165,11 +157,6 @@ export class HandleScheduledEventUseCaseHandler {
     );
     const convertCheckboxToIssueInStoryIssueUseCase =
       new ConvertCheckboxToIssueInStoryIssueUseCase(issueRepository);
-    const changeStatusLongInReviewIssueUseCase =
-      new ChangeStatusLongInReviewIssueUseCase(
-        systemDateRepository,
-        issueRepository,
-      );
     const changeStatusByStoryColorUseCase = new ChangeStatusByStoryColorUseCase(
       systemDateRepository,
       issueRepository,
@@ -186,7 +173,6 @@ export class HandleScheduledEventUseCaseHandler {
       new AssignNoAssigneeIssueToManagerUseCase(issueRepository);
 
     const handleScheduledEventUseCase = new HandleScheduledEventUseCase(
-      generateWorkingTimeReportUseCase,
       actionAnnouncement,
       setWorkflowManagementIssueToStoryUseCase,
       clearNextActionHourUseCase,
@@ -195,7 +181,6 @@ export class HandleScheduledEventUseCaseHandler {
       clearDependedIssueURLUseCase,
       createEstimationIssueUseCase,
       convertCheckboxToIssueInStoryIssueUseCase,
-      changeStatusLongInReviewIssueUseCase,
       changeStatusByStoryColorUseCase,
       setNoStoryIssueToStoryUseCase,
       createNewStoryByLabel,
