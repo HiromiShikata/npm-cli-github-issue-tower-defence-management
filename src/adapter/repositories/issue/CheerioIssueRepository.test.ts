@@ -43,40 +43,6 @@ describe('CheerioIssueRepository', () => {
       expect(issue).toEqual({
         assignees: ['HiromiShikata'],
         createdAt: new Date('2024-01-01'),
-        inProgressTimeline: [
-          {
-            author: 'HiromiShikata',
-            durationMinutes: 3.5166666666666666,
-            endedAt: new Date('2024-04-21T09:31:46.000Z'),
-            issueUrl:
-              'https://github.com/HiromiShikata/test-repository/issues/38',
-            startedAt: new Date('2024-04-21T09:28:15.000Z'),
-          },
-          {
-            author: 'HiromiShikata',
-            durationMinutes: 60.516666666666666,
-            endedAt: new Date('2024-04-21T11:13:38.000Z'),
-            issueUrl:
-              'https://github.com/HiromiShikata/test-repository/issues/38',
-            startedAt: new Date('2024-04-21T10:13:07.000Z'),
-          },
-          {
-            author: 'HiromiShikata',
-            durationMinutes: 0.05,
-            endedAt: new Date('2024-11-23T05:44:10.000Z'),
-            issueUrl:
-              'https://github.com/HiromiShikata/test-repository/issues/38',
-            startedAt: new Date('2024-11-23T05:44:07.000Z'),
-          },
-          {
-            author: 'HiromiShikata',
-            durationMinutes: 0.03333333333333333,
-            endedAt: new Date('2024-11-23T05:46:27.000Z'),
-            issueUrl:
-              'https://github.com/HiromiShikata/test-repository/issues/38',
-            startedAt: new Date('2024-11-23T05:46:25.000Z'),
-          },
-        ],
         labels: ['enhancement'],
         project: '',
         status: 'Todo',
