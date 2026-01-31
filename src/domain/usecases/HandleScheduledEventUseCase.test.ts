@@ -1,6 +1,5 @@
 import { HandleScheduledEventUseCase } from './HandleScheduledEventUseCase';
 import { mock } from 'jest-mock-extended';
-import { GenerateWorkingTimeReportUseCase } from './GenerateWorkingTimeReportUseCase';
 import { ActionAnnouncementUseCase } from './ActionAnnouncementUseCase';
 import { SetWorkflowManagementIssueToStoryUseCase } from './SetWorkflowManagementIssueToStoryUseCase';
 import { ClearNextActionHourUseCase } from './ClearNextActionHourUseCase';
@@ -9,7 +8,6 @@ import { AnalyzeStoriesUseCase } from './AnalyzeStoriesUseCase';
 import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
 import { CreateEstimationIssueUseCase } from './CreateEstimationIssueUseCase';
 import { ConvertCheckboxToIssueInStoryIssueUseCase } from './ConvertCheckboxToIssueInStoryIssueUseCase';
-import { ChangeStatusLongInReviewIssueUseCase } from './ChangeStatusLongInReviewIssueUseCase';
 import { DateRepository } from './adapter-interfaces/DateRepository';
 import { SpreadsheetRepository } from './adapter-interfaces/SpreadsheetRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
@@ -77,8 +75,6 @@ describe('HandleScheduledEventUseCase', () => {
   });
 
   describe('run', () => {
-    const mockGenerateWorkingTimeReportUseCase =
-      mock<GenerateWorkingTimeReportUseCase>();
     const mockActionAnnouncementUseCase = mock<ActionAnnouncementUseCase>();
     const mockSetWorkflowManagementIssueToStoryUseCase =
       mock<SetWorkflowManagementIssueToStoryUseCase>();
@@ -92,8 +88,6 @@ describe('HandleScheduledEventUseCase', () => {
       mock<CreateEstimationIssueUseCase>();
     const mockConvertCheckboxToIssueInStoryIssueUseCase =
       mock<ConvertCheckboxToIssueInStoryIssueUseCase>();
-    const mockChangeStatusLongInReviewIssueUseCase =
-      mock<ChangeStatusLongInReviewIssueUseCase>();
     const mockChangeStatusByStoryColorUseCase =
       mock<ChangeStatusByStoryColorUseCase>();
     const mockSetNoStoryIssueToStoryUseCase =
@@ -108,7 +102,6 @@ describe('HandleScheduledEventUseCase', () => {
     const mockIssueRepository = mock<IssueRepository>();
 
     const useCase = new HandleScheduledEventUseCase(
-      mockGenerateWorkingTimeReportUseCase,
       mockActionAnnouncementUseCase,
       mockSetWorkflowManagementIssueToStoryUseCase,
       mockClearNextActionHourUseCase,
@@ -117,7 +110,6 @@ describe('HandleScheduledEventUseCase', () => {
       mockClearDependedIssueURLUseCase,
       mockCreateEstimationIssueUseCase,
       mockConvertCheckboxToIssueInStoryIssueUseCase,
-      mockChangeStatusLongInReviewIssueUseCase,
       mockChangeStatusByStoryColorUseCase,
       mockSetNoStoryIssueToStoryUseCase,
       mockCreateNewStoryByLabelUseCase,
@@ -145,7 +137,7 @@ describe('HandleScheduledEventUseCase', () => {
       ]);
     });
 
-    it('should call ChangeStatusLongInReviewIssueUseCase with correct parameters', async () => {
+    it('should call AnalyzeProblemByIssueUseCase with correct parameters', async () => {
       const input = {
         projectName: 'test-project',
         org: 'test-org',
@@ -155,7 +147,6 @@ describe('HandleScheduledEventUseCase', () => {
           repo: 'test-repo',
           members: ['member1'],
           spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
-          reportIssueLabels: [],
         },
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
         disabledStatus: 'disabled',
@@ -164,15 +155,7 @@ describe('HandleScheduledEventUseCase', () => {
       const mockProject = mock<Project>();
       mockProjectRepository.getProject.mockResolvedValue(mockProject);
       await useCase.run(input);
-      expect(mockChangeStatusLongInReviewIssueUseCase.run).toHaveBeenCalledWith(
-        {
-          project: mockProject,
-          issues: [],
-          cacheUsed: false,
-          org: input.org,
-          repo: input.workingReport.repo,
-        },
-      );
+      expect(mockAnalyzeProblemByIssueUseCase.run).toHaveBeenCalled();
     });
   });
 });

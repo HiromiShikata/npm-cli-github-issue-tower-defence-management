@@ -1,13 +1,15 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
-import { WorkingTime } from '../../../domain/entities/WorkingTime';
-import {
-  getInProgressTimeline,
-  IssueStatusTimeline,
-} from './issueTimelineUtils';
 import { InternalGraphqlIssueRepository } from './InternalGraphqlIssueRepository';
 import { LocalStorageRepository } from '../LocalStorageRepository';
+
+export type IssueStatusTimeline = {
+  time: string;
+  author: string;
+  from: string;
+  to: string;
+};
 
 export type Issue = {
   url: string;
@@ -17,9 +19,7 @@ export type Issue = {
   labels: string[];
   project: string;
   statusTimeline: IssueStatusTimeline[];
-  inProgressTimeline: WorkingTime[];
   createdAt: Date;
-  workingTimeline: WorkingTime[];
 };
 
 export class CheerioIssueRepository extends BaseGitHubRepository {
@@ -56,7 +56,6 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
       return {
         ...issue,
         createdAt: new Date('2024-01-01'),
-        workingTimeline: issue.inProgressTimeline,
       };
     }
     return this.getIssueFromNormalView(issueUrl, $);
@@ -71,10 +70,6 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
     const labels = this.getLabelsFromCheerioObject($);
     const project = this.getProjectFromCheerioObject($);
     const statusTimeline = await this.getStatusTimelineEvents($);
-    const inProgressTimeline = await getInProgressTimeline(
-      statusTimeline,
-      issueUrl,
-    );
     const status =
       statusOrig !== ''
         ? statusOrig
@@ -89,9 +84,7 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
       labels,
       project,
       statusTimeline,
-      inProgressTimeline,
       createdAt: new Date('2024-01-01'),
-      workingTimeline: inProgressTimeline,
     };
   };
   getStatusTimelineEvents = async (
