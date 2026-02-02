@@ -30,7 +30,6 @@ exports.CheerioIssueRepository = void 0;
 const axios_1 = __importDefault(require("axios"));
 const cheerio = __importStar(require("cheerio"));
 const BaseGitHubRepository_1 = require("../BaseGitHubRepository");
-const issueTimelineUtils_1 = require("./issueTimelineUtils");
 class CheerioIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
     constructor(internalGraphqlIssueRepository, localStorageRepository, jsonFilePath = './tmp/github.com.cookies.json', ghToken = process.env.GH_TOKEN || 'dummy', ghUserName = process.env.GH_USER_NAME, ghUserPassword = process.env.GH_USER_PASSWORD, ghAuthenticatorKey = process.env
         .GH_AUTHENTICATOR_KEY) {
@@ -52,7 +51,6 @@ class CheerioIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository
                 return {
                     ...issue,
                     createdAt: new Date('2024-01-01'),
-                    workingTimeline: issue.inProgressTimeline,
                 };
             }
             return this.getIssueFromNormalView(issueUrl, $);
@@ -64,7 +62,6 @@ class CheerioIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository
             const labels = this.getLabelsFromCheerioObject($);
             const project = this.getProjectFromCheerioObject($);
             const statusTimeline = await this.getStatusTimelineEvents($);
-            const inProgressTimeline = await (0, issueTimelineUtils_1.getInProgressTimeline)(statusTimeline, issueUrl);
             const status = statusOrig !== ''
                 ? statusOrig
                 : statusTimeline.length > 0
@@ -78,9 +75,7 @@ class CheerioIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository
                 labels,
                 project,
                 statusTimeline,
-                inProgressTimeline,
                 createdAt: new Date('2024-01-01'),
-                workingTimeline: inProgressTimeline,
             };
         };
         this.getStatusTimelineEvents = async ($) => {

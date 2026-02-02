@@ -80,10 +80,7 @@ ${storyObject.issues
                 .map((issue) => Array.from(issue.dependedIssueUrls)
                 .map((dependedIssueUrl) => {
                 if (issue.isClosed) {
-                    issue.totalWorkingTimeByAssignee;
-                    return `    ${getFlowchartIdFromUrl(dependedIssueUrl)} -->|total: ${this.dateRepository.formatDurationToHHMM(issue.totalWorkingTime)}<br/>${Array.from(issue.totalWorkingTimeByAssignee)
-                        .map(([author, workingMinutes]) => `@${author} ${this.dateRepository.formatDurationToHHMM(workingMinutes)}`)
-                        .join('<br/>')}| ${getFlowchartIdFromUrl(issue.url)}`;
+                    return `    ${getFlowchartIdFromUrl(dependedIssueUrl)} --> ${getFlowchartIdFromUrl(issue.url)}`;
                 }
                 return `    ${getFlowchartIdFromUrl(dependedIssueUrl)} -->|${issue.estimationMinutes
                     ? `Estimation: ${this.dateRepository.formatDurationToHHMM(issue.estimationMinutes)}<br/>`
@@ -93,54 +90,20 @@ ${storyObject.issues
             })
                 .join('\n'))
                 .join('\n')}
-    %% click event 
+    %% click event
     ${storyObject.issues
                 .map((issue) => `click ${getFlowchartIdFromUrl(issue.url)} "${issue.url}"`)
                 .join('\n')}
-    
+
 \`\`\``;
             let noMultipleNewLineBody = `
-Total: ${this.dateRepository.formatDurationToHHMM(Array.from(storyObject.issues.values()).reduce((a, b) => a + b.totalWorkingTime, 0))}
-
-${storyObject.issues
-                .map((issue) => `- ${this.dateRepository.formatDurationToHHMM(issue.totalWorkingTime)} ${issue.url}
-  - Total
-${Array.from(issue.totalWorkingTimeByAssignee)
-                .map(([author, workingMinutes]) => `    - ${this.dateRepository.formatDurationToHHMM(workingMinutes)}, ${author}`)
-                .join('\n')}
-  - Timeline
-${issue.workingTimeline
-                .map(({ startedAt, endedAt, durationMinutes, author }) => `    - ${this.dateRepository.formatDurationToHHMM(durationMinutes)}, ${this.dateRepository.formatStartEnd(startedAt, endedAt)}}, ${author}`)
-                .join('\n')}`)
-                .join('\n')}`;
+${storyObject.issues.map((issue) => `- ${issue.url}`).join('\n')}`;
             while (noMultipleNewLineBody.includes('\n\n')) {
                 noMultipleNewLineBody = noMultipleNewLineBody.replace('\n\n', '\n');
             }
             return `${flowChart}
 
 ${noMultipleNewLineBody}
-`;
-        };
-        this.createQuestionIssueBody = (issue, totalWorkingTime, totalWorkingTimeByAssignee) => {
-            return `Hi,
-I worry about the situation of #${issue.number} (${issue.title}) because the total working time is over 120 minutes.
-Could you please share the situation? :pray:
-
-## Total
-${this.dateRepository.formatDurationToHHMM(totalWorkingTime)}
-
-## From the record
-Working Minutes, Author, 
-${Array.from(totalWorkingTimeByAssignee)
-                .map(([author, workingMinutes]) => `${this.dateRepository.formatDurationToHHMM(workingMinutes)}, ${author}`)
-                .join('\n')}
-
-
-## Timeline
-Start, End, Duration, Author
-${issue.workingTimeline
-                .map(({ startedAt, endedAt, durationMinutes, author }) => `${this.dateRepository.formatDurationToHHMM(startedAt.getMinutes())}, ${this.dateRepository.formatDurationToHHMM(endedAt.getMinutes())}, ${this.dateRepository.formatDurationToHHMM(durationMinutes)}, ${author}`)
-                .join('\n')}
 `;
         };
     }

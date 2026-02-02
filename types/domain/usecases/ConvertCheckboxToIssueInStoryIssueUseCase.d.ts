@@ -9,8 +9,6 @@ export declare class ConvertCheckboxToIssueInStoryIssueUseCase {
         project: Project;
         issues: Issue[];
         cacheUsed: boolean;
-        org: string;
-        repo: string;
         urlOfStoryView: string;
         disabledStatus: string;
         storyObjectMap: StoryObjectMap;
