@@ -6,8 +6,8 @@ import { DateRepository } from './adapter-interfaces/DateRepository';
 import { StoryObject, StoryObjectMap } from './HandleScheduledEventUseCase';
 export declare class AnalyzeProblemByIssueUseCase {
     readonly issueRepository: Pick<IssueRepository, 'createNewIssue' | 'createComment'>;
-    readonly dateRepository: Pick<DateRepository, 'formatDurationToHHMM' | 'formatDateTimeWithDayOfWeek' | 'formatStartEnd' | 'formatDateWithDayOfWeek'>;
-    constructor(issueRepository: Pick<IssueRepository, 'createNewIssue' | 'createComment'>, dateRepository: Pick<DateRepository, 'formatDurationToHHMM' | 'formatDateTimeWithDayOfWeek' | 'formatStartEnd' | 'formatDateWithDayOfWeek'>);
+    readonly dateRepository: Pick<DateRepository, 'formatDurationToHHMM' | 'formatDateWithDayOfWeek'>;
+    constructor(issueRepository: Pick<IssueRepository, 'createNewIssue' | 'createComment'>, dateRepository: Pick<DateRepository, 'formatDurationToHHMM' | 'formatDateWithDayOfWeek'>);
     run: (input: {
         targetDates: Date[];
         project: Project;
@@ -26,6 +26,5 @@ export declare class AnalyzeProblemByIssueUseCase {
     createSummaryCommentBody: (storyObject: StoryObject & {
         storyIssue: NonNullable<StoryObject["storyIssue"]>;
     }) => string;
-    createQuestionIssueBody: (issue: Issue, totalWorkingTime: number, totalWorkingTimeByAssignee: Map<string, number>) => string;
 }
 //# sourceMappingURL=AnalyzeProblemByIssueUseCase.d.ts.map
