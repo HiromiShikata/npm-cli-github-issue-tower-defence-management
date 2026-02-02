@@ -69,8 +69,8 @@ class HandleScheduledEventUseCaseHandler {
             });
             const configFileContent = fs_1.default.readFileSync(configFilePath, 'utf8');
             const input = yaml_1.default.parse(configFileContent);
-            if (!(() => { const _io0 = input => "string" === typeof input.projectName && "string" === typeof input.org && "string" === typeof input.projectUrl && "string" === typeof input.manager && ("object" === typeof input.workingReport && null !== input.workingReport && _io1(input.workingReport)) && "string" === typeof input.urlOfStoryView && "string" === typeof input.disabledStatus && ("object" === typeof input.credentials && null !== input.credentials && _io2(input.credentials)); const _io1 = input => "string" === typeof input.repo && (Array.isArray(input.members) && input.members.every(elem => "string" === typeof elem)) && "string" === typeof input.spreadsheetUrl; const _io2 = input => "object" === typeof input.manager && null !== input.manager && _io3(input.manager) && ("object" === typeof input.bot && null !== input.bot && _io7(input.bot)); const _io3 = input => "object" === typeof input.github && null !== input.github && _io4(input.github) && ("object" === typeof input.slack && null !== input.slack && _io5(input.slack)) && ("object" === typeof input.googleServiceAccount && null !== input.googleServiceAccount && _io6(input.googleServiceAccount)); const _io4 = input => "string" === typeof input.token; const _io5 = input => "string" === typeof input.userToken; const _io6 = input => "string" === typeof input.serviceAccountKey; const _io7 = input => "object" === typeof input.github && null !== input.github && _io8(input.github); const _io8 = input => "string" === typeof input.token && "string" === typeof input.name && "string" === typeof input.password && "string" === typeof input.authenticatorKey; return input => "object" === typeof input && null !== input && _io0(input); })()(input)) {
-                throw new Error(`Invalid input: ${JSON.stringify(input)}\n\n${JSON.stringify((() => { const _io0 = input => "string" === typeof input.projectName && "string" === typeof input.org && "string" === typeof input.projectUrl && "string" === typeof input.manager && ("object" === typeof input.workingReport && null !== input.workingReport && _io1(input.workingReport)) && "string" === typeof input.urlOfStoryView && "string" === typeof input.disabledStatus && ("object" === typeof input.credentials && null !== input.credentials && _io2(input.credentials)); const _io1 = input => "string" === typeof input.repo && (Array.isArray(input.members) && input.members.every(elem => "string" === typeof elem)) && "string" === typeof input.spreadsheetUrl; const _io2 = input => "object" === typeof input.manager && null !== input.manager && _io3(input.manager) && ("object" === typeof input.bot && null !== input.bot && _io7(input.bot)); const _io3 = input => "object" === typeof input.github && null !== input.github && _io4(input.github) && ("object" === typeof input.slack && null !== input.slack && _io5(input.slack)) && ("object" === typeof input.googleServiceAccount && null !== input.googleServiceAccount && _io6(input.googleServiceAccount)); const _io4 = input => "string" === typeof input.token; const _io5 = input => "string" === typeof input.userToken; const _io6 = input => "string" === typeof input.serviceAccountKey; const _io7 = input => "object" === typeof input.github && null !== input.github && _io8(input.github); const _io8 = input => "string" === typeof input.token && "string" === typeof input.name && "string" === typeof input.password && "string" === typeof input.authenticatorKey; const _vo0 = (input, _path, _exceptionable = true) => ["string" === typeof input.projectName || _report(_exceptionable, {
+            if (!(() => { const _io0 = input => "string" === typeof input.projectName && "string" === typeof input.org && "string" === typeof input.projectUrl && "string" === typeof input.manager && ("object" === typeof input.workingReport && null !== input.workingReport && _io1(input.workingReport)) && "string" === typeof input.urlOfStoryView && "string" === typeof input.disabledStatus && ("object" === typeof input.credentials && null !== input.credentials && _io2(input.credentials)); const _io1 = input => "string" === typeof input.repo && (Array.isArray(input.members) && input.members.every(elem => "string" === typeof elem)) && "string" === typeof input.spreadsheetUrl; const _io2 = input => "object" === typeof input.manager && null !== input.manager && _io3(input.manager); const _io3 = input => "object" === typeof input.github && null !== input.github && _io4(input.github) && ("object" === typeof input.slack && null !== input.slack && _io5(input.slack)) && ("object" === typeof input.googleServiceAccount && null !== input.googleServiceAccount && _io6(input.googleServiceAccount)); const _io4 = input => "string" === typeof input.token; const _io5 = input => "string" === typeof input.userToken; const _io6 = input => "string" === typeof input.serviceAccountKey; return input => "object" === typeof input && null !== input && _io0(input); })()(input)) {
+                throw new Error(`Invalid input: ${JSON.stringify(input)}\n\n${JSON.stringify((() => { const _io0 = input => "string" === typeof input.projectName && "string" === typeof input.org && "string" === typeof input.projectUrl && "string" === typeof input.manager && ("object" === typeof input.workingReport && null !== input.workingReport && _io1(input.workingReport)) && "string" === typeof input.urlOfStoryView && "string" === typeof input.disabledStatus && ("object" === typeof input.credentials && null !== input.credentials && _io2(input.credentials)); const _io1 = input => "string" === typeof input.repo && (Array.isArray(input.members) && input.members.every(elem => "string" === typeof elem)) && "string" === typeof input.spreadsheetUrl; const _io2 = input => "object" === typeof input.manager && null !== input.manager && _io3(input.manager); const _io3 = input => "object" === typeof input.github && null !== input.github && _io4(input.github) && ("object" === typeof input.slack && null !== input.slack && _io5(input.slack)) && ("object" === typeof input.googleServiceAccount && null !== input.googleServiceAccount && _io6(input.googleServiceAccount)); const _io4 = input => "string" === typeof input.token; const _io5 = input => "string" === typeof input.userToken; const _io6 = input => "string" === typeof input.serviceAccountKey; const _vo0 = (input, _path, _exceptionable = true) => ["string" === typeof input.projectName || _report(_exceptionable, {
                         path: _path + ".projectName",
                         expected: "string",
                         value: input.projectName
@@ -138,14 +138,6 @@ class HandleScheduledEventUseCaseHandler {
                         path: _path + ".manager",
                         expected: "__type.o2",
                         value: input.manager
-                    }), ("object" === typeof input.bot && null !== input.bot || _report(_exceptionable, {
-                        path: _path + ".bot",
-                        expected: "__type.o6",
-                        value: input.bot
-                    })) && _vo7(input.bot, _path + ".bot", true && _exceptionable) || _report(_exceptionable, {
-                        path: _path + ".bot",
-                        expected: "__type.o6",
-                        value: input.bot
                     })].every(flag => flag); const _vo3 = (input, _path, _exceptionable = true) => [("object" === typeof input.github && null !== input.github || _report(_exceptionable, {
                         path: _path + ".github",
                         expected: "__type.o3",
@@ -182,30 +174,6 @@ class HandleScheduledEventUseCaseHandler {
                         path: _path + ".serviceAccountKey",
                         expected: "string",
                         value: input.serviceAccountKey
-                    })].every(flag => flag); const _vo7 = (input, _path, _exceptionable = true) => [("object" === typeof input.github && null !== input.github || _report(_exceptionable, {
-                        path: _path + ".github",
-                        expected: "__type.o7",
-                        value: input.github
-                    })) && _vo8(input.github, _path + ".github", true && _exceptionable) || _report(_exceptionable, {
-                        path: _path + ".github",
-                        expected: "__type.o7",
-                        value: input.github
-                    })].every(flag => flag); const _vo8 = (input, _path, _exceptionable = true) => ["string" === typeof input.token || _report(_exceptionable, {
-                        path: _path + ".token",
-                        expected: "string",
-                        value: input.token
-                    }), "string" === typeof input.name || _report(_exceptionable, {
-                        path: _path + ".name",
-                        expected: "string",
-                        value: input.name
-                    }), "string" === typeof input.password || _report(_exceptionable, {
-                        path: _path + ".password",
-                        expected: "string",
-                        value: input.password
-                    }), "string" === typeof input.authenticatorKey || _report(_exceptionable, {
-                        path: _path + ".authenticatorKey",
-                        expected: "string",
-                        value: input.authenticatorKey
                     })].every(flag => flag); const __is = input => "object" === typeof input && null !== input && _io0(input); let errors; let _report; return input => {
                     if (false === __is(input)) {
                         errors = [];
@@ -240,14 +208,7 @@ class HandleScheduledEventUseCaseHandler {
             const googleSpreadsheetRepository = new GoogleSpreadsheetRepository_1.GoogleSpreadsheetRepository(localStorageRepository, input.credentials.manager.googleServiceAccount.serviceAccountKey);
             const cachePath = `./tmp/cache/${input.projectName}`;
             const localStorageCacheRepository = new LocalStorageCacheRepository_1.LocalStorageCacheRepository(localStorageRepository, cachePath);
-            const githubRepositoryParams = [
-                localStorageRepository,
-                `${cachePath}/github.com.cookies.json`,
-                input.credentials.bot.github.token,
-                input.credentials.bot.github.name,
-                input.credentials.bot.github.password,
-                input.credentials.bot.github.authenticatorKey,
-            ];
+            const githubRepositoryParams = [localStorageRepository, `${cachePath}/github.com.cookies.json`];
             const projectRepository = {
                 ...new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams),
                 ...new CheerioProjectRepository_1.CheerioProjectRepository(...githubRepositoryParams),
