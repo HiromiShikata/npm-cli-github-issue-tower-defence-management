@@ -157,5 +157,27 @@ describe('HandleScheduledEventUseCase', () => {
       await useCase.run(input);
       expect(mockAnalyzeProblemByIssueUseCase.run).toHaveBeenCalled();
     });
+
+    it('should accept optional defaultStatus parameter', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabledStatus: 'disabled',
+        defaultStatus: 'Todo',
+      };
+
+      const mockProject = mock<Project>();
+      mockProjectRepository.getProject.mockResolvedValue(mockProject);
+      await useCase.run(input);
+      expect(mockAnalyzeProblemByIssueUseCase.run).toHaveBeenCalled();
+    });
   });
 });

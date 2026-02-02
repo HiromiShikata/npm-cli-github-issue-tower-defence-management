@@ -9,8 +9,7 @@ class ProjectNotFoundError extends Error {
 }
 exports.ProjectNotFoundError = ProjectNotFoundError;
 class HandleScheduledEventUseCase {
-    constructor(generateWorkingTimeReportUseCase, actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusLongInReviewIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
-        this.generateWorkingTimeReportUseCase = generateWorkingTimeReportUseCase;
+    constructor(actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
         this.actionAnnouncementUseCase = actionAnnouncementUseCase;
         this.setWorkflowManagementIssueToStoryUseCase = setWorkflowManagementIssueToStoryUseCase;
         this.clearNextActionHourUseCase = clearNextActionHourUseCase;
@@ -19,7 +18,6 @@ class HandleScheduledEventUseCase {
         this.clearDependedIssueURLUseCase = clearDependedIssueURLUseCase;
         this.createEstimationIssueUseCase = createEstimationIssueUseCase;
         this.convertCheckboxToIssueInStoryIssueUseCase = convertCheckboxToIssueInStoryIssueUseCase;
-        this.changeStatusLongInReviewIssueUseCase = changeStatusLongInReviewIssueUseCase;
         this.changeStatusByStoryColorUseCase = changeStatusByStoryColorUseCase;
         this.setNoStoryIssueToStoryUseCase = setNoStoryIssueToStoryUseCase;
         this.createNewStoryByLabelUseCase = createNewStoryByLabelUseCase;
@@ -81,11 +79,7 @@ class HandleScheduledEventUseCase {
                 }
                 storyObject.storyIssue = newIssue;
                 issues.push(newIssue);
-                storyObject.issues.push({
-                    ...newIssue,
-                    totalWorkingTime: 0,
-                    totalWorkingTimeByAssignee: new Map(),
-                });
+                storyObject.issues.push(newIssue);
             }
             const targetDateTimes = await this.findTargetDateAndUpdateLastExecutionDateTime(input.workingReport.spreadsheetUrl, now);
             try {
@@ -109,17 +103,6 @@ ${JSON.stringify(e)}
             return { project, issues, cacheUsed, targetDateTimes, storyIssues };
         };
         this.runEachUseCases = async (input, project, issues, cacheUsed, targetDateTimes, storyObjectMap) => {
-            const projectId = project.id;
-            for (const targetDateTime of targetDateTimes) {
-                await this.runForGenerateWorkingTimeReportUseCase({
-                    org: input.org,
-                    manager: input.manager,
-                    workingReport: input.workingReport,
-                    projectId,
-                    issues,
-                    targetDateTime,
-                });
-            }
             await this.setNoStoryIssueToStoryUseCase.run({
                 targetDates: targetDateTimes,
                 project,
@@ -137,13 +120,6 @@ ${JSON.stringify(e)}
                 repo: input.workingReport.repo,
                 storyObjectMap: storyObjectMap,
                 disabledStatus: input.disabledStatus,
-            });
-            await this.changeStatusLongInReviewIssueUseCase.run({
-                project,
-                issues,
-                cacheUsed,
-                org: input.org,
-                repo: input.workingReport.repo,
             });
             await this.actionAnnouncementUseCase.run({
                 targetDates: targetDateTimes,
@@ -198,8 +174,6 @@ ${JSON.stringify(e)}
                 project,
                 issues,
                 cacheUsed,
-                org: input.org,
-                repo: input.workingReport.repo,
                 urlOfStoryView: input.urlOfStoryView,
                 disabledStatus: input.disabledStatus,
                 storyObjectMap: storyObjectMap,
@@ -225,18 +199,6 @@ ${JSON.stringify(e)}
                 manager: input.manager,
                 cacheUsed,
             });
-        };
-        this.runForGenerateWorkingTimeReportUseCase = async (input) => {
-            const targetHour = input.targetDateTime.getHours();
-            const targetMinute = input.targetDateTime.getMinutes();
-            if (targetHour === 0 && targetMinute === 0) {
-                const yesterday = new Date(input.targetDateTime.getTime() - 24 * 60 * 60 * 1000);
-                await this.generateWorkingTimeReportUseCase.run({
-                    ...input,
-                    ...input.workingReport,
-                    targetDate: yesterday,
-                });
-            }
         };
         this.findTargetDateAndUpdateLastExecutionDateTime = async (spreadsheetUrl, now) => {
             const sheetValues = await this.spreadsheetRepository.getSheet(spreadsheetUrl, 'HandleScheduledEvent');
@@ -264,32 +226,10 @@ ${JSON.stringify(e)}
                     if (issue.story !== story.name) {
                         continue;
                     }
-                    const totalWorkingTimeByAssignee = this.calculateTotalWorkingMinutesByAssignee(issue);
-                    const totalWorkingTime = Math.round(Array.from(totalWorkingTimeByAssignee.values()).reduce((a, b) => a + b, 0));
-                    const issueSummary = {
-                        totalWorkingTime,
-                        totalWorkingTimeByAssignee,
-                    };
-                    summaryStoryIssue
-                        .get(story.name)
-                        ?.issues.push({ ...issue, ...issueSummary });
+                    summaryStoryIssue.get(story.name)?.issues.push(issue);
                 }
             }
             return summaryStoryIssue;
-        };
-        this.calculateTotalWorkingMinutesByAssignee = (issue) => {
-            const workingTimeLine = issue.workingTimeline;
-            const mapWorkingTimeByAssignee = new Map();
-            for (const workingTime of workingTimeLine) {
-                const author = workingTime.author;
-                const workingMinutes = workingTime.durationMinutes;
-                if (!mapWorkingTimeByAssignee.has(author)) {
-                    mapWorkingTimeByAssignee.set(author, 0);
-                }
-                const currentWorkingMinutes = mapWorkingTimeByAssignee.get(author) || 0;
-                mapWorkingTimeByAssignee.set(author, currentWorkingMinutes + workingMinutes);
-            }
-            return mapWorkingTimeByAssignee;
         };
     }
 }

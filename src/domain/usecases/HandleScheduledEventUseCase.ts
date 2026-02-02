@@ -67,6 +67,7 @@ export class HandleScheduledEventUseCase {
     };
     urlOfStoryView: string;
     disabledStatus: string;
+    defaultStatus?: string;
   }): Promise<{
     project: Project;
     issues: Issue[];
