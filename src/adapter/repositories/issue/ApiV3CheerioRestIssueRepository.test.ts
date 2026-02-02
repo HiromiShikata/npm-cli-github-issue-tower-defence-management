@@ -1,23 +1,20 @@
 import { mock } from 'jest-mock-extended';
 import { ApiV3CheerioRestIssueRepository } from './ApiV3CheerioRestIssueRepository';
 import { ApiV3IssueRepository } from './ApiV3IssueRepository';
-import { CheerioIssueRepository } from './CheerioIssueRepository';
 import { RestIssueRepository } from './RestIssueRepository';
 import { GraphqlProjectItemRepository } from './GraphqlProjectItemRepository';
 import { LocalStorageCacheRepository } from '../LocalStorageCacheRepository';
 import { LocalStorageRepository } from '../LocalStorageRepository';
 
 describe('ApiV3CheerioRestIssueRepository', () => {
-  describe('convertProjectItemAndCheerioIssueToIssue', () => {
+  describe('convertProjectItemToIssue', () => {
     const testCases: {
       name: string;
       params: Parameters<
-        ApiV3CheerioRestIssueRepository['convertProjectItemAndCheerioIssueToIssue']
+        ApiV3CheerioRestIssueRepository['convertProjectItemToIssue']
       >;
       expected: Awaited<
-        ReturnType<
-          ApiV3CheerioRestIssueRepository['convertProjectItemAndCheerioIssueToIssue']
-        >
+        ReturnType<ApiV3CheerioRestIssueRepository['convertProjectItemToIssue']>
       >;
     }[] = [
       {
@@ -38,16 +35,6 @@ describe('ApiV3CheerioRestIssueRepository', () => {
               { name: 'story', value: 'test-story' },
               { name: 'status', value: 'test-status' },
             ],
-          },
-          {
-            url: 'https://github.com/HiromiShikata/test-repository/issues/38',
-            title: 'test-title',
-            status: 'test-status',
-            assignees: [],
-            labels: [],
-            project: '',
-            statusTimeline: [],
-            createdAt: new Date('2024-01-01'),
           },
         ],
         expected: {
@@ -78,9 +65,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     ];
     test.each(testCases)('%s', async (arg) => {
       const { repository } = createApiV3CheerioRestIssueRepository();
-      const result = await repository.convertProjectItemAndCheerioIssueToIssue(
-        ...arg.params,
-      );
+      const result = await repository.convertProjectItemToIssue(...arg.params);
       expect(result).toEqual(arg.expected);
     });
   });
@@ -203,7 +188,6 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
   const createApiV3CheerioRestIssueRepository = () => {
     const apiV3IssueRepository = mock<ApiV3IssueRepository>();
-    const cheerioIssueRepository = mock<CheerioIssueRepository>();
     const restIssueRepository = mock<RestIssueRepository>();
     const graphqlProjectItemRepository = mock<GraphqlProjectItemRepository>();
     const localStorageCacheRepository = mock<LocalStorageCacheRepository>();
@@ -211,7 +195,6 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
     const repository = new ApiV3CheerioRestIssueRepository(
       apiV3IssueRepository,
-      cheerioIssueRepository,
       restIssueRepository,
       graphqlProjectItemRepository,
       localStorageCacheRepository,
@@ -229,7 +212,6 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     return {
       repository,
       apiV3IssueRepository,
-      cheerioIssueRepository,
       restIssueRepository,
       graphqlProjectItemRepository,
       localStorageCacheRepository,

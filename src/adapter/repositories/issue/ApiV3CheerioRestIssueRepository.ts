@@ -2,10 +2,6 @@ import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/Iss
 import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
 import { ApiV3IssueRepository } from './ApiV3IssueRepository';
-import {
-  CheerioIssueRepository,
-  Issue as CheerioIssue,
-} from './CheerioIssueRepository';
 import { RestIssueRepository } from './RestIssueRepository';
 import {
   GraphqlProjectItemRepository,
@@ -24,10 +20,6 @@ export class ApiV3CheerioRestIssueRepository
 {
   constructor(
     readonly apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>,
-    readonly cheerioIssueRepository: Pick<
-      CheerioIssueRepository,
-      'getIssue' | 'refreshCookie'
-    >,
     readonly restIssueRepository: Pick<
       RestIssueRepository,
       | 'createNewIssue'
@@ -81,10 +73,7 @@ export class ApiV3CheerioRestIssueRepository
     );
   };
 
-  convertProjectItemAndCheerioIssueToIssue = async (
-    item: ProjectItem,
-    cheerioIssue: CheerioIssue,
-  ): Promise<Issue> => {
+  convertProjectItemToIssue = async (item: ProjectItem): Promise<Issue> => {
     const nextActionDate = item.customFields.find(
       (field) => normalizeFieldName(field.name) === 'nextactiondate',
     )?.value;
@@ -118,8 +107,8 @@ export class ApiV3CheerioRestIssueRepository
       title: item.title,
       number: item.number,
       state: item.state,
-      labels: cheerioIssue.labels,
-      assignees: cheerioIssue.assignees,
+      labels: restIssueData.labels,
+      assignees: restIssueData.assignees,
       nextActionDate: nextActionDate ? new Date(nextActionDate) : null,
       nextActionHour: nextActionHour ? parseInt(nextActionHour) : null,
       estimationMinutes: estimationMinutes ? parseInt(estimationMinutes) : null,
@@ -134,9 +123,7 @@ export class ApiV3CheerioRestIssueRepository
       body: item.body,
       itemId: item.id,
       isPr: item.url.includes('/pull/'),
-      isInProgress: normalizeFieldName(cheerioIssue.status).includes(
-        'progress',
-      ),
+      isInProgress: normalizeFieldName(status || '').includes('progress'),
       isClosed: item.state !== 'OPEN',
       createdAt: new Date(restIssueData.created_at || '2000-01-01'),
     };
@@ -222,19 +209,12 @@ export class ApiV3CheerioRestIssueRepository
       batchSize: number,
     ): Promise<Issue[]> => {
       let result: Issue[] = [];
-      await this.cheerioIssueRepository.refreshCookie();
 
       for (let i = 0; i < items.length; i += batchSize) {
         const batch = items.slice(i, i + batchSize);
         const issues = await Promise.all(
           batch.map(async (item): Promise<Issue> => {
-            const cheerioIssue = await this.cheerioIssueRepository.getIssue(
-              item.url,
-            );
-            return this.convertProjectItemAndCheerioIssueToIssue(
-              item,
-              cheerioIssue,
-            );
+            return this.convertProjectItemToIssue(item);
           }),
         );
         result = result.concat(issues);
@@ -243,25 +223,6 @@ export class ApiV3CheerioRestIssueRepository
       return result;
     };
     const issues = await processItemsInBatches(items, 5);
-
-    // const issues = await Promise.all(
-    //   items.map(async (item): Promise<Issue> => {
-    //     const cheerioIssue = await this.cheerioIssueRepository.getIssue(
-    //       item.url,
-    //     );
-    //     return this.convertProjectItemAndCheerioIssueToIssue(
-    //       item,
-    //       cheerioIssue,
-    //     );
-    //   }),
-    // );
-    // const issues: Issue[] = [];
-    // for (const item of items) {
-    //   const cheerioIssue = await this.cheerioIssueRepository.getIssue(item.url);
-    //   issues.push(
-    //     await this.convertProjectItemAndCheerioIssueToIssue(item, cheerioIssue),
-    //   );
-    // }
     return issues;
   };
   createNewIssue = async (
@@ -290,11 +251,7 @@ export class ApiV3CheerioRestIssueRepository
     if (!projectItem) {
       return null;
     }
-    const cheerioIssue = await this.cheerioIssueRepository.getIssue(url);
-    return this.convertProjectItemAndCheerioIssueToIssue(
-      projectItem,
-      cheerioIssue,
-    );
+    return this.convertProjectItemToIssue(projectItem);
   };
   updateNextActionDate = async (
     project: Project & { nextActionDate: Required<Project['nextActionDate']> },

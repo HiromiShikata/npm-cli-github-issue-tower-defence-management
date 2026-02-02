@@ -112,7 +112,7 @@ type IssueData = {
     viewerCanAssign: boolean;
     viewerCanLabel: boolean;
     __isIssueOrPullRequest: string;
-    projectItemsNext: {
+    projectItemsNext?: {
         edges: Array<{
             node: {
                 id: string;

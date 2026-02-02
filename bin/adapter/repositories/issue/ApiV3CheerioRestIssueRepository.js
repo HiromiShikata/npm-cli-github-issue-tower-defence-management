@@ -8,11 +8,10 @@ const typia_1 = __importDefault(require("typia"));
 const BaseGitHubRepository_1 = require("../BaseGitHubRepository");
 const utils_1 = require("../utils");
 class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
-    constructor(apiV3IssueRepository, cheerioIssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, localStorageRepository, jsonFilePath = './tmp/github.com.cookies.json', ghToken = process.env.GH_TOKEN || 'dummy', ghUserName = process.env.GH_USER_NAME, ghUserPassword = process.env.GH_USER_PASSWORD, ghAuthenticatorKey = process.env
+    constructor(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, localStorageRepository, jsonFilePath = './tmp/github.com.cookies.json', ghToken = process.env.GH_TOKEN || 'dummy', ghUserName = process.env.GH_USER_NAME, ghUserPassword = process.env.GH_USER_PASSWORD, ghAuthenticatorKey = process.env
         .GH_AUTHENTICATOR_KEY) {
         super(localStorageRepository, jsonFilePath, ghToken, ghUserName, ghUserPassword, ghAuthenticatorKey);
         this.apiV3IssueRepository = apiV3IssueRepository;
-        this.cheerioIssueRepository = cheerioIssueRepository;
         this.restIssueRepository = restIssueRepository;
         this.graphqlProjectItemRepository = graphqlProjectItemRepository;
         this.localStorageCacheRepository = localStorageCacheRepository;
@@ -25,8 +24,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         this.updateStatus = async (project, issue, statusId) => {
             await this.graphqlProjectItemRepository.updateProjectField(project.id, project.status.fieldId, issue.itemId, { singleSelectOptionId: statusId });
         };
-        this.convertProjectItemAndCheerioIssueToIssue = async (item, cheerioIssue) => {
-            const timeline = cheerioIssue.inProgressTimeline;
+        this.convertProjectItemToIssue = async (item) => {
             const nextActionDate = item.customFields.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'nextactiondate')?.value;
             const nextActionHour = item.customFields.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'nextactionhour')?.value;
             const estimationMinutes = item.customFields.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'estimationminutes')?.value;
@@ -44,9 +42,8 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 title: item.title,
                 number: item.number,
                 state: item.state,
-                labels: cheerioIssue.labels,
-                assignees: cheerioIssue.assignees,
-                workingTimeline: timeline,
+                labels: restIssueData.labels,
+                assignees: restIssueData.assignees,
                 nextActionDate: nextActionDate ? new Date(nextActionDate) : null,
                 nextActionHour: nextActionHour ? parseInt(nextActionHour) : null,
                 estimationMinutes: estimationMinutes ? parseInt(estimationMinutes) : null,
@@ -61,7 +58,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 body: item.body,
                 itemId: item.id,
                 isPr: item.url.includes('/pull/'),
-                isInProgress: (0, utils_1.normalizeFieldName)(cheerioIssue.status).includes('progress'),
+                isInProgress: (0, utils_1.normalizeFieldName)(status || '').includes('progress'),
                 isClosed: item.state !== 'OPEN',
                 createdAt: new Date(restIssueData.created_at || '2000-01-01'),
             };
@@ -84,42 +81,21 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                             issue.nextActionDate === null
                             ? null
                             : new Date(issue.nextActionDate);
-                        const workingTimeline = !('workingTimeline' in issue) ||
-                            !Array.isArray(issue.workingTimeline)
-                            ? []
-                            : issue.workingTimeline.map((event) => {
-                                const startedAt = !('startedAt' in event) ||
-                                    typeof event.startedAt !== 'string' ||
-                                    event.startedAt === null
-                                    ? null
-                                    : new Date(event.startedAt);
-                                const endedAt = !('endedAt' in event) ||
-                                    typeof event.endedAt !== 'string' ||
-                                    event.endedAt === null
-                                    ? null
-                                    : new Date(event.endedAt);
-                                return {
-                                    ...event,
-                                    startedAt,
-                                    endedAt,
-                                };
-                            });
                         const completionDate50PercentConfidence = !('completionDate50PercentConfidence' in issue) ||
                             typeof issue.completionDate50PercentConfidence !== 'string'
                             ? null
                             : new Date(issue.completionDate50PercentConfidence);
                         const createdAt = !('createdAt' in issue) || typeof issue.createdAt !== 'string'
-                            ? new Date() // Fallback to current date if missing
+                            ? new Date()
                             : new Date(issue.createdAt);
                         return {
                             ...issue,
                             nextActionDate: nextActionDate,
-                            workingTimeline: workingTimeline,
                             completionDate50PercentConfidence: completionDate50PercentConfidence,
                             createdAt: createdAt,
                         };
                     });
-                    if ((() => { const _io0 = input => "string" === typeof input.nameWithOwner && "number" === typeof input.number && "string" === typeof input.title && ("OPEN" === input.state || "CLOSED" === input.state || "MERGED" === input.state) && (null === input.status || "string" === typeof input.status) && (null === input.story || "string" === typeof input.story) && (null === input.nextActionDate || input.nextActionDate instanceof Date) && (null === input.nextActionHour || "number" === typeof input.nextActionHour) && (null === input.estimationMinutes || "number" === typeof input.estimationMinutes) && (Array.isArray(input.dependedIssueUrls) && input.dependedIssueUrls.every(elem => "string" === typeof elem)) && (null === input.completionDate50PercentConfidence || input.completionDate50PercentConfidence instanceof Date) && "string" === typeof input.url && (Array.isArray(input.assignees) && input.assignees.every(elem => "string" === typeof elem)) && (Array.isArray(input.workingTimeline) && input.workingTimeline.every(elem => "object" === typeof elem && null !== elem && _io1(elem))) && (Array.isArray(input.labels) && input.labels.every(elem => "string" === typeof elem)) && "string" === typeof input.org && "string" === typeof input.repo && "string" === typeof input.body && "string" === typeof input.itemId && "boolean" === typeof input.isPr && "boolean" === typeof input.isInProgress && "boolean" === typeof input.isClosed && input.createdAt instanceof Date; const _io1 = input => "string" === typeof input.author && input.startedAt instanceof Date && input.endedAt instanceof Date && "number" === typeof input.durationMinutes; return input => Array.isArray(input) && input.every(elem => "object" === typeof elem && null !== elem && _io0(elem)); })()(issues)) {
+                    if ((() => { const _io0 = input => "string" === typeof input.nameWithOwner && "number" === typeof input.number && "string" === typeof input.title && ("OPEN" === input.state || "CLOSED" === input.state || "MERGED" === input.state) && (null === input.status || "string" === typeof input.status) && (null === input.story || "string" === typeof input.story) && (null === input.nextActionDate || input.nextActionDate instanceof Date) && (null === input.nextActionHour || "number" === typeof input.nextActionHour) && (null === input.estimationMinutes || "number" === typeof input.estimationMinutes) && (Array.isArray(input.dependedIssueUrls) && input.dependedIssueUrls.every(elem => "string" === typeof elem)) && (null === input.completionDate50PercentConfidence || input.completionDate50PercentConfidence instanceof Date) && "string" === typeof input.url && (Array.isArray(input.assignees) && input.assignees.every(elem => "string" === typeof elem)) && (Array.isArray(input.labels) && input.labels.every(elem => "string" === typeof elem)) && "string" === typeof input.org && "string" === typeof input.repo && "string" === typeof input.body && "string" === typeof input.itemId && "boolean" === typeof input.isPr && "boolean" === typeof input.isInProgress && "boolean" === typeof input.isClosed && input.createdAt instanceof Date; return input => Array.isArray(input) && input.every(elem => "object" === typeof elem && null !== elem && _io0(elem)); })()(issues)) {
                         return issues;
                     }
                 }
@@ -140,36 +116,16 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             const items = await this.graphqlProjectItemRepository.fetchProjectItems(projectId);
             const processItemsInBatches = async (items, batchSize) => {
                 let result = [];
-                await this.cheerioIssueRepository.refreshCookie();
                 for (let i = 0; i < items.length; i += batchSize) {
                     const batch = items.slice(i, i + batchSize);
                     const issues = await Promise.all(batch.map(async (item) => {
-                        const cheerioIssue = await this.cheerioIssueRepository.getIssue(item.url);
-                        return this.convertProjectItemAndCheerioIssueToIssue(item, cheerioIssue);
+                        return this.convertProjectItemToIssue(item);
                     }));
                     result = result.concat(issues);
                 }
                 return result;
             };
             const issues = await processItemsInBatches(items, 5);
-            // const issues = await Promise.all(
-            //   items.map(async (item): Promise<Issue> => {
-            //     const cheerioIssue = await this.cheerioIssueRepository.getIssue(
-            //       item.url,
-            //     );
-            //     return this.convertProjectItemAndCheerioIssueToIssue(
-            //       item,
-            //       cheerioIssue,
-            //     );
-            //   }),
-            // );
-            // const issues: Issue[] = [];
-            // for (const item of items) {
-            //   const cheerioIssue = await this.cheerioIssueRepository.getIssue(item.url);
-            //   issues.push(
-            //     await this.convertProjectItemAndCheerioIssueToIssue(item, cheerioIssue),
-            //   );
-            // }
             return issues;
         };
         this.createNewIssue = async (org, repo, title, body, assignees, labels) => {
@@ -183,8 +139,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             if (!projectItem) {
                 return null;
             }
-            const cheerioIssue = await this.cheerioIssueRepository.getIssue(url);
-            return this.convertProjectItemAndCheerioIssueToIssue(projectItem, cheerioIssue);
+            return this.convertProjectItemToIssue(projectItem);
         };
         this.updateNextActionDate = async (project, issue, date) => {
             if (project.nextActionDate === null) {

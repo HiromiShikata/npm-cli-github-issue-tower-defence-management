@@ -1,9 +1,13 @@
 import * as cheerio from 'cheerio';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
-import { WorkingTime } from '../../../domain/entities/WorkingTime';
-import { IssueStatusTimeline } from './issueTimelineUtils';
 import { InternalGraphqlIssueRepository } from './InternalGraphqlIssueRepository';
 import { LocalStorageRepository } from '../LocalStorageRepository';
+export type IssueStatusTimeline = {
+    time: string;
+    author: string;
+    from: string;
+    to: string;
+};
 export type Issue = {
     url: string;
     title: string;
@@ -12,9 +16,7 @@ export type Issue = {
     labels: string[];
     project: string;
     statusTimeline: IssueStatusTimeline[];
-    inProgressTimeline: WorkingTime[];
     createdAt: Date;
-    workingTimeline: WorkingTime[];
 };
 export declare class CheerioIssueRepository extends BaseGitHubRepository {
     readonly internalGraphqlIssueRepository: InternalGraphqlIssueRepository;

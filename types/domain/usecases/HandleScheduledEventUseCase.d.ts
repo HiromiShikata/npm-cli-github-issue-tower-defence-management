@@ -1,8 +1,7 @@
-import { Issue, Label } from '../entities/Issue';
+import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project, StoryOption } from '../entities/Project';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
-import { GenerateWorkingTimeReportUseCase } from './GenerateWorkingTimeReportUseCase';
 import { Member } from '../entities/Member';
 import { DateRepository } from './adapter-interfaces/DateRepository';
 import { SpreadsheetRepository } from './adapter-interfaces/SpreadsheetRepository';
@@ -14,7 +13,6 @@ import { AnalyzeStoriesUseCase } from './AnalyzeStoriesUseCase';
 import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
 import { CreateEstimationIssueUseCase } from './CreateEstimationIssueUseCase';
 import { ConvertCheckboxToIssueInStoryIssueUseCase } from './ConvertCheckboxToIssueInStoryIssueUseCase';
-import { ChangeStatusLongInReviewIssueUseCase } from './ChangeStatusLongInReviewIssueUseCase';
 import { ChangeStatusByStoryColorUseCase } from './ChangeStatusByStoryColorUseCase';
 import { SetNoStoryIssueToStoryUseCase } from './SetNoStoryIssueToStoryUseCase';
 import { CreateNewStoryByLabelUseCase } from './CreateNewStoryByLabelUseCase';
@@ -25,14 +23,10 @@ export declare class ProjectNotFoundError extends Error {
 export type StoryObject = {
     story: StoryOption;
     storyIssue: Issue | null;
-    issues: (Issue & {
-        totalWorkingTime: number;
-        totalWorkingTimeByAssignee: Map<string, number>;
-    })[];
+    issues: Issue[];
 };
 export type StoryObjectMap = Map<NonNullable<Project['story']>['stories'][0]['name'], StoryObject>;
 export declare class HandleScheduledEventUseCase {
-    readonly generateWorkingTimeReportUseCase: GenerateWorkingTimeReportUseCase;
     readonly actionAnnouncementUseCase: ActionAnnouncementUseCase;
     readonly setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase;
     readonly clearNextActionHourUseCase: ClearNextActionHourUseCase;
@@ -41,7 +35,6 @@ export declare class HandleScheduledEventUseCase {
     readonly clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase;
     readonly createEstimationIssueUseCase: CreateEstimationIssueUseCase;
     readonly convertCheckboxToIssueInStoryIssueUseCase: ConvertCheckboxToIssueInStoryIssueUseCase;
-    readonly changeStatusLongInReviewIssueUseCase: ChangeStatusLongInReviewIssueUseCase;
     readonly changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase;
     readonly setNoStoryIssueToStoryUseCase: SetNoStoryIssueToStoryUseCase;
     readonly createNewStoryByLabelUseCase: CreateNewStoryByLabelUseCase;
@@ -50,7 +43,7 @@ export declare class HandleScheduledEventUseCase {
     readonly spreadsheetRepository: SpreadsheetRepository;
     readonly projectRepository: ProjectRepository;
     readonly issueRepository: IssueRepository;
-    constructor(generateWorkingTimeReportUseCase: GenerateWorkingTimeReportUseCase, actionAnnouncementUseCase: ActionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase: ClearNextActionHourUseCase, analyzeProblemByIssueUseCase: AnalyzeProblemByIssueUseCase, analyzeStoriesUseCase: AnalyzeStoriesUseCase, clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase, createEstimationIssueUseCase: CreateEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase: ConvertCheckboxToIssueInStoryIssueUseCase, changeStatusLongInReviewIssueUseCase: ChangeStatusLongInReviewIssueUseCase, changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase: SetNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase: CreateNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase: AssignNoAssigneeIssueToManagerUseCase, dateRepository: DateRepository, spreadsheetRepository: SpreadsheetRepository, projectRepository: ProjectRepository, issueRepository: IssueRepository);
+    constructor(actionAnnouncementUseCase: ActionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase: ClearNextActionHourUseCase, analyzeProblemByIssueUseCase: AnalyzeProblemByIssueUseCase, analyzeStoriesUseCase: AnalyzeStoriesUseCase, clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase, createEstimationIssueUseCase: CreateEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase: ConvertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase: SetNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase: CreateNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase: AssignNoAssigneeIssueToManagerUseCase, dateRepository: DateRepository, spreadsheetRepository: SpreadsheetRepository, projectRepository: ProjectRepository, issueRepository: IssueRepository);
     run: (input: {
         projectName: string;
         org: string;
@@ -59,10 +52,7 @@ export declare class HandleScheduledEventUseCase {
         workingReport: {
             repo: string;
             members: Member["name"][];
-            warningThresholdHour?: number;
             spreadsheetUrl: string;
-            reportIssueTemplate?: string;
-            reportIssueLabels: Label[];
         };
         urlOfStoryView: string;
         disabledStatus: string;
@@ -74,27 +64,11 @@ export declare class HandleScheduledEventUseCase {
         storyIssues: StoryObjectMap;
     }>;
     runEachUseCases: (input: Parameters<HandleScheduledEventUseCase["run"]>[0], project: Project, issues: Issue[], cacheUsed: boolean, targetDateTimes: Date[], storyObjectMap: StoryObjectMap) => Promise<void>;
-    runForGenerateWorkingTimeReportUseCase: (input: {
-        org: string;
-        manager: Member["name"];
-        workingReport: {
-            repo: string;
-            members: Member["name"][];
-            warningThresholdHour?: number;
-            spreadsheetUrl: string;
-            reportIssueTemplate?: string;
-            reportIssueLabels: Label[];
-        };
-        projectId: Project["id"];
-        issues: Issue[];
-        targetDateTime: Date;
-    }) => Promise<void>;
     static createTargetDateTimes: (from: Date, to: Date) => Date[];
     findTargetDateAndUpdateLastExecutionDateTime: (spreadsheetUrl: string, now: Date) => Promise<Date[]>;
     storyIssues: (input: {
         project: Project;
         issues: Issue[];
     }) => Promise<StoryObjectMap>;
-    calculateTotalWorkingMinutesByAssignee: (issue: Issue) => Map<string, number>;
 }
 //# sourceMappingURL=HandleScheduledEventUseCase.d.ts.map

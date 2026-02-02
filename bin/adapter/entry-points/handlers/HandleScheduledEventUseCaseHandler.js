@@ -36,16 +36,13 @@ const LocalStorageRepository_1 = require("../../repositories/LocalStorageReposit
 const GoogleSpreadsheetRepository_1 = require("../../repositories/GoogleSpreadsheetRepository");
 const GraphqlProjectRepository_1 = require("../../repositories/GraphqlProjectRepository");
 const ApiV3IssueRepository_1 = require("../../repositories/issue/ApiV3IssueRepository");
-const CheerioIssueRepository_1 = require("../../repositories/issue/CheerioIssueRepository");
 const RestIssueRepository_1 = require("../../repositories/issue/RestIssueRepository");
 const GraphqlProjectItemRepository_1 = require("../../repositories/issue/GraphqlProjectItemRepository");
 const ApiV3CheerioRestIssueRepository_1 = require("../../repositories/issue/ApiV3CheerioRestIssueRepository");
-const GenerateWorkingTimeReportUseCase_1 = require("../../../domain/usecases/GenerateWorkingTimeReportUseCase");
 const HandleScheduledEventUseCase_1 = require("../../../domain/usecases/HandleScheduledEventUseCase");
 const LocalStorageCacheRepository_1 = require("../../repositories/LocalStorageCacheRepository");
 const ActionAnnouncementUseCase_1 = require("../../../domain/usecases/ActionAnnouncementUseCase");
 const SetWorkflowManagementIssueToStoryUseCase_1 = require("../../../domain/usecases/SetWorkflowManagementIssueToStoryUseCase");
-const InternalGraphqlIssueRepository_1 = require("../../repositories/issue/InternalGraphqlIssueRepository");
 const ClearNextActionHourUseCase_1 = require("../../../domain/usecases/ClearNextActionHourUseCase");
 const AnalyzeProblemByIssueUseCase_1 = require("../../../domain/usecases/AnalyzeProblemByIssueUseCase");
 const AnalyzeStoriesUseCase_1 = require("../../../domain/usecases/AnalyzeStoriesUseCase");
@@ -53,7 +50,6 @@ const ClearDependedIssueURLUseCase_1 = require("../../../domain/usecases/ClearDe
 const CreateEstimationIssueUseCase_1 = require("../../../domain/usecases/CreateEstimationIssueUseCase");
 const axios_1 = __importDefault(require("axios"));
 const ConvertCheckboxToIssueInStoryIssueUseCase_1 = require("../../../domain/usecases/ConvertCheckboxToIssueInStoryIssueUseCase");
-const ChangeStatusLongInReviewIssueUseCase_1 = require("../../../domain/usecases/ChangeStatusLongInReviewIssueUseCase");
 const ChangeStatusByStoryColorUseCase_1 = require("../../../domain/usecases/ChangeStatusByStoryColorUseCase");
 const SetNoStoryIssueToStoryUseCase_1 = require("../../../domain/usecases/SetNoStoryIssueToStoryUseCase");
 const CreateNewStoryByLabelUseCase_1 = require("../../../domain/usecases/CreateNewStoryByLabelUseCase");
@@ -73,8 +69,8 @@ class HandleScheduledEventUseCaseHandler {
             });
             const configFileContent = fs_1.default.readFileSync(configFilePath, 'utf8');
             const input = yaml_1.default.parse(configFileContent);
-            if (!(() => { const _io0 = input => "string" === typeof input.projectName && "string" === typeof input.org && "string" === typeof input.projectUrl && "string" === typeof input.manager && ("object" === typeof input.workingReport && null !== input.workingReport && _io1(input.workingReport)) && "string" === typeof input.urlOfStoryView && "string" === typeof input.disabledStatus && ("object" === typeof input.credentials && null !== input.credentials && _io2(input.credentials)); const _io1 = input => "string" === typeof input.repo && (Array.isArray(input.members) && input.members.every(elem => "string" === typeof elem)) && (undefined === input.warningThresholdHour || "number" === typeof input.warningThresholdHour) && "string" === typeof input.spreadsheetUrl && (undefined === input.reportIssueTemplate || "string" === typeof input.reportIssueTemplate) && (Array.isArray(input.reportIssueLabels) && input.reportIssueLabels.every(elem => "string" === typeof elem)); const _io2 = input => "object" === typeof input.manager && null !== input.manager && _io3(input.manager) && ("object" === typeof input.bot && null !== input.bot && _io7(input.bot)); const _io3 = input => "object" === typeof input.github && null !== input.github && _io4(input.github) && ("object" === typeof input.slack && null !== input.slack && _io5(input.slack)) && ("object" === typeof input.googleServiceAccount && null !== input.googleServiceAccount && _io6(input.googleServiceAccount)); const _io4 = input => "string" === typeof input.token; const _io5 = input => "string" === typeof input.userToken; const _io6 = input => "string" === typeof input.serviceAccountKey; const _io7 = input => "object" === typeof input.github && null !== input.github && _io8(input.github); const _io8 = input => "string" === typeof input.token && "string" === typeof input.name && "string" === typeof input.password && "string" === typeof input.authenticatorKey; return input => "object" === typeof input && null !== input && _io0(input); })()(input)) {
-                throw new Error(`Invalid input: ${JSON.stringify(input)}\n\n${JSON.stringify((() => { const _io0 = input => "string" === typeof input.projectName && "string" === typeof input.org && "string" === typeof input.projectUrl && "string" === typeof input.manager && ("object" === typeof input.workingReport && null !== input.workingReport && _io1(input.workingReport)) && "string" === typeof input.urlOfStoryView && "string" === typeof input.disabledStatus && ("object" === typeof input.credentials && null !== input.credentials && _io2(input.credentials)); const _io1 = input => "string" === typeof input.repo && (Array.isArray(input.members) && input.members.every(elem => "string" === typeof elem)) && (undefined === input.warningThresholdHour || "number" === typeof input.warningThresholdHour) && "string" === typeof input.spreadsheetUrl && (undefined === input.reportIssueTemplate || "string" === typeof input.reportIssueTemplate) && (Array.isArray(input.reportIssueLabels) && input.reportIssueLabels.every(elem => "string" === typeof elem)); const _io2 = input => "object" === typeof input.manager && null !== input.manager && _io3(input.manager) && ("object" === typeof input.bot && null !== input.bot && _io7(input.bot)); const _io3 = input => "object" === typeof input.github && null !== input.github && _io4(input.github) && ("object" === typeof input.slack && null !== input.slack && _io5(input.slack)) && ("object" === typeof input.googleServiceAccount && null !== input.googleServiceAccount && _io6(input.googleServiceAccount)); const _io4 = input => "string" === typeof input.token; const _io5 = input => "string" === typeof input.userToken; const _io6 = input => "string" === typeof input.serviceAccountKey; const _io7 = input => "object" === typeof input.github && null !== input.github && _io8(input.github); const _io8 = input => "string" === typeof input.token && "string" === typeof input.name && "string" === typeof input.password && "string" === typeof input.authenticatorKey; const _vo0 = (input, _path, _exceptionable = true) => ["string" === typeof input.projectName || _report(_exceptionable, {
+            if (!(() => { const _io0 = input => "string" === typeof input.projectName && "string" === typeof input.org && "string" === typeof input.projectUrl && "string" === typeof input.manager && ("object" === typeof input.workingReport && null !== input.workingReport && _io1(input.workingReport)) && "string" === typeof input.urlOfStoryView && "string" === typeof input.disabledStatus && ("object" === typeof input.credentials && null !== input.credentials && _io2(input.credentials)); const _io1 = input => "string" === typeof input.repo && (Array.isArray(input.members) && input.members.every(elem => "string" === typeof elem)) && "string" === typeof input.spreadsheetUrl; const _io2 = input => "object" === typeof input.manager && null !== input.manager && _io3(input.manager) && ("object" === typeof input.bot && null !== input.bot && _io7(input.bot)); const _io3 = input => "object" === typeof input.github && null !== input.github && _io4(input.github) && ("object" === typeof input.slack && null !== input.slack && _io5(input.slack)) && ("object" === typeof input.googleServiceAccount && null !== input.googleServiceAccount && _io6(input.googleServiceAccount)); const _io4 = input => "string" === typeof input.token; const _io5 = input => "string" === typeof input.userToken; const _io6 = input => "string" === typeof input.serviceAccountKey; const _io7 = input => "object" === typeof input.github && null !== input.github && _io8(input.github); const _io8 = input => "string" === typeof input.token && "string" === typeof input.name && "string" === typeof input.password && "string" === typeof input.authenticatorKey; return input => "object" === typeof input && null !== input && _io0(input); })()(input)) {
+                throw new Error(`Invalid input: ${JSON.stringify(input)}\n\n${JSON.stringify((() => { const _io0 = input => "string" === typeof input.projectName && "string" === typeof input.org && "string" === typeof input.projectUrl && "string" === typeof input.manager && ("object" === typeof input.workingReport && null !== input.workingReport && _io1(input.workingReport)) && "string" === typeof input.urlOfStoryView && "string" === typeof input.disabledStatus && ("object" === typeof input.credentials && null !== input.credentials && _io2(input.credentials)); const _io1 = input => "string" === typeof input.repo && (Array.isArray(input.members) && input.members.every(elem => "string" === typeof elem)) && "string" === typeof input.spreadsheetUrl; const _io2 = input => "object" === typeof input.manager && null !== input.manager && _io3(input.manager) && ("object" === typeof input.bot && null !== input.bot && _io7(input.bot)); const _io3 = input => "object" === typeof input.github && null !== input.github && _io4(input.github) && ("object" === typeof input.slack && null !== input.slack && _io5(input.slack)) && ("object" === typeof input.googleServiceAccount && null !== input.googleServiceAccount && _io6(input.googleServiceAccount)); const _io4 = input => "string" === typeof input.token; const _io5 = input => "string" === typeof input.userToken; const _io6 = input => "string" === typeof input.serviceAccountKey; const _io7 = input => "object" === typeof input.github && null !== input.github && _io8(input.github); const _io8 = input => "string" === typeof input.token && "string" === typeof input.name && "string" === typeof input.password && "string" === typeof input.authenticatorKey; const _vo0 = (input, _path, _exceptionable = true) => ["string" === typeof input.projectName || _report(_exceptionable, {
                         path: _path + ".projectName",
                         expected: "string",
                         value: input.projectName
@@ -122,38 +118,18 @@ class HandleScheduledEventUseCaseHandler {
                         path: _path + ".members",
                         expected: "Array<string>",
                         value: input.members
-                    })) && input.members.map((elem, _index3) => "string" === typeof elem || _report(_exceptionable, {
-                        path: _path + ".members[" + _index3 + "]",
+                    })) && input.members.map((elem, _index2) => "string" === typeof elem || _report(_exceptionable, {
+                        path: _path + ".members[" + _index2 + "]",
                         expected: "string",
                         value: elem
                     })).every(flag => flag) || _report(_exceptionable, {
                         path: _path + ".members",
                         expected: "Array<string>",
                         value: input.members
-                    }), undefined === input.warningThresholdHour || "number" === typeof input.warningThresholdHour || _report(_exceptionable, {
-                        path: _path + ".warningThresholdHour",
-                        expected: "(number | undefined)",
-                        value: input.warningThresholdHour
                     }), "string" === typeof input.spreadsheetUrl || _report(_exceptionable, {
                         path: _path + ".spreadsheetUrl",
                         expected: "string",
                         value: input.spreadsheetUrl
-                    }), undefined === input.reportIssueTemplate || "string" === typeof input.reportIssueTemplate || _report(_exceptionable, {
-                        path: _path + ".reportIssueTemplate",
-                        expected: "(string | undefined)",
-                        value: input.reportIssueTemplate
-                    }), (Array.isArray(input.reportIssueLabels) || _report(_exceptionable, {
-                        path: _path + ".reportIssueLabels",
-                        expected: "Array<string>",
-                        value: input.reportIssueLabels
-                    })) && input.reportIssueLabels.map((elem, _index4) => "string" === typeof elem || _report(_exceptionable, {
-                        path: _path + ".reportIssueLabels[" + _index4 + "]",
-                        expected: "string",
-                        value: elem
-                    })).every(flag => flag) || _report(_exceptionable, {
-                        path: _path + ".reportIssueLabels",
-                        expected: "Array<string>",
-                        value: input.reportIssueLabels
                     })].every(flag => flag); const _vo2 = (input, _path, _exceptionable = true) => [("object" === typeof input.manager && null !== input.manager || _report(_exceptionable, {
                         path: _path + ".manager",
                         expected: "__type.o2",
@@ -277,12 +253,9 @@ class HandleScheduledEventUseCaseHandler {
                 ...new CheerioProjectRepository_1.CheerioProjectRepository(...githubRepositoryParams),
             };
             const apiV3IssueRepository = new ApiV3IssueRepository_1.ApiV3IssueRepository(...githubRepositoryParams);
-            const internalGraphqlIssueRepository = new InternalGraphqlIssueRepository_1.InternalGraphqlIssueRepository(...githubRepositoryParams);
-            const cheerioIssueRepository = new CheerioIssueRepository_1.CheerioIssueRepository(internalGraphqlIssueRepository, ...githubRepositoryParams);
             const restIssueRepository = new RestIssueRepository_1.RestIssueRepository(...githubRepositoryParams);
             const graphqlProjectItemRepository = new GraphqlProjectItemRepository_1.GraphqlProjectItemRepository(...githubRepositoryParams);
-            const issueRepository = new ApiV3CheerioRestIssueRepository_1.ApiV3CheerioRestIssueRepository(apiV3IssueRepository, cheerioIssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, ...githubRepositoryParams);
-            const generateWorkingTimeReportUseCase = new GenerateWorkingTimeReportUseCase_1.GenerateWorkingTimeReportUseCase(issueRepository, googleSpreadsheetRepository, systemDateRepository);
+            const issueRepository = new ApiV3CheerioRestIssueRepository_1.ApiV3CheerioRestIssueRepository(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, ...githubRepositoryParams);
             const actionAnnouncement = new ActionAnnouncementUseCase_1.ActionAnnouncementUseCase(issueRepository);
             const setWorkflowManagementIssueToStoryUseCase = new SetWorkflowManagementIssueToStoryUseCase_1.SetWorkflowManagementIssueToStoryUseCase(issueRepository);
             const clearNextActionHourUseCase = new ClearNextActionHourUseCase_1.ClearNextActionHourUseCase(issueRepository);
@@ -291,12 +264,11 @@ class HandleScheduledEventUseCaseHandler {
             const clearDependedIssueURLUseCase = new ClearDependedIssueURLUseCase_1.ClearDependedIssueURLUseCase(issueRepository);
             const createEstimationIssueUseCase = new CreateEstimationIssueUseCase_1.CreateEstimationIssueUseCase(issueRepository, systemDateRepository);
             const convertCheckboxToIssueInStoryIssueUseCase = new ConvertCheckboxToIssueInStoryIssueUseCase_1.ConvertCheckboxToIssueInStoryIssueUseCase(issueRepository);
-            const changeStatusLongInReviewIssueUseCase = new ChangeStatusLongInReviewIssueUseCase_1.ChangeStatusLongInReviewIssueUseCase(systemDateRepository, issueRepository);
             const changeStatusByStoryColorUseCase = new ChangeStatusByStoryColorUseCase_1.ChangeStatusByStoryColorUseCase(systemDateRepository, issueRepository);
             const setNoStoryIssueToStoryUseCase = new SetNoStoryIssueToStoryUseCase_1.SetNoStoryIssueToStoryUseCase(issueRepository);
             const createNewStoryByLabel = new CreateNewStoryByLabelUseCase_1.CreateNewStoryByLabelUseCase(projectRepository, issueRepository);
             const assignNoAssigneeIssueToManagerUseCase = new AssignNoAssigneeIssueToManagerUseCase_1.AssignNoAssigneeIssueToManagerUseCase(issueRepository);
-            const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(generateWorkingTimeReportUseCase, actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusLongInReviewIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabel, assignNoAssigneeIssueToManagerUseCase, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
+            const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabel, assignNoAssigneeIssueToManagerUseCase, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
             return await handleScheduledEventUseCase.run(input);
         };
     }

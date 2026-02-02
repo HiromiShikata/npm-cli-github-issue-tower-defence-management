@@ -6,7 +6,6 @@ import { LocalStorageRepository } from '../../repositories/LocalStorageRepositor
 import { GoogleSpreadsheetRepository } from '../../repositories/GoogleSpreadsheetRepository';
 import { GraphqlProjectRepository } from '../../repositories/GraphqlProjectRepository';
 import { ApiV3IssueRepository } from '../../repositories/issue/ApiV3IssueRepository';
-import { CheerioIssueRepository } from '../../repositories/issue/CheerioIssueRepository';
 import { RestIssueRepository } from '../../repositories/issue/RestIssueRepository';
 import { GraphqlProjectItemRepository } from '../../repositories/issue/GraphqlProjectItemRepository';
 import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3CheerioRestIssueRepository';
@@ -14,7 +13,6 @@ import { HandleScheduledEventUseCase } from '../../../domain/usecases/HandleSche
 import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
 import { ActionAnnouncementUseCase } from '../../../domain/usecases/ActionAnnouncementUseCase';
 import { SetWorkflowManagementIssueToStoryUseCase } from '../../../domain/usecases/SetWorkflowManagementIssueToStoryUseCase';
-import { InternalGraphqlIssueRepository } from '../../repositories/issue/InternalGraphqlIssueRepository';
 import { ClearNextActionHourUseCase } from '../../../domain/usecases/ClearNextActionHourUseCase';
 import { AnalyzeProblemByIssueUseCase } from '../../../domain/usecases/AnalyzeProblemByIssueUseCase';
 import { Issue } from '../../../domain/entities/Issue';
@@ -113,13 +111,6 @@ export class HandleScheduledEventUseCaseHandler {
     const apiV3IssueRepository = new ApiV3IssueRepository(
       ...githubRepositoryParams,
     );
-    const internalGraphqlIssueRepository = new InternalGraphqlIssueRepository(
-      ...githubRepositoryParams,
-    );
-    const cheerioIssueRepository = new CheerioIssueRepository(
-      internalGraphqlIssueRepository,
-      ...githubRepositoryParams,
-    );
     const restIssueRepository = new RestIssueRepository(
       ...githubRepositoryParams,
     );
@@ -128,7 +119,6 @@ export class HandleScheduledEventUseCaseHandler {
     );
     const issueRepository = new ApiV3CheerioRestIssueRepository(
       apiV3IssueRepository,
-      cheerioIssueRepository,
       restIssueRepository,
       graphqlProjectItemRepository,
       localStorageCacheRepository,
