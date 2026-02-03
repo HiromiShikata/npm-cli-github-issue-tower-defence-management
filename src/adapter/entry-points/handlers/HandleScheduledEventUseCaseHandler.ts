@@ -67,6 +67,11 @@ export class HandleScheduledEventUseCaseHandler {
             serviceAccountKey: string;
           };
         };
+        bot: {
+          github: {
+            token: string;
+          };
+        };
       };
     };
 
@@ -88,7 +93,11 @@ export class HandleScheduledEventUseCaseHandler {
     );
     const githubRepositoryParams: ConstructorParameters<
       typeof BaseGitHubRepository
-    > = [localStorageRepository, `${cachePath}/github.com.cookies.json`];
+    > = [
+      localStorageRepository,
+      `${cachePath}/github.com.cookies.json`,
+      input.credentials.bot.github.token,
+    ];
     const projectRepository = {
       ...new GraphqlProjectRepository(...githubRepositoryParams),
       ...new CheerioProjectRepository(...githubRepositoryParams),
