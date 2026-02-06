@@ -16,7 +16,7 @@
     "prepare": "ts-patch install && typia patch"
   },
   "bin": {
-    "github-issue-tower-defence-management": "./bin/adapter/entry-points/cli/index.js"
+    "github-issue-tower-defence-management": "bin/adapter/entry-points/cli/index.js"
   },
   "types": "types/index.d.ts",
   "repository": {
