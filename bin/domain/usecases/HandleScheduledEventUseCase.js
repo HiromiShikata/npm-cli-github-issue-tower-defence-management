@@ -9,7 +9,7 @@ class ProjectNotFoundError extends Error {
 }
 exports.ProjectNotFoundError = ProjectNotFoundError;
 class HandleScheduledEventUseCase {
-    constructor(actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
+    constructor(actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
         this.actionAnnouncementUseCase = actionAnnouncementUseCase;
         this.setWorkflowManagementIssueToStoryUseCase = setWorkflowManagementIssueToStoryUseCase;
         this.clearNextActionHourUseCase = clearNextActionHourUseCase;
@@ -22,6 +22,7 @@ class HandleScheduledEventUseCase {
         this.setNoStoryIssueToStoryUseCase = setNoStoryIssueToStoryUseCase;
         this.createNewStoryByLabelUseCase = createNewStoryByLabelUseCase;
         this.assignNoAssigneeIssueToManagerUseCase = assignNoAssigneeIssueToManagerUseCase;
+        this.updateIssueStatusByLabelUseCase = updateIssueStatusByLabelUseCase;
         this.dateRepository = dateRepository;
         this.spreadsheetRepository = spreadsheetRepository;
         this.projectRepository = projectRepository;
@@ -198,6 +199,11 @@ ${JSON.stringify(e)}
                 issues,
                 manager: input.manager,
                 cacheUsed,
+            });
+            await this.updateIssueStatusByLabelUseCase.run({
+                project,
+                issues,
+                defaultStatus: input.defaultStatus,
             });
         };
         this.findTargetDateAndUpdateLastExecutionDateTime = async (spreadsheetUrl, now) => {
