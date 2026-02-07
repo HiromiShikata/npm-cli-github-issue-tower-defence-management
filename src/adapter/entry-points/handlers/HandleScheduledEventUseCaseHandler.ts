@@ -28,6 +28,7 @@ import { SetNoStoryIssueToStoryUseCase } from '../../../domain/usecases/SetNoSto
 import { CreateNewStoryByLabelUseCase } from '../../../domain/usecases/CreateNewStoryByLabelUseCase';
 import { CheerioProjectRepository } from '../../repositories/CheerioProjectRepository';
 import { AssignNoAssigneeIssueToManagerUseCase } from '../../../domain/usecases/AssignNoAssigneeIssueToManagerUseCase';
+import { UpdateIssueStatusByLabelUseCase } from '../../../domain/usecases/UpdateIssueStatusByLabelUseCase';
 
 export class HandleScheduledEventUseCaseHandler {
   handle = async (
@@ -155,6 +156,9 @@ export class HandleScheduledEventUseCaseHandler {
     );
     const assignNoAssigneeIssueToManagerUseCase =
       new AssignNoAssigneeIssueToManagerUseCase(issueRepository);
+    const updateIssueStatusByLabelUseCase = new UpdateIssueStatusByLabelUseCase(
+      issueRepository,
+    );
 
     const handleScheduledEventUseCase = new HandleScheduledEventUseCase(
       actionAnnouncement,
@@ -169,6 +173,7 @@ export class HandleScheduledEventUseCaseHandler {
       setNoStoryIssueToStoryUseCase,
       createNewStoryByLabel,
       assignNoAssigneeIssueToManagerUseCase,
+      updateIssueStatusByLabelUseCase,
       systemDateRepository,
       googleSpreadsheetRepository,
       projectRepository,

@@ -17,6 +17,7 @@ import { ChangeStatusByStoryColorUseCase } from './ChangeStatusByStoryColorUseCa
 import { SetNoStoryIssueToStoryUseCase } from './SetNoStoryIssueToStoryUseCase';
 import { CreateNewStoryByLabelUseCase } from './CreateNewStoryByLabelUseCase';
 import { AssignNoAssigneeIssueToManagerUseCase } from './AssignNoAssigneeIssueToManagerUseCase';
+import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCase';
 
 export class ProjectNotFoundError extends Error {
   constructor(message: string) {
@@ -49,6 +50,7 @@ export class HandleScheduledEventUseCase {
     readonly setNoStoryIssueToStoryUseCase: SetNoStoryIssueToStoryUseCase,
     readonly createNewStoryByLabelUseCase: CreateNewStoryByLabelUseCase,
     readonly assignNoAssigneeIssueToManagerUseCase: AssignNoAssigneeIssueToManagerUseCase,
+    readonly updateIssueStatusByLabelUseCase: UpdateIssueStatusByLabelUseCase,
     readonly dateRepository: DateRepository,
     readonly spreadsheetRepository: SpreadsheetRepository,
     readonly projectRepository: ProjectRepository,
@@ -67,6 +69,7 @@ export class HandleScheduledEventUseCase {
     };
     urlOfStoryView: string;
     disabledStatus: string;
+    defaultStatus: string | null;
   }): Promise<{
     project: Project;
     issues: Issue[];
@@ -295,6 +298,11 @@ ${JSON.stringify(e)}
       issues,
       manager: input.manager,
       cacheUsed,
+    });
+    await this.updateIssueStatusByLabelUseCase.run({
+      project,
+      issues,
+      defaultStatus: input.defaultStatus,
     });
   };
   static createTargetDateTimes = (from: Date, to: Date): Date[] => {
