@@ -1,3 +1,11 @@
+## [1.21.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.21.0...v1.21.1) (2026-02-09)
+
+
+### Bug Fixes
+
+* **core:** configure OIDC trusted publishing for npm releases ([c5d44b7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c5d44b72b94ae47abdd70abf6651648853187a75))
+* **core:** upgrade semantic-release to v25 for OIDC trusted publishing ([b0fcdc5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b0fcdc5dd4e29cf67ccb77ec7a589c6d1bd458c2))
+
 ## [1.16.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.16.2...v1.16.3) (2025-12-22)
 
 
