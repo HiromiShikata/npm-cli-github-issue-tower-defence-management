@@ -156,6 +156,7 @@ describe('HandleScheduledEventUseCase', () => {
         disabledStatus: 'disabled',
         defaultStatus: null,
         disabled: false,
+        allowIssueCacheMinutes: 60,
       };
 
       const mockProject = mock<Project>();
@@ -179,6 +180,7 @@ describe('HandleScheduledEventUseCase', () => {
         disabledStatus: 'disabled',
         defaultStatus: 'ToDo',
         disabled: false,
+        allowIssueCacheMinutes: 60,
       };
 
       const mockProject = mock<Project>();
@@ -206,6 +208,7 @@ describe('HandleScheduledEventUseCase', () => {
         disabledStatus: 'disabled',
         defaultStatus: null,
         disabled: false,
+        allowIssueCacheMinutes: 60,
       };
 
       const mockProject = mock<Project>();
@@ -233,6 +236,7 @@ describe('HandleScheduledEventUseCase', () => {
         disabledStatus: 'disabled',
         defaultStatus: null,
         disabled: true,
+        allowIssueCacheMinutes: 60,
       };
 
       const result = await useCase.run(input);
@@ -257,6 +261,7 @@ describe('HandleScheduledEventUseCase', () => {
         disabledStatus: 'disabled',
         defaultStatus: null,
         disabled: false,
+        allowIssueCacheMinutes: 60,
       };
 
       const mockProject = mock<Project>();
@@ -264,6 +269,33 @@ describe('HandleScheduledEventUseCase', () => {
       const result = await useCase.run(input);
       expect(result).not.toBeNull();
       expect(mockProjectRepository.findProjectIdByUrl).toHaveBeenCalled();
+    });
+
+    it('should pass allowIssueCacheMinutes to getAllIssues', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabledStatus: 'disabled',
+        defaultStatus: null,
+        disabled: false,
+        allowIssueCacheMinutes: 120,
+      };
+
+      const mockProject = mock<Project>();
+      mockProjectRepository.getProject.mockResolvedValue(mockProject);
+      await useCase.run(input);
+      expect(mockIssueRepository.getAllIssues).toHaveBeenCalledWith(
+        'project-1',
+        120,
+      );
     });
   });
 });

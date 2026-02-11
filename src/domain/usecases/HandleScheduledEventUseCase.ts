@@ -71,6 +71,7 @@ export class HandleScheduledEventUseCase {
     disabledStatus: string;
     defaultStatus: string | null;
     disabled: boolean;
+    allowIssueCacheMinutes: number;
   }): Promise<{
     project: Project;
     issues: Issue[];
@@ -98,11 +99,10 @@ export class HandleScheduledEventUseCase {
       );
     }
     const now: Date = await this.dateRepository.now();
-    const allowIssueCacheMinutes = 60;
     const { issues, cacheUsed }: { issues: Issue[]; cacheUsed: boolean } =
       await this.issueRepository.getAllIssues(
         projectId,
-        allowIssueCacheMinutes,
+        input.allowIssueCacheMinutes,
       );
     const storyIssues: StoryObjectMap = await this.storyIssues({
       project,
