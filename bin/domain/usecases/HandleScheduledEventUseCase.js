@@ -28,6 +28,9 @@ class HandleScheduledEventUseCase {
         this.projectRepository = projectRepository;
         this.issueRepository = issueRepository;
         this.run = async (input) => {
+            if (input.disabled) {
+                return null;
+            }
             const projectId = await this.projectRepository.findProjectIdByUrl(input.projectUrl);
             if (!projectId) {
                 throw new ProjectNotFoundError(`Project not found. projectUrl: ${input.projectUrl}`);

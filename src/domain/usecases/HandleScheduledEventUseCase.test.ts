@@ -155,6 +155,7 @@ describe('HandleScheduledEventUseCase', () => {
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
         disabledStatus: 'disabled',
         defaultStatus: null,
+        disabled: false,
       };
 
       const mockProject = mock<Project>();
@@ -177,6 +178,7 @@ describe('HandleScheduledEventUseCase', () => {
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
         disabledStatus: 'disabled',
         defaultStatus: 'ToDo',
+        disabled: false,
       };
 
       const mockProject = mock<Project>();
@@ -203,6 +205,7 @@ describe('HandleScheduledEventUseCase', () => {
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
         disabledStatus: 'disabled',
         defaultStatus: null,
+        disabled: false,
       };
 
       const mockProject = mock<Project>();
@@ -213,6 +216,54 @@ describe('HandleScheduledEventUseCase', () => {
         issues: [],
         defaultStatus: null,
       });
+    });
+
+    it('should return null and skip all processing when disabled is true', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabledStatus: 'disabled',
+        defaultStatus: null,
+        disabled: true,
+      };
+
+      const result = await useCase.run(input);
+      expect(result).toBeNull();
+      expect(mockProjectRepository.findProjectIdByUrl).not.toHaveBeenCalled();
+      expect(mockAnalyzeProblemByIssueUseCase.run).not.toHaveBeenCalled();
+      expect(mockUpdateIssueStatusByLabelUseCase.run).not.toHaveBeenCalled();
+    });
+
+    it('should process normally when disabled is false', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabledStatus: 'disabled',
+        defaultStatus: null,
+        disabled: false,
+      };
+
+      const mockProject = mock<Project>();
+      mockProjectRepository.getProject.mockResolvedValue(mockProject);
+      const result = await useCase.run(input);
+      expect(result).not.toBeNull();
+      expect(mockProjectRepository.findProjectIdByUrl).toHaveBeenCalled();
     });
   });
 });

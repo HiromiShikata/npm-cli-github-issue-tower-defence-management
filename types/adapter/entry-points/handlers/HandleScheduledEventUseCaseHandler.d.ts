@@ -6,6 +6,6 @@ export declare class HandleScheduledEventUseCaseHandler {
         issues: Issue[];
         cacheUsed: boolean;
         targetDateTimes: Date[];
-    }>;
+    } | null>;
 }
 //# sourceMappingURL=HandleScheduledEventUseCaseHandler.d.ts.map

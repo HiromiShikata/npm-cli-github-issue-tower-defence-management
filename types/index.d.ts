@@ -7,7 +7,7 @@ export declare const scheduledEvent: (configFilePath: string, verbose: boolean) 
     issues: import("./domain/entities/Issue").Issue[];
     cacheUsed: boolean;
     targetDateTimes: Date[];
-}>;
+} | null>;
 export { getStoryObjectMap };
 export { StoryObject, StoryObjectMap, } from './domain/usecases/GetStoryObjectMapUseCase';
 //# sourceMappingURL=index.d.ts.map
