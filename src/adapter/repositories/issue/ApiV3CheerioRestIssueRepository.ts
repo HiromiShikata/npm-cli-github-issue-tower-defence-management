@@ -73,7 +73,7 @@ export class ApiV3CheerioRestIssueRepository
     );
   };
 
-  convertProjectItemToIssue = async (item: ProjectItem): Promise<Issue> => {
+  convertProjectItemToIssue = (item: ProjectItem): Issue => {
     const nextActionDate = item.customFields.find(
       (field) => normalizeFieldName(field.name) === 'nextactiondate',
     )?.value;
@@ -99,7 +99,6 @@ export class ApiV3CheerioRestIssueRepository
       (field) => normalizeFieldName(field.name) === 'status',
     )?.value;
     const { owner, repo } = this.extractIssueFromUrl(item.url);
-    const restIssueData = await this.restIssueRepository.getIssue(item.url);
 
     return {
       nameWithOwner: item.nameWithOwner,
@@ -107,8 +106,8 @@ export class ApiV3CheerioRestIssueRepository
       title: item.title,
       number: item.number,
       state: item.state,
-      labels: restIssueData.labels,
-      assignees: restIssueData.assignees,
+      labels: item.labels,
+      assignees: item.assignees,
       nextActionDate: nextActionDate ? new Date(nextActionDate) : null,
       nextActionHour: nextActionHour ? parseInt(nextActionHour) : null,
       estimationMinutes: estimationMinutes ? parseInt(estimationMinutes) : null,
@@ -125,7 +124,7 @@ export class ApiV3CheerioRestIssueRepository
       isPr: item.url.includes('/pull/'),
       isInProgress: normalizeFieldName(status || '').includes('progress'),
       isClosed: item.state !== 'OPEN',
-      createdAt: new Date(restIssueData.created_at || '2000-01-01'),
+      createdAt: new Date(item.createdAt || '2000-01-01'),
     };
   };
   getAllIssuesFromCache = async (
@@ -203,27 +202,7 @@ export class ApiV3CheerioRestIssueRepository
   ): Promise<Issue[]> => {
     const items =
       await this.graphqlProjectItemRepository.fetchProjectItems(projectId);
-
-    const processItemsInBatches = async (
-      items: ProjectItem[],
-      batchSize: number,
-    ): Promise<Issue[]> => {
-      let result: Issue[] = [];
-
-      for (let i = 0; i < items.length; i += batchSize) {
-        const batch = items.slice(i, i + batchSize);
-        const issues = await Promise.all(
-          batch.map(async (item): Promise<Issue> => {
-            return this.convertProjectItemToIssue(item);
-          }),
-        );
-        result = result.concat(issues);
-      }
-
-      return result;
-    };
-    const issues = await processItemsInBatches(items, 5);
-    return issues;
+    return items.map((item) => this.convertProjectItemToIssue(item));
   };
   createNewIssue = async (
     org: string,
