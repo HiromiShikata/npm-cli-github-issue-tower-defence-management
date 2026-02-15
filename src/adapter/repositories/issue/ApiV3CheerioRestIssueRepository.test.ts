@@ -28,6 +28,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             state: 'OPEN',
             url: 'https://github.com/HiromiShikata/test-repository/issues/38',
             body: 'test-body',
+            labels: [],
+            assignees: [],
+            createdAt: '2024-01-01T00:00:00Z',
             customFields: [
               { name: 'nextActionDate', value: '2000-01-01' },
               { name: 'nextActionHour', value: '1' },
@@ -59,13 +62,13 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           completionDate50PercentConfidence: null,
           isInProgress: false,
           isClosed: false,
-          createdAt: new Date('2024-01-01'),
+          createdAt: new Date('2024-01-01T00:00:00Z'),
         },
       },
     ];
-    test.each(testCases)('%s', async (arg) => {
+    test.each(testCases)('%s', (arg) => {
       const { repository } = createApiV3CheerioRestIssueRepository();
-      const result = await repository.convertProjectItemToIssue(...arg.params);
+      const result = repository.convertProjectItemToIssue(...arg.params);
       expect(result).toEqual(arg.expected);
     });
   });
