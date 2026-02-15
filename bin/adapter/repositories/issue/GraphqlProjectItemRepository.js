@@ -113,9 +113,20 @@ query GetProjectItems($projectId: ID!, $after: String) {
             ... on Issue {
               number
               title
-              state 
+              state
               url
               body
+              createdAt
+              labels(first: 100) {
+                nodes {
+                  name
+                }
+              }
+              assignees(first: 20) {
+                nodes {
+                  login
+                }
+              }
               repository {
                 nameWithOwner
               }
@@ -126,6 +137,17 @@ query GetProjectItems($projectId: ID!, $after: String) {
               state
               url
               body
+              createdAt
+              labels(first: 100) {
+                nodes {
+                  name
+                }
+              }
+              assignees(first: 20) {
+                nodes {
+                  login
+                }
+              }
               repository {
                 nameWithOwner
               }
@@ -179,6 +201,9 @@ query GetProjectItems($projectId: ID!, $after: String) {
                         state: this.convertStrToState(item.content.state),
                         url: item.content.url,
                         body: item.content.body,
+                        labels: item.content.labels?.nodes?.map((l) => l.name) || [],
+                        assignees: item.content.assignees?.nodes?.map((a) => a.login) || [],
+                        createdAt: item.content.createdAt || new Date().toISOString(),
                         customFields: item.fieldValues.nodes
                             .filter((field) => !!field.field)
                             .map((field) => {
@@ -313,6 +338,17 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       state
       url
       body
+      createdAt
+      labels(first: 100) {
+        nodes {
+          name
+        }
+      }
+      assignees(first: 20) {
+        nodes {
+          login
+        }
+      }
       repository {
         nameWithOwner
       }
@@ -403,6 +439,9 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
                 state: this.convertStrToState(data.repository.issue.state),
                 url: data.repository.issue.url,
                 body: data.repository.issue.body,
+                labels: data.repository.issue.labels?.nodes?.map((l) => l.name) || [],
+                assignees: data.repository.issue.assignees?.nodes?.map((a) => a.login) || [],
+                createdAt: data.repository.issue.createdAt || new Date().toISOString(),
                 customFields: item.fieldValues.nodes
                     .filter((field) => !!field.field)
                     .map((field) => {

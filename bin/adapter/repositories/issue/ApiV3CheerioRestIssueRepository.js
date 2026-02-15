@@ -24,7 +24,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         this.updateStatus = async (project, issue, statusId) => {
             await this.graphqlProjectItemRepository.updateProjectField(project.id, project.status.fieldId, issue.itemId, { singleSelectOptionId: statusId });
         };
-        this.convertProjectItemToIssue = async (item) => {
+        this.convertProjectItemToIssue = (item) => {
             const nextActionDate = item.customFields.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'nextactiondate')?.value;
             const nextActionHour = item.customFields.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'nextactionhour')?.value;
             const estimationMinutes = item.customFields.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'estimationminutes')?.value;
@@ -35,15 +35,14 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             const story = item.customFields.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'story')?.value;
             const status = item.customFields.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'status')?.value;
             const { owner, repo } = this.extractIssueFromUrl(item.url);
-            const restIssueData = await this.restIssueRepository.getIssue(item.url);
             return {
                 nameWithOwner: item.nameWithOwner,
                 url: item.url,
                 title: item.title,
                 number: item.number,
                 state: item.state,
-                labels: restIssueData.labels,
-                assignees: restIssueData.assignees,
+                labels: item.labels,
+                assignees: item.assignees,
                 nextActionDate: nextActionDate ? new Date(nextActionDate) : null,
                 nextActionHour: nextActionHour ? parseInt(nextActionHour) : null,
                 estimationMinutes: estimationMinutes ? parseInt(estimationMinutes) : null,
@@ -60,7 +59,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 isPr: item.url.includes('/pull/'),
                 isInProgress: (0, utils_1.normalizeFieldName)(status || '').includes('progress'),
                 isClosed: item.state !== 'OPEN',
-                createdAt: new Date(restIssueData.created_at || '2000-01-01'),
+                createdAt: new Date(item.createdAt || '2000-01-01'),
             };
         };
         this.getAllIssuesFromCache = async (cacheKey, allowCacheMinutes) => {
@@ -114,19 +113,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         };
         this.getAllIssuesFromGitHub = async (projectId) => {
             const items = await this.graphqlProjectItemRepository.fetchProjectItems(projectId);
-            const processItemsInBatches = async (items, batchSize) => {
-                let result = [];
-                for (let i = 0; i < items.length; i += batchSize) {
-                    const batch = items.slice(i, i + batchSize);
-                    const issues = await Promise.all(batch.map(async (item) => {
-                        return this.convertProjectItemToIssue(item);
-                    }));
-                    result = result.concat(issues);
-                }
-                return result;
-            };
-            const issues = await processItemsInBatches(items, 5);
-            return issues;
+            return items.map((item) => this.convertProjectItemToIssue(item));
         };
         this.createNewIssue = async (org, repo, title, body, assignees, labels) => {
             return await this.restIssueRepository.createNewIssue(org, repo, title, body, assignees, labels);

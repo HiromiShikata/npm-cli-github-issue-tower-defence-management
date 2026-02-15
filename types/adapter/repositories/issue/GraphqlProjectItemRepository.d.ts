@@ -9,6 +9,9 @@ export type ProjectItem = {
     state: 'OPEN' | 'CLOSED' | 'MERGED';
     url: string;
     body: string;
+    labels: string[];
+    assignees: string[];
+    createdAt: string;
     customFields: {
         name: string;
         value: string | null;

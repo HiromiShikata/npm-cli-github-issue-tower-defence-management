@@ -1,3 +1,10 @@
+## [1.21.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.21.1...v1.21.2) (2026-02-15)
+
+
+### Bug Fixes
+
+* **core:** reduce API calls by fetching labels, assignees, createdAt in GraphQL query ([162c858](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/162c858ba15cda19b4864511133cc8706e76df2d)), closes [#311](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/311)
+
 ## [1.21.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.21.0...v1.21.1) (2026-02-09)
 
 
