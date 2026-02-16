@@ -1,3 +1,10 @@
+# [1.22.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.21.2...v1.22.0) (2026-02-16)
+
+
+### Features
+
+* **core:** add allowCacheMinutes to exported getStoryObjectMap function ([6385541](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6385541dd1862fa1cc0e05ebfcc18f8a6f04d4b7))
+
 ## [1.21.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.21.1...v1.21.2) (2026-02-15)
 
 
