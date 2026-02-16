@@ -15,6 +15,7 @@ describe('GetStoryObjectMapUseCase', () => {
 
   const basicProject: Project = {
     id: 'project-1',
+    url: 'https://github.com/users/user/projects/1',
     databaseId: 1,
     name: 'Test Project',
     status: {

@@ -15,6 +15,7 @@ export type FieldOption = {
 };
 export type Project = {
   id: string;
+  url: string;
   databaseId: number;
   name: string;
   // fields: ProjectField[];

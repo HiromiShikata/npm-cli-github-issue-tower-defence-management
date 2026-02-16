@@ -7,4 +7,5 @@ export interface ProjectRepository {
     projectId: Project,
     storyOption: (Omit<FieldOption, 'id'> & { id: FieldOption['id'] | null })[],
   ) => Promise<FieldOption[]>;
+  getByUrl: (url: string) => Promise<Project>;
 }
