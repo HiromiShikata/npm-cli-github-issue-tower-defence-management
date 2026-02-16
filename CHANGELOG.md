@@ -1,3 +1,10 @@
+# [1.23.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.22.0...v1.23.0) (2026-02-16)
+
+
+### Features
+
+* **core:** add disabled option to config.yml ([d76ca22](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d76ca22e38dd55c725102d2d45d14588eabb728e))
+
 # [1.22.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.21.2...v1.22.0) (2026-02-16)
 
 
