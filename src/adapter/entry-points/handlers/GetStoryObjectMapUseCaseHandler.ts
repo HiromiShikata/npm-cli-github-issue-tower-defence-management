@@ -22,6 +22,7 @@ export class GetStoryObjectMapUseCaseHandler {
   handle = async (
     configFilePath: string,
     verbose: boolean,
+    allowCacheMinutes?: number,
   ): Promise<{
     project: Project;
     issues: Issue[];
@@ -98,6 +99,11 @@ export class GetStoryObjectMapUseCaseHandler {
       issueRepository,
     );
 
-    return await getStoryObjectMapUseCase.run(input);
+    const useCaseInput =
+      allowCacheMinutes !== undefined
+        ? { ...input, allowIssueCacheMinutes: allowCacheMinutes }
+        : input;
+
+    return await getStoryObjectMapUseCase.run(useCaseInput);
   };
 }
