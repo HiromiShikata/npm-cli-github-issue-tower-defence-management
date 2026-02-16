@@ -70,13 +70,17 @@ export class HandleScheduledEventUseCase {
     urlOfStoryView: string;
     disabledStatus: string;
     defaultStatus: string | null;
+    disabled: boolean;
   }): Promise<{
     project: Project;
     issues: Issue[];
     cacheUsed: boolean;
     targetDateTimes: Date[];
     storyIssues: StoryObjectMap;
-  }> => {
+  } | null> => {
+    if (input.disabled) {
+      return null;
+    }
     const projectId = await this.projectRepository.findProjectIdByUrl(
       input.projectUrl,
     );

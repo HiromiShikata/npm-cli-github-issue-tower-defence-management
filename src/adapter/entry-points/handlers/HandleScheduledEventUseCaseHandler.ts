@@ -39,7 +39,7 @@ export class HandleScheduledEventUseCaseHandler {
     issues: Issue[];
     cacheUsed: boolean;
     targetDateTimes: Date[];
-  }> => {
+  } | null> => {
     axios.interceptors.response.use(
       (response) => response,
       (error: AxiosError) => {
@@ -80,6 +80,9 @@ export class HandleScheduledEventUseCaseHandler {
       throw new Error(
         `Invalid input: ${JSON.stringify(input)}\n\n${JSON.stringify(TYPIA.validate<inputType>(input))}`,
       );
+    }
+    if (input.disabled) {
+      return null;
     }
     const systemDateRepository = new SystemDateRepository();
     const localStorageRepository = new LocalStorageRepository();

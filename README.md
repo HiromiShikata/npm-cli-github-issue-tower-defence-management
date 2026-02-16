@@ -39,6 +39,7 @@ npx github-issue-tower-defence-management -t issue -c ./config.yml -i https://gi
 The `config.yaml` must match the input type of `HandleScheduledEventUseCase.run()`. Below is the structure:
 
 ```yaml
+disabled: boolean # When true, skip all processing and return null
 org: string # Organization name
 projectUrl: string # URL of the target project
 manager: string # GitHub account name of the manager
@@ -58,6 +59,7 @@ workingReport:
 Example:
 
 ```yaml
+disabled: false
 org: 'my-org'
 projectUrl: 'https://github.com/orgs/my-org/projects/1'
 manager: 'HiromiShikata'

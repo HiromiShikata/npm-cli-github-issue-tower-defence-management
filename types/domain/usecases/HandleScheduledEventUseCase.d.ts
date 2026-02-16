@@ -59,13 +59,14 @@ export declare class HandleScheduledEventUseCase {
         urlOfStoryView: string;
         disabledStatus: string;
         defaultStatus: string | null;
+        disabled: boolean;
     }) => Promise<{
         project: Project;
         issues: Issue[];
         cacheUsed: boolean;
         targetDateTimes: Date[];
         storyIssues: StoryObjectMap;
-    }>;
+    } | null>;
     runEachUseCases: (input: Parameters<HandleScheduledEventUseCase["run"]>[0], project: Project, issues: Issue[], cacheUsed: boolean, targetDateTimes: Date[], storyObjectMap: StoryObjectMap) => Promise<void>;
     static createTargetDateTimes: (from: Date, to: Date) => Date[];
     findTargetDateAndUpdateLastExecutionDateTime: (spreadsheetUrl: string, now: Date) => Promise<Date[]>;
