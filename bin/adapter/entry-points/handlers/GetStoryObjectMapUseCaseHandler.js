@@ -43,7 +43,7 @@ const CheerioProjectRepository_1 = require("../../repositories/CheerioProjectRep
 const GetStoryObjectMapUseCase_1 = require("../../../domain/usecases/GetStoryObjectMapUseCase");
 class GetStoryObjectMapUseCaseHandler {
     constructor() {
-        this.handle = async (configFilePath, verbose) => {
+        this.handle = async (configFilePath, verbose, allowCacheMinutes) => {
             axios_1.default.interceptors.response.use((response) => response, (error) => {
                 if (verbose) {
                     throw new Error(`API Error: ${JSON.stringify(error)}`);
@@ -142,7 +142,10 @@ class GetStoryObjectMapUseCaseHandler {
             const graphqlProjectItemRepository = new GraphqlProjectItemRepository_1.GraphqlProjectItemRepository(...githubRepositoryParams);
             const issueRepository = new ApiV3CheerioRestIssueRepository_1.ApiV3CheerioRestIssueRepository(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, ...githubRepositoryParams);
             const getStoryObjectMapUseCase = new GetStoryObjectMapUseCase_1.GetStoryObjectMapUseCase(projectRepository, issueRepository);
-            return await getStoryObjectMapUseCase.run(input);
+            const useCaseInput = allowCacheMinutes !== undefined
+                ? { ...input, allowIssueCacheMinutes: allowCacheMinutes }
+                : input;
+            return await getStoryObjectMapUseCase.run(useCaseInput);
         };
     }
 }
