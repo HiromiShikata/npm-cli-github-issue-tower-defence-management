@@ -159,6 +159,15 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         this.updateAssigneeList = (issue, assigneeList) => {
             return this.restIssueRepository.updateAssigneeList(issue, assigneeList);
         };
+        this.get = async (_issueUrl, _project) => {
+            return this.getIssueByUrl(_issueUrl);
+        };
+        this.update = async (issue, _project) => {
+            await this.updateIssue(issue);
+        };
+        this.findRelatedOpenPRs = async (_issueUrl) => {
+            throw new Error('findRelatedOpenPRs is not implemented');
+        };
     }
 }
 exports.ApiV3CheerioRestIssueRepository = ApiV3CheerioRestIssueRepository;

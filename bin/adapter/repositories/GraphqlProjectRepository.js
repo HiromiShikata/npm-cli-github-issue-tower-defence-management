@@ -154,6 +154,7 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             };
             return {
                 id: project.id,
+                url: project.url,
                 databaseId: project.databaseId,
                 name: project.title,
                 status: {
@@ -211,6 +212,17 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
                     }
                     : null,
             };
+        };
+        this.getByUrl = async (url) => {
+            const projectId = await this.findProjectIdByUrl(url);
+            if (!projectId) {
+                throw new Error(`Project not found for URL: ${url}`);
+            }
+            const project = await this.getProject(projectId);
+            if (!project) {
+                throw new Error(`Project not found for ID: ${projectId}`);
+            }
+            return project;
         };
     }
 }

@@ -1,3 +1,11 @@
+# [1.25.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.24.0...v1.25.0) (2026-02-16)
+
+
+### Features
+
+* **core:** create NotifyFinishedIssuePreparationUseCase from npm-cli-gh-issue-preparator ([2fb3306](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2fb33067734bec51a8d1f0e871478a6bc3ddd22f)), closes [npm-cli-#issue-preparator](https://github.com/npm-cli-/issues/issue-preparator)
+* **core:** create StartPreparationUseCase from npm-cli-gh-issue-preparator reference ([6e35aac](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6e35aac4eb51e724fdd360c615de2bd31a9092bd)), closes [npm-cli-#issue-preparator](https://github.com/npm-cli-/issues/issue-preparator)
+
 # [1.24.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.23.0...v1.24.0) (2026-02-16)
 
 

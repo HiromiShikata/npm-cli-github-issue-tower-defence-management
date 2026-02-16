@@ -1,4 +1,4 @@
-import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+import { IssueRepository, RelatedPullRequest } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
 import { ApiV3IssueRepository } from './ApiV3IssueRepository';
@@ -46,5 +46,8 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     updateLabels: (issue: Issue, labels: Issue["labels"]) => Promise<void>;
     removeLabel: (issue: Issue, label: string) => Promise<void>;
     updateAssigneeList: (issue: Issue, assigneeList: Member["name"][]) => Promise<void>;
+    get: (_issueUrl: string, _project: Project) => Promise<Issue | null>;
+    update: (issue: Issue, _project: Project) => Promise<void>;
+    findRelatedOpenPRs: (_issueUrl: string) => Promise<RelatedPullRequest[]>;
 }
 //# sourceMappingURL=ApiV3CheerioRestIssueRepository.d.ts.map

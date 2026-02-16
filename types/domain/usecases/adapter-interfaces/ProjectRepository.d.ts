@@ -5,5 +5,6 @@ export interface ProjectRepository {
     updateStoryList: (projectId: Project, storyOption: (Omit<FieldOption, 'id'> & {
         id: FieldOption['id'] | null;
     })[]) => Promise<FieldOption[]>;
+    getByUrl: (url: string) => Promise<Project>;
 }
 //# sourceMappingURL=ProjectRepository.d.ts.map

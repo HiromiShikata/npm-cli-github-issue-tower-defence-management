@@ -1,6 +1,13 @@
 import { Issue, Label } from '../../entities/Issue';
 import { FieldOption, Project } from '../../entities/Project';
 import { Member } from '../../entities/Member';
+export type RelatedPullRequest = {
+    url: string;
+    isConflicted: boolean;
+    isPassedAllCiJob: boolean;
+    isResolvedAllReviewComments: boolean;
+    isBranchOutOfDate: boolean;
+};
 export interface IssueRepository {
     getAllIssues: (projectId: Project['id'], allowCacheMinutes: number) => Promise<{
         issues: Issue[];
@@ -25,5 +32,8 @@ export interface IssueRepository {
     updateLabels: (issue: Issue, labels: Issue['labels']) => Promise<void>;
     removeLabel: (issue: Issue, label: Label) => Promise<void>;
     updateAssigneeList: (issue: Issue, assigneeList: Member['name'][]) => Promise<void>;
+    get: (issueUrl: string, project: Project) => Promise<Issue | null>;
+    update: (issue: Issue, project: Project) => Promise<void>;
+    findRelatedOpenPRs: (issueUrl: string) => Promise<RelatedPullRequest[]>;
 }
 //# sourceMappingURL=IssueRepository.d.ts.map
