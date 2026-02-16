@@ -1,3 +1,10 @@
+# [1.24.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.23.0...v1.24.0) (2026-02-16)
+
+
+### Features
+
+* **core:** add allowIssueCacheMinutes config parameter to HandleScheduledEventUseCase ([9e7bacc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9e7bacc5206ebbeb90b5da065f0726180c62498e))
+
 # [1.23.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.22.0...v1.23.0) (2026-02-16)
 
 
