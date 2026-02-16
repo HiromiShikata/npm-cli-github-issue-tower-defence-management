@@ -40,8 +40,7 @@ class HandleScheduledEventUseCase {
                 throw new ProjectNotFoundError(`Project not found. projectId: ${projectId} projectUrl: ${input.projectUrl}`);
             }
             const now = await this.dateRepository.now();
-            const allowIssueCacheMinutes = 60;
-            const { issues, cacheUsed } = await this.issueRepository.getAllIssues(projectId, allowIssueCacheMinutes);
+            const { issues, cacheUsed } = await this.issueRepository.getAllIssues(projectId, input.allowIssueCacheMinutes);
             const storyIssues = await this.storyIssues({
                 project,
                 issues,

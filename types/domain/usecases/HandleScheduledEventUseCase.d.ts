@@ -60,6 +60,7 @@ export declare class HandleScheduledEventUseCase {
         disabledStatus: string;
         defaultStatus: string | null;
         disabled: boolean;
+        allowIssueCacheMinutes: number;
     }) => Promise<{
         project: Project;
         issues: Issue[];
