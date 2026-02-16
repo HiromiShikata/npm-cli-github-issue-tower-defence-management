@@ -2,6 +2,14 @@ import { Issue, Label } from '../../entities/Issue';
 import { FieldOption, Project } from '../../entities/Project';
 import { Member } from '../../entities/Member';
 
+export type RelatedPullRequest = {
+  url: string;
+  isConflicted: boolean;
+  isPassedAllCiJob: boolean;
+  isResolvedAllReviewComments: boolean;
+  isBranchOutOfDate: boolean;
+};
+
 export interface IssueRepository {
   getAllIssues: (
     projectId: Project['id'],
@@ -59,4 +67,7 @@ export interface IssueRepository {
     issue: Issue,
     assigneeList: Member['name'][],
   ) => Promise<void>;
+  get: (issueUrl: string, project: Project) => Promise<Issue | null>;
+  update: (issue: Issue, project: Project) => Promise<void>;
+  findRelatedOpenPRs: (issueUrl: string) => Promise<RelatedPullRequest[]>;
 }

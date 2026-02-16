@@ -1,4 +1,7 @@
-import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+import {
+  IssueRepository,
+  RelatedPullRequest,
+} from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
 import { ApiV3IssueRepository } from './ApiV3IssueRepository';
@@ -313,5 +316,16 @@ export class ApiV3CheerioRestIssueRepository
     assigneeList: Member['name'][],
   ): Promise<void> => {
     return this.restIssueRepository.updateAssigneeList(issue, assigneeList);
+  };
+  get = async (_issueUrl: string, _project: Project): Promise<Issue | null> => {
+    return this.getIssueByUrl(_issueUrl);
+  };
+  update = async (issue: Issue, _project: Project): Promise<void> => {
+    await this.updateIssue(issue);
+  };
+  findRelatedOpenPRs = async (
+    _issueUrl: string,
+  ): Promise<RelatedPullRequest[]> => {
+    throw new Error('findRelatedOpenPRs is not implemented');
   };
 }

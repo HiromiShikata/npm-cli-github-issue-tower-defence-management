@@ -6,7 +6,8 @@ import { normalizeFieldName } from './utils';
 
 export class GraphqlProjectRepository
   extends BaseGitHubRepository
-  implements Pick<ProjectRepository, 'getProject' | 'findProjectIdByUrl'>
+  implements
+    Pick<ProjectRepository, 'getProject' | 'findProjectIdByUrl' | 'getByUrl'>
 {
   extractProjectFromUrl = (
     projectUrl: string,
@@ -240,6 +241,7 @@ export class GraphqlProjectRepository
     };
     return {
       id: project.id,
+      url: project.url,
       databaseId: project.databaseId,
       name: project.title,
       status: {
@@ -298,5 +300,16 @@ export class GraphqlProjectRepository
           }
         : null,
     };
+  };
+  getByUrl = async (url: string): Promise<Project> => {
+    const projectId = await this.findProjectIdByUrl(url);
+    if (!projectId) {
+      throw new Error(`Project not found for URL: ${url}`);
+    }
+    const project = await this.getProject(projectId);
+    if (!project) {
+      throw new Error(`Project not found for ID: ${projectId}`);
+    }
+    return project;
   };
 }

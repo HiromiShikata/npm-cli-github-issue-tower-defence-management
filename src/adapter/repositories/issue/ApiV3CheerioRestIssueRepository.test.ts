@@ -134,6 +134,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       const project = {
         id: 'test-project-id',
+        url: 'https://github.com/users/test/projects/1',
         databaseId: 1,
         name: 'test-project',
         status: {

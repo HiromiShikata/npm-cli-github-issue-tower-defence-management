@@ -27,6 +27,7 @@ describe('CheerioProjectRepository', () => {
         completionDate50PercentConfidence: null,
         dependedIssueUrlSeparatedByComma: null,
         id: 'PVT_kwHOAGJHa84AFhgF',
+        url: 'https://github.com/users/HiromiShikata/projects/49',
         databaseId: 1447941,
         name: 'V2 project on owner for testing',
         nextActionDate: {
