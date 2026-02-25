@@ -35,6 +35,7 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
 
 const createMockProject = (): Project => ({
   id: 'project-1',
+  url: 'https://github.com/orgs/user/projects/1',
   databaseId: 1,
   name: 'Test Project',
   status: {

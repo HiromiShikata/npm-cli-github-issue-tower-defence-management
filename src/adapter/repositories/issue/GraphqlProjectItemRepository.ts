@@ -18,6 +18,7 @@ export type ProjectItem = {
     value: string | null;
   }[];
 };
+export const PAGINATION_DELAY_MS = 5000;
 export class GraphqlProjectItemRepository extends BaseGitHubRepository {
   fetchItemId = async (
     projectId: string,
@@ -295,6 +296,11 @@ query GetProjectItems($projectId: ID!, $after: String) {
     let hasNextPage = true;
 
     while (hasNextPage) {
+      if (after !== null) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, PAGINATION_DELAY_MS),
+        );
+      }
       const data = await callGraphql(projectId, after);
       const projectItems: {
         id: string;
