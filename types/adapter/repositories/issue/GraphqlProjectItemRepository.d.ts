@@ -17,6 +17,7 @@ export type ProjectItem = {
         value: string | null;
     }[];
 };
+export declare const PAGINATION_DELAY_MS = 5000;
 export declare class GraphqlProjectItemRepository extends BaseGitHubRepository {
     fetchItemId: (projectId: string, owner: string, repositoryName: string, issueNumber: number) => Promise<string | undefined>;
     fetchProjectItems: (projectId: string) => Promise<ProjectItem[]>;

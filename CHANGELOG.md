@@ -1,3 +1,10 @@
+# [1.26.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.25.0...v1.26.0) (2026-02-26)
+
+
+### Features
+
+* **adapter:** add sleep between paginated GraphQL requests to avoid 403 ([05d408f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/05d408fd63c14d06a687dffecb2f872ba4afc30a))
+
 # [1.25.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.24.0...v1.25.0) (2026-02-16)
 
 

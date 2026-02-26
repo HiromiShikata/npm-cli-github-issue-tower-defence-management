@@ -3,9 +3,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.GraphqlProjectItemRepository = void 0;
+exports.GraphqlProjectItemRepository = exports.PAGINATION_DELAY_MS = void 0;
 const axios_1 = __importDefault(require("axios"));
 const BaseGitHubRepository_1 = require("../BaseGitHubRepository");
+exports.PAGINATION_DELAY_MS = 5000;
 class GraphqlProjectItemRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
     constructor() {
         super(...arguments);
@@ -185,6 +186,9 @@ query GetProjectItems($projectId: ID!, $after: String) {
             let after = null;
             let hasNextPage = true;
             while (hasNextPage) {
+                if (after !== null) {
+                    await new Promise((resolve) => setTimeout(resolve, exports.PAGINATION_DELAY_MS));
+                }
                 const data = await callGraphql(projectId, after);
                 const projectItems = data.node.items.nodes;
                 projectItems
