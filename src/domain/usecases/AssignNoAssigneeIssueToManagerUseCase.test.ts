@@ -144,5 +144,28 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
         );
       });
     });
+
+    it('should continue processing remaining issues when updateAssigneeList throws', async () => {
+      const issue1 = { ...basicIssue, number: 1, org: 'org1', repo: 'repo1' };
+      const issue2 = { ...basicIssue, number: 2, org: 'org1', repo: 'repo2' };
+      mockIssueRepository.updateAssigneeList
+        .mockRejectedValueOnce(new Error('Request failed with status code 403'))
+        .mockResolvedValueOnce(undefined);
+
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      await useCase.run({
+        issues: [issue1, issue2],
+        manager: 'manager1',
+        cacheUsed: false,
+      });
+
+      expect(mockIssueRepository.updateAssigneeList).toHaveBeenCalledTimes(2);
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to assign manager1 to org1/repo1#1'),
+      );
+
+      consoleSpy.mockRestore();
+    });
   });
 });

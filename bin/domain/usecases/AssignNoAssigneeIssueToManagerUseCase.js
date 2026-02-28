@@ -12,7 +12,13 @@ class AssignNoAssigneeIssueToManagerUseCase {
                 if (issue.assignees.length > 0 || issue.state !== 'OPEN') {
                     continue;
                 }
-                await this.issueRepository.updateAssigneeList(issue, [input.manager]);
+                try {
+                    await this.issueRepository.updateAssigneeList(issue, [input.manager]);
+                }
+                catch (e) {
+                    console.warn(`Failed to assign ${input.manager} to ${issue.org}/${issue.repo}#${issue.number}: ${e instanceof Error ? e.message : String(e)}`);
+                    continue;
+                }
                 await new Promise((resolve) => setTimeout(resolve, 1000));
             }
         };
