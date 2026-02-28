@@ -19,7 +19,19 @@ export class AssignNoAssigneeIssueToManagerUseCase {
       if (issue.assignees.length > 0 || issue.state !== 'OPEN') {
         continue;
       }
-      await this.issueRepository.updateAssigneeList(issue, [input.manager]);
+      try {
+        await this.issueRepository.updateAssigneeList(issue, [input.manager]);
+      } catch (e) {
+        const originalMessage = e instanceof Error ? e.message : String(e);
+        const originalStack = e instanceof Error ? e.stack : undefined;
+        const error = new Error(
+          `Failed to assign manager to issue ${issue.url}: ${originalMessage}`,
+        );
+        if (originalStack) {
+          error.stack = `${error.stack}\nCaused by: ${originalStack}`;
+        }
+        throw error;
+      }
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   };

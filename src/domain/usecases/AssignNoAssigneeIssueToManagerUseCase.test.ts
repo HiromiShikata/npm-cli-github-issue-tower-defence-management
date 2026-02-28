@@ -144,5 +144,51 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
         );
       });
     });
+
+    it('should throw error with issue URL detail when updateAssigneeList fails', async () => {
+      const issueWithUrl = {
+        ...basicIssue,
+        url: 'https://github.com/org/repo/issues/1',
+      };
+      const originalError = new Error('Request failed with status code 403');
+      mockIssueRepository.updateAssigneeList.mockRejectedValueOnce(
+        originalError,
+      );
+
+      await expect(
+        useCase.run({
+          issues: [issueWithUrl],
+          manager: 'manager1',
+          cacheUsed: false,
+        }),
+      ).rejects.toThrow(
+        'Failed to assign manager to issue https://github.com/org/repo/issues/1: Request failed with status code 403',
+      );
+    });
+
+    it('should include original stack trace in error when updateAssigneeList fails', async () => {
+      const issueWithUrl = {
+        ...basicIssue,
+        url: 'https://github.com/org/repo/issues/1',
+      };
+      const originalError = new Error('Request failed with status code 403');
+      mockIssueRepository.updateAssigneeList.mockRejectedValueOnce(
+        originalError,
+      );
+
+      try {
+        await useCase.run({
+          issues: [issueWithUrl],
+          manager: 'manager1',
+          cacheUsed: false,
+        });
+        fail('Expected error to be thrown');
+      } catch (e) {
+        expect(e).toBeInstanceOf(Error);
+        if (e instanceof Error) {
+          expect(e.stack).toContain('Caused by:');
+        }
+      }
+    });
   });
 });
