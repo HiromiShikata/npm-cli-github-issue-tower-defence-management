@@ -1,3 +1,10 @@
+# [1.27.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.26.0...v1.27.0) (2026-02-28)
+
+
+### Features
+
+* **core:** add parent issue link to auto-created child issue description ([f5a26e2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f5a26e2fb9239aa1f4f54c189de8e03f4f17f6fa))
+
 # [1.26.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.25.0...v1.26.0) (2026-02-26)
 
 
