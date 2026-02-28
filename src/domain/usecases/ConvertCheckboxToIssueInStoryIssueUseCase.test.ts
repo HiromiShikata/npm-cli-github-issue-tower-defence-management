@@ -212,10 +212,38 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           storyObjectMap: basicStoryObjectMap,
         },
         expectedCreateNewIssueCalls: [
-          ['org', 'repo', 'Task 1', '', [], []],
-          ['org', 'repo', 'Task 2', '', [], []],
-          ['org', 'repo', 'Task 3', '', [], []],
-          ['org', 'repo', 'Task 4', '', [], []],
+          [
+            'org',
+            'repo',
+            'Task 1',
+            '- Parent issue: https://github.com/org/repo/issues/123',
+            [],
+            [],
+          ],
+          [
+            'org',
+            'repo',
+            'Task 2',
+            '- Parent issue: https://github.com/org/repo/issues/123',
+            [],
+            [],
+          ],
+          [
+            'org',
+            'repo',
+            'Task 3',
+            '- Parent issue: https://github.com/org/repo/issues/456',
+            [],
+            [],
+          ],
+          [
+            'org',
+            'repo',
+            'Task 4',
+            '- Parent issue: https://github.com/org/repo/issues/456',
+            [],
+            [],
+          ],
         ],
         expectedUpdateIssueCalls: [
           [
@@ -306,10 +334,38 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           storyObjectMap: basicStoryObjectMap,
         },
         expectedCreateNewIssueCalls: [
-          ['org', 'repo', 'Task 1', '', [], []],
-          ['org', 'repo', 'Task 2 for `Story 1 #123`', '', [], []],
-          ['org', 'repo', 'Task 3', '', [], []],
-          ['org', 'repo', 'Task 4', '', [], []],
+          [
+            'org',
+            'repo',
+            'Task 1',
+            '- Parent issue: https://github.com/org/repo/issues/123',
+            [],
+            [],
+          ],
+          [
+            'org',
+            'repo',
+            'Task 2 for `Story 1 #123`',
+            '- Parent issue: https://github.com/org/repo/issues/123',
+            [],
+            [],
+          ],
+          [
+            'org',
+            'repo',
+            'Task 3',
+            '- Parent issue: https://github.com/org/repo/issues/456',
+            [],
+            [],
+          ],
+          [
+            'org',
+            'repo',
+            'Task 4',
+            '- Parent issue: https://github.com/org/repo/issues/456',
+            [],
+            [],
+          ],
         ],
         expectedUpdateIssueCalls: [
           [
@@ -441,8 +497,22 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           ]),
         },
         expectedCreateNewIssueCalls: [
-          ['orgA', 'repoA', 'Task 1', '', [], []],
-          ['orgB', 'repoB', 'Task 2', '', [], []],
+          [
+            'orgA',
+            'repoA',
+            'Task 1',
+            '- Parent issue: https://github.com/org/repo/issues/123',
+            [],
+            [],
+          ],
+          [
+            'orgB',
+            'repoB',
+            'Task 2',
+            '- Parent issue: https://github.com/org/repo/issues/456',
+            [],
+            [],
+          ],
         ],
         expectedUpdateIssueCalls: [
           [

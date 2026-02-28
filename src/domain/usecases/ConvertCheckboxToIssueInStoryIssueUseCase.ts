@@ -49,11 +49,12 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
           'STORYNAME',
           `${storyOption.name} #${storyIssue.number}`,
         );
+        const newIssueBody = `- Parent issue: ${storyIssue.url}`;
         const newIssueNumber = await this.issueRepository.createNewIssue(
           storyIssue.org,
           storyIssue.repo,
           issueTitle,
-          '',
+          newIssueBody,
           [],
           [],
         );
