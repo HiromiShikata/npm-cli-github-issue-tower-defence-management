@@ -130,6 +130,47 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
     },
   ];
 
+  const errorTestCases = [
+    {
+      name: 'should warn and skip issue when updateAssigneeList throws an error',
+      input: {
+        issues: [basicIssue],
+        manager: 'manager1',
+        cacheUsed: false,
+      },
+      setupMock: () => {
+        mockIssueRepository.updateAssigneeList.mockRejectedValueOnce(
+          new Error('Request failed with status code 403'),
+        );
+      },
+      expectedWarning:
+        /Failed to assign manager to issue .+: Request failed with status code 403/,
+    },
+    {
+      name: 'should continue processing remaining issues after error',
+      input: {
+        issues: [
+          { ...basicIssue, url: 'https://github.com/org/repo1/issues/1' },
+          { ...basicIssue, url: 'https://github.com/org/repo2/issues/2' },
+        ],
+        manager: 'manager1',
+        cacheUsed: false,
+      },
+      setupMock: () => {
+        mockIssueRepository.updateAssigneeList.mockRejectedValueOnce(
+          new Error('Request failed with status code 403'),
+        );
+        mockIssueRepository.updateAssigneeList.mockResolvedValueOnce(undefined);
+      },
+      expectedCalls: {
+        updateAssigneeList: [
+          [expect.anything(), ['manager1']],
+          [expect.anything(), ['manager1']],
+        ],
+      },
+    },
+  ];
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -144,5 +185,31 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
         );
       });
     });
+
+    errorTestCases.forEach(
+      ({ name, input, setupMock, expectedWarning, expectedCalls }) => {
+        it(name, async () => {
+          const consoleWarnSpy = jest
+            .spyOn(console, 'warn')
+            .mockImplementation();
+          setupMock();
+
+          await useCase.run(input);
+
+          if (expectedWarning) {
+            expect(consoleWarnSpy).toHaveBeenCalledWith(
+              expect.stringMatching(expectedWarning),
+            );
+          }
+          if (expectedCalls) {
+            expect(mockIssueRepository.updateAssigneeList.mock.calls).toEqual(
+              expectedCalls.updateAssigneeList,
+            );
+          }
+
+          consoleWarnSpy.mockRestore();
+        });
+      },
+    );
   });
 });
