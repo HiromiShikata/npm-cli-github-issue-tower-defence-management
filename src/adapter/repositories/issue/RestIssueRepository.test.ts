@@ -140,5 +140,36 @@ describe('RestIssueRepository', () => {
       );
       expect(issueWithoutAssignee.assignees).not.toContain('HiromiShikata');
     });
+    it('should include issue URL in error message when request fails', async () => {
+      const issue: Issue = {
+        nameWithOwner: 'nonexistent-owner/nonexistent-repo',
+        number: 99999,
+        title: 'Test Issue',
+        state: 'OPEN',
+        status: null,
+        story: null,
+        nextActionDate: null,
+        nextActionHour: null,
+        estimationMinutes: null,
+        dependedIssueUrls: [],
+        completionDate50PercentConfidence: null,
+        url: 'https://github.com/nonexistent-owner/nonexistent-repo/issues/99999',
+        assignees: [],
+        labels: [],
+        org: 'nonexistent-owner',
+        repo: 'nonexistent-repo',
+        body: '',
+        itemId: '',
+        isPr: false,
+        isInProgress: false,
+        isClosed: false,
+        createdAt: new Date(),
+      };
+      await expect(
+        restIssueRepository.updateAssigneeList(issue, ['someone']),
+      ).rejects.toThrow(
+        /https:\/\/github\.com\/nonexistent-owner\/nonexistent-repo\/issues\/99999/,
+      );
+    });
   });
 });

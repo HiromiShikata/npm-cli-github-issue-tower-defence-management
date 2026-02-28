@@ -157,20 +157,29 @@ export class RestIssueRepository
     issue: Issue,
     assigneeList: Member['name'][],
   ): Promise<void> => {
-    const response = await axios.patch(
-      `https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}`,
-      {
-        assignees: assigneeList,
-      },
-      {
-        headers: {
-          Authorization: `token ${this.ghToken}`,
-          'Content-Type': 'application/json',
+    try {
+      const response = await axios.patch(
+        `https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}`,
+        {
+          assignees: assigneeList,
         },
-      },
-    );
-    if (response.status !== 200) {
-      throw new Error(`Failed to update issue assignees: ${response.status}`);
+        {
+          headers: {
+            Authorization: `token ${this.ghToken}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+      if (response.status !== 200) {
+        throw new Error(
+          `Failed to update issue assignees: ${response.status} ${issue.url}`,
+        );
+      }
+    } catch (e) {
+      const originalMessage = e instanceof Error ? e.message : String(e);
+      throw new Error(
+        `Failed to update issue assignees: ${originalMessage} ${issue.url}`,
+      );
     }
   };
 }
