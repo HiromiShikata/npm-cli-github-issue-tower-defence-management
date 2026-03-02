@@ -1,3 +1,10 @@
+## [1.27.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.27.0...v1.27.1) (2026-03-02)
+
+
+### Bug Fixes
+
+* **core:** pass bot credentials from config to BaseGitHubRepository ([73253ba](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/73253ba086a8491d70a88bda157d573072d49d1d))
+
 # [1.27.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.26.0...v1.27.0) (2026-02-28)
 
 
