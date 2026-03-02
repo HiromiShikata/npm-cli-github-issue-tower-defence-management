@@ -55,8 +55,8 @@ class GetStoryObjectMapUseCaseHandler {
             });
             const configFileContent = fs_1.default.readFileSync(configFilePath, 'utf8');
             const input = yaml_1.default.parse(configFileContent);
-            if (!(() => { const _io0 = input => "string" === typeof input.projectUrl && "number" === typeof input.allowIssueCacheMinutes && "string" === typeof input.projectName && ("object" === typeof input.credentials && null !== input.credentials && _io1(input.credentials)); const _io1 = input => "object" === typeof input.bot && null !== input.bot && _io2(input.bot); const _io2 = input => "object" === typeof input.github && null !== input.github && _io3(input.github); const _io3 = input => "string" === typeof input.token; return input => "object" === typeof input && null !== input && _io0(input); })()(input)) {
-                throw new Error(`Invalid input: ${JSON.stringify(input)}\n\n${JSON.stringify((() => { const _io0 = input => "string" === typeof input.projectUrl && "number" === typeof input.allowIssueCacheMinutes && "string" === typeof input.projectName && ("object" === typeof input.credentials && null !== input.credentials && _io1(input.credentials)); const _io1 = input => "object" === typeof input.bot && null !== input.bot && _io2(input.bot); const _io2 = input => "object" === typeof input.github && null !== input.github && _io3(input.github); const _io3 = input => "string" === typeof input.token; const _vo0 = (input, _path, _exceptionable = true) => ["string" === typeof input.projectUrl || _report(_exceptionable, {
+            if (!(() => { const _io0 = input => "string" === typeof input.projectUrl && "number" === typeof input.allowIssueCacheMinutes && "string" === typeof input.projectName && ("object" === typeof input.credentials && null !== input.credentials && _io1(input.credentials)); const _io1 = input => "object" === typeof input.bot && null !== input.bot && _io2(input.bot); const _io2 = input => "object" === typeof input.github && null !== input.github && _io3(input.github); const _io3 = input => "string" === typeof input.token && (undefined === input.name || "string" === typeof input.name) && (undefined === input.password || "string" === typeof input.password) && (undefined === input.authenticatorKey || "string" === typeof input.authenticatorKey); return input => "object" === typeof input && null !== input && _io0(input); })()(input)) {
+                throw new Error(`Invalid input: ${JSON.stringify(input)}\n\n${JSON.stringify((() => { const _io0 = input => "string" === typeof input.projectUrl && "number" === typeof input.allowIssueCacheMinutes && "string" === typeof input.projectName && ("object" === typeof input.credentials && null !== input.credentials && _io1(input.credentials)); const _io1 = input => "object" === typeof input.bot && null !== input.bot && _io2(input.bot); const _io2 = input => "object" === typeof input.github && null !== input.github && _io3(input.github); const _io3 = input => "string" === typeof input.token && (undefined === input.name || "string" === typeof input.name) && (undefined === input.password || "string" === typeof input.password) && (undefined === input.authenticatorKey || "string" === typeof input.authenticatorKey); const _vo0 = (input, _path, _exceptionable = true) => ["string" === typeof input.projectUrl || _report(_exceptionable, {
                         path: _path + ".projectUrl",
                         expected: "string",
                         value: input.projectUrl
@@ -96,6 +96,18 @@ class GetStoryObjectMapUseCaseHandler {
                         path: _path + ".token",
                         expected: "string",
                         value: input.token
+                    }), undefined === input.name || "string" === typeof input.name || _report(_exceptionable, {
+                        path: _path + ".name",
+                        expected: "(string | undefined)",
+                        value: input.name
+                    }), undefined === input.password || "string" === typeof input.password || _report(_exceptionable, {
+                        path: _path + ".password",
+                        expected: "(string | undefined)",
+                        value: input.password
+                    }), undefined === input.authenticatorKey || "string" === typeof input.authenticatorKey || _report(_exceptionable, {
+                        path: _path + ".authenticatorKey",
+                        expected: "(string | undefined)",
+                        value: input.authenticatorKey
                     })].every(flag => flag); const __is = input => "object" === typeof input && null !== input && _io0(input); let errors; let _report; return input => {
                     if (false === __is(input)) {
                         errors = [];
@@ -132,6 +144,9 @@ class GetStoryObjectMapUseCaseHandler {
                 localStorageRepository,
                 `${cachePath}/github.com.cookies.json`,
                 input.credentials.bot.github.token,
+                input.credentials.bot.github.name,
+                input.credentials.bot.github.password,
+                input.credentials.bot.github.authenticatorKey,
             ];
             const projectRepository = {
                 ...new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams),
