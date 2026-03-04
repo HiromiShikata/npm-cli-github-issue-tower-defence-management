@@ -49,6 +49,9 @@ export class GetStoryObjectMapUseCaseHandler {
         bot: {
           github: {
             token: string;
+            name?: string;
+            password?: string;
+            authenticatorKey?: string;
           };
         };
       };
@@ -71,6 +74,9 @@ export class GetStoryObjectMapUseCaseHandler {
       localStorageRepository,
       `${cachePath}/github.com.cookies.json`,
       input.credentials.bot.github.token,
+      input.credentials.bot.github.name,
+      input.credentials.bot.github.password,
+      input.credentials.bot.github.authenticatorKey,
     ];
     const projectRepository = {
       ...new GraphqlProjectRepository(...githubRepositoryParams),
