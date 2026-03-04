@@ -1,7 +1,7 @@
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
 import { DateRepository } from './adapter-interfaces/DateRepository';
-import { StoryObjectMap } from './HandleScheduledEventUseCase';
+import { StoryObjectMap } from '../entities/StoryObjectMap';
 
 export class ChangeStatusByStoryColorUseCase {
   constructor(

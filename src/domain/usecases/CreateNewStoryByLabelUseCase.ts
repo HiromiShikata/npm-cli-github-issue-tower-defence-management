@@ -1,6 +1,6 @@
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { FieldOption, Project } from '../entities/Project';
-import { StoryObjectMap } from './HandleScheduledEventUseCase';
+import { StoryObjectMap } from '../entities/StoryObjectMap';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { Issue } from '../entities/Issue';
 

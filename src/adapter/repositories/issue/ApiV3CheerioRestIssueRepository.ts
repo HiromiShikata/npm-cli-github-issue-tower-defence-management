@@ -4,6 +4,7 @@ import {
 } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
+import { StoryObjectMap } from '../../../domain/entities/StoryObjectMap';
 import { ApiV3IssueRepository } from './ApiV3IssueRepository';
 import { RestIssueRepository } from './RestIssueRepository';
 import {
@@ -327,5 +328,11 @@ export class ApiV3CheerioRestIssueRepository
     _issueUrl: string,
   ): Promise<RelatedPullRequest[]> => {
     throw new Error('findRelatedOpenPRs is not implemented');
+  };
+  getAllOpened = async (_project: Project): Promise<Issue[]> => {
+    throw new Error('getAllOpened is not implemented');
+  };
+  getStoryObjectMap = async (_project: Project): Promise<StoryObjectMap> => {
+    throw new Error('getStoryObjectMap is not implemented');
   };
 }

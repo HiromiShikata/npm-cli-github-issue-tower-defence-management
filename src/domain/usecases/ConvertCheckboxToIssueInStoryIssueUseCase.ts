@@ -1,7 +1,7 @@
 import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
-import { StoryObjectMap } from './HandleScheduledEventUseCase';
+import { StoryObjectMap } from '../entities/StoryObjectMap';
 
 export class ConvertCheckboxToIssueInStoryIssueUseCase {
   constructor(

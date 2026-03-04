@@ -3,7 +3,7 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ConvertCheckboxToIssueInStoryIssueUseCase } from './ConvertCheckboxToIssueInStoryIssueUseCase';
 import { Project, StoryOption } from '../entities/Project';
 import { Issue } from '../entities/Issue';
-import { StoryObject, StoryObjectMap } from './HandleScheduledEventUseCase';
+import { StoryObject, StoryObjectMap } from '../entities/StoryObjectMap';
 
 describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
   jest.setTimeout(5 * 60 * 1000);

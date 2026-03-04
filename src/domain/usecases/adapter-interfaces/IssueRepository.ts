@@ -1,6 +1,7 @@
 import { Issue, Label } from '../../entities/Issue';
 import { FieldOption, Project } from '../../entities/Project';
 import { Member } from '../../entities/Member';
+import { StoryObjectMap } from '../../entities/StoryObjectMap';
 
 export type RelatedPullRequest = {
   url: string;
@@ -70,4 +71,6 @@ export interface IssueRepository {
   get: (issueUrl: string, project: Project) => Promise<Issue | null>;
   update: (issue: Issue, project: Project) => Promise<void>;
   findRelatedOpenPRs: (issueUrl: string) => Promise<RelatedPullRequest[]>;
+  getAllOpened: (project: Project) => Promise<Issue[]>;
+  getStoryObjectMap: (project: Project) => Promise<StoryObjectMap>;
 }

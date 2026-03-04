@@ -4,7 +4,7 @@ import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Issue } from '../entities/Issue';
 import { FieldOption, Project, StoryOption } from '../entities/Project';
-import { StoryObject } from './HandleScheduledEventUseCase';
+import { StoryObject } from '../entities/StoryObjectMap';
 
 describe('CreateNewStoryByLabelUseCase', () => {
   const mockProjectRepository = mock<ProjectRepository>();

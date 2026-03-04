@@ -27,6 +27,7 @@ import { ChangeStatusByStoryColorUseCase } from '../../../domain/usecases/Change
 import { SetNoStoryIssueToStoryUseCase } from '../../../domain/usecases/SetNoStoryIssueToStoryUseCase';
 import { CreateNewStoryByLabelUseCase } from '../../../domain/usecases/CreateNewStoryByLabelUseCase';
 import { CheerioProjectRepository } from '../../repositories/CheerioProjectRepository';
+import { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
 import { AssignNoAssigneeIssueToManagerUseCase } from '../../../domain/usecases/AssignNoAssigneeIssueToManagerUseCase';
 import { UpdateIssueStatusByLabelUseCase } from '../../../domain/usecases/UpdateIssueStatusByLabelUseCase';
 
@@ -108,9 +109,15 @@ export class HandleScheduledEventUseCaseHandler {
       input.credentials.bot.github.password,
       input.credentials.bot.github.authenticatorKey,
     ];
-    const projectRepository = {
+    const projectRepository: ProjectRepository = {
       ...new GraphqlProjectRepository(...githubRepositoryParams),
       ...new CheerioProjectRepository(...githubRepositoryParams),
+      prepareStatus: async (
+        _name: string,
+        _project: Project,
+      ): Promise<Project> => {
+        throw new Error('prepareStatus is not implemented');
+      },
     };
     const apiV3IssueRepository = new ApiV3IssueRepository(
       ...githubRepositoryParams,

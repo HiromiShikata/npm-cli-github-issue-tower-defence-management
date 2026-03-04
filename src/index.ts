@@ -7,7 +7,4 @@ export { Project } from './domain/entities/Project';
 export { Issue } from './domain/entities/Issue';
 export const scheduledEvent = new HandleScheduledEventUseCaseHandler().handle;
 export { getStoryObjectMap };
-export {
-  StoryObject,
-  StoryObjectMap,
-} from './domain/usecases/GetStoryObjectMapUseCase';
+export { StoryObject, StoryObjectMap } from './domain/entities/StoryObjectMap';
