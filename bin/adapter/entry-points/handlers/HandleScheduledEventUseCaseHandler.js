@@ -267,6 +267,9 @@ class HandleScheduledEventUseCaseHandler {
             const projectRepository = {
                 ...new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams),
                 ...new CheerioProjectRepository_1.CheerioProjectRepository(...githubRepositoryParams),
+                prepareStatus: async (_name, _project) => {
+                    throw new Error('prepareStatus is not implemented');
+                },
             };
             const apiV3IssueRepository = new ApiV3IssueRepository_1.ApiV3IssueRepository(...githubRepositoryParams);
             const restIssueRepository = new RestIssueRepository_1.RestIssueRepository(...githubRepositoryParams);

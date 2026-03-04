@@ -3,7 +3,7 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
 import { Member } from '../entities/Member';
 import { DateRepository } from './adapter-interfaces/DateRepository';
-import { StoryObjectMap } from './HandleScheduledEventUseCase';
+import { StoryObjectMap } from '../entities/StoryObjectMap';
 export declare class CreateEstimationIssueUseCase {
     readonly issueRepository: Pick<IssueRepository, 'createNewIssue' | 'clearProjectField' | 'createComment'>;
     readonly dateRepository: Pick<DateRepository, 'formatDateWithDayOfWeek'>;

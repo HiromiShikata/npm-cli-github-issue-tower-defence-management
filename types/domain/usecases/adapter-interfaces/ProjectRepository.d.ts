@@ -6,5 +6,6 @@ export interface ProjectRepository {
         id: FieldOption['id'] | null;
     })[]) => Promise<FieldOption[]>;
     getByUrl: (url: string) => Promise<Project>;
+    prepareStatus: (name: string, project: Project) => Promise<Project>;
 }
 //# sourceMappingURL=ProjectRepository.d.ts.map

@@ -1,3 +1,10 @@
+# [1.28.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.27.1...v1.28.0) (2026-03-04)
+
+
+### Features
+
+* **core:** integrate preparator entity and adapter interface types ([b2e2867](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b2e28678e616dfdedf5f2ddf5d611f191de8556a))
+
 ## [1.27.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.27.0...v1.27.1) (2026-03-02)
 
 

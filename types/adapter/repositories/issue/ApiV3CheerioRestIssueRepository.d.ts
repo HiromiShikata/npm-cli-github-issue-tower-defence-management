@@ -1,6 +1,7 @@
 import { IssueRepository, RelatedPullRequest } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
+import { StoryObjectMap } from '../../../domain/entities/StoryObjectMap';
 import { ApiV3IssueRepository } from './ApiV3IssueRepository';
 import { RestIssueRepository } from './RestIssueRepository';
 import { GraphqlProjectItemRepository, ProjectItem } from './GraphqlProjectItemRepository';
@@ -49,5 +50,7 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     get: (_issueUrl: string, _project: Project) => Promise<Issue | null>;
     update: (issue: Issue, _project: Project) => Promise<void>;
     findRelatedOpenPRs: (_issueUrl: string) => Promise<RelatedPullRequest[]>;
+    getAllOpened: (_project: Project) => Promise<Issue[]>;
+    getStoryObjectMap: (_project: Project) => Promise<StoryObjectMap>;
 }
 //# sourceMappingURL=ApiV3CheerioRestIssueRepository.d.ts.map

@@ -3,7 +3,7 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { FieldOption, Project, StoryOption } from '../entities/Project';
 import { Member } from '../entities/Member';
 import { DateRepository } from './adapter-interfaces/DateRepository';
-import { StoryObjectMap } from './HandleScheduledEventUseCase';
+import { StoryObjectMap } from '../entities/StoryObjectMap';
 export declare class AnalyzeStoriesUseCase {
     readonly issueRepository: Pick<IssueRepository, 'createNewIssue'>;
     readonly dateRepository: Pick<DateRepository, 'formatDurationToHHMM'>;

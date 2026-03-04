@@ -9,5 +9,5 @@ export declare const scheduledEvent: (configFilePath: string, verbose: boolean) 
     targetDateTimes: Date[];
 } | null>;
 export { getStoryObjectMap };
-export { StoryObject, StoryObjectMap, } from './domain/usecases/GetStoryObjectMapUseCase';
+export { StoryObject, StoryObjectMap } from './domain/entities/StoryObjectMap';
 //# sourceMappingURL=index.d.ts.map

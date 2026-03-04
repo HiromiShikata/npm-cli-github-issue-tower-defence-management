@@ -1,16 +1,11 @@
 import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
-import { Project, StoryOption } from '../entities/Project';
+import { Project } from '../entities/Project';
+import { StoryObjectMap } from '../entities/StoryObjectMap';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 export declare class ProjectNotFoundError extends Error {
     constructor(message: string);
 }
-export type StoryObject = {
-    story: StoryOption;
-    storyIssue: Issue | null;
-    issues: Issue[];
-};
-export type StoryObjectMap = Map<NonNullable<Project['story']>['stories'][0]['name'], StoryObject>;
 export declare class GetStoryObjectMapUseCase {
     readonly projectRepository: Pick<ProjectRepository, 'findProjectIdByUrl' | 'getProject'>;
     readonly issueRepository: Pick<IssueRepository, 'getAllIssues'>;

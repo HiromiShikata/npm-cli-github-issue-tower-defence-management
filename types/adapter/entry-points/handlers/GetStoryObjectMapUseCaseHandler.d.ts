@@ -1,6 +1,6 @@
 import { Issue } from '../../../domain/entities/Issue';
 import { Project } from '../../../domain/entities/Project';
-import { StoryObjectMap } from '../../../domain/usecases/GetStoryObjectMapUseCase';
+import { StoryObjectMap } from '../../../domain/entities/StoryObjectMap';
 export declare class GetStoryObjectMapUseCaseHandler {
     handle: (configFilePath: string, verbose: boolean, allowCacheMinutes?: number) => Promise<{
         project: Project;

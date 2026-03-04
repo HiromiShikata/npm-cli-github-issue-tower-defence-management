@@ -168,6 +168,12 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         this.findRelatedOpenPRs = async (_issueUrl) => {
             throw new Error('findRelatedOpenPRs is not implemented');
         };
+        this.getAllOpened = async (_project) => {
+            throw new Error('getAllOpened is not implemented');
+        };
+        this.getStoryObjectMap = async (_project) => {
+            throw new Error('getStoryObjectMap is not implemented');
+        };
     }
 }
 exports.ApiV3CheerioRestIssueRepository = ApiV3CheerioRestIssueRepository;

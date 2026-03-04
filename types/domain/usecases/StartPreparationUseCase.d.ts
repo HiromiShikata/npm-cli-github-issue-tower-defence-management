@@ -1,15 +1,10 @@
 import { Issue } from '../entities/Issue';
-import { Project, StoryOption } from '../entities/Project';
+import { Project } from '../entities/Project';
+import { StoryObjectMap } from '../entities/StoryObjectMap';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { ClaudeRepository } from './adapter-interfaces/ClaudeRepository';
-export type StoryObject = {
-    story: StoryOption;
-    storyIssue: Issue | null;
-    issues: Issue[];
-};
-export type StoryObjectMap = Map<NonNullable<Project['story']>['stories'][0]['name'], StoryObject>;
 export declare class StartPreparationUseCase {
     readonly projectRepository: Pick<ProjectRepository, 'findProjectIdByUrl' | 'getProject'>;
     readonly issueRepository: Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>;
