@@ -3,7 +3,7 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
 import { Member } from '../entities/Member';
 import { DateRepository } from './adapter-interfaces/DateRepository';
-import { StoryObject, StoryObjectMap } from './HandleScheduledEventUseCase';
+import { StoryObject, StoryObjectMap } from '../entities/StoryObjectMap';
 import { isVisibleIssue } from './utils';
 
 export class AnalyzeProblemByIssueUseCase {

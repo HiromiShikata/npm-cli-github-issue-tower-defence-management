@@ -1,6 +1,7 @@
 import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
-import { Project, StoryOption } from '../entities/Project';
+import { Project } from '../entities/Project';
+import { StoryObjectMap } from '../entities/StoryObjectMap';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { Member } from '../entities/Member';
 import { DateRepository } from './adapter-interfaces/DateRepository';
@@ -25,16 +26,6 @@ export class ProjectNotFoundError extends Error {
     this.name = 'ProjectNotFoundError';
   }
 }
-
-export type StoryObject = {
-  story: StoryOption;
-  storyIssue: Issue | null;
-  issues: Issue[];
-};
-export type StoryObjectMap = Map<
-  NonNullable<Project['story']>['stories'][0]['name'],
-  StoryObject
->;
 
 export class HandleScheduledEventUseCase {
   constructor(

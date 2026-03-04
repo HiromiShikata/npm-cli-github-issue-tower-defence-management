@@ -4,7 +4,7 @@ import { DateRepository } from './adapter-interfaces/DateRepository';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Issue } from '../entities/Issue';
 import { FieldOption, Project, StoryOption } from '../entities/Project';
-import { StoryObject, StoryObjectMap } from './HandleScheduledEventUseCase';
+import { StoryObject, StoryObjectMap } from '../entities/StoryObjectMap';
 
 describe('ChangeStatusByStoryColorUseCase', () => {
   const mockDateRepository = mock<DateRepository>();

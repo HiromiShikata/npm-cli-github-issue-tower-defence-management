@@ -13,10 +13,8 @@ import { Project } from '../../../domain/entities/Project';
 import { BaseGitHubRepository } from '../../repositories/BaseGitHubRepository';
 import axios, { AxiosError } from 'axios';
 import { CheerioProjectRepository } from '../../repositories/CheerioProjectRepository';
-import {
-  GetStoryObjectMapUseCase,
-  StoryObjectMap,
-} from '../../../domain/usecases/GetStoryObjectMapUseCase';
+import { GetStoryObjectMapUseCase } from '../../../domain/usecases/GetStoryObjectMapUseCase';
+import { StoryObjectMap } from '../../../domain/entities/StoryObjectMap';
 
 export class GetStoryObjectMapUseCaseHandler {
   handle = async (
