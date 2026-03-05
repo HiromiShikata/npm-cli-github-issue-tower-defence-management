@@ -81,6 +81,15 @@ jest.mock(
 jest.mock('../../../domain/usecases/UpdateIssueStatusByLabelUseCase', () => ({
   UpdateIssueStatusByLabelUseCase: jest.fn().mockImplementation(() => ({})),
 }));
+jest.mock('../../../domain/usecases/StartPreparationUseCase', () => ({
+  StartPreparationUseCase: jest.fn().mockImplementation(() => ({})),
+}));
+jest.mock('../../repositories/NodeLocalCommandRunner', () => ({
+  NodeLocalCommandRunner: jest.fn().mockImplementation(() => ({})),
+}));
+jest.mock('../../repositories/StubClaudeRepository', () => ({
+  StubClaudeRepository: jest.fn().mockImplementation(() => ({})),
+}));
 
 import { HandleScheduledEventUseCaseHandler } from './HandleScheduledEventUseCaseHandler';
 import { GraphqlProjectRepository } from '../../repositories/GraphqlProjectRepository';
