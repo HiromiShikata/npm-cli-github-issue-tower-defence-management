@@ -33,6 +33,8 @@ import { UpdateIssueStatusByLabelUseCase } from '../../../domain/usecases/Update
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
 import { StubClaudeRepository } from '../../repositories/StubClaudeRepository';
+import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
+import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 
 export class HandleScheduledEventUseCaseHandler {
   handle = async (
@@ -117,9 +119,9 @@ export class HandleScheduledEventUseCaseHandler {
       ...new CheerioProjectRepository(...githubRepositoryParams),
       prepareStatus: async (
         _name: string,
-        _project: Project,
+        project: Project,
       ): Promise<Project> => {
-        throw new Error('prepareStatus is not implemented');
+        return project;
       },
     };
     const apiV3IssueRepository = new ApiV3IssueRepository(
@@ -186,6 +188,15 @@ export class HandleScheduledEventUseCaseHandler {
       stubClaudeRepository,
       nodeLocalCommandRunner,
     );
+    const issueCommentRepository = new GitHubIssueCommentRepository(
+      input.credentials.bot.github.token,
+    );
+    const notifyFinishedIssuePreparationUseCase =
+      new NotifyFinishedIssuePreparationUseCase(
+        projectRepository,
+        issueRepository,
+        issueCommentRepository,
+      );
 
     const handleScheduledEventUseCase = new HandleScheduledEventUseCase(
       actionAnnouncement,
@@ -202,6 +213,7 @@ export class HandleScheduledEventUseCaseHandler {
       assignNoAssigneeIssueToManagerUseCase,
       updateIssueStatusByLabelUseCase,
       startPreparationUseCase,
+      notifyFinishedIssuePreparationUseCase,
       systemDateRepository,
       googleSpreadsheetRepository,
       projectRepository,

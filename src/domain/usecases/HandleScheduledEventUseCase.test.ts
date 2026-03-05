@@ -19,6 +19,7 @@ import { CreateNewStoryByLabelUseCase } from './CreateNewStoryByLabelUseCase';
 import { AssignNoAssigneeIssueToManagerUseCase } from './AssignNoAssigneeIssueToManagerUseCase';
 import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCase';
 import { StartPreparationUseCase } from './StartPreparationUseCase';
+import { NotifyFinishedIssuePreparationUseCase } from './NotifyFinishedIssuePreparationUseCase';
 
 describe('HandleScheduledEventUseCase', () => {
   describe('createTargetDateTimes', () => {
@@ -101,6 +102,8 @@ describe('HandleScheduledEventUseCase', () => {
     const mockUpdateIssueStatusByLabelUseCase =
       mock<UpdateIssueStatusByLabelUseCase>();
     const mockStartPreparationUseCase = mock<StartPreparationUseCase>();
+    const mockNotifyFinishedIssuePreparationUseCase =
+      mock<NotifyFinishedIssuePreparationUseCase>();
     const mockDateRepository = mock<DateRepository>();
     const mockSpreadsheetRepository = mock<SpreadsheetRepository>();
     const mockProjectRepository = mock<ProjectRepository>();
@@ -121,6 +124,7 @@ describe('HandleScheduledEventUseCase', () => {
       mockAssignNoAssigneeIssueToManagerUseCase,
       mockUpdateIssueStatusByLabelUseCase,
       mockStartPreparationUseCase,
+      mockNotifyFinishedIssuePreparationUseCase,
       mockDateRepository,
       mockSpreadsheetRepository,
       mockProjectRepository,
@@ -142,6 +146,30 @@ describe('HandleScheduledEventUseCase', () => {
         ['LastExecutionDateTime'],
         ['2024-01-01T00:00:00Z'],
       ]);
+    });
+
+    it('should call AnalyzeProblemByIssueUseCase with correct parameters', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabledStatus: 'disabled',
+        defaultStatus: null,
+        disabled: false,
+        allowIssueCacheMinutes: 60,
+      };
+
+      const mockProject = mock<Project>();
+      mockProjectRepository.getProject.mockResolvedValue(mockProject);
+      await useCase.run(input);
+      expect(mockAnalyzeProblemByIssueUseCase.run).toHaveBeenCalled();
     });
 
     it('should call UpdateIssueStatusByLabelUseCase with correct parameters', async () => {
