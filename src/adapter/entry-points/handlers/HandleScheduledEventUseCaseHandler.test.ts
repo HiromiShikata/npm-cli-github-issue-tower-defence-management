@@ -81,6 +81,15 @@ jest.mock(
 jest.mock('../../../domain/usecases/UpdateIssueStatusByLabelUseCase', () => ({
   UpdateIssueStatusByLabelUseCase: jest.fn().mockImplementation(() => ({})),
 }));
+jest.mock(
+  '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase',
+  () => ({
+    NotifyFinishedIssuePreparationUseCase: jest
+      .fn()
+      .mockImplementation(() => ({})),
+  }),
+);
+jest.mock('../../repositories/GitHubIssueCommentRepository');
 
 import { HandleScheduledEventUseCaseHandler } from './HandleScheduledEventUseCaseHandler';
 import { GraphqlProjectRepository } from '../../repositories/GraphqlProjectRepository';
@@ -111,6 +120,10 @@ const validConfig = {
   defaultStatus: 'Unread',
   disabled: false,
   allowIssueCacheMinutes: 1,
+  preparationStatus: 'Preparation',
+  awaitingWorkspaceStatus: 'Awaiting Workspace',
+  awaitingQualityCheckStatus: 'Awaiting Quality Check',
+  thresholdForAutoReject: 3,
   workingReport: {
     repo: 'test-repo',
     members: ['TestManager'],

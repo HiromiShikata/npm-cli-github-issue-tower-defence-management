@@ -19,6 +19,7 @@ import { SetNoStoryIssueToStoryUseCase } from './SetNoStoryIssueToStoryUseCase';
 import { CreateNewStoryByLabelUseCase } from './CreateNewStoryByLabelUseCase';
 import { AssignNoAssigneeIssueToManagerUseCase } from './AssignNoAssigneeIssueToManagerUseCase';
 import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCase';
+import { NotifyFinishedIssuePreparationUseCase } from './NotifyFinishedIssuePreparationUseCase';
 
 export class ProjectNotFoundError extends Error {
   constructor(message: string) {
@@ -42,6 +43,7 @@ export class HandleScheduledEventUseCase {
     readonly createNewStoryByLabelUseCase: CreateNewStoryByLabelUseCase,
     readonly assignNoAssigneeIssueToManagerUseCase: AssignNoAssigneeIssueToManagerUseCase,
     readonly updateIssueStatusByLabelUseCase: UpdateIssueStatusByLabelUseCase,
+    readonly notifyFinishedIssuePreparationUseCase: NotifyFinishedIssuePreparationUseCase,
     readonly dateRepository: DateRepository,
     readonly spreadsheetRepository: SpreadsheetRepository,
     readonly projectRepository: ProjectRepository,
@@ -63,6 +65,10 @@ export class HandleScheduledEventUseCase {
     defaultStatus: string | null;
     disabled: boolean;
     allowIssueCacheMinutes: number;
+    preparationStatus: string;
+    awaitingWorkspaceStatus: string;
+    awaitingQualityCheckStatus: string;
+    thresholdForAutoReject: number;
   }): Promise<{
     project: Project;
     issues: Issue[];
@@ -299,6 +305,19 @@ ${JSON.stringify(e)}
       issues,
       defaultStatus: input.defaultStatus,
     });
+    const preparationIssues = issues.filter(
+      (issue) => issue.status === input.preparationStatus,
+    );
+    for (const issue of preparationIssues) {
+      await this.notifyFinishedIssuePreparationUseCase.run({
+        projectUrl: input.projectUrl,
+        issueUrl: issue.url,
+        preparationStatus: input.preparationStatus,
+        awaitingWorkspaceStatus: input.awaitingWorkspaceStatus,
+        awaitingQualityCheckStatus: input.awaitingQualityCheckStatus,
+        thresholdForAutoReject: input.thresholdForAutoReject,
+      });
+    }
   };
   static createTargetDateTimes = (from: Date, to: Date): Date[] => {
     const targetDateTimes: Date[] = [];
