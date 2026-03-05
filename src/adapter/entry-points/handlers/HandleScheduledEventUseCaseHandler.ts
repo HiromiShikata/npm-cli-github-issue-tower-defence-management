@@ -30,6 +30,9 @@ import { CheerioProjectRepository } from '../../repositories/CheerioProjectRepos
 import { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
 import { AssignNoAssigneeIssueToManagerUseCase } from '../../../domain/usecases/AssignNoAssigneeIssueToManagerUseCase';
 import { UpdateIssueStatusByLabelUseCase } from '../../../domain/usecases/UpdateIssueStatusByLabelUseCase';
+import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
+import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
+import { StubClaudeRepository } from '../../repositories/StubClaudeRepository';
 
 export class HandleScheduledEventUseCaseHandler {
   handle = async (
@@ -175,6 +178,14 @@ export class HandleScheduledEventUseCaseHandler {
     const updateIssueStatusByLabelUseCase = new UpdateIssueStatusByLabelUseCase(
       issueRepository,
     );
+    const nodeLocalCommandRunner = new NodeLocalCommandRunner();
+    const stubClaudeRepository = new StubClaudeRepository();
+    const startPreparationUseCase = new StartPreparationUseCase(
+      projectRepository,
+      issueRepository,
+      stubClaudeRepository,
+      nodeLocalCommandRunner,
+    );
 
     const handleScheduledEventUseCase = new HandleScheduledEventUseCase(
       actionAnnouncement,
@@ -190,6 +201,7 @@ export class HandleScheduledEventUseCaseHandler {
       createNewStoryByLabel,
       assignNoAssigneeIssueToManagerUseCase,
       updateIssueStatusByLabelUseCase,
+      startPreparationUseCase,
       systemDateRepository,
       googleSpreadsheetRepository,
       projectRepository,
