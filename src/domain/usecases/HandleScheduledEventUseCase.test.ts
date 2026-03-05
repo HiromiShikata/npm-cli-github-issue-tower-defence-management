@@ -18,6 +18,7 @@ import { SetNoStoryIssueToStoryUseCase } from './SetNoStoryIssueToStoryUseCase';
 import { CreateNewStoryByLabelUseCase } from './CreateNewStoryByLabelUseCase';
 import { AssignNoAssigneeIssueToManagerUseCase } from './AssignNoAssigneeIssueToManagerUseCase';
 import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCase';
+import { StartPreparationUseCase } from './StartPreparationUseCase';
 
 describe('HandleScheduledEventUseCase', () => {
   describe('createTargetDateTimes', () => {
@@ -99,6 +100,7 @@ describe('HandleScheduledEventUseCase', () => {
       mock<AssignNoAssigneeIssueToManagerUseCase>();
     const mockUpdateIssueStatusByLabelUseCase =
       mock<UpdateIssueStatusByLabelUseCase>();
+    const mockStartPreparationUseCase = mock<StartPreparationUseCase>();
     const mockDateRepository = mock<DateRepository>();
     const mockSpreadsheetRepository = mock<SpreadsheetRepository>();
     const mockProjectRepository = mock<ProjectRepository>();
@@ -118,6 +120,7 @@ describe('HandleScheduledEventUseCase', () => {
       mockCreateNewStoryByLabelUseCase,
       mockAssignNoAssigneeIssueToManagerUseCase,
       mockUpdateIssueStatusByLabelUseCase,
+      mockStartPreparationUseCase,
       mockDateRepository,
       mockSpreadsheetRepository,
       mockProjectRepository,
