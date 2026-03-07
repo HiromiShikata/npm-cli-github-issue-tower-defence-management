@@ -27,7 +27,6 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   body: '',
   itemId: 'item-1',
   isPr: false,
-  isInProgress: false,
   isClosed: false,
   createdAt: new Date(),
   ...overrides,
