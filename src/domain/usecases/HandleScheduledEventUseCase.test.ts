@@ -141,30 +141,6 @@ describe('HandleScheduledEventUseCase', () => {
       ]);
     });
 
-    it('should call AnalyzeProblemByIssueUseCase with correct parameters', async () => {
-      const input = {
-        projectName: 'test-project',
-        org: 'test-org',
-        projectUrl: 'https://github.com/test-org/test-project',
-        manager: 'test-manager',
-        workingReport: {
-          repo: 'test-repo',
-          members: ['member1'],
-          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
-        },
-        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
-        disabledStatus: 'disabled',
-        defaultStatus: null,
-        disabled: false,
-        allowIssueCacheMinutes: 60,
-      };
-
-      const mockProject = mock<Project>();
-      mockProjectRepository.getProject.mockResolvedValue(mockProject);
-      await useCase.run(input);
-      expect(mockAnalyzeProblemByIssueUseCase.run).toHaveBeenCalled();
-    });
-
     it('should call UpdateIssueStatusByLabelUseCase with correct parameters', async () => {
       const input = {
         projectName: 'test-project',
