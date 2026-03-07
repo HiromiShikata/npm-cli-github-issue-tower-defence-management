@@ -10,19 +10,20 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
   const mockIssueRepository = mock<IssueRepository>();
 
   describe('run', () => {
+    const basicStory = {
+      name: 'Story Field',
+      databaseId: 1,
+      fieldId: 'storyFieldId',
+      stories: [
+        { ...mock<StoryOption>(), id: 'story1', name: 'Story 1' },
+        { ...mock<StoryOption>(), id: 'story2', name: 'Story 2' },
+        { ...mock<StoryOption>(), id: 'regular3', name: 'regular / Story 3' },
+      ],
+      workflowManagementStory: { id: 'workflow1', name: 'Workflow Story' },
+    };
     const basicProject: Project = {
       ...mock<Project>(),
-      story: {
-        name: 'Story Field',
-        databaseId: 1,
-        fieldId: 'storyFieldId',
-        stories: [
-          { ...mock<StoryOption>(), id: 'story1', name: 'Story 1' },
-          { ...mock<StoryOption>(), id: 'story2', name: 'Story 2' },
-          { ...mock<StoryOption>(), id: 'regular3', name: 'regular / Story 3' },
-        ],
-        workflowManagementStory: { id: 'workflow1', name: 'Workflow Story' },
-      },
+      story: basicStory,
     };
 
     const basicStoryIssue1 = {
@@ -202,7 +203,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
         expectedGetIssueByUrlCalls: [],
       },
       {
-        name: 'should create new issues for checkboxes and update story issue',
+        name: 'should add story view link and create new issues for checkboxes',
         input: {
           project: basicProject,
           issues: [basicStoryIssue1, basicStoryIssue2],
@@ -249,28 +250,54 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           [
             {
               ...basicStoryIssue1,
-              body: `- [ ] https://github.com/org/repo/issues/1
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+
+- [ ] Task 1
 - [ ] Task 2`,
             },
           ],
           [
             {
               ...basicStoryIssue1,
-              body: `- [ ] https://github.com/org/repo/issues/1
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+
+- [ ] https://github.com/org/repo/issues/1
+- [ ] Task 2`,
+            },
+          ],
+          [
+            {
+              ...basicStoryIssue1,
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+
+- [ ] https://github.com/org/repo/issues/1
 - [ ] https://github.com/org/repo/issues/2`,
             },
           ],
           [
             {
               ...basicStoryIssue2,
-              body: `- [ ] https://github.com/org/repo/issues/3
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+
+- [ ] Task 3
 - [ ] Task 4`,
             },
           ],
           [
             {
               ...basicStoryIssue2,
-              body: `- [ ] https://github.com/org/repo/issues/3
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+
+- [ ] https://github.com/org/repo/issues/3
+- [ ] Task 4`,
+            },
+          ],
+          [
+            {
+              ...basicStoryIssue2,
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+
+- [ ] https://github.com/org/repo/issues/3
 - [ ] https://github.com/org/repo/issues/4`,
             },
           ],
@@ -315,6 +342,119 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           ['https://github.com/org/repo/issues/3'],
           ['https://github.com/org/repo/issues/4'],
         ],
+      },
+      {
+        name: 'should not add story view link when it already exists',
+        input: {
+          project: {
+            ...basicProject,
+            story: {
+              ...basicStory,
+              stories: [
+                { ...mock<StoryOption>(), id: 'story1', name: 'Story 1' },
+              ],
+            },
+          },
+          issues: [
+            {
+              ...basicStoryIssue1,
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+
+- [ ] Task 1`,
+            },
+          ],
+          cacheUsed: false,
+          urlOfStoryView: 'https://example.com',
+          disabledStatus: 'Closed',
+          storyObjectMap: new Map([['Story 1', basicStoryObject1]]),
+        },
+        expectedCreateNewIssueCalls: [
+          [
+            'org',
+            'repo',
+            'Task 1',
+            '- Parent issue: https://github.com/org/repo/issues/123',
+            [],
+            [],
+          ],
+        ],
+        expectedUpdateIssueCalls: [
+          [
+            {
+              ...basicStoryIssue1,
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+
+- [ ] https://github.com/org/repo/issues/1`,
+            },
+          ],
+        ],
+        expectedUpdateStoryCalls: [
+          [
+            {
+              ...basicProject,
+              story: {
+                ...basicStory,
+                stories: [
+                  { ...mock<StoryOption>(), id: 'story1', name: 'Story 1' },
+                ],
+              },
+            },
+            {
+              ...mock<Issue>(),
+              url: 'https://github.com/org/repo/issues/1',
+            },
+            'story1',
+          ],
+        ],
+        expectedGetIssueByUrlCalls: [['https://github.com/org/repo/issues/1']],
+      },
+      {
+        name: 'should add story view link even when no checkboxes exist',
+        input: {
+          project: {
+            ...basicProject,
+            story: {
+              ...basicStory,
+              stories: [
+                { ...mock<StoryOption>(), id: 'story1', name: 'Story 1' },
+              ],
+            },
+          },
+          issues: [
+            {
+              ...basicStoryIssue1,
+              body: 'Some description without checkboxes',
+            },
+          ],
+          cacheUsed: false,
+          urlOfStoryView: 'https://example.com',
+          disabledStatus: 'Closed',
+          storyObjectMap: new Map([
+            [
+              'Story 1',
+              {
+                ...basicStoryObject1,
+                storyIssue: {
+                  ...basicStoryIssue1,
+                  body: 'Some description without checkboxes',
+                },
+              },
+            ],
+          ]),
+        },
+        expectedCreateNewIssueCalls: [],
+        expectedUpdateIssueCalls: [
+          [
+            {
+              ...basicStoryIssue1,
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+
+Some description without checkboxes`,
+            },
+          ],
+        ],
+        expectedUpdateStoryCalls: [],
+        expectedGetIssueByUrlCalls: [],
       },
       {
         name: 'should create new issues with replaced STORYNAME for checkboxes and update story issue',
@@ -371,28 +511,54 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           [
             {
               ...basicStoryIssue1,
-              body: `- [ ] https://github.com/org/repo/issues/1
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+
+- [ ] Task 1
 - [ ] Task 2 for \`STORYNAME\``,
             },
           ],
           [
             {
               ...basicStoryIssue1,
-              body: `- [ ] https://github.com/org/repo/issues/1
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+
+- [ ] https://github.com/org/repo/issues/1
+- [ ] Task 2 for \`STORYNAME\``,
+            },
+          ],
+          [
+            {
+              ...basicStoryIssue1,
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+
+- [ ] https://github.com/org/repo/issues/1
 - [ ] https://github.com/org/repo/issues/2`,
             },
           ],
           [
             {
               ...basicStoryIssue2,
-              body: `- [ ] https://github.com/org/repo/issues/3
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+
+- [ ] Task 3
 - [ ] Task 4`,
             },
           ],
           [
             {
               ...basicStoryIssue2,
-              body: `- [ ] https://github.com/org/repo/issues/3
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+
+- [ ] https://github.com/org/repo/issues/3
+- [ ] Task 4`,
+            },
+          ],
+          [
+            {
+              ...basicStoryIssue2,
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+
+- [ ] https://github.com/org/repo/issues/3
 - [ ] https://github.com/org/repo/issues/4`,
             },
           ],
@@ -520,7 +686,19 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
               ...basicStoryIssue1,
               org: 'orgA',
               repo: 'repoA',
-              body: `- [ ] https://github.com/orgA/repoA/issues/1`,
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+
+- [ ] Task 1`,
+            },
+          ],
+          [
+            {
+              ...basicStoryIssue1,
+              org: 'orgA',
+              repo: 'repoA',
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+
+- [ ] https://github.com/orgA/repoA/issues/1`,
             },
           ],
           [
@@ -528,7 +706,19 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
               ...basicStoryIssue2,
               org: 'orgB',
               repo: 'repoB',
-              body: `- [ ] https://github.com/orgB/repoB/issues/2`,
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+
+- [ ] Task 2`,
+            },
+          ],
+          [
+            {
+              ...basicStoryIssue2,
+              org: 'orgB',
+              repo: 'repoB',
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+
+- [ ] https://github.com/orgB/repoB/issues/2`,
             },
           ],
         ],
@@ -608,6 +798,47 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
         });
       },
     );
+  });
+
+  describe('buildStoryViewLink', () => {
+    const testCases: {
+      name: string;
+      urlOfStoryView: string;
+      storyName: string;
+      expected: string;
+    }[] = [
+      {
+        name: 'should build story view link with encoded story name',
+        urlOfStoryView: 'https://github.com/users/TestUser/projects/1/views/1',
+        storyName: 'Story 1',
+        expected:
+          'https://github.com/users/TestUser/projects/1/views/1?sliceBy%5Bvalue%5D=Story%201',
+      },
+      {
+        name: 'should handle story name with special characters',
+        urlOfStoryView: 'https://github.com/users/TestUser/projects/1/views/1',
+        storyName: 'planning business trip for next spring',
+        expected:
+          'https://github.com/users/TestUser/projects/1/views/1?sliceBy%5Bvalue%5D=planning%20business%20trip%20for%20next%20spring',
+      },
+      {
+        name: 'should handle story name with hash',
+        urlOfStoryView: 'https://github.com/users/TestUser/projects/1/views/1',
+        storyName: 'Story #1',
+        expected:
+          'https://github.com/users/TestUser/projects/1/views/1?sliceBy%5Bvalue%5D=Story%20%231',
+      },
+    ];
+
+    testCases.forEach(({ name, urlOfStoryView, storyName, expected }) => {
+      it(name, () => {
+        const useCase = new ConvertCheckboxToIssueInStoryIssueUseCase(
+          mockIssueRepository,
+        );
+        const result = useCase.buildStoryViewLink(urlOfStoryView, storyName);
+        expect(result).toEqual(expected);
+      });
+    });
   });
 
   describe('findCheckboxTextsNotCreatedIssue', () => {
