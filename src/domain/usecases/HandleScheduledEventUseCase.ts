@@ -19,6 +19,7 @@ import { SetNoStoryIssueToStoryUseCase } from './SetNoStoryIssueToStoryUseCase';
 import { CreateNewStoryByLabelUseCase } from './CreateNewStoryByLabelUseCase';
 import { AssignNoAssigneeIssueToManagerUseCase } from './AssignNoAssigneeIssueToManagerUseCase';
 import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCase';
+import { StartPreparationUseCase } from './StartPreparationUseCase';
 
 export class ProjectNotFoundError extends Error {
   constructor(message: string) {
@@ -42,6 +43,7 @@ export class HandleScheduledEventUseCase {
     readonly createNewStoryByLabelUseCase: CreateNewStoryByLabelUseCase,
     readonly assignNoAssigneeIssueToManagerUseCase: AssignNoAssigneeIssueToManagerUseCase,
     readonly updateIssueStatusByLabelUseCase: UpdateIssueStatusByLabelUseCase,
+    readonly startPreparationUseCase: StartPreparationUseCase,
     readonly dateRepository: DateRepository,
     readonly spreadsheetRepository: SpreadsheetRepository,
     readonly projectRepository: ProjectRepository,
@@ -63,6 +65,13 @@ export class HandleScheduledEventUseCase {
     defaultStatus: string | null;
     disabled: boolean;
     allowIssueCacheMinutes: number;
+    startPreparation?: {
+      awaitingWorkspaceStatus: string;
+      preparationStatus: string;
+      defaultAgentName: string;
+      logFilePath?: string;
+      maximumPreparingIssuesCount: number | null;
+    } | null;
   }): Promise<{
     project: Project;
     issues: Issue[];
@@ -299,6 +308,18 @@ ${JSON.stringify(e)}
       issues,
       defaultStatus: input.defaultStatus,
     });
+    if (input.startPreparation) {
+      await this.startPreparationUseCase.run({
+        projectUrl: input.projectUrl,
+        awaitingWorkspaceStatus: input.startPreparation.awaitingWorkspaceStatus,
+        preparationStatus: input.startPreparation.preparationStatus,
+        defaultAgentName: input.startPreparation.defaultAgentName,
+        logFilePath: input.startPreparation.logFilePath,
+        maximumPreparingIssuesCount:
+          input.startPreparation.maximumPreparingIssuesCount,
+        allowIssueCacheMinutes: input.allowIssueCacheMinutes,
+      });
+    }
   };
   static createTargetDateTimes = (from: Date, to: Date): Date[] => {
     const targetDateTimes: Date[] = [];
