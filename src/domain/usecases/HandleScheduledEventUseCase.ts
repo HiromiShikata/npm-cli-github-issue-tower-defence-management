@@ -207,14 +207,7 @@ ${JSON.stringify(e)}
     await this.analyzeProblemByIssueUseCase.run({
       targetDates: targetDateTimes,
       project,
-      issues,
-      cacheUsed,
-      manager: input.manager,
-      members: input.workingReport.members,
-      org: input.org,
-      repo: input.workingReport.repo,
       storyObjectMap: storyObjectMap,
-      disabledStatus: input.disabledStatus,
     });
     await this.actionAnnouncementUseCase.run({
       targetDates: targetDateTimes,

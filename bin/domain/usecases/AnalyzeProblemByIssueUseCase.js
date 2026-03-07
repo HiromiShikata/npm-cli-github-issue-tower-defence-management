@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AnalyzeProblemByIssueUseCase = void 0;
-const utils_1 = require("./utils");
 class AnalyzeProblemByIssueUseCase {
     constructor(issueRepository, dateRepository) {
         this.issueRepository = issueRepository;
@@ -16,7 +15,6 @@ class AnalyzeProblemByIssueUseCase {
             if (!targetDate) {
                 return;
             }
-            await this.checkInProgress({ ...input, targetDate });
             for (const storyObject of input.storyObjectMap.values()) {
                 const storyIssue = storyObject.storyIssue;
                 if (!storyIssue) {
@@ -25,42 +23,6 @@ class AnalyzeProblemByIssueUseCase {
                 await this.issueRepository.createComment(storyIssue, this.createSummaryCommentBody({ ...storyObject, storyIssue }));
                 await new Promise((resolve) => setTimeout(resolve, 5000));
             }
-        };
-        this.checkInProgress = async (input) => {
-            const assigneeToNotify = [];
-            for (const member of input.members) {
-                let topIssue = null;
-                for (const story of input.storyObjectMap.values()) {
-                    const storyIssueObject = input.storyObjectMap.get(story.story.name);
-                    if (!storyIssueObject) {
-                        continue;
-                    }
-                    else if (assigneeToNotify.includes(member)) {
-                        break;
-                    }
-                    for (const issue of storyIssueObject.issues) {
-                        if (!(0, utils_1.isVisibleIssue)(issue, member, input.targetDate, input.disabledStatus) ||
-                            issue.status?.toLowerCase().includes('review') ||
-                            issue.title.toLowerCase().includes('review') ||
-                            issue.isPr) {
-                            continue;
-                        }
-                        if (topIssue === null) {
-                            topIssue = issue;
-                            break;
-                        }
-                        if (!issue.isInProgress) {
-                            continue;
-                        }
-                        assigneeToNotify.push(member);
-                        break;
-                    }
-                }
-            }
-            if (assigneeToNotify.length === 0) {
-                return;
-            }
-            await this.issueRepository.createNewIssue(input.org, input.repo, 'Check in progress', `${assigneeToNotify.join('\n')}`, [input.manager], ['story:workflow-management']);
         };
         this.createSummaryCommentBody = (storyObject) => {
             const getFlowchartIdFromUrl = (url) => {

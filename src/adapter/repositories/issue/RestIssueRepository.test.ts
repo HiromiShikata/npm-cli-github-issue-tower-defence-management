@@ -52,7 +52,6 @@ describe('RestIssueRepository', () => {
         body: 'Test body',
         itemId: '',
         isPr: false,
-        isInProgress: false,
         isClosed: false,
         createdAt: new Date(),
       };
@@ -89,7 +88,6 @@ describe('RestIssueRepository', () => {
         body: 'Test body',
         itemId: '',
         isPr: false,
-        isInProgress: false,
         isClosed: false,
         createdAt: new Date(),
       };
@@ -127,7 +125,6 @@ describe('RestIssueRepository', () => {
         body: 'Test body',
         itemId: '',
         isPr: false,
-        isInProgress: false,
         isClosed: false,
         createdAt: new Date(),
       };

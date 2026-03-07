@@ -1,27 +1,15 @@
-import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
-import { Member } from '../entities/Member';
 import { DateRepository } from './adapter-interfaces/DateRepository';
 import { StoryObject, StoryObjectMap } from '../entities/StoryObjectMap';
 export declare class AnalyzeProblemByIssueUseCase {
-    readonly issueRepository: Pick<IssueRepository, 'createNewIssue' | 'createComment'>;
+    readonly issueRepository: Pick<IssueRepository, 'createComment'>;
     readonly dateRepository: Pick<DateRepository, 'formatDurationToHHMM' | 'formatDateWithDayOfWeek'>;
-    constructor(issueRepository: Pick<IssueRepository, 'createNewIssue' | 'createComment'>, dateRepository: Pick<DateRepository, 'formatDurationToHHMM' | 'formatDateWithDayOfWeek'>);
+    constructor(issueRepository: Pick<IssueRepository, 'createComment'>, dateRepository: Pick<DateRepository, 'formatDurationToHHMM' | 'formatDateWithDayOfWeek'>);
     run: (input: {
         targetDates: Date[];
         project: Project;
-        issues: Issue[];
-        cacheUsed: boolean;
-        manager: Member["name"];
-        members: Member["name"][];
-        org: string;
-        repo: string;
         storyObjectMap: StoryObjectMap;
-        disabledStatus: string;
-    }) => Promise<void>;
-    checkInProgress: (input: Parameters<AnalyzeProblemByIssueUseCase["run"]>[0] & {
-        targetDate: Date;
     }) => Promise<void>;
     createSummaryCommentBody: (storyObject: StoryObject & {
         storyIssue: NonNullable<StoryObject["storyIssue"]>;
