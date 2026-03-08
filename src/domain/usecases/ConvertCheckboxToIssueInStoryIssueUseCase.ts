@@ -2,6 +2,7 @@ import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
 import { StoryObjectMap } from '../entities/StoryObjectMap';
+import { encodeForURI } from './utils';
 
 export class ConvertCheckboxToIssueInStoryIssueUseCase {
   constructor(
@@ -38,12 +39,24 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
         storyIssue.status === input.disabledStatus
       ) {
         continue;
-      } else if (!storyIssue.body.includes('- [ ] ')) {
+      }
+      const storyViewLink = this.buildStoryViewLink(
+        input.urlOfStoryView,
+        storyOption.name,
+      );
+      let newBody = storyIssue.body;
+      if (!storyIssue.body.includes(storyViewLink)) {
+        newBody = `${storyViewLink}\n\n${newBody}`;
+        await this.issueRepository.updateIssue({
+          ...storyIssue,
+          body: newBody,
+        });
+      }
+      if (!newBody.includes('- [ ] ')) {
         continue;
       }
       const checkboxTextsNotCreatedIssue =
-        this.findCheckboxTextsNotCreatedIssue(storyIssue.body);
-      let newBody = storyIssue.body;
+        this.findCheckboxTextsNotCreatedIssue(newBody);
       for (const checkboxText of checkboxTextsNotCreatedIssue) {
         const issueTitle = checkboxText.replace(
           'STORYNAME',
@@ -79,6 +92,9 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
         );
       }
     }
+  };
+  buildStoryViewLink = (urlOfStoryView: string, storyName: string): string => {
+    return `${urlOfStoryView}?sliceBy%5Bvalue%5D=${encodeForURI(storyName)}`;
   };
   findCheckboxTextsNotCreatedIssue = (storyIssueBody: string): string[] => {
     const regexToFindCheckboxes = /^- \[ ] (.*)$/gm;
