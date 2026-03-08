@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ConvertCheckboxToIssueInStoryIssueUseCase = void 0;
+const utils_1 = require("./utils");
 class ConvertCheckboxToIssueInStoryIssueUseCase {
     constructor(issueRepository) {
         this.issueRepository = issueRepository;
@@ -22,11 +23,19 @@ class ConvertCheckboxToIssueInStoryIssueUseCase {
                     storyIssue.status === input.disabledStatus) {
                     continue;
                 }
-                else if (!storyIssue.body.includes('- [ ] ')) {
+                const storyViewLink = this.buildStoryViewLink(input.urlOfStoryView, storyOption.name);
+                let newBody = storyIssue.body;
+                if (!storyIssue.body.includes(storyViewLink)) {
+                    newBody = `${storyViewLink}\n\n${newBody}`;
+                    await this.issueRepository.updateIssue({
+                        ...storyIssue,
+                        body: newBody,
+                    });
+                }
+                if (!newBody.includes('- [ ] ')) {
                     continue;
                 }
-                const checkboxTextsNotCreatedIssue = this.findCheckboxTextsNotCreatedIssue(storyIssue.body);
-                let newBody = storyIssue.body;
+                const checkboxTextsNotCreatedIssue = this.findCheckboxTextsNotCreatedIssue(newBody);
                 for (const checkboxText of checkboxTextsNotCreatedIssue) {
                     const issueTitle = checkboxText.replace('STORYNAME', `${storyOption.name} #${storyIssue.number}`);
                     const newIssueBody = `- Parent issue: ${storyIssue.url}`;
@@ -45,6 +54,9 @@ class ConvertCheckboxToIssueInStoryIssueUseCase {
                     await this.issueRepository.updateStory({ ...input.project, story: story }, newIssue, storyOption.id);
                 }
             }
+        };
+        this.buildStoryViewLink = (urlOfStoryView, storyName) => {
+            return `${urlOfStoryView}?sliceBy%5Bvalue%5D=${(0, utils_1.encodeForURI)(storyName)}`;
         };
         this.findCheckboxTextsNotCreatedIssue = (storyIssueBody) => {
             const regexToFindCheckboxes = /^- \[ ] (.*)$/gm;

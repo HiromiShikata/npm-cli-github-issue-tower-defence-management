@@ -1,3 +1,10 @@
+# [1.29.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.28.0...v1.29.0) (2026-03-08)
+
+
+### Features
+
+* **core:** add story view link to top of story issue in ConvertCheckboxToIssueInStoryIssueUseCase ([6325145](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6325145baed3e55783220a32dffcfa9e2d12768e))
+
 # [1.28.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.27.1...v1.28.0) (2026-03-04)
 
 
