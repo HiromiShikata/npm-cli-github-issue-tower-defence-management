@@ -69,6 +69,7 @@ export class HandleScheduledEventUseCase {
     awaitingWorkspaceStatus: string;
     awaitingQualityCheckStatus: string;
     thresholdForAutoReject: number;
+    workflowBlockerResolvedWebhookUrl: string | null;
   }): Promise<{
     project: Project;
     issues: Issue[];
@@ -316,6 +317,8 @@ ${JSON.stringify(e)}
         awaitingWorkspaceStatus: input.awaitingWorkspaceStatus,
         awaitingQualityCheckStatus: input.awaitingQualityCheckStatus,
         thresholdForAutoReject: input.thresholdForAutoReject,
+        workflowBlockerResolvedWebhookUrl:
+          input.workflowBlockerResolvedWebhookUrl,
       });
     }
   };

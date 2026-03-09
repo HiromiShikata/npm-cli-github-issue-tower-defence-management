@@ -165,6 +165,7 @@ describe('HandleScheduledEventUseCase', () => {
         awaitingWorkspaceStatus: 'Awaiting workspace',
         awaitingQualityCheckStatus: 'Awaiting quality check',
         thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
       };
 
       const mockProject = mock<Project>();
@@ -193,6 +194,7 @@ describe('HandleScheduledEventUseCase', () => {
         awaitingWorkspaceStatus: 'Awaiting workspace',
         awaitingQualityCheckStatus: 'Awaiting quality check',
         thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
       };
 
       const mockProject = mock<Project>();
@@ -225,6 +227,7 @@ describe('HandleScheduledEventUseCase', () => {
         awaitingWorkspaceStatus: 'Awaiting workspace',
         awaitingQualityCheckStatus: 'Awaiting quality check',
         thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
       };
 
       const mockProject = mock<Project>();
@@ -257,6 +260,7 @@ describe('HandleScheduledEventUseCase', () => {
         awaitingWorkspaceStatus: 'Awaiting workspace',
         awaitingQualityCheckStatus: 'Awaiting quality check',
         thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
       };
 
       const result = await useCase.run(input);
@@ -286,6 +290,7 @@ describe('HandleScheduledEventUseCase', () => {
         awaitingWorkspaceStatus: 'Awaiting workspace',
         awaitingQualityCheckStatus: 'Awaiting quality check',
         thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
       };
 
       const mockProject = mock<Project>();
@@ -315,6 +320,7 @@ describe('HandleScheduledEventUseCase', () => {
         awaitingWorkspaceStatus: 'Awaiting workspace',
         awaitingQualityCheckStatus: 'Awaiting quality check',
         thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
       };
 
       const mockProject = mock<Project>();

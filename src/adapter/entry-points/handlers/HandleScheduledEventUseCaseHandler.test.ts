@@ -124,6 +124,7 @@ const validConfig = {
   awaitingWorkspaceStatus: 'Awaiting Workspace',
   awaitingQualityCheckStatus: 'Awaiting Quality Check',
   thresholdForAutoReject: 3,
+  workflowBlockerResolvedWebhookUrl: null,
   workingReport: {
     repo: 'test-repo',
     members: ['TestManager'],
