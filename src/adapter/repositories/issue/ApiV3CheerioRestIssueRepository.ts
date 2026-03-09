@@ -126,6 +126,7 @@ export class ApiV3CheerioRestIssueRepository
       body: item.body,
       itemId: item.id,
       isPr: item.url.includes('/pull/'),
+      isInProgress: normalizeFieldName(status || '').includes('progress'),
       isClosed: item.state !== 'OPEN',
       createdAt: new Date(item.createdAt || '2000-01-01'),
     };
