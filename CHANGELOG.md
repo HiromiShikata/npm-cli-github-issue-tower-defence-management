@@ -1,3 +1,10 @@
+# [1.30.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.29.0...v1.30.0) (2026-03-09)
+
+
+### Features
+
+* **core:** upgrade gh-cookie package from 1.3.9 to 1.3.22 ([a53edd0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a53edd0ecc99bcd519768f43ab5ecaa07171af42)), closes [#cookie](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/cookie)
+
 # [1.29.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.28.0...v1.29.0) (2026-03-08)
 
 
