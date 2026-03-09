@@ -35,6 +35,7 @@ import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunne
 import { StubClaudeRepository } from '../../repositories/StubClaudeRepository';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
+import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
 
 export class HandleScheduledEventUseCaseHandler {
   handle = async (
@@ -191,11 +192,13 @@ export class HandleScheduledEventUseCaseHandler {
     const issueCommentRepository = new GitHubIssueCommentRepository(
       input.credentials.bot.github.token,
     );
+    const webhookRepository = new FetchWebhookRepository();
     const notifyFinishedIssuePreparationUseCase =
       new NotifyFinishedIssuePreparationUseCase(
         projectRepository,
         issueRepository,
         issueCommentRepository,
+        webhookRepository,
       );
 
     const handleScheduledEventUseCase = new HandleScheduledEventUseCase(

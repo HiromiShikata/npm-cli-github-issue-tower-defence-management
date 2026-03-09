@@ -60,6 +60,12 @@ startPreparation?: # Optional: Enable automatic issue preparation workflow
   defaultAgentName: string # Default agent name to assign for preparation
   logFilePath?: string # Optional: Path to log file for preparation output
   maximumPreparingIssuesCount: number | null # Max concurrent preparing issues (null = unlimited)
+notifyFinishedPreparation?: # Optional: Enable notification when issue preparation is finished
+  preparationStatus: string # Status name for issues in preparation
+  awaitingWorkspaceStatus: string # Status name for issues awaiting workspace
+  awaitingQualityCheckStatus: string # Status name for issues awaiting quality check
+  thresholdForAutoReject: number # Number of auto-rejections before escalating to quality check
+  workflowBlockerResolvedWebhookUrl: string | null # Webhook URL template called when a workflow blocker issue passes checks. Supports {URL} and {MESSAGE} placeholders
 ```
 
 Example:
@@ -96,6 +102,12 @@ startPreparation:
   defaultAgentName: 'umino-bot'
   logFilePath: '/tmp/preparation.log'
   maximumPreparingIssuesCount: 3
+notifyFinishedPreparation:
+  preparationStatus: 'Preparation'
+  awaitingWorkspaceStatus: 'Awaiting Workspace'
+  awaitingQualityCheckStatus: 'Awaiting Quality Check'
+  thresholdForAutoReject: 3
+  workflowBlockerResolvedWebhookUrl: 'https://example.com/webhook?url={URL}&msg={MESSAGE}'
 ```
 
 ### Slack User Token
