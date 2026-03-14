@@ -1,3 +1,10 @@
+## [1.30.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.30.0...v1.30.1) (2026-03-14)
+
+
+### Bug Fixes
+
+* **deps:** update dependency dotenv to v17 ([648278e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/648278ef003a6b291fe46739e8121fc4ae3272d1))
+
 # [1.30.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.29.0...v1.30.0) (2026-03-09)
 
 
