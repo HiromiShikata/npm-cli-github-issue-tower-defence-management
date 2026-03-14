@@ -19,7 +19,7 @@ jobs:
       pull-requests: write
       id-token: write
     steps:
-      - uses: actions/create-github-app-token@v2
+      - uses: actions/create-github-app-token@v3
         id: app-token
         with:
           app-id: ${{ env.RELEASE_APP_ID }}
