@@ -27,8 +27,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.InternalGraphqlIssueRepository = void 0;
-const __typia_transform__accessExpressionAsString = __importStar(require("typia/lib/internal/_accessExpressionAsString.js"));
-const __typia_transform__validateReport = __importStar(require("typia/lib/internal/_validateReport.js"));
+const __typia_transform__accessExpressionAsString = __importStar(require("typia/lib/internal/_accessExpressionAsString"));
+const __typia_transform__validateReport = __importStar(require("typia/lib/internal/_validateReport"));
 const axios_1 = __importDefault(require("axios"));
 const BaseGitHubRepository_1 = require("../BaseGitHubRepository");
 const typia_1 = __importDefault(require("typia"));

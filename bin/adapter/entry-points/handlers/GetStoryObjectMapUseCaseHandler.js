@@ -27,7 +27,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GetStoryObjectMapUseCaseHandler = void 0;
-const __typia_transform__validateReport = __importStar(require("typia/lib/internal/_validateReport.js"));
+const __typia_transform__validateReport = __importStar(require("typia/lib/internal/_validateReport"));
 const yaml_1 = __importDefault(require("yaml"));
 const typia_1 = __importDefault(require("typia"));
 const fs_1 = __importDefault(require("fs"));

@@ -1,3 +1,10 @@
+## [1.30.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.30.1...v1.30.2) (2026-03-15)
+
+
+### Bug Fixes
+
+* **deps:** update dependency typia to v12 ([aa8655d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/aa8655d7a80a4627e15cabc2ececfcb75c548b8b))
+
 ## [1.30.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.30.0...v1.30.1) (2026-03-14)
 
 
