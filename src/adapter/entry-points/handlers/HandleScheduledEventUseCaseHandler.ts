@@ -30,6 +30,9 @@ import { CheerioProjectRepository } from '../../repositories/CheerioProjectRepos
 import { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
 import { AssignNoAssigneeIssueToManagerUseCase } from '../../../domain/usecases/AssignNoAssigneeIssueToManagerUseCase';
 import { UpdateIssueStatusByLabelUseCase } from '../../../domain/usecases/UpdateIssueStatusByLabelUseCase';
+import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
+import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
+import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
 
 export class HandleScheduledEventUseCaseHandler {
   handle = async (
@@ -114,9 +117,9 @@ export class HandleScheduledEventUseCaseHandler {
       ...new CheerioProjectRepository(...githubRepositoryParams),
       prepareStatus: async (
         _name: string,
-        _project: Project,
+        project: Project,
       ): Promise<Project> => {
-        throw new Error('prepareStatus is not implemented');
+        return project;
       },
     };
     const apiV3IssueRepository = new ApiV3IssueRepository(
@@ -175,6 +178,17 @@ export class HandleScheduledEventUseCaseHandler {
     const updateIssueStatusByLabelUseCase = new UpdateIssueStatusByLabelUseCase(
       issueRepository,
     );
+    const issueCommentRepository = new GitHubIssueCommentRepository(
+      input.credentials.bot.github.token,
+    );
+    const webhookRepository = new FetchWebhookRepository();
+    const notifyFinishedIssuePreparationUseCase =
+      new NotifyFinishedIssuePreparationUseCase(
+        projectRepository,
+        issueRepository,
+        issueCommentRepository,
+        webhookRepository,
+      );
 
     const handleScheduledEventUseCase = new HandleScheduledEventUseCase(
       actionAnnouncement,
@@ -190,6 +204,7 @@ export class HandleScheduledEventUseCaseHandler {
       createNewStoryByLabel,
       assignNoAssigneeIssueToManagerUseCase,
       updateIssueStatusByLabelUseCase,
+      notifyFinishedIssuePreparationUseCase,
       systemDateRepository,
       googleSpreadsheetRepository,
       projectRepository,

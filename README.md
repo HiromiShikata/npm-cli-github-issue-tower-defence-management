@@ -54,6 +54,11 @@ workingReport:
   reportIssueLabels: # Array of issue labels
     - string
     - string
+preparationStatus: string # Status name for issues in preparation
+awaitingWorkspaceStatus: string # Status name for issues awaiting workspace
+awaitingQualityCheckStatus: string # Status name for issues awaiting quality check
+thresholdForAutoReject: number # Number of auto-rejections before escalating to quality check
+workflowBlockerResolvedWebhookUrl: string | null # Webhook URL template called when a workflow blocker issue passes checks. Supports {URL} and {MESSAGE} placeholders
 ```
 
 Example:
@@ -84,6 +89,11 @@ workingReport:
     - 'working-time'
   slack:
     userToken: 'xoxp-xxx'
+preparationStatus: 'Preparation'
+awaitingWorkspaceStatus: 'Awaiting Workspace'
+awaitingQualityCheckStatus: 'Awaiting Quality Check'
+thresholdForAutoReject: 3
+workflowBlockerResolvedWebhookUrl: 'https://example.com/webhook?url={URL}&msg={MESSAGE}'
 ```
 
 ### Slack User Token

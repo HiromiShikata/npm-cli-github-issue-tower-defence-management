@@ -18,6 +18,7 @@ import { SetNoStoryIssueToStoryUseCase } from './SetNoStoryIssueToStoryUseCase';
 import { CreateNewStoryByLabelUseCase } from './CreateNewStoryByLabelUseCase';
 import { AssignNoAssigneeIssueToManagerUseCase } from './AssignNoAssigneeIssueToManagerUseCase';
 import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCase';
+import { NotifyFinishedIssuePreparationUseCase } from './NotifyFinishedIssuePreparationUseCase';
 
 describe('HandleScheduledEventUseCase', () => {
   describe('createTargetDateTimes', () => {
@@ -99,6 +100,8 @@ describe('HandleScheduledEventUseCase', () => {
       mock<AssignNoAssigneeIssueToManagerUseCase>();
     const mockUpdateIssueStatusByLabelUseCase =
       mock<UpdateIssueStatusByLabelUseCase>();
+    const mockNotifyFinishedIssuePreparationUseCase =
+      mock<NotifyFinishedIssuePreparationUseCase>();
     const mockDateRepository = mock<DateRepository>();
     const mockSpreadsheetRepository = mock<SpreadsheetRepository>();
     const mockProjectRepository = mock<ProjectRepository>();
@@ -118,6 +121,7 @@ describe('HandleScheduledEventUseCase', () => {
       mockCreateNewStoryByLabelUseCase,
       mockAssignNoAssigneeIssueToManagerUseCase,
       mockUpdateIssueStatusByLabelUseCase,
+      mockNotifyFinishedIssuePreparationUseCase,
       mockDateRepository,
       mockSpreadsheetRepository,
       mockProjectRepository,
@@ -157,6 +161,11 @@ describe('HandleScheduledEventUseCase', () => {
         defaultStatus: null,
         disabled: false,
         allowIssueCacheMinutes: 60,
+        preparationStatus: 'Preparation',
+        awaitingWorkspaceStatus: 'Awaiting workspace',
+        awaitingQualityCheckStatus: 'Awaiting quality check',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
       };
 
       const mockProject = mock<Project>();
@@ -181,6 +190,11 @@ describe('HandleScheduledEventUseCase', () => {
         defaultStatus: 'ToDo',
         disabled: false,
         allowIssueCacheMinutes: 60,
+        preparationStatus: 'Preparation',
+        awaitingWorkspaceStatus: 'Awaiting workspace',
+        awaitingQualityCheckStatus: 'Awaiting quality check',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
       };
 
       const mockProject = mock<Project>();
@@ -209,6 +223,11 @@ describe('HandleScheduledEventUseCase', () => {
         defaultStatus: null,
         disabled: false,
         allowIssueCacheMinutes: 60,
+        preparationStatus: 'Preparation',
+        awaitingWorkspaceStatus: 'Awaiting workspace',
+        awaitingQualityCheckStatus: 'Awaiting quality check',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
       };
 
       const mockProject = mock<Project>();
@@ -237,6 +256,11 @@ describe('HandleScheduledEventUseCase', () => {
         defaultStatus: null,
         disabled: true,
         allowIssueCacheMinutes: 60,
+        preparationStatus: 'Preparation',
+        awaitingWorkspaceStatus: 'Awaiting workspace',
+        awaitingQualityCheckStatus: 'Awaiting quality check',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
       };
 
       const result = await useCase.run(input);
@@ -262,6 +286,11 @@ describe('HandleScheduledEventUseCase', () => {
         defaultStatus: null,
         disabled: false,
         allowIssueCacheMinutes: 60,
+        preparationStatus: 'Preparation',
+        awaitingWorkspaceStatus: 'Awaiting workspace',
+        awaitingQualityCheckStatus: 'Awaiting quality check',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
       };
 
       const mockProject = mock<Project>();
@@ -287,6 +316,11 @@ describe('HandleScheduledEventUseCase', () => {
         defaultStatus: null,
         disabled: false,
         allowIssueCacheMinutes: 120,
+        preparationStatus: 'Preparation',
+        awaitingWorkspaceStatus: 'Awaiting workspace',
+        awaitingQualityCheckStatus: 'Awaiting quality check',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
       };
 
       const mockProject = mock<Project>();
