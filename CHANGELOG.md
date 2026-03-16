@@ -1,3 +1,15 @@
+# [1.31.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.30.2...v1.31.0) (2026-03-16)
+
+
+### Bug Fixes
+
+* **core:** keep isInProgress field in Issue entity ([b5c756b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b5c756b662311c2b4a6f3e8bc5b3abcbc94e002d))
+
+
+### Features
+
+* **core:** remove checkInProgress from AnalyzeProblemByIssueUseCase ([91daf23](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/91daf232d7c6c998a48da2865ba66a4e72abae8b))
+
 ## [1.30.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.30.1...v1.30.2) (2026-03-15)
 
 
