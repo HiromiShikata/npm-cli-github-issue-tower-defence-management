@@ -20,6 +20,7 @@ import { CreateNewStoryByLabelUseCase } from './CreateNewStoryByLabelUseCase';
 import { AssignNoAssigneeIssueToManagerUseCase } from './AssignNoAssigneeIssueToManagerUseCase';
 import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCase';
 import { StartPreparationUseCase } from './StartPreparationUseCase';
+import { NotifyFinishedIssuePreparationUseCase } from './NotifyFinishedIssuePreparationUseCase';
 export declare class ProjectNotFoundError extends Error {
     constructor(message: string);
 }
@@ -38,11 +39,12 @@ export declare class HandleScheduledEventUseCase {
     readonly assignNoAssigneeIssueToManagerUseCase: AssignNoAssigneeIssueToManagerUseCase;
     readonly updateIssueStatusByLabelUseCase: UpdateIssueStatusByLabelUseCase;
     readonly startPreparationUseCase: StartPreparationUseCase;
+    readonly notifyFinishedIssuePreparationUseCase: NotifyFinishedIssuePreparationUseCase;
     readonly dateRepository: DateRepository;
     readonly spreadsheetRepository: SpreadsheetRepository;
     readonly projectRepository: ProjectRepository;
     readonly issueRepository: IssueRepository;
-    constructor(actionAnnouncementUseCase: ActionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase: ClearNextActionHourUseCase, analyzeProblemByIssueUseCase: AnalyzeProblemByIssueUseCase, analyzeStoriesUseCase: AnalyzeStoriesUseCase, clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase, createEstimationIssueUseCase: CreateEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase: ConvertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase: SetNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase: CreateNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase: AssignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase: UpdateIssueStatusByLabelUseCase, startPreparationUseCase: StartPreparationUseCase, dateRepository: DateRepository, spreadsheetRepository: SpreadsheetRepository, projectRepository: ProjectRepository, issueRepository: IssueRepository);
+    constructor(actionAnnouncementUseCase: ActionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase: ClearNextActionHourUseCase, analyzeProblemByIssueUseCase: AnalyzeProblemByIssueUseCase, analyzeStoriesUseCase: AnalyzeStoriesUseCase, clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase, createEstimationIssueUseCase: CreateEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase: ConvertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase: SetNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase: CreateNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase: AssignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase: UpdateIssueStatusByLabelUseCase, startPreparationUseCase: StartPreparationUseCase, notifyFinishedIssuePreparationUseCase: NotifyFinishedIssuePreparationUseCase, dateRepository: DateRepository, spreadsheetRepository: SpreadsheetRepository, projectRepository: ProjectRepository, issueRepository: IssueRepository);
     run: (input: {
         projectName: string;
         org: string;
@@ -64,6 +66,13 @@ export declare class HandleScheduledEventUseCase {
             defaultAgentName: string;
             logFilePath?: string;
             maximumPreparingIssuesCount: number | null;
+        } | null;
+        notifyFinishedPreparation?: {
+            preparationStatus: string;
+            awaitingWorkspaceStatus: string;
+            awaitingQualityCheckStatus: string;
+            thresholdForAutoReject: number;
+            workflowBlockerResolvedWebhookUrl: string | null;
         } | null;
     }) => Promise<{
         project: Project;

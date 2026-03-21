@@ -323,16 +323,15 @@ ${JSON.stringify(e)}
       });
     }
     if (input.notifyFinishedPreparation) {
+      const notifyFinishedPreparation = input.notifyFinishedPreparation;
       const preparationIssues = issues.filter(
-        (issue) =>
-          issue.status === input.notifyFinishedPreparation!.preparationStatus,
+        (issue) => issue.status === notifyFinishedPreparation.preparationStatus,
       );
       for (const issue of preparationIssues) {
         await this.notifyFinishedIssuePreparationUseCase.run({
           projectUrl: input.projectUrl,
           issueUrl: issue.url,
-          preparationStatus:
-            input.notifyFinishedPreparation.preparationStatus,
+          preparationStatus: input.notifyFinishedPreparation.preparationStatus,
           awaitingWorkspaceStatus:
             input.notifyFinishedPreparation.awaitingWorkspaceStatus,
           awaitingQualityCheckStatus:
