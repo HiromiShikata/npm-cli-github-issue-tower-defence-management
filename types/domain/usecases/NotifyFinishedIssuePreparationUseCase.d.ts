@@ -1,6 +1,7 @@
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
+import { WebhookRepository } from './adapter-interfaces/WebhookRepository';
 export declare class IssueNotFoundError extends Error {
     constructor(issueUrl: string);
 }
@@ -11,7 +12,8 @@ export declare class NotifyFinishedIssuePreparationUseCase {
     private readonly projectRepository;
     private readonly issueRepository;
     private readonly issueCommentRepository;
-    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl'>, issueRepository: Pick<IssueRepository, 'get' | 'update' | 'findRelatedOpenPRs'>, issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>);
+    private readonly webhookRepository;
+    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl' | 'prepareStatus'>, issueRepository: Pick<IssueRepository, 'get' | 'update' | 'findRelatedOpenPRs' | 'getStoryObjectMap'>, issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>, webhookRepository: Pick<WebhookRepository, 'sendGetRequest'>);
     run: (params: {
         projectUrl: string;
         issueUrl: string;
@@ -19,6 +21,8 @@ export declare class NotifyFinishedIssuePreparationUseCase {
         awaitingWorkspaceStatus: string;
         awaitingQualityCheckStatus: string;
         thresholdForAutoReject: number;
+        workflowBlockerResolvedWebhookUrl: string | null;
     }) => Promise<void>;
+    private sendWorkflowBlockerNotification;
 }
 //# sourceMappingURL=NotifyFinishedIssuePreparationUseCase.d.ts.map

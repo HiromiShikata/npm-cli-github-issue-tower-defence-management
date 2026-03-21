@@ -20,6 +20,7 @@ import { CreateNewStoryByLabelUseCase } from './CreateNewStoryByLabelUseCase';
 import { AssignNoAssigneeIssueToManagerUseCase } from './AssignNoAssigneeIssueToManagerUseCase';
 import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCase';
 import { StartPreparationUseCase } from './StartPreparationUseCase';
+import { NotifyFinishedIssuePreparationUseCase } from './NotifyFinishedIssuePreparationUseCase';
 
 export class ProjectNotFoundError extends Error {
   constructor(message: string) {
@@ -44,6 +45,7 @@ export class HandleScheduledEventUseCase {
     readonly assignNoAssigneeIssueToManagerUseCase: AssignNoAssigneeIssueToManagerUseCase,
     readonly updateIssueStatusByLabelUseCase: UpdateIssueStatusByLabelUseCase,
     readonly startPreparationUseCase: StartPreparationUseCase,
+    readonly notifyFinishedIssuePreparationUseCase: NotifyFinishedIssuePreparationUseCase,
     readonly dateRepository: DateRepository,
     readonly spreadsheetRepository: SpreadsheetRepository,
     readonly projectRepository: ProjectRepository,
@@ -71,6 +73,13 @@ export class HandleScheduledEventUseCase {
       defaultAgentName: string;
       logFilePath?: string;
       maximumPreparingIssuesCount: number | null;
+    } | null;
+    notifyFinishedPreparation?: {
+      preparationStatus: string;
+      awaitingWorkspaceStatus: string;
+      awaitingQualityCheckStatus: string;
+      thresholdForAutoReject: number;
+      workflowBlockerResolvedWebhookUrl: string | null;
     } | null;
   }): Promise<{
     project: Project;
@@ -312,6 +321,27 @@ ${JSON.stringify(e)}
           input.startPreparation.maximumPreparingIssuesCount,
         allowIssueCacheMinutes: input.allowIssueCacheMinutes,
       });
+    }
+    if (input.notifyFinishedPreparation) {
+      const notifyFinishedPreparation = input.notifyFinishedPreparation;
+      const preparationIssues = issues.filter(
+        (issue) => issue.status === notifyFinishedPreparation.preparationStatus,
+      );
+      for (const issue of preparationIssues) {
+        await this.notifyFinishedIssuePreparationUseCase.run({
+          projectUrl: input.projectUrl,
+          issueUrl: issue.url,
+          preparationStatus: input.notifyFinishedPreparation.preparationStatus,
+          awaitingWorkspaceStatus:
+            input.notifyFinishedPreparation.awaitingWorkspaceStatus,
+          awaitingQualityCheckStatus:
+            input.notifyFinishedPreparation.awaitingQualityCheckStatus,
+          thresholdForAutoReject:
+            input.notifyFinishedPreparation.thresholdForAutoReject,
+          workflowBlockerResolvedWebhookUrl:
+            input.notifyFinishedPreparation.workflowBlockerResolvedWebhookUrl,
+        });
+      }
     }
   };
   static createTargetDateTimes = (from: Date, to: Date): Date[] => {

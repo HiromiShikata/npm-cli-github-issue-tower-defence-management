@@ -9,7 +9,7 @@ class ProjectNotFoundError extends Error {
 }
 exports.ProjectNotFoundError = ProjectNotFoundError;
 class HandleScheduledEventUseCase {
-    constructor(actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
+    constructor(actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, notifyFinishedIssuePreparationUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
         this.actionAnnouncementUseCase = actionAnnouncementUseCase;
         this.setWorkflowManagementIssueToStoryUseCase = setWorkflowManagementIssueToStoryUseCase;
         this.clearNextActionHourUseCase = clearNextActionHourUseCase;
@@ -24,6 +24,7 @@ class HandleScheduledEventUseCase {
         this.assignNoAssigneeIssueToManagerUseCase = assignNoAssigneeIssueToManagerUseCase;
         this.updateIssueStatusByLabelUseCase = updateIssueStatusByLabelUseCase;
         this.startPreparationUseCase = startPreparationUseCase;
+        this.notifyFinishedIssuePreparationUseCase = notifyFinishedIssuePreparationUseCase;
         this.dateRepository = dateRepository;
         this.spreadsheetRepository = spreadsheetRepository;
         this.projectRepository = projectRepository;
@@ -211,6 +212,21 @@ ${JSON.stringify(e)}
                     maximumPreparingIssuesCount: input.startPreparation.maximumPreparingIssuesCount,
                     allowIssueCacheMinutes: input.allowIssueCacheMinutes,
                 });
+            }
+            if (input.notifyFinishedPreparation) {
+                const notifyFinishedPreparation = input.notifyFinishedPreparation;
+                const preparationIssues = issues.filter((issue) => issue.status === notifyFinishedPreparation.preparationStatus);
+                for (const issue of preparationIssues) {
+                    await this.notifyFinishedIssuePreparationUseCase.run({
+                        projectUrl: input.projectUrl,
+                        issueUrl: issue.url,
+                        preparationStatus: input.notifyFinishedPreparation.preparationStatus,
+                        awaitingWorkspaceStatus: input.notifyFinishedPreparation.awaitingWorkspaceStatus,
+                        awaitingQualityCheckStatus: input.notifyFinishedPreparation.awaitingQualityCheckStatus,
+                        thresholdForAutoReject: input.notifyFinishedPreparation.thresholdForAutoReject,
+                        workflowBlockerResolvedWebhookUrl: input.notifyFinishedPreparation.workflowBlockerResolvedWebhookUrl,
+                    });
+                }
             }
         };
         this.findTargetDateAndUpdateLastExecutionDateTime = async (spreadsheetUrl, now) => {

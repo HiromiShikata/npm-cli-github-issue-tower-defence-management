@@ -59,6 +59,9 @@ const UpdateIssueStatusByLabelUseCase_1 = require("../../../domain/usecases/Upda
 const StartPreparationUseCase_1 = require("../../../domain/usecases/StartPreparationUseCase");
 const NodeLocalCommandRunner_1 = require("../../repositories/NodeLocalCommandRunner");
 const StubClaudeRepository_1 = require("../../repositories/StubClaudeRepository");
+const NotifyFinishedIssuePreparationUseCase_1 = require("../../../domain/usecases/NotifyFinishedIssuePreparationUseCase");
+const GitHubIssueCommentRepository_1 = require("../../repositories/GitHubIssueCommentRepository");
+const FetchWebhookRepository_1 = require("../../repositories/FetchWebhookRepository");
 class HandleScheduledEventUseCaseHandler {
     constructor() {
         this.handle = async (configFilePath, verbose) => {
@@ -73,8 +76,8 @@ class HandleScheduledEventUseCaseHandler {
             });
             const configFileContent = fs_1.default.readFileSync(configFilePath, 'utf8');
             const input = yaml_1.default.parse(configFileContent);
-            if (!(() => { const _io0 = input => "string" === typeof input.projectName && "string" === typeof input.org && "string" === typeof input.projectUrl && "string" === typeof input.manager && ("object" === typeof input.workingReport && null !== input.workingReport && _io1(input.workingReport)) && "string" === typeof input.urlOfStoryView && "string" === typeof input.disabledStatus && (null === input.defaultStatus || "string" === typeof input.defaultStatus) && "boolean" === typeof input.disabled && "number" === typeof input.allowIssueCacheMinutes && (null === input.startPreparation || undefined === input.startPreparation || "object" === typeof input.startPreparation && null !== input.startPreparation && _io2(input.startPreparation)) && ("object" === typeof input.credentials && null !== input.credentials && _io3(input.credentials)); const _io1 = input => "string" === typeof input.repo && (Array.isArray(input.members) && input.members.every(elem => "string" === typeof elem)) && "string" === typeof input.spreadsheetUrl; const _io2 = input => "string" === typeof input.awaitingWorkspaceStatus && "string" === typeof input.preparationStatus && "string" === typeof input.defaultAgentName && (undefined === input.logFilePath || "string" === typeof input.logFilePath) && (null === input.maximumPreparingIssuesCount || "number" === typeof input.maximumPreparingIssuesCount); const _io3 = input => "object" === typeof input.manager && null !== input.manager && _io4(input.manager) && ("object" === typeof input.bot && null !== input.bot && _io8(input.bot)); const _io4 = input => "object" === typeof input.github && null !== input.github && _io5(input.github) && ("object" === typeof input.slack && null !== input.slack && _io6(input.slack)) && ("object" === typeof input.googleServiceAccount && null !== input.googleServiceAccount && _io7(input.googleServiceAccount)); const _io5 = input => "string" === typeof input.token; const _io6 = input => "string" === typeof input.userToken; const _io7 = input => "string" === typeof input.serviceAccountKey; const _io8 = input => "object" === typeof input.github && null !== input.github && _io9(input.github); const _io9 = input => "string" === typeof input.token && (undefined === input.name || "string" === typeof input.name) && (undefined === input.password || "string" === typeof input.password) && (undefined === input.authenticatorKey || "string" === typeof input.authenticatorKey); return input => "object" === typeof input && null !== input && _io0(input); })()(input)) {
-                throw new Error(`Invalid input: ${JSON.stringify(input)}\n\n${JSON.stringify((() => { const _io0 = input => "string" === typeof input.projectName && "string" === typeof input.org && "string" === typeof input.projectUrl && "string" === typeof input.manager && ("object" === typeof input.workingReport && null !== input.workingReport && _io1(input.workingReport)) && "string" === typeof input.urlOfStoryView && "string" === typeof input.disabledStatus && (null === input.defaultStatus || "string" === typeof input.defaultStatus) && "boolean" === typeof input.disabled && "number" === typeof input.allowIssueCacheMinutes && (null === input.startPreparation || undefined === input.startPreparation || "object" === typeof input.startPreparation && null !== input.startPreparation && _io2(input.startPreparation)) && ("object" === typeof input.credentials && null !== input.credentials && _io3(input.credentials)); const _io1 = input => "string" === typeof input.repo && (Array.isArray(input.members) && input.members.every(elem => "string" === typeof elem)) && "string" === typeof input.spreadsheetUrl; const _io2 = input => "string" === typeof input.awaitingWorkspaceStatus && "string" === typeof input.preparationStatus && "string" === typeof input.defaultAgentName && (undefined === input.logFilePath || "string" === typeof input.logFilePath) && (null === input.maximumPreparingIssuesCount || "number" === typeof input.maximumPreparingIssuesCount); const _io3 = input => "object" === typeof input.manager && null !== input.manager && _io4(input.manager) && ("object" === typeof input.bot && null !== input.bot && _io8(input.bot)); const _io4 = input => "object" === typeof input.github && null !== input.github && _io5(input.github) && ("object" === typeof input.slack && null !== input.slack && _io6(input.slack)) && ("object" === typeof input.googleServiceAccount && null !== input.googleServiceAccount && _io7(input.googleServiceAccount)); const _io5 = input => "string" === typeof input.token; const _io6 = input => "string" === typeof input.userToken; const _io7 = input => "string" === typeof input.serviceAccountKey; const _io8 = input => "object" === typeof input.github && null !== input.github && _io9(input.github); const _io9 = input => "string" === typeof input.token && (undefined === input.name || "string" === typeof input.name) && (undefined === input.password || "string" === typeof input.password) && (undefined === input.authenticatorKey || "string" === typeof input.authenticatorKey); const _vo0 = (input, _path, _exceptionable = true) => ["string" === typeof input.projectName || _report(_exceptionable, {
+            if (!(() => { const _io0 = input => "string" === typeof input.projectName && "string" === typeof input.org && "string" === typeof input.projectUrl && "string" === typeof input.manager && ("object" === typeof input.workingReport && null !== input.workingReport && _io1(input.workingReport)) && "string" === typeof input.urlOfStoryView && "string" === typeof input.disabledStatus && (null === input.defaultStatus || "string" === typeof input.defaultStatus) && "boolean" === typeof input.disabled && "number" === typeof input.allowIssueCacheMinutes && (null === input.startPreparation || undefined === input.startPreparation || "object" === typeof input.startPreparation && null !== input.startPreparation && _io2(input.startPreparation)) && (null === input.notifyFinishedPreparation || undefined === input.notifyFinishedPreparation || "object" === typeof input.notifyFinishedPreparation && null !== input.notifyFinishedPreparation && _io3(input.notifyFinishedPreparation)) && ("object" === typeof input.credentials && null !== input.credentials && _io4(input.credentials)); const _io1 = input => "string" === typeof input.repo && (Array.isArray(input.members) && input.members.every(elem => "string" === typeof elem)) && "string" === typeof input.spreadsheetUrl; const _io2 = input => "string" === typeof input.awaitingWorkspaceStatus && "string" === typeof input.preparationStatus && "string" === typeof input.defaultAgentName && (undefined === input.logFilePath || "string" === typeof input.logFilePath) && (null === input.maximumPreparingIssuesCount || "number" === typeof input.maximumPreparingIssuesCount); const _io3 = input => "string" === typeof input.preparationStatus && "string" === typeof input.awaitingWorkspaceStatus && "string" === typeof input.awaitingQualityCheckStatus && "number" === typeof input.thresholdForAutoReject && (null === input.workflowBlockerResolvedWebhookUrl || "string" === typeof input.workflowBlockerResolvedWebhookUrl); const _io4 = input => "object" === typeof input.manager && null !== input.manager && _io5(input.manager) && ("object" === typeof input.bot && null !== input.bot && _io9(input.bot)); const _io5 = input => "object" === typeof input.github && null !== input.github && _io6(input.github) && ("object" === typeof input.slack && null !== input.slack && _io7(input.slack)) && ("object" === typeof input.googleServiceAccount && null !== input.googleServiceAccount && _io8(input.googleServiceAccount)); const _io6 = input => "string" === typeof input.token; const _io7 = input => "string" === typeof input.userToken; const _io8 = input => "string" === typeof input.serviceAccountKey; const _io9 = input => "object" === typeof input.github && null !== input.github && _io10(input.github); const _io10 = input => "string" === typeof input.token && (undefined === input.name || "string" === typeof input.name) && (undefined === input.password || "string" === typeof input.password) && (undefined === input.authenticatorKey || "string" === typeof input.authenticatorKey); return input => "object" === typeof input && null !== input && _io0(input); })()(input)) {
+                throw new Error(`Invalid input: ${JSON.stringify(input)}\n\n${JSON.stringify((() => { const _io0 = input => "string" === typeof input.projectName && "string" === typeof input.org && "string" === typeof input.projectUrl && "string" === typeof input.manager && ("object" === typeof input.workingReport && null !== input.workingReport && _io1(input.workingReport)) && "string" === typeof input.urlOfStoryView && "string" === typeof input.disabledStatus && (null === input.defaultStatus || "string" === typeof input.defaultStatus) && "boolean" === typeof input.disabled && "number" === typeof input.allowIssueCacheMinutes && (null === input.startPreparation || undefined === input.startPreparation || "object" === typeof input.startPreparation && null !== input.startPreparation && _io2(input.startPreparation)) && (null === input.notifyFinishedPreparation || undefined === input.notifyFinishedPreparation || "object" === typeof input.notifyFinishedPreparation && null !== input.notifyFinishedPreparation && _io3(input.notifyFinishedPreparation)) && ("object" === typeof input.credentials && null !== input.credentials && _io4(input.credentials)); const _io1 = input => "string" === typeof input.repo && (Array.isArray(input.members) && input.members.every(elem => "string" === typeof elem)) && "string" === typeof input.spreadsheetUrl; const _io2 = input => "string" === typeof input.awaitingWorkspaceStatus && "string" === typeof input.preparationStatus && "string" === typeof input.defaultAgentName && (undefined === input.logFilePath || "string" === typeof input.logFilePath) && (null === input.maximumPreparingIssuesCount || "number" === typeof input.maximumPreparingIssuesCount); const _io3 = input => "string" === typeof input.preparationStatus && "string" === typeof input.awaitingWorkspaceStatus && "string" === typeof input.awaitingQualityCheckStatus && "number" === typeof input.thresholdForAutoReject && (null === input.workflowBlockerResolvedWebhookUrl || "string" === typeof input.workflowBlockerResolvedWebhookUrl); const _io4 = input => "object" === typeof input.manager && null !== input.manager && _io5(input.manager) && ("object" === typeof input.bot && null !== input.bot && _io9(input.bot)); const _io5 = input => "object" === typeof input.github && null !== input.github && _io6(input.github) && ("object" === typeof input.slack && null !== input.slack && _io7(input.slack)) && ("object" === typeof input.googleServiceAccount && null !== input.googleServiceAccount && _io8(input.googleServiceAccount)); const _io6 = input => "string" === typeof input.token; const _io7 = input => "string" === typeof input.userToken; const _io8 = input => "string" === typeof input.serviceAccountKey; const _io9 = input => "object" === typeof input.github && null !== input.github && _io10(input.github); const _io10 = input => "string" === typeof input.token && (undefined === input.name || "string" === typeof input.name) && (undefined === input.password || "string" === typeof input.password) && (undefined === input.authenticatorKey || "string" === typeof input.authenticatorKey); const _vo0 = (input, _path, _exceptionable = true) => ["string" === typeof input.projectName || _report(_exceptionable, {
                         path: _path + ".projectName",
                         expected: "string",
                         value: input.projectName
@@ -126,13 +129,21 @@ class HandleScheduledEventUseCaseHandler {
                         path: _path + ".startPreparation",
                         expected: "(__type.o1 | null | undefined)",
                         value: input.startPreparation
+                    }), null === input.notifyFinishedPreparation || undefined === input.notifyFinishedPreparation || ("object" === typeof input.notifyFinishedPreparation && null !== input.notifyFinishedPreparation || _report(_exceptionable, {
+                        path: _path + ".notifyFinishedPreparation",
+                        expected: "(__type.o2 | null | undefined)",
+                        value: input.notifyFinishedPreparation
+                    })) && _vo3(input.notifyFinishedPreparation, _path + ".notifyFinishedPreparation", true && _exceptionable) || _report(_exceptionable, {
+                        path: _path + ".notifyFinishedPreparation",
+                        expected: "(__type.o2 | null | undefined)",
+                        value: input.notifyFinishedPreparation
                     }), ("object" === typeof input.credentials && null !== input.credentials || _report(_exceptionable, {
                         path: _path + ".credentials",
-                        expected: "__type.o2",
+                        expected: "__type.o3",
                         value: input.credentials
-                    })) && _vo3(input.credentials, _path + ".credentials", true && _exceptionable) || _report(_exceptionable, {
+                    })) && _vo4(input.credentials, _path + ".credentials", true && _exceptionable) || _report(_exceptionable, {
                         path: _path + ".credentials",
-                        expected: "__type.o2",
+                        expected: "__type.o3",
                         value: input.credentials
                     })].every(flag => flag); const _vo1 = (input, _path, _exceptionable = true) => ["string" === typeof input.repo || _report(_exceptionable, {
                         path: _path + ".repo",
@@ -174,67 +185,87 @@ class HandleScheduledEventUseCaseHandler {
                         path: _path + ".maximumPreparingIssuesCount",
                         expected: "(null | number)",
                         value: input.maximumPreparingIssuesCount
-                    })].every(flag => flag); const _vo3 = (input, _path, _exceptionable = true) => [("object" === typeof input.manager && null !== input.manager || _report(_exceptionable, {
+                    })].every(flag => flag); const _vo3 = (input, _path, _exceptionable = true) => ["string" === typeof input.preparationStatus || _report(_exceptionable, {
+                        path: _path + ".preparationStatus",
+                        expected: "string",
+                        value: input.preparationStatus
+                    }), "string" === typeof input.awaitingWorkspaceStatus || _report(_exceptionable, {
+                        path: _path + ".awaitingWorkspaceStatus",
+                        expected: "string",
+                        value: input.awaitingWorkspaceStatus
+                    }), "string" === typeof input.awaitingQualityCheckStatus || _report(_exceptionable, {
+                        path: _path + ".awaitingQualityCheckStatus",
+                        expected: "string",
+                        value: input.awaitingQualityCheckStatus
+                    }), "number" === typeof input.thresholdForAutoReject || _report(_exceptionable, {
+                        path: _path + ".thresholdForAutoReject",
+                        expected: "number",
+                        value: input.thresholdForAutoReject
+                    }), null === input.workflowBlockerResolvedWebhookUrl || "string" === typeof input.workflowBlockerResolvedWebhookUrl || _report(_exceptionable, {
+                        path: _path + ".workflowBlockerResolvedWebhookUrl",
+                        expected: "(null | string)",
+                        value: input.workflowBlockerResolvedWebhookUrl
+                    })].every(flag => flag); const _vo4 = (input, _path, _exceptionable = true) => [("object" === typeof input.manager && null !== input.manager || _report(_exceptionable, {
                         path: _path + ".manager",
-                        expected: "__type.o3",
+                        expected: "__type.o4",
                         value: input.manager
-                    })) && _vo4(input.manager, _path + ".manager", true && _exceptionable) || _report(_exceptionable, {
+                    })) && _vo5(input.manager, _path + ".manager", true && _exceptionable) || _report(_exceptionable, {
                         path: _path + ".manager",
-                        expected: "__type.o3",
+                        expected: "__type.o4",
                         value: input.manager
                     }), ("object" === typeof input.bot && null !== input.bot || _report(_exceptionable, {
                         path: _path + ".bot",
-                        expected: "__type.o7",
+                        expected: "__type.o8",
                         value: input.bot
-                    })) && _vo8(input.bot, _path + ".bot", true && _exceptionable) || _report(_exceptionable, {
+                    })) && _vo9(input.bot, _path + ".bot", true && _exceptionable) || _report(_exceptionable, {
                         path: _path + ".bot",
-                        expected: "__type.o7",
+                        expected: "__type.o8",
                         value: input.bot
-                    })].every(flag => flag); const _vo4 = (input, _path, _exceptionable = true) => [("object" === typeof input.github && null !== input.github || _report(_exceptionable, {
+                    })].every(flag => flag); const _vo5 = (input, _path, _exceptionable = true) => [("object" === typeof input.github && null !== input.github || _report(_exceptionable, {
                         path: _path + ".github",
-                        expected: "__type.o4",
+                        expected: "__type.o5",
                         value: input.github
-                    })) && _vo5(input.github, _path + ".github", true && _exceptionable) || _report(_exceptionable, {
+                    })) && _vo6(input.github, _path + ".github", true && _exceptionable) || _report(_exceptionable, {
                         path: _path + ".github",
-                        expected: "__type.o4",
+                        expected: "__type.o5",
                         value: input.github
                     }), ("object" === typeof input.slack && null !== input.slack || _report(_exceptionable, {
                         path: _path + ".slack",
-                        expected: "__type.o5",
+                        expected: "__type.o6",
                         value: input.slack
-                    })) && _vo6(input.slack, _path + ".slack", true && _exceptionable) || _report(_exceptionable, {
+                    })) && _vo7(input.slack, _path + ".slack", true && _exceptionable) || _report(_exceptionable, {
                         path: _path + ".slack",
-                        expected: "__type.o5",
+                        expected: "__type.o6",
                         value: input.slack
                     }), ("object" === typeof input.googleServiceAccount && null !== input.googleServiceAccount || _report(_exceptionable, {
                         path: _path + ".googleServiceAccount",
-                        expected: "__type.o6",
+                        expected: "__type.o7",
                         value: input.googleServiceAccount
-                    })) && _vo7(input.googleServiceAccount, _path + ".googleServiceAccount", true && _exceptionable) || _report(_exceptionable, {
+                    })) && _vo8(input.googleServiceAccount, _path + ".googleServiceAccount", true && _exceptionable) || _report(_exceptionable, {
                         path: _path + ".googleServiceAccount",
-                        expected: "__type.o6",
+                        expected: "__type.o7",
                         value: input.googleServiceAccount
-                    })].every(flag => flag); const _vo5 = (input, _path, _exceptionable = true) => ["string" === typeof input.token || _report(_exceptionable, {
+                    })].every(flag => flag); const _vo6 = (input, _path, _exceptionable = true) => ["string" === typeof input.token || _report(_exceptionable, {
                         path: _path + ".token",
                         expected: "string",
                         value: input.token
-                    })].every(flag => flag); const _vo6 = (input, _path, _exceptionable = true) => ["string" === typeof input.userToken || _report(_exceptionable, {
+                    })].every(flag => flag); const _vo7 = (input, _path, _exceptionable = true) => ["string" === typeof input.userToken || _report(_exceptionable, {
                         path: _path + ".userToken",
                         expected: "string",
                         value: input.userToken
-                    })].every(flag => flag); const _vo7 = (input, _path, _exceptionable = true) => ["string" === typeof input.serviceAccountKey || _report(_exceptionable, {
+                    })].every(flag => flag); const _vo8 = (input, _path, _exceptionable = true) => ["string" === typeof input.serviceAccountKey || _report(_exceptionable, {
                         path: _path + ".serviceAccountKey",
                         expected: "string",
                         value: input.serviceAccountKey
-                    })].every(flag => flag); const _vo8 = (input, _path, _exceptionable = true) => [("object" === typeof input.github && null !== input.github || _report(_exceptionable, {
+                    })].every(flag => flag); const _vo9 = (input, _path, _exceptionable = true) => [("object" === typeof input.github && null !== input.github || _report(_exceptionable, {
                         path: _path + ".github",
-                        expected: "__type.o8",
+                        expected: "__type.o9",
                         value: input.github
-                    })) && _vo9(input.github, _path + ".github", true && _exceptionable) || _report(_exceptionable, {
+                    })) && _vo10(input.github, _path + ".github", true && _exceptionable) || _report(_exceptionable, {
                         path: _path + ".github",
-                        expected: "__type.o8",
+                        expected: "__type.o9",
                         value: input.github
-                    })].every(flag => flag); const _vo9 = (input, _path, _exceptionable = true) => ["string" === typeof input.token || _report(_exceptionable, {
+                    })].every(flag => flag); const _vo10 = (input, _path, _exceptionable = true) => ["string" === typeof input.token || _report(_exceptionable, {
                         path: _path + ".token",
                         expected: "string",
                         value: input.token
@@ -298,8 +329,8 @@ class HandleScheduledEventUseCaseHandler {
             const projectRepository = {
                 ...new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams),
                 ...new CheerioProjectRepository_1.CheerioProjectRepository(...githubRepositoryParams),
-                prepareStatus: async (_name, _project) => {
-                    throw new Error('prepareStatus is not implemented');
+                prepareStatus: async (_name, project) => {
+                    return project;
                 },
             };
             const apiV3IssueRepository = new ApiV3IssueRepository_1.ApiV3IssueRepository(...githubRepositoryParams);
@@ -322,7 +353,10 @@ class HandleScheduledEventUseCaseHandler {
             const nodeLocalCommandRunner = new NodeLocalCommandRunner_1.NodeLocalCommandRunner();
             const stubClaudeRepository = new StubClaudeRepository_1.StubClaudeRepository();
             const startPreparationUseCase = new StartPreparationUseCase_1.StartPreparationUseCase(projectRepository, issueRepository, stubClaudeRepository, nodeLocalCommandRunner);
-            const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabel, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
+            const issueCommentRepository = new GitHubIssueCommentRepository_1.GitHubIssueCommentRepository(input.credentials.bot.github.token);
+            const webhookRepository = new FetchWebhookRepository_1.FetchWebhookRepository();
+            const notifyFinishedIssuePreparationUseCase = new NotifyFinishedIssuePreparationUseCase_1.NotifyFinishedIssuePreparationUseCase(projectRepository, issueRepository, issueCommentRepository, webhookRepository);
+            const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabel, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, notifyFinishedIssuePreparationUseCase, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
             return await handleScheduledEventUseCase.run(input);
         };
     }

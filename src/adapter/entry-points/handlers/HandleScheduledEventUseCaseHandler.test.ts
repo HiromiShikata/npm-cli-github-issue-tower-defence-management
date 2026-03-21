@@ -90,6 +90,20 @@ jest.mock('../../repositories/NodeLocalCommandRunner', () => ({
 jest.mock('../../repositories/StubClaudeRepository', () => ({
   StubClaudeRepository: jest.fn().mockImplementation(() => ({})),
 }));
+jest.mock(
+  '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase',
+  () => ({
+    NotifyFinishedIssuePreparationUseCase: jest
+      .fn()
+      .mockImplementation(() => ({})),
+  }),
+);
+jest.mock('../../repositories/GitHubIssueCommentRepository', () => ({
+  GitHubIssueCommentRepository: jest.fn().mockImplementation(() => ({})),
+}));
+jest.mock('../../repositories/FetchWebhookRepository', () => ({
+  FetchWebhookRepository: jest.fn().mockImplementation(() => ({})),
+}));
 
 import { HandleScheduledEventUseCaseHandler } from './HandleScheduledEventUseCaseHandler';
 import { GraphqlProjectRepository } from '../../repositories/GraphqlProjectRepository';
