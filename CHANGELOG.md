@@ -1,3 +1,16 @@
+# [1.33.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.32.0...v1.33.0) (2026-03-21)
+
+
+### Bug Fixes
+
+* **core:** remove non-null assertion in HandleScheduledEventUseCase filter ([b7c8cfd](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b7c8cfd038f84cd7e9c833a9a0caf8abce79adb9))
+
+
+### Features
+
+* **core:** integrate NotifyFinishedIssuePreparationUseCase into scheduled event handling ([afe84bf](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/afe84bff4984a2503f54c8ceb43e50eafca44931)), closes [npm-cli-#issue-preparator](https://github.com/npm-cli-/issues/issue-preparator) [#339](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/339)
+* **core:** migrate NotifyFinishedIssuePreparationUseCase to match preparator ([e19a42d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e19a42d3e1853183670488d156286af0394f13d4))
+
 # [1.32.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.31.0...v1.32.0) (2026-03-21)
 
 
