@@ -54,6 +54,12 @@ workingReport:
   reportIssueLabels: # Array of issue labels
     - string
     - string
+startPreparation?: # Optional: Enable automatic issue preparation workflow
+  awaitingWorkspaceStatus: string # Project status name for issues awaiting workspace
+  preparationStatus: string # Project status name for issues in preparation
+  defaultAgentName: string # Default agent name to assign for preparation
+  logFilePath?: string # Optional: Path to log file for preparation output
+  maximumPreparingIssuesCount: number | null # Max concurrent preparing issues (null = unlimited)
 ```
 
 Example:
@@ -84,6 +90,12 @@ workingReport:
     - 'working-time'
   slack:
     userToken: 'xoxp-xxx'
+startPreparation:
+  awaitingWorkspaceStatus: 'Awaiting Workspace'
+  preparationStatus: 'Preparation'
+  defaultAgentName: 'umino-bot'
+  logFilePath: '/tmp/preparation.log'
+  maximumPreparingIssuesCount: 3
 ```
 
 ### Slack User Token
