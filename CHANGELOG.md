@@ -1,3 +1,10 @@
+# [1.32.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.31.0...v1.32.0) (2026-03-21)
+
+
+### Features
+
+* **core:** integrate StartPreparationUseCase into HandleScheduledEventUseCase chain ([d346cfc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d346cfc65480bd1f8b86b8d915404bc975abe97a))
+
 # [1.31.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.30.2...v1.31.0) (2026-03-16)
 
 

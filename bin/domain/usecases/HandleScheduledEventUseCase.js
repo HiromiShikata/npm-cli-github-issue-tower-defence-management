@@ -9,7 +9,7 @@ class ProjectNotFoundError extends Error {
 }
 exports.ProjectNotFoundError = ProjectNotFoundError;
 class HandleScheduledEventUseCase {
-    constructor(actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
+    constructor(actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
         this.actionAnnouncementUseCase = actionAnnouncementUseCase;
         this.setWorkflowManagementIssueToStoryUseCase = setWorkflowManagementIssueToStoryUseCase;
         this.clearNextActionHourUseCase = clearNextActionHourUseCase;
@@ -23,6 +23,7 @@ class HandleScheduledEventUseCase {
         this.createNewStoryByLabelUseCase = createNewStoryByLabelUseCase;
         this.assignNoAssigneeIssueToManagerUseCase = assignNoAssigneeIssueToManagerUseCase;
         this.updateIssueStatusByLabelUseCase = updateIssueStatusByLabelUseCase;
+        this.startPreparationUseCase = startPreparationUseCase;
         this.dateRepository = dateRepository;
         this.spreadsheetRepository = spreadsheetRepository;
         this.projectRepository = projectRepository;
@@ -200,6 +201,17 @@ ${JSON.stringify(e)}
                 issues,
                 defaultStatus: input.defaultStatus,
             });
+            if (input.startPreparation) {
+                await this.startPreparationUseCase.run({
+                    projectUrl: input.projectUrl,
+                    awaitingWorkspaceStatus: input.startPreparation.awaitingWorkspaceStatus,
+                    preparationStatus: input.startPreparation.preparationStatus,
+                    defaultAgentName: input.startPreparation.defaultAgentName,
+                    logFilePath: input.startPreparation.logFilePath,
+                    maximumPreparingIssuesCount: input.startPreparation.maximumPreparingIssuesCount,
+                    allowIssueCacheMinutes: input.allowIssueCacheMinutes,
+                });
+            }
         };
         this.findTargetDateAndUpdateLastExecutionDateTime = async (spreadsheetUrl, now) => {
             const sheetValues = await this.spreadsheetRepository.getSheet(spreadsheetUrl, 'HandleScheduledEvent');
