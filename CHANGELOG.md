@@ -1,3 +1,10 @@
+# [1.34.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.33.0...v1.34.0) (2026-03-22)
+
+
+### Features
+
+* **cli:** add startDaemon and notifyFinishedIssuePreparation commands ([72fe2c4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/72fe2c43c0423f5760f27640704fc79af1078b5d))
+
 # [1.33.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.32.0...v1.33.0) (2026-03-21)
 
 
