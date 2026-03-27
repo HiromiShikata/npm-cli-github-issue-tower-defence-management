@@ -41,7 +41,9 @@ describe('AxiosSlackRepository Integration Tests', () => {
     it('should throw error for non-existent channel', async () => {
       const message = 'Test message';
       const mockClient = mock<AxiosInstance>();
-      mockClient.get.mockResolvedValueOnce({ data: { ok: true, channels: [] } });
+      mockClient.get.mockResolvedValueOnce({
+        data: { ok: true, channels: [] },
+      });
       const mockRepo = new AxiosSlackRepository(SLACK_USER_TOKEN, mockClient);
 
       await expect(
