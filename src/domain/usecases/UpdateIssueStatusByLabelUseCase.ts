@@ -27,6 +27,21 @@ export class UpdateIssueStatusByLabelUseCase {
           .startsWith(UpdateIssueStatusByLabelUseCase.STATUS_LABEL_PREFIX),
       );
       if (!statusLabel) {
+        const { defaultStatus } = input;
+        if (defaultStatus && issue.status === null) {
+          const defaultStatusOption = input.project.status.statuses.find(
+            (s) =>
+              UpdateIssueStatusByLabelUseCase.normalizeStatus(s.name) ===
+              UpdateIssueStatusByLabelUseCase.normalizeStatus(defaultStatus),
+          );
+          if (defaultStatusOption) {
+            await this.issueRepository.updateStatus(
+              input.project,
+              issue,
+              defaultStatusOption.id,
+            );
+          }
+        }
         continue;
       }
       const targetStatusName = statusLabel.slice(
