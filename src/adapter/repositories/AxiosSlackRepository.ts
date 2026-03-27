@@ -24,32 +24,36 @@ export class AxiosSlackRepository implements SlackRepository {
   private readonly client: AxiosInstance;
   private readonly baseUrl = 'https://slack.com/api';
 
-  constructor(userToken: string) {
+  constructor(userToken: string, httpClient?: AxiosInstance) {
     if (!userToken.startsWith('xoxp-')) {
       throw new Error('Invalid user token. It should start with xoxp-');
     }
-    this.client = axios.create({
-      baseURL: this.baseUrl,
-      headers: {
-        Authorization: `Bearer ${userToken}`,
-      },
-    });
-    axiosRetry(this.client, {
-      retries: 3,
-      retryDelay: (retryCount, error) => {
-        const retryAfterDelay = getRetryAfterDelay(error);
-        if (retryAfterDelay !== null) {
-          return retryAfterDelay;
-        }
-        return axiosRetry.exponentialDelay(retryCount);
-      },
-      retryCondition: (error) => {
-        return (
-          axiosRetry.isNetworkOrIdempotentRequestError(error) ||
-          error.response?.status === 429
-        );
-      },
-    });
+    if (httpClient) {
+      this.client = httpClient;
+    } else {
+      this.client = axios.create({
+        baseURL: this.baseUrl,
+        headers: {
+          Authorization: `Bearer ${userToken}`,
+        },
+      });
+      axiosRetry(this.client, {
+        retries: 3,
+        retryDelay: (retryCount, error) => {
+          const retryAfterDelay = getRetryAfterDelay(error);
+          if (retryAfterDelay !== null) {
+            return retryAfterDelay;
+          }
+          return axiosRetry.exponentialDelay(retryCount);
+        },
+        retryCondition: (error) => {
+          return (
+            axiosRetry.isNetworkOrIdempotentRequestError(error) ||
+            error.response?.status === 429
+          );
+        },
+      });
+    }
   }
 
   async postMessageToChannel(

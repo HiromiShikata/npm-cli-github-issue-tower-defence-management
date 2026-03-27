@@ -1,5 +1,7 @@
 import dotenv from 'dotenv';
 import { AxiosSlackRepository } from './AxiosSlackRepository';
+import { AxiosInstance } from 'axios';
+import { mock } from 'jest-mock-extended';
 import fs from 'fs';
 import https from 'https';
 import path from 'path';
@@ -38,9 +40,12 @@ describe('AxiosSlackRepository Integration Tests', () => {
 
     it('should throw error for non-existent channel', async () => {
       const message = 'Test message';
+      const mockClient = mock<AxiosInstance>();
+      mockClient.get.mockResolvedValueOnce({ data: { ok: true, channels: [] } });
+      const mockRepo = new AxiosSlackRepository(SLACK_USER_TOKEN, mockClient);
 
       await expect(
-        slackRepository.postMessageToChannel(message, 'non-existent-channel'),
+        mockRepo.postMessageToChannel(message, 'non-existent-channel'),
       ).rejects.toThrow('Channel non-existent-channel not found');
     });
   });
@@ -110,12 +115,12 @@ describe('AxiosSlackRepository Integration Tests', () => {
 
     it('should throw error for non-existent user', async () => {
       const message = 'Test message';
+      const mockClient = mock<AxiosInstance>();
+      mockClient.get.mockResolvedValueOnce({ data: { ok: true, members: [] } });
+      const mockRepo = new AxiosSlackRepository(SLACK_USER_TOKEN, mockClient);
 
       await expect(
-        slackRepository.postMessageToDirectMessage(
-          message,
-          'non-existent-user',
-        ),
+        mockRepo.postMessageToDirectMessage(message, 'non-existent-user'),
       ).rejects.toThrow('User non-existent-user not found');
     });
   });
