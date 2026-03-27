@@ -262,6 +262,66 @@ describe('UpdateIssueStatusByLabelUseCase', () => {
           removeLabel: [],
         },
       },
+      {
+        name: 'should set defaultStatus when issue has null status and no status label',
+        issues: [
+          {
+            ...mock<Issue>(),
+            labels: ['bug'],
+            status: null,
+          },
+        ],
+        defaultStatus: 'ToDo',
+        expectedCalls: {
+          updateStatus: [[expect.anything(), expect.anything(), 'status1']],
+          removeLabel: [],
+        },
+      },
+      {
+        name: 'should not set defaultStatus when issue already has a status',
+        issues: [
+          {
+            ...mock<Issue>(),
+            labels: ['bug'],
+            status: 'In Progress',
+          },
+        ],
+        defaultStatus: 'ToDo',
+        expectedCalls: {
+          updateStatus: [],
+          removeLabel: [],
+        },
+      },
+      {
+        name: 'should not set defaultStatus when defaultStatus is null and issue has null status',
+        issues: [
+          {
+            ...mock<Issue>(),
+            labels: ['bug'],
+            status: null,
+          },
+        ],
+        defaultStatus: null,
+        expectedCalls: {
+          updateStatus: [],
+          removeLabel: [],
+        },
+      },
+      {
+        name: 'should prefer status label over defaultStatus when issue has null status',
+        issues: [
+          {
+            ...mock<Issue>(),
+            labels: ['status:In Progress'],
+            status: null,
+          },
+        ],
+        defaultStatus: 'ToDo',
+        expectedCalls: {
+          updateStatus: [[expect.anything(), expect.anything(), 'status2']],
+          removeLabel: [[expect.anything(), 'status:In Progress']],
+        },
+      },
     ];
 
     testCases.forEach(({ name, issues, defaultStatus, expectedCalls }) => {

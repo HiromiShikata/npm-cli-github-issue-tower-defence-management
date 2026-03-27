@@ -79,6 +79,7 @@ disabled: boolean # When true, skip all processing and return null
 org: string # Organization name
 projectUrl: string # URL of the target project
 manager: string # GitHub account name of the manager
+defaultStatus?: string | null # Optional: Default status to assign to issues with null status and no status label
 workingReport:
   repo: string # Repository name
   members: # Array of member's GitHub account names
@@ -111,6 +112,7 @@ disabled: false
 org: 'my-org'
 projectUrl: 'https://github.com/orgs/my-org/projects/1'
 manager: 'HiromiShikata'
+defaultStatus: 'Unread'
 workingReport:
   repo: 'work-report'
   members:
