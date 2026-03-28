@@ -63,7 +63,10 @@ describe('GoogleSpreadsheetRepository', () => {
         data: { sheets: [] },
       });
 
-      const result = await repository.getSheet(spreadsheetUrl, 'NonExistentSheet');
+      const result = await repository.getSheet(
+        spreadsheetUrl,
+        'NonExistentSheet',
+      );
 
       expect(result).toBeNull();
     });
@@ -76,7 +79,10 @@ describe('GoogleSpreadsheetRepository', () => {
         },
       });
 
-      const result = await repository.getSheet(spreadsheetUrl, 'SheetUndefined');
+      const result = await repository.getSheet(
+        spreadsheetUrl,
+        'SheetUndefined',
+      );
 
       expect(result).toBeNull();
     });
@@ -93,7 +99,10 @@ describe('GoogleSpreadsheetRepository', () => {
         data: { values: [['test']] },
       });
 
-      const result = await repository.getSheet(spreadsheetUrl, 'SheetSingleCell');
+      const result = await repository.getSheet(
+        spreadsheetUrl,
+        'SheetSingleCell',
+      );
 
       expect(result).toEqual([['test']]);
     });
@@ -115,7 +124,10 @@ describe('GoogleSpreadsheetRepository', () => {
         },
       });
 
-      const result = await repository.getSheet(spreadsheetUrl, 'SheetMultipleRows');
+      const result = await repository.getSheet(
+        spreadsheetUrl,
+        'SheetMultipleRows',
+      );
 
       expect(result).toEqual([
         ['1', '2'],
@@ -249,7 +261,11 @@ describe('GoogleSpreadsheetRepository', () => {
         ['Row1Col1', 'Row1Col2'],
         ['Row2Col1', 'Row2Col2'],
       ];
-      await repository.appendSheetValues(spreadsheetUrl, 'AppendTest', newValues);
+      await repository.appendSheetValues(
+        spreadsheetUrl,
+        'AppendTest',
+        newValues,
+      );
 
       expect(mockSpreadsheetsValuesAppend).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -276,9 +292,7 @@ describe('GoogleSpreadsheetRepository', () => {
         data: {},
       });
 
-      await repository.appendSheetValues(spreadsheetUrl, 'NewSheet', [
-        ['Row'],
-      ]);
+      await repository.appendSheetValues(spreadsheetUrl, 'NewSheet', [['Row']]);
 
       expect(mockSpreadsheetsBatchUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
