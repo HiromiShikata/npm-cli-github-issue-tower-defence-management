@@ -5,6 +5,7 @@ class UpdateIssueStatusByLabelUseCase {
     constructor(issueRepository) {
         this.issueRepository = issueRepository;
         this.run = async (input) => {
+            const { defaultStatus } = input;
             for (const issue of input.issues) {
                 const statusLabel = issue.labels.find((label) => label
                     .toLowerCase()
@@ -13,8 +14,13 @@ class UpdateIssueStatusByLabelUseCase {
                     continue;
                 }
                 const targetStatusName = statusLabel.slice(UpdateIssueStatusByLabelUseCase.STATUS_LABEL_PREFIX.length);
-                const targetStatus = input.project.status.statuses.find((s) => UpdateIssueStatusByLabelUseCase.normalizeStatus(s.name) ===
+                const matchedStatus = input.project.status.statuses.find((s) => UpdateIssueStatusByLabelUseCase.normalizeStatus(s.name) ===
                     UpdateIssueStatusByLabelUseCase.normalizeStatus(targetStatusName));
+                const fallbackStatus = defaultStatus !== null
+                    ? input.project.status.statuses.find((s) => UpdateIssueStatusByLabelUseCase.normalizeStatus(s.name) ===
+                        UpdateIssueStatusByLabelUseCase.normalizeStatus(defaultStatus))
+                    : null;
+                const targetStatus = matchedStatus ?? fallbackStatus ?? null;
                 if (!targetStatus) {
                     continue;
                 }
