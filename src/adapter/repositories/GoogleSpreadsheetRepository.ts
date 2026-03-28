@@ -1,18 +1,55 @@
 import { SpreadsheetRepository } from '../../domain/usecases/adapter-interfaces/SpreadsheetRepository';
-import { google, sheets_v4 } from 'googleapis';
+import { google } from 'googleapis';
 import { LocalStorageRepository } from './LocalStorageRepository';
 import dotenv from 'dotenv';
 dotenv.config();
 
+interface SheetsApiClient {
+  spreadsheets: {
+    get(params: { spreadsheetId: string }): Promise<{
+      status: number;
+      data: {
+        sheets?: Array<{
+          properties?: { title?: string | null } | null;
+        }> | null;
+      };
+    }>;
+    values: {
+      get(params: { spreadsheetId: string; range: string }): Promise<{
+        status: number;
+        data: { values?: unknown[][] | null };
+      }>;
+      update(params: {
+        spreadsheetId: string;
+        range: string;
+        valueInputOption: string;
+        requestBody: { values: string[][] };
+      }): Promise<{ status: number; data: unknown }>;
+      append(params: {
+        spreadsheetId: string;
+        range: string;
+        valueInputOption: string;
+        requestBody: { values: string[][] };
+      }): Promise<{ status: number; data: unknown }>;
+    };
+    batchUpdate(params: {
+      spreadsheetId: string;
+      requestBody: {
+        requests: Array<{ addSheet?: { properties?: { title?: string } } }>;
+      };
+    }): Promise<{ status: number; data: unknown }>;
+  };
+}
+
 export class GoogleSpreadsheetRepository implements SpreadsheetRepository {
   keyFile = './tmp/service-account-key.json';
-  private readonly sheetsClientFactory: () => sheets_v4.Sheets;
+  private readonly sheetsClientFactory: () => SheetsApiClient;
 
   constructor(
     readonly localStorageRepository: LocalStorageRepository,
     serviceAccountKey: string = process.env.GOOGLE_SERVICE_ACCOUNT_KEY ||
       'dummy',
-    sheetsClientFactory?: () => sheets_v4.Sheets,
+    sheetsClientFactory?: () => SheetsApiClient,
   ) {
     this.localStorageRepository.write(this.keyFile, serviceAccountKey);
     this.sheetsClientFactory =
@@ -22,7 +59,37 @@ export class GoogleSpreadsheetRepository implements SpreadsheetRepository {
           keyFile: this.keyFile,
           scopes: ['https://www.googleapis.com/auth/spreadsheets'],
         });
-        return google.sheets({ version: 'v4', auth });
+        const googleSheets = google.sheets({ version: 'v4', auth });
+        return {
+          spreadsheets: {
+            get: (params: { spreadsheetId: string }) =>
+              googleSheets.spreadsheets.get(params),
+            values: {
+              get: (params: { spreadsheetId: string; range: string }) =>
+                googleSheets.spreadsheets.values.get(params),
+              update: (params: {
+                spreadsheetId: string;
+                range: string;
+                valueInputOption: string;
+                requestBody: { values: string[][] };
+              }) => googleSheets.spreadsheets.values.update(params),
+              append: (params: {
+                spreadsheetId: string;
+                range: string;
+                valueInputOption: string;
+                requestBody: { values: string[][] };
+              }) => googleSheets.spreadsheets.values.append(params),
+            },
+            batchUpdate: (params: {
+              spreadsheetId: string;
+              requestBody: {
+                requests: Array<{
+                  addSheet?: { properties?: { title?: string } };
+                }>;
+              };
+            }) => googleSheets.spreadsheets.batchUpdate(params),
+          },
+        };
       });
   }
 
