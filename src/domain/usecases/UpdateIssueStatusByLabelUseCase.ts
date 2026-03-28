@@ -20,6 +20,7 @@ export class UpdateIssueStatusByLabelUseCase {
     issues: Issue[];
     defaultStatus: string | null;
   }): Promise<void> => {
+    const { defaultStatus } = input;
     for (const issue of input.issues) {
       const statusLabel = issue.labels.find((label) =>
         label
@@ -27,31 +28,25 @@ export class UpdateIssueStatusByLabelUseCase {
           .startsWith(UpdateIssueStatusByLabelUseCase.STATUS_LABEL_PREFIX),
       );
       if (!statusLabel) {
-        const { defaultStatus } = input;
-        if (defaultStatus && issue.status === null) {
-          const defaultStatusOption = input.project.status.statuses.find(
-            (s) =>
-              UpdateIssueStatusByLabelUseCase.normalizeStatus(s.name) ===
-              UpdateIssueStatusByLabelUseCase.normalizeStatus(defaultStatus),
-          );
-          if (defaultStatusOption) {
-            await this.issueRepository.updateStatus(
-              input.project,
-              issue,
-              defaultStatusOption.id,
-            );
-          }
-        }
         continue;
       }
       const targetStatusName = statusLabel.slice(
         UpdateIssueStatusByLabelUseCase.STATUS_LABEL_PREFIX.length,
       );
-      const targetStatus = input.project.status.statuses.find(
+      const matchedStatus = input.project.status.statuses.find(
         (s) =>
           UpdateIssueStatusByLabelUseCase.normalizeStatus(s.name) ===
           UpdateIssueStatusByLabelUseCase.normalizeStatus(targetStatusName),
       );
+      const fallbackStatus =
+        defaultStatus !== null
+          ? input.project.status.statuses.find(
+              (s) =>
+                UpdateIssueStatusByLabelUseCase.normalizeStatus(s.name) ===
+                UpdateIssueStatusByLabelUseCase.normalizeStatus(defaultStatus),
+            )
+          : null;
+      const targetStatus = matchedStatus ?? fallbackStatus ?? null;
       if (!targetStatus) {
         continue;
       }
