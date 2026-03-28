@@ -40,23 +40,28 @@ class ClearDependedIssueURLUseCase {
 ${circularDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`);
                     continue;
                 }
-                const remainingDependedIssueUrls = issue.dependedIssueUrls.filter((dependedIssueUrl) => input.issues.some((issue) => {
-                    const r = issue.url === dependedIssueUrl && !issue.isClosed;
-                    return r;
-                }));
-                const closedDependedIssueUrls = issue.dependedIssueUrls.filter((dependedIssueUrl) => remainingDependedIssueUrls.indexOf(dependedIssueUrl) === -1);
-                if (remainingDependedIssueUrls.length === issue.dependedIssueUrls.length) {
+                const notFoundDependedIssueUrls = issue.dependedIssueUrls.filter((dependedIssueUrl) => !input.issues.some((depIssue) => depIssue.url === dependedIssueUrl));
+                const remainingDependedIssueUrls = issue.dependedIssueUrls.filter((dependedIssueUrl) => input.issues.some((depIssue) => depIssue.url === dependedIssueUrl && !depIssue.isClosed));
+                const closedDependedIssueUrls = issue.dependedIssueUrls.filter((dependedIssueUrl) => input.issues.some((depIssue) => depIssue.url === dependedIssueUrl && depIssue.isClosed));
+                if (notFoundDependedIssueUrls.length === 0 &&
+                    closedDependedIssueUrls.length === 0) {
                     continue;
                 }
                 if (remainingDependedIssueUrls.length === 0) {
                     await this.issueRepository.clearProjectField(input.project, dependedIssueUrlSeparatedByComma.fieldId, issue);
-                    await this.issueRepository.createComment(issue, `Closed all depended issues:
-${closedDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`);
                 }
                 else {
                     await this.issueRepository.updateProjectTextField(input.project, dependedIssueUrlSeparatedByComma.fieldId, issue, remainingDependedIssueUrls.join(','));
-                    await this.issueRepository.createComment(issue, `Closed depended issues:
+                }
+                if (closedDependedIssueUrls.length > 0) {
+                    const allCleared = remainingDependedIssueUrls.length === 0 &&
+                        notFoundDependedIssueUrls.length === 0;
+                    await this.issueRepository.createComment(issue, `${allCleared ? 'Closed all depended issues' : 'Closed depended issues'}:
 ${closedDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`);
+                }
+                if (notFoundDependedIssueUrls.length > 0) {
+                    await this.issueRepository.createComment(issue, `Dependency removed:
+${notFoundDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`);
                 }
             }
         };

@@ -1,3 +1,10 @@
+## [1.34.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.34.1...v1.34.2) (2026-03-28)
+
+
+### Bug Fixes
+
+* **core:** distinguish removed dependencies from closed ones in ClearDependedIssueURLUseCase ([1309d11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1309d118e68be33fcafb1e4062a92f0d53bbe17b))
+
 ## [1.34.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.34.0...v1.34.1) (2026-03-28)
 
 
