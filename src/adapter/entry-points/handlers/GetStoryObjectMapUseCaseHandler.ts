@@ -31,7 +31,19 @@ export class GetStoryObjectMapUseCaseHandler {
       (response) => response,
       (error: AxiosError) => {
         if (verbose) {
-          throw new Error(`API Error: ${JSON.stringify(error)}`);
+          const sanitizedHeaders = error.config?.headers
+            ? { ...error.config.headers, Authorization: '[REDACTED]' }
+            : undefined;
+          const errorInfo = {
+            message: error.message,
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            data: error.response?.data,
+            config: error.config
+              ? { ...error.config, headers: sanitizedHeaders }
+              : undefined,
+          };
+          throw new Error(`API Error: ${JSON.stringify(errorInfo)}`);
         }
         if (error.response) {
           throw new Error(`API Error: ${error.response.status}`);

@@ -1,43 +1,9 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GetStoryObjectMapUseCaseHandler = void 0;
-const __typia_transform__validateReport = __importStar(require("typia/lib/internal/_validateReport"));
 const yaml_1 = __importDefault(require("yaml"));
 const typia_1 = __importDefault(require("typia"));
 const fs_1 = __importDefault(require("fs"));
@@ -56,7 +22,19 @@ class GetStoryObjectMapUseCaseHandler {
         this.handle = async (configFilePath, verbose, allowCacheMinutes) => {
             axios_1.default.interceptors.response.use((response) => response, (error) => {
                 if (verbose) {
-                    throw new Error(`API Error: ${JSON.stringify(error)}`);
+                    const sanitizedHeaders = error.config?.headers
+                        ? { ...error.config.headers, Authorization: '[REDACTED]' }
+                        : undefined;
+                    const errorInfo = {
+                        message: error.message,
+                        status: error.response?.status,
+                        statusText: error.response?.statusText,
+                        data: error.response?.data,
+                        config: error.config
+                            ? { ...error.config, headers: sanitizedHeaders }
+                            : undefined,
+                    };
+                    throw new Error(`API Error: ${JSON.stringify(errorInfo)}`);
                 }
                 if (error.response) {
                     throw new Error(`API Error: ${error.response.status}`);
@@ -65,87 +43,8 @@ class GetStoryObjectMapUseCaseHandler {
             });
             const configFileContent = fs_1.default.readFileSync(configFilePath, 'utf8');
             const input = yaml_1.default.parse(configFileContent);
-            if (!(() => { const _io0 = input => "string" === typeof input.projectUrl && "number" === typeof input.allowIssueCacheMinutes && "string" === typeof input.projectName && ("object" === typeof input.credentials && null !== input.credentials && _io1(input.credentials)); const _io1 = input => "object" === typeof input.bot && null !== input.bot && _io2(input.bot); const _io2 = input => "object" === typeof input.github && null !== input.github && _io3(input.github); const _io3 = input => "string" === typeof input.token && (undefined === input.name || "string" === typeof input.name) && (undefined === input.password || "string" === typeof input.password) && (undefined === input.authenticatorKey || "string" === typeof input.authenticatorKey); return input => "object" === typeof input && null !== input && _io0(input); })()(input)) {
-                throw new Error(`Invalid input: ${JSON.stringify(input)}\n\n${JSON.stringify((() => { const _io0 = input => "string" === typeof input.projectUrl && "number" === typeof input.allowIssueCacheMinutes && "string" === typeof input.projectName && ("object" === typeof input.credentials && null !== input.credentials && _io1(input.credentials)); const _io1 = input => "object" === typeof input.bot && null !== input.bot && _io2(input.bot); const _io2 = input => "object" === typeof input.github && null !== input.github && _io3(input.github); const _io3 = input => "string" === typeof input.token && (undefined === input.name || "string" === typeof input.name) && (undefined === input.password || "string" === typeof input.password) && (undefined === input.authenticatorKey || "string" === typeof input.authenticatorKey); const _vo0 = (input, _path, _exceptionable = true) => ["string" === typeof input.projectUrl || _report(_exceptionable, {
-                        path: _path + ".projectUrl",
-                        expected: "string",
-                        value: input.projectUrl
-                    }), "number" === typeof input.allowIssueCacheMinutes || _report(_exceptionable, {
-                        path: _path + ".allowIssueCacheMinutes",
-                        expected: "number",
-                        value: input.allowIssueCacheMinutes
-                    }), "string" === typeof input.projectName || _report(_exceptionable, {
-                        path: _path + ".projectName",
-                        expected: "string",
-                        value: input.projectName
-                    }), ("object" === typeof input.credentials && null !== input.credentials || _report(_exceptionable, {
-                        path: _path + ".credentials",
-                        expected: "__type",
-                        value: input.credentials
-                    })) && _vo1(input.credentials, _path + ".credentials", true && _exceptionable) || _report(_exceptionable, {
-                        path: _path + ".credentials",
-                        expected: "__type",
-                        value: input.credentials
-                    })].every(flag => flag); const _vo1 = (input, _path, _exceptionable = true) => [("object" === typeof input.bot && null !== input.bot || _report(_exceptionable, {
-                        path: _path + ".bot",
-                        expected: "__type.o1",
-                        value: input.bot
-                    })) && _vo2(input.bot, _path + ".bot", true && _exceptionable) || _report(_exceptionable, {
-                        path: _path + ".bot",
-                        expected: "__type.o1",
-                        value: input.bot
-                    })].every(flag => flag); const _vo2 = (input, _path, _exceptionable = true) => [("object" === typeof input.github && null !== input.github || _report(_exceptionable, {
-                        path: _path + ".github",
-                        expected: "__type.o2",
-                        value: input.github
-                    })) && _vo3(input.github, _path + ".github", true && _exceptionable) || _report(_exceptionable, {
-                        path: _path + ".github",
-                        expected: "__type.o2",
-                        value: input.github
-                    })].every(flag => flag); const _vo3 = (input, _path, _exceptionable = true) => ["string" === typeof input.token || _report(_exceptionable, {
-                        path: _path + ".token",
-                        expected: "string",
-                        value: input.token
-                    }), undefined === input.name || "string" === typeof input.name || _report(_exceptionable, {
-                        path: _path + ".name",
-                        expected: "(string | undefined)",
-                        value: input.name
-                    }), undefined === input.password || "string" === typeof input.password || _report(_exceptionable, {
-                        path: _path + ".password",
-                        expected: "(string | undefined)",
-                        value: input.password
-                    }), undefined === input.authenticatorKey || "string" === typeof input.authenticatorKey || _report(_exceptionable, {
-                        path: _path + ".authenticatorKey",
-                        expected: "(string | undefined)",
-                        value: input.authenticatorKey
-                    })].every(flag => flag); const __is = input => "object" === typeof input && null !== input && _io0(input); let errors; let _report; return input => {
-                    if (false === __is(input)) {
-                        errors = [];
-                        _report = __typia_transform__validateReport._validateReport(errors);
-                        ((input, _path, _exceptionable = true) => ("object" === typeof input && null !== input || _report(true, {
-                            path: _path + "",
-                            expected: "inputType",
-                            value: input
-                        })) && _vo0(input, _path + "", true) || _report(true, {
-                            path: _path + "",
-                            expected: "inputType",
-                            value: input
-                        }))(input, "$input", true);
-                        const success = 0 === errors.length;
-                        return success ? {
-                            success,
-                            data: input
-                        } : {
-                            success,
-                            errors,
-                            data: input
-                        };
-                    }
-                    return {
-                        success: true,
-                        data: input
-                    };
-                }; })()(input))}`);
+            if (!typia_1.default.is(input)) {
+                throw new Error(`Invalid input: ${JSON.stringify(input)}\n\n${JSON.stringify(typia_1.default.validate(input))}`);
             }
             const localStorageRepository = new LocalStorageRepository_1.LocalStorageRepository();
             const cachePath = `./tmp/cache/${input.projectName}`;
