@@ -1,18 +1,33 @@
 import { GoogleSpreadsheetRepository } from './GoogleSpreadsheetRepository';
 import { describe, test, expect, jest, beforeEach } from '@jest/globals';
 import { LocalStorageRepository } from './LocalStorageRepository';
-import { sheets_v4 } from 'googleapis';
+
+type SpreadsheetGetResponse = {
+  status: number;
+  data: {
+    sheets?: Array<{
+      properties?: { title?: string | null } | null;
+    }> | null;
+  };
+};
+
+type ValuesGetResponse = {
+  status: number;
+  data: { values?: unknown[][] | null };
+};
+
+type SimpleResponse = { status: number; data: unknown };
 
 describe('GoogleSpreadsheetRepository', () => {
   const localStorageRepository = new LocalStorageRepository();
   const spreadsheetUrl =
     'https://docs.google.com/spreadsheets/d/1N_3y0y46v5tHbra5YSm6PldflcsF1bkfeWDdQ3MRuXM/edit?gid=0#gid=0';
 
-  const mockSpreadsheetsGet = jest.fn<() => Promise<unknown>>();
-  const mockSpreadsheetsValuesGet = jest.fn<() => Promise<unknown>>();
-  const mockSpreadsheetsValuesUpdate = jest.fn<() => Promise<unknown>>();
-  const mockSpreadsheetsValuesAppend = jest.fn<() => Promise<unknown>>();
-  const mockSpreadsheetsBatchUpdate = jest.fn<() => Promise<unknown>>();
+  const mockSpreadsheetsGet = jest.fn<() => Promise<SpreadsheetGetResponse>>();
+  const mockSpreadsheetsValuesGet = jest.fn<() => Promise<ValuesGetResponse>>();
+  const mockSpreadsheetsValuesUpdate = jest.fn<() => Promise<SimpleResponse>>();
+  const mockSpreadsheetsValuesAppend = jest.fn<() => Promise<SimpleResponse>>();
+  const mockSpreadsheetsBatchUpdate = jest.fn<() => Promise<SimpleResponse>>();
 
   const mockSheetsClient = {
     spreadsheets: {
@@ -24,7 +39,7 @@ describe('GoogleSpreadsheetRepository', () => {
       },
       batchUpdate: mockSpreadsheetsBatchUpdate,
     },
-  } as unknown as sheets_v4.Sheets;
+  };
 
   const repository = new GoogleSpreadsheetRepository(
     localStorageRepository,
