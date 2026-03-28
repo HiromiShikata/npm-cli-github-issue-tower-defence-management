@@ -1,18 +1,29 @@
 import { SpreadsheetRepository } from '../../domain/usecases/adapter-interfaces/SpreadsheetRepository';
-import { google } from 'googleapis';
+import { google, sheets_v4 } from 'googleapis';
 import { LocalStorageRepository } from './LocalStorageRepository';
 import dotenv from 'dotenv';
 dotenv.config();
 
 export class GoogleSpreadsheetRepository implements SpreadsheetRepository {
   keyFile = './tmp/service-account-key.json';
+  private readonly sheetsClientFactory: () => sheets_v4.Sheets;
 
   constructor(
     readonly localStorageRepository: LocalStorageRepository,
     serviceAccountKey: string = process.env.GOOGLE_SERVICE_ACCOUNT_KEY ||
       'dummy',
+    sheetsClientFactory?: () => sheets_v4.Sheets,
   ) {
     this.localStorageRepository.write(this.keyFile, serviceAccountKey);
+    this.sheetsClientFactory =
+      sheetsClientFactory ??
+      (() => {
+        const auth = new google.auth.GoogleAuth({
+          keyFile: this.keyFile,
+          scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+        });
+        return google.sheets({ version: 'v4', auth });
+      });
   }
 
   getSpreadsheetId = (spreadsheetUrl: string): string => {
@@ -23,11 +34,7 @@ export class GoogleSpreadsheetRepository implements SpreadsheetRepository {
     spreadsheetUrl: string,
     sheetName: string,
   ): Promise<string[][] | null> => {
-    const auth = new google.auth.GoogleAuth({
-      keyFile: this.keyFile,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-    });
-    const sheets = google.sheets({ version: 'v4', auth });
+    const sheets = this.sheetsClientFactory();
     const spreadsheetId = this.getSpreadsheetId(spreadsheetUrl);
     const responseSheet = await sheets.spreadsheets.get({
       spreadsheetId,
@@ -64,11 +71,7 @@ export class GoogleSpreadsheetRepository implements SpreadsheetRepository {
     column: number,
     value: string,
   ): Promise<void> => {
-    const auth = new google.auth.GoogleAuth({
-      keyFile: this.keyFile,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-    });
-    const sheets = google.sheets({ version: 'v4', auth });
+    const sheets = this.sheetsClientFactory();
     const spreadsheetId = this.getSpreadsheetId(spreadsheetUrl);
     await this.createNewSheetIfNotExists(spreadsheetUrl, sheetName);
     const response = await sheets.spreadsheets.values.update({
@@ -89,11 +92,7 @@ export class GoogleSpreadsheetRepository implements SpreadsheetRepository {
     spreadsheetUrl: string,
     sheetName: string,
   ): Promise<void> => {
-    const auth = new google.auth.GoogleAuth({
-      keyFile: this.keyFile,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-    });
-    const sheets = google.sheets({ version: 'v4', auth });
+    const sheets = this.sheetsClientFactory();
     const spreadsheetId = this.getSpreadsheetId(spreadsheetUrl);
     const sheet = await this.getSheet(spreadsheetUrl, sheetName);
     if (sheet !== null) {
@@ -125,11 +124,7 @@ export class GoogleSpreadsheetRepository implements SpreadsheetRepository {
     sheetName: string,
     values: string[][],
   ): Promise<void> => {
-    const auth = new google.auth.GoogleAuth({
-      keyFile: this.keyFile,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-    });
-    const sheets = google.sheets({ version: 'v4', auth });
+    const sheets = this.sheetsClientFactory();
     const spreadsheetId = this.getSpreadsheetId(spreadsheetUrl);
     await this.createNewSheetIfNotExists(spreadsheetUrl, sheetName);
     const sheet = await this.getSheet(spreadsheetUrl, sheetName);
