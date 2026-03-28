@@ -1,3 +1,12 @@
+## [1.34.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.34.0...v1.34.1) (2026-03-28)
+
+
+### Bug Fixes
+
+* **core:** align GetStoryObjectMapUseCaseHandler header redaction with HandleScheduledEventUseCaseHandler ([58ed445](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/58ed445b381d03afdd9f6e12d536c5a4ade3f09b))
+* **core:** improve Authorization/cookie header redaction and add tests ([ba57a9e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ba57a9e1c1afc52c7c301de65cab6fa06aaef160)), closes [#374](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/374)
+* **security:** redact Authorization header in verbose error logging ([5551e44](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5551e449f1c0b1e18169a27ae169583977d34f0e)), closes [#374](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/374)
+
 # [1.34.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.33.0...v1.34.0) (2026-03-22)
 
 
