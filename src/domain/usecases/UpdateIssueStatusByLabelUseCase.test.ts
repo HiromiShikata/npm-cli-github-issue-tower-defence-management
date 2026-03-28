@@ -263,42 +263,27 @@ describe('UpdateIssueStatusByLabelUseCase', () => {
         },
       },
       {
-        name: 'should set defaultStatus when issue has null status and no status label',
+        name: 'should use defaultStatus when status label value does not match any project status',
         issues: [
           {
             ...mock<Issue>(),
-            labels: ['bug'],
-            status: null,
+            labels: ['status:UnknownStatus'],
+            status: 'ToDo',
           },
         ],
-        defaultStatus: 'ToDo',
+        defaultStatus: 'Icebox',
         expectedCalls: {
-          updateStatus: [[expect.anything(), expect.anything(), 'status1']],
-          removeLabel: [],
+          updateStatus: [[expect.anything(), expect.anything(), 'status3']],
+          removeLabel: [[expect.anything(), 'status:UnknownStatus']],
         },
       },
       {
-        name: 'should not set defaultStatus when issue already has a status',
+        name: 'should not update when status label value does not match and defaultStatus is null',
         issues: [
           {
             ...mock<Issue>(),
-            labels: ['bug'],
-            status: 'In Progress',
-          },
-        ],
-        defaultStatus: 'ToDo',
-        expectedCalls: {
-          updateStatus: [],
-          removeLabel: [],
-        },
-      },
-      {
-        name: 'should not set defaultStatus when defaultStatus is null and issue has null status',
-        issues: [
-          {
-            ...mock<Issue>(),
-            labels: ['bug'],
-            status: null,
+            labels: ['status:UnknownStatus'],
+            status: 'ToDo',
           },
         ],
         defaultStatus: null,
@@ -308,15 +293,15 @@ describe('UpdateIssueStatusByLabelUseCase', () => {
         },
       },
       {
-        name: 'should prefer status label over defaultStatus when issue has null status',
+        name: 'should use matched status over defaultStatus when label matches a project status',
         issues: [
           {
             ...mock<Issue>(),
             labels: ['status:In Progress'],
-            status: null,
+            status: 'ToDo',
           },
         ],
-        defaultStatus: 'ToDo',
+        defaultStatus: 'Icebox',
         expectedCalls: {
           updateStatus: [[expect.anything(), expect.anything(), 'status2']],
           removeLabel: [[expect.anything(), 'status:In Progress']],

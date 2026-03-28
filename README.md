@@ -79,7 +79,7 @@ disabled: boolean # When true, skip all processing and return null
 org: string # Organization name
 projectUrl: string # URL of the target project
 manager: string # GitHub account name of the manager
-defaultStatus?: string | null # Optional: Default status to assign to issues with null status and no status label
+defaultStatus?: string | null # Optional: Fallback status used when a status label value does not match any project status
 workingReport:
   repo: string # Repository name
   members: # Array of member's GitHub account names
