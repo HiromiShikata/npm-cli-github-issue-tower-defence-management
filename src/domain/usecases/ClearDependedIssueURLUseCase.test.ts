@@ -85,7 +85,7 @@ describe('ClearDependedIssueURLUseCase', () => {
         expectedIssueRepositoryCreateCommentCalls: [],
       },
       {
-        name: 'should call clearProjectField and createComment when dependedIssue is not found',
+        name: 'should call clearProjectField and createComment with dependency removed message when dependedIssue is not found',
         input: {
           project: basicProject,
           issues: [
@@ -123,11 +123,46 @@ describe('ClearDependedIssueURLUseCase', () => {
         expectedIssueRepositoryCreateCommentCalls: [
           [
             { ...basicIssueTwo, dependedIssueUrls: ['url4'] },
-            'Closed all depended issues:\n- url4',
+            'Dependency removed:\n- url4',
           ],
           [
             { ...basicIssueThree, dependedIssueUrls: ['url5', 'url6'] },
-            'Closed all depended issues:\n- url5\n- url6',
+            'Dependency removed:\n- url5\n- url6',
+          ],
+        ],
+      },
+      {
+        name: 'should call clearProjectField and two createComment calls when some deps are closed and some are removed',
+        input: {
+          project: basicProject,
+          issues: [
+            basicIssueOne,
+            {
+              ...basicIssueThree,
+              dependedIssueUrls: ['url1', 'url4'],
+            },
+          ],
+          cacheUsed: false,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [
+          [
+            basicProject,
+            'fieldId',
+            {
+              ...basicIssueThree,
+              dependedIssueUrls: ['url1', 'url4'],
+            },
+          ],
+        ],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            { ...basicIssueThree, dependedIssueUrls: ['url1', 'url4'] },
+            'Closed depended issues:\n- url1',
+          ],
+          [
+            { ...basicIssueThree, dependedIssueUrls: ['url1', 'url4'] },
+            'Dependency removed:\n- url4',
           ],
         ],
       },
