@@ -1,5 +1,6 @@
 import fs from 'fs';
 import YAML from 'yaml';
+import axios from 'axios';
 
 jest.mock('fs');
 jest.mock('gh-cookie', () => ({ getCookieContent: jest.fn() }));
@@ -235,6 +236,83 @@ describe('HandleScheduledEventUseCaseHandler', () => {
         undefined,
         undefined,
       );
+    }
+  });
+
+  it('should redact Authorization and cookie headers in verbose mode error', async () => {
+    expect.assertions(4);
+    const capturedHandlers: Array<(error: unknown) => unknown> = [];
+    jest
+      .spyOn(axios.interceptors.response, 'use')
+      .mockImplementationOnce((_, errorHandler) => {
+        if (errorHandler) {
+          capturedHandlers.push(errorHandler);
+        }
+        return 0;
+      });
+
+    const handler = new HandleScheduledEventUseCaseHandler();
+    await handler.handle('config.yml', true);
+
+    expect(capturedHandlers).toHaveLength(1);
+
+    const mockAxiosError = {
+      message: 'Request failed with status code 401',
+      code: 'ERR_BAD_RESPONSE',
+      config: {
+        url: 'https://api.github.com/graphql',
+        method: 'post',
+        headers: {
+          toJSON: () => ({
+            Authorization: 'Bearer secret-github-token',
+            cookie: 'session=secret-cookie-value',
+            'Content-Type': 'application/json',
+          }),
+        },
+      },
+      response: { status: 401 },
+    };
+
+    try {
+      capturedHandlers[0](mockAxiosError);
+    } catch (thrownError) {
+      if (!(thrownError instanceof Error)) {
+        return;
+      }
+      expect(thrownError.message).not.toContain('secret-github-token');
+      expect(thrownError.message).not.toContain('secret-cookie-value');
+      expect(thrownError.message).toContain('[REDACTED]');
+    }
+  });
+
+  it('should not expose Authorization header in non-verbose mode error', async () => {
+    expect.assertions(2);
+    const capturedHandlers: Array<(error: unknown) => unknown> = [];
+    jest
+      .spyOn(axios.interceptors.response, 'use')
+      .mockImplementationOnce((_, errorHandler) => {
+        if (errorHandler) {
+          capturedHandlers.push(errorHandler);
+        }
+        return 0;
+      });
+
+    const handler = new HandleScheduledEventUseCaseHandler();
+    await handler.handle('config.yml', false);
+
+    expect(capturedHandlers).toHaveLength(1);
+
+    const mockAxiosError = {
+      response: { status: 403 },
+    };
+
+    try {
+      capturedHandlers[0](mockAxiosError);
+    } catch (thrownError) {
+      if (!(thrownError instanceof Error)) {
+        return;
+      }
+      expect(thrownError.message).toBe('API Error: 403');
     }
   });
 });
