@@ -20,7 +20,6 @@ export class UpdateIssueStatusByLabelUseCase {
     issues: Issue[];
     defaultStatus: string | null;
   }): Promise<void> => {
-    const { defaultStatus } = input;
     for (const issue of input.issues) {
       const statusLabel = issue.labels.find((label) =>
         label
@@ -33,20 +32,11 @@ export class UpdateIssueStatusByLabelUseCase {
       const targetStatusName = statusLabel.slice(
         UpdateIssueStatusByLabelUseCase.STATUS_LABEL_PREFIX.length,
       );
-      const matchedStatus = input.project.status.statuses.find(
+      const targetStatus = input.project.status.statuses.find(
         (s) =>
           UpdateIssueStatusByLabelUseCase.normalizeStatus(s.name) ===
           UpdateIssueStatusByLabelUseCase.normalizeStatus(targetStatusName),
       );
-      const fallbackStatus =
-        defaultStatus !== null
-          ? input.project.status.statuses.find(
-              (s) =>
-                UpdateIssueStatusByLabelUseCase.normalizeStatus(s.name) ===
-                UpdateIssueStatusByLabelUseCase.normalizeStatus(defaultStatus),
-            )
-          : null;
-      const targetStatus = matchedStatus ?? fallbackStatus ?? null;
       if (!targetStatus) {
         continue;
       }
