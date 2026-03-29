@@ -263,7 +263,7 @@ describe('UpdateIssueStatusByLabelUseCase', () => {
         },
       },
       {
-        name: 'should use defaultStatus when status label value does not match any project status',
+        name: 'should not change when status label value does not match any project status',
         issues: [
           {
             ...mock<Issue>(),
@@ -271,10 +271,10 @@ describe('UpdateIssueStatusByLabelUseCase', () => {
             status: 'ToDo',
           },
         ],
-        defaultStatus: 'Icebox',
+        defaultStatus: 'Unread',
         expectedCalls: {
-          updateStatus: [[expect.anything(), expect.anything(), 'status3']],
-          removeLabel: [[expect.anything(), 'status:UnknownStatus']],
+          updateStatus: [],
+          removeLabel: [],
         },
       },
       {
@@ -301,7 +301,7 @@ describe('UpdateIssueStatusByLabelUseCase', () => {
             status: 'ToDo',
           },
         ],
-        defaultStatus: 'Icebox',
+        defaultStatus: 'Unread',
         expectedCalls: {
           updateStatus: [[expect.anything(), expect.anything(), 'status2']],
           removeLabel: [[expect.anything(), 'status:In Progress']],
