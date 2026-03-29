@@ -262,6 +262,51 @@ describe('UpdateIssueStatusByLabelUseCase', () => {
           removeLabel: [],
         },
       },
+      {
+        name: 'should not change when status label value does not match any project status',
+        issues: [
+          {
+            ...mock<Issue>(),
+            labels: ['status:UnknownStatus'],
+            status: 'ToDo',
+          },
+        ],
+        defaultStatus: 'Unread',
+        expectedCalls: {
+          updateStatus: [],
+          removeLabel: [],
+        },
+      },
+      {
+        name: 'should not update when status label value does not match and defaultStatus is null',
+        issues: [
+          {
+            ...mock<Issue>(),
+            labels: ['status:UnknownStatus'],
+            status: 'ToDo',
+          },
+        ],
+        defaultStatus: null,
+        expectedCalls: {
+          updateStatus: [],
+          removeLabel: [],
+        },
+      },
+      {
+        name: 'should use matched status over defaultStatus when label matches a project status',
+        issues: [
+          {
+            ...mock<Issue>(),
+            labels: ['status:In Progress'],
+            status: 'ToDo',
+          },
+        ],
+        defaultStatus: 'Unread',
+        expectedCalls: {
+          updateStatus: [[expect.anything(), expect.anything(), 'status2']],
+          removeLabel: [[expect.anything(), 'status:In Progress']],
+        },
+      },
     ];
 
     testCases.forEach(({ name, issues, defaultStatus, expectedCalls }) => {
