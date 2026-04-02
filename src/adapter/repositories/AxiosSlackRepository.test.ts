@@ -18,6 +18,7 @@ if (!SLACK_USER_TOKEN) {
 
 describe('AxiosSlackRepository Integration Tests', () => {
   jest.setTimeout(60 * 1000);
+  jest.retryTimes(3, { logErrorsBeforeRetry: true });
   let slackRepository: AxiosSlackRepository;
 
   beforeAll(() => {
