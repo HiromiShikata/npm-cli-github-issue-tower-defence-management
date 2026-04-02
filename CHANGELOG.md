@@ -1,3 +1,10 @@
+## [1.34.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.34.2...v1.34.3) (2026-04-02)
+
+
+### Bug Fixes
+
+* **deps:** update axios to v1.14.0 to resolve plain-crypto-js removal ([1d3d7a5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1d3d7a5f43fb59b37946bd6c408816a8322026f2))
+
 ## [1.34.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.34.1...v1.34.2) (2026-03-28)
 
 
