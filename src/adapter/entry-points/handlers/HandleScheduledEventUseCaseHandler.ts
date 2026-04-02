@@ -13,7 +13,7 @@ import { HandleScheduledEventUseCase } from '../../../domain/usecases/HandleSche
 import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
 import { ActionAnnouncementUseCase } from '../../../domain/usecases/ActionAnnouncementUseCase';
 import { SetWorkflowManagementIssueToStoryUseCase } from '../../../domain/usecases/SetWorkflowManagementIssueToStoryUseCase';
-import { ClearNextActionHourUseCase } from '../../../domain/usecases/ClearNextActionHourUseCase';
+import { ClearPastNextActionUseCase } from '../../../domain/usecases/ClearPastNextActionUseCase';
 import { AnalyzeProblemByIssueUseCase } from '../../../domain/usecases/AnalyzeProblemByIssueUseCase';
 import { Issue } from '../../../domain/entities/Issue';
 import { Project } from '../../../domain/entities/Project';
@@ -162,7 +162,7 @@ export class HandleScheduledEventUseCaseHandler {
     const actionAnnouncement = new ActionAnnouncementUseCase(issueRepository);
     const setWorkflowManagementIssueToStoryUseCase =
       new SetWorkflowManagementIssueToStoryUseCase(issueRepository);
-    const clearNextActionHourUseCase = new ClearNextActionHourUseCase(
+    const clearPastNextActionUseCase = new ClearPastNextActionUseCase(
       issueRepository,
     );
     const analyzeProblemByIssueUseCase = new AnalyzeProblemByIssueUseCase(
@@ -222,7 +222,7 @@ export class HandleScheduledEventUseCaseHandler {
     const handleScheduledEventUseCase = new HandleScheduledEventUseCase(
       actionAnnouncement,
       setWorkflowManagementIssueToStoryUseCase,
-      clearNextActionHourUseCase,
+      clearPastNextActionUseCase,
       analyzeProblemByIssueUseCase,
       analyzeStoriesUseCase,
       clearDependedIssueURLUseCase,
