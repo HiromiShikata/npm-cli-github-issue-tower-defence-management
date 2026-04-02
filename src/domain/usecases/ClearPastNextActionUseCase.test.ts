@@ -8,8 +8,14 @@ describe('ClearPastNextActionUseCase', () => {
   jest.setTimeout(60 * 1000);
   const mockIssueRepository = mock<IssueRepository>();
 
-  const nextActionHourField = { name: 'Next Action Hour', fieldId: 'hourFieldId' };
-  const nextActionDateField = { name: 'Next Action Date', fieldId: 'dateFieldId' };
+  const nextActionHourField = {
+    name: 'Next Action Hour',
+    fieldId: 'hourFieldId',
+  };
+  const nextActionDateField = {
+    name: 'Next Action Date',
+    fieldId: 'dateFieldId',
+  };
 
   const basicProject = {
     ...mock<Project>(),
