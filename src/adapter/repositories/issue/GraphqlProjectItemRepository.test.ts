@@ -1,24 +1,32 @@
-import axios, { AxiosHeaders, AxiosResponse } from 'axios';
+const mockPost = jest.fn();
+
+jest.mock('ky', () => ({
+  default: {
+    post: mockPost,
+    get: jest.fn(),
+    put: jest.fn(),
+    patch: jest.fn(),
+    delete: jest.fn(),
+    extend: jest.fn(),
+    create: jest.fn(),
+    stop: jest.fn(),
+  },
+  __esModule: true,
+}));
+
 import {
   GraphqlProjectItemRepository,
   PAGINATION_DELAY_MS,
 } from './GraphqlProjectItemRepository';
 import { LocalStorageRepository } from '../LocalStorageRepository';
 
-jest.mock('axios');
-const mockAxios = jest.mocked(axios);
-
-const toAxiosResponse = <T>(data: T): AxiosResponse<T> => ({
-  data,
-  status: 200,
-  statusText: 'OK',
-  headers: {},
-  config: { headers: new AxiosHeaders() },
+const mockJsonResponse = <T>(data: T) => ({
+  json: jest.fn().mockResolvedValue(data),
 });
 
 describe('GraphqlProjectItemRepository', () => {
   const makePageResponse = (hasNextPage: boolean, endCursor: string) =>
-    toAxiosResponse({
+    mockJsonResponse({
       data: {
         node: {
           items: {
@@ -64,7 +72,7 @@ describe('GraphqlProjectItemRepository', () => {
 
     afterEach(() => {
       jest.useRealTimers();
-      mockAxios.mockClear();
+      mockPost.mockClear();
     });
 
     it('should sleep between paginated requests to avoid 403', async () => {
@@ -76,15 +84,15 @@ describe('GraphqlProjectItemRepository', () => {
       );
 
       const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
-      mockAxios
-        .mockResolvedValueOnce(makePageResponse(true, 'cursor-1'))
-        .mockResolvedValueOnce(makePageResponse(false, 'cursor-2'));
+      mockPost
+        .mockReturnValueOnce(makePageResponse(true, 'cursor-1'))
+        .mockReturnValueOnce(makePageResponse(false, 'cursor-2'));
 
       const resultPromise = repository.fetchProjectItems('test-project-id');
       await jest.advanceTimersByTimeAsync(PAGINATION_DELAY_MS);
       const result = await resultPromise;
 
-      expect(mockAxios).toHaveBeenCalledTimes(2);
+      expect(mockPost).toHaveBeenCalledTimes(2);
       expect(result).toHaveLength(2);
       expect(setTimeoutSpy).toHaveBeenCalledWith(
         expect.any(Function),
@@ -102,11 +110,11 @@ describe('GraphqlProjectItemRepository', () => {
       );
 
       const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
-      mockAxios.mockResolvedValueOnce(makePageResponse(false, 'cursor-1'));
+      mockPost.mockReturnValueOnce(makePageResponse(false, 'cursor-1'));
 
       const result = await repository.fetchProjectItems('test-project-id');
 
-      expect(mockAxios).toHaveBeenCalledTimes(1);
+      expect(mockPost).toHaveBeenCalledTimes(1);
       expect(result).toHaveLength(1);
       expect(setTimeoutSpy).not.toHaveBeenCalledWith(
         expect.any(Function),
@@ -118,7 +126,7 @@ describe('GraphqlProjectItemRepository', () => {
 
   describe('getProjectItemFields', () => {
     afterEach(() => {
-      mockAxios.mockClear();
+      mockPost.mockClear();
     });
 
     it('should return project item fields', async () => {
@@ -129,8 +137,8 @@ describe('GraphqlProjectItemRepository', () => {
         'dummy-token',
       );
 
-      mockAxios.mockResolvedValueOnce(
-        toAxiosResponse({
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
           data: {
             repository: {
               issue: {
@@ -163,7 +171,7 @@ describe('GraphqlProjectItemRepository', () => {
 
       const result = await repository.getProjectItemFields('owner', 'repo', 1);
 
-      expect(mockAxios).toHaveBeenCalledTimes(1);
+      expect(mockPost).toHaveBeenCalledTimes(1);
       expect(result).toEqual([
         {
           fieldName: 'NextActionDate',
