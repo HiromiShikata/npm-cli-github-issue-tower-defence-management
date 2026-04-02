@@ -3,7 +3,7 @@ import { serialize } from 'cookie';
 import { getCookieContent } from 'gh-cookie';
 import fs from 'fs';
 import { LocalStorageRepository } from './LocalStorageRepository';
-import axios from 'axios';
+import ky from 'ky';
 
 interface Cookie {
   name: string;
@@ -54,7 +54,7 @@ export class BaseGitHubRepository {
     }
     return this.cookie;
   };
-  createHeader = async (): Promise<object> => {
+  createHeader = async (): Promise<Record<string, string>> => {
     const cookie = await this.getCookie();
     const headers = {
       accept:
@@ -169,18 +169,14 @@ export class BaseGitHubRepository {
     }
     const profileUrl = `https://github.com/${this.ghUserName}`;
     const headers = await this.createHeader();
-    const content = await axios.get<string>(profileUrl, { headers });
-    const html = content.data;
+    const html = await ky.get(profileUrl, { headers }).text();
     if (html.includes(`meta name="user-login" content="${this.ghUserName}"`)) {
       return;
     }
     this.localStorageRepository.remove(this.jsonFilePath);
     this.cookie = null;
     const newHeaders = await this.createHeader();
-    const newContent = await axios.get<string>(profileUrl, {
-      headers: newHeaders,
-    });
-    const newHtml = newContent.data;
+    const newHtml = await ky.get(profileUrl, { headers: newHeaders }).text();
     if (
       newHtml.includes(`meta name="user-login" content="${this.ghUserName}"`)
     ) {

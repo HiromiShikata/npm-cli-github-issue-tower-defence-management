@@ -1,4 +1,4 @@
-import axios from 'axios';
+import ky from 'ky';
 import { BaseGitHubRepository } from './BaseGitHubRepository';
 import { LocalStorageRepository } from './LocalStorageRepository';
 import { FieldOption, Project } from '../../domain/entities/Project';
@@ -32,34 +32,30 @@ export class CheerioProjectRepository
       id: FieldOption['id'] | null;
     })[],
   ): Promise<FieldOption[]> => {
-    const headers = await this.createHeader();
-    const res = await axios.put<{
-      memexProjectColumn: {
-        id: string;
-        settings: {
-          width: number;
-          options: FieldOption[];
-        };
-      };
-    }>(
-      `https://github.com/memexes/${project.databaseId}/columns`,
-      {
-        memexProjectColumnId: project.story?.databaseId,
-        settings: {
-          width: 200,
-          options: newStoryList,
+    const browserHeaders = await this.createHeader();
+    const raw = await ky
+      .put(`https://github.com/memexes/${project.databaseId}/columns`, {
+        json: {
+          memexProjectColumnId: project.story?.databaseId,
+          settings: { width: 200, options: newStoryList },
         },
-      },
-      {
         headers: {
           'github-verified-fetch': 'true',
           origin: 'https://github.com',
           'x-requested-with': 'XMLHttpRequest',
-          ...headers,
+          ...browserHeaders,
         },
-      },
-    );
-    return res.data.memexProjectColumn.settings.options.map((v) => ({
+      })
+      .json<{
+        memexProjectColumn: {
+          id: string;
+          settings: {
+            width: number;
+            options: FieldOption[];
+          };
+        };
+      }>();
+    return raw.memexProjectColumn.settings.options.map((v) => ({
       id: v.id,
       name: v.name,
       color: v.color,

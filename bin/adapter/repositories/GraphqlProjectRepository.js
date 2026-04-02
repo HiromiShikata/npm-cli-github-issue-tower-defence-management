@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GraphqlProjectRepository = void 0;
-const axios_1 = __importDefault(require("axios"));
+const ky_1 = __importDefault(require("ky"));
 const BaseGitHubRepository_1 = require("./BaseGitHubRepository");
 const utils_1 = require("./utils");
 class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
@@ -38,17 +38,16 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
                     number: projectNumber,
                 },
             };
-            const response = await (0, axios_1.default)({
-                url: 'https://api.github.com/graphql',
-                method: 'post',
+            const response = await ky_1.default
+                .post('https://api.github.com/graphql', {
+                json: graphqlQuery,
                 headers: {
                     Authorization: `Bearer ${this.ghToken}`,
-                    'Content-Type': 'application/json',
                 },
-                data: JSON.stringify(graphqlQuery),
-            });
-            const projectId = response.data.data.organization?.projectV2?.id ||
-                response.data.data.user?.projectV2?.id;
+            })
+                .json();
+            const projectId = response.data.organization?.projectV2?.id ||
+                response.data.user?.projectV2?.id;
             if (!projectId) {
                 throw new Error('projectId is not found');
             }
@@ -115,16 +114,15 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             const variables = {
                 projectId: projectId,
             };
-            const response = await axios_1.default.post('https://api.github.com/graphql', {
-                query,
-                variables,
-            }, {
+            const response = await ky_1.default
+                .post('https://api.github.com/graphql', {
+                json: { query, variables },
                 headers: {
                     Authorization: `Bearer ${this.ghToken}`,
-                    'Content-Type': 'application/json',
                 },
-            });
-            const project = response.data.data.node;
+            })
+                .json();
+            const project = response.data.node;
             if (!project) {
                 return null;
             }

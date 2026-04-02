@@ -39,7 +39,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.InternalGraphqlIssueRepository = void 0;
 const __typia_transform__accessExpressionAsString = __importStar(require("typia/lib/internal/_accessExpressionAsString"));
 const __typia_transform__validateReport = __importStar(require("typia/lib/internal/_validateReport"));
-const axios_1 = __importDefault(require("axios"));
+const ky_1 = __importDefault(require("ky"));
 const BaseGitHubRepository_1 = require("../BaseGitHubRepository");
 const typia_1 = __importDefault(require("typia"));
 class InternalGraphqlIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
@@ -81,19 +81,23 @@ class InternalGraphqlIssueRepository extends BaseGitHubRepository_1.BaseGitHubRe
                 for (let i = 0; i < maxRetries; i++) {
                     try {
                         console.log(url);
-                        const response = await axios_1.default.get(url, {
+                        const kyResponse = await ky_1.default.get(url, {
                             headers: headers,
-                            withCredentials: true,
+                            throwHttpErrors: false,
                         });
-                        if (!response.data?.data?.node?.frontTimelineItems) {
-                            throw new Error(`No frontTimelineItems found. URL: ${issueUrl}, Response: ${JSON.stringify(response.data)}`);
+                        if (!kyResponse.ok) {
+                            throw new Error(`HTTP error ${kyResponse.status}`);
+                        }
+                        const rawResponse = await kyResponse.json();
+                        if (!rawResponse?.data?.node?.frontTimelineItems) {
+                            throw new Error(`No frontTimelineItems found. URL: ${issueUrl}, Response: ${JSON.stringify(rawResponse)}`);
                         }
                         await new Promise((resolve) => setTimeout(resolve, 2000));
-                        return response.data.data.node.frontTimelineItems;
+                        return rawResponse.data.node.frontTimelineItems;
                     }
                     catch (e) {
-                        const statusCode = axios_1.default.isAxiosError(e) && e.response?.status !== undefined
-                            ? e.response.status
+                        const statusCode = e instanceof Error && e.message.startsWith('HTTP error ')
+                            ? parseInt(e.message.replace('HTTP error ', ''), 10)
                             : null;
                         const isRetryableError = statusCode !== null && [500, 502, 503, 504].includes(statusCode);
                         if (i === maxRetries - 1) {

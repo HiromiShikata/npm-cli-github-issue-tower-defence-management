@@ -37,7 +37,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CheerioIssueRepository = void 0;
-const axios_1 = __importDefault(require("axios"));
+const ky_1 = __importDefault(require("ky"));
 const cheerio = __importStar(require("cheerio"));
 const BaseGitHubRepository_1 = require("../BaseGitHubRepository");
 class CheerioIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
@@ -53,8 +53,7 @@ class CheerioIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository
         this.ghAuthenticatorKey = ghAuthenticatorKey;
         this.getIssue = async (issueUrl) => {
             const headers = await this.createHeader();
-            const content = await axios_1.default.get(issueUrl, { headers });
-            const html = content.data;
+            const html = await ky_1.default.get(issueUrl, { headers }).text();
             const $ = cheerio.load(html);
             if (html.includes('react-app.embeddedData')) {
                 const issue = await this.internalGraphqlIssueRepository.getIssueFromBetaFeatureView(issueUrl, html);

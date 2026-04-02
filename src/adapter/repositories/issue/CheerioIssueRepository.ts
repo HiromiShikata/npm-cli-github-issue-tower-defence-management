@@ -1,4 +1,4 @@
-import axios from 'axios';
+import ky from 'ky';
 import * as cheerio from 'cheerio';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import { InternalGraphqlIssueRepository } from './InternalGraphqlIssueRepository';
@@ -44,8 +44,7 @@ export class CheerioIssueRepository extends BaseGitHubRepository {
   }
   getIssue = async (issueUrl: string): Promise<Issue> => {
     const headers = await this.createHeader();
-    const content = await axios.get<string>(issueUrl, { headers });
-    const html = content.data;
+    const html = await ky.get(issueUrl, { headers }).text();
     const $ = cheerio.load(html);
     if (html.includes('react-app.embeddedData')) {
       const issue =

@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ApiV3IssueRepository = void 0;
-const axios_1 = __importDefault(require("axios"));
+const ky_1 = __importDefault(require("ky"));
 const BaseGitHubRepository_1 = require("../BaseGitHubRepository");
 class ApiV3IssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
     constructor() {
@@ -27,16 +27,15 @@ class ApiV3IssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
             if (query.assignee) {
                 url += `&assignee=${query.assignee}`;
             }
-            const response = await axios_1.default.get(url, {
+            const response = await ky_1.default
+                .get(url, {
                 headers: {
                     Authorization: `token ${this.ghToken}`,
                     Accept: 'application/vnd.github.v3+json',
                 },
-            });
-            if (response.status !== 200) {
-                throw new Error(`Failed to search issue: ${response.status}`);
-            }
-            return response.data.items.map((item) => ({
+            })
+                .json();
+            return response.items.map((item) => ({
                 url: item.html_url,
                 title: item.title,
                 number: item.number,
@@ -44,16 +43,15 @@ class ApiV3IssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
         };
         this.searchIssueByQuery = async (query) => {
             const url = `https://api.github.com/search/issues?q=${query}`;
-            const response = await axios_1.default.get(url, {
+            const response = await ky_1.default
+                .get(url, {
                 headers: {
                     Authorization: `token ${this.ghToken}`,
                     Accept: 'application/vnd.github.v3+json',
                 },
-            });
-            if (response.status !== 200) {
-                throw new Error(`Failed to search issue: ${response.status}`);
-            }
-            return response.data.items.map((item) => ({
+            })
+                .json();
+            return response.items.map((item) => ({
                 url: item.html_url,
                 title: item.title,
                 number: item.number,
