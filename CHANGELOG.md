@@ -1,3 +1,16 @@
+# [1.35.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.34.3...v1.35.0) (2026-04-02)
+
+
+### Bug Fixes
+
+* **core:** do not use defaultStatus as fallback for unrecognized status labels ([f3f1343](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f3f13439cf8958751405776ba36644c78c82b651))
+
+
+### Features
+
+* **core:** implement defaultStatus in UpdateIssueStatusByLabelUseCase ([157d2ea](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/157d2ea052837dcd5a830ec295f98ceebfea8f1f)), closes [#365](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/365)
+* **core:** use defaultStatus as fallback when status label value is unrecognized ([5871499](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/587149914741e60b60a07caf822befe8ce37c15b))
+
 ## [1.34.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.34.2...v1.34.3) (2026-04-02)
 
 
