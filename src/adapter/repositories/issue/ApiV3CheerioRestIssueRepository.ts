@@ -29,7 +29,6 @@ export class ApiV3CheerioRestIssueRepository
       | 'createNewIssue'
       | 'updateIssue'
       | 'createComment'
-      | 'getIssue'
       | 'updateLabels'
       | 'removeLabel'
       | 'updateAssigneeList'
