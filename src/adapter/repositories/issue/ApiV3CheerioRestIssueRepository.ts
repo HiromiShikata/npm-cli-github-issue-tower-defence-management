@@ -92,7 +92,9 @@ export class ApiV3CheerioRestIssueRepository
         .find((field) =>
           normalizeFieldName(field.name).startsWith('dependedissueurls'),
         )
-        ?.value?.split(',') || [];
+        ?.value?.split(',')
+        .map((url) => url.trim())
+        .filter((url) => url.length > 0) || [];
     const completionDate50PercentConfidence = item.customFields.find((field) =>
       normalizeFieldName(field.name).startsWith('completiondate50'),
     )?.value;

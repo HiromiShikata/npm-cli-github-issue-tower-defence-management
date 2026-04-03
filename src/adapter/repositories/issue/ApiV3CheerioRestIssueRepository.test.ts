@@ -65,6 +65,57 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           createdAt: new Date('2024-01-01T00:00:00Z'),
         },
       },
+      {
+        name: 'dependedIssueUrls with whitespace around URLs should be trimmed',
+        params: [
+          {
+            id: 'test-id-2',
+            nameWithOwner: 'HiromiShikata/test-repository',
+            number: 39,
+            title: 'test-title-2',
+            state: 'OPEN',
+            url: 'https://github.com/HiromiShikata/test-repository/issues/39',
+            body: 'test-body',
+            labels: [],
+            assignees: [],
+            createdAt: '2024-01-01T00:00:00Z',
+            customFields: [
+              {
+                name: 'DependedIssueUrls',
+                value:
+                  'https://github.com/HiromiShikata/test-repository/issues/1, https://github.com/HiromiShikata/test-repository/issues/2',
+              },
+            ],
+          },
+        ],
+        expected: {
+          assignees: [],
+          body: 'test-body',
+          estimationMinutes: null,
+          isPr: false,
+          itemId: 'test-id-2',
+          labels: [],
+          nameWithOwner: 'HiromiShikata/test-repository',
+          nextActionDate: null,
+          nextActionHour: null,
+          number: 39,
+          org: 'HiromiShikata',
+          repo: 'test-repository',
+          state: 'OPEN',
+          status: null,
+          story: null,
+          title: 'test-title-2',
+          url: 'https://github.com/HiromiShikata/test-repository/issues/39',
+          dependedIssueUrls: [
+            'https://github.com/HiromiShikata/test-repository/issues/1',
+            'https://github.com/HiromiShikata/test-repository/issues/2',
+          ],
+          completionDate50PercentConfidence: null,
+          isInProgress: false,
+          isClosed: false,
+          createdAt: new Date('2024-01-01T00:00:00Z'),
+        },
+      },
     ];
     test.each(testCases)('%s', (arg) => {
       const { repository } = createApiV3CheerioRestIssueRepository();
