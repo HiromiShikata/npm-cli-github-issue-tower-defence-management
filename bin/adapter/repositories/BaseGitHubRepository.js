@@ -135,6 +135,7 @@ class BaseGitHubRepository {
                 return;
             }
             this.localStorageRepository.remove(this.jsonFilePath);
+            this.cookie = null;
             const newHeaders = await this.createHeader();
             const newContent = await axios_1.default.get('https://github.com', {
                 headers: newHeaders,
