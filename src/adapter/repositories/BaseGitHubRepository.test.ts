@@ -153,10 +153,10 @@ describe('BaseGitHubRepository', () => {
       }
     });
 
-    it('should return when profile page HTML contains username', async () => {
+    it('should return when HTML contains user-login meta tag for current user (logged in)', async () => {
       const repository = new RefreshTestRepository();
       mockAxiosGet.mockResolvedValueOnce({
-        data: `<html><body>Welcome ${ghUserName}</body></html>`,
+        data: `<html><head><meta name="user-login" content="${ghUserName}"></head><body><h1>${ghUserName}</h1></body></html>`,
       });
 
       await expect(repository.refreshCookie()).resolves.toBeUndefined();
@@ -168,10 +168,22 @@ describe('BaseGitHubRepository', () => {
       expect(mockAxiosGet).toHaveBeenCalledTimes(1);
     });
 
+    it('should fail when HTML contains username in content but not in user-login meta tag (not logged in)', async () => {
+      const repository = new RefreshTestRepository();
+      const notLoggedInHtml = `<html><head><meta name="user-login" content=""></head><body><h1>${ghUserName}</h1><p>Public profile</p></body></html>`;
+      mockAxiosGet
+        .mockResolvedValueOnce({ data: notLoggedInHtml })
+        .mockResolvedValueOnce({ data: notLoggedInHtml });
+
+      await expect(repository.refreshCookie()).rejects.toThrow(
+        'Failed to refresh cookie',
+      );
+    });
+
     it('should use profile page URL not homepage to check authentication', async () => {
       const repository = new RefreshTestRepository();
       mockAxiosGet.mockResolvedValueOnce({
-        data: `<html><body>Welcome ${ghUserName}</body></html>`,
+        data: `<html><head><meta name="user-login" content="${ghUserName}"></head><body></body></html>`,
       });
 
       await repository.refreshCookie();
@@ -188,11 +200,10 @@ describe('BaseGitHubRepository', () => {
 
     it('should throw when both profile page checks fail', async () => {
       const repository = new RefreshTestRepository();
+      const notLoggedInHtml = `<html><head><meta name="user-login" content=""></head><body></body></html>`;
       mockAxiosGet
-        .mockResolvedValueOnce({ data: '<html><body>Login page</body></html>' })
-        .mockResolvedValueOnce({
-          data: '<html><body>Login page</body></html>',
-        });
+        .mockResolvedValueOnce({ data: notLoggedInHtml })
+        .mockResolvedValueOnce({ data: notLoggedInHtml });
 
       await expect(repository.refreshCookie()).rejects.toThrow(
         'Failed to refresh cookie',
@@ -202,9 +213,11 @@ describe('BaseGitHubRepository', () => {
     it('should reset cookie cache before regenerating so new cookie is used', async () => {
       const repository = new RefreshTestRepository();
       mockAxiosGet
-        .mockResolvedValueOnce({ data: '<html><body>Login page</body></html>' })
         .mockResolvedValueOnce({
-          data: `<html><body>Welcome ${ghUserName}</body></html>`,
+          data: `<html><head><meta name="user-login" content=""></head><body></body></html>`,
+        })
+        .mockResolvedValueOnce({
+          data: `<html><head><meta name="user-login" content="${ghUserName}"></head><body></body></html>`,
         });
 
       await expect(repository.refreshCookie()).resolves.toBeUndefined();

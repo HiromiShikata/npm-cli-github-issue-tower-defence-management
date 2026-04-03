@@ -171,7 +171,7 @@ export class BaseGitHubRepository {
     const headers = await this.createHeader();
     const content = await axios.get<string>(profileUrl, { headers });
     const html = content.data;
-    if (html.includes(this.ghUserName)) {
+    if (html.includes(`meta name="user-login" content="${this.ghUserName}"`)) {
       return;
     }
     this.localStorageRepository.remove(this.jsonFilePath);
@@ -181,7 +181,9 @@ export class BaseGitHubRepository {
       headers: newHeaders,
     });
     const newHtml = newContent.data;
-    if (newHtml.includes(this.ghUserName)) {
+    if (
+      newHtml.includes(`meta name="user-login" content="${this.ghUserName}"`)
+    ) {
       return;
     }
     throw new Error('Failed to refresh cookie');
