@@ -72,7 +72,8 @@ ${circularDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
         continue;
       }
       const remainingDependedIssueUrls = issue.dependedIssueUrls.filter(
-        (dependedIssueUrl) => !closedDependedIssueUrls.includes(dependedIssueUrl),
+        (dependedIssueUrl) =>
+          !closedDependedIssueUrls.includes(dependedIssueUrl),
       );
       if (remainingDependedIssueUrls.length === 0) {
         await this.issueRepository.clearProjectField(
