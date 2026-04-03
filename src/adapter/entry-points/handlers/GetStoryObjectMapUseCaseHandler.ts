@@ -11,7 +11,6 @@ import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCach
 import { Issue } from '../../../domain/entities/Issue';
 import { Project } from '../../../domain/entities/Project';
 import { BaseGitHubRepository } from '../../repositories/BaseGitHubRepository';
-import axios, { AxiosError } from 'axios';
 import { CheerioProjectRepository } from '../../repositories/CheerioProjectRepository';
 import { GetStoryObjectMapUseCase } from '../../../domain/usecases/GetStoryObjectMapUseCase';
 import { StoryObjectMap } from '../../../domain/entities/StoryObjectMap';
@@ -27,37 +26,6 @@ export class GetStoryObjectMapUseCaseHandler {
     cacheUsed: boolean;
     storyObjectMap: StoryObjectMap;
   }> => {
-    axios.interceptors.response.use(
-      (response) => response,
-      (error: AxiosError) => {
-        if (verbose) {
-          const rawHeaders = error.config?.headers?.toJSON() ?? {};
-          const sanitizedHeaders: Record<string, unknown> = {};
-          for (const [key, value] of Object.entries(rawHeaders)) {
-            sanitizedHeaders[key] =
-              key.toLowerCase() === 'authorization' ||
-              key.toLowerCase() === 'cookie'
-                ? '[REDACTED]'
-                : value;
-          }
-          throw new Error(
-            `API Error: ${JSON.stringify({
-              message: error.message,
-              code: error.code,
-              status: error.response?.status,
-              url: error.config?.url,
-              method: error.config?.method,
-              headers: sanitizedHeaders,
-            })}`,
-          );
-        }
-        if (error.response) {
-          throw new Error(`API Error: ${error.response.status}`);
-        }
-        throw new Error('Network Error');
-      },
-    );
-
     const configFileContent = fs.readFileSync(configFilePath, 'utf8');
     const input: unknown = YAML.parse(configFileContent);
     type inputType = Parameters<GetStoryObjectMapUseCase['run']>[0] & {

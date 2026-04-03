@@ -1,6 +1,6 @@
 import { CheerioIssueRepository } from './CheerioIssueRepository';
 import * as cheerio from 'cheerio';
-import axios from 'axios';
+import ky from 'ky';
 import { InternalGraphqlIssueRepository } from './InternalGraphqlIssueRepository';
 import dotenv from 'dotenv';
 import { LocalStorageRepository } from '../LocalStorageRepository';
@@ -186,8 +186,8 @@ describe('CheerioIssueRepository', () => {
   describe('getStatusTimelineEvents', () => {
     it('should return status timeline events', async () => {
       const headers = await repository.createHeader();
-      const content = await axios.get<string>(issueUrl, { headers });
-      const $ = cheerio.load(content.data);
+      const html = await ky.get(issueUrl, { headers }).text();
+      const $ = cheerio.load(html);
       const statusTimeline = await repository.getStatusTimelineEvents($);
       expect(statusTimeline).toEqual([]);
     });
