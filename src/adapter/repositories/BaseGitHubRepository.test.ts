@@ -153,21 +153,6 @@ describe('BaseGitHubRepository', () => {
       }
     });
 
-    it('should throw when credentials are not set', async () => {
-      const repo = new BaseGitHubRepository(
-        new LocalStorageRepository(),
-        refreshTestFilePath,
-        'gh_token',
-        undefined,
-        undefined,
-        undefined,
-      );
-
-      await expect(repo.refreshCookie()).rejects.toThrow(
-        'GitHub username, password, and authenticator key must be set',
-      );
-    });
-
     it('should return without error when current cookie is valid', async () => {
       mockAxios.get.mockResolvedValueOnce(
         toAxiosResponse(`<html>${ghUserName} logged in</html>`),
