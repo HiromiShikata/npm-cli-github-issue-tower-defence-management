@@ -167,15 +167,17 @@ export class BaseGitHubRepository {
         'GitHub username, password, and authenticator key must be set',
       );
     }
+    const profileUrl = `https://github.com/${this.ghUserName}`;
     const headers = await this.createHeader();
-    const content = await axios.get<string>('https://github.com', { headers });
+    const content = await axios.get<string>(profileUrl, { headers });
     const html = content.data;
     if (html.includes(this.ghUserName)) {
       return;
     }
     this.localStorageRepository.remove(this.jsonFilePath);
+    this.cookie = null;
     const newHeaders = await this.createHeader();
-    const newContent = await axios.get<string>('https://github.com', {
+    const newContent = await axios.get<string>(profileUrl, {
       headers: newHeaders,
     });
     const newHtml = newContent.data;

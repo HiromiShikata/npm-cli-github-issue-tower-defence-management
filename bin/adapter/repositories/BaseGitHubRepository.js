@@ -128,15 +128,17 @@ class BaseGitHubRepository {
             if (!this.ghUserName || !this.ghUserPassword || !this.ghAuthenticatorKey) {
                 throw new Error('GitHub username, password, and authenticator key must be set');
             }
+            const profileUrl = `https://github.com/${this.ghUserName}`;
             const headers = await this.createHeader();
-            const content = await axios_1.default.get('https://github.com', { headers });
+            const content = await axios_1.default.get(profileUrl, { headers });
             const html = content.data;
             if (html.includes(this.ghUserName)) {
                 return;
             }
             this.localStorageRepository.remove(this.jsonFilePath);
+            this.cookie = null;
             const newHeaders = await this.createHeader();
-            const newContent = await axios_1.default.get('https://github.com', {
+            const newContent = await axios_1.default.get(profileUrl, {
                 headers: newHeaders,
             });
             const newHtml = newContent.data;
