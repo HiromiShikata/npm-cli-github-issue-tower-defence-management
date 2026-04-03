@@ -237,5 +237,4 @@ describe('HandleScheduledEventUseCaseHandler', () => {
       );
     }
   });
-
 });
