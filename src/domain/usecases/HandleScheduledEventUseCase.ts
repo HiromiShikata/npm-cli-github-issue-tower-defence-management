@@ -8,7 +8,7 @@ import { DateRepository } from './adapter-interfaces/DateRepository';
 import { SpreadsheetRepository } from './adapter-interfaces/SpreadsheetRepository';
 import { ActionAnnouncementUseCase } from './ActionAnnouncementUseCase';
 import { SetWorkflowManagementIssueToStoryUseCase } from './SetWorkflowManagementIssueToStoryUseCase';
-import { ClearPastNextActionUseCase } from './ClearPastNextActionUseCase';
+import { ClearPastNextActionDateHourUseCase } from './ClearPastNextActionDateHourUseCase';
 import { AnalyzeProblemByIssueUseCase } from './AnalyzeProblemByIssueUseCase';
 import { AnalyzeStoriesUseCase } from './AnalyzeStoriesUseCase';
 import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
@@ -33,7 +33,7 @@ export class HandleScheduledEventUseCase {
   constructor(
     readonly actionAnnouncementUseCase: ActionAnnouncementUseCase,
     readonly setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase,
-    readonly clearPastNextActionUseCase: ClearPastNextActionUseCase,
+    readonly clearPastNextActionUseCase: ClearPastNextActionDateHourUseCase,
     readonly analyzeProblemByIssueUseCase: AnalyzeProblemByIssueUseCase,
     readonly analyzeStoriesUseCase: AnalyzeStoriesUseCase,
     readonly clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase,

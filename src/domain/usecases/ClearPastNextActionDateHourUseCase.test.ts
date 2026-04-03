@@ -1,10 +1,10 @@
 import { mock } from 'jest-mock-extended';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
-import { ClearPastNextActionUseCase } from './ClearPastNextActionUseCase';
+import { ClearPastNextActionDateHourUseCase } from './ClearPastNextActionDateHourUseCase';
 import { Project } from '../entities/Project';
 import { Issue } from '../entities/Issue';
 
-describe('ClearPastNextActionUseCase', () => {
+describe('ClearPastNextActionDateHourUseCase', () => {
   jest.setTimeout(60 * 1000);
   const mockIssueRepository = mock<IssueRepository>();
 
@@ -109,7 +109,7 @@ describe('ClearPastNextActionUseCase', () => {
         ],
       },
       {
-        name: 'should not clear nextActionDate when date is today',
+        name: 'should clear nextActionDate when date is today',
         input: {
           targetDates: [new Date('2026-04-02T10:00:00')],
           project: {
@@ -125,7 +125,20 @@ describe('ClearPastNextActionUseCase', () => {
           ],
           cacheUsed: false,
         },
-        expectedClearProjectFieldCalls: [],
+        expectedClearProjectFieldCalls: [
+          [
+            {
+              ...basicProject,
+              nextActionHour: null,
+              nextActionDate: nextActionDateField,
+            },
+            'dateFieldId',
+            {
+              ...openIssueWithDateOnly,
+              nextActionDate: new Date('2026-04-02T00:00:00'),
+            },
+          ],
+        ],
       },
       {
         name: 'should not clear nextActionDate when date is in the future',
@@ -299,7 +312,9 @@ describe('ClearPastNextActionUseCase', () => {
     testCases.forEach(({ name, input, expectedClearProjectFieldCalls }) => {
       it(name, async () => {
         jest.clearAllMocks();
-        const useCase = new ClearPastNextActionUseCase(mockIssueRepository);
+        const useCase = new ClearPastNextActionDateHourUseCase(
+          mockIssueRepository,
+        );
         await useCase.run(input);
         expect(mockIssueRepository.clearProjectField.mock.calls).toEqual(
           expectedClearProjectFieldCalls,
