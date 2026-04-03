@@ -48,37 +48,11 @@ const RestIssueRepository_1 = require("../../repositories/issue/RestIssueReposit
 const GraphqlProjectItemRepository_1 = require("../../repositories/issue/GraphqlProjectItemRepository");
 const ApiV3CheerioRestIssueRepository_1 = require("../../repositories/issue/ApiV3CheerioRestIssueRepository");
 const LocalStorageCacheRepository_1 = require("../../repositories/LocalStorageCacheRepository");
-const axios_1 = __importDefault(require("axios"));
 const CheerioProjectRepository_1 = require("../../repositories/CheerioProjectRepository");
 const GetStoryObjectMapUseCase_1 = require("../../../domain/usecases/GetStoryObjectMapUseCase");
 class GetStoryObjectMapUseCaseHandler {
     constructor() {
-        this.handle = async (configFilePath, verbose, allowCacheMinutes) => {
-            axios_1.default.interceptors.response.use((response) => response, (error) => {
-                if (verbose) {
-                    const rawHeaders = error.config?.headers?.toJSON() ?? {};
-                    const sanitizedHeaders = {};
-                    for (const [key, value] of Object.entries(rawHeaders)) {
-                        sanitizedHeaders[key] =
-                            key.toLowerCase() === 'authorization' ||
-                                key.toLowerCase() === 'cookie'
-                                ? '[REDACTED]'
-                                : value;
-                    }
-                    throw new Error(`API Error: ${JSON.stringify({
-                        message: error.message,
-                        code: error.code,
-                        status: error.response?.status,
-                        url: error.config?.url,
-                        method: error.config?.method,
-                        headers: sanitizedHeaders,
-                    })}`);
-                }
-                if (error.response) {
-                    throw new Error(`API Error: ${error.response.status}`);
-                }
-                throw new Error('Network Error');
-            });
+        this.handle = async (configFilePath, _verbose, allowCacheMinutes) => {
             const configFileContent = fs_1.default.readFileSync(configFilePath, 'utf8');
             const input = yaml_1.default.parse(configFileContent);
             if (!(() => { const _io0 = input => "string" === typeof input.projectUrl && "number" === typeof input.allowIssueCacheMinutes && "string" === typeof input.projectName && ("object" === typeof input.credentials && null !== input.credentials && _io1(input.credentials)); const _io1 = input => "object" === typeof input.bot && null !== input.bot && _io2(input.bot); const _io2 = input => "object" === typeof input.github && null !== input.github && _io3(input.github); const _io3 = input => "string" === typeof input.token && (undefined === input.name || "string" === typeof input.name) && (undefined === input.password || "string" === typeof input.password) && (undefined === input.authenticatorKey || "string" === typeof input.authenticatorKey); return input => "object" === typeof input && null !== input && _io0(input); })()(input)) {

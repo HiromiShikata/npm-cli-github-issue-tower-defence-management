@@ -135,7 +135,9 @@ class BaseGitHubRepository {
             }
             this.localStorageRepository.remove(this.jsonFilePath);
             const newHeaders = await this.createHeader();
-            const newHtml = await ky_1.default.get('https://github.com', { headers: newHeaders }).text();
+            const newHtml = await ky_1.default
+                .get('https://github.com', { headers: newHeaders })
+                .text();
             if (newHtml.includes(this.ghUserName)) {
                 return;
             }

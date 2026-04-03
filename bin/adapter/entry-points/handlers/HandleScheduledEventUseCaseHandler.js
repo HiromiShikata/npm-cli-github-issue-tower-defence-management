@@ -58,7 +58,6 @@ const AnalyzeProblemByIssueUseCase_1 = require("../../../domain/usecases/Analyze
 const AnalyzeStoriesUseCase_1 = require("../../../domain/usecases/AnalyzeStoriesUseCase");
 const ClearDependedIssueURLUseCase_1 = require("../../../domain/usecases/ClearDependedIssueURLUseCase");
 const CreateEstimationIssueUseCase_1 = require("../../../domain/usecases/CreateEstimationIssueUseCase");
-const axios_1 = __importDefault(require("axios"));
 const ConvertCheckboxToIssueInStoryIssueUseCase_1 = require("../../../domain/usecases/ConvertCheckboxToIssueInStoryIssueUseCase");
 const ChangeStatusByStoryColorUseCase_1 = require("../../../domain/usecases/ChangeStatusByStoryColorUseCase");
 const SetNoStoryIssueToStoryUseCase_1 = require("../../../domain/usecases/SetNoStoryIssueToStoryUseCase");
@@ -74,32 +73,7 @@ const GitHubIssueCommentRepository_1 = require("../../repositories/GitHubIssueCo
 const FetchWebhookRepository_1 = require("../../repositories/FetchWebhookRepository");
 class HandleScheduledEventUseCaseHandler {
     constructor() {
-        this.handle = async (configFilePath, verbose) => {
-            axios_1.default.interceptors.response.use((response) => response, (error) => {
-                if (verbose) {
-                    const rawHeaders = error.config?.headers.toJSON() ?? {};
-                    const sanitizedHeaders = {};
-                    for (const [key, value] of Object.entries(rawHeaders)) {
-                        sanitizedHeaders[key] =
-                            key.toLowerCase() === 'authorization' ||
-                                key.toLowerCase() === 'cookie'
-                                ? '[REDACTED]'
-                                : value;
-                    }
-                    throw new Error(`API Error: ${JSON.stringify({
-                        message: error.message,
-                        code: error.code,
-                        status: error.response?.status,
-                        url: error.config?.url,
-                        method: error.config?.method,
-                        headers: sanitizedHeaders,
-                    })}`);
-                }
-                if (error.response) {
-                    throw new Error(`API Error: ${error.response.status}`);
-                }
-                throw new Error('Network Error');
-            });
+        this.handle = async (configFilePath, _verbose) => {
             const configFileContent = fs_1.default.readFileSync(configFilePath, 'utf8');
             const input = yaml_1.default.parse(configFileContent);
             if (!(() => { const _io0 = input => "string" === typeof input.projectName && "string" === typeof input.org && "string" === typeof input.projectUrl && "string" === typeof input.manager && ("object" === typeof input.workingReport && null !== input.workingReport && _io1(input.workingReport)) && "string" === typeof input.urlOfStoryView && "string" === typeof input.disabledStatus && (null === input.defaultStatus || "string" === typeof input.defaultStatus) && "boolean" === typeof input.disabled && "number" === typeof input.allowIssueCacheMinutes && (null === input.startPreparation || undefined === input.startPreparation || "object" === typeof input.startPreparation && null !== input.startPreparation && _io2(input.startPreparation)) && (null === input.notifyFinishedPreparation || undefined === input.notifyFinishedPreparation || "object" === typeof input.notifyFinishedPreparation && null !== input.notifyFinishedPreparation && _io3(input.notifyFinishedPreparation)) && ("object" === typeof input.credentials && null !== input.credentials && _io4(input.credentials)); const _io1 = input => "string" === typeof input.repo && (Array.isArray(input.members) && input.members.every(elem => "string" === typeof elem)) && "string" === typeof input.spreadsheetUrl; const _io2 = input => "string" === typeof input.awaitingWorkspaceStatus && "string" === typeof input.preparationStatus && "string" === typeof input.defaultAgentName && (undefined === input.logFilePath || "string" === typeof input.logFilePath) && (null === input.maximumPreparingIssuesCount || "number" === typeof input.maximumPreparingIssuesCount); const _io3 = input => "string" === typeof input.preparationStatus && "string" === typeof input.awaitingWorkspaceStatus && "string" === typeof input.awaitingQualityCheckStatus && "number" === typeof input.thresholdForAutoReject && (null === input.workflowBlockerResolvedWebhookUrl || "string" === typeof input.workflowBlockerResolvedWebhookUrl); const _io4 = input => "object" === typeof input.manager && null !== input.manager && _io5(input.manager) && ("object" === typeof input.bot && null !== input.bot && _io9(input.bot)); const _io5 = input => "object" === typeof input.github && null !== input.github && _io6(input.github) && ("object" === typeof input.slack && null !== input.slack && _io7(input.slack)) && ("object" === typeof input.googleServiceAccount && null !== input.googleServiceAccount && _io8(input.googleServiceAccount)); const _io6 = input => "string" === typeof input.token; const _io7 = input => "string" === typeof input.userToken; const _io8 = input => "string" === typeof input.serviceAccountKey; const _io9 = input => "object" === typeof input.github && null !== input.github && _io10(input.github); const _io10 = input => "string" === typeof input.token && (undefined === input.name || "string" === typeof input.name) && (undefined === input.password || "string" === typeof input.password) && (undefined === input.authenticatorKey || "string" === typeof input.authenticatorKey); return input => "object" === typeof input && null !== input && _io0(input); })()(input)) {
