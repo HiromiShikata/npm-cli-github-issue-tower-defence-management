@@ -158,6 +158,9 @@ describe('BaseGitHubRepository', () => {
         new LocalStorageRepository(),
         refreshTestFilePath,
         'gh_token',
+        undefined,
+        undefined,
+        undefined,
       );
 
       await expect(repo.refreshCookie()).rejects.toThrow(
