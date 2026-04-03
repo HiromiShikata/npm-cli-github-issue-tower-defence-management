@@ -18,7 +18,7 @@ import { StoryObjectMap } from '../../../domain/entities/StoryObjectMap';
 export class GetStoryObjectMapUseCaseHandler {
   handle = async (
     configFilePath: string,
-    verbose: boolean,
+    _verbose: boolean,
     allowCacheMinutes?: number,
   ): Promise<{
     project: Project;

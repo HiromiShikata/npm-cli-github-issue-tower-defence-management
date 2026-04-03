@@ -39,7 +39,7 @@ import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepositor
 export class HandleScheduledEventUseCaseHandler {
   handle = async (
     configFilePath: string,
-    verbose: boolean,
+    _verbose: boolean,
   ): Promise<{
     project: Project;
     issues: Issue[];
