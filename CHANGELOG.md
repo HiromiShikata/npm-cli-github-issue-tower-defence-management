@@ -1,3 +1,10 @@
+## [1.35.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.35.0...v1.35.1) (2026-04-03)
+
+
+### Bug Fixes
+
+* **adapter:** trim whitespace from dependedIssueUrls when parsing project field ([5483215](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5483215edb7f59d170070533b1233dae00f98883)), closes [#384](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/384)
+
 # [1.35.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.34.3...v1.35.0) (2026-04-02)
 
 

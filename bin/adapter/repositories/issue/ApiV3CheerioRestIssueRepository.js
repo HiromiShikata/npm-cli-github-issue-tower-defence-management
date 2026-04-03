@@ -30,7 +30,9 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             const estimationMinutes = item.customFields.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'estimationminutes')?.value;
             const dependedIssueUrls = item.customFields
                 .find((field) => (0, utils_1.normalizeFieldName)(field.name).startsWith('dependedissueurls'))
-                ?.value?.split(',') || [];
+                ?.value?.split(',')
+                .map((url) => url.trim())
+                .filter((url) => url.length > 0) || [];
             const completionDate50PercentConfidence = item.customFields.find((field) => (0, utils_1.normalizeFieldName)(field.name).startsWith('completiondate50'))?.value;
             const story = item.customFields.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'story')?.value;
             const status = item.customFields.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'status')?.value;
