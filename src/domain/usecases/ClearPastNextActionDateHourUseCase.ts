@@ -2,7 +2,7 @@ import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
 
-export class ClearPastNextActionUseCase {
+export class ClearPastNextActionDateHourUseCase {
   constructor(
     readonly issueRepository: Pick<IssueRepository, 'clearProjectField'>,
   ) {}
@@ -63,16 +63,16 @@ export class ClearPastNextActionUseCase {
     if (!nextActionDate) {
       return;
     }
-    const startOfToday = new Date(
+    const startOfTomorrow = new Date(
       now.getFullYear(),
       now.getMonth(),
-      now.getDate(),
+      now.getDate() + 1,
     );
     for (const issue of input.issues) {
       if (
         issue.nextActionHour !== null ||
         issue.nextActionDate === null ||
-        issue.nextActionDate.getTime() >= startOfToday.getTime() ||
+        issue.nextActionDate.getTime() >= startOfTomorrow.getTime() ||
         issue.state !== 'OPEN'
       ) {
         continue;

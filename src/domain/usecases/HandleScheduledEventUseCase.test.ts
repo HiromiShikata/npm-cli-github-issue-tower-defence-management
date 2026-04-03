@@ -2,7 +2,7 @@ import { HandleScheduledEventUseCase } from './HandleScheduledEventUseCase';
 import { mock } from 'jest-mock-extended';
 import { ActionAnnouncementUseCase } from './ActionAnnouncementUseCase';
 import { SetWorkflowManagementIssueToStoryUseCase } from './SetWorkflowManagementIssueToStoryUseCase';
-import { ClearPastNextActionUseCase } from './ClearPastNextActionUseCase';
+import { ClearPastNextActionDateHourUseCase } from './ClearPastNextActionDateHourUseCase';
 import { AnalyzeProblemByIssueUseCase } from './AnalyzeProblemByIssueUseCase';
 import { AnalyzeStoriesUseCase } from './AnalyzeStoriesUseCase';
 import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
@@ -81,7 +81,8 @@ describe('HandleScheduledEventUseCase', () => {
     const mockActionAnnouncementUseCase = mock<ActionAnnouncementUseCase>();
     const mockSetWorkflowManagementIssueToStoryUseCase =
       mock<SetWorkflowManagementIssueToStoryUseCase>();
-    const mockClearPastNextActionUseCase = mock<ClearPastNextActionUseCase>();
+    const mockClearPastNextActionDateHourUseCase =
+      mock<ClearPastNextActionDateHourUseCase>();
     const mockAnalyzeProblemByIssueUseCase =
       mock<AnalyzeProblemByIssueUseCase>();
     const mockAnalyzeStoriesUseCase = mock<AnalyzeStoriesUseCase>();
@@ -112,7 +113,7 @@ describe('HandleScheduledEventUseCase', () => {
     const useCase = new HandleScheduledEventUseCase(
       mockActionAnnouncementUseCase,
       mockSetWorkflowManagementIssueToStoryUseCase,
-      mockClearPastNextActionUseCase,
+      mockClearPastNextActionDateHourUseCase,
       mockAnalyzeProblemByIssueUseCase,
       mockAnalyzeStoriesUseCase,
       mockClearDependedIssueURLUseCase,
