@@ -2,6 +2,20 @@ import fs from 'fs';
 import { BaseGitHubRepository } from './BaseGitHubRepository';
 import resetAllMocks = jest.resetAllMocks;
 import { LocalStorageRepository } from './LocalStorageRepository';
+
+const mockAxiosGet = jest.fn<Promise<unknown>, unknown[]>();
+jest.mock('axios', () => ({
+  default: {
+    get: (...args: unknown[]): Promise<unknown> => mockAxiosGet(...args),
+  },
+  get: (...args: unknown[]): Promise<unknown> => mockAxiosGet(...args),
+}));
+
+const mockGetCookieContent = jest.fn<Promise<unknown>, unknown[]>();
+jest.mock('gh-cookie', () => ({
+  getCookieContent: (...args: unknown[]): Promise<unknown> =>
+    mockGetCookieContent(...args),
+}));
 describe('BaseGitHubRepository', () => {
   const jsonFilePath = './tmp/github.com.cookies.json';
   const localStorageRepository = new LocalStorageRepository();
@@ -92,6 +106,123 @@ describe('BaseGitHubRepository', () => {
         secure: true,
       };
       expect(baseGitHubRepository.isCookiePublic(cookie)).toBe(false);
+    });
+  });
+
+  describe('refreshCookie', () => {
+    const localStorageRepositoryForRefresh = new LocalStorageRepository();
+    const refreshCookieJsonFilePath =
+      './tmp/refresh-test-github.com.cookies.json';
+    const ghUserName = 'testuser';
+    class RefreshTestRepository extends BaseGitHubRepository {
+      constructor() {
+        super(
+          localStorageRepositoryForRefresh,
+          refreshCookieJsonFilePath,
+          'dummy-token',
+          ghUserName,
+          'dummy-password',
+          'dummy-authenticator-key',
+        );
+      }
+    }
+
+    const validCookieJson = JSON.stringify([
+      {
+        name: 'name',
+        value: 'value',
+        domain: 'domain',
+        path: 'path',
+        expires: 1,
+        httpOnly: true,
+        secure: true,
+        sameSite: 'Lax',
+      },
+    ]);
+
+    beforeEach(() => {
+      mockAxiosGet.mockReset();
+      mockGetCookieContent.mockReset();
+      mockGetCookieContent.mockResolvedValue(validCookieJson);
+      fs.writeFileSync(refreshCookieJsonFilePath, validCookieJson);
+    });
+
+    afterEach(() => {
+      if (fs.existsSync(refreshCookieJsonFilePath)) {
+        fs.rmSync(refreshCookieJsonFilePath);
+      }
+    });
+
+    it('should return when HTML contains user-login meta tag for current user (logged in)', async () => {
+      const repository = new RefreshTestRepository();
+      mockAxiosGet.mockResolvedValueOnce({
+        data: `<html><head><meta name="user-login" content="${ghUserName}"></head><body><h1>${ghUserName}</h1></body></html>`,
+      });
+
+      await expect(repository.refreshCookie()).resolves.toBeUndefined();
+
+      expect(mockAxiosGet).toHaveBeenCalledWith(
+        `https://github.com/${ghUserName}`,
+        expect.anything(),
+      );
+      expect(mockAxiosGet).toHaveBeenCalledTimes(1);
+    });
+
+    it('should fail when HTML contains username in content but not in user-login meta tag (not logged in)', async () => {
+      const repository = new RefreshTestRepository();
+      const notLoggedInHtml = `<html><head><meta name="user-login" content=""></head><body><h1>${ghUserName}</h1><p>Public profile</p></body></html>`;
+      mockAxiosGet
+        .mockResolvedValueOnce({ data: notLoggedInHtml })
+        .mockResolvedValueOnce({ data: notLoggedInHtml });
+
+      await expect(repository.refreshCookie()).rejects.toThrow(
+        'Failed to refresh cookie',
+      );
+    });
+
+    it('should use profile page URL not homepage to check authentication', async () => {
+      const repository = new RefreshTestRepository();
+      mockAxiosGet.mockResolvedValueOnce({
+        data: `<html><head><meta name="user-login" content="${ghUserName}"></head><body></body></html>`,
+      });
+
+      await repository.refreshCookie();
+
+      expect(mockAxiosGet).toHaveBeenCalledWith(
+        `https://github.com/${ghUserName}`,
+        expect.anything(),
+      );
+      expect(mockAxiosGet).not.toHaveBeenCalledWith(
+        'https://github.com',
+        expect.anything(),
+      );
+    });
+
+    it('should throw when both profile page checks fail', async () => {
+      const repository = new RefreshTestRepository();
+      const notLoggedInHtml = `<html><head><meta name="user-login" content=""></head><body></body></html>`;
+      mockAxiosGet
+        .mockResolvedValueOnce({ data: notLoggedInHtml })
+        .mockResolvedValueOnce({ data: notLoggedInHtml });
+
+      await expect(repository.refreshCookie()).rejects.toThrow(
+        'Failed to refresh cookie',
+      );
+    });
+
+    it('should reset cookie cache before regenerating so new cookie is used', async () => {
+      const repository = new RefreshTestRepository();
+      mockAxiosGet
+        .mockResolvedValueOnce({
+          data: `<html><head><meta name="user-login" content=""></head><body></body></html>`,
+        })
+        .mockResolvedValueOnce({
+          data: `<html><head><meta name="user-login" content="${ghUserName}"></head><body></body></html>`,
+        });
+
+      await expect(repository.refreshCookie()).resolves.toBeUndefined();
+      expect(mockAxiosGet).toHaveBeenCalledTimes(2);
+      expect(mockGetCookieContent).toHaveBeenCalledTimes(1);
     });
   });
 });
