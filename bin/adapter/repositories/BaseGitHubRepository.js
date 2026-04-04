@@ -128,17 +128,17 @@ class BaseGitHubRepository {
             if (!this.ghUserName || !this.ghUserPassword || !this.ghAuthenticatorKey) {
                 throw new Error('GitHub username, password, and authenticator key must be set');
             }
+            const profileUrl = `https://github.com/${this.ghUserName}`;
             const headers = await this.createHeader();
-            const html = await ky_1.default.get('https://github.com', { headers }).text();
-            if (html.includes(this.ghUserName)) {
+            const html = await ky_1.default.get(profileUrl, { headers }).text();
+            if (html.includes(`meta name="user-login" content="${this.ghUserName}"`)) {
                 return;
             }
             this.localStorageRepository.remove(this.jsonFilePath);
+            this.cookie = null;
             const newHeaders = await this.createHeader();
-            const newHtml = await ky_1.default
-                .get('https://github.com', { headers: newHeaders })
-                .text();
-            if (newHtml.includes(this.ghUserName)) {
+            const newHtml = await ky_1.default.get(profileUrl, { headers: newHeaders }).text();
+            if (newHtml.includes(`meta name="user-login" content="${this.ghUserName}"`)) {
                 return;
             }
             throw new Error('Failed to refresh cookie');
