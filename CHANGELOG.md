@@ -1,3 +1,18 @@
+# [1.36.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.35.2...v1.36.0) (2026-04-04)
+
+
+### Bug Fixes
+
+* **core:** prefix unused verbose param with underscore to satisfy lint ([3b630da](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3b630dab382c3863fef822bface0f76c404c4fd7))
+* **core:** update BaseGitHubRepository test to mock ky instead of axios ([ff79941](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ff7994119980ea2052d8c19795f7786c0736ada5))
+* **core:** update GraphqlProjectItemRepository test to mock ky instead of axios ([ad22d19](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ad22d19ecff71fba251b2d0db82be8c5158c4294))
+
+
+### Features
+
+* **core:** remove axios completely, replace with ky ([0b924c4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0b924c4fd00b0db3014a53dfd37c03af9709805b)), closes [#392](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/392)
+* **core:** use ky instead of native fetch in adapter repositories ([6aaaa88](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6aaaa88bc29fb18aa31618f6a6fe44d89c2fa90b))
+
 ## [1.35.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.35.1...v1.35.2) (2026-04-04)
 
 
