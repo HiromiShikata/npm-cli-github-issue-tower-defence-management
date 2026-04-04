@@ -25,7 +25,7 @@ export declare class BaseGitHubRepository {
         isIssue: boolean;
     };
     getCookie: () => Promise<string>;
-    createHeader: () => Promise<object>;
+    createHeader: () => Promise<Record<string, string>>;
     protected createCookieStringFromFile: () => Promise<string>;
     protected isCookie: (cookie: object) => cookie is Cookie;
     protected generateCookieHeaderFromJson: (cookieData: unknown) => Promise<string>;

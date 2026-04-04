@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import { AxiosSlackRepository } from './AxiosSlackRepository';
+import { KySlackRepository } from './KySlackRepository';
 import fs from 'fs';
 import https from 'https';
 import path from 'path';
@@ -16,13 +16,13 @@ if (!SLACK_USER_TOKEN) {
   throw new Error('SLACK_USER_TOKEN is required');
 }
 
-describe('AxiosSlackRepository Integration Tests', () => {
+describe('KySlackRepository Integration Tests', () => {
   jest.setTimeout(60 * 1000);
   jest.retryTimes(3, { logErrorsBeforeRetry: true });
-  let slackRepository: AxiosSlackRepository;
+  let slackRepository: KySlackRepository;
 
   beforeAll(() => {
-    slackRepository = new AxiosSlackRepository(SLACK_USER_TOKEN);
+    slackRepository = new KySlackRepository(SLACK_USER_TOKEN);
   });
   beforeEach(async () => {
     await new Promise((resolve) => setTimeout(resolve, 2000));

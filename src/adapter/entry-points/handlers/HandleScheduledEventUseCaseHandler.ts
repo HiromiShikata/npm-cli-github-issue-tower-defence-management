@@ -21,7 +21,6 @@ import { BaseGitHubRepository } from '../../repositories/BaseGitHubRepository';
 import { AnalyzeStoriesUseCase } from '../../../domain/usecases/AnalyzeStoriesUseCase';
 import { ClearDependedIssueURLUseCase } from '../../../domain/usecases/ClearDependedIssueURLUseCase';
 import { CreateEstimationIssueUseCase } from '../../../domain/usecases/CreateEstimationIssueUseCase';
-import axios, { AxiosError } from 'axios';
 import { ConvertCheckboxToIssueInStoryIssueUseCase } from '../../../domain/usecases/ConvertCheckboxToIssueInStoryIssueUseCase';
 import { ChangeStatusByStoryColorUseCase } from '../../../domain/usecases/ChangeStatusByStoryColorUseCase';
 import { SetNoStoryIssueToStoryUseCase } from '../../../domain/usecases/SetNoStoryIssueToStoryUseCase';
@@ -40,44 +39,13 @@ import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepositor
 export class HandleScheduledEventUseCaseHandler {
   handle = async (
     configFilePath: string,
-    verbose: boolean,
+    _verbose: boolean,
   ): Promise<{
     project: Project;
     issues: Issue[];
     cacheUsed: boolean;
     targetDateTimes: Date[];
   } | null> => {
-    axios.interceptors.response.use(
-      (response) => response,
-      (error: AxiosError) => {
-        if (verbose) {
-          const rawHeaders = error.config?.headers.toJSON() ?? {};
-          const sanitizedHeaders: Record<string, unknown> = {};
-          for (const [key, value] of Object.entries(rawHeaders)) {
-            sanitizedHeaders[key] =
-              key.toLowerCase() === 'authorization' ||
-              key.toLowerCase() === 'cookie'
-                ? '[REDACTED]'
-                : value;
-          }
-          throw new Error(
-            `API Error: ${JSON.stringify({
-              message: error.message,
-              code: error.code,
-              status: error.response?.status,
-              url: error.config?.url,
-              method: error.config?.method,
-              headers: sanitizedHeaders,
-            })}`,
-          );
-        }
-        if (error.response) {
-          throw new Error(`API Error: ${error.response.status}`);
-        }
-        throw new Error('Network Error');
-      },
-    );
-
     const configFileContent = fs.readFileSync(configFilePath, 'utf8');
     const input: unknown = YAML.parse(configFileContent);
     type inputType = Parameters<HandleScheduledEventUseCase['run']>[0] & {

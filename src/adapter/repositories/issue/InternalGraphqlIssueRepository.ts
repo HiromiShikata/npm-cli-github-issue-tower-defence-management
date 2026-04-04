@@ -1,4 +1,4 @@
-import axios from 'axios';
+import ky from 'ky';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import typia from 'typia';
 import { Issue, IssueStatusTimeline } from './CheerioIssueRepository';
@@ -419,23 +419,27 @@ export class InternalGraphqlIssueRepository extends BaseGitHubRepository {
       for (let i = 0; i < maxRetries; i++) {
         try {
           console.log(url);
-          const response = await axios.get<GraphqlResponse>(url, {
+          const kyResponse = await ky.get(url, {
             headers: headers,
-            withCredentials: true,
+            throwHttpErrors: false,
           });
-          if (!response.data?.data?.node?.frontTimelineItems) {
+          if (!kyResponse.ok) {
+            throw new Error(`HTTP error ${kyResponse.status}`);
+          }
+          const rawResponse = await kyResponse.json<GraphqlResponse>();
+          if (!rawResponse?.data?.node?.frontTimelineItems) {
             throw new Error(
               `No frontTimelineItems found. URL: ${issueUrl}, Response: ${JSON.stringify(
-                response.data,
+                rawResponse,
               )}`,
             );
           }
           await new Promise((resolve) => setTimeout(resolve, 2000));
-          return response.data.data.node.frontTimelineItems;
+          return rawResponse.data.node.frontTimelineItems;
         } catch (e) {
           const statusCode =
-            axios.isAxiosError(e) && e.response?.status !== undefined
-              ? e.response.status
+            e instanceof Error && e.message.startsWith('HTTP error ')
+              ? parseInt(e.message.replace('HTTP error ', ''), 10)
               : null;
           const isRetryableError =
             statusCode !== null && [500, 502, 503, 504].includes(statusCode);

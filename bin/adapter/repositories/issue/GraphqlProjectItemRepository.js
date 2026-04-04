@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GraphqlProjectItemRepository = exports.PAGINATION_DELAY_MS = void 0;
-const axios_1 = __importDefault(require("axios"));
+const ky_1 = __importDefault(require("ky"));
 const BaseGitHubRepository_1 = require("../BaseGitHubRepository");
 exports.PAGINATION_DELAY_MS = 5000;
 class GraphqlProjectItemRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
@@ -34,16 +34,15 @@ class GraphqlProjectItemRepository extends BaseGitHubRepository_1.BaseGitHubRepo
                 },
             };
             try {
-                const response = await (0, axios_1.default)({
-                    url: 'https://api.github.com/graphql',
-                    method: 'post',
+                const response = await ky_1.default
+                    .post('https://api.github.com/graphql', {
+                    json: graphqlQuery,
                     headers: {
                         Authorization: `Bearer ${this.ghToken}`,
-                        'Content-Type': 'application/json',
                     },
-                    data: JSON.stringify(graphqlQuery),
-                });
-                const projectItems = response.data.data.repository.issue.projectItems.nodes;
+                })
+                    .json();
+                const projectItems = response.data.repository.issue.projectItems.nodes;
                 const projectItemId = projectItems.find((item) => item.project.id === projectId)?.id;
                 return projectItemId;
             }
@@ -168,19 +167,18 @@ query GetProjectItems($projectId: ID!, $after: String) {
                         after: after,
                     },
                 };
-                const response = await (0, axios_1.default)({
-                    url: 'https://api.github.com/graphql',
-                    method: 'post',
+                const response = await ky_1.default
+                    .post('https://api.github.com/graphql', {
+                    json: graphqlQuery,
                     headers: {
                         Authorization: `Bearer ${this.ghToken}`,
-                        'Content-Type': 'application/json',
                     },
-                    data: JSON.stringify(graphqlQuery),
-                });
-                if (!response.data.data) {
+                })
+                    .json();
+                if (!response.data) {
                     throw new Error('No data returned from GitHub API');
                 }
-                return response.data.data;
+                return response.data;
             };
             const issues = [];
             let after = null;
@@ -304,16 +302,15 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
                     issueNumber: issueNumber,
                 },
             };
-            const response = await (0, axios_1.default)({
-                url: 'https://api.github.com/graphql',
-                method: 'post',
+            const response = await ky_1.default
+                .post('https://api.github.com/graphql', {
+                json: graphqlQuery,
                 headers: {
                     Authorization: `Bearer ${this.ghToken}`,
-                    'Content-Type': 'application/json',
                 },
-                data: JSON.stringify(graphqlQuery),
-            });
-            const data = response.data.data;
+            })
+                .json();
+            const data = response.data;
             const issueFields = [];
             if (!data.repository.issue) {
                 return issueFields;
@@ -417,16 +414,15 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
                     number: issueNumber,
                 },
             };
-            const response = await (0, axios_1.default)({
-                url: 'https://api.github.com/graphql',
-                method: 'post',
+            const response = await ky_1.default
+                .post('https://api.github.com/graphql', {
+                json: graphqlQuery,
                 headers: {
                     Authorization: `Bearer ${this.ghToken}`,
-                    'Content-Type': 'application/json',
                 },
-                data: JSON.stringify(graphqlQuery),
-            });
-            const data = response.data.data;
+            })
+                .json();
+            const data = response.data;
             if (!data.repository.issue) {
                 return null;
             }
@@ -482,20 +478,16 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       }
     }`,
             };
-            const res = await (0, axios_1.default)({
-                url: 'https://api.github.com/graphql',
-                method: 'post',
+            const res = await ky_1.default
+                .post('https://api.github.com/graphql', {
+                json: graphqlQuery,
                 headers: {
                     Authorization: `Bearer ${this.ghToken}`,
-                    'Content-Type': 'application/json',
                 },
-                data: JSON.stringify(graphqlQuery),
-            });
-            if (res.status !== 200) {
-                throw new Error('Failed to update project field');
-            }
-            else if (res.data.errors) {
-                throw new Error(res.data.errors.map((e) => e.message).join('\n'));
+            })
+                .json();
+            if (res.errors) {
+                throw new Error(res.errors.map((e) => e.message).join('\n'));
             }
         };
         this.clearProjectField = async (projectId, fieldId, itemId) => {
@@ -510,20 +502,16 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       }
     }`,
             };
-            const res = await (0, axios_1.default)({
-                url: 'https://api.github.com/graphql',
-                method: 'post',
+            const res = await ky_1.default
+                .post('https://api.github.com/graphql', {
+                json: graphqlQuery,
                 headers: {
                     Authorization: `Bearer ${this.ghToken}`,
-                    'Content-Type': 'application/json',
                 },
-                data: JSON.stringify(graphqlQuery),
-            });
-            if (res.status !== 200) {
-                throw new Error('Failed to clear project field');
-            }
-            else if (res.data.errors) {
-                throw new Error(res.data.errors.map((e) => e.message).join('\n'));
+            })
+                .json();
+            if (res.errors) {
+                throw new Error(res.errors.map((e) => e.message).join('\n'));
             }
         };
         this.updateProjectTextField = async (project, fieldId, issue, text) => {
@@ -541,20 +529,16 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
                     itemId,
                 },
             };
-            const res = await (0, axios_1.default)({
-                url: 'https://api.github.com/graphql',
-                method: 'post',
+            const res = await ky_1.default
+                .post('https://api.github.com/graphql', {
+                json: graphqlQuery,
                 headers: {
                     Authorization: `Bearer ${this.ghToken}`,
-                    'Content-Type': 'application/json',
                 },
-                data: JSON.stringify(graphqlQuery),
-            });
-            if (res.status !== 200) {
-                throw new Error('Failed to remove item from project');
-            }
-            else if (res.data.errors) {
-                throw new Error(res.data.errors.map((e) => e.message).join('\n'));
+            })
+                .json();
+            if (res.errors) {
+                throw new Error(res.errors.map((e) => e.message).join('\n'));
             }
         };
         this.removeItemFromProjectByIssueUrl = async (issueUrl, projectId) => {

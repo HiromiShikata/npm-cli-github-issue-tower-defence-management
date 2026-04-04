@@ -1,4 +1,4 @@
-import axios from 'axios';
+import ky from 'ky';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
 
 export class ApiV3IssueRepository extends BaseGitHubRepository {
@@ -35,22 +35,21 @@ export class ApiV3IssueRepository extends BaseGitHubRepository {
       url += `&assignee=${query.assignee}`;
     }
 
-    const response = await axios.get<{
-      items: {
-        html_url: string;
-        title: string;
-        number: string;
-      }[];
-    }>(url, {
-      headers: {
-        Authorization: `token ${this.ghToken}`,
-        Accept: 'application/vnd.github.v3+json',
-      },
-    });
-    if (response.status !== 200) {
-      throw new Error(`Failed to search issue: ${response.status}`);
-    }
-    return response.data.items.map((item) => ({
+    const response = await ky
+      .get(url, {
+        headers: {
+          Authorization: `token ${this.ghToken}`,
+          Accept: 'application/vnd.github.v3+json',
+        },
+      })
+      .json<{
+        items: {
+          html_url: string;
+          title: string;
+          number: string;
+        }[];
+      }>();
+    return response.items.map((item) => ({
       url: item.html_url,
       title: item.title,
       number: item.number,
@@ -66,22 +65,21 @@ export class ApiV3IssueRepository extends BaseGitHubRepository {
     }[]
   > => {
     const url = `https://api.github.com/search/issues?q=${query}`;
-    const response = await axios.get<{
-      items: {
-        html_url: string;
-        title: string;
-        number: string;
-      }[];
-    }>(url, {
-      headers: {
-        Authorization: `token ${this.ghToken}`,
-        Accept: 'application/vnd.github.v3+json',
-      },
-    });
-    if (response.status !== 200) {
-      throw new Error(`Failed to search issue: ${response.status}`);
-    }
-    return response.data.items.map((item) => ({
+    const response = await ky
+      .get(url, {
+        headers: {
+          Authorization: `token ${this.ghToken}`,
+          Accept: 'application/vnd.github.v3+json',
+        },
+      })
+      .json<{
+        items: {
+          html_url: string;
+          title: string;
+          number: string;
+        }[];
+      }>();
+    return response.items.map((item) => ({
       url: item.html_url,
       title: item.title,
       number: item.number,

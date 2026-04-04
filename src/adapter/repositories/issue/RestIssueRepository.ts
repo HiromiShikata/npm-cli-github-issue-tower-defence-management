@@ -1,4 +1,4 @@
-import axios from 'axios';
+import ky from 'ky';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import { Issue } from '../../../domain/entities/Issue';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
@@ -10,21 +10,13 @@ export class RestIssueRepository
 {
   createComment = async (issueUrl: string, comment: string) => {
     const { owner, repo, issueNumber } = this.extractIssueFromUrl(issueUrl);
-    const response = await axios.post(
+    await ky.post(
       `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`,
       {
-        body: comment,
-      },
-      {
-        headers: {
-          Authorization: `token ${this.ghToken}`,
-          'Content-Type': 'application/json',
-        },
+        json: { body: comment },
+        headers: { Authorization: `token ${this.ghToken}` },
       },
     );
-    if (response.status !== 201) {
-      throw new Error(`Failed to create comment: ${response.status}`);
-    }
   };
   createNewIssue = async (
     owner: string,
@@ -34,27 +26,13 @@ export class RestIssueRepository
     assignees: string[],
     labels: string[],
   ): Promise<number> => {
-    const response = await axios.post<{
-      number: number;
-    }>(
-      `https://api.github.com/repos/${owner}/${repo}/issues`,
-      {
-        title,
-        body,
-        assignees,
-        labels,
-      },
-      {
-        headers: {
-          Authorization: `token ${this.ghToken}`,
-          'Content-Type': 'application/json',
-        },
-      },
-    );
-    if (response.status !== 201) {
-      throw new Error(`Failed to create issue: ${response.status}`);
-    }
-    return response.data.number;
+    const response = await ky
+      .post(`https://api.github.com/repos/${owner}/${repo}/issues`, {
+        json: { title, body, assignees, labels },
+        headers: { Authorization: `token ${this.ghToken}` },
+      })
+      .json<{ number: number }>();
+    return response.number;
   };
   getIssue = async (
     issueUrl: string,
@@ -68,77 +46,70 @@ export class RestIssueRepository
     created_at: string;
   }> => {
     const { owner, repo, issueNumber } = this.extractIssueFromUrl(issueUrl);
-    const response = await axios.get<{
-      labels: Array<{ name: string }>;
-      assignees: Array<{ login: string }>;
-      title: string;
-      body: string;
-      number: number;
-      state: string;
-      created_at: string;
-    }>(`https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`, {
-      headers: {
-        Authorization: `token ${this.ghToken}`,
-        Accept: 'application/vnd.github.v3+json',
-      },
-    });
+    const response = await ky
+      .get(
+        `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`,
+        {
+          headers: {
+            Authorization: `token ${this.ghToken}`,
+            Accept: 'application/vnd.github.v3+json',
+          },
+        },
+      )
+      .json<{
+        labels: Array<{ name: string }>;
+        assignees: Array<{ login: string }>;
+        title: string;
+        body: string;
+        number: number;
+        state: string;
+        created_at: string;
+      }>();
     return {
-      labels: response.data.labels.map((label) => label.name),
-      assignees: response.data.assignees.map((assignee) => assignee.login),
-      title: response.data.title,
-      body: response.data.body,
-      number: response.data.number,
-      state: response.data.state,
-      created_at: response.data.created_at,
+      labels: response.labels.map((label) => label.name),
+      assignees: response.assignees.map((assignee) => assignee.login),
+      title: response.title,
+      body: response.body,
+      number: response.number,
+      state: response.state,
+      created_at: response.created_at,
     };
   };
   updateIssue = async (issue: Issue) => {
-    const response = await axios.patch(
+    await ky.patch(
       `https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}`,
       {
-        title: issue.title,
-        body: issue.body,
-        assignees: issue.assignees,
-        labels: issue.labels,
-        state: issue.state,
-      },
-      {
-        headers: {
-          Authorization: `token ${this.ghToken}`,
-          'Content-Type': 'application/json',
+        json: {
+          title: issue.title,
+          body: issue.body,
+          assignees: issue.assignees,
+          labels: issue.labels,
+          state: issue.state,
         },
+        headers: { Authorization: `token ${this.ghToken}` },
       },
     );
-    if (response.status !== 200) {
-      throw new Error(`Failed to update issue: ${response.status}`);
-    }
   };
 
   updateLabels = async (
     issue: Issue,
     labels: Issue['labels'],
   ): Promise<void> => {
-    const response = await axios.put(
+    await ky.put(
       `https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}/labels`,
       {
-        labels: labels,
-      },
-      {
+        json: { labels },
         headers: {
           Authorization: `token ${this.ghToken}`,
-          'Content-Type': 'application/json',
           Accept: 'application/vnd.github.v3+json',
         },
       },
     );
-    if (response.status !== 200) {
-      throw new Error(`Failed to update issue labels: ${response.status}`);
-    }
     return;
   };
 
   removeLabel = async (issue: Issue, label: string): Promise<void> => {
-    const response = await axios.delete(
+    await ky.delete(
       `https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}/labels/${encodeURIComponent(label)}`,
       {
         headers: {
@@ -147,9 +118,6 @@ export class RestIssueRepository
         },
       },
     );
-    if (response.status !== 200) {
-      throw new Error(`Failed to remove label: ${response.status}`);
-    }
     return;
   };
 
@@ -157,20 +125,12 @@ export class RestIssueRepository
     issue: Issue,
     assigneeList: Member['name'][],
   ): Promise<void> => {
-    const response = await axios.patch(
+    await ky.patch(
       `https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}`,
       {
-        assignees: assigneeList,
-      },
-      {
-        headers: {
-          Authorization: `token ${this.ghToken}`,
-          'Content-Type': 'application/json',
-        },
+        json: { assignees: assigneeList },
+        headers: { Authorization: `token ${this.ghToken}` },
       },
     );
-    if (response.status !== 200) {
-      throw new Error(`Failed to update issue assignees: ${response.status}`);
-    }
   };
 }

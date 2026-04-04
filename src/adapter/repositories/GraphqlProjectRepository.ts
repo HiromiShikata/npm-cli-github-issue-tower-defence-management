@@ -1,4 +1,4 @@
-import axios from 'axios';
+import ky from 'ky';
 import { BaseGitHubRepository } from './BaseGitHubRepository';
 import { ProjectRepository } from '../../domain/usecases/adapter-interfaces/ProjectRepository';
 import { FieldOption, Project } from '../../domain/entities/Project';
@@ -46,34 +46,33 @@ export class GraphqlProjectRepository
       },
     };
 
-    const response = await axios<{
-      data: {
-        organization: {
-          projectV2: {
-            id: string;
-            databaseId: number;
+    const response = await ky
+      .post('https://api.github.com/graphql', {
+        json: graphqlQuery,
+        headers: {
+          Authorization: `Bearer ${this.ghToken}`,
+        },
+      })
+      .json<{
+        data: {
+          organization: {
+            projectV2: {
+              id: string;
+              databaseId: number;
+            };
+          };
+          user: {
+            projectV2: {
+              id: string;
+              databaseId: number;
+            };
           };
         };
-        user: {
-          projectV2: {
-            id: string;
-            databaseId: number;
-          };
-        };
-      };
-    }>({
-      url: 'https://api.github.com/graphql',
-      method: 'post',
-      headers: {
-        Authorization: `Bearer ${this.ghToken}`,
-        'Content-Type': 'application/json',
-      },
-      data: JSON.stringify(graphqlQuery),
-    });
+      }>();
 
     const projectId =
-      response.data.data.organization?.projectV2?.id ||
-      response.data.data.user?.projectV2?.id;
+      response.data.organization?.projectV2?.id ||
+      response.data.user?.projectV2?.id;
     if (!projectId) {
       throw new Error('projectId is not found');
     }
@@ -142,56 +141,51 @@ export class GraphqlProjectRepository
     const variables = {
       projectId: projectId,
     };
-    const response = await axios.post<{
-      data: {
-        node: {
-          id: string;
-          databaseId: number;
-          title: string;
-          shortDescription: string;
-          public: boolean;
-          closed: boolean;
-          createdAt: string;
-          updatedAt: string;
-          number: number;
-          url: string;
-          fields: {
-            nodes: {
-              id: string;
-              databaseId: number;
-              name: string;
-              dataType: string;
-              configuration: {
-                iterations: {
-                  startDate: string;
-                  duration: string;
-                  title: string;
-                }[];
-              };
-              options: {
-                id: string;
-                name: string;
-                description: string;
-                color: string;
-              }[];
-            }[];
-          };
-        };
-      };
-    }>(
-      'https://api.github.com/graphql',
-      {
-        query,
-        variables,
-      },
-      {
+    const response = await ky
+      .post('https://api.github.com/graphql', {
+        json: { query, variables },
         headers: {
           Authorization: `Bearer ${this.ghToken}`,
-          'Content-Type': 'application/json',
         },
-      },
-    );
-    const project = response.data.data.node;
+      })
+      .json<{
+        data: {
+          node: {
+            id: string;
+            databaseId: number;
+            title: string;
+            shortDescription: string;
+            public: boolean;
+            closed: boolean;
+            createdAt: string;
+            updatedAt: string;
+            number: number;
+            url: string;
+            fields: {
+              nodes: {
+                id: string;
+                databaseId: number;
+                name: string;
+                dataType: string;
+                configuration: {
+                  iterations: {
+                    startDate: string;
+                    duration: string;
+                    title: string;
+                  }[];
+                };
+                options: {
+                  id: string;
+                  name: string;
+                  description: string;
+                  color: string;
+                }[];
+              }[];
+            };
+          };
+        };
+      }>();
+    const project = response.data.node;
     if (!project) {
       return null;
     }
