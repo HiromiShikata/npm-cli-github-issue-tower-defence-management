@@ -1,3 +1,11 @@
+## [1.35.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.35.1...v1.35.2) (2026-04-04)
+
+
+### Bug Fixes
+
+* **core:** use profile page URL in refreshCookie to reliably detect login status ([1f594e4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1f594e4e0220a2870e301d23e3d4cfc1e33880b1)), closes [#397](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/397)
+* **core:** use user-login meta tag to detect authenticated GitHub session ([17517f8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/17517f8c7002e10d14914a2b4e8c72a93ed9fa67))
+
 ## [1.35.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.35.0...v1.35.1) (2026-04-03)
 
 
