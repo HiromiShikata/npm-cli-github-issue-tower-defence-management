@@ -144,5 +144,25 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
         );
       });
     });
+
+    it('should include issue url in error message when updateAssigneeList fails', async () => {
+      const issueWithUrl = {
+        ...basicIssue,
+        url: 'https://github.com/testOrg/testRepo/issues/42',
+      };
+      mockIssueRepository.updateAssigneeList.mockRejectedValueOnce(
+        new Error('Request failed with status code 403 Forbidden'),
+      );
+
+      await expect(
+        useCase.run({
+          issues: [issueWithUrl],
+          manager: 'manager1',
+          cacheUsed: false,
+        }),
+      ).rejects.toThrow(
+        'Failed to update assignee for issue https://github.com/testOrg/testRepo/issues/42: Request failed with status code 403 Forbidden',
+      );
+    });
   });
 });

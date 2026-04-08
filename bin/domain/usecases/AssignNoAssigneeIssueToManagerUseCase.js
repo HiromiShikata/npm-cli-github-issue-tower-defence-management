@@ -12,7 +12,15 @@ class AssignNoAssigneeIssueToManagerUseCase {
                 if (issue.assignees.length > 0 || issue.state !== 'OPEN') {
                     continue;
                 }
-                await this.issueRepository.updateAssigneeList(issue, [input.manager]);
+                try {
+                    await this.issueRepository.updateAssigneeList(issue, [input.manager]);
+                }
+                catch (e) {
+                    if (!(e instanceof Error)) {
+                        throw e;
+                    }
+                    throw new Error(`Failed to update assignee for issue ${issue.url}: ${e.message}`);
+                }
                 await new Promise((resolve) => setTimeout(resolve, 1000));
             }
         };
