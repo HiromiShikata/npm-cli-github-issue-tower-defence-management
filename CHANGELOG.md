@@ -1,3 +1,10 @@
+## [1.36.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.36.0...v1.36.1) (2026-04-09)
+
+
+### Bug Fixes
+
+* **core:** include issue url in error when updateAssigneeList fails ([2f9358b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2f9358b8db223466c5fb63c8b175ea720a6d3afc))
+
 # [1.36.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.35.2...v1.36.0) (2026-04-04)
 
 
