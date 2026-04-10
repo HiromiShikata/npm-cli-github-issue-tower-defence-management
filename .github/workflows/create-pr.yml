@@ -18,7 +18,7 @@ jobs:
 
       - name: Create Pull Request
         id: create_pr
-        continue-on-error: true
+        if: github.actor != 'dependabot[bot]'
         uses: repo-sync/pull-request@v2
         with:
           github_token: ${{ secrets.GH_TOKEN }}

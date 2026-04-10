@@ -35,6 +35,7 @@ jobs:
             echo "available=true" >> "$GITHUB_OUTPUT"
           else
             echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::TEST_GH_TOKEN secret is unavailable. Integration tests are skipped. This is expected for dependabot/renovate PRs which do not have access to repository secrets."
           fi
 
       - if: steps.creds.outputs.available == 'true'
