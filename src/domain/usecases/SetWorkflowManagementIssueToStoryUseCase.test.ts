@@ -346,11 +346,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
       await promise;
 
       expect(mockIssueRepository.updateStory.mock.calls).toEqual([
-        [
-          { ...basicProject, story: basicProject.story },
-          issue,
-          'middleBugId',
-        ],
+        [{ ...basicProject, story: basicProject.story }, issue, 'middleBugId'],
       ]);
       expect(mockIssueRepository.removeLabel.mock.calls).toEqual([
         [issue, 'story:middle-bug'],
@@ -530,11 +526,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
           issue1,
           'highPriorityId',
         ],
-        [
-          { ...basicProject, story: basicProject.story },
-          issue2,
-          'middleBugId',
-        ],
+        [{ ...basicProject, story: basicProject.story }, issue2, 'middleBugId'],
       ]);
       expect(mockIssueRepository.removeLabel.mock.calls).toEqual([
         [issue1, 'story:high-priority'],
