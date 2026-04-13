@@ -108,6 +108,12 @@ ${JSON.stringify(e)}
             return { project, issues, cacheUsed, targetDateTimes, storyIssues };
         };
         this.runEachUseCases = async (input, project, issues, cacheUsed, targetDateTimes, storyObjectMap) => {
+            await this.setWorkflowManagementIssueToStoryUseCase.run({
+                targetDates: targetDateTimes,
+                project,
+                issues,
+                cacheUsed,
+            });
             await this.setNoStoryIssueToStoryUseCase.run({
                 targetDates: targetDateTimes,
                 project,
@@ -126,12 +132,6 @@ ${JSON.stringify(e)}
                 cacheUsed,
                 members: input.workingReport.members,
                 manager: input.manager,
-            });
-            await this.setWorkflowManagementIssueToStoryUseCase.run({
-                targetDates: targetDateTimes,
-                project,
-                issues,
-                cacheUsed,
             });
             await this.clearNextActionHourUseCase.run({
                 targetDates: targetDateTimes,
