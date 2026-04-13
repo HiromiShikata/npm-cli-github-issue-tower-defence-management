@@ -325,5 +325,27 @@ describe('UpdateIssueStatusByLabelUseCase', () => {
         );
       });
     });
+
+    it('should include issue url and label in error message when removeLabel fails', async () => {
+      const issueWithUrl = {
+        ...mock<Issue>(),
+        labels: ['status:In Progress'],
+        status: 'In Progress',
+        url: 'https://github.com/testOrg/testRepo/issues/42',
+      };
+      mockIssueRepository.removeLabel.mockRejectedValueOnce(
+        new Error('Request failed with status code 403 Forbidden'),
+      );
+
+      await expect(
+        useCase.run({
+          project: basicProject,
+          issues: [issueWithUrl],
+          defaultStatus: null,
+        }),
+      ).rejects.toThrow(
+        'Failed to remove label status:In Progress from issue https://github.com/testOrg/testRepo/issues/42: Request failed with status code 403 Forbidden',
+      );
+    });
   });
 });

@@ -52,7 +52,16 @@ export class UpdateIssueStatusByLabelUseCase {
           targetStatus.id,
         );
       }
-      await this.issueRepository.removeLabel(issue, statusLabel);
+      try {
+        await this.issueRepository.removeLabel(issue, statusLabel);
+      } catch (e) {
+        if (!(e instanceof Error)) {
+          throw e;
+        }
+        throw new Error(
+          `Failed to remove label ${statusLabel} from issue ${issue.url}: ${e.message}`,
+        );
+      }
     }
   };
 }
