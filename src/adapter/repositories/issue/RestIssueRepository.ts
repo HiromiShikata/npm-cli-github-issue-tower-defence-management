@@ -1,4 +1,4 @@
-import ky from 'ky';
+import ky, { HTTPError } from 'ky';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import { Issue } from '../../../domain/entities/Issue';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
@@ -109,16 +109,22 @@ export class RestIssueRepository
   };
 
   removeLabel = async (issue: Issue, label: string): Promise<void> => {
-    await ky.delete(
-      `https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}/labels/${encodeURIComponent(label)}`,
-      {
-        headers: {
-          Authorization: `token ${this.ghToken}`,
-          Accept: 'application/vnd.github.v3+json',
+    try {
+      await ky.delete(
+        `https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}/labels/${encodeURIComponent(label)}`,
+        {
+          headers: {
+            Authorization: `token ${this.ghToken}`,
+            Accept: 'application/vnd.github.v3+json',
+          },
         },
-      },
-    );
-    return;
+      );
+    } catch (e) {
+      if (e instanceof HTTPError && e.response.status === 404) {
+        return;
+      }
+      throw e;
+    }
   };
 
   updateAssigneeList = async (
