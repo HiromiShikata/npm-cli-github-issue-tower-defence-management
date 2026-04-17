@@ -3,7 +3,20 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
 
 export class SetWorkflowManagementIssueToStoryUseCase {
-  constructor(readonly issueRepository: Pick<IssueRepository, 'updateStory'>) {}
+  constructor(
+    readonly issueRepository: Pick<
+      IssueRepository,
+      'updateStory' | 'removeLabel'
+    >,
+  ) {}
+
+  static readonly STORY_LABEL_PREFIX = 'story:';
+  static readonly WORKFLOW_MANAGEMENT_LABEL = 'story:workflow-management';
+  static readonly DAILY_ROUTINE_LABEL = 'daily-routine';
+  static readonly REGULAR_STORY_PREFIX = 'regular / ';
+
+  static normalizeCandidate = (candidate: string): string =>
+    candidate.toLowerCase().replace(/[\s/_-]/g, '');
 
   run = async (input: {
     targetDates: Date[];
@@ -19,28 +32,111 @@ export class SetWorkflowManagementIssueToStoryUseCase {
     ) {
       return;
     }
-    const isTargetIssue = (issue: Issue): boolean => {
-      return (
-        (issue.labels.includes('story:workflow-management') ||
-          issue.labels.includes('daily-routine') ||
-          issue.isPr) &&
-        (issue.nextActionDate === null ||
-          issue.nextActionDate.getTime() <= input.targetDates[0].getTime()) &&
-        issue.nextActionHour === null &&
-        issue.state === 'OPEN' &&
-        issue.story === null
-      );
-    };
     for (const issue of input.issues) {
-      if (!isTargetIssue(issue)) {
+      if (!this.isEligibleIssue(issue, input.targetDates)) {
         continue;
       }
+
+      const isWorkflowManagementIssue =
+        issue.labels.includes(
+          SetWorkflowManagementIssueToStoryUseCase.WORKFLOW_MANAGEMENT_LABEL,
+        ) ||
+        issue.labels.includes(
+          SetWorkflowManagementIssueToStoryUseCase.DAILY_ROUTINE_LABEL,
+        ) ||
+        issue.isPr;
+
+      if (isWorkflowManagementIssue) {
+        await this.issueRepository.updateStory(
+          { ...input.project, story },
+          issue,
+          story.workflowManagementStory.id,
+        );
+        const workflowLabel = issue.labels.find(
+          (label) =>
+            label.toLowerCase() ===
+            SetWorkflowManagementIssueToStoryUseCase.WORKFLOW_MANAGEMENT_LABEL,
+        );
+        if (workflowLabel) {
+          await this.issueRepository.removeLabel(issue, workflowLabel);
+        }
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        continue;
+      }
+
+      const storyLabel = issue.labels.find((label) =>
+        label
+          .toLowerCase()
+          .startsWith(
+            SetWorkflowManagementIssueToStoryUseCase.STORY_LABEL_PREFIX,
+          ),
+      );
+      if (!storyLabel) {
+        continue;
+      }
+
+      const labelSuffix = storyLabel.slice(
+        SetWorkflowManagementIssueToStoryUseCase.STORY_LABEL_PREFIX.length,
+      );
+      const normalizedLabel =
+        SetWorkflowManagementIssueToStoryUseCase.normalizeCandidate(
+          labelSuffix,
+        );
+
+      const matchingStory = story.stories.find((s) => {
+        if (
+          !s.name.startsWith(
+            SetWorkflowManagementIssueToStoryUseCase.REGULAR_STORY_PREFIX,
+          )
+        ) {
+          return false;
+        }
+        const storySuffix = s.name.slice(
+          SetWorkflowManagementIssueToStoryUseCase.REGULAR_STORY_PREFIX.length,
+        );
+        return (
+          normalizedLabel ===
+          SetWorkflowManagementIssueToStoryUseCase.normalizeCandidate(
+            storySuffix,
+          )
+        );
+      });
+
+      if (!matchingStory) {
+        throw new Error(`No matching story found for label: ${storyLabel}`);
+      }
+
       await this.issueRepository.updateStory(
         { ...input.project, story },
         issue,
-        story.workflowManagementStory.id,
+        matchingStory.id,
       );
+      await this.issueRepository.removeLabel(issue, storyLabel);
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }
+  };
+
+  private isEligibleIssue = (issue: Issue, targetDates: Date[]): boolean => {
+    const hasStoryOrWorkflowTrigger =
+      issue.labels.some((label) =>
+        label
+          .toLowerCase()
+          .startsWith(
+            SetWorkflowManagementIssueToStoryUseCase.STORY_LABEL_PREFIX,
+          ),
+      ) ||
+      issue.labels.includes(
+        SetWorkflowManagementIssueToStoryUseCase.DAILY_ROUTINE_LABEL,
+      ) ||
+      issue.isPr;
+
+    return (
+      hasStoryOrWorkflowTrigger &&
+      (issue.nextActionDate === null ||
+        issue.nextActionDate.getTime() <= targetDates[0].getTime()) &&
+      issue.nextActionHour === null &&
+      issue.state === 'OPEN' &&
+      issue.story === null
+    );
   };
 }
