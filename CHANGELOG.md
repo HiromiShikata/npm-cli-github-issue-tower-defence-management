@@ -1,3 +1,10 @@
+## [1.36.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.36.1...v1.36.2) (2026-04-17)
+
+
+### Bug Fixes
+
+* **core:** map all story:* labels to regular stories and remove label after processing ([9ef50a8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9ef50a858660fc80cd775a689775533daf42bc8e))
+
 ## [1.36.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.36.0...v1.36.1) (2026-04-09)
 
 
