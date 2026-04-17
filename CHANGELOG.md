@@ -1,3 +1,10 @@
+## [1.36.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.36.2...v1.36.3) (2026-04-17)
+
+
+### Bug Fixes
+
+* **core:** make removeLabel idempotent and add error context in UpdateIssueStatusByLabelUseCase ([cee85d1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cee85d165d59de44d1a7d2f7f36338a1b9b2ca1d)), closes [#403](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/403) [HiromiShikata/secretary#566](https://github.com/HiromiShikata/secretary/issues/566)
+
 ## [1.36.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.36.1...v1.36.2) (2026-04-17)
 
 
