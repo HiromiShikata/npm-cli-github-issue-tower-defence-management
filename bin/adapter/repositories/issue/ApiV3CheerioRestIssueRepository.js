@@ -178,7 +178,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         };
         this.findIssueByTitleAndLabel = async (org, repo, title, label) => {
             const encodedTitle = encodeURIComponent(`"${title}"`);
-            const query = `repo:${org}/${repo}+type:issue+label:${label}+in:title:${encodedTitle}`;
+            const query = `repo:${org}/${repo}+type:issue+label:${label}+${encodedTitle}+in:title`;
             const results = await this.apiV3IssueRepository.searchIssueByQuery(query);
             const match = results.find((r) => title.startsWith(r.title));
             if (!match)

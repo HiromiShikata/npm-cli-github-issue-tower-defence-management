@@ -68,7 +68,7 @@ export class ApiV3IssueRepository extends BaseGitHubRepository {
       number: string;
     }[]
   > => {
-    const url = `https://api.github.com/search/issues?q=${query}`;
+    const url = `https://api.github.com/search/issues?q=${query}&per_page=100`;
     const response = await ky
       .get(url, {
         headers: {

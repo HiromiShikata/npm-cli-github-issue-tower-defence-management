@@ -347,7 +347,7 @@ export class ApiV3CheerioRestIssueRepository
     label: string,
   ): Promise<{ url: string; title: string; number: number } | null> => {
     const encodedTitle = encodeURIComponent(`"${title}"`);
-    const query = `repo:${org}/${repo}+type:issue+label:${label}+in:title:${encodedTitle}`;
+    const query = `repo:${org}/${repo}+type:issue+label:${label}+${encodedTitle}+in:title`;
     const results = await this.apiV3IssueRepository.searchIssueByQuery(query);
     const match = results.find((r) => title.startsWith(r.title));
     if (!match) return null;

@@ -332,7 +332,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         'story',
       );
       expect(apiV3IssueRepository.searchIssueByQuery).toHaveBeenCalledWith(
-        `repo:test-org/test-repo+type:issue+label:story+in:title:${encodeURIComponent('"Story with spaces"')}`,
+        `repo:test-org/test-repo+type:issue+label:story+${encodeURIComponent('"Story with spaces"')}+in:title`,
       );
     });
   });
