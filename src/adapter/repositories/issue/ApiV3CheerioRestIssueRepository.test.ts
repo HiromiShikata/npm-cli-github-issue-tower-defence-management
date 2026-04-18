@@ -252,7 +252,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       >;
     }[] = [
       {
-        name: 'returns exact match when found',
+        name: 'returns match when issue title exactly equals story name',
         searchResults: [
           {
             url: 'https://github.com/test-org/test-repo/issues/1',
@@ -269,6 +269,23 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         },
       },
       {
+        name: 'returns match when issue title is a prefix of story name',
+        searchResults: [
+          {
+            url: 'https://github.com/test-org/test-repo/issues/1',
+            title: 'Test Story',
+            number: '1',
+          },
+        ],
+        title: 'Test Story with suffix',
+        label: 'story',
+        expected: {
+          url: 'https://github.com/test-org/test-repo/issues/1',
+          title: 'Test Story',
+          number: 1,
+        },
+      },
+      {
         name: 'returns null when no results',
         searchResults: [],
         title: 'Test Story',
@@ -276,7 +293,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         expected: null,
       },
       {
-        name: 'returns null when no exact title match',
+        name: 'returns null when result title is longer than story name',
         searchResults: [
           {
             url: 'https://github.com/test-org/test-repo/issues/2',
@@ -292,7 +309,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     test.each(testCases)('$name', async (arg) => {
       const { repository, apiV3IssueRepository } =
         createApiV3CheerioRestIssueRepository();
-      apiV3IssueRepository.searchIssue.mockResolvedValue(arg.searchResults);
+      apiV3IssueRepository.searchIssueByQuery.mockResolvedValue(
+        arg.searchResults,
+      );
       const result = await repository.findIssueByTitleAndLabel(
         'test-org',
         'test-repo',
@@ -300,6 +319,21 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         arg.label,
       );
       expect(result).toEqual(arg.expected);
+    });
+
+    it('uses URL-encoded title with label in the search query', async () => {
+      const { repository, apiV3IssueRepository } =
+        createApiV3CheerioRestIssueRepository();
+      apiV3IssueRepository.searchIssueByQuery.mockResolvedValue([]);
+      await repository.findIssueByTitleAndLabel(
+        'test-org',
+        'test-repo',
+        'Story with spaces',
+        'story',
+      );
+      expect(apiV3IssueRepository.searchIssueByQuery).toHaveBeenCalledWith(
+        `repo:test-org/test-repo+type:issue+label:story+in:title:${encodeURIComponent('"Story with spaces"')}`,
+      );
     });
   });
 

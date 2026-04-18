@@ -23,7 +23,10 @@ export class ApiV3CheerioRestIssueRepository
   implements IssueRepository
 {
   constructor(
-    readonly apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>,
+    readonly apiV3IssueRepository: Pick<
+      ApiV3IssueRepository,
+      'searchIssue' | 'searchIssueByQuery'
+    >,
     readonly restIssueRepository: Pick<
       RestIssueRepository,
       | 'createNewIssue'
@@ -343,19 +346,15 @@ export class ApiV3CheerioRestIssueRepository
     title: string,
     label: string,
   ): Promise<{ url: string; title: string; number: number } | null> => {
-    const results = await this.apiV3IssueRepository.searchIssue({
-      owner: org,
-      repositoryName: repo,
-      type: 'issue',
-      title: title,
-      label: label,
-    });
-    const exactMatch = results.find((r) => r.title === title);
-    if (!exactMatch) return null;
+    const encodedTitle = encodeURIComponent(`"${title}"`);
+    const query = `repo:${org}/${repo}+type:issue+label:${label}+in:title:${encodedTitle}`;
+    const results = await this.apiV3IssueRepository.searchIssueByQuery(query);
+    const match = results.find((r) => title.startsWith(r.title));
+    if (!match) return null;
     return {
-      url: exactMatch.url,
-      title: exactMatch.title,
-      number: parseInt(exactMatch.number, 10),
+      url: match.url,
+      title: match.title,
+      number: parseInt(match.number, 10),
     };
   };
 }
