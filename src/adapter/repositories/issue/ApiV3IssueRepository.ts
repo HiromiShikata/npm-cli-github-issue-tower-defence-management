@@ -10,6 +10,7 @@ export class ApiV3IssueRepository extends BaseGitHubRepository {
     title?: string;
     createdFrom?: string;
     assignee?: string;
+    label?: string;
   }): Promise<
     {
       url: string;
@@ -33,6 +34,9 @@ export class ApiV3IssueRepository extends BaseGitHubRepository {
     }
     if (query.assignee) {
       url += `&assignee=${query.assignee}`;
+    }
+    if (query.label) {
+      url += `+label:${query.label}`;
     }
 
     const response = await ky

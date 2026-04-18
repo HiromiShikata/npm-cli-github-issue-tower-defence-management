@@ -56,6 +56,10 @@ class HandleScheduledEventUseCase {
                     storyObject.story.name.startsWith('regular / ')) {
                     continue;
                 }
+                const existingStoryIssue = await this.issueRepository.findIssueByTitleAndLabel(input.org, input.workingReport.repo, storyObject.story.name, 'story');
+                if (existingStoryIssue) {
+                    continue;
+                }
                 const issueNumber = await this.issueRepository.createNewIssue(input.org, input.workingReport.repo, storyObject.story.name, storyObject.story.description, [input.manager], ['story']);
                 const issueUrl = `https://github.com/${input.org}/${input.workingReport.repo}/issues/${issueNumber}`;
                 let issue = null;

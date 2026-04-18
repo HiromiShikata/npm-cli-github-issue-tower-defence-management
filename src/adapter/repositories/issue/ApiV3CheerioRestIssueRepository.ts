@@ -337,4 +337,25 @@ export class ApiV3CheerioRestIssueRepository
   getStoryObjectMap = async (_project: Project): Promise<StoryObjectMap> => {
     throw new Error('getStoryObjectMap is not implemented');
   };
+  findIssueByTitleAndLabel = async (
+    org: string,
+    repo: string,
+    title: string,
+    label: string,
+  ): Promise<{ url: string; title: string; number: number } | null> => {
+    const results = await this.apiV3IssueRepository.searchIssue({
+      owner: org,
+      repositoryName: repo,
+      type: 'issue',
+      title: title,
+      label: label,
+    });
+    const exactMatch = results.find((r) => r.title === title);
+    if (!exactMatch) return null;
+    return {
+      url: exactMatch.url,
+      title: exactMatch.title,
+      number: parseInt(exactMatch.number, 10),
+    };
+  };
 }

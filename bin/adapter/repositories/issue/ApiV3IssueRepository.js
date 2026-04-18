@@ -27,6 +27,9 @@ class ApiV3IssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
             if (query.assignee) {
                 url += `&assignee=${query.assignee}`;
             }
+            if (query.label) {
+                url += `+label:${query.label}`;
+            }
             const response = await ky_1.default
                 .get(url, {
                 headers: {

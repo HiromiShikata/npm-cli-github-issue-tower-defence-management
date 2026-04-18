@@ -241,6 +241,68 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('findIssueByTitleAndLabel', () => {
+    const testCases: {
+      name: string;
+      searchResults: { url: string; title: string; number: string }[];
+      title: string;
+      label: string;
+      expected: Awaited<
+        ReturnType<ApiV3CheerioRestIssueRepository['findIssueByTitleAndLabel']>
+      >;
+    }[] = [
+      {
+        name: 'returns exact match when found',
+        searchResults: [
+          {
+            url: 'https://github.com/test-org/test-repo/issues/1',
+            title: 'Test Story',
+            number: '1',
+          },
+        ],
+        title: 'Test Story',
+        label: 'story',
+        expected: {
+          url: 'https://github.com/test-org/test-repo/issues/1',
+          title: 'Test Story',
+          number: 1,
+        },
+      },
+      {
+        name: 'returns null when no results',
+        searchResults: [],
+        title: 'Test Story',
+        label: 'story',
+        expected: null,
+      },
+      {
+        name: 'returns null when no exact title match',
+        searchResults: [
+          {
+            url: 'https://github.com/test-org/test-repo/issues/2',
+            title: 'Test Story extra',
+            number: '2',
+          },
+        ],
+        title: 'Test Story',
+        label: 'story',
+        expected: null,
+      },
+    ];
+    test.each(testCases)('$name', async (arg) => {
+      const { repository, apiV3IssueRepository } =
+        createApiV3CheerioRestIssueRepository();
+      apiV3IssueRepository.searchIssue.mockResolvedValue(arg.searchResults);
+      const result = await repository.findIssueByTitleAndLabel(
+        'test-org',
+        'test-repo',
+        arg.title,
+        arg.label,
+      );
+      expect(result).toEqual(arg.expected);
+    });
+  });
+
   const createApiV3CheerioRestIssueRepository = () => {
     const apiV3IssueRepository = mock<ApiV3IssueRepository>();
     const restIssueRepository = mock<RestIssueRepository>();

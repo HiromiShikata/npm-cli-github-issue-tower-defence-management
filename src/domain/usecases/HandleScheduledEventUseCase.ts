@@ -128,6 +128,16 @@ export class HandleScheduledEventUseCase {
       ) {
         continue;
       }
+      const existingStoryIssue =
+        await this.issueRepository.findIssueByTitleAndLabel(
+          input.org,
+          input.workingReport.repo,
+          storyObject.story.name,
+          'story',
+        );
+      if (existingStoryIssue) {
+        continue;
+      }
       const issueNumber = await this.issueRepository.createNewIssue(
         input.org,
         input.workingReport.repo,

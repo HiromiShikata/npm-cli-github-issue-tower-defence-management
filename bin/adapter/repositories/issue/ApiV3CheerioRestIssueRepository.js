@@ -176,6 +176,23 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         this.getStoryObjectMap = async (_project) => {
             throw new Error('getStoryObjectMap is not implemented');
         };
+        this.findIssueByTitleAndLabel = async (org, repo, title, label) => {
+            const results = await this.apiV3IssueRepository.searchIssue({
+                owner: org,
+                repositoryName: repo,
+                type: 'issue',
+                title: title,
+                label: label,
+            });
+            const exactMatch = results.find((r) => r.title === title);
+            if (!exactMatch)
+                return null;
+            return {
+                url: exactMatch.url,
+                title: exactMatch.title,
+                number: parseInt(exactMatch.number, 10),
+            };
+        };
     }
 }
 exports.ApiV3CheerioRestIssueRepository = ApiV3CheerioRestIssueRepository;
