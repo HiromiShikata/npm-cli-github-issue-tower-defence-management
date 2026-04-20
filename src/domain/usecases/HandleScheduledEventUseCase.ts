@@ -113,9 +113,19 @@ export class HandleScheduledEventUseCase {
         projectId,
         input.allowIssueCacheMinutes,
       );
+    const storyIssuesFromRepo = await this.issueRepository.getIssuesByLabel(
+      input.org,
+      input.workingReport.repo,
+      'story',
+    );
+    const existingUrls = new Set(issues.map((issue) => issue.url));
+    const additionalStoryIssues = storyIssuesFromRepo.filter(
+      (issue) => !existingUrls.has(issue.url),
+    );
+    const issuesForStoryMatching = [...issues, ...additionalStoryIssues];
     const storyIssues: StoryObjectMap = await this.storyIssues({
       project,
-      issues,
+      issues: issuesForStoryMatching,
     });
     for (const storyObject of storyIssues.values()) {
       const projectStory = project.story;
@@ -126,16 +136,6 @@ export class HandleScheduledEventUseCase {
         storyObject.storyIssue ||
         storyObject.story.name.startsWith('regular / ')
       ) {
-        continue;
-      }
-      const existingStoryIssue =
-        await this.issueRepository.findIssueByTitleAndLabel(
-          input.org,
-          input.workingReport.repo,
-          storyObject.story.name,
-          'story',
-        );
-      if (existingStoryIssue) {
         continue;
       }
       const issueNumber = await this.issueRepository.createNewIssue(

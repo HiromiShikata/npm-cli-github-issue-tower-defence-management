@@ -18,5 +18,15 @@ export declare class RestIssueRepository extends BaseGitHubRepository implements
     updateLabels: (issue: Issue, labels: Issue["labels"]) => Promise<void>;
     removeLabel: (issue: Issue, label: string) => Promise<void>;
     updateAssigneeList: (issue: Issue, assigneeList: Member["name"][]) => Promise<void>;
+    getIssuesByLabel: (owner: string, repo: string, label: string) => Promise<{
+        html_url: string;
+        title: string;
+        number: number;
+        body: string;
+        labels: string[];
+        assignees: string[];
+        state: string;
+        created_at: string;
+    }[]>;
 }
 //# sourceMappingURL=RestIssueRepository.d.ts.map

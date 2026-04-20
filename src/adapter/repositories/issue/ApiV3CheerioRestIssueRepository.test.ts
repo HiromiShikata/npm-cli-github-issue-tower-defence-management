@@ -241,98 +241,61 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
-  describe('findIssueByTitleAndLabel', () => {
-    const testCases: {
-      name: string;
-      searchResults: { url: string; title: string; number: string }[];
-      title: string;
-      label: string;
-      expected: Awaited<
-        ReturnType<ApiV3CheerioRestIssueRepository['findIssueByTitleAndLabel']>
-      >;
-    }[] = [
-      {
-        name: 'returns match when issue title exactly equals story name',
-        searchResults: [
-          {
-            url: 'https://github.com/test-org/test-repo/issues/1',
-            title: 'Test Story',
-            number: '1',
-          },
-        ],
-        title: 'Test Story',
-        label: 'story',
-        expected: {
-          url: 'https://github.com/test-org/test-repo/issues/1',
+  describe('getIssuesByLabel', () => {
+    it('returns issues converted from REST API response', async () => {
+      const { repository, restIssueRepository } =
+        createApiV3CheerioRestIssueRepository();
+      restIssueRepository.getIssuesByLabel.mockResolvedValue([
+        {
+          html_url: 'https://github.com/test-org/test-repo/issues/1',
           title: 'Test Story',
           number: 1,
+          body: 'body text',
+          labels: ['story'],
+          assignees: ['user1'],
+          state: 'open',
+          created_at: '2024-01-01T00:00:00Z',
         },
-      },
-      {
-        name: 'returns match when issue title is a prefix of story name',
-        searchResults: [
-          {
-            url: 'https://github.com/test-org/test-repo/issues/1',
-            title: 'Test Story',
-            number: '1',
-          },
-        ],
-        title: 'Test Story with suffix',
-        label: 'story',
-        expected: {
-          url: 'https://github.com/test-org/test-repo/issues/1',
-          title: 'Test Story',
-          number: 1,
-        },
-      },
-      {
-        name: 'returns null when no results',
-        searchResults: [],
-        title: 'Test Story',
-        label: 'story',
-        expected: null,
-      },
-      {
-        name: 'returns null when result title is longer than story name',
-        searchResults: [
-          {
-            url: 'https://github.com/test-org/test-repo/issues/2',
-            title: 'Test Story extra',
-            number: '2',
-          },
-        ],
-        title: 'Test Story',
-        label: 'story',
-        expected: null,
-      },
-    ];
-    test.each(testCases)('$name', async (arg) => {
-      const { repository, apiV3IssueRepository } =
-        createApiV3CheerioRestIssueRepository();
-      apiV3IssueRepository.searchIssueByQuery.mockResolvedValue(
-        arg.searchResults,
-      );
-      const result = await repository.findIssueByTitleAndLabel(
+      ]);
+      const result = await repository.getIssuesByLabel(
         'test-org',
         'test-repo',
-        arg.title,
-        arg.label,
-      );
-      expect(result).toEqual(arg.expected);
-    });
-
-    it('uses URL-encoded title with label in the search query', async () => {
-      const { repository, apiV3IssueRepository } =
-        createApiV3CheerioRestIssueRepository();
-      apiV3IssueRepository.searchIssueByQuery.mockResolvedValue([]);
-      await repository.findIssueByTitleAndLabel(
-        'test-org',
-        'test-repo',
-        'Story with spaces',
         'story',
       );
-      expect(apiV3IssueRepository.searchIssueByQuery).toHaveBeenCalledWith(
-        `repo:test-org/test-repo+type:issue+label:story+${encodeURIComponent('"Story with spaces"')}+in:title`,
+      expect(result).toHaveLength(1);
+      expect(result[0].url).toBe(
+        'https://github.com/test-org/test-repo/issues/1',
+      );
+      expect(result[0].title).toBe('Test Story');
+      expect(result[0].number).toBe(1);
+      expect(result[0].org).toBe('test-org');
+      expect(result[0].repo).toBe('test-repo');
+      expect(result[0].state).toBe('OPEN');
+      expect(result[0].status).toBeNull();
+      expect(result[0].story).toBeNull();
+    });
+
+    it('returns empty array when no issues found', async () => {
+      const { repository, restIssueRepository } =
+        createApiV3CheerioRestIssueRepository();
+      restIssueRepository.getIssuesByLabel.mockResolvedValue([]);
+      const result = await repository.getIssuesByLabel(
+        'test-org',
+        'test-repo',
+        'story',
+      );
+      expect(result).toHaveLength(0);
+    });
+
+    it('delegates to restIssueRepository.getIssuesByLabel with correct params', async () => {
+      const { repository, restIssueRepository } =
+        createApiV3CheerioRestIssueRepository();
+      restIssueRepository.getIssuesByLabel.mockResolvedValue([]);
+      await repository.getIssuesByLabel('my-org', 'my-repo', 'story');
+      expect(restIssueRepository.getIssuesByLabel).toHaveBeenCalledWith(
+        'my-org',
+        'my-repo',
+        'story',
       );
     });
   });

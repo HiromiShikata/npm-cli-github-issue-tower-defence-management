@@ -75,10 +75,9 @@ export interface IssueRepository {
   findRelatedOpenPRs: (issueUrl: string) => Promise<RelatedPullRequest[]>;
   getAllOpened: (project: Project) => Promise<Issue[]>;
   getStoryObjectMap: (project: Project) => Promise<StoryObjectMap>;
-  findIssueByTitleAndLabel: (
+  getIssuesByLabel: (
     org: string,
     repo: string,
-    title: string,
     label: string,
-  ) => Promise<{ url: string; title: string; number: number } | null>;
+  ) => Promise<Issue[]>;
 }

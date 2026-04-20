@@ -176,18 +176,32 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         this.getStoryObjectMap = async (_project) => {
             throw new Error('getStoryObjectMap is not implemented');
         };
-        this.findIssueByTitleAndLabel = async (org, repo, title, label) => {
-            const encodedTitle = encodeURIComponent(`"${title}"`);
-            const query = `repo:${org}/${repo}+type:issue+label:${label}+${encodedTitle}+in:title`;
-            const results = await this.apiV3IssueRepository.searchIssueByQuery(query);
-            const match = results.find((r) => title.startsWith(r.title));
-            if (!match)
-                return null;
-            return {
-                url: match.url,
-                title: match.title,
-                number: parseInt(match.number, 10),
-            };
+        this.getIssuesByLabel = async (org, repo, label) => {
+            const items = await this.restIssueRepository.getIssuesByLabel(org, repo, label);
+            return items.map((item) => ({
+                nameWithOwner: `${org}/${repo}`,
+                url: item.html_url,
+                number: item.number,
+                title: item.title,
+                body: item.body,
+                labels: item.labels,
+                assignees: item.assignees,
+                state: item.state === 'open' ? 'OPEN' : 'CLOSED',
+                status: null,
+                story: null,
+                nextActionDate: null,
+                nextActionHour: null,
+                estimationMinutes: null,
+                dependedIssueUrls: [],
+                completionDate50PercentConfidence: null,
+                org,
+                repo,
+                itemId: '',
+                isPr: false,
+                isInProgress: false,
+                isClosed: item.state !== 'open',
+                createdAt: new Date(item.created_at),
+            }));
         };
     }
 }

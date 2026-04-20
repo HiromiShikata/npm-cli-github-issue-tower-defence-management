@@ -119,6 +119,34 @@ class RestIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
                 headers: { Authorization: `token ${this.ghToken}` },
             });
         };
+        this.getIssuesByLabel = async (owner, repo, label) => {
+            const results = [];
+            let page = 1;
+            let hasMore = true;
+            while (hasMore) {
+                const response = await ky_1.default
+                    .get(`https://api.github.com/repos/${owner}/${repo}/issues?labels=${encodeURIComponent(label)}&state=open&per_page=100&page=${page}`, {
+                    headers: {
+                        Authorization: `token ${this.ghToken}`,
+                        Accept: 'application/vnd.github.v3+json',
+                    },
+                })
+                    .json();
+                results.push(...response.map((item) => ({
+                    html_url: item.html_url,
+                    title: item.title,
+                    number: item.number,
+                    body: item.body,
+                    labels: item.labels.map((l) => l.name),
+                    assignees: item.assignees.map((a) => a.login),
+                    state: item.state,
+                    created_at: item.created_at,
+                })));
+                hasMore = response.length === 100;
+                page++;
+            }
+            return results;
+        };
     }
 }
 exports.RestIssueRepository = RestIssueRepository;

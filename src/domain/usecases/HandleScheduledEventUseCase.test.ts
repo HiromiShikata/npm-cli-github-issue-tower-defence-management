@@ -142,6 +142,7 @@ describe('HandleScheduledEventUseCase', () => {
         issues: [],
         cacheUsed: false,
       });
+      mockIssueRepository.getIssuesByLabel.mockResolvedValue([]);
       mockSpreadsheetRepository.getSheet.mockResolvedValue([
         ['LastExecutionDateTime'],
         ['2024-01-01T00:00:00Z'],
@@ -305,7 +306,7 @@ describe('HandleScheduledEventUseCase', () => {
       );
     });
 
-    describe('story issue deduplication', () => {
+    describe('story issue deduplication via getIssuesByLabel', () => {
       const storyName = 'Test Story';
       const projectWithStory: Project = {
         id: 'project-1',
@@ -357,40 +358,84 @@ describe('HandleScheduledEventUseCase', () => {
         allowIssueCacheMinutes: 60,
       };
 
-      it('should not create a story issue when findIssueByTitleAndLabel returns existing issue', async () => {
+      it('should not create a story issue when getIssuesByLabel returns existing issue not in project board', async () => {
         mockProjectRepository.getProject.mockResolvedValue(projectWithStory);
         mockIssueRepository.getAllIssues.mockResolvedValue({
           issues: [],
           cacheUsed: false,
         });
-        mockIssueRepository.findIssueByTitleAndLabel.mockResolvedValue({
-          url: 'https://github.com/test-org/test-repo/issues/1',
-          title: storyName,
-          number: 1,
-        });
+        mockIssueRepository.getIssuesByLabel.mockResolvedValue([
+          {
+            nameWithOwner: 'test-org/test-repo',
+            url: 'https://github.com/test-org/test-repo/issues/1',
+            number: 1,
+            title: storyName,
+            body: '',
+            labels: ['story'],
+            assignees: [],
+            state: 'OPEN',
+            status: null,
+            story: null,
+            nextActionDate: null,
+            nextActionHour: null,
+            estimationMinutes: null,
+            dependedIssueUrls: [],
+            completionDate50PercentConfidence: null,
+            org: 'test-org',
+            repo: 'test-repo',
+            itemId: '',
+            isPr: false,
+            isInProgress: false,
+            isClosed: false,
+            createdAt: new Date('2024-01-01'),
+          },
+        ]);
 
         await useCase.run(input);
 
         expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
       });
 
-      it('should call findIssueByTitleAndLabel with story name and story label when story issue not found in project items', async () => {
+      it('should call getIssuesByLabel with org, repo, and story label', async () => {
         mockProjectRepository.getProject.mockResolvedValue(projectWithStory);
         mockIssueRepository.getAllIssues.mockResolvedValue({
           issues: [],
           cacheUsed: false,
         });
-        mockIssueRepository.findIssueByTitleAndLabel.mockResolvedValue({
-          url: 'https://github.com/test-org/test-repo/issues/1',
-          title: storyName,
-          number: 1,
-        });
+        mockIssueRepository.getIssuesByLabel.mockResolvedValue([
+          {
+            nameWithOwner: 'test-org/test-repo',
+            url: 'https://github.com/test-org/test-repo/issues/1',
+            number: 1,
+            title: storyName,
+            body: '',
+            labels: ['story'],
+            assignees: [],
+            state: 'OPEN',
+            status: null,
+            story: null,
+            nextActionDate: null,
+            nextActionHour: null,
+            estimationMinutes: null,
+            dependedIssueUrls: [],
+            completionDate50PercentConfidence: null,
+            org: 'test-org',
+            repo: 'test-repo',
+            itemId: '',
+            isPr: false,
+            isInProgress: false,
+            isClosed: false,
+            createdAt: new Date('2024-01-01'),
+          },
+        ]);
 
         await useCase.run(input);
 
-        expect(
-          mockIssueRepository.findIssueByTitleAndLabel,
-        ).toHaveBeenCalledWith('test-org', 'test-repo', storyName, 'story');
+        expect(mockIssueRepository.getIssuesByLabel).toHaveBeenCalledWith(
+          'test-org',
+          'test-repo',
+          'story',
+        );
       });
     });
   });

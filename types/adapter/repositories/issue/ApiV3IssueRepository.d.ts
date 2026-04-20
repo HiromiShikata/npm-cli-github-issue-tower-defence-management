@@ -8,7 +8,6 @@ export declare class ApiV3IssueRepository extends BaseGitHubRepository {
         title?: string;
         createdFrom?: string;
         assignee?: string;
-        label?: string;
     }) => Promise<{
         url: string;
         title: string;

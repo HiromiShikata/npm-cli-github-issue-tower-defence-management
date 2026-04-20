@@ -23,10 +23,7 @@ export class ApiV3CheerioRestIssueRepository
   implements IssueRepository
 {
   constructor(
-    readonly apiV3IssueRepository: Pick<
-      ApiV3IssueRepository,
-      'searchIssue' | 'searchIssueByQuery'
-    >,
+    readonly apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>,
     readonly restIssueRepository: Pick<
       RestIssueRepository,
       | 'createNewIssue'
@@ -36,6 +33,7 @@ export class ApiV3CheerioRestIssueRepository
       | 'updateLabels'
       | 'removeLabel'
       | 'updateAssigneeList'
+      | 'getIssuesByLabel'
     >,
     readonly graphqlProjectItemRepository: Pick<
       GraphqlProjectItemRepository,
@@ -340,21 +338,39 @@ export class ApiV3CheerioRestIssueRepository
   getStoryObjectMap = async (_project: Project): Promise<StoryObjectMap> => {
     throw new Error('getStoryObjectMap is not implemented');
   };
-  findIssueByTitleAndLabel = async (
+  getIssuesByLabel = async (
     org: string,
     repo: string,
-    title: string,
     label: string,
-  ): Promise<{ url: string; title: string; number: number } | null> => {
-    const encodedTitle = encodeURIComponent(`"${title}"`);
-    const query = `repo:${org}/${repo}+type:issue+label:${label}+${encodedTitle}+in:title`;
-    const results = await this.apiV3IssueRepository.searchIssueByQuery(query);
-    const match = results.find((r) => title.startsWith(r.title));
-    if (!match) return null;
-    return {
-      url: match.url,
-      title: match.title,
-      number: parseInt(match.number, 10),
-    };
+  ): Promise<Issue[]> => {
+    const items = await this.restIssueRepository.getIssuesByLabel(
+      org,
+      repo,
+      label,
+    );
+    return items.map((item) => ({
+      nameWithOwner: `${org}/${repo}`,
+      url: item.html_url,
+      number: item.number,
+      title: item.title,
+      body: item.body,
+      labels: item.labels,
+      assignees: item.assignees,
+      state: item.state === 'open' ? ('OPEN' as const) : ('CLOSED' as const),
+      status: null,
+      story: null,
+      nextActionDate: null,
+      nextActionHour: null,
+      estimationMinutes: null,
+      dependedIssueUrls: [],
+      completionDate50PercentConfidence: null,
+      org,
+      repo,
+      itemId: '',
+      isPr: false,
+      isInProgress: false,
+      isClosed: item.state !== 'open',
+      createdAt: new Date(item.created_at),
+    }));
   };
 }

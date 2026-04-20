@@ -40,10 +40,6 @@ export interface IssueRepository {
     findRelatedOpenPRs: (issueUrl: string) => Promise<RelatedPullRequest[]>;
     getAllOpened: (project: Project) => Promise<Issue[]>;
     getStoryObjectMap: (project: Project) => Promise<StoryObjectMap>;
-    findIssueByTitleAndLabel: (org: string, repo: string, title: string, label: string) => Promise<{
-        url: string;
-        title: string;
-        number: number;
-    } | null>;
+    getIssuesByLabel: (org: string, repo: string, label: string) => Promise<Issue[]>;
 }
 //# sourceMappingURL=IssueRepository.d.ts.map
