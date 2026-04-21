@@ -105,6 +105,31 @@ describe('RestIssueRepository', () => {
       expect(issueAfter.labels).toContain('test');
     });
   });
+  describe('getIssuesByLabel', () => {
+    it('returns open issues with the given label', async () => {
+      const results = await restIssueRepository.getIssuesByLabel(
+        'HiromiShikata',
+        'test-repository',
+        'test',
+      );
+      expect(Array.isArray(results)).toBe(true);
+      for (const item of results) {
+        expect(item.html_url).toContain(
+          'HiromiShikata/test-repository/issues/',
+        );
+        expect(item.labels).toContain('test');
+        expect(item.state).toBe('open');
+      }
+    });
+    it('returns empty array for a label with no open issues', async () => {
+      const results = await restIssueRepository.getIssuesByLabel(
+        'HiromiShikata',
+        'test-repository',
+        'label-that-does-not-exist-xyz-123',
+      );
+      expect(results).toHaveLength(0);
+    });
+  });
   describe('updateAssigneeList', () => {
     it('should update issue assignees', async () => {
       const issue: Issue = {

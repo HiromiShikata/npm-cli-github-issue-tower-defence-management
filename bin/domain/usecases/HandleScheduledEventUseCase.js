@@ -43,9 +43,10 @@ class HandleScheduledEventUseCase {
             }
             const now = await this.dateRepository.now();
             const { issues, cacheUsed } = await this.issueRepository.getAllIssues(projectId, input.allowIssueCacheMinutes);
-            const storyIssuesFromRepo = await this.issueRepository.getIssuesByLabel(input.org, input.workingReport.repo, 'story');
             const existingUrls = new Set(issues.map((issue) => issue.url));
-            const additionalStoryIssues = storyIssuesFromRepo.filter((issue) => !existingUrls.has(issue.url));
+            const additionalStoryIssues = project.story
+                ? (await this.issueRepository.getIssuesByLabel(input.org, input.workingReport.repo, 'story')).filter((issue) => !existingUrls.has(issue.url))
+                : [];
             const issuesForStoryMatching = [...issues, ...additionalStoryIssues];
             const storyIssues = await this.storyIssues({
                 project,
