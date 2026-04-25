@@ -365,10 +365,7 @@ query GetProjectItems($projectId: ID!, $after: String) {
       hasNextPage = pageInfo.hasNextPage;
       after = pageInfo.endCursor;
     }
-    if (
-      typeof latestTotalCount === 'number' &&
-      totalFetched < latestTotalCount
-    ) {
+    if (totalFetched < latestTotalCount) {
       throw new Error(
         `Incomplete project board data: expected ${latestTotalCount} items, fetched ${totalFetched}`,
       );
