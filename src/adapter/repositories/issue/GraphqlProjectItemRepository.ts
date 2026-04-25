@@ -292,6 +292,8 @@ query GetProjectItems($projectId: ID!, $after: String) {
     const issues: ProjectItem[] = [];
     let after: string | null = null;
     let hasNextPage = true;
+    let totalFetched = 0;
+    let latestTotalCount = 0;
 
     while (hasNextPage) {
       if (after !== null) {
@@ -300,6 +302,8 @@ query GetProjectItems($projectId: ID!, $after: String) {
         );
       }
       const data = await callGraphql(projectId, after);
+      latestTotalCount = data.node.items.totalCount;
+      totalFetched += data.node.items.nodes.length;
       const projectItems: {
         id: string;
         fieldValues: {
@@ -360,6 +364,11 @@ query GetProjectItems($projectId: ID!, $after: String) {
       const pageInfo = data.node.items.pageInfo;
       hasNextPage = pageInfo.hasNextPage;
       after = pageInfo.endCursor;
+    }
+    if (totalFetched < latestTotalCount) {
+      throw new Error(
+        `Incomplete project board data: expected ${latestTotalCount} items, fetched ${totalFetched}`,
+      );
     }
     return issues;
   };

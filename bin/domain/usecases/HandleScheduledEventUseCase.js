@@ -47,7 +47,7 @@ class HandleScheduledEventUseCase {
                 project,
                 issues,
             });
-            if (!cacheUsed && issues.length > 0) {
+            if (!cacheUsed) {
                 for (const storyObject of storyIssues.values()) {
                     const projectStory = project.story;
                     if (!projectStory) {

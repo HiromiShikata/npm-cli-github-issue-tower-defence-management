@@ -369,16 +369,55 @@ describe('HandleScheduledEventUseCase', () => {
         expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
       });
 
-      it('should skip story creation when fresh fetch returns empty issues', async () => {
-        mockProjectRepository.getProject.mockResolvedValue(projectWithStory);
-        mockIssueRepository.getAllIssues.mockResolvedValue({
-          issues: [],
-          cacheUsed: false,
-        });
+      it('should attempt story creation when cacheUsed is false even if issues is empty', async () => {
+        jest.useFakeTimers();
+        try {
+          mockProjectRepository.getProject.mockResolvedValue(projectWithStory);
+          mockIssueRepository.getAllIssues.mockResolvedValue({
+            issues: [],
+            cacheUsed: false,
+          });
+          mockIssueRepository.createNewIssue.mockResolvedValue(1);
+          mockIssueRepository.getIssueByUrl.mockResolvedValue({
+            nameWithOwner: 'test-org/test-repo',
+            url: 'https://github.com/test-org/test-repo/issues/1',
+            number: 1,
+            title: storyName,
+            body: '',
+            labels: ['story'],
+            assignees: [],
+            state: 'OPEN' as const,
+            status: null,
+            story: null,
+            nextActionDate: null,
+            nextActionHour: null,
+            estimationMinutes: null,
+            dependedIssueUrls: [],
+            completionDate50PercentConfidence: null,
+            org: 'test-org',
+            repo: 'test-repo',
+            itemId: 'item-id-1',
+            isPr: false,
+            isInProgress: false,
+            isClosed: false,
+            createdAt: new Date('2024-01-01'),
+          });
 
-        await useCase.run(input);
+          const runPromise = useCase.run(input);
+          await jest.advanceTimersByTimeAsync(50 * 1000);
+          await runPromise;
 
-        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+          expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
+            'test-org',
+            'test-repo',
+            storyName,
+            expect.any(String),
+            ['test-manager'],
+            ['story'],
+          );
+        } finally {
+          jest.useRealTimers();
+        }
       });
     });
   });

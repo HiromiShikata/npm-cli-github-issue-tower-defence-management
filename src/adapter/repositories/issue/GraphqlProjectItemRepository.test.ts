@@ -25,12 +25,16 @@ const mockJsonResponse = <T>(data: T) => ({
 });
 
 describe('GraphqlProjectItemRepository', () => {
-  const makePageResponse = (hasNextPage: boolean, endCursor: string) =>
+  const makePageResponse = (
+    hasNextPage: boolean,
+    endCursor: string,
+    totalCount = 2,
+  ) =>
     mockJsonResponse({
       data: {
         node: {
           items: {
-            totalCount: 2,
+            totalCount,
             pageInfo: {
               endCursor,
               startCursor: 'cursor-start',
@@ -110,7 +114,7 @@ describe('GraphqlProjectItemRepository', () => {
       );
 
       const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
-      mockPost.mockReturnValueOnce(makePageResponse(false, 'cursor-1'));
+      mockPost.mockReturnValueOnce(makePageResponse(false, 'cursor-1', 1));
 
       const result = await repository.fetchProjectItems('test-project-id');
 
@@ -121,6 +125,23 @@ describe('GraphqlProjectItemRepository', () => {
         PAGINATION_DELAY_MS,
       );
       setTimeoutSpy.mockRestore();
+    });
+
+    it('should throw when fetched item count is less than totalCount', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        '',
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(makePageResponse(false, 'cursor-1', 5));
+
+      await expect(
+        repository.fetchProjectItems('test-project-id'),
+      ).rejects.toThrow(
+        'Incomplete project board data: expected 5 items, fetched 1',
+      );
     });
   });
 

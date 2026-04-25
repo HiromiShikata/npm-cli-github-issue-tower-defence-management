@@ -183,11 +183,15 @@ query GetProjectItems($projectId: ID!, $after: String) {
             const issues = [];
             let after = null;
             let hasNextPage = true;
+            let totalFetched = 0;
+            let latestTotalCount = 0;
             while (hasNextPage) {
                 if (after !== null) {
                     await new Promise((resolve) => setTimeout(resolve, exports.PAGINATION_DELAY_MS));
                 }
                 const data = await callGraphql(projectId, after);
+                latestTotalCount = data.node.items.totalCount;
+                totalFetched += data.node.items.nodes.length;
                 const projectItems = data.node.items.nodes;
                 projectItems
                     // .filter(item => item.content.repository !== undefined)
@@ -223,6 +227,9 @@ query GetProjectItems($projectId: ID!, $after: String) {
                 const pageInfo = data.node.items.pageInfo;
                 hasNextPage = pageInfo.hasNextPage;
                 after = pageInfo.endCursor;
+            }
+            if (totalFetched < latestTotalCount) {
+                throw new Error(`Incomplete project board data: expected ${latestTotalCount} items, fetched ${totalFetched}`);
             }
             return issues;
         };
