@@ -143,6 +143,26 @@ describe('GraphqlProjectItemRepository', () => {
         'Incomplete project board data: expected 5 items, fetched 1',
       );
     });
+
+    it('should throw when totalCount increases mid-pagination due to items added during fetch', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        '',
+        'dummy-token',
+      );
+
+      mockPost
+        .mockReturnValueOnce(makePageResponse(true, 'cursor-1', 2))
+        .mockReturnValueOnce(makePageResponse(false, 'cursor-2', 4));
+
+      const resultPromise = repository.fetchProjectItems('test-project-id');
+      const rejectExpectation = expect(resultPromise).rejects.toThrow(
+        'Incomplete project board data: expected 4 items, fetched 2',
+      );
+      await jest.advanceTimersByTimeAsync(PAGINATION_DELAY_MS);
+      await rejectExpectation;
+    });
   });
 
   describe('getProjectItemFields', () => {
