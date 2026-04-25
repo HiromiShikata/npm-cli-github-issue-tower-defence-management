@@ -304,5 +304,82 @@ describe('HandleScheduledEventUseCase', () => {
         120,
       );
     });
+
+    describe('story issue creation guard', () => {
+      const storyName = 'Test Story';
+      const projectWithStory: Project = {
+        id: 'project-1',
+        url: 'https://github.com/orgs/test-org/projects/1',
+        databaseId: 1,
+        name: 'test-project',
+        status: {
+          name: 'Status',
+          fieldId: 'status-field-id',
+          statuses: [],
+        },
+        nextActionDate: null,
+        nextActionHour: null,
+        story: {
+          name: 'Story',
+          fieldId: 'story-field-id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'story-option-id',
+              name: storyName,
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: {
+            id: 'wms-id',
+            name: 'workflow-management',
+          },
+        },
+        remainingEstimationMinutes: null,
+        dependedIssueUrlSeparatedByComma: null,
+        completionDate50PercentConfidence: null,
+      };
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/orgs/test-org/projects/1',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project',
+        disabledStatus: 'disabled',
+        defaultStatus: null,
+        disabled: false,
+        allowIssueCacheMinutes: 60,
+      };
+
+      it('should skip story creation when cacheUsed is true', async () => {
+        mockProjectRepository.getProject.mockResolvedValue(projectWithStory);
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [],
+          cacheUsed: true,
+        });
+
+        await useCase.run(input);
+
+        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+      });
+
+      it('should skip story creation when fresh fetch returns empty issues', async () => {
+        mockProjectRepository.getProject.mockResolvedValue(projectWithStory);
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [],
+          cacheUsed: false,
+        });
+
+        await useCase.run(input);
+
+        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+      });
+    });
   });
 });

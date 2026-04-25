@@ -3,6 +3,7 @@ import { LocalStorageRepository } from '../LocalStorageRepository';
 import { Issue } from '../../../domain/entities/Issue';
 
 describe('RestIssueRepository', () => {
+  jest.setTimeout(30 * 1000);
   const localStorageRepository = new LocalStorageRepository();
   const restIssueRepository: RestIssueRepository = new RestIssueRepository(
     localStorageRepository,

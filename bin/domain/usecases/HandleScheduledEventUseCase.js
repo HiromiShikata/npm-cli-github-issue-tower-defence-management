@@ -47,44 +47,46 @@ class HandleScheduledEventUseCase {
                 project,
                 issues,
             });
-            for (const storyObject of storyIssues.values()) {
-                const projectStory = project.story;
-                if (!projectStory) {
-                    break;
-                }
-                if (storyObject.storyIssue ||
-                    storyObject.story.name.startsWith('regular / ')) {
-                    continue;
-                }
-                const issueNumber = await this.issueRepository.createNewIssue(input.org, input.workingReport.repo, storyObject.story.name, storyObject.story.description, [input.manager], ['story']);
-                const issueUrl = `https://github.com/${input.org}/${input.workingReport.repo}/issues/${issueNumber}`;
-                let issue = null;
-                for (let i = 0; i < 3; i++) {
-                    await new Promise((resolve) => setTimeout(resolve, 30 * 1000));
-                    issue = await this.issueRepository.getIssueByUrl(issueUrl);
-                    if (!issue) {
+            if (!cacheUsed && issues.length > 0) {
+                for (const storyObject of storyIssues.values()) {
+                    const projectStory = project.story;
+                    if (!projectStory) {
+                        break;
+                    }
+                    if (storyObject.storyIssue ||
+                        storyObject.story.name.startsWith('regular / ')) {
                         continue;
+                    }
+                    const issueNumber = await this.issueRepository.createNewIssue(input.org, input.workingReport.repo, storyObject.story.name, storyObject.story.description, [input.manager], ['story']);
+                    const issueUrl = `https://github.com/${input.org}/${input.workingReport.repo}/issues/${issueNumber}`;
+                    let issue = null;
+                    for (let i = 0; i < 3; i++) {
+                        await new Promise((resolve) => setTimeout(resolve, 30 * 1000));
+                        issue = await this.issueRepository.getIssueByUrl(issueUrl);
+                        if (!issue) {
+                            continue;
+                        }
+                        else if (!issue.itemId) {
+                            continue;
+                        }
+                        break;
+                    }
+                    if (!issue) {
+                        throw new Error(`Issue not found. URL: ${issueUrl}`);
                     }
                     else if (!issue.itemId) {
-                        continue;
+                        throw new Error(`Issue itemId not found. URL: ${issueUrl}`);
                     }
-                    break;
+                    await this.issueRepository.updateStory({ ...project, story: projectStory }, issue, storyObject.story.id);
+                    await new Promise((resolve) => setTimeout(resolve, 10 * 1000));
+                    const newIssue = await this.issueRepository.getIssueByUrl(issueUrl);
+                    if (!newIssue) {
+                        throw new Error(`Issue not found. URL: ${issueUrl}`);
+                    }
+                    storyObject.storyIssue = newIssue;
+                    issues.push(newIssue);
+                    storyObject.issues.push(newIssue);
                 }
-                if (!issue) {
-                    throw new Error(`Issue not found. URL: ${issueUrl}`);
-                }
-                else if (!issue.itemId) {
-                    throw new Error(`Issue itemId not found. URL: ${issueUrl}`);
-                }
-                await this.issueRepository.updateStory({ ...project, story: projectStory }, issue, storyObject.story.id);
-                await new Promise((resolve) => setTimeout(resolve, 10 * 1000));
-                const newIssue = await this.issueRepository.getIssueByUrl(issueUrl);
-                if (!newIssue) {
-                    throw new Error(`Issue not found. URL: ${issueUrl}`);
-                }
-                storyObject.storyIssue = newIssue;
-                issues.push(newIssue);
-                storyObject.issues.push(newIssue);
             }
             const targetDateTimes = await this.findTargetDateAndUpdateLastExecutionDateTime(input.workingReport.spreadsheetUrl, now);
             try {
