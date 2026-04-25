@@ -33,7 +33,6 @@ export class ApiV3CheerioRestIssueRepository
       | 'updateLabels'
       | 'removeLabel'
       | 'updateAssigneeList'
-      | 'getIssuesByLabel'
     >,
     readonly graphqlProjectItemRepository: Pick<
       GraphqlProjectItemRepository,
@@ -337,40 +336,5 @@ export class ApiV3CheerioRestIssueRepository
   };
   getStoryObjectMap = async (_project: Project): Promise<StoryObjectMap> => {
     throw new Error('getStoryObjectMap is not implemented');
-  };
-  getIssuesByLabel = async (
-    org: string,
-    repo: string,
-    label: string,
-  ): Promise<Issue[]> => {
-    const items = await this.restIssueRepository.getIssuesByLabel(
-      org,
-      repo,
-      label,
-    );
-    return items.map((item) => ({
-      nameWithOwner: `${org}/${repo}`,
-      url: item.html_url,
-      number: item.number,
-      title: item.title,
-      body: item.body,
-      labels: item.labels,
-      assignees: item.assignees,
-      state: item.state === 'open' ? ('OPEN' as const) : ('CLOSED' as const),
-      status: null,
-      story: null,
-      nextActionDate: null,
-      nextActionHour: null,
-      estimationMinutes: null,
-      dependedIssueUrls: [],
-      completionDate50PercentConfidence: null,
-      org,
-      repo,
-      itemId: '',
-      isPr: false,
-      isInProgress: false,
-      isClosed: item.state !== 'open',
-      createdAt: new Date(item.created_at),
-    }));
   };
 }

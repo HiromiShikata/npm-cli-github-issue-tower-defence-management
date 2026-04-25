@@ -241,65 +241,6 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
-  describe('getIssuesByLabel', () => {
-    it('returns issues converted from REST API response', async () => {
-      const { repository, restIssueRepository } =
-        createApiV3CheerioRestIssueRepository();
-      restIssueRepository.getIssuesByLabel.mockResolvedValue([
-        {
-          html_url: 'https://github.com/test-org/test-repo/issues/1',
-          title: 'Test Story',
-          number: 1,
-          body: 'body text',
-          labels: ['story'],
-          assignees: ['user1'],
-          state: 'open',
-          created_at: '2024-01-01T00:00:00Z',
-        },
-      ]);
-      const result = await repository.getIssuesByLabel(
-        'test-org',
-        'test-repo',
-        'story',
-      );
-      expect(result).toHaveLength(1);
-      expect(result[0].url).toBe(
-        'https://github.com/test-org/test-repo/issues/1',
-      );
-      expect(result[0].title).toBe('Test Story');
-      expect(result[0].number).toBe(1);
-      expect(result[0].org).toBe('test-org');
-      expect(result[0].repo).toBe('test-repo');
-      expect(result[0].state).toBe('OPEN');
-      expect(result[0].status).toBeNull();
-      expect(result[0].story).toBeNull();
-    });
-
-    it('returns empty array when no issues found', async () => {
-      const { repository, restIssueRepository } =
-        createApiV3CheerioRestIssueRepository();
-      restIssueRepository.getIssuesByLabel.mockResolvedValue([]);
-      const result = await repository.getIssuesByLabel(
-        'test-org',
-        'test-repo',
-        'story',
-      );
-      expect(result).toHaveLength(0);
-    });
-
-    it('delegates to restIssueRepository.getIssuesByLabel with correct params', async () => {
-      const { repository, restIssueRepository } =
-        createApiV3CheerioRestIssueRepository();
-      restIssueRepository.getIssuesByLabel.mockResolvedValue([]);
-      await repository.getIssuesByLabel('my-org', 'my-repo', 'story');
-      expect(restIssueRepository.getIssuesByLabel).toHaveBeenCalledWith(
-        'my-org',
-        'my-repo',
-        'story',
-      );
-    });
-  });
-
   const createApiV3CheerioRestIssueRepository = () => {
     const apiV3IssueRepository = mock<ApiV3IssueRepository>();
     const restIssueRepository = mock<RestIssueRepository>();
