@@ -71,8 +71,8 @@ export class ClearPastNextActionDateHourUseCase {
     for (const issue of input.issues) {
       if (
         issue.nextActionHour !== null ||
-        issue.nextActionDate === null ||
-        issue.nextActionDate.getTime() >= startOfTomorrow.getTime() ||
+        (issue.nextActionDate?.getTime() ?? Infinity) >=
+          startOfTomorrow.getTime() ||
         issue.state !== 'OPEN'
       ) {
         continue;
