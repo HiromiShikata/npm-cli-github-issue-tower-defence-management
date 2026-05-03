@@ -58,7 +58,7 @@ class HandleScheduledEventUseCase {
                     continue;
                 }
                 const storyStartTime = Date.now();
-                console.log(`[HandleScheduledEvent] Creating story issue: story="${storyObject.story.name}" title="${storyObject.story.name}"`);
+                console.log(`[HandleScheduledEvent] Creating story issue: story="${storyObject.story.name}"`);
                 const issueNumber = await this.issueRepository.createNewIssue(input.org, input.workingReport.repo, storyObject.story.name, storyObject.story.description, [input.manager], ['story']);
                 const issueUrl = `https://github.com/${input.org}/${input.workingReport.repo}/issues/${issueNumber}`;
                 let issue = null;

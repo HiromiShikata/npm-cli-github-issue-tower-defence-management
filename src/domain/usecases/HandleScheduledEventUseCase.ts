@@ -133,7 +133,7 @@ export class HandleScheduledEventUseCase {
       }
       const storyStartTime = Date.now();
       console.log(
-        `[HandleScheduledEvent] Creating story issue: story="${storyObject.story.name}" title="${storyObject.story.name}"`,
+        `[HandleScheduledEvent] Creating story issue: story="${storyObject.story.name}"`,
       );
       const issueNumber = await this.issueRepository.createNewIssue(
         input.org,
