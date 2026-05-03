@@ -113,8 +113,13 @@ export class NotifyFinishedIssuePreparationUseCase {
     }
 
     const rejections: { type: RejectedReasonType; detail: string }[] = [];
-    const lastComment = comments[comments.length - 1];
-    if (!lastComment || !lastComment.content.startsWith('From:')) {
+    const lastNonAutoCheckComment = [...comments]
+      .reverse()
+      .find((comment) => !comment.content.startsWith('Auto Status Check:'));
+    if (
+      !lastNonAutoCheckComment ||
+      !lastNonAutoCheckComment.content.startsWith('From:')
+    ) {
       rejections.push({
         type: 'NO_REPORT_FROM_AGENT_BOT',
         detail: 'NO_REPORT_FROM_AGENT_BOT',
