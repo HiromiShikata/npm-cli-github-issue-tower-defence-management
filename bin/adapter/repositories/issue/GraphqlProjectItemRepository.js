@@ -175,23 +175,38 @@ query GetProjectItems($projectId: ID!, $after: String) {
                     },
                 })
                     .json();
-                if (!response.data) {
+                if (response.errors && response.errors.length > 0) {
+                    throw new Error(`GitHub GraphQL errors: ${response.errors.map((e) => e.message).join('; ')}`);
+                }
+                const rawData = response.data;
+                if (!rawData) {
                     throw new Error('No data returned from GitHub API');
                 }
-                return response.data;
+                const rawNode = rawData.node;
+                if (rawNode === null) {
+                    throw new Error('No data returned from GitHub API');
+                }
+                return { node: rawNode };
             };
             const issues = [];
             let after = null;
             let hasNextPage = true;
+            let totalCount = 0;
+            let cumulativeRawNodes = 0;
+            let pageIndex = 0;
             while (hasNextPage) {
                 if (after !== null) {
                     await new Promise((resolve) => setTimeout(resolve, exports.PAGINATION_DELAY_MS));
                 }
                 const data = await callGraphql(projectId, after);
-                const projectItems = data.node.items.nodes;
-                projectItems
-                    // .filter(item => item.content.repository !== undefined)
-                    .forEach((item) => {
+                const pageNodes = data.node.items.nodes;
+                const pageInfo = data.node.items.pageInfo;
+                totalCount = data.node.items.totalCount;
+                cumulativeRawNodes += pageNodes.length;
+                pageIndex++;
+                console.log(`fetchProjectItems: page ${pageIndex}, nodes: ${pageNodes.length}, cumulative: ${cumulativeRawNodes}/${totalCount}`);
+                const projectItems = pageNodes;
+                projectItems.forEach((item) => {
                     if (!item || !item.content || !item.content.repository) {
                         return;
                     }
@@ -220,9 +235,17 @@ query GetProjectItems($projectId: ID!, $after: String) {
                         }),
                     });
                 });
-                const pageInfo = data.node.items.pageInfo;
+                if (pageNodes.length === 100 &&
+                    !pageInfo.hasNextPage &&
+                    cumulativeRawNodes < totalCount) {
+                    throw new Error(`fetchProjectItems: page ${pageIndex} has ${pageNodes.length} nodes with hasNextPage=false but only ${cumulativeRawNodes}/${totalCount} items accumulated`);
+                }
                 hasNextPage = pageInfo.hasNextPage;
                 after = pageInfo.endCursor;
+            }
+            console.log(`fetchProjectItems: completed, totalCount: ${totalCount}, cumulativeRawNodes: ${cumulativeRawNodes}, issues: ${issues.length}`);
+            if (cumulativeRawNodes !== totalCount) {
+                throw new Error(`fetchProjectItems: expected ${totalCount} items but accumulated ${cumulativeRawNodes}`);
             }
             return issues;
         };

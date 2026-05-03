@@ -1,3 +1,10 @@
+## [1.37.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.37.0...v1.37.1) (2026-05-03)
+
+
+### Bug Fixes
+
+* **core:** throw on incomplete fetchProjectItems response to prevent duplicate story issues ([934b539](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/934b539e4350e06c8aac6d38de4ef134241081d2))
+
 # [1.37.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.36.3...v1.37.0) (2026-05-03)
 
 
