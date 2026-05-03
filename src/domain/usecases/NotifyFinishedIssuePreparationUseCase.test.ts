@@ -319,7 +319,8 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({ content: 'From: :robot: Agent report' }),
       createMockComment({
-        content: 'Auto Status Check: REJECTED\n- ANY_CI_JOB_FAILED_OR_IN_PROGRESS',
+        content:
+          'Auto Status Check: REJECTED\n- ANY_CI_JOB_FAILED_OR_IN_PROGRESS',
       }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
