@@ -129,15 +129,14 @@ describe('RevertOrphanedPreparationUseCase', () => {
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
     });
 
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledTimes(1);
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-      mockProject,
-      stuckIssue,
-      '1',
-    );
-    expect(mockIssueRepository.createComment).toHaveBeenCalledTimes(1);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(mockProject);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toBe(stuckIssue);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+    expect(mockIssueRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockIssueRepository.createComment.mock.calls[0][0]).toBe(stuckIssue);
-    expect(mockLocalCommandRunner.runCommand).toHaveBeenCalledWith(
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][0]).toBe(
       'pgrep -fa "claude-agent.*https://github.com/user/repo/issues/10"',
     );
   });
@@ -165,8 +164,8 @@ describe('RevertOrphanedPreparationUseCase', () => {
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
     });
 
-    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
-    expect(mockIssueRepository.createComment).not.toHaveBeenCalled();
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.createComment.mock.calls).toHaveLength(0);
   });
 
   it('should only process issues in Preparation status and skip others', async () => {
@@ -196,11 +195,11 @@ describe('RevertOrphanedPreparationUseCase', () => {
       preparationProcessCheckCommand: 'check {URL}',
     });
 
-    expect(mockLocalCommandRunner.runCommand).toHaveBeenCalledTimes(1);
-    expect(mockLocalCommandRunner.runCommand).toHaveBeenCalledWith(
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][0]).toBe(
       'check https://github.com/user/repo/issues/10',
     );
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledTimes(1);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
   });
 
   it('should handle mixed in-flight and stuck Preparation issues correctly', async () => {
@@ -232,13 +231,9 @@ describe('RevertOrphanedPreparationUseCase', () => {
       preparationProcessCheckCommand: 'check {URL}',
     });
 
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledTimes(1);
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-      mockProject,
-      stuckIssue,
-      '1',
-    );
-    expect(mockIssueRepository.createComment).toHaveBeenCalledTimes(1);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toBe(stuckIssue);
+    expect(mockIssueRepository.createComment.mock.calls).toHaveLength(1);
   });
 
   it('should throw when project is not found by URL', async () => {
@@ -272,8 +267,8 @@ describe('RevertOrphanedPreparationUseCase', () => {
       preparationProcessCheckCommand: 'check {URL}',
     });
 
-    expect(mockLocalCommandRunner.runCommand).not.toHaveBeenCalled();
-    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
   });
 
   it('should substitute {URL} placeholder with the issue URL in the check command', async () => {
@@ -299,7 +294,8 @@ describe('RevertOrphanedPreparationUseCase', () => {
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
     });
 
-    expect(mockLocalCommandRunner.runCommand).toHaveBeenCalledWith(
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][0]).toBe(
       'pgrep -fa "claude-agent.*https://github.com/org/project/issues/99"',
     );
   });
