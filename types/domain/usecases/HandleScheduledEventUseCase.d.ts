@@ -8,7 +8,7 @@ import { DateRepository } from './adapter-interfaces/DateRepository';
 import { SpreadsheetRepository } from './adapter-interfaces/SpreadsheetRepository';
 import { ActionAnnouncementUseCase } from './ActionAnnouncementUseCase';
 import { SetWorkflowManagementIssueToStoryUseCase } from './SetWorkflowManagementIssueToStoryUseCase';
-import { ClearNextActionHourUseCase } from './ClearNextActionHourUseCase';
+import { ClearPastNextActionDateHourUseCase } from './ClearPastNextActionDateHourUseCase';
 import { AnalyzeProblemByIssueUseCase } from './AnalyzeProblemByIssueUseCase';
 import { AnalyzeStoriesUseCase } from './AnalyzeStoriesUseCase';
 import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
@@ -27,7 +27,7 @@ export declare class ProjectNotFoundError extends Error {
 export declare class HandleScheduledEventUseCase {
     readonly actionAnnouncementUseCase: ActionAnnouncementUseCase;
     readonly setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase;
-    readonly clearNextActionHourUseCase: ClearNextActionHourUseCase;
+    readonly clearPastNextActionUseCase: ClearPastNextActionDateHourUseCase;
     readonly analyzeProblemByIssueUseCase: AnalyzeProblemByIssueUseCase;
     readonly analyzeStoriesUseCase: AnalyzeStoriesUseCase;
     readonly clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase;
@@ -44,7 +44,7 @@ export declare class HandleScheduledEventUseCase {
     readonly spreadsheetRepository: SpreadsheetRepository;
     readonly projectRepository: ProjectRepository;
     readonly issueRepository: IssueRepository;
-    constructor(actionAnnouncementUseCase: ActionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase: ClearNextActionHourUseCase, analyzeProblemByIssueUseCase: AnalyzeProblemByIssueUseCase, analyzeStoriesUseCase: AnalyzeStoriesUseCase, clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase, createEstimationIssueUseCase: CreateEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase: ConvertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase: SetNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase: CreateNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase: AssignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase: UpdateIssueStatusByLabelUseCase, startPreparationUseCase: StartPreparationUseCase, notifyFinishedIssuePreparationUseCase: NotifyFinishedIssuePreparationUseCase, dateRepository: DateRepository, spreadsheetRepository: SpreadsheetRepository, projectRepository: ProjectRepository, issueRepository: IssueRepository);
+    constructor(actionAnnouncementUseCase: ActionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase: ClearPastNextActionDateHourUseCase, analyzeProblemByIssueUseCase: AnalyzeProblemByIssueUseCase, analyzeStoriesUseCase: AnalyzeStoriesUseCase, clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase, createEstimationIssueUseCase: CreateEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase: ConvertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase: SetNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase: CreateNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase: AssignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase: UpdateIssueStatusByLabelUseCase, startPreparationUseCase: StartPreparationUseCase, notifyFinishedIssuePreparationUseCase: NotifyFinishedIssuePreparationUseCase, dateRepository: DateRepository, spreadsheetRepository: SpreadsheetRepository, projectRepository: ProjectRepository, issueRepository: IssueRepository);
     run: (input: {
         projectName: string;
         org: string;

@@ -1,3 +1,15 @@
+# [1.37.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.36.3...v1.37.0) (2026-05-03)
+
+
+### Bug Fixes
+
+* **core:** remove explicit null check in date skip condition ([dc7df7d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/dc7df7d4d5f69dab16c5bcf410fb92044e5d1c62))
+
+
+### Features
+
+* **core:** clear nextActionDate when it is before today ([0136f37](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0136f375e04ce37bf730bc7a121a563aa3e1b679))
+
 ## [1.36.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.36.2...v1.36.3) (2026-04-17)
 
 

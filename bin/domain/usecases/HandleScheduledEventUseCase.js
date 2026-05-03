@@ -9,10 +9,10 @@ class ProjectNotFoundError extends Error {
 }
 exports.ProjectNotFoundError = ProjectNotFoundError;
 class HandleScheduledEventUseCase {
-    constructor(actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearNextActionHourUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, notifyFinishedIssuePreparationUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
+    constructor(actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, notifyFinishedIssuePreparationUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
         this.actionAnnouncementUseCase = actionAnnouncementUseCase;
         this.setWorkflowManagementIssueToStoryUseCase = setWorkflowManagementIssueToStoryUseCase;
-        this.clearNextActionHourUseCase = clearNextActionHourUseCase;
+        this.clearPastNextActionUseCase = clearPastNextActionUseCase;
         this.analyzeProblemByIssueUseCase = analyzeProblemByIssueUseCase;
         this.analyzeStoriesUseCase = analyzeStoriesUseCase;
         this.clearDependedIssueURLUseCase = clearDependedIssueURLUseCase;
@@ -133,7 +133,7 @@ ${JSON.stringify(e)}
                 members: input.workingReport.members,
                 manager: input.manager,
             });
-            await this.clearNextActionHourUseCase.run({
+            await this.clearPastNextActionUseCase.run({
                 targetDates: targetDateTimes,
                 project,
                 issues,
