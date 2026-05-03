@@ -8,7 +8,7 @@ import { DateRepository } from './adapter-interfaces/DateRepository';
 import { SpreadsheetRepository } from './adapter-interfaces/SpreadsheetRepository';
 import { ActionAnnouncementUseCase } from './ActionAnnouncementUseCase';
 import { SetWorkflowManagementIssueToStoryUseCase } from './SetWorkflowManagementIssueToStoryUseCase';
-import { ClearNextActionHourUseCase } from './ClearNextActionHourUseCase';
+import { ClearPastNextActionDateHourUseCase } from './ClearPastNextActionDateHourUseCase';
 import { AnalyzeProblemByIssueUseCase } from './AnalyzeProblemByIssueUseCase';
 import { AnalyzeStoriesUseCase } from './AnalyzeStoriesUseCase';
 import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
@@ -33,7 +33,7 @@ export class HandleScheduledEventUseCase {
   constructor(
     readonly actionAnnouncementUseCase: ActionAnnouncementUseCase,
     readonly setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase,
-    readonly clearNextActionHourUseCase: ClearNextActionHourUseCase,
+    readonly clearPastNextActionUseCase: ClearPastNextActionDateHourUseCase,
     readonly analyzeProblemByIssueUseCase: AnalyzeProblemByIssueUseCase,
     readonly analyzeStoriesUseCase: AnalyzeStoriesUseCase,
     readonly clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase,
@@ -241,7 +241,7 @@ ${JSON.stringify(e)}
       members: input.workingReport.members,
       manager: input.manager,
     });
-    await this.clearNextActionHourUseCase.run({
+    await this.clearPastNextActionUseCase.run({
       targetDates: targetDateTimes,
       project,
       issues,

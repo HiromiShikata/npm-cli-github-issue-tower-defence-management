@@ -38,9 +38,14 @@ jest.mock(
       .mockImplementation(() => ({})),
   }),
 );
-jest.mock('../../../domain/usecases/ClearNextActionHourUseCase', () => ({
-  ClearNextActionHourUseCase: jest.fn().mockImplementation(() => ({})),
-}));
+jest.mock(
+  '../../../domain/usecases/ClearPastNextActionDateHourUseCase',
+  () => ({
+    ClearPastNextActionDateHourUseCase: jest
+      .fn()
+      .mockImplementation(() => ({})),
+  }),
+);
 jest.mock('../../../domain/usecases/AnalyzeProblemByIssueUseCase', () => ({
   AnalyzeProblemByIssueUseCase: jest.fn().mockImplementation(() => ({})),
 }));
