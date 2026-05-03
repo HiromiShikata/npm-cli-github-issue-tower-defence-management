@@ -177,6 +177,27 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('getAllIssues throws when fetchProjectItems throws', () => {
+    it('should not write cache and should propagate error when fetchProjectItems throws', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const fetchError = new Error(
+        'fetchProjectItems: expected 5 items but accumulated 1',
+      );
+      graphqlProjectItemRepository.fetchProjectItems.mockRejectedValue(
+        fetchError,
+      );
+
+      await expect(repository.getAllIssues('test-project-id', 1)).rejects.toThrow(
+        fetchError,
+      );
+      expect(localStorageCacheRepository.set).not.toHaveBeenCalled();
+    });
+  });
+
   describe('updateStatus', () => {
     it('should call graphqlProjectItemRepository.updateProjectField with correct parameters', async () => {
       const { repository, graphqlProjectItemRepository } =

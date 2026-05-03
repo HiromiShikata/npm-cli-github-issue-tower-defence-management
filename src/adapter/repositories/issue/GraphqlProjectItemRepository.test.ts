@@ -25,12 +25,16 @@ const mockJsonResponse = <T>(data: T) => ({
 });
 
 describe('GraphqlProjectItemRepository', () => {
-  const makePageResponse = (hasNextPage: boolean, endCursor: string) =>
+  const makePageResponse = (
+    hasNextPage: boolean,
+    endCursor: string,
+    totalCount = 2,
+  ) =>
     mockJsonResponse({
       data: {
         node: {
           items: {
-            totalCount: 2,
+            totalCount,
             pageInfo: {
               endCursor,
               startCursor: 'cursor-start',
@@ -101,6 +105,155 @@ describe('GraphqlProjectItemRepository', () => {
       setTimeoutSpy.mockRestore();
     });
 
+    it('should throw when response contains GraphQL errors alongside partial data', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        '',
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            node: {
+              items: {
+                totalCount: 1,
+                pageInfo: {
+                  endCursor: 'cursor-1',
+                  startCursor: 'cursor-start',
+                  hasNextPage: false,
+                },
+                nodes: [
+                  {
+                    id: 'item-partial',
+                    fieldValues: { nodes: [] },
+                    content: {
+                      repository: { nameWithOwner: 'owner/repo' },
+                      number: 1,
+                      title: 'Partial Issue',
+                      state: 'OPEN',
+                      url: 'https://github.com/owner/repo/issues/1',
+                      body: 'body',
+                      createdAt: '2024-01-01T00:00:00Z',
+                      labels: { nodes: [] },
+                      assignees: { nodes: [] },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+          errors: [{ message: 'RATE_LIMITED' }],
+        }),
+      );
+
+      await expect(
+        repository.fetchProjectItems('test-project-id'),
+      ).rejects.toThrow('GitHub GraphQL errors: RATE_LIMITED');
+    });
+
+    it('should throw when node is null in response', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        '',
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: { node: null },
+        }),
+      );
+
+      await expect(
+        repository.fetchProjectItems('test-project-id'),
+      ).rejects.toThrow('No data returned from GitHub API');
+    });
+
+    it('should throw when accumulated nodes count does not match totalCount', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        '',
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            node: {
+              items: {
+                totalCount: 5,
+                pageInfo: {
+                  endCursor: 'cursor-1',
+                  startCursor: 'cursor-start',
+                  hasNextPage: false,
+                },
+                nodes: [
+                  {
+                    id: 'item-1',
+                    fieldValues: { nodes: [] },
+                    content: {
+                      repository: { nameWithOwner: 'owner/repo' },
+                      number: 1,
+                      title: 'Test Issue',
+                      state: 'OPEN',
+                      url: 'https://github.com/owner/repo/issues/1',
+                      body: 'body',
+                      createdAt: '2024-01-01T00:00:00Z',
+                      labels: { nodes: [] },
+                      assignees: { nodes: [] },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        }),
+      );
+
+      await expect(
+        repository.fetchProjectItems('test-project-id'),
+      ).rejects.toThrow(
+        'fetchProjectItems: expected 5 items but accumulated 1',
+      );
+    });
+
+    it('should throw when page has no nodes but totalCount is positive', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        '',
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            node: {
+              items: {
+                totalCount: 2,
+                pageInfo: {
+                  endCursor: 'cursor-1',
+                  startCursor: 'cursor-start',
+                  hasNextPage: false,
+                },
+                nodes: [],
+              },
+            },
+          },
+        }),
+      );
+
+      await expect(
+        repository.fetchProjectItems('test-project-id'),
+      ).rejects.toThrow(
+        'fetchProjectItems: expected 2 items but accumulated 0',
+      );
+    });
+
     it('should not sleep on first request when there is only one page', async () => {
       const localStorageRepository = new LocalStorageRepository();
       const repository = new GraphqlProjectItemRepository(
@@ -110,7 +263,7 @@ describe('GraphqlProjectItemRepository', () => {
       );
 
       const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
-      mockPost.mockReturnValueOnce(makePageResponse(false, 'cursor-1'));
+      mockPost.mockReturnValueOnce(makePageResponse(false, 'cursor-1', 1));
 
       const result = await repository.fetchProjectItems('test-project-id');
 
