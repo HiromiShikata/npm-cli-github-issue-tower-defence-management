@@ -21,6 +21,8 @@ export class IllegalIssueStatusError extends Error {
     this.name = 'IllegalIssueStatusError';
   }
 }
+const AUTO_STATUS_CHECK_COMMENT_PREFIX = 'Auto Status Check:';
+
 type RejectedReasonType =
   | 'NO_REPORT_FROM_AGENT_BOT'
   | 'PULL_REQUEST_NOT_FOUND'
@@ -92,7 +94,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     );
     if (
       lastTargetComments.filter((comment) =>
-        comment.content.startsWith('Auto Status Check: REJECTED'),
+        comment.content.startsWith(AUTO_STATUS_CHECK_COMMENT_PREFIX),
       ).length >= params.thresholdForAutoReject &&
       !lastTargetComments.some((comment) =>
         comment.content.toLowerCase().startsWith('retry'),
@@ -115,7 +117,10 @@ export class NotifyFinishedIssuePreparationUseCase {
     const rejections: { type: RejectedReasonType; detail: string }[] = [];
     const lastNonAutoCheckComment = [...comments]
       .reverse()
-      .find((comment) => !comment.content.startsWith('Auto Status Check:'));
+      .find(
+        (comment) =>
+          !comment.content.startsWith(AUTO_STATUS_CHECK_COMMENT_PREFIX),
+      );
     if (
       !lastNonAutoCheckComment ||
       !lastNonAutoCheckComment.content.startsWith('From:')
@@ -194,7 +199,7 @@ export class NotifyFinishedIssuePreparationUseCase {
 
     await this.issueCommentRepository.createComment(
       issue,
-      `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`,
+      `${AUTO_STATUS_CHECK_COMMENT_PREFIX} REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`,
     );
   };
 
