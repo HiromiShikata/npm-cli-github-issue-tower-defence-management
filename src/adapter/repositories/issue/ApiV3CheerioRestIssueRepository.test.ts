@@ -191,9 +191,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         fetchError,
       );
 
-      await expect(repository.getAllIssues('test-project-id', 1)).rejects.toThrow(
-        fetchError,
-      );
+      await expect(
+        repository.getAllIssues('test-project-id', 1),
+      ).rejects.toThrow(fetchError);
       expect(localStorageCacheRepository.set).not.toHaveBeenCalled();
     });
   });
