@@ -153,6 +153,25 @@ describe('GraphqlProjectItemRepository', () => {
       ).rejects.toThrow('GitHub GraphQL errors: RATE_LIMITED');
     });
 
+    it('should throw when data is null in response', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        '',
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: null,
+        }),
+      );
+
+      await expect(
+        repository.fetchProjectItems('test-project-id'),
+      ).rejects.toThrow('No data returned from GitHub API');
+    });
+
     it('should throw when node is null in response', async () => {
       const localStorageRepository = new LocalStorageRepository();
       const repository = new GraphqlProjectItemRepository(
