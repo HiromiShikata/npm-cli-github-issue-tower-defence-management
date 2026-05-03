@@ -281,17 +281,31 @@ query GetProjectItems($projectId: ID!, $after: String) {
                   };
                 }[];
               };
-            };
-          };
+            } | null;
+          } | null;
+          errors?: { message: string }[];
         }>();
-      if (!response.data) {
+      if (response.errors && response.errors.length > 0) {
+        throw new Error(
+          `GitHub GraphQL errors: ${response.errors.map((e) => e.message).join('; ')}`,
+        );
+      }
+      const rawData = response.data;
+      if (!rawData) {
         throw new Error('No data returned from GitHub API');
       }
-      return response.data;
+      const rawNode = rawData.node;
+      if (rawNode === null) {
+        throw new Error('No data returned from GitHub API');
+      }
+      return { node: rawNode };
     };
     const issues: ProjectItem[] = [];
     let after: string | null = null;
     let hasNextPage = true;
+    let totalCount = 0;
+    let cumulativeRawNodes = 0;
+    let pageIndex = 0;
 
     while (hasNextPage) {
       if (after !== null) {
@@ -300,6 +314,14 @@ query GetProjectItems($projectId: ID!, $after: String) {
         );
       }
       const data = await callGraphql(projectId, after);
+      const pageNodes = data.node.items.nodes;
+      const pageInfo = data.node.items.pageInfo;
+      totalCount = data.node.items.totalCount;
+      cumulativeRawNodes += pageNodes.length;
+      pageIndex++;
+      console.log(
+        `fetchProjectItems: page ${pageIndex}, nodes: ${pageNodes.length}, cumulative: ${cumulativeRawNodes}/${totalCount}`,
+      );
       const projectItems: {
         id: string;
         fieldValues: {
@@ -324,42 +346,56 @@ query GetProjectItems($projectId: ID!, $after: String) {
           labels: { nodes: { name: string }[] };
           assignees: { nodes: { login: string }[] };
         };
-      }[] = data.node.items.nodes;
-      projectItems
-        // .filter(item => item.content.repository !== undefined)
-        .forEach((item) => {
-          if (!item || !item.content || !item.content.repository) {
-            return;
-          }
-          issues.push({
-            id: item.id,
-            nameWithOwner: item.content.repository.nameWithOwner,
-            number: item.content.number,
-            title: item.content.title,
-            state: this.convertStrToState(item.content.state),
-            url: item.content.url,
-            body: item.content.body,
-            labels: item.content.labels?.nodes?.map((l) => l.name) || [],
-            assignees: item.content.assignees?.nodes?.map((a) => a.login) || [],
-            createdAt: item.content.createdAt || new Date().toISOString(),
-            customFields: item.fieldValues.nodes
-              .filter((field) => !!field.field)
-              .map((field) => {
-                return {
-                  name: field.field.name,
-                  value:
-                    field.name ??
-                    field.text ??
-                    field.number?.toString() ??
-                    field.date ??
-                    null,
-                };
-              }),
-          });
+      }[] = pageNodes;
+      projectItems.forEach((item) => {
+        if (!item || !item.content || !item.content.repository) {
+          return;
+        }
+        issues.push({
+          id: item.id,
+          nameWithOwner: item.content.repository.nameWithOwner,
+          number: item.content.number,
+          title: item.content.title,
+          state: this.convertStrToState(item.content.state),
+          url: item.content.url,
+          body: item.content.body,
+          labels: item.content.labels?.nodes?.map((l) => l.name) || [],
+          assignees: item.content.assignees?.nodes?.map((a) => a.login) || [],
+          createdAt: item.content.createdAt || new Date().toISOString(),
+          customFields: item.fieldValues.nodes
+            .filter((field) => !!field.field)
+            .map((field) => {
+              return {
+                name: field.field.name,
+                value:
+                  field.name ??
+                  field.text ??
+                  field.number?.toString() ??
+                  field.date ??
+                  null,
+              };
+            }),
         });
-      const pageInfo = data.node.items.pageInfo;
+      });
+      if (
+        pageNodes.length === 100 &&
+        !pageInfo.hasNextPage &&
+        cumulativeRawNodes < totalCount
+      ) {
+        throw new Error(
+          `fetchProjectItems: page ${pageIndex} has ${pageNodes.length} nodes with hasNextPage=false but only ${cumulativeRawNodes}/${totalCount} items accumulated`,
+        );
+      }
       hasNextPage = pageInfo.hasNextPage;
       after = pageInfo.endCursor;
+    }
+    console.log(
+      `fetchProjectItems: completed, totalCount: ${totalCount}, cumulativeRawNodes: ${cumulativeRawNodes}, issues: ${issues.length}`,
+    );
+    if (cumulativeRawNodes !== totalCount) {
+      throw new Error(
+        `fetchProjectItems: expected ${totalCount} items but accumulated ${cumulativeRawNodes}`,
+      );
     }
     return issues;
   };
