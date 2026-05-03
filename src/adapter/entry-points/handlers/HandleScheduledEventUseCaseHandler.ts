@@ -33,6 +33,7 @@ import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparati
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
 import { StubClaudeRepository } from '../../repositories/StubClaudeRepository';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
+import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
 
@@ -186,6 +187,12 @@ export class HandleScheduledEventUseCaseHandler {
         issueCommentRepository,
         webhookRepository,
       );
+    const revertOrphanedPreparationUseCase =
+      new RevertOrphanedPreparationUseCase(
+        projectRepository,
+        issueRepository,
+        nodeLocalCommandRunner,
+      );
 
     const handleScheduledEventUseCase = new HandleScheduledEventUseCase(
       actionAnnouncement,
@@ -203,6 +210,7 @@ export class HandleScheduledEventUseCaseHandler {
       updateIssueStatusByLabelUseCase,
       startPreparationUseCase,
       notifyFinishedIssuePreparationUseCase,
+      revertOrphanedPreparationUseCase,
       systemDateRepository,
       googleSpreadsheetRepository,
       projectRepository,

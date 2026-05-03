@@ -36,6 +36,7 @@ Options for startDaemon:
   --logFilePath <path>                             Path to log file
   --maximumPreparingIssuesCount <count>            Maximum number of issues in preparation status (default: 6)
   --allowIssueCacheMinutes <minutes>               Allow cache for issues in minutes (default: 0)
+  --preparationProcessCheckCommand <template>      Shell command template with {URL} placeholder to check if a preparation process is alive
 
 Options for notifyFinishedIssuePreparation:
   --configFilePath <path>                          Path to config file for tower defence management (required)
@@ -97,6 +98,7 @@ startPreparation?: # Optional: Enable automatic issue preparation workflow
   defaultAgentName: string # Default agent name to assign for preparation
   logFilePath?: string # Optional: Path to log file for preparation output
   maximumPreparingIssuesCount: number | null # Max concurrent preparing issues (null = unlimited)
+  preparationProcessCheckCommand?: string # Optional: Shell command template with {URL} placeholder to check if a preparation process is alive. When set, issues in Preparation whose process exits non-zero are reverted to awaitingWorkspaceStatus before new issues are started
 notifyFinishedPreparation?: # Optional: Enable notification when issue preparation is finished
   preparationStatus: string # Status name for issues in preparation
   awaitingWorkspaceStatus: string # Status name for issues awaiting workspace
@@ -140,6 +142,7 @@ startPreparation:
   defaultAgentName: 'umino-bot'
   logFilePath: '/tmp/preparation.log'
   maximumPreparingIssuesCount: 3
+  preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"'
 notifyFinishedPreparation:
   preparationStatus: 'Preparation'
   awaitingWorkspaceStatus: 'Awaiting Workspace'
@@ -164,6 +167,7 @@ allowIssueCacheMinutes?: number # Optional: Allow cache for issues in minutes (d
 awaitingQualityCheckStatus: string # Status name for issues awaiting quality check
 thresholdForAutoReject?: number # Optional: Consecutive rejections before escalation (default: 3)
 workflowBlockerResolvedWebhookUrl?: string # Optional: Webhook URL. Supports {URL} and {MESSAGE} placeholders
+preparationProcessCheckCommand?: string # Optional: Shell command template with {URL} placeholder to check if a preparation process is alive. Issues in Preparation whose process exits non-zero are reverted to awaitingWorkspaceStatus
 ```
 
 Example:
@@ -180,6 +184,7 @@ allowIssueCacheMinutes: 5
 awaitingQualityCheckStatus: 'Awaiting Quality Check'
 thresholdForAutoReject: 3
 workflowBlockerResolvedWebhookUrl: 'https://example.com/webhook?url={URL}&msg={MESSAGE}'
+preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"'
 ```
 
 #### README-based Config Overrides
