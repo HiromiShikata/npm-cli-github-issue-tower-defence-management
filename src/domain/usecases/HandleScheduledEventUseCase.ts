@@ -21,6 +21,7 @@ import { AssignNoAssigneeIssueToManagerUseCase } from './AssignNoAssigneeIssueTo
 import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCase';
 import { StartPreparationUseCase } from './StartPreparationUseCase';
 import { NotifyFinishedIssuePreparationUseCase } from './NotifyFinishedIssuePreparationUseCase';
+import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
 
 export class ProjectNotFoundError extends Error {
   constructor(message: string) {
@@ -46,6 +47,7 @@ export class HandleScheduledEventUseCase {
     readonly updateIssueStatusByLabelUseCase: UpdateIssueStatusByLabelUseCase,
     readonly startPreparationUseCase: StartPreparationUseCase,
     readonly notifyFinishedIssuePreparationUseCase: NotifyFinishedIssuePreparationUseCase,
+    readonly revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase,
     readonly dateRepository: DateRepository,
     readonly spreadsheetRepository: SpreadsheetRepository,
     readonly projectRepository: ProjectRepository,
@@ -73,6 +75,7 @@ export class HandleScheduledEventUseCase {
       defaultAgentName: string;
       logFilePath?: string;
       maximumPreparingIssuesCount: number | null;
+      preparationProcessCheckCommand?: string;
     } | null;
     notifyFinishedPreparation?: {
       preparationStatus: string;
@@ -311,6 +314,17 @@ ${JSON.stringify(e)}
       defaultStatus: input.defaultStatus,
     });
     if (input.startPreparation) {
+      if (input.startPreparation.preparationProcessCheckCommand) {
+        await this.revertOrphanedPreparationUseCase.run({
+          projectUrl: input.projectUrl,
+          preparationStatus: input.startPreparation.preparationStatus,
+          awaitingWorkspaceStatus:
+            input.startPreparation.awaitingWorkspaceStatus,
+          allowIssueCacheMinutes: input.allowIssueCacheMinutes,
+          preparationProcessCheckCommand:
+            input.startPreparation.preparationProcessCheckCommand,
+        });
+      }
       await this.startPreparationUseCase.run({
         projectUrl: input.projectUrl,
         awaitingWorkspaceStatus: input.startPreparation.awaitingWorkspaceStatus,

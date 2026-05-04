@@ -20,6 +20,7 @@ import { AssignNoAssigneeIssueToManagerUseCase } from './AssignNoAssigneeIssueTo
 import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCase';
 import { StartPreparationUseCase } from './StartPreparationUseCase';
 import { NotifyFinishedIssuePreparationUseCase } from './NotifyFinishedIssuePreparationUseCase';
+import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
 
 describe('HandleScheduledEventUseCase', () => {
   describe('createTargetDateTimes', () => {
@@ -105,6 +106,8 @@ describe('HandleScheduledEventUseCase', () => {
     const mockStartPreparationUseCase = mock<StartPreparationUseCase>();
     const mockNotifyFinishedIssuePreparationUseCase =
       mock<NotifyFinishedIssuePreparationUseCase>();
+    const mockRevertOrphanedPreparationUseCase =
+      mock<RevertOrphanedPreparationUseCase>();
     const mockDateRepository = mock<DateRepository>();
     const mockSpreadsheetRepository = mock<SpreadsheetRepository>();
     const mockProjectRepository = mock<ProjectRepository>();
@@ -126,6 +129,7 @@ describe('HandleScheduledEventUseCase', () => {
       mockUpdateIssueStatusByLabelUseCase,
       mockStartPreparationUseCase,
       mockNotifyFinishedIssuePreparationUseCase,
+      mockRevertOrphanedPreparationUseCase,
       mockDateRepository,
       mockSpreadsheetRepository,
       mockProjectRepository,

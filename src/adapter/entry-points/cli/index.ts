@@ -18,6 +18,7 @@ import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunne
 import { OauthAPIClaudeRepository } from '../../repositories/OauthAPIClaudeRepository';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
+import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import { Project } from '../../../domain/entities/Project';
 
 type ConfigFile = {
@@ -32,6 +33,7 @@ type ConfigFile = {
   thresholdForAutoReject?: number;
   workflowBlockerResolvedWebhookUrl?: string;
   projectName?: string;
+  preparationProcessCheckCommand?: string;
 };
 
 type StartDaemonOptions = {
@@ -42,6 +44,7 @@ type StartDaemonOptions = {
   logFilePath?: string;
   maximumPreparingIssuesCount?: string;
   allowIssueCacheMinutes?: string;
+  preparationProcessCheckCommand?: string;
   configFilePath: string;
 };
 
@@ -106,6 +109,10 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         'workflowBlockerResolvedWebhookUrl',
       ),
       projectName: getStringValue(parsed, 'projectName'),
+      preparationProcessCheckCommand: getStringValue(
+        parsed,
+        'preparationProcessCheckCommand',
+      ),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -153,6 +160,10 @@ export const parseProjectReadmeConfig = (readme: string): ConfigFile => {
       workflowBlockerResolvedWebhookUrl: getStringValue(
         parsed,
         'workflowBlockerResolvedWebhookUrl',
+      ),
+      preparationProcessCheckCommand: getStringValue(
+        parsed,
+        'preparationProcessCheckCommand',
       ),
     };
   } catch {
@@ -204,6 +215,10 @@ export const mergeConfigs = (
     cliOverrides.workflowBlockerResolvedWebhookUrl ??
     configFile.workflowBlockerResolvedWebhookUrl,
   projectName: configFile.projectName,
+  preparationProcessCheckCommand:
+    readmeOverrides.preparationProcessCheckCommand ??
+    cliOverrides.preparationProcessCheckCommand ??
+    configFile.preparationProcessCheckCommand,
 });
 
 type GraphqlProjectV2ReadmeResponse = {
@@ -355,6 +370,10 @@ program
     '--allowIssueCacheMinutes <minutes>',
     'Allow cache for issues in minutes (default: 0)',
   )
+  .option(
+    '--preparationProcessCheckCommand <template>',
+    'Shell command template with {URL} placeholder to check if a preparation process is alive',
+  )
   .action(async (options: StartDaemonOptions) => {
     const token = process.env.GH_TOKEN;
     if (!token) {
@@ -376,6 +395,7 @@ program
       allowIssueCacheMinutes: options.allowIssueCacheMinutes
         ? Number(options.allowIssueCacheMinutes)
         : undefined,
+      preparationProcessCheckCommand: options.preparationProcessCheckCommand,
     };
 
     const tempProjectUrl =
@@ -483,6 +503,23 @@ program
     );
     const claudeRepository = new OauthAPIClaudeRepository();
     const localCommandRunner = new NodeLocalCommandRunner();
+
+    const preparationProcessCheckCommand =
+      config.preparationProcessCheckCommand;
+    if (preparationProcessCheckCommand) {
+      const revertUseCase = new RevertOrphanedPreparationUseCase(
+        projectRepository,
+        issueRepository,
+        localCommandRunner,
+      );
+      await revertUseCase.run({
+        projectUrl,
+        preparationStatus,
+        awaitingWorkspaceStatus,
+        allowIssueCacheMinutes,
+        preparationProcessCheckCommand,
+      });
+    }
 
     const useCase = new StartPreparationUseCase(
       projectRepository,
