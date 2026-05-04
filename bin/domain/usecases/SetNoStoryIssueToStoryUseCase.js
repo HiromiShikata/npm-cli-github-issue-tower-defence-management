@@ -13,11 +13,11 @@ class SetNoStoryIssueToStoryUseCase {
             }
             const isTargetIssue = (issue) => {
                 return (issue.story === null &&
+                    !issue.labels.some((label) => label.toLowerCase().startsWith('story:')) &&
                     (issue.nextActionDate === null ||
                         issue.nextActionDate.getTime() <= input.targetDates[0].getTime()) &&
                     issue.nextActionHour === null &&
-                    issue.state === 'OPEN' &&
-                    issue.story === null);
+                    issue.state === 'OPEN');
             };
             const firstStory = input.project.story?.stories[0];
             if (!firstStory) {

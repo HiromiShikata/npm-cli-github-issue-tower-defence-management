@@ -1,3 +1,10 @@
+## [1.38.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.38.0...v1.38.1) (2026-05-04)
+
+
+### Bug Fixes
+
+* **core:** skip issues with story: label in SetNoStoryIssueToStoryUseCase ([9e325a3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9e325a3eaccc1e2c3ea5ca3288b459ed12d4d08e))
+
 # [1.38.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.37.1...v1.38.0) (2026-05-04)
 
 
