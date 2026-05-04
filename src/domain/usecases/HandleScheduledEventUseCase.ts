@@ -131,6 +131,10 @@ export class HandleScheduledEventUseCase {
       ) {
         continue;
       }
+      const storyStartTime = Date.now();
+      console.log(
+        `[HandleScheduledEvent] Creating story issue: story="${storyObject.story.name}"`,
+      );
       const issueNumber = await this.issueRepository.createNewIssue(
         input.org,
         input.workingReport.repo,
@@ -142,13 +146,17 @@ export class HandleScheduledEventUseCase {
       const issueUrl = `https://github.com/${input.org}/${input.workingReport.repo}/issues/${issueNumber}`;
       let issue: Issue | null = null;
       for (let i = 0; i < 3; i++) {
+        console.log(
+          `[HandleScheduledEvent] Polling for issue (attempt ${i + 1}/3): url=${issueUrl}`,
+        );
         await new Promise((resolve) => setTimeout(resolve, 30 * 1000));
         issue = await this.issueRepository.getIssueByUrl(issueUrl);
-        if (!issue) {
-          continue;
-        } else if (!issue.itemId) {
+        if (!issue || !issue.itemId) {
           continue;
         }
+        console.log(
+          `[HandleScheduledEvent] Issue found: url=${issueUrl} itemId=${issue.itemId}`,
+        );
         break;
       }
       if (!issue) {
@@ -161,6 +169,9 @@ export class HandleScheduledEventUseCase {
         issue,
         storyObject.story.id,
       );
+      console.log(
+        `[HandleScheduledEvent] Waiting for story update: url=${issueUrl}`,
+      );
       await new Promise((resolve) => setTimeout(resolve, 10 * 1000));
       const newIssue = await this.issueRepository.getIssueByUrl(issueUrl);
       if (!newIssue) {
@@ -169,6 +180,9 @@ export class HandleScheduledEventUseCase {
       storyObject.storyIssue = newIssue;
       issues.push(newIssue);
       storyObject.issues.push(newIssue);
+      console.log(
+        `[HandleScheduledEvent] Story issue created: story="${storyObject.story.name}" elapsed=${Date.now() - storyStartTime}ms`,
+      );
     }
 
     const targetDateTimes: Date[] =

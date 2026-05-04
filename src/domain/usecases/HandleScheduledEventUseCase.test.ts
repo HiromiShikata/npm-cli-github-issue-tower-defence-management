@@ -12,6 +12,7 @@ import { DateRepository } from './adapter-interfaces/DateRepository';
 import { SpreadsheetRepository } from './adapter-interfaces/SpreadsheetRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
+import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { ChangeStatusByStoryColorUseCase } from './ChangeStatusByStoryColorUseCase';
 import { SetNoStoryIssueToStoryUseCase } from './SetNoStoryIssueToStoryUseCase';
@@ -308,6 +309,151 @@ describe('HandleScheduledEventUseCase', () => {
         'project-1',
         120,
       );
+    });
+
+    describe('story issue creation progress logs', () => {
+      const storyInput = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabledStatus: 'disabled',
+        defaultStatus: null,
+        disabled: false,
+        allowIssueCacheMinutes: 60,
+      };
+
+      const storyProject: Project = {
+        id: 'proj-1',
+        url: 'https://github.com/orgs/test-org/projects/1',
+        databaseId: 1,
+        name: 'test-project',
+        status: { name: 'Status', fieldId: 'f1', statuses: [] },
+        nextActionDate: null,
+        nextActionHour: null,
+        story: {
+          name: 'Story',
+          fieldId: 'f2',
+          databaseId: 2,
+          stories: [
+            {
+              id: 'story-1',
+              name: 'feature / StoryOne',
+              color: 'BLUE',
+              description: 'story desc',
+            },
+          ],
+          workflowManagementStory: { id: 'wm-1', name: 'workflow' },
+        },
+        remainingEstimationMinutes: null,
+        dependedIssueUrlSeparatedByComma: null,
+        completionDate50PercentConfidence: null,
+      };
+
+      const capturedLogs: string[] = [];
+      let consoleSpy: jest.SpyInstance;
+
+      beforeEach(() => {
+        capturedLogs.length = 0;
+        consoleSpy = jest
+          .spyOn(console, 'log')
+          .mockImplementation((...data: unknown[]) => {
+            const firstData = data[0];
+            if (
+              typeof firstData === 'string' &&
+              firstData.startsWith('[HandleScheduledEvent]')
+            ) {
+              capturedLogs.push(firstData);
+            }
+          });
+        jest.useFakeTimers();
+        mockProjectRepository.getProject.mockResolvedValue(storyProject);
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [],
+          cacheUsed: false,
+        });
+        mockIssueRepository.createNewIssue.mockResolvedValue(99);
+        const createdIssue = mock<Issue>();
+        createdIssue.itemId = 'item-99';
+        mockIssueRepository.getIssueByUrl.mockResolvedValue(createdIssue);
+      });
+
+      afterEach(() => {
+        consoleSpy.mockRestore();
+        jest.useRealTimers();
+      });
+
+      it('should emit Creating story issue log before createNewIssue', async () => {
+        const runPromise = useCase.run(storyInput);
+        await jest.runAllTimersAsync();
+        await runPromise;
+
+        expect(capturedLogs[0]).toContain('Creating story issue');
+        expect(capturedLogs[0]).toContain('feature / StoryOne');
+      });
+
+      it('should emit Polling for issue log before each 30s sleep', async () => {
+        const runPromise = useCase.run(storyInput);
+        await jest.runAllTimersAsync();
+        await runPromise;
+
+        expect(capturedLogs[1]).toContain('Polling for issue (attempt 1/3)');
+        expect(capturedLogs[1]).toContain(
+          'https://github.com/test-org/test-repo/issues/99',
+        );
+      });
+
+      it('should emit Issue found log on successful issue lookup', async () => {
+        const runPromise = useCase.run(storyInput);
+        await jest.runAllTimersAsync();
+        await runPromise;
+
+        expect(capturedLogs[2]).toContain('Issue found');
+        expect(capturedLogs[2]).toContain(
+          'https://github.com/test-org/test-repo/issues/99',
+        );
+        expect(capturedLogs[2]).toContain('itemId=item-99');
+      });
+
+      it('should emit Waiting for story update log before 10s sleep', async () => {
+        const runPromise = useCase.run(storyInput);
+        await jest.runAllTimersAsync();
+        await runPromise;
+
+        expect(capturedLogs[3]).toContain('Waiting for story update');
+        expect(capturedLogs[3]).toContain(
+          'https://github.com/test-org/test-repo/issues/99',
+        );
+      });
+
+      it('should emit Story issue created log with elapsed time after iteration completes', async () => {
+        const runPromise = useCase.run(storyInput);
+        await jest.runAllTimersAsync();
+        await runPromise;
+
+        expect(capturedLogs[4]).toContain('Story issue created');
+        expect(capturedLogs[4]).toContain('feature / StoryOne');
+        expect(capturedLogs[4]).toMatch(/elapsed=\d+ms/);
+      });
+
+      it('should emit logs in expected order', async () => {
+        const runPromise = useCase.run(storyInput);
+        await jest.runAllTimersAsync();
+        await runPromise;
+
+        expect(capturedLogs).toHaveLength(5);
+        expect(capturedLogs[0]).toContain('Creating story issue');
+        expect(capturedLogs[1]).toContain('Polling for issue (attempt 1/3)');
+        expect(capturedLogs[2]).toContain('Issue found');
+        expect(capturedLogs[3]).toContain('Waiting for story update');
+        expect(capturedLogs[4]).toContain('Story issue created');
+      });
     });
   });
 });
