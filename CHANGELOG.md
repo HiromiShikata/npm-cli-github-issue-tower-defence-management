@@ -1,3 +1,10 @@
+# [1.39.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.38.1...v1.39.0) (2026-05-04)
+
+
+### Features
+
+* **core:** add progress logs to HandleScheduledEventUseCase story-issue creation loop ([a9f5e37](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a9f5e3712833da43efc18ee9ff709b074339e52c)), closes [#441](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/441)
+
 ## [1.38.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.38.0...v1.38.1) (2026-05-04)
 
 
