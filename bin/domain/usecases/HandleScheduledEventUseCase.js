@@ -9,7 +9,7 @@ class ProjectNotFoundError extends Error {
 }
 exports.ProjectNotFoundError = ProjectNotFoundError;
 class HandleScheduledEventUseCase {
-    constructor(actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, notifyFinishedIssuePreparationUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
+    constructor(actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, notifyFinishedIssuePreparationUseCase, revertOrphanedPreparationUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
         this.actionAnnouncementUseCase = actionAnnouncementUseCase;
         this.setWorkflowManagementIssueToStoryUseCase = setWorkflowManagementIssueToStoryUseCase;
         this.clearPastNextActionUseCase = clearPastNextActionUseCase;
@@ -25,6 +25,7 @@ class HandleScheduledEventUseCase {
         this.updateIssueStatusByLabelUseCase = updateIssueStatusByLabelUseCase;
         this.startPreparationUseCase = startPreparationUseCase;
         this.notifyFinishedIssuePreparationUseCase = notifyFinishedIssuePreparationUseCase;
+        this.revertOrphanedPreparationUseCase = revertOrphanedPreparationUseCase;
         this.dateRepository = dateRepository;
         this.spreadsheetRepository = spreadsheetRepository;
         this.projectRepository = projectRepository;
@@ -203,6 +204,15 @@ ${JSON.stringify(e)}
                 defaultStatus: input.defaultStatus,
             });
             if (input.startPreparation) {
+                if (input.startPreparation.preparationProcessCheckCommand) {
+                    await this.revertOrphanedPreparationUseCase.run({
+                        projectUrl: input.projectUrl,
+                        preparationStatus: input.startPreparation.preparationStatus,
+                        awaitingWorkspaceStatus: input.startPreparation.awaitingWorkspaceStatus,
+                        allowIssueCacheMinutes: input.allowIssueCacheMinutes,
+                        preparationProcessCheckCommand: input.startPreparation.preparationProcessCheckCommand,
+                    });
+                }
                 await this.startPreparationUseCase.run({
                     projectUrl: input.projectUrl,
                     awaitingWorkspaceStatus: input.startPreparation.awaitingWorkspaceStatus,

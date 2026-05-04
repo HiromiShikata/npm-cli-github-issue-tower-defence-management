@@ -56,6 +56,7 @@ const NodeLocalCommandRunner_1 = require("../../repositories/NodeLocalCommandRun
 const OauthAPIClaudeRepository_1 = require("../../repositories/OauthAPIClaudeRepository");
 const GitHubIssueCommentRepository_1 = require("../../repositories/GitHubIssueCommentRepository");
 const FetchWebhookRepository_1 = require("../../repositories/FetchWebhookRepository");
+const RevertOrphanedPreparationUseCase_1 = require("../../../domain/usecases/RevertOrphanedPreparationUseCase");
 const getStringValue = (obj, key) => {
     const value = obj[key];
     return typeof value === 'string' ? value : undefined;
@@ -84,6 +85,7 @@ const loadConfigFile = (configFilePath) => {
             thresholdForAutoReject: getNumberValue(parsed, 'thresholdForAutoReject'),
             workflowBlockerResolvedWebhookUrl: getStringValue(parsed, 'workflowBlockerResolvedWebhookUrl'),
             projectName: getStringValue(parsed, 'projectName'),
+            preparationProcessCheckCommand: getStringValue(parsed, 'preparationProcessCheckCommand'),
         };
     }
     catch (error) {
@@ -118,6 +120,7 @@ const parseProjectReadmeConfig = (readme) => {
             awaitingQualityCheckStatus: getStringValue(parsed, 'awaitingQualityCheckStatus'),
             thresholdForAutoReject: getNumberValue(parsed, 'thresholdForAutoReject'),
             workflowBlockerResolvedWebhookUrl: getStringValue(parsed, 'workflowBlockerResolvedWebhookUrl'),
+            preparationProcessCheckCommand: getStringValue(parsed, 'preparationProcessCheckCommand'),
         };
     }
     catch {
@@ -156,6 +159,9 @@ const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
         cliOverrides.workflowBlockerResolvedWebhookUrl ??
         configFile.workflowBlockerResolvedWebhookUrl,
     projectName: configFile.projectName,
+    preparationProcessCheckCommand: readmeOverrides.preparationProcessCheckCommand ??
+        cliOverrides.preparationProcessCheckCommand ??
+        configFile.preparationProcessCheckCommand,
 });
 exports.mergeConfigs = mergeConfigs;
 const isGraphqlProjectV2ReadmeResponse = (value) => {
@@ -258,6 +264,7 @@ exports.program
     .option('--logFilePath <path>', 'Path to log file')
     .option('--maximumPreparingIssuesCount <count>', 'Maximum number of issues in preparation status (default: 6)')
     .option('--allowIssueCacheMinutes <minutes>', 'Allow cache for issues in minutes (default: 0)')
+    .option('--preparationProcessCheckCommand <template>', 'Shell command template with {URL} placeholder to check if a preparation process is alive')
     .action(async (options) => {
     const token = process.env.GH_TOKEN;
     if (!token) {
@@ -277,6 +284,7 @@ exports.program
         allowIssueCacheMinutes: options.allowIssueCacheMinutes
             ? Number(options.allowIssueCacheMinutes)
             : undefined,
+        preparationProcessCheckCommand: options.preparationProcessCheckCommand,
     };
     const tempProjectUrl = cliOverrides.projectUrl ?? configFileValues.projectUrl;
     let readmeOverrides = {};
@@ -337,6 +345,17 @@ exports.program
     const issueRepository = new ApiV3CheerioRestIssueRepository_1.ApiV3CheerioRestIssueRepository(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, ...githubRepositoryParams);
     const claudeRepository = new OauthAPIClaudeRepository_1.OauthAPIClaudeRepository();
     const localCommandRunner = new NodeLocalCommandRunner_1.NodeLocalCommandRunner();
+    const preparationProcessCheckCommand = config.preparationProcessCheckCommand;
+    if (preparationProcessCheckCommand) {
+        const revertUseCase = new RevertOrphanedPreparationUseCase_1.RevertOrphanedPreparationUseCase(projectRepository, issueRepository, localCommandRunner);
+        await revertUseCase.run({
+            projectUrl,
+            preparationStatus,
+            awaitingWorkspaceStatus,
+            allowIssueCacheMinutes,
+            preparationProcessCheckCommand,
+        });
+    }
     const useCase = new StartPreparationUseCase_1.StartPreparationUseCase(projectRepository, issueRepository, claudeRepository, localCommandRunner);
     await useCase.run({
         projectUrl,

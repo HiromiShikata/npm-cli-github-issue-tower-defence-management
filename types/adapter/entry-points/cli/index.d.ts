@@ -12,6 +12,7 @@ type ConfigFile = {
     thresholdForAutoReject?: number;
     workflowBlockerResolvedWebhookUrl?: string;
     projectName?: string;
+    preparationProcessCheckCommand?: string;
 };
 export declare const loadConfigFile: (configFilePath: string) => ConfigFile;
 export declare const parseProjectReadmeConfig: (readme: string) => ConfigFile;

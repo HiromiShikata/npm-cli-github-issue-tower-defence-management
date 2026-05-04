@@ -1,3 +1,10 @@
+# [1.38.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.37.1...v1.38.0) (2026-05-04)
+
+
+### Features
+
+* **core:** add RevertOrphanedPreparationUseCase + preparationProcessCheckCommand config ([4775bac](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4775baccd359fc51145b261153fda946b5ce3c09)), closes [#434](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/434)
+
 ## [1.37.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.37.0...v1.37.1) (2026-05-03)
 
 
