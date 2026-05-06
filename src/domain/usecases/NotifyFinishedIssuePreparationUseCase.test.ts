@@ -65,8 +65,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   let mockIssueRepository: {
     get: jest.Mock;
     update: jest.Mock;
+    updateNextActionDate: jest.Mock;
     findRelatedOpenPRs: jest.Mock;
     getStoryObjectMap: jest.Mock;
+    getOpenPullRequest: jest.Mock;
   };
   let mockIssueCommentRepository: {
     getCommentsFromIssue: jest.Mock;
@@ -92,10 +94,12 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     };
 
     mockIssueRepository = {
-      getStoryObjectMap: jest.fn(),
+      getStoryObjectMap: jest.fn().mockResolvedValue(new Map()),
       get: jest.fn(),
       update: jest.fn(),
+      updateNextActionDate: jest.fn(),
       findRelatedOpenPRs: jest.fn(),
+      getOpenPullRequest: jest.fn(),
     };
 
     mockIssueCommentRepository = {
@@ -174,6 +178,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   });
 
   it('should update issue status from Preparation to Awaiting Quality Check when last comment starts with From:', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -214,6 +221,65 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       }),
       mockProject,
     );
+
+    const expectedNextActionDate = new Date('2026-01-01T00:00:00Z');
+    expectedNextActionDate.setMonth(expectedNextActionDate.getMonth() + 1);
+    expect(mockIssueRepository.updateNextActionDate).toHaveBeenCalledWith(
+      'https://github.com/user/repo/pull/1',
+      mockProject,
+      expectedNextActionDate,
+    );
+
+    jest.useRealTimers();
+  });
+
+  it('should set PR next action date to 1 month from now when approved', async () => {
+    jest.useFakeTimers();
+    const now = new Date('2026-03-15T12:00:00Z');
+    jest.setSystemTime(now);
+
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+    });
+    const prUrl = 'https://github.com/user/repo/pull/42';
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({ content: 'From: Agent report' }),
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      {
+        url: prUrl,
+        isConflicted: false,
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+    });
+
+    const expectedDate = new Date(now);
+    expectedDate.setMonth(expectedDate.getMonth() + 1);
+    expect(mockIssueRepository.updateNextActionDate).toHaveBeenCalledWith(
+      prUrl,
+      mockProject,
+      expectedDate,
+    );
+
+    jest.useRealTimers();
   });
 
   it('should throw IssueNotFoundError when issue does not exist', async () => {
@@ -256,6 +322,144 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       }),
     ).rejects.toThrow(
       'Illegal issue status for https://github.com/user/repo/issues/1: expected Preparation, but got Done',
+    );
+  });
+
+  it('should set status to Awaiting Workspace when issue has dependent issue URLs', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      dependedIssueUrls: [
+        'https://github.com/user/repo/issues/2',
+        'https://github.com/user/repo/issues/3',
+      ],
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+    });
+
+    expect(mockIssueRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Awaiting Workspace' }),
+      mockProject,
+    );
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
+      expect.stringContaining(
+        'Issue has dependent issue URLs: https://github.com/user/repo/issues/2, https://github.com/user/repo/issues/3',
+      ),
+    );
+  });
+
+  it('should enrich dependedIssueUrls from storyObjectMap when issue has none', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      dependedIssueUrls: [],
+    });
+
+    const storyObjectMap: StoryObjectMap = new Map();
+    storyObjectMap.set('Some Story', {
+      story: { id: 'story-1', name: 'Some Story', color: 'GRAY', description: '' },
+      storyIssue: null,
+      issues: [
+        createMockIssue({
+          url: 'https://github.com/user/repo/issues/1',
+          dependedIssueUrls: ['https://github.com/user/repo/issues/5'],
+        }),
+      ],
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+    });
+
+    expect(mockIssueRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Awaiting Workspace' }),
+      mockProject,
+    );
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
+      expect.stringContaining('Issue has dependent issue URLs:'),
+    );
+  });
+
+  it('should set status to Awaiting Workspace when issue has nextActionDate set', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      nextActionDate: new Date('2026-12-01'),
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+    });
+
+    expect(mockIssueRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Awaiting Workspace' }),
+      mockProject,
+    );
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
+      expect.stringContaining('Issue has next action date or hour set:'),
+    );
+  });
+
+  it('should set status to Awaiting Workspace when issue has nextActionHour set', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      nextActionHour: 9,
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+    });
+
+    expect(mockIssueRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Awaiting Workspace' }),
+      mockProject,
+    );
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
+      expect.stringContaining('nextActionHour=9'),
     );
   });
 
@@ -395,6 +599,94 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalled();
   });
 
+  it('should reject when last comment has REPORT_HAS_NEXT_STEP', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content:
+          'From: Agent report\n```json\n{"nextStep": "Fix the tests"}\n```',
+      }),
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      {
+        url: 'https://github.com/user/repo/pull/1',
+        isConflicted: false,
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+    });
+
+    expect(mockIssueRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Awaiting Workspace' }),
+      mockProject,
+    );
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
+      expect.stringContaining('REPORT_HAS_NEXT_STEP'),
+    );
+  });
+
+  it('should not reject when last comment has nextStep set to null', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content:
+          'From: Agent report\n```json\n{"nextStep": null}\n```',
+      }),
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      {
+        url: 'https://github.com/user/repo/pull/1',
+        isConflicted: false,
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+    });
+
+    expect(mockIssueRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      mockProject,
+    );
+  });
+
   it('should auto-escalate to Awaiting Quality Check after threshold rejections', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
@@ -408,6 +700,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       createMockComment({ content: 'Auto Status Check: REJECTED - second' }),
       createMockComment({ content: 'Auto Status Check: REJECTED - third' }),
     ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
 
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
@@ -429,10 +722,78 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect.objectContaining({
         url: 'https://github.com/user/repo/issues/1',
       }),
-      expect.stringContaining(
-        'Failed to pass the check autimatically for 3 times',
-      ),
+      expect.stringContaining('Auto Status Check:'),
     );
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: 'https://github.com/user/repo/issues/1',
+      }),
+      expect.stringContaining('Failed to pass the check automatically for 3 times'),
+    );
+  });
+
+  it('should use APPROVED escalation wording and set PR next action date when current check passes but threshold is met', async () => {
+    jest.useFakeTimers();
+    const now = new Date('2026-02-01T00:00:00Z');
+    jest.setSystemTime(now);
+
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+    });
+    const prUrl = 'https://github.com/user/repo/pull/1';
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({ content: 'Auto Status Check: REJECTED - first' }),
+      createMockComment({ content: 'Auto Status Check: REJECTED - second' }),
+      createMockComment({ content: 'Auto Status Check: REJECTED - third' }),
+      createMockComment({ content: 'From: Agent final report' }),
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      {
+        url: prUrl,
+        isConflicted: false,
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+    });
+
+    expect(mockIssueRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      mockProject,
+    );
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
+      expect.stringContaining('Auto Status Check: APPROVED (escalated due to prior failures)'),
+    );
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
+      expect.stringContaining('Failed to pass the check automatically for 3 times'),
+    );
+    const expectedDate = new Date(now);
+    expectedDate.setMonth(expectedDate.getMonth() + 1);
+    expect(mockIssueRepository.updateNextActionDate).toHaveBeenCalledWith(
+      prUrl,
+      mockProject,
+      expectedDate,
+    );
+
+    jest.useRealTimers();
   });
 
   it('should not auto-escalate when rejections are below threshold', async () => {
@@ -477,7 +838,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should not auto-escalate when retry comment exists even if threshold met', async () => {
+  it('should not auto-escalate when failed-to-pass-check comment exists even if threshold met', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -489,7 +850,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       createMockComment({ content: 'Auto Status Check: REJECTED - first' }),
       createMockComment({ content: 'Auto Status Check: REJECTED - second' }),
       createMockComment({ content: 'Auto Status Check: REJECTED - third' }),
-      createMockComment({ content: 'retry' }),
+      createMockComment({
+        content:
+          'Auto Status Check: REJECTED\n\nFailed to pass the check automatically for 3 times',
+      }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
       {
@@ -521,7 +885,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should handle case-insensitive retry comment', async () => {
+  it('should handle case-insensitive failed-to-pass-check comment', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -533,7 +897,12 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       createMockComment({ content: 'Auto Status Check: REJECTED - first' }),
       createMockComment({ content: 'Auto Status Check: REJECTED - second' }),
       createMockComment({ content: 'Auto Status Check: REJECTED - third' }),
-      createMockComment({ content: 'Retry please' }),
+      createMockComment({ content: 'Auto Status Check: REJECTED - fourth' }),
+      createMockComment({ content: 'Auto Status Check: REJECTED - fifth' }),
+      createMockComment({
+        content:
+          'AUTO STATUS CHECK: APPROVED\n\nFailed to pass the check automatically for 5 times',
+      }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
       {
@@ -561,6 +930,51 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect.objectContaining({
         status: 'Awaiting Quality Check',
       }),
+      mockProject,
+    );
+  });
+
+  it('should not auto-escalate when new-format escalation comment with Auto Status Check prefix exists', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({ content: 'Auto Status Check: REJECTED - first' }),
+      createMockComment({ content: 'Auto Status Check: REJECTED - second' }),
+      createMockComment({ content: 'Auto Status Check: REJECTED - third' }),
+      createMockComment({
+        content:
+          'Auto Status Check: APPROVED (escalated due to prior failures)\n\nFailed to pass the check automatically for 3 times',
+      }),
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      {
+        url: 'https://github.com/user/repo/pull/1',
+        isConflicted: false,
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+    });
+
+    expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Awaiting Quality Check' }),
       mockProject,
     );
   });
@@ -1061,6 +1475,108 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
+  it('should skip PR checks and update to Awaiting Quality Check when issue has llm-agent label', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      labels: ['llm-agent'],
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({ content: 'From: Test report' }),
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+    });
+
+    expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+    expect(mockIssueRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      mockProject,
+    );
+  });
+
+  it('should skip PR checks when issue has llm-agent: prefixed label', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      labels: ['llm-agent:claude'],
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({ content: 'From: Test report' }),
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+    });
+
+    expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+    expect(mockIssueRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      mockProject,
+    );
+  });
+
+  it('should use getOpenPullRequest when issue is a PR item', async () => {
+    const prIssue = createMockIssue({
+      url: 'https://github.com/user/repo/pull/10',
+      status: 'Preparation',
+      isPr: true,
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(prIssue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({ content: 'From: Agent report' }),
+    ]);
+    mockIssueRepository.getOpenPullRequest.mockResolvedValue({
+      url: 'https://github.com/user/repo/pull/10',
+      isConflicted: false,
+      isPassedAllCiJob: true,
+      isCiStateSuccess: true,
+      isResolvedAllReviewComments: true,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/pull/10',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+    });
+
+    expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledWith(
+      'https://github.com/user/repo/pull/10',
+    );
+    expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+    expect(mockIssueRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      mockProject,
+    );
+  });
+
   describe('workflow blocker webhook notification', () => {
     const createWorkflowBlockerStoryObjectMap = (
       issueUrl: string,
@@ -1161,6 +1677,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
           content: 'Auto Status Check: REJECTED - third',
         }),
       ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
       mockIssueRepository.getStoryObjectMap.mockResolvedValue(
         createWorkflowBlockerStoryObjectMap(
           'https://github.com/user/repo/issues/1',
@@ -1257,7 +1774,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         workflowBlockerResolvedWebhookUrl: null,
       });
 
-      expect(mockIssueRepository.getStoryObjectMap).not.toHaveBeenCalled();
       expect(mockWebhookRepository.sendGetRequest).not.toHaveBeenCalled();
     });
 

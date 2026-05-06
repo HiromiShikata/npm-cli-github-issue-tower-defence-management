@@ -239,19 +239,217 @@ export class ApiV3CheerioRestIssueRepository
     return this.convertProjectItemToIssue(projectItem);
   };
   updateNextActionDate = async (
-    project: Project & { nextActionDate: Required<Project['nextActionDate']> },
-    issue: Issue,
+    issueUrl: string,
+    project: Project,
     date: Date,
   ): Promise<void> => {
-    if (project.nextActionDate === null) {
-      throw new Error('nextActionDate is not defined');
+    if (!project.nextActionDate) {
+      return;
+    }
+    const projectItem =
+      await this.graphqlProjectItemRepository.fetchProjectItemByUrl(issueUrl);
+    if (!projectItem) {
+      return;
     }
     return this.graphqlProjectItemRepository.updateProjectField(
       project.id,
       project.nextActionDate.fieldId,
-      issue.itemId,
-      { date: date.toISOString() },
+      projectItem.id,
+      { date: date.toISOString().split('T')[0] },
     );
+  };
+
+  getOpenPullRequest = async (
+    prUrl: string,
+  ): Promise<RelatedPullRequest | null> => {
+    const match = prUrl.match(
+      /https:\/\/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/,
+    );
+    if (!match) {
+      return null;
+    }
+    const [, owner, repo, prNumberStr] = match;
+    const prNumber = parseInt(prNumberStr, 10);
+
+    const query = `query GetPullRequest($owner: String!, $repo: String!, $number: Int!) {
+      repository(owner: $owner, name: $repo) {
+        pullRequest(number: $number) {
+          state
+          mergeable
+          commits(last: 1) {
+            nodes {
+              commit {
+                statusCheckRollup {
+                  state
+                  contexts(first: 100) {
+                    nodes {
+                      ... on CheckRun {
+                        name
+                        status
+                        conclusion
+                      }
+                      ... on StatusContext {
+                        context
+                        state
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          reviewThreads(first: 100) {
+            nodes {
+              isResolved
+            }
+          }
+          baseRepository {
+            branchProtectionRules(first: 10) {
+              nodes {
+                requiredStatusCheckContexts
+              }
+            }
+            rulesets(first: 10) {
+              nodes {
+                rules(first: 50) {
+                  nodes {
+                    type
+                    parameters {
+                      ... on RequiredStatusChecksParameters {
+                        requiredStatusChecks {
+                          context
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }`;
+
+    const response = await fetch('https://api.github.com/graphql', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.ghToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query, variables: { owner, repo, number: prNumber } }),
+    });
+
+    const json = await response.json() as {
+      data?: {
+        repository?: {
+          pullRequest?: {
+            state: string;
+            mergeable: string;
+            commits: {
+              nodes: {
+                commit: {
+                  statusCheckRollup: {
+                    state: string;
+                    contexts: {
+                      nodes: ({
+                        name?: string;
+                        status?: string;
+                        conclusion?: string | null;
+                      } | {
+                        context?: string;
+                        state?: string;
+                      })[];
+                    };
+                  } | null;
+                };
+              }[];
+            };
+            reviewThreads: {
+              nodes: { isResolved: boolean }[];
+            };
+            baseRepository: {
+              branchProtectionRules: {
+                nodes: { requiredStatusCheckContexts: string[] }[];
+              };
+              rulesets: {
+                nodes: {
+                  rules: {
+                    nodes: {
+                      type: string;
+                      parameters?: {
+                        requiredStatusChecks?: { context: string }[];
+                      };
+                    }[];
+                  };
+                }[];
+              };
+            };
+          };
+        };
+      };
+      errors?: { message: string }[];
+    };
+
+    if (json.errors && json.errors.length > 0) {
+      throw new Error(json.errors.map((e) => e.message).join('\n'));
+    }
+
+    const pr = json.data?.repository?.pullRequest;
+    if (!pr || pr.state !== 'OPEN') {
+      return null;
+    }
+
+    const isConflicted = pr.mergeable === 'CONFLICTING';
+
+    const lastCommit = pr.commits.nodes[pr.commits.nodes.length - 1];
+    const rollup = lastCommit?.commit?.statusCheckRollup;
+    const isCiStateSuccess = rollup?.state === 'SUCCESS';
+
+    const requiredCheckNames: string[] = [];
+    for (const rule of pr.baseRepository.branchProtectionRules.nodes) {
+      requiredCheckNames.push(...rule.requiredStatusCheckContexts);
+    }
+    for (const ruleset of pr.baseRepository.rulesets.nodes) {
+      for (const rule of ruleset.rules.nodes) {
+        if (rule.type === 'REQUIRED_STATUS_CHECKS' && rule.parameters?.requiredStatusChecks) {
+          requiredCheckNames.push(...rule.parameters.requiredStatusChecks.map((c) => c.context));
+        }
+      }
+    }
+
+    const contextNodes = rollup?.contexts?.nodes ?? [];
+    const completedCheckNames = contextNodes
+      .map((node) => {
+        if ('name' in node && node.name) {
+          return node.name;
+        }
+        if ('context' in node && node.context) {
+          return node.context;
+        }
+        return null;
+      })
+      .filter((name): name is string => name !== null);
+
+    const missingRequiredCheckNames = requiredCheckNames.filter(
+      (required) => !completedCheckNames.includes(required),
+    );
+
+    const isPassedAllCiJob =
+      isCiStateSuccess && missingRequiredCheckNames.length === 0;
+
+    const isResolvedAllReviewComments = pr.reviewThreads.nodes.every(
+      (thread) => thread.isResolved,
+    );
+
+    return {
+      url: prUrl,
+      isConflicted,
+      isPassedAllCiJob,
+      isCiStateSuccess,
+      isResolvedAllReviewComments,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames,
+    };
   };
   updateNextActionHour = async (
     project: Project & {
@@ -327,9 +525,80 @@ export class ApiV3CheerioRestIssueRepository
     await this.updateIssue(issue);
   };
   findRelatedOpenPRs = async (
-    _issueUrl: string,
+    issueUrl: string,
   ): Promise<RelatedPullRequest[]> => {
-    throw new Error('findRelatedOpenPRs is not implemented');
+    const match = issueUrl.match(
+      /https:\/\/github\.com\/([^/]+)\/([^/]+)\/issues\/(\d+)/,
+    );
+    if (!match) {
+      return [];
+    }
+    const [, owner, repo, issueNumberStr] = match;
+    const issueNumber = parseInt(issueNumberStr, 10);
+
+    const query = `query FindRelatedPRs($owner: String!, $repo: String!, $number: Int!) {
+      repository(owner: $owner, name: $repo) {
+        issue(number: $number) {
+          timelineItems(itemTypes: [CROSS_REFERENCED_EVENT], first: 50) {
+            nodes {
+              ... on CrossReferencedEvent {
+                source {
+                  ... on PullRequest {
+                    url
+                    state
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }`;
+
+    const response = await fetch('https://api.github.com/graphql', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.ghToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query, variables: { owner, repo, number: issueNumber } }),
+    });
+
+    const json = await response.json() as {
+      data?: {
+        repository?: {
+          issue?: {
+            timelineItems: {
+              nodes: {
+                source?: {
+                  url?: string;
+                  state?: string;
+                };
+              }[];
+            };
+          };
+        };
+      };
+      errors?: { message: string }[];
+    };
+
+    if (json.errors && json.errors.length > 0) {
+      throw new Error(json.errors.map((e) => e.message).join('\n'));
+    }
+
+    const nodes = json.data?.repository?.issue?.timelineItems?.nodes ?? [];
+    const openPrUrls = nodes
+      .filter((node) => node.source?.url && node.source?.state === 'OPEN' && node.source.url.includes('/pull/'))
+      .map((node) => node.source!.url!);
+
+    const results: RelatedPullRequest[] = [];
+    for (const prUrl of openPrUrls) {
+      const pr = await this.getOpenPullRequest(prUrl);
+      if (pr) {
+        results.push(pr);
+      }
+    }
+    return results;
   };
   getAllOpened = async (_project: Project): Promise<Issue[]> => {
     throw new Error('getAllOpened is not implemented');

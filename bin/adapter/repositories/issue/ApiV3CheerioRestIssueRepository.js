@@ -130,11 +130,136 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             }
             return this.convertProjectItemToIssue(projectItem);
         };
-        this.updateNextActionDate = async (project, issue, date) => {
-            if (project.nextActionDate === null) {
-                throw new Error('nextActionDate is not defined');
+        this.updateNextActionDate = async (issueUrl, project, date) => {
+            if (!project.nextActionDate) {
+                return;
             }
-            return this.graphqlProjectItemRepository.updateProjectField(project.id, project.nextActionDate.fieldId, issue.itemId, { date: date.toISOString() });
+            const projectItem = await this.graphqlProjectItemRepository.fetchProjectItemByUrl(issueUrl);
+            if (!projectItem) {
+                return;
+            }
+            return this.graphqlProjectItemRepository.updateProjectField(project.id, project.nextActionDate.fieldId, projectItem.id, { date: date.toISOString().split('T')[0] });
+        };
+        this.getOpenPullRequest = async (prUrl) => {
+            const match = prUrl.match(/https:\/\/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
+            if (!match) {
+                return null;
+            }
+            const [, owner, repo, prNumberStr] = match;
+            const prNumber = parseInt(prNumberStr, 10);
+            const query = `query GetPullRequest($owner: String!, $repo: String!, $number: Int!) {
+      repository(owner: $owner, name: $repo) {
+        pullRequest(number: $number) {
+          state
+          mergeable
+          commits(last: 1) {
+            nodes {
+              commit {
+                statusCheckRollup {
+                  state
+                  contexts(first: 100) {
+                    nodes {
+                      ... on CheckRun {
+                        name
+                        status
+                        conclusion
+                      }
+                      ... on StatusContext {
+                        context
+                        state
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          reviewThreads(first: 100) {
+            nodes {
+              isResolved
+            }
+          }
+          baseRepository {
+            branchProtectionRules(first: 10) {
+              nodes {
+                requiredStatusCheckContexts
+              }
+            }
+            rulesets(first: 10) {
+              nodes {
+                rules(first: 50) {
+                  nodes {
+                    type
+                    parameters {
+                      ... on RequiredStatusChecksParameters {
+                        requiredStatusChecks {
+                          context
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }`;
+            const response = await fetch('https://api.github.com/graphql', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${this.ghToken}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ query, variables: { owner, repo, number: prNumber } }),
+            });
+            const json = await response.json();
+            if (json.errors && json.errors.length > 0) {
+                throw new Error(json.errors.map((e) => e.message).join('\n'));
+            }
+            const pr = json.data?.repository?.pullRequest;
+            if (!pr || pr.state !== 'OPEN') {
+                return null;
+            }
+            const isConflicted = pr.mergeable === 'CONFLICTING';
+            const lastCommit = pr.commits.nodes[pr.commits.nodes.length - 1];
+            const rollup = lastCommit?.commit?.statusCheckRollup;
+            const isCiStateSuccess = rollup?.state === 'SUCCESS';
+            const requiredCheckNames = [];
+            for (const rule of pr.baseRepository.branchProtectionRules.nodes) {
+                requiredCheckNames.push(...rule.requiredStatusCheckContexts);
+            }
+            for (const ruleset of pr.baseRepository.rulesets.nodes) {
+                for (const rule of ruleset.rules.nodes) {
+                    if (rule.type === 'REQUIRED_STATUS_CHECKS' && rule.parameters?.requiredStatusChecks) {
+                        requiredCheckNames.push(...rule.parameters.requiredStatusChecks.map((c) => c.context));
+                    }
+                }
+            }
+            const contextNodes = rollup?.contexts?.nodes ?? [];
+            const completedCheckNames = contextNodes
+                .map((node) => {
+                if ('name' in node && node.name) {
+                    return node.name;
+                }
+                if ('context' in node && node.context) {
+                    return node.context;
+                }
+                return null;
+            })
+                .filter((name) => name !== null);
+            const missingRequiredCheckNames = requiredCheckNames.filter((required) => !completedCheckNames.includes(required));
+            const isPassedAllCiJob = isCiStateSuccess && missingRequiredCheckNames.length === 0;
+            const isResolvedAllReviewComments = pr.reviewThreads.nodes.every((thread) => thread.isResolved);
+            return {
+                url: prUrl,
+                isConflicted,
+                isPassedAllCiJob,
+                isCiStateSuccess,
+                isResolvedAllReviewComments,
+                isBranchOutOfDate: false,
+                missingRequiredCheckNames,
+            };
         };
         this.updateNextActionHour = async (project, issue, hour) => {
             return this.graphqlProjectItemRepository.updateProjectField(project.id, project.nextActionHour.fieldId, issue.itemId, { number: hour });
@@ -167,8 +292,55 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         this.update = async (issue, _project) => {
             await this.updateIssue(issue);
         };
-        this.findRelatedOpenPRs = async (_issueUrl) => {
-            throw new Error('findRelatedOpenPRs is not implemented');
+        this.findRelatedOpenPRs = async (issueUrl) => {
+            const match = issueUrl.match(/https:\/\/github\.com\/([^/]+)\/([^/]+)\/issues\/(\d+)/);
+            if (!match) {
+                return [];
+            }
+            const [, owner, repo, issueNumberStr] = match;
+            const issueNumber = parseInt(issueNumberStr, 10);
+            const query = `query FindRelatedPRs($owner: String!, $repo: String!, $number: Int!) {
+      repository(owner: $owner, name: $repo) {
+        issue(number: $number) {
+          timelineItems(itemTypes: [CROSS_REFERENCED_EVENT], first: 50) {
+            nodes {
+              ... on CrossReferencedEvent {
+                source {
+                  ... on PullRequest {
+                    url
+                    state
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }`;
+            const response = await fetch('https://api.github.com/graphql', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${this.ghToken}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ query, variables: { owner, repo, number: issueNumber } }),
+            });
+            const json = await response.json();
+            if (json.errors && json.errors.length > 0) {
+                throw new Error(json.errors.map((e) => e.message).join('\n'));
+            }
+            const nodes = json.data?.repository?.issue?.timelineItems?.nodes ?? [];
+            const openPrUrls = nodes
+                .filter((node) => node.source?.url && node.source?.state === 'OPEN' && node.source.url.includes('/pull/'))
+                .map((node) => node.source.url);
+            const results = [];
+            for (const prUrl of openPrUrls) {
+                const pr = await this.getOpenPullRequest(prUrl);
+                if (pr) {
+                    results.push(pr);
+                }
+            }
+            return results;
         };
         this.getAllOpened = async (_project) => {
             throw new Error('getAllOpened is not implemented');
