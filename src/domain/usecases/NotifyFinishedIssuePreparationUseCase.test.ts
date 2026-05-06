@@ -1545,6 +1545,42 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
+  it('should still check for report comment even when issue has llm-agent:research label', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      labels: ['llm-agent:research'],
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content: 'Auto Status Check: REJECTED\n["NO_REPORT"]',
+      }),
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+    });
+
+    expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+    expect(mockIssueRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Awaiting Workspace' }),
+      mockProject,
+    );
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
+      expect.stringContaining('NO_REPORT_FROM_AGENT_BOT'),
+    );
+  });
+
   it('should use getOpenPullRequest when issue is a PR item', async () => {
     const prIssue = createMockIssue({
       url: 'https://github.com/user/repo/pull/10',
@@ -2081,6 +2117,47 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       createMockComment({
         content:
           'From: Agent report\n```json\n{"status": "done", "result": "success"}\n```',
+      }),
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      {
+        url: 'https://github.com/user/repo/pull/1',
+        isConflicted: false,
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+    });
+
+    expect(mockIssueRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      mockProject,
+    );
+  });
+
+  it('should not reject REPORT_HAS_NEXT_STEP when report JSON is a non-object value', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content: 'From: Agent report\n```json\n"just a string"\n```',
       }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([

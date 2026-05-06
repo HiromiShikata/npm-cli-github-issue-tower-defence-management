@@ -93,15 +93,13 @@ type FindRelatedPRsResponse = {
 function isGetPullRequestResponse(
   value: unknown,
 ): value is GetPullRequestResponse {
-  if (typeof value !== 'object' || value === null) return false;
-  return true;
+  return typia.is<GetPullRequestResponse>(value);
 }
 
 function isFindRelatedPRsResponse(
   value: unknown,
 ): value is FindRelatedPRsResponse {
-  if (typeof value !== 'object' || value === null) return false;
-  return true;
+  return typia.is<FindRelatedPRsResponse>(value);
 }
 
 export class ApiV3CheerioRestIssueRepository

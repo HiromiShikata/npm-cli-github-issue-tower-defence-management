@@ -8,14 +8,16 @@ const typia_1 = __importDefault(require("typia"));
 const BaseGitHubRepository_1 = require("../BaseGitHubRepository");
 const utils_1 = require("../utils");
 function isGetPullRequestResponse(value) {
-    if (typeof value !== 'object' || value === null)
+    return (() => { const _io0 = input => (undefined === input.data || "object" === typeof input.data && null !== input.data && false === Array.isArray(input.data) && _io1(input.data)) && (undefined === input.errors || Array.isArray(input.errors) && input.errors.every(elem => "object" === typeof elem && null !== elem && _io22(elem))); const _io1 = input => undefined === input.repository || "object" === typeof input.repository && null !== input.repository && false === Array.isArray(input.repository) && _io2(input.repository); const _io2 = input => undefined === input.pullRequest || "object" === typeof input.pullRequest && null !== input.pullRequest && _io3(input.pullRequest); const _io3 = input => "string" === typeof input.state && "string" === typeof input.mergeable && ("object" === typeof input.commits && null !== input.commits && _io4(input.commits)) && ("object" === typeof input.reviewThreads && null !== input.reviewThreads && _io11(input.reviewThreads)) && ("object" === typeof input.baseRepository && null !== input.baseRepository && _io13(input.baseRepository)); const _io4 = input => Array.isArray(input.nodes) && input.nodes.every(elem => "object" === typeof elem && null !== elem && _io5(elem)); const _io5 = input => "object" === typeof input.commit && null !== input.commit && _io6(input.commit); const _io6 = input => null === input.statusCheckRollup || "object" === typeof input.statusCheckRollup && null !== input.statusCheckRollup && _io7(input.statusCheckRollup); const _io7 = input => "string" === typeof input.state && ("object" === typeof input.contexts && null !== input.contexts && _io8(input.contexts)); const _io8 = input => Array.isArray(input.nodes) && input.nodes.every(elem => "object" === typeof elem && null !== elem && false === Array.isArray(elem) && _iu0(elem)); const _io9 = input => (undefined === input.name || "string" === typeof input.name) && (undefined === input.status || "string" === typeof input.status) && (null === input.conclusion || undefined === input.conclusion || "string" === typeof input.conclusion); const _io10 = input => (undefined === input.context || "string" === typeof input.context) && (undefined === input.state || "string" === typeof input.state); const _io11 = input => Array.isArray(input.nodes) && input.nodes.every(elem => "object" === typeof elem && null !== elem && _io12(elem)); const _io12 = input => "boolean" === typeof input.isResolved; const _io13 = input => "object" === typeof input.branchProtectionRules && null !== input.branchProtectionRules && _io14(input.branchProtectionRules) && ("object" === typeof input.rulesets && null !== input.rulesets && _io16(input.rulesets)); const _io14 = input => Array.isArray(input.nodes) && input.nodes.every(elem => "object" === typeof elem && null !== elem && _io15(elem)); const _io15 = input => Array.isArray(input.requiredStatusCheckContexts) && input.requiredStatusCheckContexts.every(elem => "string" === typeof elem); const _io16 = input => Array.isArray(input.nodes) && input.nodes.every(elem => "object" === typeof elem && null !== elem && _io17(elem)); const _io17 = input => "object" === typeof input.rules && null !== input.rules && _io18(input.rules); const _io18 = input => Array.isArray(input.nodes) && input.nodes.every(elem => "object" === typeof elem && null !== elem && _io19(elem)); const _io19 = input => "string" === typeof input.type && (undefined === input.parameters || "object" === typeof input.parameters && null !== input.parameters && false === Array.isArray(input.parameters) && _io20(input.parameters)); const _io20 = input => undefined === input.requiredStatusChecks || Array.isArray(input.requiredStatusChecks) && input.requiredStatusChecks.every(elem => "object" === typeof elem && null !== elem && _io21(elem)); const _io21 = input => "string" === typeof input.context; const _io22 = input => "string" === typeof input.message; const _iu0 = input => (() => {
+        if (_io9(input))
+            return _io9(input);
+        if (_io10(input))
+            return _io10(input);
         return false;
-    return true;
+    })(); return input => "object" === typeof input && null !== input && false === Array.isArray(input) && _io0(input); })()(value);
 }
 function isFindRelatedPRsResponse(value) {
-    if (typeof value !== 'object' || value === null)
-        return false;
-    return true;
+    return (() => { const _io0 = input => (undefined === input.data || "object" === typeof input.data && null !== input.data && false === Array.isArray(input.data) && _io1(input.data)) && (undefined === input.errors || Array.isArray(input.errors) && input.errors.every(elem => "object" === typeof elem && null !== elem && _io7(elem))); const _io1 = input => undefined === input.repository || "object" === typeof input.repository && null !== input.repository && false === Array.isArray(input.repository) && _io2(input.repository); const _io2 = input => undefined === input.issue || "object" === typeof input.issue && null !== input.issue && _io3(input.issue); const _io3 = input => "object" === typeof input.timelineItems && null !== input.timelineItems && _io4(input.timelineItems); const _io4 = input => Array.isArray(input.nodes) && input.nodes.every(elem => "object" === typeof elem && null !== elem && false === Array.isArray(elem) && _io5(elem)); const _io5 = input => undefined === input.source || "object" === typeof input.source && null !== input.source && false === Array.isArray(input.source) && _io6(input.source); const _io6 = input => (undefined === input.url || "string" === typeof input.url) && (undefined === input.state || "string" === typeof input.state); const _io7 = input => "string" === typeof input.message; return input => "object" === typeof input && null !== input && false === Array.isArray(input) && _io0(input); })()(value);
 }
 class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
     constructor(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, localStorageRepository, jsonFilePath = './tmp/github.com.cookies.json', ghToken = process.env.GH_TOKEN || 'dummy', ghUserName = process.env.GH_USER_NAME, ghUserPassword = process.env.GH_USER_PASSWORD, ghAuthenticatorKey = process.env
@@ -221,7 +223,10 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                     Authorization: `Bearer ${this.ghToken}`,
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ query, variables: { owner, repo, number: prNumber } }),
+                body: JSON.stringify({
+                    query,
+                    variables: { owner, repo, number: prNumber },
+                }),
             });
             const responseData = await response.json();
             if (!isGetPullRequestResponse(responseData)) {
@@ -244,7 +249,8 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             }
             for (const ruleset of pr.baseRepository.rulesets.nodes) {
                 for (const rule of ruleset.rules.nodes) {
-                    if (rule.type === 'REQUIRED_STATUS_CHECKS' && rule.parameters?.requiredStatusChecks) {
+                    if (rule.type === 'REQUIRED_STATUS_CHECKS' &&
+                        rule.parameters?.requiredStatusChecks) {
                         requiredCheckNames.push(...rule.parameters.requiredStatusChecks.map((c) => c.context));
                     }
                 }
@@ -336,7 +342,10 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                     Authorization: `Bearer ${this.ghToken}`,
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ query, variables: { owner, repo, number: issueNumber } }),
+                body: JSON.stringify({
+                    query,
+                    variables: { owner, repo, number: issueNumber },
+                }),
             });
             const responseData = await response.json();
             if (!isFindRelatedPRsResponse(responseData)) {
@@ -347,7 +356,9 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             }
             const nodes = responseData.data?.repository?.issue?.timelineItems?.nodes ?? [];
             const openPrUrls = nodes
-                .filter((node) => node.source?.url && node.source?.state === 'OPEN' && node.source.url.includes('/pull/'))
+                .filter((node) => node.source?.url &&
+                node.source?.state === 'OPEN' &&
+                node.source.url.includes('/pull/'))
                 .map((node) => node.source?.url)
                 .filter((url) => url !== undefined);
             const results = [];
