@@ -369,7 +369,12 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     const storyObjectMap: StoryObjectMap = new Map();
     storyObjectMap.set('Some Story', {
-      story: { id: 'story-1', name: 'Some Story', color: 'GRAY', description: '' },
+      story: {
+        id: 'story-1',
+        name: 'Some Story',
+        color: 'GRAY',
+        description: '',
+      },
       storyIssue: null,
       issues: [
         createMockIssue({
@@ -655,8 +660,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({
-        content:
-          'From: Agent report\n```json\n{"nextStep": null}\n```',
+        content: 'From: Agent report\n```json\n{"nextStep": null}\n```',
       }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -728,7 +732,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect.objectContaining({
         url: 'https://github.com/user/repo/issues/1',
       }),
-      expect.stringContaining('Failed to pass the check automatically for 3 times'),
+      expect.stringContaining(
+        'Failed to pass the check automatically for 3 times',
+      ),
     );
   });
 
@@ -779,11 +785,15 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
-      expect.stringContaining('Auto Status Check: APPROVED (escalated due to prior failures)'),
+      expect.stringContaining(
+        'Auto Status Check: APPROVED (escalated due to prior failures)',
+      ),
     );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
-      expect.stringContaining('Failed to pass the check automatically for 3 times'),
+      expect.stringContaining(
+        'Failed to pass the check automatically for 3 times',
+      ),
     );
     const expectedDate = new Date(now);
     expectedDate.setMonth(expectedDate.getMonth() + 1);

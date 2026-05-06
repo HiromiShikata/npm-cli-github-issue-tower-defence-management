@@ -30,14 +30,17 @@ type GetPullRequestResponse = {
               statusCheckRollup: {
                 state: string;
                 contexts: {
-                  nodes: ({
-                    name?: string;
-                    status?: string;
-                    conclusion?: string | null;
-                  } | {
-                    context?: string;
-                    state?: string;
-                  })[];
+                  nodes: (
+                    | {
+                        name?: string;
+                        status?: string;
+                        conclusion?: string | null;
+                      }
+                    | {
+                        context?: string;
+                        state?: string;
+                      }
+                  )[];
                 };
               } | null;
             };
@@ -87,12 +90,16 @@ type FindRelatedPRsResponse = {
   errors?: { message: string }[];
 };
 
-function isGetPullRequestResponse(value: unknown): value is GetPullRequestResponse {
+function isGetPullRequestResponse(
+  value: unknown,
+): value is GetPullRequestResponse {
   if (typeof value !== 'object' || value === null) return false;
   return true;
 }
 
-function isFindRelatedPRsResponse(value: unknown): value is FindRelatedPRsResponse {
+function isFindRelatedPRsResponse(
+  value: unknown,
+): value is FindRelatedPRsResponse {
   if (typeof value !== 'object' || value === null) return false;
   return true;
 }
@@ -415,12 +422,17 @@ export class ApiV3CheerioRestIssueRepository
         Authorization: `Bearer ${this.ghToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ query, variables: { owner, repo, number: prNumber } }),
+      body: JSON.stringify({
+        query,
+        variables: { owner, repo, number: prNumber },
+      }),
     });
 
     const responseData: unknown = await response.json();
     if (!isGetPullRequestResponse(responseData)) {
-      throw new Error('Unexpected response shape when fetching pull request from GitHub GraphQL API');
+      throw new Error(
+        'Unexpected response shape when fetching pull request from GitHub GraphQL API',
+      );
     }
 
     if (responseData.errors && responseData.errors.length > 0) {
@@ -444,8 +456,13 @@ export class ApiV3CheerioRestIssueRepository
     }
     for (const ruleset of pr.baseRepository.rulesets.nodes) {
       for (const rule of ruleset.rules.nodes) {
-        if (rule.type === 'REQUIRED_STATUS_CHECKS' && rule.parameters?.requiredStatusChecks) {
-          requiredCheckNames.push(...rule.parameters.requiredStatusChecks.map((c) => c.context));
+        if (
+          rule.type === 'REQUIRED_STATUS_CHECKS' &&
+          rule.parameters?.requiredStatusChecks
+        ) {
+          requiredCheckNames.push(
+            ...rule.parameters.requiredStatusChecks.map((c) => c.context),
+          );
         }
       }
     }
@@ -594,21 +611,32 @@ export class ApiV3CheerioRestIssueRepository
         Authorization: `Bearer ${this.ghToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ query, variables: { owner, repo, number: issueNumber } }),
+      body: JSON.stringify({
+        query,
+        variables: { owner, repo, number: issueNumber },
+      }),
     });
 
     const responseData: unknown = await response.json();
     if (!isFindRelatedPRsResponse(responseData)) {
-      throw new Error('Unexpected response shape when fetching related PRs from GitHub GraphQL API');
+      throw new Error(
+        'Unexpected response shape when fetching related PRs from GitHub GraphQL API',
+      );
     }
 
     if (responseData.errors && responseData.errors.length > 0) {
       throw new Error(responseData.errors.map((e) => e.message).join('\n'));
     }
 
-    const nodes = responseData.data?.repository?.issue?.timelineItems?.nodes ?? [];
+    const nodes =
+      responseData.data?.repository?.issue?.timelineItems?.nodes ?? [];
     const openPrUrls = nodes
-      .filter((node) => node.source?.url && node.source?.state === 'OPEN' && node.source.url.includes('/pull/'))
+      .filter(
+        (node) =>
+          node.source?.url &&
+          node.source?.state === 'OPEN' &&
+          node.source.url.includes('/pull/'),
+      )
       .map((node) => node.source?.url)
       .filter((url): url is string => url !== undefined);
 
