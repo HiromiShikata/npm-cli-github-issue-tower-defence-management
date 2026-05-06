@@ -259,6 +259,48 @@ describe('RevertOrphanedPreparationUseCase', () => {
     ).rejects.toThrow('Project not found');
   });
 
+  it('should throw when getProject returns null after findProjectIdByUrl succeeds', async () => {
+    mockProjectRepository.findProjectIdByUrl.mockResolvedValue('project-1');
+    mockProjectRepository.getProject.mockResolvedValue(null);
+
+    await expect(
+      useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationStatus: 'Preparation',
+        awaitingWorkspaceStatus: 'Awaiting Workspace',
+        allowIssueCacheMinutes: 0,
+        preparationProcessCheckCommand: 'check {URL}',
+      }),
+    ).rejects.toThrow('Project not found. projectId: project-1');
+  });
+
+  it('should do nothing when awaitingWorkspaceStatus is not found in project statuses', async () => {
+    const preparationIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [preparationIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'NonExistentStatus',
+      allowIssueCacheMinutes: 0,
+      preparationProcessCheckCommand: 'check {URL}',
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.createComment.mock.calls).toHaveLength(0);
+  });
+
   it('should do nothing when there are no Preparation issues', async () => {
     mockIssueRepository.getAllIssues.mockResolvedValue({
       issues: [
