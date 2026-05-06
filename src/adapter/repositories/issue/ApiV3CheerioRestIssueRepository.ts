@@ -18,6 +18,85 @@ import { normalizeFieldName } from '../utils';
 import { LocalStorageRepository } from '../LocalStorageRepository';
 import { Member } from '../../../domain/entities/Member';
 
+type GetPullRequestResponse = {
+  data?: {
+    repository?: {
+      pullRequest?: {
+        state: string;
+        mergeable: string;
+        commits: {
+          nodes: {
+            commit: {
+              statusCheckRollup: {
+                state: string;
+                contexts: {
+                  nodes: ({
+                    name?: string;
+                    status?: string;
+                    conclusion?: string | null;
+                  } | {
+                    context?: string;
+                    state?: string;
+                  })[];
+                };
+              } | null;
+            };
+          }[];
+        };
+        reviewThreads: {
+          nodes: { isResolved: boolean }[];
+        };
+        baseRepository: {
+          branchProtectionRules: {
+            nodes: { requiredStatusCheckContexts: string[] }[];
+          };
+          rulesets: {
+            nodes: {
+              rules: {
+                nodes: {
+                  type: string;
+                  parameters?: {
+                    requiredStatusChecks?: { context: string }[];
+                  };
+                }[];
+              };
+            }[];
+          };
+        };
+      };
+    };
+  };
+  errors?: { message: string }[];
+};
+
+type FindRelatedPRsResponse = {
+  data?: {
+    repository?: {
+      issue?: {
+        timelineItems: {
+          nodes: {
+            source?: {
+              url?: string;
+              state?: string;
+            };
+          }[];
+        };
+      };
+    };
+  };
+  errors?: { message: string }[];
+};
+
+function isGetPullRequestResponse(value: unknown): value is GetPullRequestResponse {
+  if (typeof value !== 'object' || value === null) return false;
+  return true;
+}
+
+function isFindRelatedPRsResponse(value: unknown): value is FindRelatedPRsResponse {
+  if (typeof value !== 'object' || value === null) return false;
+  return true;
+}
+
 export class ApiV3CheerioRestIssueRepository
   extends BaseGitHubRepository
   implements IssueRepository
@@ -339,62 +418,16 @@ export class ApiV3CheerioRestIssueRepository
       body: JSON.stringify({ query, variables: { owner, repo, number: prNumber } }),
     });
 
-    const json = await response.json() as {
-      data?: {
-        repository?: {
-          pullRequest?: {
-            state: string;
-            mergeable: string;
-            commits: {
-              nodes: {
-                commit: {
-                  statusCheckRollup: {
-                    state: string;
-                    contexts: {
-                      nodes: ({
-                        name?: string;
-                        status?: string;
-                        conclusion?: string | null;
-                      } | {
-                        context?: string;
-                        state?: string;
-                      })[];
-                    };
-                  } | null;
-                };
-              }[];
-            };
-            reviewThreads: {
-              nodes: { isResolved: boolean }[];
-            };
-            baseRepository: {
-              branchProtectionRules: {
-                nodes: { requiredStatusCheckContexts: string[] }[];
-              };
-              rulesets: {
-                nodes: {
-                  rules: {
-                    nodes: {
-                      type: string;
-                      parameters?: {
-                        requiredStatusChecks?: { context: string }[];
-                      };
-                    }[];
-                  };
-                }[];
-              };
-            };
-          };
-        };
-      };
-      errors?: { message: string }[];
-    };
-
-    if (json.errors && json.errors.length > 0) {
-      throw new Error(json.errors.map((e) => e.message).join('\n'));
+    const responseData: unknown = await response.json();
+    if (!isGetPullRequestResponse(responseData)) {
+      throw new Error('Unexpected response shape when fetching pull request from GitHub GraphQL API');
     }
 
-    const pr = json.data?.repository?.pullRequest;
+    if (responseData.errors && responseData.errors.length > 0) {
+      throw new Error(responseData.errors.map((e) => e.message).join('\n'));
+    }
+
+    const pr = responseData.data?.repository?.pullRequest;
     if (!pr || pr.state !== 'OPEN') {
       return null;
     }
@@ -564,32 +597,20 @@ export class ApiV3CheerioRestIssueRepository
       body: JSON.stringify({ query, variables: { owner, repo, number: issueNumber } }),
     });
 
-    const json = await response.json() as {
-      data?: {
-        repository?: {
-          issue?: {
-            timelineItems: {
-              nodes: {
-                source?: {
-                  url?: string;
-                  state?: string;
-                };
-              }[];
-            };
-          };
-        };
-      };
-      errors?: { message: string }[];
-    };
-
-    if (json.errors && json.errors.length > 0) {
-      throw new Error(json.errors.map((e) => e.message).join('\n'));
+    const responseData: unknown = await response.json();
+    if (!isFindRelatedPRsResponse(responseData)) {
+      throw new Error('Unexpected response shape when fetching related PRs from GitHub GraphQL API');
     }
 
-    const nodes = json.data?.repository?.issue?.timelineItems?.nodes ?? [];
+    if (responseData.errors && responseData.errors.length > 0) {
+      throw new Error(responseData.errors.map((e) => e.message).join('\n'));
+    }
+
+    const nodes = responseData.data?.repository?.issue?.timelineItems?.nodes ?? [];
     const openPrUrls = nodes
       .filter((node) => node.source?.url && node.source?.state === 'OPEN' && node.source.url.includes('/pull/'))
-      .map((node) => node.source!.url!);
+      .map((node) => node.source?.url)
+      .filter((url): url is string => url !== undefined);
 
     const results: RelatedPullRequest[] = [];
     for (const prUrl of openPrUrls) {

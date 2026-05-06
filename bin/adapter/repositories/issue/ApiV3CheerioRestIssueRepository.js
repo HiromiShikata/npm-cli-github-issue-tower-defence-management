@@ -7,6 +7,16 @@ exports.ApiV3CheerioRestIssueRepository = void 0;
 const typia_1 = __importDefault(require("typia"));
 const BaseGitHubRepository_1 = require("../BaseGitHubRepository");
 const utils_1 = require("../utils");
+function isGetPullRequestResponse(value) {
+    if (typeof value !== 'object' || value === null)
+        return false;
+    return true;
+}
+function isFindRelatedPRsResponse(value) {
+    if (typeof value !== 'object' || value === null)
+        return false;
+    return true;
+}
 class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
     constructor(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, localStorageRepository, jsonFilePath = './tmp/github.com.cookies.json', ghToken = process.env.GH_TOKEN || 'dummy', ghUserName = process.env.GH_USER_NAME, ghUserPassword = process.env.GH_USER_PASSWORD, ghAuthenticatorKey = process.env
         .GH_AUTHENTICATOR_KEY) {
@@ -213,11 +223,14 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 },
                 body: JSON.stringify({ query, variables: { owner, repo, number: prNumber } }),
             });
-            const json = await response.json();
-            if (json.errors && json.errors.length > 0) {
-                throw new Error(json.errors.map((e) => e.message).join('\n'));
+            const responseData = await response.json();
+            if (!isGetPullRequestResponse(responseData)) {
+                throw new Error('Unexpected response shape when fetching pull request from GitHub GraphQL API');
             }
-            const pr = json.data?.repository?.pullRequest;
+            if (responseData.errors && responseData.errors.length > 0) {
+                throw new Error(responseData.errors.map((e) => e.message).join('\n'));
+            }
+            const pr = responseData.data?.repository?.pullRequest;
             if (!pr || pr.state !== 'OPEN') {
                 return null;
             }
@@ -325,14 +338,18 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 },
                 body: JSON.stringify({ query, variables: { owner, repo, number: issueNumber } }),
             });
-            const json = await response.json();
-            if (json.errors && json.errors.length > 0) {
-                throw new Error(json.errors.map((e) => e.message).join('\n'));
+            const responseData = await response.json();
+            if (!isFindRelatedPRsResponse(responseData)) {
+                throw new Error('Unexpected response shape when fetching related PRs from GitHub GraphQL API');
             }
-            const nodes = json.data?.repository?.issue?.timelineItems?.nodes ?? [];
+            if (responseData.errors && responseData.errors.length > 0) {
+                throw new Error(responseData.errors.map((e) => e.message).join('\n'));
+            }
+            const nodes = responseData.data?.repository?.issue?.timelineItems?.nodes ?? [];
             const openPrUrls = nodes
                 .filter((node) => node.source?.url && node.source?.state === 'OPEN' && node.source.url.includes('/pull/'))
-                .map((node) => node.source.url);
+                .map((node) => node.source?.url)
+                .filter((url) => url !== undefined);
             const results = [];
             for (const prUrl of openPrUrls) {
                 const pr = await this.getOpenPullRequest(prUrl);
