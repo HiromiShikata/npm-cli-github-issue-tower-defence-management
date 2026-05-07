@@ -30,6 +30,7 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   isInProgress: false,
   isClosed: false,
   createdAt: new Date(),
+  author: '',
   ...overrides,
 });
 
@@ -136,9 +137,13 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockIssueRepository.createComment.mock.calls[0][0]).toBe(stuckIssue);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][0]).toBe(
-      'pgrep -fa "claude-agent.*https://github.com/user/repo/issues/10"',
-    );
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][0]).toBe('sh');
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toEqual([
+      '-c',
+      'pgrep -fa "claude-agent.*$1"',
+      '--',
+      'https://github.com/user/repo/issues/10',
+    ]);
   });
 
   it('should leave in-flight Preparation issue untouched when check command exits zero', async () => {
@@ -196,9 +201,13 @@ describe('RevertOrphanedPreparationUseCase', () => {
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][0]).toBe(
-      'check https://github.com/user/repo/issues/10',
-    );
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][0]).toBe('sh');
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toEqual([
+      '-c',
+      'check $1',
+      '--',
+      'https://github.com/user/repo/issues/10',
+    ]);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
   });
 
@@ -295,8 +304,12 @@ describe('RevertOrphanedPreparationUseCase', () => {
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][0]).toBe(
-      'pgrep -fa "claude-agent.*https://github.com/org/project/issues/99"',
-    );
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][0]).toBe('sh');
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toEqual([
+      '-c',
+      'pgrep -fa "claude-agent.*$1"',
+      '--',
+      'https://github.com/org/project/issues/99',
+    ]);
   });
 });

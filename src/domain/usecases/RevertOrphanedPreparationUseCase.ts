@@ -51,11 +51,16 @@ export class RevertOrphanedPreparationUseCase {
     }
 
     for (const issue of preparationIssues) {
-      const command = params.preparationProcessCheckCommand.replace(
+      const commandTemplate = params.preparationProcessCheckCommand.replace(
         '{URL}',
-        issue.url,
+        '$1',
       );
-      const { exitCode } = await this.localCommandRunner.runCommand(command);
+      const { exitCode } = await this.localCommandRunner.runCommand('sh', [
+        '-c',
+        commandTemplate,
+        '--',
+        issue.url,
+      ]);
       if (exitCode !== 0) {
         await this.issueRepository.updateStatus(
           project,

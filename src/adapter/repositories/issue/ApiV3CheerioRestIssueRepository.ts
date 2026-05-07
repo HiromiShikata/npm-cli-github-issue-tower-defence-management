@@ -18,89 +18,249 @@ import { normalizeFieldName } from '../utils';
 import { LocalStorageRepository } from '../LocalStorageRepository';
 import { Member } from '../../../domain/entities/Member';
 
-type GetPullRequestResponse = {
-  data?: {
-    repository?: {
-      pullRequest?: {
-        state: string;
-        mergeable: string;
-        commits: {
-          nodes: {
-            commit: {
-              statusCheckRollup: {
-                state: string;
-                contexts: {
-                  nodes: (
-                    | {
-                        name?: string;
-                        status?: string;
-                        conclusion?: string | null;
-                      }
-                    | {
-                        context?: string;
-                        state?: string;
-                      }
-                  )[];
-                };
-              } | null;
+type TimelineItem = {
+  __typename: string;
+  willCloseTarget?: boolean;
+  source?: {
+    __typename: string;
+    url?: string;
+    number?: number;
+    state?: string;
+    mergeable?: string;
+    headRefName?: string;
+    baseRefName?: string;
+    baseRepository?: {
+      branchProtectionRules?: {
+        nodes: Array<{
+          pattern: string;
+          requiredStatusCheckContexts: string[];
+        }>;
+      };
+      defaultBranchRef?: {
+        name: string;
+      } | null;
+      rulesets?: {
+        nodes: Array<{
+          name: string;
+          enforcement: string;
+          conditions: {
+            refName: {
+              include: string[];
+              exclude: string[];
             };
-          }[];
-        };
-        reviewThreads: {
-          nodes: { isResolved: boolean }[];
-        };
-        baseRepository: {
-          branchProtectionRules: {
-            nodes: { requiredStatusCheckContexts: string[] }[];
           };
-          rulesets: {
-            nodes: {
-              rules: {
-                nodes: {
-                  type: string;
-                  parameters?: {
-                    requiredStatusChecks?: { context: string }[];
-                  };
-                }[];
-              };
-            }[];
+          rules: {
+            nodes: Array<{
+              type: string;
+              parameters:
+                | {
+                    requiredStatusChecks: Array<{
+                      context: string;
+                    }>;
+                  }
+                | Record<string, never>;
+            }>;
           };
-        };
+        }>;
       };
     };
+    commits?: {
+      nodes: Array<{
+        commit: {
+          statusCheckRollup?: {
+            state: string;
+            contexts?: {
+              nodes: Array<
+                | {
+                    __typename: 'CheckRun';
+                    name: string;
+                    conclusion: string | null;
+                  }
+                | {
+                    __typename: 'StatusContext';
+                    context: string;
+                    state: string;
+                  }
+              >;
+            };
+          } | null;
+        };
+      }>;
+    };
+    reviewThreads?: {
+      nodes: Array<{
+        isResolved: boolean;
+      }>;
+    };
+    baseRef?: {
+      name: string;
+    } | null;
   };
-  errors?: { message: string }[];
 };
 
-type FindRelatedPRsResponse = {
+type IssueTimelineResponse = {
   data?: {
     repository?: {
       issue?: {
         timelineItems: {
-          nodes: {
-            source?: {
-              url?: string;
-              state?: string;
-            };
-          }[];
+          pageInfo: {
+            endCursor: string;
+            hasNextPage: boolean;
+          };
+          nodes: TimelineItem[];
         };
       };
     };
   };
-  errors?: { message: string }[];
+  errors?: Array<{ message: string }>;
 };
 
-function isGetPullRequestResponse(
+type PrStatusComputationData = {
+  mergeable?: string;
+  baseRepository?: {
+    branchProtectionRules?: {
+      nodes: Array<{
+        pattern: string;
+        requiredStatusCheckContexts: string[];
+      }>;
+    };
+    defaultBranchRef?: {
+      name: string;
+    } | null;
+    rulesets?: {
+      nodes: Array<{
+        name: string;
+        enforcement: string;
+        conditions: {
+          refName: {
+            include: string[];
+            exclude: string[];
+          };
+        };
+        rules: {
+          nodes: Array<{
+            type: string;
+            parameters:
+              | {
+                  requiredStatusChecks: Array<{
+                    context: string;
+                  }>;
+                }
+              | Record<string, never>;
+          }>;
+        };
+      }>;
+    };
+  };
+  commits?: {
+    nodes: Array<{
+      commit: {
+        statusCheckRollup?: {
+          state: string;
+          contexts?: {
+            nodes: Array<
+              | {
+                  __typename: 'CheckRun';
+                  name: string;
+                  conclusion: string | null;
+                }
+              | {
+                  __typename: 'StatusContext';
+                  context: string;
+                  state: string;
+                }
+            >;
+          };
+        } | null;
+      };
+    }>;
+  };
+  reviewThreads?: {
+    nodes: Array<{
+      isResolved: boolean;
+    }>;
+  };
+};
+
+type DirectPullRequestResponse = {
+  data?: {
+    repository?: {
+      pullRequest?: {
+        url: string;
+        state: string;
+        headRefName?: string;
+        baseRefName?: string;
+      } & PrStatusComputationData;
+    };
+  };
+  errors?: Array<{ message: string }>;
+};
+
+function isIssueTimelineResponse(
   value: unknown,
-): value is GetPullRequestResponse {
-  return typia.is<GetPullRequestResponse>(value);
+): value is IssueTimelineResponse {
+  if (typeof value !== 'object' || value === null) return false;
+  return true;
 }
 
-function isFindRelatedPRsResponse(
+function isDirectPullRequestResponse(
   value: unknown,
-): value is FindRelatedPRsResponse {
-  return typia.is<FindRelatedPRsResponse>(value);
+): value is DirectPullRequestResponse {
+  if (typeof value !== 'object' || value === null) return false;
+  return true;
 }
+
+const fnmatch = (pattern: string, str: string): boolean => {
+  let regexStr = '^';
+  let i = 0;
+  while (i < pattern.length) {
+    const c = pattern[i];
+    if (c === '*') {
+      if (pattern[i + 1] === '*') {
+        regexStr += '.*';
+        i += 2;
+        if (pattern[i] === '/') {
+          i++;
+        }
+      } else {
+        regexStr += '[^/]*';
+        i++;
+      }
+    } else if (c === '?') {
+      regexStr += '[^/]';
+      i++;
+    } else if (c === '[') {
+      let j = i + 1;
+      while (j < pattern.length && pattern[j] !== ']') {
+        j++;
+      }
+      if (j >= pattern.length) {
+        regexStr += '\\[';
+        i++;
+        continue;
+      }
+      const content = pattern.slice(i + 1, j);
+      if (content.length > 0 && (content[0] === '!' || content[0] === '^')) {
+        const body = content.slice(1).replace(/\\/g, '\\\\');
+        regexStr += '[^' + body + ']';
+      } else {
+        const escapedContent = content.replace(/\\/g, '\\\\');
+        regexStr += '[' + escapedContent + ']';
+      }
+      i = j + 1;
+    } else {
+      regexStr += c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      i++;
+    }
+  }
+  regexStr += '$';
+  try {
+    const regex = new RegExp(regexStr);
+    return regex.test(str);
+  } catch {
+    return pattern === str;
+  }
+};
 
 export class ApiV3CheerioRestIssueRepository
   extends BaseGitHubRepository
@@ -215,6 +375,7 @@ export class ApiV3CheerioRestIssueRepository
       isInProgress: normalizeFieldName(status || '').includes('progress'),
       isClosed: item.state !== 'OPEN',
       createdAt: new Date(item.createdAt || '2000-01-01'),
+      author: '',
     };
   };
   getAllIssuesFromCache = async (
@@ -342,163 +503,6 @@ export class ApiV3CheerioRestIssueRepository
       { date: date.toISOString().split('T')[0] },
     );
   };
-
-  getOpenPullRequest = async (
-    prUrl: string,
-  ): Promise<RelatedPullRequest | null> => {
-    const match = prUrl.match(
-      /https:\/\/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/,
-    );
-    if (!match) {
-      return null;
-    }
-    const [, owner, repo, prNumberStr] = match;
-    const prNumber = parseInt(prNumberStr, 10);
-
-    const query = `query GetPullRequest($owner: String!, $repo: String!, $number: Int!) {
-      repository(owner: $owner, name: $repo) {
-        pullRequest(number: $number) {
-          state
-          mergeable
-          commits(last: 1) {
-            nodes {
-              commit {
-                statusCheckRollup {
-                  state
-                  contexts(first: 100) {
-                    nodes {
-                      ... on CheckRun {
-                        name
-                        status
-                        conclusion
-                      }
-                      ... on StatusContext {
-                        context
-                        state
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-          reviewThreads(first: 100) {
-            nodes {
-              isResolved
-            }
-          }
-          baseRepository {
-            branchProtectionRules(first: 10) {
-              nodes {
-                requiredStatusCheckContexts
-              }
-            }
-            rulesets(first: 10) {
-              nodes {
-                rules(first: 50) {
-                  nodes {
-                    type
-                    parameters {
-                      ... on RequiredStatusChecksParameters {
-                        requiredStatusChecks {
-                          context
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }`;
-
-    const response = await fetch('https://api.github.com/graphql', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.ghToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query,
-        variables: { owner, repo, number: prNumber },
-      }),
-    });
-
-    const responseData: unknown = await response.json();
-    if (!isGetPullRequestResponse(responseData)) {
-      throw new Error(
-        'Unexpected response shape when fetching pull request from GitHub GraphQL API',
-      );
-    }
-
-    if (responseData.errors && responseData.errors.length > 0) {
-      throw new Error(responseData.errors.map((e) => e.message).join('\n'));
-    }
-
-    const pr = responseData.data?.repository?.pullRequest;
-    if (!pr || pr.state !== 'OPEN') {
-      return null;
-    }
-
-    const isConflicted = pr.mergeable === 'CONFLICTING';
-
-    const lastCommit = pr.commits.nodes[pr.commits.nodes.length - 1];
-    const rollup = lastCommit?.commit?.statusCheckRollup;
-    const isCiStateSuccess = rollup?.state === 'SUCCESS';
-
-    const requiredCheckNames: string[] = [];
-    for (const rule of pr.baseRepository.branchProtectionRules.nodes) {
-      requiredCheckNames.push(...rule.requiredStatusCheckContexts);
-    }
-    for (const ruleset of pr.baseRepository.rulesets.nodes) {
-      for (const rule of ruleset.rules.nodes) {
-        if (
-          rule.type === 'REQUIRED_STATUS_CHECKS' &&
-          rule.parameters?.requiredStatusChecks
-        ) {
-          requiredCheckNames.push(
-            ...rule.parameters.requiredStatusChecks.map((c) => c.context),
-          );
-        }
-      }
-    }
-
-    const contextNodes = rollup?.contexts?.nodes ?? [];
-    const completedCheckNames = contextNodes
-      .map((node) => {
-        if ('name' in node && node.name) {
-          return node.name;
-        }
-        if ('context' in node && node.context) {
-          return node.context;
-        }
-        return null;
-      })
-      .filter((name): name is string => name !== null);
-
-    const missingRequiredCheckNames = requiredCheckNames.filter(
-      (required) => !completedCheckNames.includes(required),
-    );
-
-    const isPassedAllCiJob =
-      isCiStateSuccess && missingRequiredCheckNames.length === 0;
-
-    const isResolvedAllReviewComments = pr.reviewThreads.nodes.every(
-      (thread) => thread.isResolved,
-    );
-
-    return {
-      url: prUrl,
-      isConflicted,
-      isPassedAllCiJob,
-      isCiStateSuccess,
-      isResolvedAllReviewComments,
-      isBranchOutOfDate: false,
-      missingRequiredCheckNames,
-    };
-  };
   updateNextActionHour = async (
     project: Project & {
       nextActionHour: NonNullable<Project['nextActionHour']>;
@@ -572,28 +576,230 @@ export class ApiV3CheerioRestIssueRepository
   update = async (issue: Issue, _project: Project): Promise<void> => {
     await this.updateIssue(issue);
   };
+  private parseIssueUrl = (
+    issueUrl: string,
+  ): {
+    owner: string;
+    repo: string;
+    issueNumber: number;
+    isPr: boolean;
+  } => {
+    const urlMatch = issueUrl.match(
+      /github\.com\/([^/]+)\/([^/]+)\/(issues|pull)\/(\d+)/,
+    );
+    if (!urlMatch) {
+      throw new Error(`Invalid GitHub issue URL: ${issueUrl}`);
+    }
+    return {
+      owner: urlMatch[1],
+      repo: urlMatch[2],
+      issueNumber: parseInt(urlMatch[4], 10),
+      isPr: urlMatch[3] === 'pull',
+    };
+  };
+
+  private computePrStatus = (
+    prUrl: string,
+    headRefName: string | undefined,
+    baseRefName: string | undefined,
+    data: PrStatusComputationData,
+  ): RelatedPullRequest => {
+    const isConflicted = data.mergeable === 'CONFLICTING';
+    const lastCommit = data.commits?.nodes[0]?.commit;
+    const ciState = lastCommit?.statusCheckRollup?.state;
+    const contexts = lastCommit?.statusCheckRollup?.contexts?.nodes || [];
+
+    const branchProtectionRules =
+      data.baseRepository?.branchProtectionRules?.nodes || [];
+    const matchingRules = baseRefName
+      ? branchProtectionRules.filter(
+          (rule) =>
+            rule.pattern === baseRefName || fnmatch(rule.pattern, baseRefName),
+        )
+      : [];
+    const requiredCheckNamesSet = new Set<string>();
+    for (const rule of matchingRules) {
+      for (const name of rule.requiredStatusCheckContexts) {
+        requiredCheckNamesSet.add(name);
+      }
+    }
+
+    const rulesets = data.baseRepository?.rulesets?.nodes || [];
+    const defaultBranchName = data.baseRepository?.defaultBranchRef?.name || '';
+    for (const ruleset of rulesets) {
+      if (ruleset.enforcement !== 'ACTIVE') continue;
+      const refIncludes = ruleset.conditions.refName.include;
+      const refExcludes = ruleset.conditions.refName.exclude;
+      const matchesInclude =
+        baseRefName !== undefined &&
+        refIncludes.some((pattern) => {
+          if (pattern === '~DEFAULT_BRANCH') {
+            return baseRefName === defaultBranchName;
+          }
+          if (pattern === '~ALL') {
+            return true;
+          }
+          const branchPattern = pattern.replace(/^refs\/heads\//, '');
+          return (
+            branchPattern === baseRefName || fnmatch(branchPattern, baseRefName)
+          );
+        });
+      if (!matchesInclude) continue;
+      const matchesExclude =
+        baseRefName !== undefined &&
+        refExcludes.some((pattern) => {
+          if (pattern === '~DEFAULT_BRANCH') {
+            return baseRefName === defaultBranchName;
+          }
+          const branchPattern = pattern.replace(/^refs\/heads\//, '');
+          return (
+            branchPattern === baseRefName || fnmatch(branchPattern, baseRefName)
+          );
+        });
+      if (matchesExclude) continue;
+      for (const rule of ruleset.rules.nodes) {
+        if (rule.type !== 'REQUIRED_STATUS_CHECKS') continue;
+        if ('requiredStatusChecks' in rule.parameters) {
+          for (const check of rule.parameters.requiredStatusChecks) {
+            requiredCheckNamesSet.add(check.context);
+          }
+        }
+      }
+    }
+
+    const requiredCheckNames = Array.from(requiredCheckNamesSet);
+    const seenContextNames = new Set<string>();
+    for (const ctx of contexts) {
+      if ('name' in ctx) {
+        seenContextNames.add(ctx.name);
+      }
+      if ('context' in ctx) {
+        seenContextNames.add(ctx.context);
+      }
+    }
+
+    const missingRequiredCheckNames = requiredCheckNames.filter(
+      (name) => !seenContextNames.has(name),
+    );
+    const allRequiredChecksPassed = missingRequiredCheckNames.length === 0;
+    const isCiStateSuccess = ciState === 'SUCCESS';
+    const isPassedAllCiJob = isCiStateSuccess && allRequiredChecksPassed;
+
+    const reviewThreads = data.reviewThreads?.nodes || [];
+    const isResolvedAllReviewComments =
+      reviewThreads.length === 0 ||
+      reviewThreads.every((thread) => thread.isResolved);
+
+    return {
+      url: prUrl,
+      branchName: headRefName ?? null,
+      isConflicted,
+      isPassedAllCiJob,
+      isCiStateSuccess,
+      isResolvedAllReviewComments,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames,
+    };
+  };
+
   findRelatedOpenPRs = async (
     issueUrl: string,
   ): Promise<RelatedPullRequest[]> => {
-    const match = issueUrl.match(
-      /https:\/\/github\.com\/([^/]+)\/([^/]+)\/issues\/(\d+)/,
-    );
-    if (!match) {
-      return [];
+    const { owner, repo, issueNumber, isPr } = this.parseIssueUrl(issueUrl);
+    if (isPr) {
+      throw new Error(
+        'findRelatedOpenPRs only supports issue URLs, not pull request URLs',
+      );
     }
-    const [, owner, repo, issueNumberStr] = match;
-    const issueNumber = parseInt(issueNumberStr, 10);
 
-    const query = `query FindRelatedPRs($owner: String!, $repo: String!, $number: Int!) {
-      repository(owner: $owner, name: $repo) {
-        issue(number: $number) {
-          timelineItems(itemTypes: [CROSS_REFERENCED_EVENT], first: 50) {
-            nodes {
-              ... on CrossReferencedEvent {
-                source {
-                  ... on PullRequest {
-                    url
-                    state
+    const query = `
+      query($owner: String!, $repo: String!, $issueNumber: Int!, $after: String) {
+        repository(owner: $owner, name: $repo) {
+          issue(number: $issueNumber) {
+            timelineItems(first: 100, after: $after, itemTypes: [CROSS_REFERENCED_EVENT]) {
+              pageInfo {
+                endCursor
+                hasNextPage
+              }
+              nodes {
+                __typename
+                ... on CrossReferencedEvent {
+                  willCloseTarget
+                  source {
+                    __typename
+                    ... on PullRequest {
+                      url
+                      number
+                      state
+                      mergeable
+                      headRefName
+                      baseRefName
+                      baseRepository {
+                        branchProtectionRules(first: 100) {
+                          nodes {
+                            pattern
+                            requiredStatusCheckContexts
+                          }
+                        }
+                        defaultBranchRef {
+                          name
+                        }
+                        rulesets(first: 100) {
+                          nodes {
+                            name
+                            enforcement
+                            conditions {
+                              refName {
+                                include
+                                exclude
+                              }
+                            }
+                            rules(first: 100) {
+                              nodes {
+                                type
+                                parameters {
+                                  ... on RequiredStatusChecksParameters {
+                                    requiredStatusChecks {
+                                      context
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                      commits(last: 1) {
+                        nodes {
+                          commit {
+                            statusCheckRollup {
+                              state
+                              contexts(first: 100) {
+                                nodes {
+                                  __typename
+                                  ... on CheckRun {
+                                    name
+                                    conclusion
+                                  }
+                                  ... on StatusContext {
+                                    context
+                                    state
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                      reviewThreads(first: 100) {
+                        nodes {
+                          isResolved
+                        }
+                      }
+                      baseRef {
+                        name
+                      }
+                    }
                   }
                 }
               }
@@ -601,7 +807,178 @@ export class ApiV3CheerioRestIssueRepository
           }
         }
       }
-    }`;
+    `;
+
+    const relatedPRsMap: Map<string, RelatedPullRequest> = new Map();
+    let after: string | null = null;
+    let hasNextPage = true;
+
+    while (hasNextPage) {
+      const response = await fetch('https://api.github.com/graphql', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.ghToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query,
+          variables: { owner, repo, issueNumber, after },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch issue timeline from GitHub GraphQL API: HTTP ${response.status}`,
+        );
+      }
+
+      const responseData: unknown = await response.json();
+      if (!isIssueTimelineResponse(responseData)) {
+        throw new Error(
+          'Unexpected response shape when fetching issue timeline',
+        );
+      }
+
+      const issueData = responseData.data?.repository?.issue;
+      if (!issueData) {
+        throw new Error(
+          'Issue not found when fetching timeline from GitHub GraphQL API',
+        );
+      }
+
+      for (const item of issueData.timelineItems.nodes) {
+        if (item.__typename !== 'CrossReferencedEvent') continue;
+        if (!item.source || item.source.__typename !== 'PullRequest') continue;
+        if (item.source.state !== 'OPEN') continue;
+        if (!item.willCloseTarget) continue;
+
+        const pr = item.source;
+        const prUrl = pr.url || '';
+        const baseRefName = pr.baseRefName ?? pr.baseRef?.name;
+
+        relatedPRsMap.set(
+          prUrl,
+          this.computePrStatus(prUrl, pr.headRefName, baseRefName, pr),
+        );
+      }
+
+      hasNextPage = issueData.timelineItems.pageInfo.hasNextPage;
+      after = issueData.timelineItems.pageInfo.endCursor;
+    }
+
+    return Array.from(relatedPRsMap.values());
+  };
+
+  getAllOpened = async (project: Project): Promise<Issue[]> => {
+    const { issues } = await this.getAllIssues(project.id, 0);
+    return issues.filter((issue) => !issue.isClosed);
+  };
+
+  getStoryObjectMap = async (project: Project): Promise<StoryObjectMap> => {
+    const { issues } = await this.getAllIssues(project.id, 0);
+    const storyObjectMap: StoryObjectMap = new Map();
+    const targetStories = project.story?.stories || [];
+    for (const story of targetStories) {
+      const storyIssue = issues.find((issue) =>
+        story.name.startsWith(issue.title),
+      );
+      storyObjectMap.set(story.name, {
+        story,
+        storyIssue: storyIssue || null,
+        issues: [],
+      });
+      for (const issue of issues) {
+        if (issue.story !== story.name) continue;
+        storyObjectMap.get(story.name)?.issues.push(issue);
+      }
+    }
+    return storyObjectMap;
+  };
+
+  getOpenPullRequest = async (
+    prUrl: string,
+  ): Promise<RelatedPullRequest | null> => {
+    const parsedUrl = this.parseIssueUrl(prUrl);
+    if (!parsedUrl.isPr) {
+      return null;
+    }
+    const { owner, repo, issueNumber: prNumber } = parsedUrl;
+
+    const query = `
+      query($owner: String!, $repo: String!, $prNumber: Int!) {
+        repository(owner: $owner, name: $repo) {
+          pullRequest(number: $prNumber) {
+            url
+            state
+            headRefName
+            baseRefName
+            mergeable
+            baseRepository {
+              branchProtectionRules(first: 100) {
+                nodes {
+                  pattern
+                  requiredStatusCheckContexts
+                }
+              }
+              defaultBranchRef {
+                name
+              }
+              rulesets(first: 100) {
+                nodes {
+                  name
+                  enforcement
+                  conditions {
+                    refName {
+                      include
+                      exclude
+                    }
+                  }
+                  rules(first: 100) {
+                    nodes {
+                      type
+                      parameters {
+                        ... on RequiredStatusChecksParameters {
+                          requiredStatusChecks {
+                            context
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            commits(last: 1) {
+              nodes {
+                commit {
+                  statusCheckRollup {
+                    state
+                    contexts(first: 100) {
+                      nodes {
+                        __typename
+                        ... on CheckRun {
+                          name
+                          conclusion
+                        }
+                        ... on StatusContext {
+                          context
+                          state
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            reviewThreads(first: 100) {
+              nodes {
+                isResolved
+              }
+            }
+          }
+        }
+      }
+    `;
 
     const response = await fetch('https://api.github.com/graphql', {
       method: 'POST',
@@ -611,46 +988,30 @@ export class ApiV3CheerioRestIssueRepository
       },
       body: JSON.stringify({
         query,
-        variables: { owner, repo, number: issueNumber },
+        variables: { owner, repo, prNumber },
       }),
     });
 
-    const responseData: unknown = await response.json();
-    if (!isFindRelatedPRsResponse(responseData)) {
+    if (!response.ok) {
       throw new Error(
-        'Unexpected response shape when fetching related PRs from GitHub GraphQL API',
+        `Failed to fetch pull request from GitHub GraphQL API: HTTP ${response.status}`,
       );
     }
 
+    const responseData: unknown = await response.json();
+    if (!isDirectPullRequestResponse(responseData)) {
+      throw new Error('Unexpected response shape when fetching pull request');
+    }
+
     if (responseData.errors && responseData.errors.length > 0) {
-      throw new Error(responseData.errors.map((e) => e.message).join('\n'));
+      throw new Error(`GraphQL errors: ${JSON.stringify(responseData.errors)}`);
     }
 
-    const nodes =
-      responseData.data?.repository?.issue?.timelineItems?.nodes ?? [];
-    const openPrUrls = nodes
-      .filter(
-        (node) =>
-          node.source?.url &&
-          node.source?.state === 'OPEN' &&
-          node.source.url.includes('/pull/'),
-      )
-      .map((node) => node.source?.url)
-      .filter((url): url is string => url !== undefined);
-
-    const results: RelatedPullRequest[] = [];
-    for (const prUrl of openPrUrls) {
-      const pr = await this.getOpenPullRequest(prUrl);
-      if (pr) {
-        results.push(pr);
-      }
+    const pr = responseData.data?.repository?.pullRequest;
+    if (!pr || pr.state !== 'OPEN') {
+      return null;
     }
-    return results;
-  };
-  getAllOpened = async (_project: Project): Promise<Issue[]> => {
-    throw new Error('getAllOpened is not implemented');
-  };
-  getStoryObjectMap = async (_project: Project): Promise<StoryObjectMap> => {
-    throw new Error('getStoryObjectMap is not implemented');
+
+    return this.computePrStatus(pr.url, pr.headRefName, pr.baseRefName, pr);
   };
 }

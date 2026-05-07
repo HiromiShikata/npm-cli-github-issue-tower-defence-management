@@ -23,7 +23,10 @@ class RevertOrphanedPreparationUseCase {
             }
             for (const issue of preparationIssues) {
                 const command = params.preparationProcessCheckCommand.replace('{URL}', issue.url);
-                const { exitCode } = await this.localCommandRunner.runCommand(command);
+                const { exitCode } = await this.localCommandRunner.runCommand('sh', [
+                    '-c',
+                    command,
+                ]);
                 if (exitCode !== 0) {
                     await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
                     await this.issueRepository.createComment(issue, `Orphaned preparation detected: no live worker process found for ${issue.url}. Status reverted to ${params.awaitingWorkspaceStatus}.`);

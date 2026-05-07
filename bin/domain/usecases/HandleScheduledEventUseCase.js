@@ -221,9 +221,12 @@ ${JSON.stringify(e)}
                     awaitingWorkspaceStatus: input.startPreparation.awaitingWorkspaceStatus,
                     preparationStatus: input.startPreparation.preparationStatus,
                     defaultAgentName: input.startPreparation.defaultAgentName,
-                    logFilePath: input.startPreparation.logFilePath,
+                    defaultLlmModelName: input.startPreparation.defaultLlmModelName ?? null,
+                    defaultLlmAgentName: input.startPreparation.defaultLlmAgentName ?? null,
+                    configFilePath: input.startPreparation.configFilePath,
                     maximumPreparingIssuesCount: input.startPreparation.maximumPreparingIssuesCount,
-                    allowIssueCacheMinutes: input.allowIssueCacheMinutes,
+                    utilizationPercentageThreshold: input.startPreparation.utilizationPercentageThreshold ?? 90,
+                    allowedIssueAuthors: input.startPreparation.allowedIssueAuthors ?? null,
                 });
             }
             if (input.notifyFinishedPreparation) {

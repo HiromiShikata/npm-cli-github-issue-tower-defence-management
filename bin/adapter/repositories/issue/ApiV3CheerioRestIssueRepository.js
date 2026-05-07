@@ -7,18 +7,73 @@ exports.ApiV3CheerioRestIssueRepository = void 0;
 const typia_1 = __importDefault(require("typia"));
 const BaseGitHubRepository_1 = require("../BaseGitHubRepository");
 const utils_1 = require("../utils");
-function isGetPullRequestResponse(value) {
-    return (() => { const _io0 = input => (undefined === input.data || "object" === typeof input.data && null !== input.data && false === Array.isArray(input.data) && _io1(input.data)) && (undefined === input.errors || Array.isArray(input.errors) && input.errors.every(elem => "object" === typeof elem && null !== elem && _io22(elem))); const _io1 = input => undefined === input.repository || "object" === typeof input.repository && null !== input.repository && false === Array.isArray(input.repository) && _io2(input.repository); const _io2 = input => undefined === input.pullRequest || "object" === typeof input.pullRequest && null !== input.pullRequest && _io3(input.pullRequest); const _io3 = input => "string" === typeof input.state && "string" === typeof input.mergeable && ("object" === typeof input.commits && null !== input.commits && _io4(input.commits)) && ("object" === typeof input.reviewThreads && null !== input.reviewThreads && _io11(input.reviewThreads)) && ("object" === typeof input.baseRepository && null !== input.baseRepository && _io13(input.baseRepository)); const _io4 = input => Array.isArray(input.nodes) && input.nodes.every(elem => "object" === typeof elem && null !== elem && _io5(elem)); const _io5 = input => "object" === typeof input.commit && null !== input.commit && _io6(input.commit); const _io6 = input => null === input.statusCheckRollup || "object" === typeof input.statusCheckRollup && null !== input.statusCheckRollup && _io7(input.statusCheckRollup); const _io7 = input => "string" === typeof input.state && ("object" === typeof input.contexts && null !== input.contexts && _io8(input.contexts)); const _io8 = input => Array.isArray(input.nodes) && input.nodes.every(elem => "object" === typeof elem && null !== elem && false === Array.isArray(elem) && _iu0(elem)); const _io9 = input => (undefined === input.name || "string" === typeof input.name) && (undefined === input.status || "string" === typeof input.status) && (null === input.conclusion || undefined === input.conclusion || "string" === typeof input.conclusion); const _io10 = input => (undefined === input.context || "string" === typeof input.context) && (undefined === input.state || "string" === typeof input.state); const _io11 = input => Array.isArray(input.nodes) && input.nodes.every(elem => "object" === typeof elem && null !== elem && _io12(elem)); const _io12 = input => "boolean" === typeof input.isResolved; const _io13 = input => "object" === typeof input.branchProtectionRules && null !== input.branchProtectionRules && _io14(input.branchProtectionRules) && ("object" === typeof input.rulesets && null !== input.rulesets && _io16(input.rulesets)); const _io14 = input => Array.isArray(input.nodes) && input.nodes.every(elem => "object" === typeof elem && null !== elem && _io15(elem)); const _io15 = input => Array.isArray(input.requiredStatusCheckContexts) && input.requiredStatusCheckContexts.every(elem => "string" === typeof elem); const _io16 = input => Array.isArray(input.nodes) && input.nodes.every(elem => "object" === typeof elem && null !== elem && _io17(elem)); const _io17 = input => "object" === typeof input.rules && null !== input.rules && _io18(input.rules); const _io18 = input => Array.isArray(input.nodes) && input.nodes.every(elem => "object" === typeof elem && null !== elem && _io19(elem)); const _io19 = input => "string" === typeof input.type && (undefined === input.parameters || "object" === typeof input.parameters && null !== input.parameters && false === Array.isArray(input.parameters) && _io20(input.parameters)); const _io20 = input => undefined === input.requiredStatusChecks || Array.isArray(input.requiredStatusChecks) && input.requiredStatusChecks.every(elem => "object" === typeof elem && null !== elem && _io21(elem)); const _io21 = input => "string" === typeof input.context; const _io22 = input => "string" === typeof input.message; const _iu0 = input => (() => {
-        if (_io9(input))
-            return _io9(input);
-        if (_io10(input))
-            return _io10(input);
+function isIssueTimelineResponse(value) {
+    if (typeof value !== 'object' || value === null)
         return false;
-    })(); return input => "object" === typeof input && null !== input && false === Array.isArray(input) && _io0(input); })()(value);
+    return true;
 }
-function isFindRelatedPRsResponse(value) {
-    return (() => { const _io0 = input => (undefined === input.data || "object" === typeof input.data && null !== input.data && false === Array.isArray(input.data) && _io1(input.data)) && (undefined === input.errors || Array.isArray(input.errors) && input.errors.every(elem => "object" === typeof elem && null !== elem && _io7(elem))); const _io1 = input => undefined === input.repository || "object" === typeof input.repository && null !== input.repository && false === Array.isArray(input.repository) && _io2(input.repository); const _io2 = input => undefined === input.issue || "object" === typeof input.issue && null !== input.issue && _io3(input.issue); const _io3 = input => "object" === typeof input.timelineItems && null !== input.timelineItems && _io4(input.timelineItems); const _io4 = input => Array.isArray(input.nodes) && input.nodes.every(elem => "object" === typeof elem && null !== elem && false === Array.isArray(elem) && _io5(elem)); const _io5 = input => undefined === input.source || "object" === typeof input.source && null !== input.source && false === Array.isArray(input.source) && _io6(input.source); const _io6 = input => (undefined === input.url || "string" === typeof input.url) && (undefined === input.state || "string" === typeof input.state); const _io7 = input => "string" === typeof input.message; return input => "object" === typeof input && null !== input && false === Array.isArray(input) && _io0(input); })()(value);
+function isDirectPullRequestResponse(value) {
+    if (typeof value !== 'object' || value === null)
+        return false;
+    return true;
 }
+const fnmatch = (pattern, str) => {
+    let regexStr = '^';
+    let i = 0;
+    while (i < pattern.length) {
+        const c = pattern[i];
+        if (c === '*') {
+            if (pattern[i + 1] === '*') {
+                regexStr += '.*';
+                i += 2;
+                if (pattern[i] === '/') {
+                    i++;
+                }
+            }
+            else {
+                regexStr += '[^/]*';
+                i++;
+            }
+        }
+        else if (c === '?') {
+            regexStr += '[^/]';
+            i++;
+        }
+        else if (c === '[') {
+            let j = i + 1;
+            while (j < pattern.length && pattern[j] !== ']') {
+                j++;
+            }
+            if (j >= pattern.length) {
+                regexStr += '\\[';
+                i++;
+                continue;
+            }
+            const content = pattern.slice(i + 1, j);
+            if (content.length > 0 && (content[0] === '!' || content[0] === '^')) {
+                const body = content.slice(1).replace(/\\/g, '\\\\');
+                regexStr += '[^' + body + ']';
+            }
+            else {
+                const escapedContent = content.replace(/\\/g, '\\\\');
+                regexStr += '[' + escapedContent + ']';
+            }
+            i = j + 1;
+        }
+        else {
+            regexStr += c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            i++;
+        }
+    }
+    regexStr += '$';
+    try {
+        const regex = new RegExp(regexStr);
+        return regex.test(str);
+    }
+    catch {
+        return pattern === str;
+    }
+};
 class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
     constructor(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, localStorageRepository, jsonFilePath = './tmp/github.com.cookies.json', ghToken = process.env.GH_TOKEN || 'dummy', ghUserName = process.env.GH_USER_NAME, ghUserPassword = process.env.GH_USER_PASSWORD, ghAuthenticatorKey = process.env
         .GH_AUTHENTICATOR_KEY) {
@@ -74,6 +129,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 isInProgress: (0, utils_1.normalizeFieldName)(status || '').includes('progress'),
                 isClosed: item.state !== 'OPEN',
                 createdAt: new Date(item.createdAt || '2000-01-01'),
+                author: '',
             };
         };
         this.getAllIssuesFromCache = async (cacheKey, allowCacheMinutes) => {
@@ -108,7 +164,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                             createdAt: createdAt,
                         };
                     });
-                    if ((() => { const _io0 = input => "string" === typeof input.nameWithOwner && "number" === typeof input.number && "string" === typeof input.title && ("OPEN" === input.state || "CLOSED" === input.state || "MERGED" === input.state) && (null === input.status || "string" === typeof input.status) && (null === input.story || "string" === typeof input.story) && (null === input.nextActionDate || input.nextActionDate instanceof Date) && (null === input.nextActionHour || "number" === typeof input.nextActionHour) && (null === input.estimationMinutes || "number" === typeof input.estimationMinutes) && (Array.isArray(input.dependedIssueUrls) && input.dependedIssueUrls.every(elem => "string" === typeof elem)) && (null === input.completionDate50PercentConfidence || input.completionDate50PercentConfidence instanceof Date) && "string" === typeof input.url && (Array.isArray(input.assignees) && input.assignees.every(elem => "string" === typeof elem)) && (Array.isArray(input.labels) && input.labels.every(elem => "string" === typeof elem)) && "string" === typeof input.org && "string" === typeof input.repo && "string" === typeof input.body && "string" === typeof input.itemId && "boolean" === typeof input.isPr && "boolean" === typeof input.isInProgress && "boolean" === typeof input.isClosed && input.createdAt instanceof Date; return input => Array.isArray(input) && input.every(elem => "object" === typeof elem && null !== elem && _io0(elem)); })()(issues)) {
+                    if ((() => { const _io0 = input => "string" === typeof input.nameWithOwner && "number" === typeof input.number && "string" === typeof input.title && ("OPEN" === input.state || "CLOSED" === input.state || "MERGED" === input.state) && (null === input.status || "string" === typeof input.status) && (null === input.story || "string" === typeof input.story) && (null === input.nextActionDate || input.nextActionDate instanceof Date) && (null === input.nextActionHour || "number" === typeof input.nextActionHour) && (null === input.estimationMinutes || "number" === typeof input.estimationMinutes) && (Array.isArray(input.dependedIssueUrls) && input.dependedIssueUrls.every(elem => "string" === typeof elem)) && (null === input.completionDate50PercentConfidence || input.completionDate50PercentConfidence instanceof Date) && "string" === typeof input.url && (Array.isArray(input.assignees) && input.assignees.every(elem => "string" === typeof elem)) && (Array.isArray(input.labels) && input.labels.every(elem => "string" === typeof elem)) && "string" === typeof input.org && "string" === typeof input.repo && "string" === typeof input.body && "string" === typeof input.itemId && "boolean" === typeof input.isPr && "boolean" === typeof input.isInProgress && "boolean" === typeof input.isClosed && input.createdAt instanceof Date && "string" === typeof input.author; return input => Array.isArray(input) && input.every(elem => "object" === typeof elem && null !== elem && _io0(elem)); })()(issues)) {
                         return issues;
                     }
                 }
@@ -152,134 +208,6 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             }
             return this.graphqlProjectItemRepository.updateProjectField(project.id, project.nextActionDate.fieldId, projectItem.id, { date: date.toISOString().split('T')[0] });
         };
-        this.getOpenPullRequest = async (prUrl) => {
-            const match = prUrl.match(/https:\/\/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
-            if (!match) {
-                return null;
-            }
-            const [, owner, repo, prNumberStr] = match;
-            const prNumber = parseInt(prNumberStr, 10);
-            const query = `query GetPullRequest($owner: String!, $repo: String!, $number: Int!) {
-      repository(owner: $owner, name: $repo) {
-        pullRequest(number: $number) {
-          state
-          mergeable
-          commits(last: 1) {
-            nodes {
-              commit {
-                statusCheckRollup {
-                  state
-                  contexts(first: 100) {
-                    nodes {
-                      ... on CheckRun {
-                        name
-                        status
-                        conclusion
-                      }
-                      ... on StatusContext {
-                        context
-                        state
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-          reviewThreads(first: 100) {
-            nodes {
-              isResolved
-            }
-          }
-          baseRepository {
-            branchProtectionRules(first: 10) {
-              nodes {
-                requiredStatusCheckContexts
-              }
-            }
-            rulesets(first: 10) {
-              nodes {
-                rules(first: 50) {
-                  nodes {
-                    type
-                    parameters {
-                      ... on RequiredStatusChecksParameters {
-                        requiredStatusChecks {
-                          context
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }`;
-            const response = await fetch('https://api.github.com/graphql', {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${this.ghToken}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    query,
-                    variables: { owner, repo, number: prNumber },
-                }),
-            });
-            const responseData = await response.json();
-            if (!isGetPullRequestResponse(responseData)) {
-                throw new Error('Unexpected response shape when fetching pull request from GitHub GraphQL API');
-            }
-            if (responseData.errors && responseData.errors.length > 0) {
-                throw new Error(responseData.errors.map((e) => e.message).join('\n'));
-            }
-            const pr = responseData.data?.repository?.pullRequest;
-            if (!pr || pr.state !== 'OPEN') {
-                return null;
-            }
-            const isConflicted = pr.mergeable === 'CONFLICTING';
-            const lastCommit = pr.commits.nodes[pr.commits.nodes.length - 1];
-            const rollup = lastCommit?.commit?.statusCheckRollup;
-            const isCiStateSuccess = rollup?.state === 'SUCCESS';
-            const requiredCheckNames = [];
-            for (const rule of pr.baseRepository.branchProtectionRules.nodes) {
-                requiredCheckNames.push(...rule.requiredStatusCheckContexts);
-            }
-            for (const ruleset of pr.baseRepository.rulesets.nodes) {
-                for (const rule of ruleset.rules.nodes) {
-                    if (rule.type === 'REQUIRED_STATUS_CHECKS' &&
-                        rule.parameters?.requiredStatusChecks) {
-                        requiredCheckNames.push(...rule.parameters.requiredStatusChecks.map((c) => c.context));
-                    }
-                }
-            }
-            const contextNodes = rollup?.contexts?.nodes ?? [];
-            const completedCheckNames = contextNodes
-                .map((node) => {
-                if ('name' in node && node.name) {
-                    return node.name;
-                }
-                if ('context' in node && node.context) {
-                    return node.context;
-                }
-                return null;
-            })
-                .filter((name) => name !== null);
-            const missingRequiredCheckNames = requiredCheckNames.filter((required) => !completedCheckNames.includes(required));
-            const isPassedAllCiJob = isCiStateSuccess && missingRequiredCheckNames.length === 0;
-            const isResolvedAllReviewComments = pr.reviewThreads.nodes.every((thread) => thread.isResolved);
-            return {
-                url: prUrl,
-                isConflicted,
-                isPassedAllCiJob,
-                isCiStateSuccess,
-                isResolvedAllReviewComments,
-                isBranchOutOfDate: false,
-                missingRequiredCheckNames,
-            };
-        };
         this.updateNextActionHour = async (project, issue, hour) => {
             return this.graphqlProjectItemRepository.updateProjectField(project.id, project.nextActionHour.fieldId, issue.itemId, { number: hour });
         };
@@ -311,23 +239,194 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         this.update = async (issue, _project) => {
             await this.updateIssue(issue);
         };
-        this.findRelatedOpenPRs = async (issueUrl) => {
-            const match = issueUrl.match(/https:\/\/github\.com\/([^/]+)\/([^/]+)\/issues\/(\d+)/);
-            if (!match) {
-                return [];
+        this.parseIssueUrl = (issueUrl) => {
+            const urlMatch = issueUrl.match(/github\.com\/([^/]+)\/([^/]+)\/(issues|pull)\/(\d+)/);
+            if (!urlMatch) {
+                throw new Error(`Invalid GitHub issue URL: ${issueUrl}`);
             }
-            const [, owner, repo, issueNumberStr] = match;
-            const issueNumber = parseInt(issueNumberStr, 10);
-            const query = `query FindRelatedPRs($owner: String!, $repo: String!, $number: Int!) {
-      repository(owner: $owner, name: $repo) {
-        issue(number: $number) {
-          timelineItems(itemTypes: [CROSS_REFERENCED_EVENT], first: 50) {
-            nodes {
-              ... on CrossReferencedEvent {
-                source {
-                  ... on PullRequest {
-                    url
-                    state
+            return {
+                owner: urlMatch[1],
+                repo: urlMatch[2],
+                issueNumber: parseInt(urlMatch[4], 10),
+                isPr: urlMatch[3] === 'pull',
+            };
+        };
+        this.computePrStatus = (prUrl, headRefName, baseRefName, data) => {
+            const isConflicted = data.mergeable === 'CONFLICTING';
+            const lastCommit = data.commits?.nodes[0]?.commit;
+            const ciState = lastCommit?.statusCheckRollup?.state;
+            const contexts = lastCommit?.statusCheckRollup?.contexts?.nodes || [];
+            const branchProtectionRules = data.baseRepository?.branchProtectionRules?.nodes || [];
+            const matchingRules = baseRefName
+                ? branchProtectionRules.filter((rule) => rule.pattern === baseRefName || fnmatch(rule.pattern, baseRefName))
+                : [];
+            const requiredCheckNamesSet = new Set();
+            for (const rule of matchingRules) {
+                for (const name of rule.requiredStatusCheckContexts) {
+                    requiredCheckNamesSet.add(name);
+                }
+            }
+            const rulesets = data.baseRepository?.rulesets?.nodes || [];
+            const defaultBranchName = data.baseRepository?.defaultBranchRef?.name || '';
+            for (const ruleset of rulesets) {
+                if (ruleset.enforcement !== 'ACTIVE')
+                    continue;
+                const refIncludes = ruleset.conditions.refName.include;
+                const refExcludes = ruleset.conditions.refName.exclude;
+                const matchesInclude = baseRefName !== undefined &&
+                    refIncludes.some((pattern) => {
+                        if (pattern === '~DEFAULT_BRANCH') {
+                            return baseRefName === defaultBranchName;
+                        }
+                        if (pattern === '~ALL') {
+                            return true;
+                        }
+                        const branchPattern = pattern.replace(/^refs\/heads\//, '');
+                        return (branchPattern === baseRefName || fnmatch(branchPattern, baseRefName));
+                    });
+                if (!matchesInclude)
+                    continue;
+                const matchesExclude = baseRefName !== undefined &&
+                    refExcludes.some((pattern) => {
+                        if (pattern === '~DEFAULT_BRANCH') {
+                            return baseRefName === defaultBranchName;
+                        }
+                        const branchPattern = pattern.replace(/^refs\/heads\//, '');
+                        return (branchPattern === baseRefName || fnmatch(branchPattern, baseRefName));
+                    });
+                if (matchesExclude)
+                    continue;
+                for (const rule of ruleset.rules.nodes) {
+                    if (rule.type !== 'REQUIRED_STATUS_CHECKS')
+                        continue;
+                    if ('requiredStatusChecks' in rule.parameters) {
+                        for (const check of rule.parameters.requiredStatusChecks) {
+                            requiredCheckNamesSet.add(check.context);
+                        }
+                    }
+                }
+            }
+            const requiredCheckNames = Array.from(requiredCheckNamesSet);
+            const seenContextNames = new Set();
+            for (const ctx of contexts) {
+                if ('name' in ctx) {
+                    seenContextNames.add(ctx.name);
+                }
+                if ('context' in ctx) {
+                    seenContextNames.add(ctx.context);
+                }
+            }
+            const missingRequiredCheckNames = requiredCheckNames.filter((name) => !seenContextNames.has(name));
+            const allRequiredChecksPassed = missingRequiredCheckNames.length === 0;
+            const isCiStateSuccess = ciState === 'SUCCESS';
+            const isPassedAllCiJob = isCiStateSuccess && allRequiredChecksPassed;
+            const reviewThreads = data.reviewThreads?.nodes || [];
+            const isResolvedAllReviewComments = reviewThreads.length === 0 ||
+                reviewThreads.every((thread) => thread.isResolved);
+            return {
+                url: prUrl,
+                branchName: headRefName ?? null,
+                isConflicted,
+                isPassedAllCiJob,
+                isCiStateSuccess,
+                isResolvedAllReviewComments,
+                isBranchOutOfDate: false,
+                missingRequiredCheckNames,
+            };
+        };
+        this.findRelatedOpenPRs = async (issueUrl) => {
+            const { owner, repo, issueNumber, isPr } = this.parseIssueUrl(issueUrl);
+            if (isPr) {
+                throw new Error('findRelatedOpenPRs only supports issue URLs, not pull request URLs');
+            }
+            const query = `
+      query($owner: String!, $repo: String!, $issueNumber: Int!, $after: String) {
+        repository(owner: $owner, name: $repo) {
+          issue(number: $issueNumber) {
+            timelineItems(first: 100, after: $after, itemTypes: [CROSS_REFERENCED_EVENT]) {
+              pageInfo {
+                endCursor
+                hasNextPage
+              }
+              nodes {
+                __typename
+                ... on CrossReferencedEvent {
+                  willCloseTarget
+                  source {
+                    __typename
+                    ... on PullRequest {
+                      url
+                      number
+                      state
+                      mergeable
+                      headRefName
+                      baseRefName
+                      baseRepository {
+                        branchProtectionRules(first: 100) {
+                          nodes {
+                            pattern
+                            requiredStatusCheckContexts
+                          }
+                        }
+                        defaultBranchRef {
+                          name
+                        }
+                        rulesets(first: 100) {
+                          nodes {
+                            name
+                            enforcement
+                            conditions {
+                              refName {
+                                include
+                                exclude
+                              }
+                            }
+                            rules(first: 100) {
+                              nodes {
+                                type
+                                parameters {
+                                  ... on RequiredStatusChecksParameters {
+                                    requiredStatusChecks {
+                                      context
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                      commits(last: 1) {
+                        nodes {
+                          commit {
+                            statusCheckRollup {
+                              state
+                              contexts(first: 100) {
+                                nodes {
+                                  __typename
+                                  ... on CheckRun {
+                                    name
+                                    conclusion
+                                  }
+                                  ... on StatusContext {
+                                    context
+                                    state
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                      reviewThreads(first: 100) {
+                        nodes {
+                          isResolved
+                        }
+                      }
+                      baseRef {
+                        name
+                      }
+                    }
                   }
                 }
               }
@@ -335,7 +434,156 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
           }
         }
       }
-    }`;
+    `;
+            const relatedPRsMap = new Map();
+            let after = null;
+            let hasNextPage = true;
+            while (hasNextPage) {
+                const response = await fetch('https://api.github.com/graphql', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${this.ghToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query,
+                        variables: { owner, repo, issueNumber, after },
+                    }),
+                });
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch issue timeline from GitHub GraphQL API: HTTP ${response.status}`);
+                }
+                const responseData = await response.json();
+                if (!isIssueTimelineResponse(responseData)) {
+                    throw new Error('Unexpected response shape when fetching issue timeline');
+                }
+                const issueData = responseData.data?.repository?.issue;
+                if (!issueData) {
+                    throw new Error('Issue not found when fetching timeline from GitHub GraphQL API');
+                }
+                for (const item of issueData.timelineItems.nodes) {
+                    if (item.__typename !== 'CrossReferencedEvent')
+                        continue;
+                    if (!item.source || item.source.__typename !== 'PullRequest')
+                        continue;
+                    if (item.source.state !== 'OPEN')
+                        continue;
+                    if (!item.willCloseTarget)
+                        continue;
+                    const pr = item.source;
+                    const prUrl = pr.url || '';
+                    const baseRefName = pr.baseRefName ?? pr.baseRef?.name;
+                    relatedPRsMap.set(prUrl, this.computePrStatus(prUrl, pr.headRefName, baseRefName, pr));
+                }
+                hasNextPage = issueData.timelineItems.pageInfo.hasNextPage;
+                after = issueData.timelineItems.pageInfo.endCursor;
+            }
+            return Array.from(relatedPRsMap.values());
+        };
+        this.getAllOpened = async (project) => {
+            const { issues } = await this.getAllIssues(project.id, 0);
+            return issues.filter((issue) => !issue.isClosed);
+        };
+        this.getStoryObjectMap = async (project) => {
+            const { issues } = await this.getAllIssues(project.id, 0);
+            const storyObjectMap = new Map();
+            const targetStories = project.story?.stories || [];
+            for (const story of targetStories) {
+                const storyIssue = issues.find((issue) => story.name.startsWith(issue.title));
+                storyObjectMap.set(story.name, {
+                    story,
+                    storyIssue: storyIssue || null,
+                    issues: [],
+                });
+                for (const issue of issues) {
+                    if (issue.story !== story.name)
+                        continue;
+                    storyObjectMap.get(story.name)?.issues.push(issue);
+                }
+            }
+            return storyObjectMap;
+        };
+        this.getOpenPullRequest = async (prUrl) => {
+            const parsedUrl = this.parseIssueUrl(prUrl);
+            if (!parsedUrl.isPr) {
+                return null;
+            }
+            const { owner, repo, issueNumber: prNumber } = parsedUrl;
+            const query = `
+      query($owner: String!, $repo: String!, $prNumber: Int!) {
+        repository(owner: $owner, name: $repo) {
+          pullRequest(number: $prNumber) {
+            url
+            state
+            headRefName
+            baseRefName
+            mergeable
+            baseRepository {
+              branchProtectionRules(first: 100) {
+                nodes {
+                  pattern
+                  requiredStatusCheckContexts
+                }
+              }
+              defaultBranchRef {
+                name
+              }
+              rulesets(first: 100) {
+                nodes {
+                  name
+                  enforcement
+                  conditions {
+                    refName {
+                      include
+                      exclude
+                    }
+                  }
+                  rules(first: 100) {
+                    nodes {
+                      type
+                      parameters {
+                        ... on RequiredStatusChecksParameters {
+                          requiredStatusChecks {
+                            context
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            commits(last: 1) {
+              nodes {
+                commit {
+                  statusCheckRollup {
+                    state
+                    contexts(first: 100) {
+                      nodes {
+                        __typename
+                        ... on CheckRun {
+                          name
+                          conclusion
+                        }
+                        ... on StatusContext {
+                          context
+                          state
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            reviewThreads(first: 100) {
+              nodes {
+                isResolved
+              }
+            }
+          }
+        }
+      }
+    `;
             const response = await fetch('https://api.github.com/graphql', {
                 method: 'POST',
                 headers: {
@@ -344,37 +592,24 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 },
                 body: JSON.stringify({
                     query,
-                    variables: { owner, repo, number: issueNumber },
+                    variables: { owner, repo, prNumber },
                 }),
             });
+            if (!response.ok) {
+                throw new Error(`Failed to fetch pull request from GitHub GraphQL API: HTTP ${response.status}`);
+            }
             const responseData = await response.json();
-            if (!isFindRelatedPRsResponse(responseData)) {
-                throw new Error('Unexpected response shape when fetching related PRs from GitHub GraphQL API');
+            if (!isDirectPullRequestResponse(responseData)) {
+                throw new Error('Unexpected response shape when fetching pull request');
             }
             if (responseData.errors && responseData.errors.length > 0) {
-                throw new Error(responseData.errors.map((e) => e.message).join('\n'));
+                throw new Error(`GraphQL errors: ${JSON.stringify(responseData.errors)}`);
             }
-            const nodes = responseData.data?.repository?.issue?.timelineItems?.nodes ?? [];
-            const openPrUrls = nodes
-                .filter((node) => node.source?.url &&
-                node.source?.state === 'OPEN' &&
-                node.source.url.includes('/pull/'))
-                .map((node) => node.source?.url)
-                .filter((url) => url !== undefined);
-            const results = [];
-            for (const prUrl of openPrUrls) {
-                const pr = await this.getOpenPullRequest(prUrl);
-                if (pr) {
-                    results.push(pr);
-                }
+            const pr = responseData.data?.repository?.pullRequest;
+            if (!pr || pr.state !== 'OPEN') {
+                return null;
             }
-            return results;
-        };
-        this.getAllOpened = async (_project) => {
-            throw new Error('getAllOpened is not implemented');
-        };
-        this.getStoryObjectMap = async (_project) => {
-            throw new Error('getStoryObjectMap is not implemented');
+            return this.computePrStatus(pr.url, pr.headRefName, pr.baseRefName, pr);
         };
     }
 }

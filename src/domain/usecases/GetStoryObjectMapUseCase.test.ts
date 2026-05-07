@@ -66,6 +66,7 @@ describe('GetStoryObjectMapUseCase', () => {
     isInProgress: false,
     isClosed: false,
     createdAt: new Date(),
+    author: '',
     ...overrides,
   });
 

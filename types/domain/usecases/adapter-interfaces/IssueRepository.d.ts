@@ -4,6 +4,7 @@ import { Member } from '../../entities/Member';
 import { StoryObjectMap } from '../../entities/StoryObjectMap';
 export type RelatedPullRequest = {
     url: string;
+    branchName: string | null;
     isConflicted: boolean;
     isPassedAllCiJob: boolean;
     isCiStateSuccess: boolean;
@@ -20,7 +21,6 @@ export interface IssueRepository {
     createNewIssue: (org: string, repo: string, title: string, body: string, assignees: Member['name'][], labels: Label[]) => Promise<number>;
     updateIssue: (issue: Issue) => Promise<void>;
     updateNextActionDate: (issueUrl: string, project: Project, date: Date) => Promise<void>;
-    getOpenPullRequest: (prUrl: string) => Promise<RelatedPullRequest | null>;
     updateNextActionHour: (project: Project & {
         nextActionHour: NonNullable<Project['nextActionHour']>;
     }, issue: Issue, hour: number) => Promise<void>;
@@ -37,6 +37,7 @@ export interface IssueRepository {
     get: (issueUrl: string, project: Project) => Promise<Issue | null>;
     update: (issue: Issue, project: Project) => Promise<void>;
     findRelatedOpenPRs: (issueUrl: string) => Promise<RelatedPullRequest[]>;
+    getOpenPullRequest: (prUrl: string) => Promise<RelatedPullRequest | null>;
     getAllOpened: (project: Project) => Promise<Issue[]>;
     getStoryObjectMap: (project: Project) => Promise<StoryObjectMap>;
 }

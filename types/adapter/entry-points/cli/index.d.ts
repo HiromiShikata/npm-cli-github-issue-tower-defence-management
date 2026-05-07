@@ -5,9 +5,12 @@ type ConfigFile = {
     awaitingWorkspaceStatus?: string;
     preparationStatus?: string;
     defaultAgentName?: string;
-    logFilePath?: string;
+    defaultLlmModelName?: string;
+    defaultLlmAgentName?: string;
     maximumPreparingIssuesCount?: number;
     allowIssueCacheMinutes?: number;
+    utilizationPercentageThreshold?: number;
+    allowedIssueAuthors?: string;
     awaitingQualityCheckStatus?: string;
     thresholdForAutoReject?: number;
     workflowBlockerResolvedWebhookUrl?: string;
