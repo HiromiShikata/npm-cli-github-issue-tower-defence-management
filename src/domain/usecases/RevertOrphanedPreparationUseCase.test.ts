@@ -140,7 +140,9 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockLocalCommandRunner.runCommand.mock.calls[0][0]).toBe('sh');
     expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toEqual([
       '-c',
-      'pgrep -fa "claude-agent.*https://github.com/user/repo/issues/10"',
+      'pgrep -fa "claude-agent.*$1"',
+      '--',
+      'https://github.com/user/repo/issues/10',
     ]);
   });
 
@@ -202,7 +204,9 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockLocalCommandRunner.runCommand.mock.calls[0][0]).toBe('sh');
     expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toEqual([
       '-c',
-      'check https://github.com/user/repo/issues/10',
+      'check $1',
+      '--',
+      'https://github.com/user/repo/issues/10',
     ]);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
   });
@@ -303,7 +307,9 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockLocalCommandRunner.runCommand.mock.calls[0][0]).toBe('sh');
     expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toEqual([
       '-c',
-      'pgrep -fa "claude-agent.*https://github.com/org/project/issues/99"',
+      'pgrep -fa "claude-agent.*$1"',
+      '--',
+      'https://github.com/org/project/issues/99',
     ]);
   });
 });
