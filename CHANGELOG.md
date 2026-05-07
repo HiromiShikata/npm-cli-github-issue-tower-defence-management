@@ -1,3 +1,16 @@
+# [1.40.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.39.0...v1.40.0) (2026-05-07)
+
+
+### Bug Fixes
+
+* **core:** replace type assertions with type guard functions in ApiV3CheerioRestIssueRepository ([f6c71cb](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f6c71cbdb52b136ad2ddfda582011e456c67e01d))
+* **core:** use typia.is for proper runtime type validation in ApiV3CheerioRestIssueRepository ([2e3b77c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2e3b77cc829ba03be489942ebb38f3e3d91b85e6))
+
+
+### Features
+
+* **core:** port NotifyFinishedIssuePreparationUseCase from preparator ([2751863](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/275186338a59d7b22fec1d39d4743b552da7975e))
+
 # [1.39.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.38.1...v1.39.0) (2026-05-04)
 
 
