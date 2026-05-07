@@ -1,3 +1,16 @@
+# [1.41.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.40.0...v1.41.0) (2026-05-07)
+
+
+### Bug Fixes
+
+* **core:** use POSIX positional parameter to prevent shell injection in RevertOrphanedPreparationUseCase ([1d73934](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1d73934179506ed70865455b4e495efbfbc61ee8))
+* **core:** validate branch name before shell execution to satisfy CodeQL uncontrolled-command-line ([c40bace](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c40baced13d98511c7c16681a6a0e59defb415ab))
+
+
+### Features
+
+* **core:** port StartPreparationUseCase from preparator into TDPM ([1c86aa5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1c86aa58c7eedeb4a5c6931d62ed4febc8f4a248)), closes [npm-cli-#issue-preparator](https://github.com/npm-cli-/issues/issue-preparator) [#480](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/480)
+
 # [1.40.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.39.0...v1.40.0) (2026-05-07)
 
 

@@ -22,10 +22,12 @@ class RevertOrphanedPreparationUseCase {
                 return;
             }
             for (const issue of preparationIssues) {
-                const command = params.preparationProcessCheckCommand.replace('{URL}', issue.url);
+                const commandTemplate = params.preparationProcessCheckCommand.replace('{URL}', '$1');
                 const { exitCode } = await this.localCommandRunner.runCommand('sh', [
                     '-c',
-                    command,
+                    commandTemplate,
+                    '--',
+                    issue.url,
                 ]);
                 if (exitCode !== 0) {
                     await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);

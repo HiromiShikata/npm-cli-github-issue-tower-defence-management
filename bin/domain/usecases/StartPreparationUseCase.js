@@ -115,6 +115,10 @@ class StartPreparationUseCase {
                         branchName = `i${issue.number}`;
                     }
                 }
+                if (!/^[\w./-]+$/.test(branchName)) {
+                    console.error(`Skipping issue ${issue.url}: branch name contains unexpected characters: ${branchName}`);
+                    continue;
+                }
                 issue.status = params.preparationStatus;
                 await this.issueRepository.update(issue, project);
                 await this.localCommandRunner.runCommand('aw', [
