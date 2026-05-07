@@ -37,6 +37,7 @@ type ConfigFile = {
   workflowBlockerResolvedWebhookUrl?: string;
   projectName?: string;
   preparationProcessCheckCommand?: string;
+  codexHomeCandidates?: string[];
 };
 
 type StartDaemonOptions = {
@@ -79,6 +80,24 @@ const getNumberValue = (
 ): number | undefined => {
   const value = obj[key];
   return typeof value === 'number' ? value : undefined;
+};
+
+const getStringArrayValue = (
+  obj: Record<string, unknown>,
+  key: string,
+): string[] | undefined => {
+  const value = obj[key];
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const strings: string[] = [];
+  for (const item of value) {
+    if (typeof item !== 'string') {
+      return undefined;
+    }
+    strings.push(item);
+  }
+  return strings;
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -125,6 +144,7 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         parsed,
         'preparationProcessCheckCommand',
       ),
+      codexHomeCandidates: getStringArrayValue(parsed, 'codexHomeCandidates'),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -183,6 +203,7 @@ export const parseProjectReadmeConfig = (readme: string): ConfigFile => {
         parsed,
         'preparationProcessCheckCommand',
       ),
+      codexHomeCandidates: getStringArrayValue(parsed, 'codexHomeCandidates'),
     };
   } catch {
     console.warn('Failed to parse YAML from project README config section');
@@ -249,6 +270,10 @@ export const mergeConfigs = (
     readmeOverrides.preparationProcessCheckCommand ??
     cliOverrides.preparationProcessCheckCommand ??
     configFile.preparationProcessCheckCommand,
+  codexHomeCandidates:
+    readmeOverrides.codexHomeCandidates ??
+    cliOverrides.codexHomeCandidates ??
+    configFile.codexHomeCandidates,
 });
 
 type GraphqlProjectV2ReadmeResponse = {
@@ -585,6 +610,11 @@ program
           .filter(Boolean)
       : null;
 
+    const codexHomeCandidates =
+      config.codexHomeCandidates && config.codexHomeCandidates.length > 0
+        ? config.codexHomeCandidates
+        : null;
+
     await useCase.run({
       projectUrl,
       awaitingWorkspaceStatus,
@@ -597,6 +627,7 @@ program
       utilizationPercentageThreshold:
         config.utilizationPercentageThreshold ?? 90,
       allowedIssueAuthors,
+      codexHomeCandidates,
     });
   });
 

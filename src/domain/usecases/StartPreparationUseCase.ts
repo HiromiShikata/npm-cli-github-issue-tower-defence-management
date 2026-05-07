@@ -32,6 +32,7 @@ export class StartPreparationUseCase {
     maximumPreparingIssuesCount: number | null;
     utilizationPercentageThreshold: number;
     allowedIssueAuthors: string[] | null;
+    codexHomeCandidates: string[] | null;
   }): Promise<void> => {
     const claudeUsages = await this.claudeRepository.getUsage();
     const weeklyWindowHours = 168;
@@ -103,6 +104,7 @@ export class StartPreparationUseCase {
       (issue) => issue.status === params.preparationStatus,
     ).length;
     let updatedCurrentPreparationIssueCount = currentPreparationIssueCount;
+    let startedInThisRunCount = 0;
 
     const now = new Date();
     const currentHour = now.getHours();
@@ -212,7 +214,7 @@ export class StartPreparationUseCase {
       issue.status = params.preparationStatus;
       await this.issueRepository.update(issue, project);
 
-      await this.localCommandRunner.runCommand('aw', [
+      const awArgs: string[] = [
         issue.url,
         agent,
         model,
@@ -220,7 +222,19 @@ export class StartPreparationUseCase {
         params.configFilePath,
         '--branch',
         branchName,
-      ]);
+      ];
+      if (
+        params.codexHomeCandidates !== null &&
+        params.codexHomeCandidates.length > 0
+      ) {
+        const codexHome =
+          params.codexHomeCandidates[
+            startedInThisRunCount % params.codexHomeCandidates.length
+          ];
+        awArgs.push('--codexHome', codexHome);
+      }
+      await this.localCommandRunner.runCommand('aw', awArgs);
+      startedInThisRunCount++;
       updatedCurrentPreparationIssueCount++;
     }
   };

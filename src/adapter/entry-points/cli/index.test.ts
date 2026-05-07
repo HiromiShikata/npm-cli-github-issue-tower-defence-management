@@ -138,12 +138,49 @@ describe('CLI', () => {
         thresholdForAutoReject: 5,
         workflowBlockerResolvedWebhookUrl: 'https://example.com/webhook',
         projectName: 'test-project',
+        codexHomeCandidates: ['.codex-dev1', '.codex-main'],
       };
       writeConfig(config);
 
       const result = loadConfigFile(configFilePath);
 
       expect(result).toEqual(config);
+    });
+
+    it('should load codexHomeCandidates string array from config file', () => {
+      const config = {
+        ...defaultConfig,
+        codexHomeCandidates: ['.codex-dev1', '.codex-dev2', '.codex-main'],
+      };
+      writeConfig(config);
+
+      const result = loadConfigFile(configFilePath);
+
+      expect(result.codexHomeCandidates).toEqual([
+        '.codex-dev1',
+        '.codex-dev2',
+        '.codex-main',
+      ]);
+    });
+
+    it('should return undefined codexHomeCandidates when not in config', () => {
+      writeConfig(defaultConfig);
+
+      const result = loadConfigFile(configFilePath);
+
+      expect(result.codexHomeCandidates).toBeUndefined();
+    });
+
+    it('should return undefined codexHomeCandidates when array contains non-string items', () => {
+      const config = {
+        ...defaultConfig,
+        codexHomeCandidates: ['.codex-dev1', 123],
+      };
+      writeConfig(config);
+
+      const result = loadConfigFile(configFilePath);
+
+      expect(result.codexHomeCandidates).toBeUndefined();
     });
 
     it('should return empty config for empty YAML', () => {
@@ -299,6 +336,24 @@ defaultAgentName: 'case-test-agent'
       const result = parseProjectReadmeConfig(readme);
 
       expect(result.defaultAgentName).toBe('case-test-agent');
+    });
+
+    it('should parse codexHomeCandidates string array from README config', () => {
+      const readme = `<details>
+<summary>config</summary>
+codexHomeCandidates:
+  - .codex-dev1
+  - .codex-dev2
+  - .codex-main
+</details>`;
+
+      const result = parseProjectReadmeConfig(readme);
+
+      expect(result.codexHomeCandidates).toEqual([
+        '.codex-dev1',
+        '.codex-dev2',
+        '.codex-main',
+      ]);
     });
   });
 
@@ -457,6 +512,7 @@ defaultAgentName: 'case-test-agent'
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
+        codexHomeCandidates: null,
       });
     });
 
@@ -497,6 +553,7 @@ defaultAgentName: 'case-test-agent'
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
+        codexHomeCandidates: null,
       });
     });
 
@@ -902,6 +959,107 @@ defaultAgentName: 'case-test-agent'
       expect(mockRun).toHaveBeenCalledWith(
         expect.objectContaining({
           defaultAgentName: 'readme-agent',
+        }),
+      );
+    });
+
+    it('should pass codexHomeCandidates from config file', async () => {
+      const configWithCandidates = {
+        ...defaultConfig,
+        codexHomeCandidates: ['.codex-dev1', '.codex-dev2', '.codex-main'],
+      };
+      writeConfig(configWithCandidates);
+
+      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
+
+      MockedStartPreparationUseCase.mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'startDaemon',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          codexHomeCandidates: ['.codex-dev1', '.codex-dev2', '.codex-main'],
+        }),
+      );
+    });
+
+    it('should pass codexHomeCandidates as null when not in config', async () => {
+      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
+
+      MockedStartPreparationUseCase.mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'startDaemon',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          codexHomeCandidates: null,
+        }),
+      );
+    });
+
+    it('should pass codexHomeCandidates from README config', async () => {
+      const readmeContent = [
+        '# Project',
+        '<details>',
+        '<summary>config</summary>',
+        'codexHomeCandidates:',
+        '  - .codex-readme1',
+        '  - .codex-readme2',
+        '</details>',
+      ].join('\n');
+      mockFetchReturningReadme(readmeContent);
+
+      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
+
+      MockedStartPreparationUseCase.mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'startDaemon',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          codexHomeCandidates: ['.codex-readme1', '.codex-readme2'],
         }),
       );
     });

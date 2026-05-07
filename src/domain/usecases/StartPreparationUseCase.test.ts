@@ -147,6 +147,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
 
     expect(mockProjectRepository.prepareStatus).toHaveBeenCalledTimes(2);
@@ -191,6 +192,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
     expect(mockIssueRepository.update.mock.calls).toHaveLength(1);
     expect(mockIssueRepository.update.mock.calls[0][0]).toMatchObject({
@@ -253,6 +255,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -308,6 +311,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -356,6 +360,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     expect(mockIssueRepository.update.mock.calls).toHaveLength(0);
@@ -403,6 +408,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     expect(mockIssueRepository.update.mock.calls).toHaveLength(0);
@@ -449,6 +455,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     expect(mockIssueRepository.update.mock.calls).toHaveLength(0);
@@ -506,6 +513,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     expect(mockIssueRepository.update.mock.calls).toHaveLength(0);
@@ -555,6 +563,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     expect(mockIssueRepository.update.mock.calls).toHaveLength(0);
@@ -599,6 +608,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
     // Both awaiting issues should be updated (forward iteration: url1 first, then url2)
     expect(mockIssueRepository.update.mock.calls).toHaveLength(2);
@@ -656,6 +666,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
     // Loop doesn't run because we're already at max (6 >= 6)
     expect(mockIssueRepository.update.mock.calls).toHaveLength(0);
@@ -691,6 +702,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -736,6 +748,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -781,6 +794,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -826,6 +840,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -871,6 +886,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -916,6 +932,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -964,6 +981,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       'No LLM model configured for issue url1. Provide --defaultLlmModelName or add an llm-model: label.',
@@ -1012,6 +1030,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       'No LLM model configured for issue url1. Provide --defaultLlmModelName or add an llm-model: label.',
@@ -1062,6 +1081,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
     // No issues are in 'Awaiting Workspace' status, so no updates should happen
     expect(mockIssueRepository.update.mock.calls).toHaveLength(0);
@@ -1097,6 +1117,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: 3,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
     expect(mockIssueRepository.update.mock.calls).toHaveLength(3);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
@@ -1131,6 +1152,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
     expect(mockIssueRepository.update.mock.calls).toHaveLength(6);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(6);
@@ -1198,6 +1220,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
 
     expect(mockIssueRepository.update.mock.calls).toHaveLength(2);
@@ -1238,6 +1261,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
 
     expect(mockIssueRepository.update.mock.calls).toHaveLength(0);
@@ -1281,6 +1305,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
 
     expect(mockIssueRepository.update.mock.calls).toHaveLength(1);
@@ -1323,6 +1348,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
 
     const weeklyUtilization = 91;
@@ -1369,6 +1395,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
 
     expect(mockIssueRepository.update.mock.calls).toHaveLength(0);
@@ -1410,6 +1437,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 100,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
 
     expect(mockIssueRepository.update.mock.calls).toHaveLength(6);
@@ -1446,6 +1474,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
 
     expect(mockProjectRepository.getByUrl).not.toHaveBeenCalled();
@@ -1489,6 +1518,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
 
     const normalizedUtilizationBeyondThreshold = (95 - 90) / (100 - 90);
@@ -1518,6 +1548,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
+        codexHomeCandidates: null,
       }),
     ).rejects.toThrow('Claude credentials file not found');
 
@@ -1555,6 +1586,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 70,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
 
     expect(mockIssueRepository.update.mock.calls).toHaveLength(0);
@@ -1597,6 +1629,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 80,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
 
     expect(mockIssueRepository.update.mock.calls).toHaveLength(1);
@@ -1644,6 +1677,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
 
     expect(mockIssueRepository.update.mock.calls).toHaveLength(1);
@@ -1702,6 +1736,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
+        codexHomeCandidates: null,
       });
 
       expect(mockIssueRepository.update.mock.calls).toHaveLength(1);
@@ -1763,6 +1798,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
+        codexHomeCandidates: null,
       });
 
       expect(mockIssueRepository.update.mock.calls).toHaveLength(1);
@@ -1813,6 +1849,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
+        codexHomeCandidates: null,
       });
 
       expect(mockIssueRepository.update.mock.calls).toHaveLength(1);
@@ -1863,6 +1900,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
+        codexHomeCandidates: null,
       });
 
       expect(mockIssueRepository.update.mock.calls).toHaveLength(1);
@@ -1913,6 +1951,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
+        codexHomeCandidates: null,
       });
 
       expect(mockIssueRepository.update.mock.calls).toHaveLength(1);
@@ -1970,6 +2009,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['user1', 'user2'],
+      codexHomeCandidates: null,
     });
 
     expect(mockIssueRepository.update.mock.calls).toHaveLength(1);
@@ -2018,6 +2058,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      codexHomeCandidates: null,
     });
 
     expect(mockIssueRepository.update.mock.calls).toHaveLength(2);
@@ -2065,6 +2106,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['user1', 'user2'],
+      codexHomeCandidates: null,
     });
 
     expect(mockIssueRepository.update.mock.calls).toHaveLength(2);
@@ -2114,9 +2156,244 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['user1'],
+      codexHomeCandidates: null,
     });
 
     expect(mockIssueRepository.update.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+  });
+
+  it('should not pass --codexHome when codexHomeCandidates is null', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'url1',
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      preparationStatus: 'Preparation',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: null,
+      codexHomeCandidates: null,
+    });
+
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
+      'aw',
+      [
+        'url1',
+        'impl',
+        'claude-opus',
+        '--configFilePath',
+        '/path/to/config.yml',
+        '--branch',
+        'i1',
+      ],
+    ]);
+  });
+
+  it('should not pass --codexHome when codexHomeCandidates is empty array', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'url1',
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      preparationStatus: 'Preparation',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: null,
+      codexHomeCandidates: [],
+    });
+
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
+      'aw',
+      [
+        'url1',
+        'impl',
+        'claude-opus',
+        '--configFilePath',
+        '/path/to/config.yml',
+        '--branch',
+        'i1',
+      ],
+    ]);
+  });
+
+  it('should pass --codexHome with the candidate when codexHomeCandidates has one entry', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'url1',
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      preparationStatus: 'Preparation',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: null,
+      codexHomeCandidates: ['.codex-dev1'],
+    });
+
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
+      'aw',
+      [
+        'url1',
+        'impl',
+        'claude-opus',
+        '--configFilePath',
+        '/path/to/config.yml',
+        '--branch',
+        'i1',
+        '--codexHome',
+        '.codex-dev1',
+      ],
+    ]);
+  });
+
+  it('should cycle through codexHomeCandidates across multiple issues', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'url1',
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        number: 1,
+        itemId: 'item-1',
+      }),
+      createMockIssue({
+        url: 'url2',
+        title: 'Issue 2',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        number: 2,
+        itemId: 'item-2',
+      }),
+      createMockIssue({
+        url: 'url3',
+        title: 'Issue 3',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        number: 3,
+        itemId: 'item-3',
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      preparationStatus: 'Preparation',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: null,
+      codexHomeCandidates: ['.codex-dev1', '.codex-dev2'],
+    });
+
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toContain(
+      '--codexHome',
+    );
+    expect(
+      mockLocalCommandRunner.runCommand.mock.calls[0][1][
+        mockLocalCommandRunner.runCommand.mock.calls[0][1].indexOf(
+          '--codexHome',
+        ) + 1
+      ],
+    ).toBe('.codex-dev1');
+    expect(mockLocalCommandRunner.runCommand.mock.calls[1][1]).toContain(
+      '--codexHome',
+    );
+    expect(
+      mockLocalCommandRunner.runCommand.mock.calls[1][1][
+        mockLocalCommandRunner.runCommand.mock.calls[1][1].indexOf(
+          '--codexHome',
+        ) + 1
+      ],
+    ).toBe('.codex-dev2');
+    expect(mockLocalCommandRunner.runCommand.mock.calls[2][1]).toContain(
+      '--codexHome',
+    );
+    expect(
+      mockLocalCommandRunner.runCommand.mock.calls[2][1][
+        mockLocalCommandRunner.runCommand.mock.calls[2][1].indexOf(
+          '--codexHome',
+        ) + 1
+      ],
+    ).toBe('.codex-dev1');
   });
 });
