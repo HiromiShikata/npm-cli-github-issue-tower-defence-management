@@ -55,7 +55,10 @@ export class RevertOrphanedPreparationUseCase {
         '{URL}',
         issue.url,
       );
-      const { exitCode } = await this.localCommandRunner.runCommand(command);
+      const { exitCode } = await this.localCommandRunner.runCommand('sh', [
+        '-c',
+        command,
+      ]);
       if (exitCode !== 0) {
         await this.issueRepository.updateStatus(
           project,

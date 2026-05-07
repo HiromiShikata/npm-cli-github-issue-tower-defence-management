@@ -32,8 +32,9 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     createNewIssue: (org: string, repo: string, title: string, body: string, assignees: string[], labels: string[]) => Promise<number>;
     updateIssue: (issue: Issue) => Promise<void>;
     getIssueByUrl: (url: string) => Promise<Issue | null>;
-    updateNextActionDate: (issueUrl: string, project: Project, date: Date) => Promise<void>;
-    getOpenPullRequest: (prUrl: string) => Promise<RelatedPullRequest | null>;
+    updateNextActionDate: (project: Project & {
+        nextActionDate: Required<Project["nextActionDate"]>;
+    }, issue: Issue, date: Date) => Promise<void>;
     updateNextActionHour: (project: Project & {
         nextActionHour: NonNullable<Project["nextActionHour"]>;
     }, issue: Issue, hour: number) => Promise<void>;
@@ -48,8 +49,11 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     updateAssigneeList: (issue: Issue, assigneeList: Member["name"][]) => Promise<void>;
     get: (_issueUrl: string, _project: Project) => Promise<Issue | null>;
     update: (issue: Issue, _project: Project) => Promise<void>;
+    private parseIssueUrl;
+    private computePrStatus;
     findRelatedOpenPRs: (issueUrl: string) => Promise<RelatedPullRequest[]>;
-    getAllOpened: (_project: Project) => Promise<Issue[]>;
-    getStoryObjectMap: (_project: Project) => Promise<StoryObjectMap>;
+    getAllOpened: (project: Project) => Promise<Issue[]>;
+    getStoryObjectMap: (project: Project) => Promise<StoryObjectMap>;
+    getOpenPullRequest: (prUrl: string) => Promise<RelatedPullRequest | null>;
 }
 //# sourceMappingURL=ApiV3CheerioRestIssueRepository.d.ts.map

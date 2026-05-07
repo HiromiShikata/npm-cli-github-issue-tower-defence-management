@@ -33,9 +33,12 @@ Options for startDaemon:
   --awaitingWorkspaceStatus <status>               Status for issues awaiting workspace
   --preparationStatus <status>                     Status for issues in preparation
   --defaultAgentName <name>                        Default agent name
-  --logFilePath <path>                             Path to log file
+  --defaultLlmModelName <name>                     Default LLM model name
+  --defaultLlmAgentName <name>                     Default LLM agent name
   --maximumPreparingIssuesCount <count>            Maximum number of issues in preparation status (default: 6)
   --allowIssueCacheMinutes <minutes>               Allow cache for issues in minutes (default: 0)
+  --utilizationPercentageThreshold <percent>       Claude utilization percentage threshold (default: 90)
+  --allowedIssueAuthors <authors>                  Comma-separated list of allowed issue authors
   --preparationProcessCheckCommand <template>      Shell command template with {URL} placeholder to check if a preparation process is alive
 
 Options for notifyFinishedIssuePreparation:
@@ -96,8 +99,11 @@ startPreparation?: # Optional: Enable automatic issue preparation workflow
   awaitingWorkspaceStatus: string # Project status name for issues awaiting workspace
   preparationStatus: string # Project status name for issues in preparation
   defaultAgentName: string # Default agent name to assign for preparation
-  logFilePath?: string # Optional: Path to log file for preparation output
+  defaultLlmModelName?: string | null # Optional: Default LLM model name (overridable via llm-model: label)
+  defaultLlmAgentName?: string | null # Optional: Default LLM agent name (overridable via llm-agent: label)
   maximumPreparingIssuesCount: number | null # Max concurrent preparing issues (null = unlimited)
+  utilizationPercentageThreshold?: number # Optional: Claude usage % threshold above which preparation is throttled (default: 90)
+  allowedIssueAuthors?: string[] | null # Optional: Only start preparation for issues from these authors (null = all authors)
   preparationProcessCheckCommand?: string # Optional: Shell command template with {URL} placeholder to check if a preparation process is alive. When set, issues in Preparation whose process exits non-zero are reverted to awaitingWorkspaceStatus before new issues are started
 notifyFinishedPreparation?: # Optional: Enable notification when issue preparation is finished
   preparationStatus: string # Status name for issues in preparation
@@ -139,9 +145,10 @@ workingReport:
 startPreparation:
   awaitingWorkspaceStatus: 'Awaiting Workspace'
   preparationStatus: 'Preparation'
-  defaultAgentName: 'umino-bot'
-  logFilePath: '/tmp/preparation.log'
+  defaultAgentName: 'aw'
+  defaultLlmModelName: 'claude-opus-4-5'
   maximumPreparingIssuesCount: 3
+  utilizationPercentageThreshold: 90
   preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"'
 notifyFinishedPreparation:
   preparationStatus: 'Preparation'
@@ -161,9 +168,12 @@ projectName: string # Project name (used for cache directory path)
 awaitingWorkspaceStatus: string # Status name for issues awaiting workspace
 preparationStatus: string # Status name for issues in preparation
 defaultAgentName: string # Default agent name for issue preparation
-logFilePath?: string # Optional: Path to log file for preparation output
-maximumPreparingIssuesCount?: number # Optional: Max concurrent preparing issues (null/omitted = 6)
+defaultLlmModelName?: string # Optional: Default LLM model name
+defaultLlmAgentName?: string # Optional: Default LLM agent name
+maximumPreparingIssuesCount?: number # Optional: Max concurrent preparing issues (omitted = 6)
 allowIssueCacheMinutes?: number # Optional: Allow cache for issues in minutes (default: 0)
+utilizationPercentageThreshold?: number # Optional: Claude usage % threshold (default: 90)
+allowedIssueAuthors?: string # Optional: Comma-separated list of allowed issue authors
 awaitingQualityCheckStatus: string # Status name for issues awaiting quality check
 thresholdForAutoReject?: number # Optional: Consecutive rejections before escalation (default: 3)
 workflowBlockerResolvedWebhookUrl?: string # Optional: Webhook URL. Supports {URL} and {MESSAGE} placeholders
@@ -177,10 +187,10 @@ projectUrl: 'https://github.com/orgs/my-org/projects/1'
 projectName: 'my-project'
 awaitingWorkspaceStatus: 'Awaiting Workspace'
 preparationStatus: 'Preparation'
-defaultAgentName: 'umino-bot'
-logFilePath: '/tmp/preparation.log'
+defaultAgentName: 'aw'
+defaultLlmModelName: 'claude-opus-4-5'
 maximumPreparingIssuesCount: 3
-allowIssueCacheMinutes: 5
+utilizationPercentageThreshold: 90
 awaitingQualityCheckStatus: 'Awaiting Quality Check'
 thresholdForAutoReject: 3
 workflowBlockerResolvedWebhookUrl: 'https://example.com/webhook?url={URL}&msg={MESSAGE}'

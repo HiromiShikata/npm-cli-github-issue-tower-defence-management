@@ -128,9 +128,12 @@ describe('CLI', () => {
         awaitingWorkspaceStatus: 'Awaiting',
         preparationStatus: 'Preparing',
         defaultAgentName: 'agent1',
-        logFilePath: '/path/to/log.txt',
+        defaultLlmModelName: 'claude-opus-4-5',
+        defaultLlmAgentName: 'aw',
         maximumPreparingIssuesCount: 10,
         allowIssueCacheMinutes: 5,
+        utilizationPercentageThreshold: 80,
+        allowedIssueAuthors: 'user1,user2',
         awaitingQualityCheckStatus: 'Awaiting QC',
         thresholdForAutoReject: 5,
         workflowBlockerResolvedWebhookUrl: 'https://example.com/webhook',
@@ -168,7 +171,8 @@ describe('CLI', () => {
       const config = {
         maximumPreparingIssuesCount: 'abc',
         allowIssueCacheMinutes: 'def',
-        thresholdForAutoReject: 'ghi',
+        utilizationPercentageThreshold: 'ghi',
+        thresholdForAutoReject: 'jkl',
       };
       writeConfig(config);
 
@@ -176,6 +180,7 @@ describe('CLI', () => {
 
       expect(result.maximumPreparingIssuesCount).toBeUndefined();
       expect(result.allowIssueCacheMinutes).toBeUndefined();
+      expect(result.utilizationPercentageThreshold).toBeUndefined();
       expect(result.thresholdForAutoReject).toBeUndefined();
     });
 
@@ -274,14 +279,14 @@ defaultAgentName: 'readme-agent'
       const readme = `<details>
 <summary>config</summary>
 maximumPreparingIssuesCount: 15
-allowIssueCacheMinutes: 10
+utilizationPercentageThreshold: 80
 thresholdForAutoReject: 5
 </details>`;
 
       const result = parseProjectReadmeConfig(readme);
 
       expect(result.maximumPreparingIssuesCount).toBe(15);
-      expect(result.allowIssueCacheMinutes).toBe(10);
+      expect(result.utilizationPercentageThreshold).toBe(80);
       expect(result.thresholdForAutoReject).toBe(5);
     });
 
@@ -446,9 +451,12 @@ defaultAgentName: 'case-test-agent'
         awaitingWorkspaceStatus: 'Awaiting',
         preparationStatus: 'Preparing',
         defaultAgentName: 'agent1',
-        logFilePath: undefined,
+        defaultLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: configFilePath,
         maximumPreparingIssuesCount: null,
-        allowIssueCacheMinutes: 0,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: null,
       });
     });
 
@@ -483,18 +491,22 @@ defaultAgentName: 'case-test-agent'
         awaitingWorkspaceStatus: 'Awaiting',
         preparationStatus: 'Preparing',
         defaultAgentName: 'override-agent',
-        logFilePath: undefined,
+        defaultLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: configFilePath,
         maximumPreparingIssuesCount: null,
-        allowIssueCacheMinutes: 0,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: null,
       });
     });
 
-    it('should pass logFilePath from config file', async () => {
-      const configWithLog = {
+    it('should pass defaultLlmModelName and allowedIssueAuthors from config file', async () => {
+      const configWithLlm = {
         ...defaultConfig,
-        logFilePath: '/path/to/log.txt',
+        defaultLlmModelName: 'claude-opus-4-5',
+        allowedIssueAuthors: 'user1,user2',
       };
-      writeConfig(configWithLog);
+      writeConfig(configWithLlm);
 
       const mockRun = jest.fn().mockResolvedValue(undefined);
       const MockedStartPreparationUseCase = jest.mocked(
@@ -518,7 +530,8 @@ defaultAgentName: 'case-test-agent'
 
       expect(mockRun).toHaveBeenCalledWith(
         expect.objectContaining({
-          logFilePath: '/path/to/log.txt',
+          defaultLlmModelName: 'claude-opus-4-5',
+          allowedIssueAuthors: ['user1', 'user2'],
         }),
       );
     });

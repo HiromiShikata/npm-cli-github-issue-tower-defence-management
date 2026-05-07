@@ -1,6 +1,3 @@
-import { Issue } from '../entities/Issue';
-import { Project } from '../entities/Project';
-import { StoryObject, StoryObjectMap } from '../entities/StoryObjectMap';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
@@ -8,16 +5,20 @@ import { ClaudeRepository } from './adapter-interfaces/ClaudeRepository';
 
 export class StartPreparationUseCase {
   constructor(
-    readonly projectRepository: Pick<
+    private readonly projectRepository: Pick<
       ProjectRepository,
-      'findProjectIdByUrl' | 'getProject'
+      'getByUrl' | 'prepareStatus'
     >,
-    readonly issueRepository: Pick<
+    private readonly issueRepository: Pick<
       IssueRepository,
-      'getAllIssues' | 'updateStatus'
+      | 'getAllOpened'
+      | 'getStoryObjectMap'
+      | 'update'
+      | 'findRelatedOpenPRs'
+      | 'getOpenPullRequest'
     >,
-    readonly claudeRepository: Pick<ClaudeRepository, 'getUsage'>,
-    readonly localCommandRunner: LocalCommandRunner,
+    private readonly claudeRepository: Pick<ClaudeRepository, 'getUsage'>,
+    private readonly localCommandRunner: LocalCommandRunner,
   ) {}
 
   run = async (params: {
@@ -25,61 +26,101 @@ export class StartPreparationUseCase {
     awaitingWorkspaceStatus: string;
     preparationStatus: string;
     defaultAgentName: string;
-    logFilePath?: string;
+    defaultLlmModelName: string | null;
+    defaultLlmAgentName: string | null;
+    configFilePath: string;
     maximumPreparingIssuesCount: number | null;
-    allowIssueCacheMinutes: number;
+    utilizationPercentageThreshold: number;
+    allowedIssueAuthors: string[] | null;
   }): Promise<void> => {
-    try {
-      const claudeUsages = await this.claudeRepository.getUsage();
-      if (claudeUsages.some((usage) => usage.utilizationPercentage > 90)) {
-        console.warn(
-          'Claude usage limit exceeded. Skipping starting preparation.',
-        );
-        return;
-      }
-    } catch (error) {
-      console.warn('Failed to check Claude usage:', error);
-    }
-
-    const maximumPreparingIssuesCount = params.maximumPreparingIssuesCount ?? 6;
-    const projectId = await this.projectRepository.findProjectIdByUrl(
-      params.projectUrl,
+    const claudeUsages = await this.claudeRepository.getUsage();
+    const weeklyWindowHours = 168;
+    const nonWeeklyUsages = claudeUsages.filter(
+      (usage) => usage.hour !== weeklyWindowHours,
     );
-    if (!projectId) {
-      throw new Error(`Project not found. projectUrl: ${params.projectUrl}`);
-    }
-    const project = await this.projectRepository.getProject(projectId);
-    if (!project) {
-      throw new Error(
-        `Project not found. projectId: ${projectId} projectUrl: ${params.projectUrl}`,
+    if (
+      nonWeeklyUsages.some(
+        (usage) =>
+          usage.utilizationPercentage > params.utilizationPercentageThreshold,
+      )
+    ) {
+      console.warn(
+        'Claude usage limit exceeded. Skipping starting preparation.',
       );
+      return;
     }
-    const { issues }: { issues: Issue[] } =
-      await this.issueRepository.getAllIssues(
-        projectId,
-        params.allowIssueCacheMinutes,
+
+    let maximumPreparingIssuesCount = params.maximumPreparingIssuesCount ?? 6;
+
+    const weeklyUsages = claudeUsages.filter(
+      (usage) => usage.hour === weeklyWindowHours,
+    );
+    if (
+      weeklyUsages.length > 0 &&
+      params.utilizationPercentageThreshold < 100
+    ) {
+      const maxWeeklyUtilization = Math.max(
+        ...weeklyUsages.map((usage) => usage.utilizationPercentage),
       );
-    const storyObjectMap: StoryObjectMap = this.createStoryObjectMap({
+      if (maxWeeklyUtilization > params.utilizationPercentageThreshold) {
+        const normalizedUtilizationBeyondThreshold =
+          (maxWeeklyUtilization - params.utilizationPercentageThreshold) /
+          (100 - params.utilizationPercentageThreshold);
+        maximumPreparingIssuesCount = Math.floor(
+          maximumPreparingIssuesCount *
+            Math.pow(1 - normalizedUtilizationBeyondThreshold, 2),
+        );
+        if (maximumPreparingIssuesCount <= 0) {
+          console.warn(
+            `Weekly Claude usage (${maxWeeklyUtilization}%) exceeds threshold (${params.utilizationPercentageThreshold}%). Skipping starting preparation.`,
+          );
+          return;
+        }
+        console.warn(
+          `Weekly Claude usage (${maxWeeklyUtilization}%) exceeds threshold (${params.utilizationPercentageThreshold}%). Reducing maximumPreparingIssuesCount to ${maximumPreparingIssuesCount}.`,
+        );
+      }
+    }
+    let project = await this.projectRepository.getByUrl(params.projectUrl);
+    project = await this.projectRepository.prepareStatus(
+      params.awaitingWorkspaceStatus,
       project,
-      issues,
-    });
+    );
+    project = await this.projectRepository.prepareStatus(
+      params.preparationStatus,
+      project,
+    );
+    const storyObjectMap =
+      await this.issueRepository.getStoryObjectMap(project);
+    const allIssues = await this.issueRepository.getAllOpened(project);
 
-    const repositoryBlockerIssues =
-      this.createWorkflowBlockerIssues(storyObjectMap);
-
-    const awaitingWorkspaceIssues: Issue[] = Array.from(storyObjectMap.values())
-      .map((storyObject: StoryObject) => storyObject.issues)
+    const awaitingWorkspaceIssues = Array.from(storyObjectMap.values())
+      .map((storyObject) => storyObject.issues)
       .flat()
-      .filter(
-        (issue: Issue) => issue.status === params.awaitingWorkspaceStatus,
-      );
-    const currentPreparationIssueCount = issues.filter(
-      (issue: Issue) => issue.status === params.preparationStatus,
+      .filter((issue) => issue.status === params.awaitingWorkspaceStatus)
+      .map((issue) => ({
+        ...issue,
+        author:
+          'author' in issue && typeof issue.author === 'string'
+            ? issue.author
+            : '',
+      }));
+    const currentPreparationIssueCount = allIssues.filter(
+      (issue) => issue.status === params.preparationStatus,
     ).length;
     let updatedCurrentPreparationIssueCount = currentPreparationIssueCount;
 
-    const preparationStatusOption = project.status.statuses.find(
-      (s) => s.name === params.preparationStatus,
+    const now = new Date();
+    const currentHour = now.getHours();
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    const tomorrowStart = new Date(
+      todayStart.getFullYear(),
+      todayStart.getMonth(),
+      todayStart.getDate() + 1,
     );
 
     for (
@@ -89,94 +130,97 @@ export class StartPreparationUseCase {
       i++
     ) {
       const issue = awaitingWorkspaceIssues[i];
-      const blockerIssueUrls: string[] =
-        repositoryBlockerIssues.find((blocker) =>
-          issue.url.includes(blocker.orgRepo),
-        )?.blockerIssueUrls || [];
+      if (issue.dependedIssueUrls.length > 0) {
+        continue;
+      }
       if (
-        blockerIssueUrls.length > 0 &&
-        !blockerIssueUrls.includes(issue.url)
+        issue.nextActionDate !== null &&
+        issue.nextActionDate >= tomorrowStart
+      ) {
+        continue;
+      }
+      if (issue.nextActionHour !== null && currentHour < issue.nextActionHour) {
+        continue;
+      }
+      if (
+        params.allowedIssueAuthors !== null &&
+        issue.author !== '' &&
+        !params.allowedIssueAuthors.includes(issue.author)
       ) {
         continue;
       }
       const agent =
         issue.labels
-          .find((label) => label.startsWith('category:'))
+          .find((label: string) => label.startsWith('llm-agent:'))
+          ?.replace('llm-agent:', '')
+          .trim() ||
+        issue.labels
+          .find((label: string) => label.startsWith('category:'))
           ?.replace('category:', '')
-          .trim() || params.defaultAgentName;
-
-      if (preparationStatusOption) {
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          preparationStatusOption.id,
+          .trim() ||
+        params.defaultLlmAgentName ||
+        params.defaultAgentName;
+      const model =
+        issue.labels
+          .find((label: string) => label.startsWith('llm-model:'))
+          ?.replace('llm-model:', '')
+          .trim() || params.defaultLlmModelName;
+      if (!model) {
+        console.error(
+          `No LLM model configured for issue ${issue.url}. Provide --defaultLlmModelName or add an llm-model: label.`,
         );
+        continue;
       }
-
-      const logFilePathArg = params.logFilePath
-        ? `--logFilePath ${params.logFilePath}`
-        : '';
-      await this.localCommandRunner.runCommand(
-        `aw ${issue.url} ${agent} ${params.projectUrl}${logFilePathArg ? ` ${logFilePathArg}` : ''}`,
-      );
-      updatedCurrentPreparationIssueCount++;
-    }
-  };
-
-  createStoryObjectMap = (input: {
-    project: Project;
-    issues: Issue[];
-  }): StoryObjectMap => {
-    const summaryStoryIssue: StoryObjectMap = new Map();
-    const targetStory = input.project.story?.stories || [];
-    for (const story of targetStory) {
-      const storyIssue = input.issues.find((issue) =>
-        story.name.startsWith(issue.title),
-      );
-      summaryStoryIssue.set(story.name, {
-        story,
-        storyIssue: storyIssue || null,
-        issues: [],
-      });
-      for (const issue of input.issues) {
-        if (issue.story !== story.name) {
+      const isPrUrl = issue.url.includes('/pull/');
+      let branchName: string;
+      if (isPrUrl) {
+        const pr = await this.issueRepository.getOpenPullRequest(issue.url);
+        if (pr === null) {
+          console.warn(
+            `Skipping non-OPEN PR ${issue.url}: wrapper requires an open PR.`,
+          );
           continue;
         }
-        summaryStoryIssue.get(story.name)?.issues.push(issue);
+        if (pr.branchName === null) {
+          console.warn(`Skipping PR ${issue.url}: head branch is unavailable.`);
+          continue;
+        }
+        branchName = pr.branchName;
+      } else {
+        const relatedPRs = await this.issueRepository.findRelatedOpenPRs(
+          issue.url,
+        );
+        if (relatedPRs.length > 1) {
+          console.warn(
+            `Skipping issue ${issue.url}: ${relatedPRs.length} related open PRs found (ambiguous).`,
+          );
+          continue;
+        } else if (relatedPRs.length === 1) {
+          if (relatedPRs[0].branchName === null) {
+            console.warn(
+              `Skipping issue ${issue.url}: related open PR has unavailable head branch.`,
+            );
+            continue;
+          }
+          branchName = relatedPRs[0].branchName;
+        } else {
+          branchName = `i${issue.number}`;
+        }
       }
-    }
-    return summaryStoryIssue;
-  };
 
-  createWorkflowBlockerIssues = (
-    storyObjectMap: StoryObjectMap,
-  ): {
-    orgRepo: string;
-    blockerIssueUrls: string[];
-  }[] => {
-    const workflowBlockerStory: StoryObject['story']['name'][] = Array.from(
-      storyObjectMap.keys(),
-    ).filter((storyName) =>
-      storyName.toLowerCase().includes('workflow blocker'),
-    );
-    if (workflowBlockerStory.length === 0) {
-      return [];
-    }
+      issue.status = params.preparationStatus;
+      await this.issueRepository.update(issue, project);
 
-    const result: {
-      orgRepo: string;
-      blockerIssueUrls: string[];
-    }[] =
-      storyObjectMap
-        .get(workflowBlockerStory[0])
-        ?.issues.filter((issue) => issue.state === 'OPEN')
-        .map((issue) => {
-          const orgRepo = issue.url.split('/issues')[0].split('github.com/')[1];
-          return {
-            orgRepo,
-            blockerIssueUrls: [issue.url],
-          };
-        }) || [];
-    return result;
+      await this.localCommandRunner.runCommand('aw', [
+        issue.url,
+        agent,
+        model,
+        '--configFilePath',
+        params.configFilePath,
+        '--branch',
+        branchName,
+      ]);
+      updatedCurrentPreparationIssueCount++;
+    }
   };
 }

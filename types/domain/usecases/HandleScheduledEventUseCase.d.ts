@@ -66,8 +66,12 @@ export declare class HandleScheduledEventUseCase {
             awaitingWorkspaceStatus: string;
             preparationStatus: string;
             defaultAgentName: string;
-            logFilePath?: string;
+            defaultLlmModelName?: string | null;
+            defaultLlmAgentName?: string | null;
+            configFilePath?: string;
             maximumPreparingIssuesCount: number | null;
+            utilizationPercentageThreshold?: number;
+            allowedIssueAuthors?: string[] | null;
             preparationProcessCheckCommand?: string;
         } | null;
         notifyFinishedPreparation?: {

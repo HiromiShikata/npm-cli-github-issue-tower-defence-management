@@ -55,6 +55,7 @@ describe('RestIssueRepository', () => {
         isInProgress: false,
         isClosed: false,
         createdAt: new Date(),
+        author: '',
       };
 
       await restIssueRepository.updateLabels(issue, ['default']);
@@ -92,6 +93,7 @@ describe('RestIssueRepository', () => {
         isInProgress: false,
         isClosed: false,
         createdAt: new Date(),
+        author: '',
       };
 
       await restIssueRepository.updateLabels(issue, ['test', 'to-remove']);
@@ -130,6 +132,7 @@ describe('RestIssueRepository', () => {
         isInProgress: false,
         isClosed: false,
         createdAt: new Date(),
+        author: '',
       };
       await restIssueRepository.updateAssigneeList(issue, ['HiromiShikata']);
       const issueWithAssignee = await restIssueRepository.getIssue(issue.url);

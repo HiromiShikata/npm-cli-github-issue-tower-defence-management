@@ -26,9 +26,12 @@ type ConfigFile = {
   awaitingWorkspaceStatus?: string;
   preparationStatus?: string;
   defaultAgentName?: string;
-  logFilePath?: string;
+  defaultLlmModelName?: string;
+  defaultLlmAgentName?: string;
   maximumPreparingIssuesCount?: number;
   allowIssueCacheMinutes?: number;
+  utilizationPercentageThreshold?: number;
+  allowedIssueAuthors?: string;
   awaitingQualityCheckStatus?: string;
   thresholdForAutoReject?: number;
   workflowBlockerResolvedWebhookUrl?: string;
@@ -41,9 +44,12 @@ type StartDaemonOptions = {
   awaitingWorkspaceStatus?: string;
   preparationStatus?: string;
   defaultAgentName?: string;
-  logFilePath?: string;
+  defaultLlmModelName?: string;
+  defaultLlmAgentName?: string;
   maximumPreparingIssuesCount?: string;
   allowIssueCacheMinutes?: string;
+  utilizationPercentageThreshold?: string;
+  allowedIssueAuthors?: string;
   preparationProcessCheckCommand?: string;
   configFilePath: string;
 };
@@ -93,12 +99,18 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
       ),
       preparationStatus: getStringValue(parsed, 'preparationStatus'),
       defaultAgentName: getStringValue(parsed, 'defaultAgentName'),
-      logFilePath: getStringValue(parsed, 'logFilePath'),
+      defaultLlmModelName: getStringValue(parsed, 'defaultLlmModelName'),
+      defaultLlmAgentName: getStringValue(parsed, 'defaultLlmAgentName'),
       maximumPreparingIssuesCount: getNumberValue(
         parsed,
         'maximumPreparingIssuesCount',
       ),
       allowIssueCacheMinutes: getNumberValue(parsed, 'allowIssueCacheMinutes'),
+      utilizationPercentageThreshold: getNumberValue(
+        parsed,
+        'utilizationPercentageThreshold',
+      ),
+      allowedIssueAuthors: getStringValue(parsed, 'allowedIssueAuthors'),
       awaitingQualityCheckStatus: getStringValue(
         parsed,
         'awaitingQualityCheckStatus',
@@ -146,12 +158,18 @@ export const parseProjectReadmeConfig = (readme: string): ConfigFile => {
       ),
       preparationStatus: getStringValue(parsed, 'preparationStatus'),
       defaultAgentName: getStringValue(parsed, 'defaultAgentName'),
-      logFilePath: getStringValue(parsed, 'logFilePath'),
+      defaultLlmModelName: getStringValue(parsed, 'defaultLlmModelName'),
+      defaultLlmAgentName: getStringValue(parsed, 'defaultLlmAgentName'),
       maximumPreparingIssuesCount: getNumberValue(
         parsed,
         'maximumPreparingIssuesCount',
       ),
       allowIssueCacheMinutes: getNumberValue(parsed, 'allowIssueCacheMinutes'),
+      utilizationPercentageThreshold: getNumberValue(
+        parsed,
+        'utilizationPercentageThreshold',
+      ),
+      allowedIssueAuthors: getStringValue(parsed, 'allowedIssueAuthors'),
       awaitingQualityCheckStatus: getStringValue(
         parsed,
         'awaitingQualityCheckStatus',
@@ -190,10 +208,14 @@ export const mergeConfigs = (
     readmeOverrides.defaultAgentName ??
     cliOverrides.defaultAgentName ??
     configFile.defaultAgentName,
-  logFilePath:
-    readmeOverrides.logFilePath ??
-    cliOverrides.logFilePath ??
-    configFile.logFilePath,
+  defaultLlmModelName:
+    readmeOverrides.defaultLlmModelName ??
+    cliOverrides.defaultLlmModelName ??
+    configFile.defaultLlmModelName,
+  defaultLlmAgentName:
+    readmeOverrides.defaultLlmAgentName ??
+    cliOverrides.defaultLlmAgentName ??
+    configFile.defaultLlmAgentName,
   maximumPreparingIssuesCount:
     readmeOverrides.maximumPreparingIssuesCount ??
     cliOverrides.maximumPreparingIssuesCount ??
@@ -202,6 +224,14 @@ export const mergeConfigs = (
     readmeOverrides.allowIssueCacheMinutes ??
     cliOverrides.allowIssueCacheMinutes ??
     configFile.allowIssueCacheMinutes,
+  utilizationPercentageThreshold:
+    readmeOverrides.utilizationPercentageThreshold ??
+    cliOverrides.utilizationPercentageThreshold ??
+    configFile.utilizationPercentageThreshold,
+  allowedIssueAuthors:
+    readmeOverrides.allowedIssueAuthors ??
+    cliOverrides.allowedIssueAuthors ??
+    configFile.allowedIssueAuthors,
   awaitingQualityCheckStatus:
     readmeOverrides.awaitingQualityCheckStatus ??
     cliOverrides.awaitingQualityCheckStatus ??
@@ -361,7 +391,8 @@ program
   )
   .option('--preparationStatus <status>', 'Status for issues in preparation')
   .option('--defaultAgentName <name>', 'Default agent name')
-  .option('--logFilePath <path>', 'Path to log file')
+  .option('--defaultLlmModelName <name>', 'Default LLM model name')
+  .option('--defaultLlmAgentName <name>', 'Default LLM agent name')
   .option(
     '--maximumPreparingIssuesCount <count>',
     'Maximum number of issues in preparation status (default: 6)',
@@ -369,6 +400,14 @@ program
   .option(
     '--allowIssueCacheMinutes <minutes>',
     'Allow cache for issues in minutes (default: 0)',
+  )
+  .option(
+    '--utilizationPercentageThreshold <percent>',
+    'Claude utilization percentage threshold (default: 90)',
+  )
+  .option(
+    '--allowedIssueAuthors <authors>',
+    'Comma-separated list of allowed issue authors',
   )
   .option(
     '--preparationProcessCheckCommand <template>',
@@ -388,13 +427,18 @@ program
       awaitingWorkspaceStatus: options.awaitingWorkspaceStatus,
       preparationStatus: options.preparationStatus,
       defaultAgentName: options.defaultAgentName,
-      logFilePath: options.logFilePath,
+      defaultLlmModelName: options.defaultLlmModelName,
+      defaultLlmAgentName: options.defaultLlmAgentName,
       maximumPreparingIssuesCount: options.maximumPreparingIssuesCount
         ? Number(options.maximumPreparingIssuesCount)
         : undefined,
       allowIssueCacheMinutes: options.allowIssueCacheMinutes
         ? Number(options.allowIssueCacheMinutes)
         : undefined,
+      utilizationPercentageThreshold: options.utilizationPercentageThreshold
+        ? Number(options.utilizationPercentageThreshold)
+        : undefined,
+      allowedIssueAuthors: options.allowedIssueAuthors,
       preparationProcessCheckCommand: options.preparationProcessCheckCommand,
     };
 
@@ -419,7 +463,6 @@ program
     const awaitingWorkspaceStatus = config.awaitingWorkspaceStatus;
     const preparationStatus = config.preparationStatus;
     const defaultAgentName = config.defaultAgentName;
-    const logFilePath = config.logFilePath;
 
     if (!projectUrl) {
       console.error(
@@ -484,6 +527,12 @@ program
     const projectRepository = {
       ...new GraphqlProjectRepository(...githubRepositoryParams),
       ...new CheerioProjectRepository(...githubRepositoryParams),
+      prepareStatus: async (
+        _name: string,
+        project: Project,
+      ): Promise<Project> => {
+        return project;
+      },
     };
     const apiV3IssueRepository = new ApiV3IssueRepository(
       ...githubRepositoryParams,
@@ -528,14 +577,26 @@ program
       localCommandRunner,
     );
 
+    const rawAllowedIssueAuthors = config.allowedIssueAuthors;
+    const allowedIssueAuthors = rawAllowedIssueAuthors
+      ? rawAllowedIssueAuthors
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : null;
+
     await useCase.run({
       projectUrl,
       awaitingWorkspaceStatus,
       preparationStatus,
       defaultAgentName,
-      logFilePath: logFilePath ?? undefined,
+      defaultLlmModelName: config.defaultLlmModelName ?? null,
+      defaultLlmAgentName: config.defaultLlmAgentName ?? null,
+      configFilePath: options.configFilePath,
       maximumPreparingIssuesCount,
-      allowIssueCacheMinutes,
+      utilizationPercentageThreshold:
+        config.utilizationPercentageThreshold ?? 90,
+      allowedIssueAuthors,
     });
   });
 
