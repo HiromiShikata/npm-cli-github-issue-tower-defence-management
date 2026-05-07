@@ -1,4 +1,7 @@
-import { IssueRepository } from './adapter-interfaces/IssueRepository';
+import {
+  IssueRepository,
+  RelatedPullRequest,
+} from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import { WebhookRepository } from './adapter-interfaces/WebhookRepository';
@@ -23,6 +26,7 @@ export class IllegalIssueStatusError extends Error {
 }
 type RejectedReasonType =
   | 'NO_REPORT_FROM_AGENT_BOT'
+  | 'REPORT_HAS_NEXT_STEP'
   | 'PULL_REQUEST_NOT_FOUND'
   | 'MULTIPLE_PULL_REQUESTS_FOUND'
   | 'PULL_REQUEST_CONFLICTED'
@@ -38,7 +42,12 @@ export class NotifyFinishedIssuePreparationUseCase {
     >,
     private readonly issueRepository: Pick<
       IssueRepository,
-      'get' | 'update' | 'findRelatedOpenPRs' | 'getStoryObjectMap'
+      | 'get'
+      | 'update'
+      | 'updateNextActionDate'
+      | 'findRelatedOpenPRs'
+      | 'getStoryObjectMap'
+      | 'getOpenPullRequest'
     >,
     private readonly issueCommentRepository: Pick<
       IssueCommentRepository,
@@ -84,8 +93,60 @@ export class NotifyFinishedIssuePreparationUseCase {
         params.preparationStatus,
       );
     }
+
+    if (issue.dependedIssueUrls.length === 0) {
+      try {
+        const storyObjectMap =
+          await this.issueRepository.getStoryObjectMap(project);
+        for (const storyObject of storyObjectMap.values()) {
+          const towerDefenceIssue = storyObject.issues.find(
+            (i) => i.url === issue.url,
+          );
+          if (towerDefenceIssue) {
+            issue.dependedIssueUrls = towerDefenceIssue.dependedIssueUrls;
+            break;
+          }
+        }
+      } catch (error) {
+        console.warn(
+          'Failed to enrich dependedIssueUrls from story object map:',
+          error,
+        );
+      }
+    }
+
+    if (issue.dependedIssueUrls.length > 0) {
+      issue.status = params.awaitingWorkspaceStatus;
+      await this.issueRepository.update(issue, project);
+      await this.issueCommentRepository.createComment(
+        issue,
+        `Issue has dependent issue URLs: ${issue.dependedIssueUrls.join(', ')}`,
+      );
+      return;
+    }
+
+    if (issue.nextActionDate !== null || issue.nextActionHour !== null) {
+      issue.status = params.awaitingWorkspaceStatus;
+      await this.issueRepository.update(issue, project);
+      await this.issueCommentRepository.createComment(
+        issue,
+        `Issue has next action date or hour set: nextActionDate=${issue.nextActionDate?.toISOString() ?? 'null'}, nextActionHour=${issue.nextActionHour ?? 'null'}`,
+      );
+      return;
+    }
+
     const comments =
       await this.issueCommentRepository.getCommentsFromIssue(issue);
+
+    const { rejections, approvedPrUrl } = await this.collectRejections(
+      issue,
+      comments,
+    );
+
+    const rejectionStatusMessage =
+      rejections.length > 0
+        ? `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`
+        : 'Auto Status Check: APPROVED';
 
     const lastTargetComments = comments.slice(
       -params.thresholdForAutoReject * 2,
@@ -95,14 +156,23 @@ export class NotifyFinishedIssuePreparationUseCase {
         comment.content.startsWith('Auto Status Check: REJECTED'),
       ).length >= params.thresholdForAutoReject &&
       !lastTargetComments.some((comment) =>
-        comment.content.toLowerCase().startsWith('retry'),
+        comment.content
+          .toLowerCase()
+          .includes('failed to pass the check automatically'),
       )
     ) {
       issue.status = params.awaitingQualityCheckStatus;
       await this.issueRepository.update(issue, project);
+      const escalationStatusLine =
+        rejections.length > 0
+          ? rejectionStatusMessage
+          : 'Auto Status Check: APPROVED (escalated due to prior failures)';
+      if (rejections.length === 0 && approvedPrUrl !== null) {
+        await this.setPrNextActionDate(approvedPrUrl, project);
+      }
       await this.issueCommentRepository.createComment(
         issue,
-        `Failed to pass the check autimatically for ${params.thresholdForAutoReject} times`,
+        `${escalationStatusLine}\n\nFailed to pass the check automatically for ${params.thresholdForAutoReject} times`,
       );
       await this.sendWorkflowBlockerNotification(
         params.issueUrl,
@@ -112,34 +182,77 @@ export class NotifyFinishedIssuePreparationUseCase {
       return;
     }
 
+    if (rejections.length <= 0) {
+      issue.status = params.awaitingQualityCheckStatus;
+      await this.issueRepository.update(issue, project);
+      if (approvedPrUrl !== null) {
+        await this.setPrNextActionDate(approvedPrUrl, project);
+      }
+      await this.sendWorkflowBlockerNotification(
+        params.issueUrl,
+        params.workflowBlockerResolvedWebhookUrl,
+        project,
+      );
+      return;
+    }
+
+    issue.status = params.awaitingWorkspaceStatus;
+    await this.issueRepository.update(issue, project);
+
+    await this.issueCommentRepository.createComment(
+      issue,
+      rejectionStatusMessage,
+    );
+  };
+
+  private collectRejections = async (
+    issue: { url: string; labels: string[]; isPr: boolean },
+    comments: { content: string }[],
+  ): Promise<{
+    rejections: { type: RejectedReasonType; detail: string }[];
+    approvedPrUrl: string | null;
+  }> => {
     const rejections: { type: RejectedReasonType; detail: string }[] = [];
+    let approvedPrUrl: string | null = null;
     const lastComment = comments[comments.length - 1];
     if (!lastComment || !lastComment.content.startsWith('From:')) {
       rejections.push({
         type: 'NO_REPORT_FROM_AGENT_BOT',
         detail: 'NO_REPORT_FROM_AGENT_BOT',
       });
+    } else if (this.reportBodyHasNextStep(lastComment.content)) {
+      rejections.push({
+        type: 'REPORT_HAS_NEXT_STEP',
+        detail: 'REPORT_HAS_NEXT_STEP',
+      });
     }
 
     const categoryLabels = issue.labels.filter((label) =>
       label.startsWith('category:'),
     );
-    if (categoryLabels.length <= 0 || categoryLabels.includes('category:e2e')) {
-      const relatedOpenPrs = await this.issueRepository.findRelatedOpenPRs(
-        issue.url,
-      );
-      if (relatedOpenPrs.length <= 0) {
+    const hasLlmAgentLabel = issue.labels.some(
+      (l) => l === 'llm-agent' || l.startsWith('llm-agent:'),
+    );
+    if (
+      !hasLlmAgentLabel &&
+      (categoryLabels.length <= 0 || categoryLabels.includes('category:e2e'))
+    ) {
+      const prsToCheck = issue.isPr
+        ? await this.resolveOpenPrsForPrItem(issue.url)
+        : await this.issueRepository.findRelatedOpenPRs(issue.url);
+
+      if (prsToCheck.length <= 0) {
         rejections.push({
           type: 'PULL_REQUEST_NOT_FOUND',
           detail: 'PULL_REQUEST_NOT_FOUND',
         });
-      } else if (relatedOpenPrs.length > 1) {
+      } else if (prsToCheck.length > 1) {
         rejections.push({
           type: 'MULTIPLE_PULL_REQUESTS_FOUND',
-          detail: `MULTIPLE_PULL_REQUESTS_FOUND: ${relatedOpenPrs.map((pr) => pr.url).join(', ')}`,
+          detail: `MULTIPLE_PULL_REQUESTS_FOUND: ${prsToCheck.map((pr) => pr.url).join(', ')}`,
         });
       } else {
-        const pr = relatedOpenPrs[0];
+        const pr = prsToCheck[0];
         if (pr.isConflicted) {
           rejections.push({
             type: 'PULL_REQUEST_CONFLICTED',
@@ -170,26 +283,64 @@ export class NotifyFinishedIssuePreparationUseCase {
             detail: `ANY_REVIEW_COMMENT_NOT_RESOLVED: ${pr.url}`,
           });
         }
+        if (
+          !pr.isConflicted &&
+          pr.isPassedAllCiJob &&
+          pr.isResolvedAllReviewComments
+        ) {
+          approvedPrUrl = pr.url;
+        }
       }
     }
 
-    if (rejections.length <= 0) {
-      issue.status = params.awaitingQualityCheckStatus;
-      await this.issueRepository.update(issue, project);
-      await this.sendWorkflowBlockerNotification(
-        params.issueUrl,
-        params.workflowBlockerResolvedWebhookUrl,
-        project,
-      );
-      return;
+    return { rejections, approvedPrUrl };
+  };
+
+  private resolveOpenPrsForPrItem = async (
+    prUrl: string,
+  ): Promise<RelatedPullRequest[]> => {
+    const pr = await this.issueRepository.getOpenPullRequest(prUrl);
+    if (pr === null) {
+      return [];
     }
+    return [pr];
+  };
 
-    issue.status = params.awaitingWorkspaceStatus;
-    await this.issueRepository.update(issue, project);
+  private reportBodyHasNextStep = (body: string): boolean => {
+    const reportMatch = body.match(/```json\n([\s\S]*?)\n```/);
+    if (!reportMatch || reportMatch.length < 2) {
+      return false;
+    }
+    let reportJson: unknown;
+    try {
+      reportJson = JSON.parse(reportMatch[1]);
+    } catch (error) {
+      console.warn(
+        'Invalid JSON in report body while checking nextStep:',
+        error,
+      );
+      return false;
+    }
+    if (typeof reportJson !== 'object' || reportJson === null) {
+      return false;
+    }
+    if (!('nextStep' in reportJson)) {
+      return false;
+    }
+    const nextStepValue = Reflect.get(reportJson, 'nextStep');
+    return nextStepValue !== null && nextStepValue !== undefined;
+  };
 
-    await this.issueCommentRepository.createComment(
-      issue,
-      `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`,
+  private setPrNextActionDate = async (
+    prUrl: string,
+    project: Parameters<IssueRepository['get']>[1],
+  ): Promise<void> => {
+    const nextActionDate = new Date();
+    nextActionDate.setMonth(nextActionDate.getMonth() + 1);
+    await this.issueRepository.updateNextActionDate(
+      prUrl,
+      project,
+      nextActionDate,
     );
   };
 

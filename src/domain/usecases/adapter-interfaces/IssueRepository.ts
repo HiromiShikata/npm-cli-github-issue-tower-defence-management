@@ -29,12 +29,11 @@ export interface IssueRepository {
   ) => Promise<number>;
   updateIssue: (issue: Issue) => Promise<void>;
   updateNextActionDate: (
-    project: Project & {
-      nextActionDate: NonNullable<Project['nextActionDate']>;
-    },
-    issue: Issue,
+    issueUrl: string,
+    project: Project,
     date: Date,
   ) => Promise<void>;
+  getOpenPullRequest: (prUrl: string) => Promise<RelatedPullRequest | null>;
   updateNextActionHour: (
     project: Project & {
       nextActionHour: NonNullable<Project['nextActionHour']>;
