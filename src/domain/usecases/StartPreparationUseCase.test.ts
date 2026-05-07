@@ -2048,7 +2048,9 @@ describe('StartPreparationUseCase', () => {
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce([issueWithoutAuthor]);
+    mockIssueRepository.getAllOpened.mockResolvedValueOnce([
+      issueWithoutAuthor,
+    ]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
