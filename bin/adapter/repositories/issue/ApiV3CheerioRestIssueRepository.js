@@ -198,11 +198,15 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             }
             return this.convertProjectItemToIssue(projectItem);
         };
-        this.updateNextActionDate = async (project, issue, date) => {
-            if (project.nextActionDate === null) {
-                throw new Error('nextActionDate is not defined');
+        this.updateNextActionDate = async (issueUrl, project, date) => {
+            if (!project.nextActionDate) {
+                return;
             }
-            return this.graphqlProjectItemRepository.updateProjectField(project.id, project.nextActionDate.fieldId, issue.itemId, { date: date.toISOString() });
+            const projectItem = await this.graphqlProjectItemRepository.fetchProjectItemByUrl(issueUrl);
+            if (!projectItem) {
+                return;
+            }
+            return this.graphqlProjectItemRepository.updateProjectField(project.id, project.nextActionDate.fieldId, projectItem.id, { date: date.toISOString().split('T')[0] });
         };
         this.updateNextActionHour = async (project, issue, hour) => {
             return this.graphqlProjectItemRepository.updateProjectField(project.id, project.nextActionHour.fieldId, issue.itemId, { number: hour });

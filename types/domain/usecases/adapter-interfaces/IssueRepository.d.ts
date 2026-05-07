@@ -21,7 +21,6 @@ export interface IssueRepository {
     createNewIssue: (org: string, repo: string, title: string, body: string, assignees: Member['name'][], labels: Label[]) => Promise<number>;
     updateIssue: (issue: Issue) => Promise<void>;
     updateNextActionDate: (issueUrl: string, project: Project, date: Date) => Promise<void>;
-    getOpenPullRequest: (prUrl: string) => Promise<RelatedPullRequest | null>;
     updateNextActionHour: (project: Project & {
         nextActionHour: NonNullable<Project['nextActionHour']>;
     }, issue: Issue, hour: number) => Promise<void>;

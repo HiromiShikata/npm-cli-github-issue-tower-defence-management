@@ -34,7 +34,6 @@ export interface IssueRepository {
     project: Project,
     date: Date,
   ) => Promise<void>;
-  getOpenPullRequest: (prUrl: string) => Promise<RelatedPullRequest | null>;
   updateNextActionHour: (
     project: Project & {
       nextActionHour: NonNullable<Project['nextActionHour']>;

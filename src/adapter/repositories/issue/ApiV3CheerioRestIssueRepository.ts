@@ -484,18 +484,23 @@ export class ApiV3CheerioRestIssueRepository
     return this.convertProjectItemToIssue(projectItem);
   };
   updateNextActionDate = async (
-    project: Project & { nextActionDate: Required<Project['nextActionDate']> },
-    issue: Issue,
+    issueUrl: string,
+    project: Project,
     date: Date,
   ): Promise<void> => {
-    if (project.nextActionDate === null) {
-      throw new Error('nextActionDate is not defined');
+    if (!project.nextActionDate) {
+      return;
+    }
+    const projectItem =
+      await this.graphqlProjectItemRepository.fetchProjectItemByUrl(issueUrl);
+    if (!projectItem) {
+      return;
     }
     return this.graphqlProjectItemRepository.updateProjectField(
       project.id,
       project.nextActionDate.fieldId,
-      issue.itemId,
-      { date: date.toISOString() },
+      projectItem.id,
+      { date: date.toISOString().split('T')[0] },
     );
   };
   updateNextActionHour = async (
