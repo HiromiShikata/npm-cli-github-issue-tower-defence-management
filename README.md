@@ -106,6 +106,7 @@ startPreparation?: # Optional: Enable automatic issue preparation workflow
   utilizationPercentageThreshold?: number # Optional: Claude usage % threshold above which preparation is throttled (default: 90)
   allowedIssueAuthors?: string[] | null # Optional: Only start preparation for issues from these authors (null = all authors)
   preparationProcessCheckCommand?: string # Optional: Shell command template with {URL} placeholder to check if a preparation process is alive. When set, issues in Preparation whose process exits non-zero are reverted to awaitingWorkspaceStatus before new issues are started
+  codexHomeCandidates?: string[] | null # Optional: Ordered list of CODEX_HOME directory paths. Each launched Codex job cycles through the list; absent or empty keeps current behavior
 notifyFinishedPreparation?: # Optional: Enable notification when issue preparation is finished
   preparationStatus: string # Status name for issues in preparation
   awaitingWorkspaceStatus: string # Status name for issues awaiting workspace
@@ -180,6 +181,7 @@ awaitingQualityCheckStatus: string # Status name for issues awaiting quality che
 thresholdForAutoReject?: number # Optional: Consecutive rejections before escalation (default: 3)
 workflowBlockerResolvedWebhookUrl?: string # Optional: Webhook URL. Supports {URL} and {MESSAGE} placeholders
 preparationProcessCheckCommand?: string # Optional: Shell command template with {URL} placeholder to check if a preparation process is alive. Issues in Preparation whose process exits non-zero are reverted to awaitingWorkspaceStatus
+codexHomeCandidates?: string[] # Optional: Ordered list of CODEX_HOME directory paths for Codex profile cycling. Absent or empty keeps current behavior
 ```
 
 Example:
@@ -197,6 +199,10 @@ awaitingQualityCheckStatus: 'Awaiting Quality Check'
 thresholdForAutoReject: 3
 workflowBlockerResolvedWebhookUrl: 'https://example.com/webhook?url={URL}&msg={MESSAGE}'
 preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"'
+codexHomeCandidates:
+  - .codex-dev1
+  - .codex-dev2
+  - .codex-main
 ```
 
 #### README-based Config Overrides

@@ -80,6 +80,7 @@ export class HandleScheduledEventUseCase {
       utilizationPercentageThreshold?: number;
       allowedIssueAuthors?: string[] | null;
       preparationProcessCheckCommand?: string;
+      codexHomeCandidates?: string[] | null;
     } | null;
     notifyFinishedPreparation?: {
       preparationStatus: string;
@@ -356,6 +357,7 @@ ${JSON.stringify(e)}
         utilizationPercentageThreshold:
           input.startPreparation.utilizationPercentageThreshold ?? 90,
         allowedIssueAuthors: input.startPreparation.allowedIssueAuthors ?? null,
+        codexHomeCandidates: input.startPreparation.codexHomeCandidates ?? null,
       });
     }
     if (input.notifyFinishedPreparation) {
