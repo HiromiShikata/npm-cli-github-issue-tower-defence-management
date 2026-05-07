@@ -99,6 +99,7 @@ startPreparation?: # Optional: Enable automatic issue preparation workflow
   awaitingWorkspaceStatus: string # Project status name for issues awaiting workspace
   preparationStatus: string # Project status name for issues in preparation
   defaultAgentName: string # Default agent name to assign for preparation
+  configFilePath: string # Path to config file passed to the aw command
   defaultLlmModelName?: string | null # Optional: Default LLM model name (overridable via llm-model: label)
   defaultLlmAgentName?: string | null # Optional: Default LLM agent name (overridable via llm-agent: label)
   maximumPreparingIssuesCount: number | null # Max concurrent preparing issues (null = unlimited)
@@ -146,6 +147,7 @@ startPreparation:
   awaitingWorkspaceStatus: 'Awaiting Workspace'
   preparationStatus: 'Preparation'
   defaultAgentName: 'aw'
+  configFilePath: '/path/to/agent-config.yml'
   defaultLlmModelName: 'claude-opus-4-5'
   maximumPreparingIssuesCount: 3
   utilizationPercentageThreshold: 90

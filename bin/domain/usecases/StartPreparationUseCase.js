@@ -41,12 +41,7 @@ class StartPreparationUseCase {
                 .map((storyObject) => storyObject.issues)
                 .flat()
                 .filter((issue) => issue.status === params.awaitingWorkspaceStatus)
-                .map((issue) => ({
-                ...issue,
-                author: 'author' in issue && typeof issue.author === 'string'
-                    ? issue.author
-                    : '',
-            }));
+                .map((issue) => ({ ...issue }));
             const currentPreparationIssueCount = allIssues.filter((issue) => issue.status === params.preparationStatus).length;
             let updatedCurrentPreparationIssueCount = currentPreparationIssueCount;
             const now = new Date();

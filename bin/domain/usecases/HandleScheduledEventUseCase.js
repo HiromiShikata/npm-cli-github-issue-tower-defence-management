@@ -223,7 +223,7 @@ ${JSON.stringify(e)}
                     defaultAgentName: input.startPreparation.defaultAgentName,
                     defaultLlmModelName: input.startPreparation.defaultLlmModelName ?? null,
                     defaultLlmAgentName: input.startPreparation.defaultLlmAgentName ?? null,
-                    configFilePath: input.startPreparation.configFilePath ?? '',
+                    configFilePath: input.startPreparation.configFilePath,
                     maximumPreparingIssuesCount: input.startPreparation.maximumPreparingIssuesCount,
                     utilizationPercentageThreshold: input.startPreparation.utilizationPercentageThreshold ?? 90,
                     allowedIssueAuthors: input.startPreparation.allowedIssueAuthors ?? null,

@@ -75,7 +75,7 @@ export class HandleScheduledEventUseCase {
       defaultAgentName: string;
       defaultLlmModelName?: string | null;
       defaultLlmAgentName?: string | null;
-      configFilePath?: string;
+      configFilePath: string;
       maximumPreparingIssuesCount: number | null;
       utilizationPercentageThreshold?: number;
       allowedIssueAuthors?: string[] | null;
@@ -350,7 +350,7 @@ ${JSON.stringify(e)}
         defaultAgentName: input.startPreparation.defaultAgentName,
         defaultLlmModelName: input.startPreparation.defaultLlmModelName ?? null,
         defaultLlmAgentName: input.startPreparation.defaultLlmAgentName ?? null,
-        configFilePath: input.startPreparation.configFilePath ?? '',
+        configFilePath: input.startPreparation.configFilePath,
         maximumPreparingIssuesCount:
           input.startPreparation.maximumPreparingIssuesCount,
         utilizationPercentageThreshold:

@@ -68,7 +68,7 @@ export declare class HandleScheduledEventUseCase {
             defaultAgentName: string;
             defaultLlmModelName?: string | null;
             defaultLlmAgentName?: string | null;
-            configFilePath?: string;
+            configFilePath: string;
             maximumPreparingIssuesCount: number | null;
             utilizationPercentageThreshold?: number;
             allowedIssueAuthors?: string[] | null;
