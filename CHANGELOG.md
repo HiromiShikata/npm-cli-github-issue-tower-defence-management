@@ -1,3 +1,10 @@
+# [1.42.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.41.0...v1.42.0) (2026-05-07)
+
+
+### Features
+
+* **core:** add Codex CODEX_HOME candidate selection to TDPM ([4db5452](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4db545280527abbaf3dbe3227908bed0928e9eb9))
+
 # [1.41.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.40.0...v1.41.0) (2026-05-07)
 
 

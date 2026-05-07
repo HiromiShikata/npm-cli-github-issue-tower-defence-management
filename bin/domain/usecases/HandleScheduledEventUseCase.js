@@ -227,6 +227,7 @@ ${JSON.stringify(e)}
                     maximumPreparingIssuesCount: input.startPreparation.maximumPreparingIssuesCount,
                     utilizationPercentageThreshold: input.startPreparation.utilizationPercentageThreshold ?? 90,
                     allowedIssueAuthors: input.startPreparation.allowedIssueAuthors ?? null,
+                    codexHomeCandidates: input.startPreparation.codexHomeCandidates ?? null,
                 });
             }
             if (input.notifyFinishedPreparation) {

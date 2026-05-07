@@ -73,6 +73,7 @@ export declare class HandleScheduledEventUseCase {
             utilizationPercentageThreshold?: number;
             allowedIssueAuthors?: string[] | null;
             preparationProcessCheckCommand?: string;
+            codexHomeCandidates?: string[] | null;
         } | null;
         notifyFinishedPreparation?: {
             preparationStatus: string;

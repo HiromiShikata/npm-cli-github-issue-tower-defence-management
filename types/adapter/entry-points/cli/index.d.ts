@@ -16,6 +16,7 @@ type ConfigFile = {
     workflowBlockerResolvedWebhookUrl?: string;
     projectName?: string;
     preparationProcessCheckCommand?: string;
+    codexHomeCandidates?: string[];
 };
 export declare const loadConfigFile: (configFilePath: string) => ConfigFile;
 export declare const parseProjectReadmeConfig: (readme: string) => ConfigFile;

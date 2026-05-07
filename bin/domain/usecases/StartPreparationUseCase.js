@@ -44,6 +44,7 @@ class StartPreparationUseCase {
                 .map((issue) => ({ ...issue }));
             const currentPreparationIssueCount = allIssues.filter((issue) => issue.status === params.preparationStatus).length;
             let updatedCurrentPreparationIssueCount = currentPreparationIssueCount;
+            let startedInThisRunCount = 0;
             const now = new Date();
             const currentHour = now.getHours();
             const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -121,7 +122,7 @@ class StartPreparationUseCase {
                 }
                 issue.status = params.preparationStatus;
                 await this.issueRepository.update(issue, project);
-                await this.localCommandRunner.runCommand('aw', [
+                const awArgs = [
                     issue.url,
                     agent,
                     model,
@@ -129,7 +130,14 @@ class StartPreparationUseCase {
                     params.configFilePath,
                     '--branch',
                     branchName,
-                ]);
+                ];
+                if (params.codexHomeCandidates !== null &&
+                    params.codexHomeCandidates.length > 0) {
+                    const codexHome = params.codexHomeCandidates[startedInThisRunCount % params.codexHomeCandidates.length];
+                    awArgs.push('--codexHome', codexHome);
+                }
+                await this.localCommandRunner.runCommand('aw', awArgs);
+                startedInThisRunCount++;
                 updatedCurrentPreparationIssueCount++;
             }
         };

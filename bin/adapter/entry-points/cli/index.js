@@ -65,6 +65,20 @@ const getNumberValue = (obj, key) => {
     const value = obj[key];
     return typeof value === 'number' ? value : undefined;
 };
+const getStringArrayValue = (obj, key) => {
+    const value = obj[key];
+    if (!Array.isArray(value)) {
+        return undefined;
+    }
+    const strings = [];
+    for (const item of value) {
+        if (typeof item !== 'string') {
+            return undefined;
+        }
+        strings.push(item);
+    }
+    return strings;
+};
 const isRecord = (value) => typeof value === 'object' && value !== null && !Array.isArray(value);
 const loadConfigFile = (configFilePath) => {
     try {
@@ -89,6 +103,7 @@ const loadConfigFile = (configFilePath) => {
             workflowBlockerResolvedWebhookUrl: getStringValue(parsed, 'workflowBlockerResolvedWebhookUrl'),
             projectName: getStringValue(parsed, 'projectName'),
             preparationProcessCheckCommand: getStringValue(parsed, 'preparationProcessCheckCommand'),
+            codexHomeCandidates: getStringArrayValue(parsed, 'codexHomeCandidates'),
         };
     }
     catch (error) {
@@ -127,6 +142,7 @@ const parseProjectReadmeConfig = (readme) => {
             thresholdForAutoReject: getNumberValue(parsed, 'thresholdForAutoReject'),
             workflowBlockerResolvedWebhookUrl: getStringValue(parsed, 'workflowBlockerResolvedWebhookUrl'),
             preparationProcessCheckCommand: getStringValue(parsed, 'preparationProcessCheckCommand'),
+            codexHomeCandidates: getStringArrayValue(parsed, 'codexHomeCandidates'),
         };
     }
     catch {
@@ -177,6 +193,9 @@ const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
     preparationProcessCheckCommand: readmeOverrides.preparationProcessCheckCommand ??
         cliOverrides.preparationProcessCheckCommand ??
         configFile.preparationProcessCheckCommand,
+    codexHomeCandidates: readmeOverrides.codexHomeCandidates ??
+        cliOverrides.codexHomeCandidates ??
+        configFile.codexHomeCandidates,
 });
 exports.mergeConfigs = mergeConfigs;
 const isGraphqlProjectV2ReadmeResponse = (value) => {
@@ -389,6 +408,9 @@ exports.program
             .map((s) => s.trim())
             .filter(Boolean)
         : null;
+    const codexHomeCandidates = config.codexHomeCandidates && config.codexHomeCandidates.length > 0
+        ? config.codexHomeCandidates
+        : null;
     await useCase.run({
         projectUrl,
         awaitingWorkspaceStatus,
@@ -400,6 +422,7 @@ exports.program
         maximumPreparingIssuesCount,
         utilizationPercentageThreshold: config.utilizationPercentageThreshold ?? 90,
         allowedIssueAuthors,
+        codexHomeCandidates,
     });
 });
 exports.program
