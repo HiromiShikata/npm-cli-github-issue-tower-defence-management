@@ -9,6 +9,7 @@ reports
 dist
 bin
 .npmignore
+.npmrc
 *.map
 CHANGELOG.md
 .env
