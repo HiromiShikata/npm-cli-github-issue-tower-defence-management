@@ -411,6 +411,52 @@ describe('StartPreparationUseCase', () => {
     );
     consoleWarnSpy.mockRestore();
   });
+  it('should skip and not call wrapper when PR has branch name with shell-unsafe characters', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'https://github.com/user/repo/pull/999',
+        title: 'PR 999',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
+    mockIssueRepository.getOpenPullRequest.mockResolvedValue({
+      url: 'https://github.com/user/repo/pull/999',
+      branchName: 'evil$(rm -rf /)',
+      isConflicted: false,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isResolvedAllReviewComments: false,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+    });
+    const consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      preparationStatus: 'Preparation',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: null,
+    });
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.update.mock.calls).toHaveLength(0);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('branch name contains unexpected characters'),
+    );
+    consoleErrorSpy.mockRestore();
+  });
   it('should skip and not call wrapper when issue has multiple related open PRs', async () => {
     const awaitingIssues: Issue[] = [
       createMockIssue({
