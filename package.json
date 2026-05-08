@@ -12,7 +12,7 @@
     "lint-fix": "eslint src --fix",
     "fmt": "npm run prettier && npm run lint-fix",
     "build": "tsc -p ./tsconfig.build.json",
-    "test": "jest",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "prepare": "ts-patch install && typia patch"
   },
   "bin": {
