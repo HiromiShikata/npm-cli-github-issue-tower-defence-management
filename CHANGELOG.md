@@ -1,3 +1,12 @@
+## [1.42.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.42.0...v1.42.1) (2026-05-08)
+
+
+### Bug Fixes
+
+* **core:** add NODE_OPTIONS=--experimental-vm-modules for Jest ESM compatibility ([068f68c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/068f68cf7ffc48bbb8b696a39321fce65d785d86))
+* **core:** use jest setup to provide fetch for gaxios, avoiding node-fetch ESM import ([9ebcf0c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9ebcf0c411b221de30b00e39cae3df6d83f6512e))
+* **deps:** update dependency googleapis to v171 ([269fa28](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/269fa283ecaa9fd49b7ece7464d59a284983e1bc))
+
 # [1.42.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.41.0...v1.42.0) (2026-05-07)
 
 
