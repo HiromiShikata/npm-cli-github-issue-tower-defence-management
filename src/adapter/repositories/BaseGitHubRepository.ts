@@ -18,6 +18,7 @@ interface Cookie {
 
 export class BaseGitHubRepository {
   cookie: string | null;
+  protected cookieRefreshRetryDelayMs = 3000;
   constructor(
     readonly localStorageRepository: LocalStorageRepository,
     readonly jsonFilePath: string = './tmp/github.com.cookies.json',
@@ -168,19 +169,23 @@ export class BaseGitHubRepository {
       );
     }
     const profileUrl = `https://github.com/${this.ghUserName}`;
-    const headers = await this.createHeader();
-    const html = await ky.get(profileUrl, { headers }).text();
-    if (html.includes(`meta name="user-login" content="${this.ghUserName}"`)) {
-      return;
-    }
-    this.localStorageRepository.remove(this.jsonFilePath);
-    this.cookie = null;
-    const newHeaders = await this.createHeader();
-    const newHtml = await ky.get(profileUrl, { headers: newHeaders }).text();
-    if (
-      newHtml.includes(`meta name="user-login" content="${this.ghUserName}"`)
-    ) {
-      return;
+    const maxAttempts = 3;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (attempt > 0) {
+        await new Promise<void>((resolve) =>
+          setTimeout(resolve, this.cookieRefreshRetryDelayMs),
+        );
+        this.localStorageRepository.remove(this.jsonFilePath);
+        this.cookie = null;
+      }
+      const headers = await this.createHeader();
+      const html = await ky.get(profileUrl, { headers }).text();
+      if (
+        html.includes(`meta name="user-login" content="${this.ghUserName}"`)
+      ) {
+        return;
+      }
     }
     throw new Error('Failed to refresh cookie');
   };
