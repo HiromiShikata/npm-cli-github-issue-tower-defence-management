@@ -158,7 +158,7 @@ describe('ClearDependedIssueURLUseCase', () => {
         expectedIssueRepositoryCreateCommentCalls: [
           [
             { ...basicIssueThree, dependedIssueUrls: ['url1', 'url4'] },
-            'Closed depended issues:\n- url1',
+            'Some depended issues are already closed, removed from dependency field:\n- url1',
           ],
           [
             { ...basicIssueThree, dependedIssueUrls: ['url1', 'url4'] },
@@ -198,8 +198,14 @@ describe('ClearDependedIssueURLUseCase', () => {
           [basicProject, 'fieldId', basicIssueThree, 'url2'],
         ],
         expectedIssueRepositoryCreateCommentCalls: [
-          [basicIssueTwo, 'Closed all depended issues:\n- url1'],
-          [basicIssueThree, 'Closed depended issues:\n- url1'],
+          [
+            basicIssueTwo,
+            'All depended issues are already closed, dependency field cleared:\n- url1',
+          ],
+          [
+            basicIssueThree,
+            'Some depended issues are already closed, removed from dependency field:\n- url1',
+          ],
         ],
       },
       {
@@ -221,7 +227,10 @@ describe('ClearDependedIssueURLUseCase', () => {
         ],
         expectedIssueRepositoryUpdateTextFieldCalls: [],
         expectedIssueRepositoryCreateCommentCalls: [
-          [basicIssueTwo, 'Closed all depended issues:\n- url1'],
+          [
+            basicIssueTwo,
+            'All depended issues are already closed, dependency field cleared:\n- url1',
+          ],
         ],
       },
       {
@@ -243,7 +252,10 @@ describe('ClearDependedIssueURLUseCase', () => {
         ],
         expectedIssueRepositoryUpdateTextFieldCalls: [],
         expectedIssueRepositoryCreateCommentCalls: [
-          [basicIssueThree, 'Closed all depended issues:\n- url1\n- url2'],
+          [
+            basicIssueThree,
+            'All depended issues are already closed, dependency field cleared:\n- url1\n- url2',
+          ],
         ],
       },
       {
