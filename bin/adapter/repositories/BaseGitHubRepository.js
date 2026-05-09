@@ -18,6 +18,7 @@ class BaseGitHubRepository {
         this.ghUserName = ghUserName;
         this.ghUserPassword = ghUserPassword;
         this.ghAuthenticatorKey = ghAuthenticatorKey;
+        this.cookieRefreshRetryDelayMs = 3000;
         this.extractIssueFromUrl = (issueUrl) => {
             const match = issueUrl.match(/https:\/\/github.com\/([^/]+)\/([^/]+)\/(issues|pull)\/(\d+)/);
             if (!match) {
@@ -129,17 +130,18 @@ class BaseGitHubRepository {
                 throw new Error('GitHub username, password, and authenticator key must be set');
             }
             const profileUrl = `https://github.com/${this.ghUserName}`;
-            const headers = await this.createHeader();
-            const html = await ky_1.default.get(profileUrl, { headers }).text();
-            if (html.includes(`meta name="user-login" content="${this.ghUserName}"`)) {
-                return;
-            }
-            this.localStorageRepository.remove(this.jsonFilePath);
-            this.cookie = null;
-            const newHeaders = await this.createHeader();
-            const newHtml = await ky_1.default.get(profileUrl, { headers: newHeaders }).text();
-            if (newHtml.includes(`meta name="user-login" content="${this.ghUserName}"`)) {
-                return;
+            const maxAttempts = 3;
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                if (attempt > 0) {
+                    await new Promise((resolve) => setTimeout(resolve, this.cookieRefreshRetryDelayMs));
+                    this.localStorageRepository.remove(this.jsonFilePath);
+                    this.cookie = null;
+                }
+                const headers = await this.createHeader();
+                const html = await ky_1.default.get(profileUrl, { headers }).text();
+                if (html.includes(`meta name="user-login" content="${this.ghUserName}"`)) {
+                    return;
+                }
             }
             throw new Error('Failed to refresh cookie');
         };

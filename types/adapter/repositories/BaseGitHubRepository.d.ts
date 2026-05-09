@@ -17,6 +17,7 @@ export declare class BaseGitHubRepository {
     readonly ghUserPassword: string | undefined;
     readonly ghAuthenticatorKey: string | undefined;
     cookie: string | null;
+    protected cookieRefreshRetryDelayMs: number;
     constructor(localStorageRepository: LocalStorageRepository, jsonFilePath?: string, ghToken?: string, ghUserName?: string | undefined, ghUserPassword?: string | undefined, ghAuthenticatorKey?: string | undefined);
     protected extractIssueFromUrl: (issueUrl: string) => {
         owner: string;

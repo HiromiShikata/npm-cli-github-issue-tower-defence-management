@@ -1,3 +1,11 @@
+## [1.42.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.42.1...v1.42.2) (2026-05-09)
+
+
+### Bug Fixes
+
+* **core:** add retry logic to refreshCookie to reduce flaky CI failures ([64643ac](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/64643ac5e09713532aa62bfaaa39d3ced0a978ce))
+* **core:** change misleading 'Closed all depended issues' message to clarify bot did not close them ([6e44b2d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6e44b2d00b3ce8fef72bf15e92209de854967e2a))
+
 ## [1.42.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.42.0...v1.42.1) (2026-05-08)
 
 
