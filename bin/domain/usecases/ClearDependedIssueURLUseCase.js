@@ -56,7 +56,7 @@ ${circularDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`);
                 if (closedDependedIssueUrls.length > 0) {
                     const allCleared = remainingDependedIssueUrls.length === 0 &&
                         notFoundDependedIssueUrls.length === 0;
-                    await this.issueRepository.createComment(issue, `${allCleared ? 'Closed all depended issues' : 'Closed depended issues'}:
+                    await this.issueRepository.createComment(issue, `${allCleared ? 'All depended issues are already closed, dependency field cleared' : 'Some depended issues are already closed, removed from dependency field'}:
 ${closedDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`);
                 }
                 if (notFoundDependedIssueUrls.length > 0) {
