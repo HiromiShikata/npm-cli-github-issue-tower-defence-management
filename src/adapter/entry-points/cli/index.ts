@@ -29,6 +29,7 @@ import { CheerioProjectRepository } from '../../repositories/CheerioProjectRepos
 import { BaseGitHubRepository } from '../../repositories/BaseGitHubRepository';
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
 import { OauthAPIProxyClaudeRepository } from '../../repositories/OauthAPIProxyClaudeRepository';
+import { OauthAPIClaudeRepository } from '../../repositories/OauthAPIClaudeRepository';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
@@ -281,7 +282,10 @@ program
       localStorageCacheRepository,
       ...githubRepositoryParams,
     );
-    const claudeRepository = new OauthAPIProxyClaudeRepository();
+    const claudeRepository = new OauthAPIProxyClaudeRepository(
+      undefined,
+      new OauthAPIClaudeRepository(config.claudeCodeOauthTokenListJsonPath),
+    );
     const localCommandRunner = new NodeLocalCommandRunner();
 
     const preparationProcessCheckCommand =

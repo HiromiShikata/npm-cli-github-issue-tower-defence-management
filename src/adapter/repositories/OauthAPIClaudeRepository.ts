@@ -74,16 +74,39 @@ const findCredentials = (filePathList: string[]): CredentialInfo[] => {
   return credentials.sort((a, b) => a.priority - b.priority);
 };
 
+const readTokenListFile = (filePath: string): string[] => {
+  const content = fs.readFileSync(filePath, 'utf-8');
+  const parsed: unknown = JSON.parse(content);
+  if (!Array.isArray(parsed)) {
+    return [];
+  }
+  const tokens: string[] = [];
+  for (const item of parsed) {
+    if (typeof item === 'string') {
+      tokens.push(item);
+    }
+  }
+  return tokens;
+};
+
 export class OauthAPIClaudeRepository implements ClaudeRepository {
   private readonly credentialsPath: string;
   private readonly claudeDir: string;
+  private readonly claudeCodeOauthTokenListJsonPath: string | null;
+  private selectedAccessToken: string | null = null;
 
-  constructor() {
+  constructor(claudeCodeOauthTokenListJsonPath?: string) {
     this.claudeDir = path.join(os.homedir(), '.claude');
     this.credentialsPath = path.join(this.claudeDir, '.credentials.json');
+    this.claudeCodeOauthTokenListJsonPath =
+      claudeCodeOauthTokenListJsonPath ?? null;
   }
 
   private getAccessToken(): string {
+    if (this.selectedAccessToken) {
+      return this.selectedAccessToken;
+    }
+
     if (!fs.existsSync(this.credentialsPath)) {
       throw new Error(
         `Claude credentials file not found at ${this.credentialsPath}. Please login to Claude Code first using: claude login`,
@@ -234,6 +257,30 @@ export class OauthAPIClaudeRepository implements ClaudeRepository {
   }
 
   async isClaudeAvailable(threshold: number): Promise<boolean> {
+    if (
+      this.claudeCodeOauthTokenListJsonPath &&
+      fs.existsSync(this.claudeCodeOauthTokenListJsonPath)
+    ) {
+      const accessTokens = readTokenListFile(
+        this.claudeCodeOauthTokenListJsonPath,
+      );
+
+      for (const accessToken of accessTokens) {
+        try {
+          const usageResponse = await this.getUsageWithToken(accessToken);
+
+          if (this.isUsageUnderThreshold(usageResponse, threshold)) {
+            this.selectedAccessToken = accessToken;
+            return true;
+          }
+        } catch {
+          continue;
+        }
+      }
+
+      return false;
+    }
+
     if (!fs.existsSync(this.claudeDir)) {
       return false;
     }

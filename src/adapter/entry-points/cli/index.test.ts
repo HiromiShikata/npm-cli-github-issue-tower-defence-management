@@ -10,6 +10,7 @@ import {
 } from './index';
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
+import { OauthAPIClaudeRepository } from '../../repositories/OauthAPIClaudeRepository';
 
 jest.mock('../../../domain/usecases/StartPreparationUseCase');
 jest.mock('../../../domain/usecases/NotifyFinishedIssuePreparationUseCase');
@@ -187,6 +188,28 @@ describe('CLI', () => {
       const result = loadConfigFile(configFilePath);
 
       expect(result.codexHomeCandidates).toBeUndefined();
+    });
+
+    it('should load claudeCodeOauthTokenListJsonPath from config file', () => {
+      const config = {
+        ...defaultConfig,
+        claudeCodeOauthTokenListJsonPath: '/path/to/token-list.json',
+      };
+      writeConfig(config);
+
+      const result = loadConfigFile(configFilePath);
+
+      expect(result.claudeCodeOauthTokenListJsonPath).toBe(
+        '/path/to/token-list.json',
+      );
+    });
+
+    it('should return undefined claudeCodeOauthTokenListJsonPath when not in config', () => {
+      writeConfig(defaultConfig);
+
+      const result = loadConfigFile(configFilePath);
+
+      expect(result.claudeCodeOauthTokenListJsonPath).toBeUndefined();
     });
 
     it('should return empty config for empty YAML', () => {
@@ -418,6 +441,18 @@ codexHomeCandidates:
       const result = mergeConfigs(configFile, {}, {});
 
       expect(result.projectName).toBe('my-project');
+    });
+
+    it('should preserve claudeCodeOauthTokenListJsonPath from configFile', () => {
+      const configFile = {
+        claudeCodeOauthTokenListJsonPath: '/path/to/token-list.json',
+      };
+
+      const result = mergeConfigs(configFile, {}, {});
+
+      expect(result.claudeCodeOauthTokenListJsonPath).toBe(
+        '/path/to/token-list.json',
+      );
     });
   });
 
@@ -1116,6 +1151,69 @@ codexHomeCandidates:
         allowIssueCacheMinutes: 5,
         thresholdForAutoReject: 30,
       });
+    });
+
+    it('should construct OauthAPIClaudeRepository with claudeCodeOauthTokenListJsonPath from config', async () => {
+      const tokenListPath = '/path/to/token-list.json';
+      const configWithTokenList = {
+        ...defaultConfig,
+        claudeCodeOauthTokenListJsonPath: tokenListPath,
+      };
+      writeConfig(configWithTokenList);
+
+      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
+
+      MockedStartPreparationUseCase.mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      const MockedOauthAPIClaudeRepository = jest.mocked(
+        OauthAPIClaudeRepository,
+      );
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'startDaemon',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(MockedOauthAPIClaudeRepository).toHaveBeenCalledWith(tokenListPath);
+    });
+
+    it('should construct OauthAPIClaudeRepository without path when claudeCodeOauthTokenListJsonPath not in config', async () => {
+      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
+
+      MockedStartPreparationUseCase.mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      const MockedOauthAPIClaudeRepository = jest.mocked(
+        OauthAPIClaudeRepository,
+      );
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'startDaemon',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(MockedOauthAPIClaudeRepository).toHaveBeenCalledWith(undefined);
     });
   });
 
