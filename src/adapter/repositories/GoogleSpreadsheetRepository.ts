@@ -43,7 +43,7 @@ interface SheetsApiClient {
 
 export class GoogleSpreadsheetRepository implements SpreadsheetRepository {
   keyFile = './tmp/service-account-key.json';
-  private readonly sheetsClientFactory: () => SheetsApiClient;
+  private readonly sheetsClient: SheetsApiClient;
 
   constructor(
     readonly localStorageRepository: LocalStorageRepository,
@@ -52,45 +52,45 @@ export class GoogleSpreadsheetRepository implements SpreadsheetRepository {
     sheetsClientFactory?: () => SheetsApiClient,
   ) {
     this.localStorageRepository.write(this.keyFile, serviceAccountKey);
-    this.sheetsClientFactory =
-      sheetsClientFactory ??
-      (() => {
-        const auth = new google.auth.GoogleAuth({
-          keyFile: this.keyFile,
-          scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-        });
-        const googleSheets = google.sheets({ version: 'v4', auth });
-        return {
-          spreadsheets: {
-            get: (params: { spreadsheetId: string }) =>
-              googleSheets.spreadsheets.get(params),
-            values: {
-              get: (params: { spreadsheetId: string; range: string }) =>
-                googleSheets.spreadsheets.values.get(params),
-              update: (params: {
+    this.sheetsClient = sheetsClientFactory
+      ? sheetsClientFactory()
+      : (() => {
+          const auth = new google.auth.GoogleAuth({
+            keyFile: this.keyFile,
+            scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+          });
+          const googleSheets = google.sheets({ version: 'v4', auth });
+          return {
+            spreadsheets: {
+              get: (params: { spreadsheetId: string }) =>
+                googleSheets.spreadsheets.get(params),
+              values: {
+                get: (params: { spreadsheetId: string; range: string }) =>
+                  googleSheets.spreadsheets.values.get(params),
+                update: (params: {
+                  spreadsheetId: string;
+                  range: string;
+                  valueInputOption: string;
+                  requestBody: { values: string[][] };
+                }) => googleSheets.spreadsheets.values.update(params),
+                append: (params: {
+                  spreadsheetId: string;
+                  range: string;
+                  valueInputOption: string;
+                  requestBody: { values: string[][] };
+                }) => googleSheets.spreadsheets.values.append(params),
+              },
+              batchUpdate: (params: {
                 spreadsheetId: string;
-                range: string;
-                valueInputOption: string;
-                requestBody: { values: string[][] };
-              }) => googleSheets.spreadsheets.values.update(params),
-              append: (params: {
-                spreadsheetId: string;
-                range: string;
-                valueInputOption: string;
-                requestBody: { values: string[][] };
-              }) => googleSheets.spreadsheets.values.append(params),
+                requestBody: {
+                  requests: Array<{
+                    addSheet?: { properties?: { title?: string } };
+                  }>;
+                };
+              }) => googleSheets.spreadsheets.batchUpdate(params),
             },
-            batchUpdate: (params: {
-              spreadsheetId: string;
-              requestBody: {
-                requests: Array<{
-                  addSheet?: { properties?: { title?: string } };
-                }>;
-              };
-            }) => googleSheets.spreadsheets.batchUpdate(params),
-          },
-        };
-      });
+          };
+        })();
   }
 
   getSpreadsheetId = (spreadsheetUrl: string): string => {
@@ -101,7 +101,7 @@ export class GoogleSpreadsheetRepository implements SpreadsheetRepository {
     spreadsheetUrl: string,
     sheetName: string,
   ): Promise<string[][] | null> => {
-    const sheets = this.sheetsClientFactory();
+    const sheets = this.sheetsClient;
     const spreadsheetId = this.getSpreadsheetId(spreadsheetUrl);
     const responseSheet = await sheets.spreadsheets.get({
       spreadsheetId,
@@ -138,7 +138,7 @@ export class GoogleSpreadsheetRepository implements SpreadsheetRepository {
     column: number,
     value: string,
   ): Promise<void> => {
-    const sheets = this.sheetsClientFactory();
+    const sheets = this.sheetsClient;
     const spreadsheetId = this.getSpreadsheetId(spreadsheetUrl);
     await this.createNewSheetIfNotExists(spreadsheetUrl, sheetName);
     const response = await sheets.spreadsheets.values.update({
@@ -159,7 +159,7 @@ export class GoogleSpreadsheetRepository implements SpreadsheetRepository {
     spreadsheetUrl: string,
     sheetName: string,
   ): Promise<void> => {
-    const sheets = this.sheetsClientFactory();
+    const sheets = this.sheetsClient;
     const spreadsheetId = this.getSpreadsheetId(spreadsheetUrl);
     const sheet = await this.getSheet(spreadsheetUrl, sheetName);
     if (sheet !== null) {
@@ -191,7 +191,7 @@ export class GoogleSpreadsheetRepository implements SpreadsheetRepository {
     sheetName: string,
     values: string[][],
   ): Promise<void> => {
-    const sheets = this.sheetsClientFactory();
+    const sheets = this.sheetsClient;
     const spreadsheetId = this.getSpreadsheetId(spreadsheetUrl);
     await this.createNewSheetIfNotExists(spreadsheetUrl, sheetName);
     const sheet = await this.getSheet(spreadsheetUrl, sheetName);
