@@ -12,6 +12,7 @@ if (!GOOGLE_SERVICE_ACCOUNT_KEY) {
 
 describe('GoogleSpreadsheetRepository integration tests', () => {
   jest.setTimeout(60 * 1000);
+  jest.retryTimes(3, { logErrorsBeforeRetry: true });
 
   const localStorageRepository = new LocalStorageRepository();
   const spreadsheetUrl =
