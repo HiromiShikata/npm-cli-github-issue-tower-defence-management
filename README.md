@@ -194,11 +194,7 @@ claudeCodeOauthTokenListJsonPath?: string # Optional: Path to a JSON file contai
 The `claudeCodeOauthTokenListJsonPath` JSON file must be an array of access token strings:
 
 ```json
-[
-  "access-token-1",
-  "access-token-2",
-  "access-token-3"
-]
+["access-token-1", "access-token-2", "access-token-3"]
 ```
 
 Each token is tested against the Claude usage API in order. The first token whose utilization is below `utilizationPercentageThreshold` is selected for use.
