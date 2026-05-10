@@ -97,6 +97,25 @@ describe('OauthProxyClaudeRepository', () => {
           },
         ],
       },
+      {
+        name: 'skips utilization entries with non-numeric header values',
+        fileExists: true,
+        fileContent: JSON.stringify({
+          headers: {
+            'anthropic-ratelimit-unified-5h-utilization': 'unknown',
+            'anthropic-ratelimit-unified-7d-utilization': '0.34',
+            'anthropic-ratelimit-unified-7d-reset': '1772769600',
+          },
+          ts: 1234567890,
+        }),
+        expected: [
+          {
+            hour: 168,
+            utilizationPercentage: 34,
+            resetsAt: new Date(1772769600 * 1000),
+          },
+        ],
+      },
     ];
 
     test.each(testCases)(

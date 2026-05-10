@@ -56,26 +56,32 @@ export class OauthProxyClaudeRepository implements ClaudeRepository {
       headers['anthropic-ratelimit-unified-5h-utilization'];
     const fiveHourReset = headers['anthropic-ratelimit-unified-5h-reset'];
     if (fiveHourUtilization !== undefined) {
-      usages.push({
-        hour: 5,
-        utilizationPercentage: parseFloat(fiveHourUtilization) * 100,
-        resetsAt: fiveHourReset
-          ? new Date(parseInt(fiveHourReset, 10) * 1000)
-          : new Date(),
-      });
+      const utilizationPercentage = parseFloat(fiveHourUtilization) * 100;
+      if (!isNaN(utilizationPercentage)) {
+        usages.push({
+          hour: 5,
+          utilizationPercentage,
+          resetsAt: fiveHourReset
+            ? new Date(parseInt(fiveHourReset, 10) * 1000)
+            : new Date(),
+        });
+      }
     }
 
     const sevenDayUtilization =
       headers['anthropic-ratelimit-unified-7d-utilization'];
     const sevenDayReset = headers['anthropic-ratelimit-unified-7d-reset'];
     if (sevenDayUtilization !== undefined) {
-      usages.push({
-        hour: 168,
-        utilizationPercentage: parseFloat(sevenDayUtilization) * 100,
-        resetsAt: sevenDayReset
-          ? new Date(parseInt(sevenDayReset, 10) * 1000)
-          : new Date(),
-      });
+      const utilizationPercentage = parseFloat(sevenDayUtilization) * 100;
+      if (!isNaN(utilizationPercentage)) {
+        usages.push({
+          hour: 168,
+          utilizationPercentage,
+          resetsAt: sevenDayReset
+            ? new Date(parseInt(sevenDayReset, 10) * 1000)
+            : new Date(),
+        });
+      }
     }
 
     return usages;
