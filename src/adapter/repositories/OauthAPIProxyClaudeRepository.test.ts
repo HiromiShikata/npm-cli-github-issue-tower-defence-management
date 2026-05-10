@@ -138,7 +138,13 @@ describe('OauthAPIProxyClaudeRepository', () => {
 
     test.each(testCases)(
       '$name',
-      async ({ proxyUsages, apiAvailable, threshold, expected, expectApiCalled }) => {
+      async ({
+        proxyUsages,
+        apiAvailable,
+        threshold,
+        expected,
+        expectApiCalled,
+      }) => {
         mockProxyRepository.getUsage.mockResolvedValue(proxyUsages);
         mockApiRepository.isClaudeAvailable.mockResolvedValue(apiAvailable);
 
