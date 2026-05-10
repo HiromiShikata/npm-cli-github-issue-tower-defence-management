@@ -21,7 +21,10 @@ describe('OauthAPIClaudeRepository', () => {
 
   describe('isClaudeAvailable with claudeCodeOauthTokenListJsonPath', () => {
     const tokenListPath = '/path/to/token-list.json';
-    const tokenListContent = JSON.stringify(['token-under-threshold', 'token-over-threshold']);
+    const tokenListContent = JSON.stringify([
+      'token-under-threshold',
+      'token-over-threshold',
+    ]);
 
     const mockUsageResponseUnderThreshold = {
       five_hour: { utilization: 0.5, resets_at: '2026-05-10T12:00:00Z' },
@@ -144,19 +147,19 @@ describe('OauthAPIClaudeRepository', () => {
 
     it('should set selectedAccessToken so getUsage uses it without reading credentials file', async () => {
       mockFs.existsSync.mockImplementation((p) => p === tokenListPath);
-      mockFs.readFileSync.mockReturnValue(
-        JSON.stringify(['selected-token']),
-      );
+      mockFs.readFileSync.mockReturnValue(JSON.stringify(['selected-token']));
 
       const mockUsageData = {
         five_hour: { utilization: 0.3, resets_at: '2026-05-10T12:00:00Z' },
       };
 
-      jest.spyOn(global, 'fetch').mockImplementation(() =>
-        Promise.resolve(
-          new Response(JSON.stringify(mockUsageData), { status: 200 }),
-        ),
-      );
+      jest
+        .spyOn(global, 'fetch')
+        .mockImplementation(() =>
+          Promise.resolve(
+            new Response(JSON.stringify(mockUsageData), { status: 200 }),
+          ),
+        );
 
       const repo = new OauthAPIClaudeRepository(tokenListPath);
       await repo.isClaudeAvailable(0.9);
@@ -196,17 +199,17 @@ describe('OauthAPIClaudeRepository', () => {
       });
 
       mockFs.existsSync.mockImplementation((p) => p === claudeDir);
-      mockFs.readdirSync.mockReturnValue([
-        '.credentials.json.work.1',
-      ] as unknown as fs.Dirent[]);
+      const readdirMock: jest.SpyInstance = mockFs.readdirSync;
+      readdirMock.mockReturnValue(['.credentials.json.work.1']);
       mockFs.readFileSync.mockReturnValue(credContent);
 
-      jest.spyOn(global, 'fetch').mockResolvedValue(
-        new Response(
-          JSON.stringify({ five_hour: { utilization: 0.5 } }),
-          { status: 200 },
-        ),
-      );
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValue(
+          new Response(JSON.stringify({ five_hour: { utilization: 0.5 } }), {
+            status: 200,
+          }),
+        );
 
       const repo = new OauthAPIClaudeRepository();
       const result = await repo.isClaudeAvailable(0.9);

@@ -1185,7 +1185,9 @@ codexHomeCandidates:
         configFilePath,
       ]);
 
-      expect(MockedOauthAPIClaudeRepository).toHaveBeenCalledWith(tokenListPath);
+      expect(MockedOauthAPIClaudeRepository).toHaveBeenCalledWith(
+        tokenListPath,
+      );
     });
 
     it('should construct OauthAPIClaudeRepository without path when claudeCodeOauthTokenListJsonPath not in config', async () => {
