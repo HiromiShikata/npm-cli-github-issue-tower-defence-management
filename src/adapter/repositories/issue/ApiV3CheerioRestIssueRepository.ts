@@ -874,8 +874,11 @@ export class ApiV3CheerioRestIssueRepository
     return issues.filter((issue) => !issue.isClosed);
   };
 
-  getStoryObjectMap = async (project: Project): Promise<StoryObjectMap> => {
-    const { issues } = await this.getAllIssues(project.id, 0);
+  getStoryObjectMap = async (
+    project: Project,
+    allowCacheMinutes: number,
+  ): Promise<StoryObjectMap> => {
+    const { issues } = await this.getAllIssues(project.id, allowCacheMinutes);
     const storyObjectMap: StoryObjectMap = new Map();
     const targetStories = project.story?.stories || [];
     for (const story of targetStories) {
