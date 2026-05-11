@@ -225,10 +225,10 @@ export class HandleScheduledEventUseCaseHandler {
         maximumPreparingIssuesCount:
           input.startPreparation?.maximumPreparingIssuesCount ?? null,
         utilizationPercentageThreshold:
-          input.startPreparation?.utilizationPercentageThreshold ?? null,
+          input.startPreparation?.utilizationPercentageThreshold ?? 90,
         allowIssueCacheMinutes: input.allowIssueCacheMinutes,
         thresholdForAutoReject:
-          input.notifyFinishedPreparation?.thresholdForAutoReject ?? null,
+          input.notifyFinishedPreparation?.thresholdForAutoReject ?? 3,
       };
       const finalPath = `${cachePath}/runtimeConfig-${projectId}.json`;
       const tmpPath = `${finalPath}.tmp`;

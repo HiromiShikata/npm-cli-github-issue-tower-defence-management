@@ -299,6 +299,27 @@ describe('HandleScheduledEventUseCaseHandler', () => {
     );
   });
 
+  it('should write runtimeConfig with numeric defaults when optional fields are absent', async () => {
+    const handler = new HandleScheduledEventUseCaseHandler();
+    await handler.handle('config.yml', false);
+
+    const expectedCachePath = `./tmp/cache/${validConfig.projectName}`;
+    const expectedTmpPath = `${expectedCachePath}/runtimeConfig-PVT_kwHOtest123.json.tmp`;
+
+    expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+      expectedTmpPath,
+      expect.stringContaining('"utilizationPercentageThreshold":90'),
+    );
+    expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+      expectedTmpPath,
+      expect.stringContaining('"thresholdForAutoReject":3'),
+    );
+    expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+      expectedTmpPath,
+      expect.stringContaining('"maximumPreparingIssuesCount":null'),
+    );
+  });
+
   it('should not write runtimeConfig when run returns null', async () => {
     mockRun.mockResolvedValueOnce(null);
     jest.mocked(fs.readFileSync).mockReturnValue(YAML.stringify(validConfig));
