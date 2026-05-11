@@ -95,6 +95,11 @@ jest.mock('../../repositories/NodeLocalCommandRunner', () => ({
 jest.mock('../../repositories/OauthAPIProxyClaudeRepository', () => ({
   OauthAPIProxyClaudeRepository: jest.fn().mockImplementation(() => ({})),
 }));
+
+jest.mock('../ProjectReadmeConfigFetcher', () => ({
+  fetchProjectReadme: jest.fn().mockResolvedValue(null),
+  parseProjectReadmeConfig: jest.fn().mockReturnValue({}),
+}));
 jest.mock(
   '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase',
   () => ({
@@ -111,13 +116,24 @@ jest.mock('../../repositories/FetchWebhookRepository', () => ({
 }));
 
 import { HandleScheduledEventUseCaseHandler } from './HandleScheduledEventUseCaseHandler';
+import { OauthAPIProxyClaudeRepository } from '../../repositories/OauthAPIProxyClaudeRepository';
+import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 import { GraphqlProjectRepository } from '../../repositories/GraphqlProjectRepository';
+import * as ProjectReadmeConfigFetcher from '../ProjectReadmeConfigFetcher';
 import { CheerioProjectRepository } from '../../repositories/CheerioProjectRepository';
 import { ApiV3IssueRepository } from '../../repositories/issue/ApiV3IssueRepository';
 import { RestIssueRepository } from '../../repositories/issue/RestIssueRepository';
 import { GraphqlProjectItemRepository } from '../../repositories/issue/GraphqlProjectItemRepository';
 import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3CheerioRestIssueRepository';
 
+const MockedOauthAPIProxyClaudeRepository = jest.mocked(OauthAPIProxyClaudeRepository);
+const MockedStartPreparationUseCase = jest.mocked(StartPreparationUseCase);
+const mockFetchProjectReadme = jest.mocked(
+  ProjectReadmeConfigFetcher.fetchProjectReadme,
+);
+const mockParseProjectReadmeConfig = jest.mocked(
+  ProjectReadmeConfigFetcher.parseProjectReadmeConfig,
+);
 const MockedGraphqlProjectRepository = jest.mocked(GraphqlProjectRepository);
 const MockedCheerioProjectRepository = jest.mocked(CheerioProjectRepository);
 const MockedApiV3IssueRepository = jest.mocked(ApiV3IssueRepository);
@@ -241,5 +257,109 @@ describe('HandleScheduledEventUseCaseHandler', () => {
         undefined,
       );
     }
+  });
+
+  it('should use OauthAPIProxyClaudeRepository for StartPreparationUseCase', async () => {
+    const handler = new HandleScheduledEventUseCaseHandler();
+    await handler.handle('config.yml', false);
+
+    expect(MockedOauthAPIProxyClaudeRepository).toHaveBeenCalledTimes(1);
+    const claudeRepoInstance = MockedOauthAPIProxyClaudeRepository.mock.instances[0];
+    expect(MockedStartPreparationUseCase).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      claudeRepoInstance,
+      expect.anything(),
+    );
+  });
+
+  it('should fetch README using manager github token and project URL', async () => {
+    const handler = new HandleScheduledEventUseCaseHandler();
+    await handler.handle('config.yml', false);
+
+    expect(mockFetchProjectReadme).toHaveBeenCalledWith(
+      validConfig.projectUrl,
+      validConfig.credentials.manager.github.token,
+    );
+  });
+
+  it('should apply README config override to allowIssueCacheMinutes when set', async () => {
+    mockFetchProjectReadme.mockResolvedValueOnce('<details><summary>config</summary>\nallowIssueCacheMinutes: 99\n</details>');
+    mockParseProjectReadmeConfig.mockReturnValueOnce({ allowIssueCacheMinutes: 99 });
+
+    const handler = new HandleScheduledEventUseCaseHandler();
+    await handler.handle('config.yml', false);
+
+    const runCall = mockRun;
+    expect(runCall).toHaveBeenCalledWith(
+      expect.objectContaining({ allowIssueCacheMinutes: 99 }),
+    );
+  });
+
+  it('should apply README config override to startPreparation fields when set', async () => {
+    const configWithStartPreparation = {
+      ...validConfig,
+      startPreparation: {
+        awaitingWorkspaceStatus: 'Awaiting workspace',
+        preparationStatus: 'Preparation',
+        defaultAgentName: 'default-agent',
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: 5,
+      },
+    };
+    jest
+      .mocked(fs.readFileSync)
+      .mockReturnValue(YAML.stringify(configWithStartPreparation));
+    mockFetchProjectReadme.mockResolvedValueOnce('<details><summary>config</summary>\nmaximumPreparingIssuesCount: 0\n</details>');
+    mockParseProjectReadmeConfig.mockReturnValueOnce({
+      maximumPreparingIssuesCount: 0,
+    });
+
+    const handler = new HandleScheduledEventUseCaseHandler();
+    await handler.handle('config.yml', false);
+
+    expect(mockRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        startPreparation: {
+          awaitingWorkspaceStatus: 'Awaiting workspace',
+          preparationStatus: 'Preparation',
+          defaultAgentName: 'default-agent',
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: 0,
+        },
+      }),
+    );
+  });
+
+  it('should not override startPreparation fields when README has no config', async () => {
+    const configWithStartPreparation = {
+      ...validConfig,
+      startPreparation: {
+        awaitingWorkspaceStatus: 'Awaiting workspace',
+        preparationStatus: 'Preparation',
+        defaultAgentName: 'default-agent',
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: 5,
+      },
+    };
+    jest
+      .mocked(fs.readFileSync)
+      .mockReturnValue(YAML.stringify(configWithStartPreparation));
+    mockFetchProjectReadme.mockResolvedValueOnce(null);
+
+    const handler = new HandleScheduledEventUseCaseHandler();
+    await handler.handle('config.yml', false);
+
+    expect(mockRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        startPreparation: {
+          awaitingWorkspaceStatus: 'Awaiting workspace',
+          preparationStatus: 'Preparation',
+          defaultAgentName: 'default-agent',
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: 5,
+        },
+      }),
+    );
   });
 });

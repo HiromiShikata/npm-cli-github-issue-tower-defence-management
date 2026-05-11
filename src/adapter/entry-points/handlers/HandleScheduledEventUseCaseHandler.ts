@@ -33,6 +33,11 @@ import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparati
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
 import { OauthAPIProxyClaudeRepository } from '../../repositories/OauthAPIProxyClaudeRepository';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
+import {
+  fetchProjectReadme,
+  parseProjectReadmeConfig,
+  ProjectReadmeConfig,
+} from '../ProjectReadmeConfigFetcher';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
@@ -217,6 +222,112 @@ export class HandleScheduledEventUseCaseHandler {
       issueRepository,
     );
 
-    return await handleScheduledEventUseCase.run(input);
+    const readme = await fetchProjectReadme(
+      input.projectUrl,
+      input.credentials.manager.github.token,
+    );
+    const readmeConfig: ProjectReadmeConfig = readme
+      ? parseProjectReadmeConfig(readme)
+      : {};
+
+    const mergedInput = applyReadmeOverrides(input, readmeConfig);
+
+    return await handleScheduledEventUseCase.run(mergedInput);
   };
 }
+
+const applyReadmeOverrides = <
+  T extends {
+    allowIssueCacheMinutes: number;
+    startPreparation?: {
+      awaitingWorkspaceStatus: string;
+      preparationStatus: string;
+      defaultAgentName: string;
+      defaultLlmModelName?: string | null;
+      defaultLlmAgentName?: string | null;
+      maximumPreparingIssuesCount: number | null;
+      utilizationPercentageThreshold?: number;
+      preparationProcessCheckCommand?: string;
+      codexHomeCandidates?: string[] | null;
+    } | null;
+    notifyFinishedPreparation?: {
+      preparationStatus: string;
+      awaitingWorkspaceStatus: string;
+      awaitingQualityCheckStatus: string;
+      thresholdForAutoReject: number;
+      workflowBlockerResolvedWebhookUrl: string | null;
+    } | null;
+  },
+>(
+  input: T,
+  readmeConfig: ProjectReadmeConfig,
+): T => {
+  const overriddenStartPreparation =
+    input.startPreparation != null
+      ? {
+          ...input.startPreparation,
+          ...(readmeConfig.awaitingWorkspaceStatus !== undefined && {
+            awaitingWorkspaceStatus: readmeConfig.awaitingWorkspaceStatus,
+          }),
+          ...(readmeConfig.preparationStatus !== undefined && {
+            preparationStatus: readmeConfig.preparationStatus,
+          }),
+          ...(readmeConfig.defaultAgentName !== undefined && {
+            defaultAgentName: readmeConfig.defaultAgentName,
+          }),
+          ...(readmeConfig.defaultLlmModelName !== undefined && {
+            defaultLlmModelName: readmeConfig.defaultLlmModelName,
+          }),
+          ...(readmeConfig.defaultLlmAgentName !== undefined && {
+            defaultLlmAgentName: readmeConfig.defaultLlmAgentName,
+          }),
+          ...(readmeConfig.maximumPreparingIssuesCount !== undefined && {
+            maximumPreparingIssuesCount:
+              readmeConfig.maximumPreparingIssuesCount,
+          }),
+          ...(readmeConfig.utilizationPercentageThreshold !== undefined && {
+            utilizationPercentageThreshold:
+              readmeConfig.utilizationPercentageThreshold,
+          }),
+          ...(readmeConfig.preparationProcessCheckCommand !== undefined && {
+            preparationProcessCheckCommand:
+              readmeConfig.preparationProcessCheckCommand,
+          }),
+          ...(readmeConfig.codexHomeCandidates !== undefined && {
+            codexHomeCandidates: readmeConfig.codexHomeCandidates,
+          }),
+        }
+      : input.startPreparation;
+
+  const overriddenNotifyFinishedPreparation =
+    input.notifyFinishedPreparation != null
+      ? {
+          ...input.notifyFinishedPreparation,
+          ...(readmeConfig.preparationStatus !== undefined && {
+            preparationStatus: readmeConfig.preparationStatus,
+          }),
+          ...(readmeConfig.awaitingWorkspaceStatus !== undefined && {
+            awaitingWorkspaceStatus: readmeConfig.awaitingWorkspaceStatus,
+          }),
+          ...(readmeConfig.awaitingQualityCheckStatus !== undefined && {
+            awaitingQualityCheckStatus: readmeConfig.awaitingQualityCheckStatus,
+          }),
+          ...(readmeConfig.thresholdForAutoReject !== undefined && {
+            thresholdForAutoReject: readmeConfig.thresholdForAutoReject,
+          }),
+          ...(readmeConfig.workflowBlockerResolvedWebhookUrl !== undefined && {
+            workflowBlockerResolvedWebhookUrl:
+              readmeConfig.workflowBlockerResolvedWebhookUrl,
+          }),
+        }
+      : input.notifyFinishedPreparation;
+
+  return {
+    ...input,
+    ...(readmeConfig.allowIssueCacheMinutes !== undefined && {
+      allowIssueCacheMinutes: readmeConfig.allowIssueCacheMinutes,
+    }),
+    startPreparation: overriddenStartPreparation,
+    notifyFinishedPreparation: overriddenNotifyFinishedPreparation,
+  };
+};
