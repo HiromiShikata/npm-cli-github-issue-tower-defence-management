@@ -18,17 +18,15 @@ jest.mock('../../repositories/BaseGitHubRepository');
 
 type RunFn = HandleScheduledEventUseCase['run'];
 const capturedRunInputs: Parameters<RunFn>[] = [];
-const mockRun = jest.fn().mockImplementation(
-  (...args: Parameters<RunFn>) => {
-    capturedRunInputs.push(args);
-    return Promise.resolve({
-      project: { id: 'PVT_kwHOtest123' },
-      issues: [],
-      cacheUsed: false,
-      targetDateTimes: [],
-    });
-  },
-);
+const mockRun = jest.fn().mockImplementation((...args: Parameters<RunFn>) => {
+  capturedRunInputs.push(args);
+  return Promise.resolve({
+    project: { id: 'PVT_kwHOtest123' },
+    issues: [],
+    cacheUsed: false,
+    targetDateTimes: [],
+  });
+});
 
 jest.mock('../../../domain/usecases/HandleScheduledEventUseCase', () => ({
   HandleScheduledEventUseCase: jest.fn().mockImplementation(() => ({
@@ -457,9 +455,7 @@ allowedIssueAuthors: 'user1, user2, user3'
 
     it('should use README token from manager credentials to fetch README', async () => {
       mockFetchReturningReadme(null);
-      jest
-        .mocked(fs.readFileSync)
-        .mockReturnValue(YAML.stringify(validConfig));
+      jest.mocked(fs.readFileSync).mockReturnValue(YAML.stringify(validConfig));
 
       const handler = new HandleScheduledEventUseCaseHandler();
       await handler.handle('config.yml', false);
