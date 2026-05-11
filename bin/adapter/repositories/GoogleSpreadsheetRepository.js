@@ -9,7 +9,7 @@ const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 class GoogleSpreadsheetRepository {
     constructor(localStorageRepository, serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY ||
-        'dummy') {
+        'dummy', sheetsClientFactory) {
         this.localStorageRepository = localStorageRepository;
         this.keyFile = './tmp/service-account-key.json';
         this.getSpreadsheetId = (spreadsheetUrl) => {
@@ -17,11 +17,7 @@ class GoogleSpreadsheetRepository {
             return url.pathname.split('/')[3];
         };
         this.getSheet = async (spreadsheetUrl, sheetName) => {
-            const auth = new googleapis_1.google.auth.GoogleAuth({
-                keyFile: this.keyFile,
-                scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-            });
-            const sheets = googleapis_1.google.sheets({ version: 'v4', auth });
+            const sheets = this.sheetsClient;
             const spreadsheetId = this.getSpreadsheetId(spreadsheetUrl);
             const responseSheet = await sheets.spreadsheets.get({
                 spreadsheetId,
@@ -46,11 +42,7 @@ class GoogleSpreadsheetRepository {
             return response.data.values.map((row) => row.map((cell) => String(cell)));
         };
         this.updateCell = async (spreadsheetUrl, sheetName, row, column, value) => {
-            const auth = new googleapis_1.google.auth.GoogleAuth({
-                keyFile: this.keyFile,
-                scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-            });
-            const sheets = googleapis_1.google.sheets({ version: 'v4', auth });
+            const sheets = this.sheetsClient;
             const spreadsheetId = this.getSpreadsheetId(spreadsheetUrl);
             await this.createNewSheetIfNotExists(spreadsheetUrl, sheetName);
             const response = await sheets.spreadsheets.values.update({
@@ -66,11 +58,7 @@ class GoogleSpreadsheetRepository {
             }
         };
         this.createNewSheetIfNotExists = async (spreadsheetUrl, sheetName) => {
-            const auth = new googleapis_1.google.auth.GoogleAuth({
-                keyFile: this.keyFile,
-                scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-            });
-            const sheets = googleapis_1.google.sheets({ version: 'v4', auth });
+            const sheets = this.sheetsClient;
             const spreadsheetId = this.getSpreadsheetId(spreadsheetUrl);
             const sheet = await this.getSheet(spreadsheetUrl, sheetName);
             if (sheet !== null) {
@@ -95,11 +83,7 @@ class GoogleSpreadsheetRepository {
             }
         };
         this.appendSheetValues = async (spreadsheetUrl, sheetName, values) => {
-            const auth = new googleapis_1.google.auth.GoogleAuth({
-                keyFile: this.keyFile,
-                scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-            });
-            const sheets = googleapis_1.google.sheets({ version: 'v4', auth });
+            const sheets = this.sheetsClient;
             const spreadsheetId = this.getSpreadsheetId(spreadsheetUrl);
             await this.createNewSheetIfNotExists(spreadsheetUrl, sheetName);
             const sheet = await this.getSheet(spreadsheetUrl, sheetName);
@@ -117,6 +101,26 @@ class GoogleSpreadsheetRepository {
             }
         };
         this.localStorageRepository.write(this.keyFile, serviceAccountKey);
+        this.sheetsClient = sheetsClientFactory
+            ? sheetsClientFactory()
+            : (() => {
+                const auth = new googleapis_1.google.auth.GoogleAuth({
+                    keyFile: this.keyFile,
+                    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+                });
+                const googleSheets = googleapis_1.google.sheets({ version: 'v4', auth });
+                return {
+                    spreadsheets: {
+                        get: (params) => googleSheets.spreadsheets.get(params),
+                        values: {
+                            get: (params) => googleSheets.spreadsheets.values.get(params),
+                            update: (params) => googleSheets.spreadsheets.values.update(params),
+                            append: (params) => googleSheets.spreadsheets.values.append(params),
+                        },
+                        batchUpdate: (params) => googleSheets.spreadsheets.batchUpdate(params),
+                    },
+                };
+            })();
     }
 }
 exports.GoogleSpreadsheetRepository = GoogleSpreadsheetRepository;

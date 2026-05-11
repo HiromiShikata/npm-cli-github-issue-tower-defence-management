@@ -1,3 +1,11 @@
+## [1.42.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.42.3...v1.42.4) (2026-05-11)
+
+
+### Bug Fixes
+
+* **core:** mock Google Sheets API in tests to prevent quota exceeded CI failures ([12fb71a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/12fb71a696ad3f0b5a5248ec42ae02f677b276b2)), closes [#379](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/379)
+* **test:** mock Google Sheets API to prevent quota exceeded flakiness ([94266bf](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/94266bf83792313e3fe2e1be474500adc3f65fd1)), closes [#373](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/373) [#379](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/379)
+
 ## [1.42.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.42.2...v1.42.3) (2026-05-11)
 
 
