@@ -73,6 +73,13 @@ const findCredentials = (filePathList: string[]): CredentialInfo[] => {
   return credentials.sort((a, b) => a.priority - b.priority);
 };
 
+export class ClaudeConfigDirCandidateUnavailableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ClaudeConfigDirCandidateUnavailableError';
+  }
+}
+
 export class OauthAPIClaudeRepository implements ClaudeRepository {
   private readonly credentialsPath: string;
   private readonly claudeDir: string;
@@ -84,7 +91,7 @@ export class OauthAPIClaudeRepository implements ClaudeRepository {
 
   private getAccessToken(): string {
     if (!fs.existsSync(this.credentialsPath)) {
-      throw new Error(
+      throw new ClaudeConfigDirCandidateUnavailableError(
         `Claude credentials file not found at ${this.credentialsPath}. Please login to Claude Code first using: claude login`,
       );
     }
@@ -121,7 +128,9 @@ export class OauthAPIClaudeRepository implements ClaudeRepository {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Claude API error: ${errorText}`);
+      throw new ClaudeConfigDirCandidateUnavailableError(
+        `Claude API error: ${errorText}`,
+      );
     }
 
     const responseData: unknown = await response.json();

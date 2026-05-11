@@ -58,13 +58,13 @@ class OauthAPIClaudeMultiCandidateRepository {
                 usages = await repo.getUsage();
             }
             catch (error) {
-                if (this.isCandidateUnavailable(error)) {
+                if (error instanceof OauthAPIClaudeRepository_1.ClaudeConfigDirCandidateUnavailableError) {
                     continue;
                 }
                 throw error;
             }
             if (this.isNonWeeklyUnderThreshold(usages, threshold)) {
-                fs.copyFileSync(path.join(candidateDir, '.credentials.json'), path.join(this.mainDir, '.credentials.json'));
+                this.copyCandidate(candidateDir, this.mainDir);
                 return true;
             }
         }
@@ -73,18 +73,26 @@ class OauthAPIClaudeMultiCandidateRepository {
     async getUsage() {
         return this.mainRepository.getUsage();
     }
+    copyCandidate(candidateDir, mainDir) {
+        const credentialsSrc = path.join(candidateDir, '.credentials.json');
+        const credentialsDst = path.join(mainDir, '.credentials.json');
+        const credentialsTmp = `${credentialsDst}.tmp`;
+        fs.copyFileSync(credentialsSrc, credentialsTmp);
+        fs.renameSync(credentialsTmp, credentialsDst);
+        const claudeJsonSrc = path.join(candidateDir, '.claude.json');
+        if (fs.existsSync(claudeJsonSrc)) {
+            const claudeJsonDst = path.join(mainDir, '.claude.json');
+            const claudeJsonTmp = `${claudeJsonDst}.tmp`;
+            fs.copyFileSync(claudeJsonSrc, claudeJsonTmp);
+            fs.renameSync(claudeJsonTmp, claudeJsonDst);
+        }
+    }
     isNonWeeklyUnderThreshold(usages, threshold) {
         const nonWeekly = usages.filter((usage) => usage.hour !== this.weeklyWindowHours);
         const maxUtil = nonWeekly.length > 0
             ? Math.max(...nonWeekly.map((u) => u.utilizationPercentage))
             : 0;
         return maxUtil <= threshold;
-    }
-    isCandidateUnavailable(error) {
-        if (!(error instanceof Error))
-            return false;
-        return (error.message.includes('credentials file not found') ||
-            error.message.startsWith('Claude API error:'));
     }
 }
 exports.OauthAPIClaudeMultiCandidateRepository = OauthAPIClaudeMultiCandidateRepository;

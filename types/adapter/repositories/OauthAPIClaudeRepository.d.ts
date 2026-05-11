@@ -1,5 +1,8 @@
 import { ClaudeRepository } from '../../domain/usecases/adapter-interfaces/ClaudeRepository';
 import { ClaudeWindowUsage } from '../../domain/entities/ClaudeWindowUsage';
+export declare class ClaudeConfigDirCandidateUnavailableError extends Error {
+    constructor(message: string);
+}
 export declare class OauthAPIClaudeRepository implements ClaudeRepository {
     private readonly credentialsPath;
     private readonly claudeDir;

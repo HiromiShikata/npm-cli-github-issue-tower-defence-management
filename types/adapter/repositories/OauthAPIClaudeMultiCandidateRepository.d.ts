@@ -9,7 +9,7 @@ export declare class OauthAPIClaudeMultiCandidateRepository implements ClaudeRep
     constructor(candidates: string[], homeDir: string);
     isClaudeAvailable(threshold: number): Promise<boolean>;
     getUsage(): Promise<ClaudeWindowUsage[]>;
+    private copyCandidate;
     private isNonWeeklyUnderThreshold;
-    private isCandidateUnavailable;
 }
 //# sourceMappingURL=OauthAPIClaudeMultiCandidateRepository.d.ts.map

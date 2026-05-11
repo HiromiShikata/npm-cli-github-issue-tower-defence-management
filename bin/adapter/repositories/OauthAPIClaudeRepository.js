@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.OauthAPIClaudeRepository = void 0;
+exports.OauthAPIClaudeRepository = exports.ClaudeConfigDirCandidateUnavailableError = void 0;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const isCredentialsFile = (value) => {
@@ -73,6 +73,13 @@ const findCredentials = (filePathList) => {
     }
     return credentials.sort((a, b) => a.priority - b.priority);
 };
+class ClaudeConfigDirCandidateUnavailableError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'ClaudeConfigDirCandidateUnavailableError';
+    }
+}
+exports.ClaudeConfigDirCandidateUnavailableError = ClaudeConfigDirCandidateUnavailableError;
 class OauthAPIClaudeRepository {
     constructor(claudeConfigDir) {
         this.claudeDir = claudeConfigDir;
@@ -80,7 +87,7 @@ class OauthAPIClaudeRepository {
     }
     getAccessToken() {
         if (!fs.existsSync(this.credentialsPath)) {
-            throw new Error(`Claude credentials file not found at ${this.credentialsPath}. Please login to Claude Code first using: claude login`);
+            throw new ClaudeConfigDirCandidateUnavailableError(`Claude credentials file not found at ${this.credentialsPath}. Please login to Claude Code first using: claude login`);
         }
         const fileContent = fs.readFileSync(this.credentialsPath, 'utf-8');
         const credentials = JSON.parse(fileContent);
@@ -107,7 +114,7 @@ class OauthAPIClaudeRepository {
         });
         if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(`Claude API error: ${errorText}`);
+            throw new ClaudeConfigDirCandidateUnavailableError(`Claude API error: ${errorText}`);
         }
         const responseData = await response.json();
         if (!isUsageResponse(responseData)) {

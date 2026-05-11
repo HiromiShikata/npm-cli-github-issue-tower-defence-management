@@ -1,5 +1,8 @@
 import { OauthAPIClaudeMultiCandidateRepository } from './OauthAPIClaudeMultiCandidateRepository';
-import { OauthAPIClaudeRepository } from './OauthAPIClaudeRepository';
+import {
+  ClaudeConfigDirCandidateUnavailableError,
+  OauthAPIClaudeRepository,
+} from './OauthAPIClaudeRepository';
 import * as fs from 'fs';
 
 jest.mock('./OauthAPIClaudeRepository');
@@ -7,6 +10,8 @@ jest.mock('fs');
 
 const MockOauthAPIClaudeRepository = jest.mocked(OauthAPIClaudeRepository);
 const mockCopyFileSync = jest.mocked(fs.copyFileSync);
+const mockRenameSync = jest.mocked(fs.renameSync);
+const mockExistsSync = jest.mocked(fs.existsSync);
 
 describe('OauthAPIClaudeMultiCandidateRepository', () => {
   const homeDir = '/home/testuser';
@@ -15,6 +20,7 @@ describe('OauthAPIClaudeMultiCandidateRepository', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockExistsSync.mockReturnValue(false);
   });
 
   describe('isClaudeAvailable', () => {
@@ -68,7 +74,7 @@ describe('OauthAPIClaudeMultiCandidateRepository', () => {
     });
 
     describe('when candidates are configured', () => {
-      it('should copy credentials and return true when first candidate is under threshold', async () => {
+      it('should copy credentials atomically and return true when first candidate is under threshold', async () => {
         MockOauthAPIClaudeRepository.prototype.getUsage.mockResolvedValue([
           { hour: 5, utilizationPercentage: 50, resetsAt: new Date() },
         ]);
@@ -85,7 +91,51 @@ describe('OauthAPIClaudeMultiCandidateRepository', () => {
         );
         expect(mockCopyFileSync).toHaveBeenCalledWith(
           `${homeDir}/.claude-candidate1/.credentials.json`,
+          `${mainDir}/.credentials.json.tmp`,
+        );
+        expect(mockRenameSync).toHaveBeenCalledWith(
+          `${mainDir}/.credentials.json.tmp`,
           `${mainDir}/.credentials.json`,
+        );
+      });
+
+      it('should copy .claude.json when it exists in candidate directory', async () => {
+        MockOauthAPIClaudeRepository.prototype.getUsage.mockResolvedValue([
+          { hour: 5, utilizationPercentage: 50, resetsAt: new Date() },
+        ]);
+        mockExistsSync.mockReturnValue(true);
+
+        const repo = new OauthAPIClaudeMultiCandidateRepository(
+          ['.claude-candidate1'],
+          homeDir,
+        );
+        await repo.isClaudeAvailable(threshold);
+
+        expect(mockCopyFileSync).toHaveBeenCalledWith(
+          `${homeDir}/.claude-candidate1/.claude.json`,
+          `${mainDir}/.claude.json.tmp`,
+        );
+        expect(mockRenameSync).toHaveBeenCalledWith(
+          `${mainDir}/.claude.json.tmp`,
+          `${mainDir}/.claude.json`,
+        );
+      });
+
+      it('should not copy .claude.json when it does not exist in candidate directory', async () => {
+        MockOauthAPIClaudeRepository.prototype.getUsage.mockResolvedValue([
+          { hour: 5, utilizationPercentage: 50, resetsAt: new Date() },
+        ]);
+        mockExistsSync.mockReturnValue(false);
+
+        const repo = new OauthAPIClaudeMultiCandidateRepository(
+          ['.claude-candidate1'],
+          homeDir,
+        );
+        await repo.isClaudeAvailable(threshold);
+
+        expect(mockCopyFileSync).not.toHaveBeenCalledWith(
+          expect.stringContaining('.claude.json'),
+          expect.anything(),
         );
       });
 
@@ -113,7 +163,7 @@ describe('OauthAPIClaudeMultiCandidateRepository', () => {
         );
         expect(mockCopyFileSync).toHaveBeenCalledWith(
           `${homeDir}/.claude-candidate2/.credentials.json`,
-          `${mainDir}/.credentials.json`,
+          `${mainDir}/.credentials.json.tmp`,
         );
       });
 
@@ -132,10 +182,12 @@ describe('OauthAPIClaudeMultiCandidateRepository', () => {
         expect(mockCopyFileSync).not.toHaveBeenCalled();
       });
 
-      it('should skip candidate when credentials file not found', async () => {
+      it('should skip candidate when ClaudeConfigDirCandidateUnavailableError is thrown', async () => {
         MockOauthAPIClaudeRepository.prototype.getUsage
           .mockRejectedValueOnce(
-            new Error('Claude credentials file not found at /some/path'),
+            new ClaudeConfigDirCandidateUnavailableError(
+              'Claude credentials file not found at /some/path',
+            ),
           )
           .mockResolvedValueOnce([
             { hour: 5, utilizationPercentage: 40, resetsAt: new Date() },
@@ -150,26 +202,8 @@ describe('OauthAPIClaudeMultiCandidateRepository', () => {
         expect(result).toBe(true);
         expect(mockCopyFileSync).toHaveBeenCalledWith(
           `${homeDir}/.claude-candidate2/.credentials.json`,
-          `${mainDir}/.credentials.json`,
+          `${mainDir}/.credentials.json.tmp`,
         );
-      });
-
-      it('should skip candidate when Claude API returns HTTP error', async () => {
-        MockOauthAPIClaudeRepository.prototype.getUsage
-          .mockRejectedValueOnce(
-            new Error('Claude API error: {"error": "unauthorized"}'),
-          )
-          .mockResolvedValueOnce([
-            { hour: 5, utilizationPercentage: 40, resetsAt: new Date() },
-          ]);
-
-        const repo = new OauthAPIClaudeMultiCandidateRepository(
-          ['.claude-candidate1', '.claude-candidate2'],
-          homeDir,
-        );
-        const result = await repo.isClaudeAvailable(threshold);
-
-        expect(result).toBe(true);
       });
 
       it('should propagate non-skippable errors', async () => {
@@ -202,7 +236,7 @@ describe('OauthAPIClaudeMultiCandidateRepository', () => {
         expect(result).toBe(true);
         expect(mockCopyFileSync).toHaveBeenCalledWith(
           `${homeDir}/.claude-candidate1/.credentials.json`,
-          `${mainDir}/.credentials.json`,
+          `${mainDir}/.credentials.json.tmp`,
         );
       });
     });
