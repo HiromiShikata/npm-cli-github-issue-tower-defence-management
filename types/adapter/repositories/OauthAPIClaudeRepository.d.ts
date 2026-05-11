@@ -3,7 +3,7 @@ import { ClaudeWindowUsage } from '../../domain/entities/ClaudeWindowUsage';
 export declare class OauthAPIClaudeRepository implements ClaudeRepository {
     private readonly credentialsPath;
     private readonly claudeDir;
-    constructor();
+    constructor(claudeConfigDir: string);
     private getAccessToken;
     getUsage(): Promise<ClaudeWindowUsage[]>;
     private getUsageWithToken;

@@ -90,7 +90,9 @@ describe('StartPreparationUseCase', () => {
       | 'getOpenPullRequest'
     >
   >;
-  let mockClaudeRepository: Mocked<Pick<ClaudeRepository, 'getUsage'>>;
+  let mockClaudeRepository: Mocked<
+    Pick<ClaudeRepository, 'getUsage' | 'isClaudeAvailable'>
+  >;
   let mockLocalCommandRunner: Mocked<LocalCommandRunner>;
   let mockProject: Project;
   beforeEach(() => {
@@ -113,6 +115,7 @@ describe('StartPreparationUseCase', () => {
     };
     mockClaudeRepository = {
       getUsage: jest.fn().mockResolvedValue([]),
+      isClaudeAvailable: jest.fn().mockResolvedValue(true),
     };
     mockLocalCommandRunner = {
       runCommand: jest.fn(),
@@ -1236,9 +1239,7 @@ describe('StartPreparationUseCase', () => {
   });
 
   it('should skip preparation when Claude usage is over 90%', async () => {
-    mockClaudeRepository.getUsage.mockResolvedValue([
-      { hour: 5, utilizationPercentage: 95, resetsAt: new Date() },
-    ]);
+    mockClaudeRepository.isClaudeAvailable.mockResolvedValue(false);
 
     const awaitingIssues: Issue[] = [
       createMockIssue({
@@ -1451,10 +1452,7 @@ describe('StartPreparationUseCase', () => {
   });
 
   it('should still skip immediately when non-weekly window exceeds threshold', async () => {
-    mockClaudeRepository.getUsage.mockResolvedValue([
-      { hour: 5, utilizationPercentage: 95, resetsAt: new Date() },
-      { hour: 168, utilizationPercentage: 50, resetsAt: new Date() },
-    ]);
+    mockClaudeRepository.isClaudeAvailable.mockResolvedValue(false);
 
     const awaitingIssues: Issue[] = [
       createMockIssue({
@@ -1540,7 +1538,7 @@ describe('StartPreparationUseCase', () => {
   });
 
   it('should throw error when Claude usage check fails', async () => {
-    mockClaudeRepository.getUsage.mockRejectedValue(
+    mockClaudeRepository.isClaudeAvailable.mockRejectedValue(
       new Error('Claude credentials file not found'),
     );
 
@@ -1565,9 +1563,7 @@ describe('StartPreparationUseCase', () => {
   });
 
   it('should skip preparation when Claude usage exceeds custom threshold', async () => {
-    mockClaudeRepository.getUsage.mockResolvedValue([
-      { hour: 5, utilizationPercentage: 75, resetsAt: new Date() },
-    ]);
+    mockClaudeRepository.isClaudeAvailable.mockResolvedValue(false);
 
     const awaitingIssues: Issue[] = [
       createMockIssue({

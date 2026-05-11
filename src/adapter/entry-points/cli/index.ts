@@ -2,6 +2,7 @@
 import YAML from 'yaml';
 import { Command } from 'commander';
 import * as fs from 'fs';
+import * as os from 'os';
 import { HandleScheduledEventUseCaseHandler } from '../handlers/HandleScheduledEventUseCaseHandler';
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
@@ -16,6 +17,7 @@ import { CheerioProjectRepository } from '../../repositories/CheerioProjectRepos
 import { BaseGitHubRepository } from '../../repositories/BaseGitHubRepository';
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
 import { OauthAPIProxyClaudeRepository } from '../../repositories/OauthAPIProxyClaudeRepository';
+import { OauthAPIClaudeMultiCandidateRepository } from '../../repositories/OauthAPIClaudeMultiCandidateRepository';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
@@ -40,6 +42,7 @@ type ConfigFile = {
   codexHomeCandidates?: string[];
   awLogDirectoryPath?: string;
   awLogStaleThresholdMinutes?: number;
+  claudeConfigDirCandidates?: string[];
 };
 
 type StartDaemonOptions = {
@@ -151,6 +154,10 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
       awLogStaleThresholdMinutes: getNumberValue(
         parsed,
         'awLogStaleThresholdMinutes',
+      ),
+      claudeConfigDirCandidates: getStringArrayValue(
+        parsed,
+        'claudeConfigDirCandidates',
       ),
     };
   } catch (error) {
@@ -294,6 +301,9 @@ export const mergeConfigs = (
     readmeOverrides.awLogStaleThresholdMinutes ??
     cliOverrides.awLogStaleThresholdMinutes ??
     configFile.awLogStaleThresholdMinutes,
+  claudeConfigDirCandidates:
+    cliOverrides.claudeConfigDirCandidates ??
+    configFile.claudeConfigDirCandidates,
 });
 
 type GraphqlProjectV2ReadmeResponse = {
@@ -595,7 +605,13 @@ program
       localStorageCacheRepository,
       ...githubRepositoryParams,
     );
-    const claudeRepository = new OauthAPIProxyClaudeRepository();
+    const claudeRepository = new OauthAPIProxyClaudeRepository(
+      undefined,
+      new OauthAPIClaudeMultiCandidateRepository(
+        config.claudeConfigDirCandidates ?? [],
+        os.homedir(),
+      ),
+    );
     const localCommandRunner = new NodeLocalCommandRunner();
 
     const preparationProcessCheckCommand =
@@ -646,8 +662,7 @@ program
       defaultLlmAgentName: config.defaultLlmAgentName ?? null,
       configFilePath: options.configFilePath,
       maximumPreparingIssuesCount,
-      utilizationPercentageThreshold:
-        config.utilizationPercentageThreshold ?? 90,
+      utilizationPercentageThreshold,
       allowedIssueAuthors,
       codexHomeCandidates,
     });

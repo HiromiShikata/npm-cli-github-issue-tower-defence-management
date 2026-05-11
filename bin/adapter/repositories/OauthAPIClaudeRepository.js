@@ -36,7 +36,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.OauthAPIClaudeRepository = void 0;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
-const os = __importStar(require("os"));
 const isCredentialsFile = (value) => {
     if (typeof value !== 'object' || value === null)
         return false;
@@ -75,8 +74,8 @@ const findCredentials = (filePathList) => {
     return credentials.sort((a, b) => a.priority - b.priority);
 };
 class OauthAPIClaudeRepository {
-    constructor() {
-        this.claudeDir = path.join(os.homedir(), '.claude');
+    constructor(claudeConfigDir) {
+        this.claudeDir = claudeConfigDir;
         this.credentialsPath = path.join(this.claudeDir, '.credentials.json');
     }
     getAccessToken() {

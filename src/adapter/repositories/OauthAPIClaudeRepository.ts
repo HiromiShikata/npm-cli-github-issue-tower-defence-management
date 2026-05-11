@@ -2,7 +2,6 @@ import { ClaudeRepository } from '../../domain/usecases/adapter-interfaces/Claud
 import { ClaudeWindowUsage } from '../../domain/entities/ClaudeWindowUsage';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
 
 type CredentialsFile = {
   claudeAiOauth?: {
@@ -78,8 +77,8 @@ export class OauthAPIClaudeRepository implements ClaudeRepository {
   private readonly credentialsPath: string;
   private readonly claudeDir: string;
 
-  constructor() {
-    this.claudeDir = path.join(os.homedir(), '.claude');
+  constructor(claudeConfigDir: string) {
+    this.claudeDir = claudeConfigDir;
     this.credentialsPath = path.join(this.claudeDir, '.credentials.json');
   }
 

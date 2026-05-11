@@ -188,6 +188,7 @@ preparationProcessCheckCommand?: string # Optional: Shell command template with 
 codexHomeCandidates?: string[] # Optional: Ordered list of CODEX_HOME directory paths for Codex profile cycling. Absent or empty keeps current behavior
 awLogDirectoryPath?: string # Optional: Directory path where aw log files named {org}_{repo}_{number}_* are written. Used with awLogStaleThresholdMinutes to detect zombie-wrapper orphans
 awLogStaleThresholdMinutes?: number # Optional: Minutes since last aw log mtime after which a Preparation issue is considered orphaned even when pgrep still returns 0. Requires awLogDirectoryPath
+claudeConfigDirCandidates?: string[] # Optional: Ordered list of per-directory Claude config dir names (relative to home). When set, each candidate is evaluated against utilizationPercentageThreshold in order; the credentials of the first candidate under threshold are copied to ~/.claude so aw uses them transparently. If all candidates exceed the threshold, preparation is skipped. When omitted, the default ~/.claude account is used
 ```
 
 Example:
@@ -211,6 +212,10 @@ codexHomeCandidates:
   - .codex-dev1
   - .codex-dev2
   - .codex-main
+claudeConfigDirCandidates:
+  - '.claude-dev1'
+  - '.claude-dev2'
+  - '.claude-main'
 ```
 
 #### README-based Config Overrides

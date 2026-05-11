@@ -8,13 +8,13 @@ class StartPreparationUseCase {
         this.claudeRepository = claudeRepository;
         this.localCommandRunner = localCommandRunner;
         this.run = async (params) => {
-            const claudeUsages = await this.claudeRepository.getUsage();
             const weeklyWindowHours = 168;
-            const nonWeeklyUsages = claudeUsages.filter((usage) => usage.hour !== weeklyWindowHours);
-            if (nonWeeklyUsages.some((usage) => usage.utilizationPercentage > params.utilizationPercentageThreshold)) {
+            const isAvailable = await this.claudeRepository.isClaudeAvailable(params.utilizationPercentageThreshold);
+            if (!isAvailable) {
                 console.warn('Claude usage limit exceeded. Skipping starting preparation.');
                 return;
             }
+            const claudeUsages = await this.claudeRepository.getUsage();
             let maximumPreparingIssuesCount = params.maximumPreparingIssuesCount ?? 6;
             const weeklyUsages = claudeUsages.filter((usage) => usage.hour === weeklyWindowHours);
             if (weeklyUsages.length > 0 &&

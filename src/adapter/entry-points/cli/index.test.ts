@@ -145,6 +145,7 @@ describe('CLI', () => {
         workflowBlockerResolvedWebhookUrl: 'https://example.com/webhook',
         projectName: 'test-project',
         codexHomeCandidates: ['.codex-dev1', '.codex-main'],
+        claudeConfigDirCandidates: ['.claude-account1', '.claude-account2'],
       };
       writeConfig(config);
 
@@ -187,6 +188,21 @@ describe('CLI', () => {
       const result = loadConfigFile(configFilePath);
 
       expect(result.codexHomeCandidates).toBeUndefined();
+    });
+
+    it('should parse claudeConfigDirCandidates from YAML', () => {
+      const config = {
+        ...defaultConfig,
+        claudeConfigDirCandidates: ['.claude-account1', '.claude-account2'],
+      };
+      writeConfig(config);
+
+      const result = loadConfigFile(configFilePath);
+
+      expect(result.claudeConfigDirCandidates).toEqual([
+        '.claude-account1',
+        '.claude-account2',
+      ]);
     });
 
     it('should return empty config for empty YAML', () => {
@@ -507,19 +523,21 @@ codexHomeCandidates:
       ]);
 
       expect(mockRun).toHaveBeenCalledTimes(1);
-      expect(mockRun).toHaveBeenCalledWith({
-        projectUrl: 'https://github.com/orgs/test/projects/1',
-        awaitingWorkspaceStatus: 'Awaiting',
-        preparationStatus: 'Preparing',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: configFilePath,
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: null,
-        codexHomeCandidates: null,
-      });
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectUrl: 'https://github.com/orgs/test/projects/1',
+          awaitingWorkspaceStatus: 'Awaiting',
+          preparationStatus: 'Preparing',
+          defaultAgentName: 'agent1',
+          defaultLlmModelName: null,
+          defaultLlmAgentName: null,
+          configFilePath: configFilePath,
+          maximumPreparingIssuesCount: null,
+          utilizationPercentageThreshold: 90,
+          allowedIssueAuthors: null,
+          codexHomeCandidates: null,
+        }),
+      );
     });
 
     it('should allow CLI args to override config file values', async () => {
@@ -548,19 +566,21 @@ codexHomeCandidates:
       ]);
 
       expect(mockRun).toHaveBeenCalledTimes(1);
-      expect(mockRun).toHaveBeenCalledWith({
-        projectUrl: 'https://github.com/orgs/override/projects/2',
-        awaitingWorkspaceStatus: 'Awaiting',
-        preparationStatus: 'Preparing',
-        defaultAgentName: 'override-agent',
-        defaultLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: configFilePath,
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: null,
-        codexHomeCandidates: null,
-      });
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectUrl: 'https://github.com/orgs/override/projects/2',
+          awaitingWorkspaceStatus: 'Awaiting',
+          preparationStatus: 'Preparing',
+          defaultAgentName: 'override-agent',
+          defaultLlmModelName: null,
+          defaultLlmAgentName: null,
+          configFilePath: configFilePath,
+          maximumPreparingIssuesCount: null,
+          utilizationPercentageThreshold: 90,
+          allowedIssueAuthors: null,
+          codexHomeCandidates: null,
+        }),
+      );
     });
 
     it('should pass defaultLlmModelName and allowedIssueAuthors from config file', async () => {

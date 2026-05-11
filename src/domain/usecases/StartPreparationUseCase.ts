@@ -17,7 +17,10 @@ export class StartPreparationUseCase {
       | 'findRelatedOpenPRs'
       | 'getOpenPullRequest'
     >,
-    private readonly claudeRepository: Pick<ClaudeRepository, 'getUsage'>,
+    private readonly claudeRepository: Pick<
+      ClaudeRepository,
+      'getUsage' | 'isClaudeAvailable'
+    >,
     private readonly localCommandRunner: LocalCommandRunner,
   ) {}
 
@@ -34,22 +37,17 @@ export class StartPreparationUseCase {
     allowedIssueAuthors: string[] | null;
     codexHomeCandidates: string[] | null;
   }): Promise<void> => {
-    const claudeUsages = await this.claudeRepository.getUsage();
     const weeklyWindowHours = 168;
-    const nonWeeklyUsages = claudeUsages.filter(
-      (usage) => usage.hour !== weeklyWindowHours,
+    const isAvailable = await this.claudeRepository.isClaudeAvailable(
+      params.utilizationPercentageThreshold,
     );
-    if (
-      nonWeeklyUsages.some(
-        (usage) =>
-          usage.utilizationPercentage > params.utilizationPercentageThreshold,
-      )
-    ) {
+    if (!isAvailable) {
       console.warn(
         'Claude usage limit exceeded. Skipping starting preparation.',
       );
       return;
     }
+    const claudeUsages = await this.claudeRepository.getUsage();
 
     let maximumPreparingIssuesCount = params.maximumPreparingIssuesCount ?? 6;
 
