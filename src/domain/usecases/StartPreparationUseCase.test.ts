@@ -85,7 +85,7 @@ describe('StartPreparationUseCase', () => {
       IssueRepository,
       | 'getAllOpened'
       | 'getStoryObjectMap'
-      | 'update'
+      | 'updateStatus'
       | 'findRelatedOpenPRs'
       | 'getOpenPullRequest'
     >
@@ -107,7 +107,7 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository = {
       getAllOpened: jest.fn(),
       getStoryObjectMap: jest.fn().mockResolvedValue(new Map()),
-      update: jest.fn(),
+      updateStatus: jest.fn(),
       findRelatedOpenPRs: jest.fn().mockResolvedValue([]),
       getOpenPullRequest: jest.fn().mockResolvedValue(null),
     };
@@ -194,12 +194,13 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
     });
-    expect(mockIssueRepository.update.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.update.mock.calls[0][0]).toMatchObject({
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(mockProject);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
       url: 'url1',
       status: 'Preparation',
     });
-    expect(mockIssueRepository.update.mock.calls[0][1]).toBe(mockProject);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('2');
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
       'aw',
@@ -363,7 +364,7 @@ describe('StartPreparationUseCase', () => {
       codexHomeCandidates: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-    expect(mockIssueRepository.update.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       'Skipping non-OPEN PR https://github.com/user/repo/pull/999: wrapper requires an open PR.',
@@ -411,7 +412,7 @@ describe('StartPreparationUseCase', () => {
       codexHomeCandidates: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-    expect(mockIssueRepository.update.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       'Skipping PR https://github.com/user/repo/pull/999: head branch is unavailable.',
     );
@@ -458,7 +459,7 @@ describe('StartPreparationUseCase', () => {
       codexHomeCandidates: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-    expect(mockIssueRepository.update.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       expect.stringContaining('branch name contains unexpected characters'),
     );
@@ -516,7 +517,7 @@ describe('StartPreparationUseCase', () => {
       codexHomeCandidates: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-    expect(mockIssueRepository.update.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       'Skipping issue url1: 2 related open PRs found (ambiguous).',
     );
@@ -566,7 +567,7 @@ describe('StartPreparationUseCase', () => {
       codexHomeCandidates: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-    expect(mockIssueRepository.update.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       'Skipping issue url1: related open PR has unavailable head branch.',
     );
@@ -611,16 +612,19 @@ describe('StartPreparationUseCase', () => {
       codexHomeCandidates: null,
     });
     // Both awaiting issues should be updated (forward iteration: url1 first, then url2)
-    expect(mockIssueRepository.update.mock.calls).toHaveLength(2);
-    expect(mockIssueRepository.update.mock.calls[0][0]).toMatchObject({
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(mockProject);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
       url: 'url1',
       status: 'Preparation',
     });
-    expect(mockIssueRepository.update.mock.calls[1][0]).toMatchObject({
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('2');
+    expect(mockIssueRepository.updateStatus.mock.calls[1][0]).toBe(mockProject);
+    expect(mockIssueRepository.updateStatus.mock.calls[1][1]).toMatchObject({
       url: 'url2',
       status: 'Preparation',
     });
-    expect(mockIssueRepository.update.mock.calls[0][1]).toBe(mockProject);
+    expect(mockIssueRepository.updateStatus.mock.calls[1][2]).toBe('2');
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
   });
   it('should stop assigning after maximum preparing issues count is reached', async () => {
@@ -669,7 +673,7 @@ describe('StartPreparationUseCase', () => {
       codexHomeCandidates: null,
     });
     // Loop doesn't run because we're already at max (6 >= 6)
-    expect(mockIssueRepository.update.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
   });
   it('should pass configFilePath to aw command', async () => {
@@ -1084,7 +1088,7 @@ describe('StartPreparationUseCase', () => {
       codexHomeCandidates: null,
     });
     // No issues are in 'Awaiting Workspace' status, so no updates should happen
-    expect(mockIssueRepository.update.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
   });
   it('should use custom maximumPreparingIssuesCount when provided', async () => {
@@ -1119,7 +1123,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
     });
-    expect(mockIssueRepository.update.mock.calls).toHaveLength(3);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(3);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
   });
   it('should use default maximumPreparingIssuesCount of 6 when null is provided', async () => {
@@ -1154,7 +1158,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
     });
-    expect(mockIssueRepository.update.mock.calls).toHaveLength(6);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(6);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(6);
   });
 
@@ -1223,9 +1227,9 @@ describe('StartPreparationUseCase', () => {
       codexHomeCandidates: null,
     });
 
-    expect(mockIssueRepository.update.mock.calls).toHaveLength(2);
-    const updatedUrls = mockIssueRepository.update.mock.calls.map(
-      (call) => call[0].url,
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
+    const updatedUrls = mockIssueRepository.updateStatus.mock.calls.map(
+      (call) => call[1].url,
     );
     expect(updatedUrls).toContain('https://github.com/user/repo/issues/100');
     expect(updatedUrls).toContain('https://github.com/user/repo/issues/101');
@@ -1264,7 +1268,7 @@ describe('StartPreparationUseCase', () => {
       codexHomeCandidates: null,
     });
 
-    expect(mockIssueRepository.update.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     expect(mockProjectRepository.getByUrl).not.toHaveBeenCalled();
   });
@@ -1308,7 +1312,7 @@ describe('StartPreparationUseCase', () => {
       codexHomeCandidates: null,
     });
 
-    expect(mockIssueRepository.update.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
   });
 
@@ -1360,7 +1364,9 @@ describe('StartPreparationUseCase', () => {
       defaultMax * Math.pow(1 - normalizedUtilizationBeyondThreshold, 2),
     );
     expect(mockProjectRepository.getByUrl).toHaveBeenCalled();
-    expect(mockIssueRepository.update.mock.calls).toHaveLength(expectedMax);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(
+      expectedMax,
+    );
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(
       expectedMax,
     );
@@ -1398,7 +1404,7 @@ describe('StartPreparationUseCase', () => {
       codexHomeCandidates: null,
     });
 
-    expect(mockIssueRepository.update.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
   });
 
@@ -1440,7 +1446,7 @@ describe('StartPreparationUseCase', () => {
       codexHomeCandidates: null,
     });
 
-    expect(mockIssueRepository.update.mock.calls).toHaveLength(6);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(6);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(6);
   });
 
@@ -1478,7 +1484,7 @@ describe('StartPreparationUseCase', () => {
     });
 
     expect(mockProjectRepository.getByUrl).not.toHaveBeenCalled();
-    expect(mockIssueRepository.update.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
   });
 
@@ -1525,7 +1531,9 @@ describe('StartPreparationUseCase', () => {
     const expectedMax = Math.floor(
       6 * Math.pow(1 - normalizedUtilizationBeyondThreshold, 2),
     );
-    expect(mockIssueRepository.update.mock.calls).toHaveLength(expectedMax);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(
+      expectedMax,
+    );
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(
       expectedMax,
     );
@@ -1552,7 +1560,7 @@ describe('StartPreparationUseCase', () => {
       }),
     ).rejects.toThrow('Claude credentials file not found');
 
-    expect(mockIssueRepository.update.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
   });
 
@@ -1589,7 +1597,7 @@ describe('StartPreparationUseCase', () => {
       codexHomeCandidates: null,
     });
 
-    expect(mockIssueRepository.update.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     expect(mockProjectRepository.getByUrl).not.toHaveBeenCalled();
   });
@@ -1632,7 +1640,7 @@ describe('StartPreparationUseCase', () => {
       codexHomeCandidates: null,
     });
 
-    expect(mockIssueRepository.update.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
   });
 
@@ -1680,8 +1688,8 @@ describe('StartPreparationUseCase', () => {
       codexHomeCandidates: null,
     });
 
-    expect(mockIssueRepository.update.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.update.mock.calls[0][0]).toMatchObject({
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
       url: 'https://github.com/user/repo/issues/3',
       status: 'Preparation',
     });
@@ -1739,8 +1747,8 @@ describe('StartPreparationUseCase', () => {
         codexHomeCandidates: null,
       });
 
-      expect(mockIssueRepository.update.mock.calls).toHaveLength(1);
-      expect(mockIssueRepository.update.mock.calls[0][0]).toMatchObject({
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
         url: 'https://github.com/user/repo/issues/2',
         status: 'Preparation',
       });
@@ -1801,8 +1809,8 @@ describe('StartPreparationUseCase', () => {
         codexHomeCandidates: null,
       });
 
-      expect(mockIssueRepository.update.mock.calls).toHaveLength(1);
-      expect(mockIssueRepository.update.mock.calls[0][0]).toMatchObject({
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
         url: 'https://github.com/user/repo/issues/2',
         status: 'Preparation',
       });
@@ -1852,8 +1860,8 @@ describe('StartPreparationUseCase', () => {
         codexHomeCandidates: null,
       });
 
-      expect(mockIssueRepository.update.mock.calls).toHaveLength(1);
-      expect(mockIssueRepository.update.mock.calls[0][0]).toMatchObject({
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
         url: 'https://github.com/user/repo/issues/1',
         status: 'Preparation',
       });
@@ -1903,8 +1911,8 @@ describe('StartPreparationUseCase', () => {
         codexHomeCandidates: null,
       });
 
-      expect(mockIssueRepository.update.mock.calls).toHaveLength(1);
-      expect(mockIssueRepository.update.mock.calls[0][0]).toMatchObject({
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
         url: 'https://github.com/user/repo/issues/1',
         status: 'Preparation',
       });
@@ -1954,8 +1962,8 @@ describe('StartPreparationUseCase', () => {
         codexHomeCandidates: null,
       });
 
-      expect(mockIssueRepository.update.mock.calls).toHaveLength(1);
-      expect(mockIssueRepository.update.mock.calls[0][0]).toMatchObject({
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
         url: 'https://github.com/user/repo/issues/1',
         status: 'Preparation',
       });
@@ -2012,8 +2020,8 @@ describe('StartPreparationUseCase', () => {
       codexHomeCandidates: null,
     });
 
-    expect(mockIssueRepository.update.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.update.mock.calls[0][0]).toMatchObject({
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
     });
@@ -2061,7 +2069,7 @@ describe('StartPreparationUseCase', () => {
       codexHomeCandidates: null,
     });
 
-    expect(mockIssueRepository.update.mock.calls).toHaveLength(2);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
   });
 
@@ -2109,7 +2117,7 @@ describe('StartPreparationUseCase', () => {
       codexHomeCandidates: null,
     });
 
-    expect(mockIssueRepository.update.mock.calls).toHaveLength(2);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
   });
 
@@ -2159,7 +2167,7 @@ describe('StartPreparationUseCase', () => {
       codexHomeCandidates: null,
     });
 
-    expect(mockIssueRepository.update.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
   });
 
@@ -2395,5 +2403,109 @@ describe('StartPreparationUseCase', () => {
         ) + 1
       ],
     ).toBe('.codex-dev1');
+  });
+
+  it('should persist Preparation status via updateStatus with resolved status option id (regression for issue #519)', async () => {
+    const awaitingIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/519',
+      title: 'Regression issue',
+      labels: ['category:impl'],
+      status: 'Awaiting Workspace',
+      itemId: 'item-regression',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([awaitingIssue]),
+    );
+    mockIssueRepository.getAllOpened.mockResolvedValueOnce([awaitingIssue]);
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      preparationStatus: 'Preparation',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: null,
+      codexHomeCandidates: null,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(mockProject);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+      url: 'https://github.com/user/repo/issues/519',
+      itemId: 'item-regression',
+    });
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('2');
+    const updateStatusCallOrder =
+      mockIssueRepository.updateStatus.mock.invocationCallOrder[0];
+    const runCommandCallOrder =
+      mockLocalCommandRunner.runCommand.mock.invocationCallOrder[0];
+    expect(updateStatusCallOrder).toBeLessThan(runCommandCallOrder);
+  });
+
+  it('should return early and log an error when preparationStatus option is not in the project', async () => {
+    const projectWithoutPreparation: Project = {
+      ...createMockProject(),
+      status: {
+        name: 'Status',
+        fieldId: 'status-field-id',
+        statuses: [
+          {
+            id: '1',
+            name: 'Awaiting Workspace',
+            color: 'GRAY',
+            description: '',
+          },
+          { id: '3', name: 'Done', color: 'GREEN', description: '' },
+        ],
+      },
+    };
+    const awaitingIssue = createMockIssue({
+      url: 'url-missing-option',
+      title: 'Missing Preparation Option',
+      labels: ['category:impl'],
+      status: 'Awaiting Workspace',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(projectWithoutPreparation);
+    mockProjectRepository.prepareStatus.mockImplementation(() =>
+      Promise.resolve(projectWithoutPreparation),
+    );
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([awaitingIssue]),
+    );
+    mockIssueRepository.getAllOpened.mockResolvedValueOnce([awaitingIssue]);
+    const consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      preparationStatus: 'Preparation',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: null,
+      codexHomeCandidates: null,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "Preparation status option 'Preparation' not found in project.",
+    );
+    consoleErrorSpy.mockRestore();
   });
 });
