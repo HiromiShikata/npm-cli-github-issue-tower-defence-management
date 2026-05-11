@@ -1,3 +1,15 @@
+# [1.43.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.42.4...v1.43.0) (2026-05-11)
+
+
+### Bug Fixes
+
+* **core:** skip NaN utilization from malformed proxy headers and add bin artifacts ([28cc81a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/28cc81a5cedeb98a0ae054193806c8d414cecfa9))
+
+
+### Features
+
+* **core:** add OauthProxyClaudeRepository and OauthAPIProxyClaudeRepository ([2f9262e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2f9262e601e3c2f173852ba53bcd2684a5a03c7d)), closes [#511](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/511)
+
 ## [1.42.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.42.3...v1.42.4) (2026-05-11)
 
 
