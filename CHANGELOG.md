@@ -1,3 +1,10 @@
+## [1.42.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.42.2...v1.42.3) (2026-05-11)
+
+
+### Bug Fixes
+
+* **core:** persist Preparation status via updateStatus in StartPreparationUseCase ([8335c0e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8335c0e705a9d528e89177edb80c9f4e811bc3f4))
+
 ## [1.42.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.42.1...v1.42.2) (2026-05-09)
 
 
