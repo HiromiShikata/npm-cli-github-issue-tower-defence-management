@@ -217,6 +217,25 @@ export class HandleScheduledEventUseCaseHandler {
       issueRepository,
     );
 
-    return await handleScheduledEventUseCase.run(input);
+    const result = await handleScheduledEventUseCase.run(input);
+    if (result) {
+      const projectId = result.project.id;
+      const runtimeConfig = {
+        resolvedAt: new Date().toISOString(),
+        maximumPreparingIssuesCount:
+          input.startPreparation?.maximumPreparingIssuesCount ?? null,
+        utilizationPercentageThreshold:
+          input.startPreparation?.utilizationPercentageThreshold ?? null,
+        allowIssueCacheMinutes: input.allowIssueCacheMinutes,
+        thresholdForAutoReject:
+          input.notifyFinishedPreparation?.thresholdForAutoReject ?? null,
+      };
+      const finalPath = `${cachePath}/runtimeConfig-${projectId}.json`;
+      const tmpPath = `${finalPath}.tmp`;
+      fs.mkdirSync(cachePath, { recursive: true });
+      fs.writeFileSync(tmpPath, JSON.stringify(runtimeConfig));
+      fs.renameSync(tmpPath, finalPath);
+    }
+    return result;
   };
 }
