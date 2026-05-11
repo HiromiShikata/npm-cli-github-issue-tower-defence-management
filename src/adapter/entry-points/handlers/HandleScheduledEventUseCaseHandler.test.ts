@@ -1,5 +1,6 @@
 import fs from 'fs';
 import YAML from 'yaml';
+import type { HandleScheduledEventUseCase } from '../../../domain/usecases/HandleScheduledEventUseCase';
 
 jest.mock('fs');
 jest.mock('gh-cookie', () => ({ getCookieContent: jest.fn() }));
@@ -15,12 +16,19 @@ jest.mock('../../repositories/issue/ApiV3CheerioRestIssueRepository');
 jest.mock('../../repositories/LocalStorageCacheRepository');
 jest.mock('../../repositories/BaseGitHubRepository');
 
-const mockRun = jest.fn().mockResolvedValue({
-  project: { id: 'PVT_kwHOtest123' },
-  issues: [],
-  cacheUsed: false,
-  targetDateTimes: [],
-});
+type RunFn = HandleScheduledEventUseCase['run'];
+const capturedRunInputs: Parameters<RunFn>[] = [];
+const mockRun = jest.fn().mockImplementation(
+  (...args: Parameters<RunFn>) => {
+    capturedRunInputs.push(args);
+    return Promise.resolve({
+      project: { id: 'PVT_kwHOtest123' },
+      issues: [],
+      cacheUsed: false,
+      targetDateTimes: [],
+    });
+  },
+);
 
 jest.mock('../../../domain/usecases/HandleScheduledEventUseCase', () => ({
   HandleScheduledEventUseCase: jest.fn().mockImplementation(() => ({
@@ -158,10 +166,25 @@ const validConfig = {
   },
 };
 
+const mockFetchReturningReadme = (readme: string | null): void => {
+  const responseBody =
+    readme === null
+      ? { data: {} }
+      : { data: { organization: { projectV2: { readme } } } };
+  jest.spyOn(global, 'fetch').mockResolvedValue(
+    new Response(JSON.stringify(responseBody), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }),
+  );
+};
+
 describe('HandleScheduledEventUseCaseHandler', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    capturedRunInputs.length = 0;
     jest.mocked(fs.readFileSync).mockReturnValue(YAML.stringify(validConfig));
+    mockFetchReturningReadme(null);
   });
 
   it('should pass bot credentials to repository constructors when provided', async () => {
@@ -329,5 +352,125 @@ describe('HandleScheduledEventUseCaseHandler', () => {
 
     expect(jest.mocked(fs.writeFileSync)).not.toHaveBeenCalled();
     expect(jest.mocked(fs.renameSync)).not.toHaveBeenCalled();
+  });
+
+  describe('README config overrides', () => {
+    const configWithStartPreparation = {
+      ...validConfig,
+      allowIssueCacheMinutes: 5,
+      startPreparation: {
+        awaitingWorkspaceStatus: 'Awaiting workspace',
+        preparationStatus: 'Preparation',
+        defaultAgentName: 'yaml-agent',
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: 10,
+        utilizationPercentageThreshold: 90,
+      },
+    };
+
+    it('should override startPreparation fields from README config', async () => {
+      const readmeContent = `<details>
+<summary>config</summary>
+maximumPreparingIssuesCount: 0
+awaitingWorkspaceStatus: README Awaiting
+preparationStatus: README Preparation
+defaultAgentName: readme-agent
+utilizationPercentageThreshold: 80
+</details>`;
+      mockFetchReturningReadme(readmeContent);
+      jest
+        .mocked(fs.readFileSync)
+        .mockReturnValue(YAML.stringify(configWithStartPreparation));
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(capturedRunInputs[0][0]).toMatchObject({
+        startPreparation: {
+          maximumPreparingIssuesCount: 0,
+          awaitingWorkspaceStatus: 'README Awaiting',
+          preparationStatus: 'README Preparation',
+          defaultAgentName: 'readme-agent',
+          utilizationPercentageThreshold: 80,
+        },
+      });
+    });
+
+    it('should override allowIssueCacheMinutes from README config', async () => {
+      const readmeContent = `<details>
+<summary>config</summary>
+allowIssueCacheMinutes: 30
+</details>`;
+      mockFetchReturningReadme(readmeContent);
+      jest
+        .mocked(fs.readFileSync)
+        .mockReturnValue(YAML.stringify(configWithStartPreparation));
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          allowIssueCacheMinutes: 30,
+        }),
+      );
+    });
+
+    it('should split comma-separated allowedIssueAuthors from README config', async () => {
+      const readmeContent = `<details>
+<summary>config</summary>
+allowedIssueAuthors: 'user1, user2, user3'
+</details>`;
+      mockFetchReturningReadme(readmeContent);
+      jest
+        .mocked(fs.readFileSync)
+        .mockReturnValue(YAML.stringify(configWithStartPreparation));
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(capturedRunInputs[0][0]).toMatchObject({
+        startPreparation: {
+          allowedIssueAuthors: ['user1', 'user2', 'user3'],
+        },
+      });
+    });
+
+    it('should keep YAML values when README has no config section', async () => {
+      mockFetchReturningReadme(null);
+      jest
+        .mocked(fs.readFileSync)
+        .mockReturnValue(YAML.stringify(configWithStartPreparation));
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(capturedRunInputs[0][0]).toMatchObject({
+        allowIssueCacheMinutes: 5,
+        startPreparation: {
+          maximumPreparingIssuesCount: 10,
+          awaitingWorkspaceStatus: 'Awaiting workspace',
+          defaultAgentName: 'yaml-agent',
+        },
+      });
+    });
+
+    it('should use README token from manager credentials to fetch README', async () => {
+      mockFetchReturningReadme(null);
+      jest
+        .mocked(fs.readFileSync)
+        .mockReturnValue(YAML.stringify(validConfig));
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://api.github.com/graphql',
+        expect.objectContaining({ method: 'POST' }),
+      );
+      expect(capturedRunInputs[0][0]).toMatchObject({
+        projectUrl: validConfig.projectUrl,
+      });
+    });
   });
 });
