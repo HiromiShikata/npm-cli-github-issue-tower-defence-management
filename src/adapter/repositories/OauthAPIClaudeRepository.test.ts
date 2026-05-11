@@ -203,13 +203,11 @@ describe('OauthAPIClaudeRepository', () => {
       readdirMock.mockReturnValue(['.credentials.json.work.1']);
       mockFs.readFileSync.mockReturnValue(credContent);
 
-      jest
-        .spyOn(global, 'fetch')
-        .mockResolvedValue(
-          new Response(JSON.stringify({ five_hour: { utilization: 0.5 } }), {
-            status: 200,
-          }),
-        );
+      jest.spyOn(global, 'fetch').mockResolvedValue(
+        new Response(JSON.stringify({ five_hour: { utilization: 0.5 } }), {
+          status: 200,
+        }),
+      );
 
       const repo = new OauthAPIClaudeRepository();
       const result = await repo.isClaudeAvailable(0.9);
