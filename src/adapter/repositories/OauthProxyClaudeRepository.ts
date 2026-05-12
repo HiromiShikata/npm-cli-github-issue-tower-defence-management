@@ -7,6 +7,7 @@ type ProxyFileHeaders = {
   'anthropic-ratelimit-unified-7d-utilization'?: string;
   'anthropic-ratelimit-unified-5h-reset'?: string;
   'anthropic-ratelimit-unified-7d-reset'?: string;
+  'anthropic-ratelimit-unified-overage-status'?: string;
 };
 
 type ProxyFile = {
@@ -82,6 +83,20 @@ export class OauthProxyClaudeRepository implements ClaudeRepository {
             : new Date(),
         });
       }
+    }
+
+    const overageStatus = headers['anthropic-ratelimit-unified-overage-status'];
+    if (
+      overageStatus === 'rejected' &&
+      !usages.some((u) => u.utilizationPercentage >= 100)
+    ) {
+      usages.push({
+        hour: 168,
+        utilizationPercentage: 100,
+        resetsAt: sevenDayReset
+          ? new Date(parseInt(sevenDayReset, 10) * 1000)
+          : new Date(),
+      });
     }
 
     return usages;

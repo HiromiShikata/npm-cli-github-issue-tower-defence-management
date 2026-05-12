@@ -116,6 +116,88 @@ describe('OauthProxyClaudeRepository', () => {
           },
         ],
       },
+      {
+        name: 'synthesises hour:168 100% entry when overage-status is rejected and no existing entry is at 100%',
+        fileExists: true,
+        fileContent: JSON.stringify({
+          headers: {
+            'anthropic-ratelimit-unified-7d-utilization': '0.88',
+            'anthropic-ratelimit-unified-7d-reset': '1772769600',
+            'anthropic-ratelimit-unified-overage-status': 'rejected',
+            'anthropic-ratelimit-unified-overage-disabled-reason':
+              'out_of_credits',
+          },
+          ts: 1234567890,
+        }),
+        expected: [
+          {
+            hour: 168,
+            utilizationPercentage: 88,
+            resetsAt: new Date(1772769600 * 1000),
+          },
+          {
+            hour: 168,
+            utilizationPercentage: 100,
+            resetsAt: new Date(1772769600 * 1000),
+          },
+        ],
+      },
+      {
+        name: 'does not synthesise entry when overage-status is absent',
+        fileExists: true,
+        fileContent: JSON.stringify({
+          headers: {
+            'anthropic-ratelimit-unified-7d-utilization': '0.88',
+            'anthropic-ratelimit-unified-7d-reset': '1772769600',
+          },
+          ts: 1234567890,
+        }),
+        expected: [
+          {
+            hour: 168,
+            utilizationPercentage: 88,
+            resetsAt: new Date(1772769600 * 1000),
+          },
+        ],
+      },
+      {
+        name: 'does not synthesise entry when overage-status is a value other than rejected',
+        fileExists: true,
+        fileContent: JSON.stringify({
+          headers: {
+            'anthropic-ratelimit-unified-7d-utilization': '0.88',
+            'anthropic-ratelimit-unified-7d-reset': '1772769600',
+            'anthropic-ratelimit-unified-overage-status': 'allowed',
+          },
+          ts: 1234567890,
+        }),
+        expected: [
+          {
+            hour: 168,
+            utilizationPercentage: 88,
+            resetsAt: new Date(1772769600 * 1000),
+          },
+        ],
+      },
+      {
+        name: 'does not synthesise extra entry when an existing entry already reports 100%',
+        fileExists: true,
+        fileContent: JSON.stringify({
+          headers: {
+            'anthropic-ratelimit-unified-7d-utilization': '1.00',
+            'anthropic-ratelimit-unified-7d-reset': '1772769600',
+            'anthropic-ratelimit-unified-overage-status': 'rejected',
+          },
+          ts: 1234567890,
+        }),
+        expected: [
+          {
+            hour: 168,
+            utilizationPercentage: 100,
+            resetsAt: new Date(1772769600 * 1000),
+          },
+        ],
+      },
     ];
 
     test.each(testCases)(
