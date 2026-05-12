@@ -1,3 +1,10 @@
+## [1.43.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.43.0...v1.43.1) (2026-05-12)
+
+
+### Bug Fixes
+
+* **core:** replace StubClaudeRepository with OauthAPIProxyClaudeRepository in schedule path ([1d18b80](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1d18b80b600699f33b51d0ccc3a33ea7c3687313)), closes [#525](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/525)
+
 # [1.43.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.42.4...v1.43.0) (2026-05-11)
 
 
