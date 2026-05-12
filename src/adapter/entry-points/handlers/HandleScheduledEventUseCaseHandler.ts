@@ -31,7 +31,7 @@ import { AssignNoAssigneeIssueToManagerUseCase } from '../../../domain/usecases/
 import { UpdateIssueStatusByLabelUseCase } from '../../../domain/usecases/UpdateIssueStatusByLabelUseCase';
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
-import { StubClaudeRepository } from '../../repositories/StubClaudeRepository';
+import { OauthAPIProxyClaudeRepository } from '../../repositories/OauthAPIProxyClaudeRepository';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
@@ -169,11 +169,11 @@ export class HandleScheduledEventUseCaseHandler {
       issueRepository,
     );
     const nodeLocalCommandRunner = new NodeLocalCommandRunner();
-    const stubClaudeRepository = new StubClaudeRepository();
+    const claudeRepository = new OauthAPIProxyClaudeRepository();
     const startPreparationUseCase = new StartPreparationUseCase(
       projectRepository,
       issueRepository,
-      stubClaudeRepository,
+      claudeRepository,
       nodeLocalCommandRunner,
     );
     const issueCommentRepository = new GitHubIssueCommentRepository(
