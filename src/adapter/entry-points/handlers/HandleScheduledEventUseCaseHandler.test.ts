@@ -92,8 +92,8 @@ jest.mock('../../../domain/usecases/StartPreparationUseCase', () => ({
 jest.mock('../../repositories/NodeLocalCommandRunner', () => ({
   NodeLocalCommandRunner: jest.fn().mockImplementation(() => ({})),
 }));
-jest.mock('../../repositories/StubClaudeRepository', () => ({
-  StubClaudeRepository: jest.fn().mockImplementation(() => ({})),
+jest.mock('../../repositories/OauthAPIProxyClaudeRepository', () => ({
+  OauthAPIProxyClaudeRepository: jest.fn().mockImplementation(() => ({})),
 }));
 jest.mock(
   '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase',
