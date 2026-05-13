@@ -322,6 +322,204 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
   });
 
+  it('should revert zombie-wrapper issue when pgrep exits zero but aw log file is stale', async () => {
+    const zombieIssue = createMockIssue({
+      url: 'https://github.com/myorg/myrepo/issues/42',
+      org: 'myorg',
+      repo: 'myrepo',
+      number: 42,
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [zombieIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand
+      .mockResolvedValueOnce({
+        stdout: 'xfce4-terminal found',
+        stderr: '',
+        exitCode: 0,
+      })
+      .mockResolvedValueOnce({
+        stdout: '/home/user/logs-aw/myorg_myrepo_42_2024.log\n',
+        stderr: '',
+        exitCode: 0,
+      })
+      .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      allowIssueCacheMinutes: 60,
+      preparationProcessCheckCommand: 'pgrep -fa "Please handover {URL}"',
+      awLogDirectoryPath: '/home/user/logs-aw',
+      awLogStaleThresholdMinutes: 15,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.createComment.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[1]).toEqual([
+      'sh',
+      [
+        '-c',
+        'find "$1" -name "$2"',
+        '--',
+        '/home/user/logs-aw',
+        'myorg_myrepo_42_*',
+      ],
+    ]);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[2]).toEqual([
+      'sh',
+      [
+        '-c',
+        'find "$1" -name "$2" -mmin -$3',
+        '--',
+        '/home/user/logs-aw',
+        'myorg_myrepo_42_*',
+        '15',
+      ],
+    ]);
+  });
+
+  it('should leave issue untouched when pgrep exits zero and aw log file is recent', async () => {
+    const activeIssue = createMockIssue({
+      url: 'https://github.com/myorg/myrepo/issues/42',
+      org: 'myorg',
+      repo: 'myrepo',
+      number: 42,
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [activeIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand
+      .mockResolvedValueOnce({
+        stdout: 'xfce4-terminal found',
+        stderr: '',
+        exitCode: 0,
+      })
+      .mockResolvedValueOnce({
+        stdout: '/home/user/logs-aw/myorg_myrepo_42_2024.log\n',
+        stderr: '',
+        exitCode: 0,
+      })
+      .mockResolvedValueOnce({
+        stdout: '/home/user/logs-aw/myorg_myrepo_42_2024.log\n',
+        stderr: '',
+        exitCode: 0,
+      });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      allowIssueCacheMinutes: 60,
+      preparationProcessCheckCommand: 'pgrep -fa "Please handover {URL}"',
+      awLogDirectoryPath: '/home/user/logs-aw',
+      awLogStaleThresholdMinutes: 15,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.createComment.mock.calls).toHaveLength(0);
+  });
+
+  it('should leave issue untouched when pgrep exits zero and no aw log files exist yet', async () => {
+    const newIssue = createMockIssue({
+      url: 'https://github.com/myorg/myrepo/issues/42',
+      org: 'myorg',
+      repo: 'myrepo',
+      number: 42,
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [newIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand
+      .mockResolvedValueOnce({
+        stdout: 'xfce4-terminal found',
+        stderr: '',
+        exitCode: 0,
+      })
+      .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      allowIssueCacheMinutes: 60,
+      preparationProcessCheckCommand: 'pgrep -fa "Please handover {URL}"',
+      awLogDirectoryPath: '/home/user/logs-aw',
+      awLogStaleThresholdMinutes: 15,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.createComment.mock.calls).toHaveLength(0);
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
+  });
+
+  it('should skip aw log check when awLogDirectoryPath is not configured', async () => {
+    const inFlightIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/20',
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [inFlightIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: 'claude-agent process found',
+      stderr: '',
+      exitCode: 0,
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      allowIssueCacheMinutes: 60,
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+  });
+
+  it('should revert issue when pgrep exits non-zero even when awLogDirectoryPath is configured', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/myorg/myrepo/issues/42',
+      org: 'myorg',
+      repo: 'myrepo',
+      number: 42,
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValueOnce({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      allowIssueCacheMinutes: 60,
+      preparationProcessCheckCommand: 'pgrep -fa "Please handover {URL}"',
+      awLogDirectoryPath: '/home/user/logs-aw',
+      awLogStaleThresholdMinutes: 15,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+  });
+
   it('should substitute {URL} placeholder with the issue URL in the check command', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/org/project/issues/99',

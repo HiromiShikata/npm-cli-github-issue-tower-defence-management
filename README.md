@@ -107,6 +107,8 @@ startPreparation?: # Optional: Enable automatic issue preparation workflow
   allowedIssueAuthors?: string[] | null # Optional: Only start preparation for issues from these authors (null = all authors)
   preparationProcessCheckCommand?: string # Optional: Shell command template with {URL} placeholder to check if a preparation process is alive. When set, issues in Preparation whose process exits non-zero are reverted to awaitingWorkspaceStatus before new issues are started
   codexHomeCandidates?: string[] | null # Optional: Ordered list of CODEX_HOME directory paths. Each launched Codex job cycles through the list; absent or empty keeps current behavior
+  awLogDirectoryPath?: string # Optional: Directory path where aw log files named {org}_{repo}_{number}_* are written. Used with awLogStaleThresholdMinutes to detect zombie-wrapper orphans
+  awLogStaleThresholdMinutes?: number # Optional: Minutes since last aw log mtime after which a Preparation issue is considered orphaned even when pgrep still returns 0 (outer wrapper alive but inner claude dead). Requires awLogDirectoryPath
 notifyFinishedPreparation?: # Optional: Enable notification when issue preparation is finished
   preparationStatus: string # Status name for issues in preparation
   awaitingWorkspaceStatus: string # Status name for issues awaiting workspace
@@ -153,6 +155,8 @@ startPreparation:
   maximumPreparingIssuesCount: 3
   utilizationPercentageThreshold: 90
   preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"'
+  awLogDirectoryPath: '/home/user/logs-aw'
+  awLogStaleThresholdMinutes: 15
 notifyFinishedPreparation:
   preparationStatus: 'Preparation'
   awaitingWorkspaceStatus: 'Awaiting Workspace'
@@ -182,6 +186,8 @@ thresholdForAutoReject?: number # Optional: Consecutive rejections before escala
 workflowBlockerResolvedWebhookUrl?: string # Optional: Webhook URL. Supports {URL} and {MESSAGE} placeholders
 preparationProcessCheckCommand?: string # Optional: Shell command template with {URL} placeholder to check if a preparation process is alive. Issues in Preparation whose process exits non-zero are reverted to awaitingWorkspaceStatus
 codexHomeCandidates?: string[] # Optional: Ordered list of CODEX_HOME directory paths for Codex profile cycling. Absent or empty keeps current behavior
+awLogDirectoryPath?: string # Optional: Directory path where aw log files named {org}_{repo}_{number}_* are written. Used with awLogStaleThresholdMinutes to detect zombie-wrapper orphans
+awLogStaleThresholdMinutes?: number # Optional: Minutes since last aw log mtime after which a Preparation issue is considered orphaned even when pgrep still returns 0. Requires awLogDirectoryPath
 ```
 
 Example:
@@ -199,6 +205,8 @@ awaitingQualityCheckStatus: 'Awaiting Quality Check'
 thresholdForAutoReject: 3
 workflowBlockerResolvedWebhookUrl: 'https://example.com/webhook?url={URL}&msg={MESSAGE}'
 preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"'
+awLogDirectoryPath: '/home/user/logs-aw'
+awLogStaleThresholdMinutes: 15
 codexHomeCandidates:
   - .codex-dev1
   - .codex-dev2

@@ -1,6 +1,7 @@
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
+import { Issue } from '../entities/Issue';
 
 export class RevertOrphanedPreparationUseCase {
   constructor(
@@ -21,6 +22,8 @@ export class RevertOrphanedPreparationUseCase {
     awaitingWorkspaceStatus: string;
     allowIssueCacheMinutes: number;
     preparationProcessCheckCommand: string;
+    awLogDirectoryPath?: string;
+    awLogStaleThresholdMinutes?: number;
   }): Promise<void> => {
     const projectId = await this.projectRepository.findProjectIdByUrl(
       params.projectUrl,
@@ -51,17 +54,8 @@ export class RevertOrphanedPreparationUseCase {
     }
 
     for (const issue of preparationIssues) {
-      const commandTemplate = params.preparationProcessCheckCommand.replace(
-        '{URL}',
-        '$1',
-      );
-      const { exitCode } = await this.localCommandRunner.runCommand('sh', [
-        '-c',
-        commandTemplate,
-        '--',
-        issue.url,
-      ]);
-      if (exitCode !== 0) {
+      const isOrphaned = await this.isOrphanedIssue(issue, params);
+      if (isOrphaned) {
         await this.issueRepository.updateStatus(
           project,
           issue,
@@ -73,5 +67,69 @@ export class RevertOrphanedPreparationUseCase {
         );
       }
     }
+  };
+
+  private isOrphanedIssue = async (
+    issue: Issue,
+    params: {
+      preparationProcessCheckCommand: string;
+      awLogDirectoryPath?: string;
+      awLogStaleThresholdMinutes?: number;
+    },
+  ): Promise<boolean> => {
+    const commandTemplate = params.preparationProcessCheckCommand.replace(
+      '{URL}',
+      '$1',
+    );
+    const { exitCode } = await this.localCommandRunner.runCommand('sh', [
+      '-c',
+      commandTemplate,
+      '--',
+      issue.url,
+    ]);
+
+    if (exitCode !== 0) return true;
+
+    const { awLogDirectoryPath, awLogStaleThresholdMinutes } = params;
+    if (!awLogDirectoryPath || !awLogStaleThresholdMinutes) return false;
+
+    return this.isAwLogStale(
+      issue,
+      awLogDirectoryPath,
+      awLogStaleThresholdMinutes,
+    );
+  };
+
+  private isAwLogStale = async (
+    issue: Issue,
+    awLogDirectoryPath: string,
+    awLogStaleThresholdMinutes: number,
+  ): Promise<boolean> => {
+    const logPattern = `${issue.org}_${issue.repo}_${issue.number}_*`;
+
+    const { stdout: anyFilesOutput, exitCode: anyFilesExitCode } =
+      await this.localCommandRunner.runCommand('sh', [
+        '-c',
+        'find "$1" -name "$2"',
+        '--',
+        awLogDirectoryPath,
+        logPattern,
+      ]);
+
+    if (anyFilesExitCode !== 0 || !anyFilesOutput.trim()) return false;
+
+    const { stdout: recentFilesOutput, exitCode: recentFilesExitCode } =
+      await this.localCommandRunner.runCommand('sh', [
+        '-c',
+        'find "$1" -name "$2" -mmin -$3',
+        '--',
+        awLogDirectoryPath,
+        logPattern,
+        String(awLogStaleThresholdMinutes),
+      ]);
+
+    if (recentFilesExitCode !== 0) return false;
+
+    return !recentFilesOutput.trim();
   };
 }

@@ -38,6 +38,8 @@ type ConfigFile = {
   projectName?: string;
   preparationProcessCheckCommand?: string;
   codexHomeCandidates?: string[];
+  awLogDirectoryPath?: string;
+  awLogStaleThresholdMinutes?: number;
 };
 
 type StartDaemonOptions = {
@@ -145,6 +147,11 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         'preparationProcessCheckCommand',
       ),
       codexHomeCandidates: getStringArrayValue(parsed, 'codexHomeCandidates'),
+      awLogDirectoryPath: getStringValue(parsed, 'awLogDirectoryPath'),
+      awLogStaleThresholdMinutes: getNumberValue(
+        parsed,
+        'awLogStaleThresholdMinutes',
+      ),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -204,6 +211,11 @@ export const parseProjectReadmeConfig = (readme: string): ConfigFile => {
         'preparationProcessCheckCommand',
       ),
       codexHomeCandidates: getStringArrayValue(parsed, 'codexHomeCandidates'),
+      awLogDirectoryPath: getStringValue(parsed, 'awLogDirectoryPath'),
+      awLogStaleThresholdMinutes: getNumberValue(
+        parsed,
+        'awLogStaleThresholdMinutes',
+      ),
     };
   } catch {
     console.warn('Failed to parse YAML from project README config section');
@@ -274,6 +286,14 @@ export const mergeConfigs = (
     readmeOverrides.codexHomeCandidates ??
     cliOverrides.codexHomeCandidates ??
     configFile.codexHomeCandidates,
+  awLogDirectoryPath:
+    readmeOverrides.awLogDirectoryPath ??
+    cliOverrides.awLogDirectoryPath ??
+    configFile.awLogDirectoryPath,
+  awLogStaleThresholdMinutes:
+    readmeOverrides.awLogStaleThresholdMinutes ??
+    cliOverrides.awLogStaleThresholdMinutes ??
+    configFile.awLogStaleThresholdMinutes,
 });
 
 type GraphqlProjectV2ReadmeResponse = {
@@ -592,6 +612,8 @@ program
         awaitingWorkspaceStatus,
         allowIssueCacheMinutes,
         preparationProcessCheckCommand,
+        awLogDirectoryPath: config.awLogDirectoryPath,
+        awLogStaleThresholdMinutes: config.awLogStaleThresholdMinutes,
       });
     }
 

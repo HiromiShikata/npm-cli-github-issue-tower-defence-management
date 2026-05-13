@@ -81,6 +81,8 @@ export class HandleScheduledEventUseCase {
       allowedIssueAuthors?: string[] | null;
       preparationProcessCheckCommand?: string;
       codexHomeCandidates?: string[] | null;
+      awLogDirectoryPath?: string;
+      awLogStaleThresholdMinutes?: number;
     } | null;
     notifyFinishedPreparation?: {
       preparationStatus: string;
@@ -342,6 +344,9 @@ ${JSON.stringify(e)}
           allowIssueCacheMinutes: input.allowIssueCacheMinutes,
           preparationProcessCheckCommand:
             input.startPreparation.preparationProcessCheckCommand,
+          awLogDirectoryPath: input.startPreparation.awLogDirectoryPath,
+          awLogStaleThresholdMinutes:
+            input.startPreparation.awLogStaleThresholdMinutes,
         });
       }
       await this.startPreparationUseCase.run({
