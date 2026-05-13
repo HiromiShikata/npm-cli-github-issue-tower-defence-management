@@ -16,7 +16,7 @@ export class StartPreparationUseCase {
       | 'findRelatedOpenPRs'
       | 'getOpenPullRequest'
     >,
-    private readonly claudeRepository: Pick<ClaudeRepository, 'getUsage'>,
+    private readonly claudeRepository: Pick<ClaudeRepository, 'getUsage' | 'getSelectedClaudeConfigDir'>,
     private readonly localCommandRunner: LocalCommandRunner,
   ) {}
 
@@ -35,6 +35,7 @@ export class StartPreparationUseCase {
     allowIssueCacheMinutes: number;
   }): Promise<void> => {
     const claudeUsages = await this.claudeRepository.getUsage();
+    const claudeConfigDir = this.claudeRepository.getSelectedClaudeConfigDir();
     const weeklyWindowHours = 168;
     const nonWeeklyUsages = claudeUsages.filter(
       (usage) => usage.hour !== weeklyWindowHours,
@@ -248,6 +249,9 @@ export class StartPreparationUseCase {
             startedInThisRunCount % params.codexHomeCandidates.length
           ];
         awArgs.push('--codexHome', codexHome);
+      }
+      if (claudeConfigDir !== null) {
+        awArgs.push('--claudeConfigDir', claudeConfigDir);
       }
       await this.localCommandRunner.runCommand('aw', awArgs);
       startedInThisRunCount++;

@@ -170,6 +170,59 @@ describe('OauthAPIClaudeRepository', () => {
       expect(usages[0].utilizationPercentage).toBe(0.3);
       expect(mockFs.existsSync).not.toHaveBeenCalledWith(credentialsPath);
     });
+
+    it('should set selectedClaudeConfigDir after isClaudeAvailable selects a token', async () => {
+      mockFs.existsSync.mockImplementation((p) => p === tokenListPath);
+      mockFs.readFileSync.mockReturnValue(
+        JSON.stringify(['token-under-threshold']),
+      );
+      mockFs.mkdtempSync.mockReturnValue('/tmp/tdpm-claude-test');
+
+      jest.spyOn(global, 'fetch').mockResolvedValue(
+        new Response(JSON.stringify(mockUsageResponseUnderThreshold), {
+          status: 200,
+        }),
+      );
+
+      const repo = new OauthAPIClaudeRepository(tokenListPath);
+      await repo.isClaudeAvailable(0.9);
+
+      expect(repo.getSelectedClaudeConfigDir()).toBe('/tmp/tdpm-claude-test');
+      expect(mockFs.mkdtempSync).toHaveBeenCalled();
+      expect(mockFs.writeFileSync).toHaveBeenCalledWith(
+        '/tmp/tdpm-claude-test/.credentials.json',
+        JSON.stringify({
+          claudeAiOauth: { accessToken: 'token-under-threshold' },
+        }),
+      );
+    });
+  });
+
+  describe('getUsage with claudeCodeOauthTokenListJsonPath', () => {
+    const tokenListPath = '/path/to/token-list.json';
+
+    it('should select a token from the list and set selectedClaudeConfigDir', async () => {
+      mockFs.existsSync.mockImplementation((p) => p === tokenListPath);
+      mockFs.readFileSync.mockReturnValue(JSON.stringify(['test-token']));
+      mockFs.mkdtempSync.mockReturnValue('/tmp/tdpm-claude-test');
+
+      const mockUsageData = {
+        five_hour: { utilization: 0.3, resets_at: '2026-05-10T12:00:00Z' },
+      };
+
+      jest.spyOn(global, 'fetch').mockResolvedValue(
+        new Response(JSON.stringify(mockUsageData), { status: 200 }),
+      );
+
+      const repo = new OauthAPIClaudeRepository(tokenListPath);
+      await repo.getUsage();
+
+      expect(repo.getSelectedClaudeConfigDir()).toBe('/tmp/tdpm-claude-test');
+      expect(mockFs.writeFileSync).toHaveBeenCalledWith(
+        '/tmp/tdpm-claude-test/.credentials.json',
+        JSON.stringify({ claudeAiOauth: { accessToken: 'test-token' } }),
+      );
+    });
   });
 
   describe('isClaudeAvailable without claudeCodeOauthTokenListJsonPath', () => {

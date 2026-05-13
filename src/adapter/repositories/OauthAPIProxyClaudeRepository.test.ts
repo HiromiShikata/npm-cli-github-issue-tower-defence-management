@@ -34,6 +34,7 @@ describe('OauthAPIProxyClaudeRepository', () => {
     mockApiRepository = {
       getUsage: jest.fn(),
       isClaudeAvailable: jest.fn(),
+      getSelectedClaudeConfigDir: jest.fn(),
     };
     repository = new OauthAPIProxyClaudeRepository(
       mockProxyRepository,
@@ -162,5 +163,28 @@ describe('OauthAPIProxyClaudeRepository', () => {
         }
       },
     );
+  });
+
+  describe('getSelectedClaudeConfigDir', () => {
+    it('delegates to apiRepository and returns the config dir path when set', () => {
+      mockApiRepository.getSelectedClaudeConfigDir.mockReturnValue(
+        '/tmp/test-config-dir',
+      );
+
+      const result = repository.getSelectedClaudeConfigDir();
+
+      expect(result).toBe('/tmp/test-config-dir');
+      expect(
+        mockApiRepository.getSelectedClaudeConfigDir.mock.calls,
+      ).toHaveLength(1);
+    });
+
+    it('delegates to apiRepository and returns null when no token selected', () => {
+      mockApiRepository.getSelectedClaudeConfigDir.mockReturnValue(null);
+
+      const result = repository.getSelectedClaudeConfigDir();
+
+      expect(result).toBeNull();
+    });
   });
 });

@@ -89,7 +89,7 @@ describe('StartPreparationUseCase', () => {
       | 'getOpenPullRequest'
     >
   >;
-  let mockClaudeRepository: Mocked<Pick<ClaudeRepository, 'getUsage'>>;
+  let mockClaudeRepository: Mocked<Pick<ClaudeRepository, 'getUsage' | 'getSelectedClaudeConfigDir'>>;
   let mockLocalCommandRunner: Mocked<LocalCommandRunner>;
   let mockProject: Project;
   beforeEach(() => {
@@ -111,6 +111,7 @@ describe('StartPreparationUseCase', () => {
     };
     mockClaudeRepository = {
       getUsage: jest.fn().mockResolvedValue([]),
+      getSelectedClaudeConfigDir: jest.fn().mockReturnValue(null),
     };
     mockLocalCommandRunner = {
       runCommand: jest.fn(),
@@ -2420,6 +2421,56 @@ describe('StartPreparationUseCase', () => {
     const runCommandCallOrder =
       mockLocalCommandRunner.runCommand.mock.invocationCallOrder[0];
     expect(updateStatusCallOrder).toBeLessThan(runCommandCallOrder);
+  });
+
+  it('should pass --claudeConfigDir to aw when getSelectedClaudeConfigDir returns a path', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'url1',
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    mockClaudeRepository.getSelectedClaudeConfigDir.mockReturnValue(
+      '/tmp/tdpm-claude-test',
+    );
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      preparationStatus: 'Preparation',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: null,
+      codexHomeCandidates: null,
+    });
+
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toContain(
+      '--claudeConfigDir',
+    );
+    expect(
+      mockLocalCommandRunner.runCommand.mock.calls[0][1][
+        mockLocalCommandRunner.runCommand.mock.calls[0][1].indexOf(
+          '--claudeConfigDir',
+        ) + 1
+      ],
+    ).toBe('/tmp/tdpm-claude-test');
   });
 
   it('should return early and log an error when preparationStatus option is not in the project', async () => {

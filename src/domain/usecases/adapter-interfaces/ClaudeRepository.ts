@@ -1,6 +1,7 @@
-import { ClaudeWindowUsage } from '../../entities/ClaudeWindowUsage';
+import { ClaudeWindowUsage } from "../../entities/ClaudeWindowUsage";
 
 export interface ClaudeRepository {
   getUsage(): Promise<ClaudeWindowUsage[]>;
   isClaudeAvailable(threshold: number): Promise<boolean>;
+  getSelectedClaudeConfigDir(): string | null;
 }
