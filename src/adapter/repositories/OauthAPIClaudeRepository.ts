@@ -94,22 +94,12 @@ export class OauthAPIClaudeRepository implements ClaudeRepository {
   private readonly claudeDir: string;
   private readonly claudeCodeOauthTokenListJsonPath: string | null;
   private selectedAccessToken: string | null = null;
-  private selectedClaudeConfigDir: string | null = null;
 
   constructor(claudeCodeOauthTokenListJsonPath?: string) {
     this.claudeDir = path.join(os.homedir(), '.claude');
     this.credentialsPath = path.join(this.claudeDir, '.credentials.json');
     this.claudeCodeOauthTokenListJsonPath =
       claudeCodeOauthTokenListJsonPath ?? null;
-  }
-
-  private createTempCredentialsDir(accessToken: string): string {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tdpm-claude-'));
-    fs.writeFileSync(
-      path.join(tempDir, '.credentials.json'),
-      JSON.stringify({ claudeAiOauth: { accessToken } }),
-    );
-    return tempDir;
   }
 
   private parseUsageResponse(responseData: UsageResponse): ClaudeWindowUsage[] {
@@ -158,8 +148,8 @@ export class OauthAPIClaudeRepository implements ClaudeRepository {
     return usages;
   }
 
-  getSelectedClaudeConfigDir(): string | null {
-    return this.selectedClaudeConfigDir;
+  getSelectedToken(): string | null {
+    return this.selectedAccessToken;
   }
 
   private getAccessToken(): string {
@@ -203,8 +193,6 @@ export class OauthAPIClaudeRepository implements ClaudeRepository {
         try {
           const responseData = await this.getUsageWithToken(accessToken);
           this.selectedAccessToken = accessToken;
-          this.selectedClaudeConfigDir =
-            this.createTempCredentialsDir(accessToken);
           return this.parseUsageResponse(responseData);
         } catch {
           continue;
@@ -285,8 +273,6 @@ export class OauthAPIClaudeRepository implements ClaudeRepository {
 
           if (this.isUsageUnderThreshold(usageResponse, threshold)) {
             this.selectedAccessToken = accessToken;
-            this.selectedClaudeConfigDir =
-              this.createTempCredentialsDir(accessToken);
             return true;
           }
         } catch {

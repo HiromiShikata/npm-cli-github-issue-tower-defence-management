@@ -89,7 +89,9 @@ describe('StartPreparationUseCase', () => {
       | 'getOpenPullRequest'
     >
   >;
-  let mockClaudeRepository: Mocked<Pick<ClaudeRepository, 'getUsage' | 'getSelectedClaudeConfigDir'>>;
+  let mockClaudeRepository: Mocked<
+    Pick<ClaudeRepository, 'getUsage' | 'getSelectedToken'>
+  >;
   let mockLocalCommandRunner: Mocked<LocalCommandRunner>;
   let mockProject: Project;
   beforeEach(() => {
@@ -111,7 +113,7 @@ describe('StartPreparationUseCase', () => {
     };
     mockClaudeRepository = {
       getUsage: jest.fn().mockResolvedValue([]),
-      getSelectedClaudeConfigDir: jest.fn().mockReturnValue(null),
+      getSelectedToken: jest.fn().mockReturnValue(null),
     };
     mockLocalCommandRunner = {
       runCommand: jest.fn(),
@@ -2423,7 +2425,7 @@ describe('StartPreparationUseCase', () => {
     expect(updateStatusCallOrder).toBeLessThan(runCommandCallOrder);
   });
 
-  it('should pass --claudeConfigDir to aw when getSelectedClaudeConfigDir returns a path', async () => {
+  it('should pass CLAUDE_CODE_OAUTH_TOKEN env when getSelectedToken returns a token', async () => {
     const awaitingIssues: Issue[] = [
       createMockIssue({
         url: 'url1',
@@ -2442,8 +2444,8 @@ describe('StartPreparationUseCase', () => {
       stderr: '',
       exitCode: 0,
     });
-    mockClaudeRepository.getSelectedClaudeConfigDir.mockReturnValue(
-      '/tmp/tdpm-claude-test',
+    mockClaudeRepository.getSelectedToken.mockReturnValue(
+      'selected-oauth-token',
     );
 
     await useCase.run({
@@ -2461,16 +2463,12 @@ describe('StartPreparationUseCase', () => {
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toContain(
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
+      CLAUDE_CODE_OAUTH_TOKEN: 'selected-oauth-token',
+    });
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).not.toContain(
       '--claudeConfigDir',
     );
-    expect(
-      mockLocalCommandRunner.runCommand.mock.calls[0][1][
-        mockLocalCommandRunner.runCommand.mock.calls[0][1].indexOf(
-          '--claudeConfigDir',
-        ) + 1
-      ],
-    ).toBe('/tmp/tdpm-claude-test');
   });
 
   it('should return early and log an error when preparationStatus option is not in the project', async () => {

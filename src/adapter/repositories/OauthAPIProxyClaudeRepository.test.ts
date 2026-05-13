@@ -34,7 +34,7 @@ describe('OauthAPIProxyClaudeRepository', () => {
     mockApiRepository = {
       getUsage: jest.fn(),
       isClaudeAvailable: jest.fn(),
-      getSelectedClaudeConfigDir: jest.fn(),
+      getSelectedToken: jest.fn(),
     };
     repository = new OauthAPIProxyClaudeRepository(
       mockProxyRepository,
@@ -165,26 +165,22 @@ describe('OauthAPIProxyClaudeRepository', () => {
     );
   });
 
-  describe('getSelectedClaudeConfigDir', () => {
-    it('delegates to apiRepository and returns the config dir path when set', () => {
-      mockApiRepository.getSelectedClaudeConfigDir.mockReturnValue(
-        '/tmp/test-config-dir',
-      );
+  describe('getSelectedToken', () => {
+    it('should delegate to API repository', () => {
+      mockApiRepository.getSelectedToken.mockReturnValue('selected-token');
 
-      const result = repository.getSelectedClaudeConfigDir();
+      const result = repository.getSelectedToken();
 
-      expect(result).toBe('/tmp/test-config-dir');
-      expect(
-        mockApiRepository.getSelectedClaudeConfigDir.mock.calls,
-      ).toHaveLength(1);
+      expect(result).toBe('selected-token');
+      expect(mockApiRepository.getSelectedToken.mock.calls).toHaveLength(1);
     });
 
-    it('delegates to apiRepository and returns null when no token selected', () => {
-      mockApiRepository.getSelectedClaudeConfigDir.mockReturnValue(null);
+    it('should return null when API repository returns null', () => {
+      mockApiRepository.getSelectedToken.mockReturnValue(null);
 
-      const result = repository.getSelectedClaudeConfigDir();
+      const result = repository.getSelectedToken();
 
-      expect(result).toBeNull();
+      expect(result).toBe(null);
     });
   });
 });

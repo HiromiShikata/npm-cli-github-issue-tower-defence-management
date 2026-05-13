@@ -122,7 +122,7 @@ export class OauthProxyClaudeRepository implements ClaudeRepository {
     return usages.every((usage) => usage.utilizationPercentage < threshold);
   }
 
-  getSelectedClaudeConfigDir(): string | null {
+  getSelectedToken(): string | null {
     return null;
   }
 }

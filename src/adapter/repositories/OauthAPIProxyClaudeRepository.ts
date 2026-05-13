@@ -30,7 +30,7 @@ export class OauthAPIProxyClaudeRepository implements ClaudeRepository {
     return this.apiRepository.isClaudeAvailable(threshold);
   }
 
-  getSelectedClaudeConfigDir(): string | null {
-    return this.apiRepository.getSelectedClaudeConfigDir();
+  getSelectedToken(): string | null {
+    return this.apiRepository.getSelectedToken();
   }
 }

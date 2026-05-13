@@ -9,6 +9,7 @@ class StartPreparationUseCase {
         this.localCommandRunner = localCommandRunner;
         this.run = async (params) => {
             const claudeUsages = await this.claudeRepository.getUsage();
+            const selectedToken = this.claudeRepository.getSelectedToken();
             const weeklyWindowHours = 168;
             const nonWeeklyUsages = claudeUsages.filter((usage) => usage.hour !== weeklyWindowHours);
             if (nonWeeklyUsages.some((usage) => usage.utilizationPercentage > params.utilizationPercentageThreshold)) {
@@ -139,7 +140,14 @@ class StartPreparationUseCase {
                     const codexHome = params.codexHomeCandidates[startedInThisRunCount % params.codexHomeCandidates.length];
                     awArgs.push('--codexHome', codexHome);
                 }
-                await this.localCommandRunner.runCommand('aw', awArgs);
+                if (selectedToken !== null) {
+                    await this.localCommandRunner.runCommand('aw', awArgs, {
+                        CLAUDE_CODE_OAUTH_TOKEN: selectedToken,
+                    });
+                }
+                else {
+                    await this.localCommandRunner.runCommand('aw', awArgs);
+                }
                 startedInThisRunCount++;
                 updatedCurrentPreparationIssueCount++;
             }

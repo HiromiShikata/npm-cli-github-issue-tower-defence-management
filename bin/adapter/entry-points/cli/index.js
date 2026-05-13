@@ -33,17 +33,15 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.program = exports.fetchProjectReadme = exports.mergeConfigs = exports.parseProjectReadmeConfig = exports.loadConfigFile = void 0;
-const fs = __importStar(require("fs"));
+const yaml_1 = __importDefault(require("yaml"));
 const commander_1 = require("commander");
+const fs = __importStar(require("fs"));
 const HandleScheduledEventUseCaseHandler_1 = require("../handlers/HandleScheduledEventUseCaseHandler");
-var projectConfig_1 = require("./projectConfig");
-Object.defineProperty(exports, "loadConfigFile", { enumerable: true, get: function () { return projectConfig_1.loadConfigFile; } });
-Object.defineProperty(exports, "parseProjectReadmeConfig", { enumerable: true, get: function () { return projectConfig_1.parseProjectReadmeConfig; } });
-Object.defineProperty(exports, "mergeConfigs", { enumerable: true, get: function () { return projectConfig_1.mergeConfigs; } });
-Object.defineProperty(exports, "fetchProjectReadme", { enumerable: true, get: function () { return projectConfig_1.fetchProjectReadme; } });
-const projectConfig_2 = require("./projectConfig");
 const StartPreparationUseCase_1 = require("../../../domain/usecases/StartPreparationUseCase");
 const NotifyFinishedIssuePreparationUseCase_1 = require("../../../domain/usecases/NotifyFinishedIssuePreparationUseCase");
 const LocalStorageRepository_1 = require("../../repositories/LocalStorageRepository");
@@ -56,9 +54,213 @@ const LocalStorageCacheRepository_1 = require("../../repositories/LocalStorageCa
 const CheerioProjectRepository_1 = require("../../repositories/CheerioProjectRepository");
 const NodeLocalCommandRunner_1 = require("../../repositories/NodeLocalCommandRunner");
 const OauthAPIProxyClaudeRepository_1 = require("../../repositories/OauthAPIProxyClaudeRepository");
+const OauthAPIClaudeRepository_1 = require("../../repositories/OauthAPIClaudeRepository");
 const GitHubIssueCommentRepository_1 = require("../../repositories/GitHubIssueCommentRepository");
 const FetchWebhookRepository_1 = require("../../repositories/FetchWebhookRepository");
 const RevertOrphanedPreparationUseCase_1 = require("../../../domain/usecases/RevertOrphanedPreparationUseCase");
+const getStringValue = (obj, key) => {
+    const value = obj[key];
+    return typeof value === 'string' ? value : undefined;
+};
+const getNumberValue = (obj, key) => {
+    const value = obj[key];
+    return typeof value === 'number' ? value : undefined;
+};
+const getStringArrayValue = (obj, key) => {
+    const value = obj[key];
+    if (!Array.isArray(value)) {
+        return undefined;
+    }
+    const strings = [];
+    for (const item of value) {
+        if (typeof item !== 'string') {
+            return undefined;
+        }
+        strings.push(item);
+    }
+    return strings;
+};
+const isRecord = (value) => typeof value === 'object' && value !== null && !Array.isArray(value);
+const loadConfigFile = (configFilePath) => {
+    try {
+        const content = fs.readFileSync(configFilePath, 'utf-8');
+        const parsed = yaml_1.default.parse(content);
+        if (!isRecord(parsed)) {
+            return {};
+        }
+        return {
+            projectUrl: getStringValue(parsed, 'projectUrl'),
+            awaitingWorkspaceStatus: getStringValue(parsed, 'awaitingWorkspaceStatus'),
+            preparationStatus: getStringValue(parsed, 'preparationStatus'),
+            defaultAgentName: getStringValue(parsed, 'defaultAgentName'),
+            defaultLlmModelName: getStringValue(parsed, 'defaultLlmModelName'),
+            defaultLlmAgentName: getStringValue(parsed, 'defaultLlmAgentName'),
+            maximumPreparingIssuesCount: getNumberValue(parsed, 'maximumPreparingIssuesCount'),
+            allowIssueCacheMinutes: getNumberValue(parsed, 'allowIssueCacheMinutes'),
+            utilizationPercentageThreshold: getNumberValue(parsed, 'utilizationPercentageThreshold'),
+            allowedIssueAuthors: getStringValue(parsed, 'allowedIssueAuthors'),
+            awaitingQualityCheckStatus: getStringValue(parsed, 'awaitingQualityCheckStatus'),
+            thresholdForAutoReject: getNumberValue(parsed, 'thresholdForAutoReject'),
+            workflowBlockerResolvedWebhookUrl: getStringValue(parsed, 'workflowBlockerResolvedWebhookUrl'),
+            projectName: getStringValue(parsed, 'projectName'),
+            preparationProcessCheckCommand: getStringValue(parsed, 'preparationProcessCheckCommand'),
+            codexHomeCandidates: getStringArrayValue(parsed, 'codexHomeCandidates'),
+            claudeCodeOauthTokenListJsonPath: getStringValue(parsed, 'claudeCodeOauthTokenListJsonPath'),
+        };
+    }
+    catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`Failed to load configuration file "${configFilePath}": ${message}`);
+        process.exit(1);
+    }
+};
+exports.loadConfigFile = loadConfigFile;
+const parseProjectReadmeConfig = (readme) => {
+    const detailsRegex = /<details>\s*<summary>config<\/summary>([\s\S]*?)<\/details>/i;
+    const match = detailsRegex.exec(readme);
+    if (!match) {
+        return {};
+    }
+    const yamlContent = match[1].trim();
+    if (!yamlContent) {
+        return {};
+    }
+    try {
+        const parsed = yaml_1.default.parse(yamlContent);
+        if (!isRecord(parsed)) {
+            return {};
+        }
+        return {
+            awaitingWorkspaceStatus: getStringValue(parsed, 'awaitingWorkspaceStatus'),
+            preparationStatus: getStringValue(parsed, 'preparationStatus'),
+            defaultAgentName: getStringValue(parsed, 'defaultAgentName'),
+            defaultLlmModelName: getStringValue(parsed, 'defaultLlmModelName'),
+            defaultLlmAgentName: getStringValue(parsed, 'defaultLlmAgentName'),
+            maximumPreparingIssuesCount: getNumberValue(parsed, 'maximumPreparingIssuesCount'),
+            allowIssueCacheMinutes: getNumberValue(parsed, 'allowIssueCacheMinutes'),
+            utilizationPercentageThreshold: getNumberValue(parsed, 'utilizationPercentageThreshold'),
+            allowedIssueAuthors: getStringValue(parsed, 'allowedIssueAuthors'),
+            awaitingQualityCheckStatus: getStringValue(parsed, 'awaitingQualityCheckStatus'),
+            thresholdForAutoReject: getNumberValue(parsed, 'thresholdForAutoReject'),
+            workflowBlockerResolvedWebhookUrl: getStringValue(parsed, 'workflowBlockerResolvedWebhookUrl'),
+            preparationProcessCheckCommand: getStringValue(parsed, 'preparationProcessCheckCommand'),
+            codexHomeCandidates: getStringArrayValue(parsed, 'codexHomeCandidates'),
+        };
+    }
+    catch {
+        console.warn('Failed to parse YAML from project README config section');
+        return {};
+    }
+};
+exports.parseProjectReadmeConfig = parseProjectReadmeConfig;
+const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
+    projectUrl: cliOverrides.projectUrl ?? configFile.projectUrl,
+    awaitingWorkspaceStatus: readmeOverrides.awaitingWorkspaceStatus ??
+        cliOverrides.awaitingWorkspaceStatus ??
+        configFile.awaitingWorkspaceStatus,
+    preparationStatus: readmeOverrides.preparationStatus ??
+        cliOverrides.preparationStatus ??
+        configFile.preparationStatus,
+    defaultAgentName: readmeOverrides.defaultAgentName ??
+        cliOverrides.defaultAgentName ??
+        configFile.defaultAgentName,
+    defaultLlmModelName: readmeOverrides.defaultLlmModelName ??
+        cliOverrides.defaultLlmModelName ??
+        configFile.defaultLlmModelName,
+    defaultLlmAgentName: readmeOverrides.defaultLlmAgentName ??
+        cliOverrides.defaultLlmAgentName ??
+        configFile.defaultLlmAgentName,
+    maximumPreparingIssuesCount: readmeOverrides.maximumPreparingIssuesCount ??
+        cliOverrides.maximumPreparingIssuesCount ??
+        configFile.maximumPreparingIssuesCount,
+    allowIssueCacheMinutes: readmeOverrides.allowIssueCacheMinutes ??
+        cliOverrides.allowIssueCacheMinutes ??
+        configFile.allowIssueCacheMinutes,
+    utilizationPercentageThreshold: readmeOverrides.utilizationPercentageThreshold ??
+        cliOverrides.utilizationPercentageThreshold ??
+        configFile.utilizationPercentageThreshold,
+    allowedIssueAuthors: readmeOverrides.allowedIssueAuthors ??
+        cliOverrides.allowedIssueAuthors ??
+        configFile.allowedIssueAuthors,
+    awaitingQualityCheckStatus: readmeOverrides.awaitingQualityCheckStatus ??
+        cliOverrides.awaitingQualityCheckStatus ??
+        configFile.awaitingQualityCheckStatus,
+    thresholdForAutoReject: readmeOverrides.thresholdForAutoReject ??
+        cliOverrides.thresholdForAutoReject ??
+        configFile.thresholdForAutoReject,
+    workflowBlockerResolvedWebhookUrl: readmeOverrides.workflowBlockerResolvedWebhookUrl ??
+        cliOverrides.workflowBlockerResolvedWebhookUrl ??
+        configFile.workflowBlockerResolvedWebhookUrl,
+    projectName: configFile.projectName,
+    preparationProcessCheckCommand: readmeOverrides.preparationProcessCheckCommand ??
+        cliOverrides.preparationProcessCheckCommand ??
+        configFile.preparationProcessCheckCommand,
+    codexHomeCandidates: readmeOverrides.codexHomeCandidates ??
+        cliOverrides.codexHomeCandidates ??
+        configFile.codexHomeCandidates,
+    claudeCodeOauthTokenListJsonPath: configFile.claudeCodeOauthTokenListJsonPath,
+});
+exports.mergeConfigs = mergeConfigs;
+const isGraphqlProjectV2ReadmeResponse = (value) => {
+    if (!isRecord(value))
+        return false;
+    const data = value['data'];
+    if (data !== undefined && !isRecord(data))
+        return false;
+    return true;
+};
+const fetchProjectReadme = async (projectUrl, token) => {
+    try {
+        const urlParts = projectUrl.split('/');
+        const projectNumber = parseInt(urlParts[urlParts.length - 1], 10);
+        const owner = urlParts[urlParts.length - 3];
+        const query = `
+      query($owner: String!, $number: Int!) {
+        organization(login: $owner) {
+          projectV2(number: $number) {
+            readme
+          }
+        }
+        user(login: $owner) {
+          projectV2(number: $number) {
+            readme
+          }
+        }
+      }
+    `;
+        const response = await fetch('https://api.github.com/graphql', {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                query,
+                variables: { owner, number: projectNumber },
+            }),
+        });
+        if (!response.ok) {
+            throw new Error(`GraphQL request failed: ${response.status}`);
+        }
+        const responseData = await response.json();
+        if (!isGraphqlProjectV2ReadmeResponse(responseData)) {
+            return null;
+        }
+        const orgReadme = responseData.data?.organization?.projectV2?.readme;
+        const userReadme = responseData.data?.user?.projectV2?.readme;
+        const readme = typeof orgReadme === 'string'
+            ? orgReadme
+            : typeof userReadme === 'string'
+                ? userReadme
+                : null;
+        return readme;
+    }
+    catch {
+        console.warn('Failed to fetch project README');
+        return null;
+    }
+};
+exports.fetchProjectReadme = fetchProjectReadme;
 const buildGithubRepositoryParams = (localStorageRepository, cachePath, token) => [
     localStorageRepository,
     `${cachePath}/github.com.cookies.json`,
@@ -109,7 +311,7 @@ exports.program
         console.error('GH_TOKEN environment variable is required');
         process.exit(1);
     }
-    const configFileValues = (0, projectConfig_2.loadConfigFile)(options.configFilePath);
+    const configFileValues = (0, exports.loadConfigFile)(options.configFilePath);
     const cliOverrides = {
         projectUrl: options.projectUrl,
         awaitingWorkspaceStatus: options.awaitingWorkspaceStatus,
@@ -132,12 +334,12 @@ exports.program
     const tempProjectUrl = cliOverrides.projectUrl ?? configFileValues.projectUrl;
     let readmeOverrides = {};
     if (tempProjectUrl) {
-        const readme = await (0, projectConfig_2.fetchProjectReadme)(tempProjectUrl, token);
+        const readme = await (0, exports.fetchProjectReadme)(tempProjectUrl, token);
         if (readme) {
-            readmeOverrides = (0, projectConfig_2.parseProjectReadmeConfig)(readme);
+            readmeOverrides = (0, exports.parseProjectReadmeConfig)(readme);
         }
     }
-    const config = (0, projectConfig_2.mergeConfigs)(configFileValues, cliOverrides, readmeOverrides);
+    const config = (0, exports.mergeConfigs)(configFileValues, cliOverrides, readmeOverrides);
     const projectUrl = config.projectUrl;
     const awaitingWorkspaceStatus = config.awaitingWorkspaceStatus;
     const preparationStatus = config.preparationStatus;
@@ -188,7 +390,7 @@ exports.program
     const restIssueRepository = new RestIssueRepository_1.RestIssueRepository(...githubRepositoryParams);
     const graphqlProjectItemRepository = new GraphqlProjectItemRepository_1.GraphqlProjectItemRepository(...githubRepositoryParams);
     const issueRepository = new ApiV3CheerioRestIssueRepository_1.ApiV3CheerioRestIssueRepository(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, ...githubRepositoryParams);
-    const claudeRepository = new OauthAPIProxyClaudeRepository_1.OauthAPIProxyClaudeRepository();
+    const claudeRepository = new OauthAPIProxyClaudeRepository_1.OauthAPIProxyClaudeRepository(undefined, new OauthAPIClaudeRepository_1.OauthAPIClaudeRepository(config.claudeCodeOauthTokenListJsonPath));
     const localCommandRunner = new NodeLocalCommandRunner_1.NodeLocalCommandRunner();
     const preparationProcessCheckCommand = config.preparationProcessCheckCommand;
     if (preparationProcessCheckCommand) {
@@ -199,8 +401,6 @@ exports.program
             awaitingWorkspaceStatus,
             allowIssueCacheMinutes,
             preparationProcessCheckCommand,
-            awLogDirectoryPath: config.awLogDirectoryPath,
-            awLogStaleThresholdMinutes: config.awLogStaleThresholdMinutes,
         });
     }
     const useCase = new StartPreparationUseCase_1.StartPreparationUseCase(projectRepository, issueRepository, claudeRepository, localCommandRunner);
@@ -261,7 +461,7 @@ exports.program
         console.error('GH_TOKEN environment variable is required');
         process.exit(1);
     }
-    const configFileValues = (0, projectConfig_2.loadConfigFile)(options.configFilePath);
+    const configFileValues = (0, exports.loadConfigFile)(options.configFilePath);
     const cliOverrides = {
         projectUrl: options.projectUrl,
         preparationStatus: options.preparationStatus,
@@ -275,12 +475,12 @@ exports.program
     const tempProjectUrl = cliOverrides.projectUrl ?? configFileValues.projectUrl;
     let readmeOverrides = {};
     if (tempProjectUrl) {
-        const readme = await (0, projectConfig_2.fetchProjectReadme)(tempProjectUrl, token);
+        const readme = await (0, exports.fetchProjectReadme)(tempProjectUrl, token);
         if (readme) {
-            readmeOverrides = (0, projectConfig_2.parseProjectReadmeConfig)(readme);
+            readmeOverrides = (0, exports.parseProjectReadmeConfig)(readme);
         }
     }
-    const config = (0, projectConfig_2.mergeConfigs)(configFileValues, cliOverrides, readmeOverrides);
+    const config = (0, exports.mergeConfigs)(configFileValues, cliOverrides, readmeOverrides);
     const projectUrl = config.projectUrl;
     const preparationStatus = config.preparationStatus;
     const awaitingWorkspaceStatus = config.awaitingWorkspaceStatus;

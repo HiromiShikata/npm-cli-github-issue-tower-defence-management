@@ -15,8 +15,11 @@ export class NodeLocalCommandRunner implements LocalCommandRunner {
     exitCode: number;
   }> {
     try {
-      const options = env ? { env: { ...process.env, ...env } } : {};
-      const { stdout, stderr } = await execFileAsync(program, args, options);
+      const { stdout, stderr } = env
+        ? await execFileAsync(program, args, {
+            env: { ...process.env, ...env },
+          })
+        : await execFileAsync(program, args);
       return {
         stdout,
         stderr,
