@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "es2020",
-    "module": "commonjs",
+    "module": "CommonJS",
     "moduleResolution": "Node",
     "esModuleInterop": true,
     "outDir": "./dist",
@@ -15,7 +15,9 @@
         "transform": "typia/lib/transform"
       }
     ],
-    "strictNullChecks": true
+    "strictNullChecks": true,
+    "ignoreDeprecations": "6.0",
+    "types": ["jest", "node"]
   },
   "include": ["src"],
   "exclude": ["node_modules", "**/__tests__/*"]
