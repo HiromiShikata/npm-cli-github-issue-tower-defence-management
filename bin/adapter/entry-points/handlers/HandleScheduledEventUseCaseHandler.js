@@ -41,6 +41,7 @@ const __typia_transform__validateReport = __importStar(require("typia/lib/intern
 const yaml_1 = __importDefault(require("yaml"));
 const typia_1 = __importDefault(require("typia"));
 const fs_1 = __importDefault(require("fs"));
+const projectConfig_1 = require("../cli/projectConfig");
 const SystemDateRepository_1 = require("../../repositories/SystemDateRepository");
 const LocalStorageRepository_1 = require("../../repositories/LocalStorageRepository");
 const GoogleSpreadsheetRepository_1 = require("../../repositories/GoogleSpreadsheetRepository");
@@ -362,6 +363,57 @@ class HandleScheduledEventUseCaseHandler {
             if (input.disabled) {
                 return null;
             }
+            const managerToken = input.credentials.manager.github.token;
+            const readme = await (0, projectConfig_1.fetchProjectReadme)(input.projectUrl, managerToken);
+            const readmeConfig = readme ? (0, projectConfig_1.parseProjectReadmeConfig)(readme) : {};
+            const mergedInput = {
+                ...input,
+                allowIssueCacheMinutes: readmeConfig.allowIssueCacheMinutes ?? input.allowIssueCacheMinutes,
+                startPreparation: input.startPreparation
+                    ? {
+                        ...input.startPreparation,
+                        awaitingWorkspaceStatus: readmeConfig.awaitingWorkspaceStatus ??
+                            input.startPreparation.awaitingWorkspaceStatus,
+                        preparationStatus: readmeConfig.preparationStatus ??
+                            input.startPreparation.preparationStatus,
+                        defaultAgentName: readmeConfig.defaultAgentName ??
+                            input.startPreparation.defaultAgentName,
+                        defaultLlmModelName: readmeConfig.defaultLlmModelName ??
+                            input.startPreparation.defaultLlmModelName,
+                        defaultLlmAgentName: readmeConfig.defaultLlmAgentName ??
+                            input.startPreparation.defaultLlmAgentName,
+                        maximumPreparingIssuesCount: readmeConfig.maximumPreparingIssuesCount ??
+                            input.startPreparation.maximumPreparingIssuesCount,
+                        utilizationPercentageThreshold: readmeConfig.utilizationPercentageThreshold ??
+                            input.startPreparation.utilizationPercentageThreshold,
+                        allowedIssueAuthors: readmeConfig.allowedIssueAuthors
+                            ? readmeConfig.allowedIssueAuthors
+                                .split(',')
+                                .map((s) => s.trim())
+                                .filter(Boolean)
+                            : input.startPreparation.allowedIssueAuthors,
+                        preparationProcessCheckCommand: readmeConfig.preparationProcessCheckCommand ??
+                            input.startPreparation.preparationProcessCheckCommand,
+                        codexHomeCandidates: readmeConfig.codexHomeCandidates ??
+                            input.startPreparation.codexHomeCandidates,
+                    }
+                    : input.startPreparation,
+                notifyFinishedPreparation: input.notifyFinishedPreparation
+                    ? {
+                        ...input.notifyFinishedPreparation,
+                        awaitingWorkspaceStatus: readmeConfig.awaitingWorkspaceStatus ??
+                            input.notifyFinishedPreparation.awaitingWorkspaceStatus,
+                        preparationStatus: readmeConfig.preparationStatus ??
+                            input.notifyFinishedPreparation.preparationStatus,
+                        awaitingQualityCheckStatus: readmeConfig.awaitingQualityCheckStatus ??
+                            input.notifyFinishedPreparation.awaitingQualityCheckStatus,
+                        thresholdForAutoReject: readmeConfig.thresholdForAutoReject ??
+                            input.notifyFinishedPreparation.thresholdForAutoReject,
+                        workflowBlockerResolvedWebhookUrl: readmeConfig.workflowBlockerResolvedWebhookUrl ??
+                            input.notifyFinishedPreparation.workflowBlockerResolvedWebhookUrl,
+                    }
+                    : input.notifyFinishedPreparation,
+            };
             const systemDateRepository = new SystemDateRepository_1.SystemDateRepository();
             const localStorageRepository = new LocalStorageRepository_1.LocalStorageRepository();
             const googleSpreadsheetRepository = new GoogleSpreadsheetRepository_1.GoogleSpreadsheetRepository(localStorageRepository, input.credentials.manager.googleServiceAccount.serviceAccountKey);
@@ -407,15 +459,15 @@ class HandleScheduledEventUseCaseHandler {
             const notifyFinishedIssuePreparationUseCase = new NotifyFinishedIssuePreparationUseCase_1.NotifyFinishedIssuePreparationUseCase(projectRepository, issueRepository, issueCommentRepository, webhookRepository);
             const revertOrphanedPreparationUseCase = new RevertOrphanedPreparationUseCase_1.RevertOrphanedPreparationUseCase(projectRepository, issueRepository, nodeLocalCommandRunner);
             const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabel, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, notifyFinishedIssuePreparationUseCase, revertOrphanedPreparationUseCase, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
-            const result = await handleScheduledEventUseCase.run(input);
+            const result = await handleScheduledEventUseCase.run(mergedInput);
             if (result) {
                 const projectId = result.project.id;
                 const runtimeConfig = {
                     resolvedAt: new Date().toISOString(),
-                    maximumPreparingIssuesCount: input.startPreparation?.maximumPreparingIssuesCount ?? null,
-                    utilizationPercentageThreshold: input.startPreparation?.utilizationPercentageThreshold ?? 90,
-                    allowIssueCacheMinutes: input.allowIssueCacheMinutes,
-                    thresholdForAutoReject: input.notifyFinishedPreparation?.thresholdForAutoReject ?? 3,
+                    maximumPreparingIssuesCount: mergedInput.startPreparation?.maximumPreparingIssuesCount ?? null,
+                    utilizationPercentageThreshold: mergedInput.startPreparation?.utilizationPercentageThreshold ?? 90,
+                    allowIssueCacheMinutes: mergedInput.allowIssueCacheMinutes,
+                    thresholdForAutoReject: mergedInput.notifyFinishedPreparation?.thresholdForAutoReject ?? 3,
                 };
                 const finalPath = `${cachePath}/runtimeConfig-${projectId}.json`;
                 const tmpPath = `${finalPath}.tmp`;

@@ -1,3 +1,12 @@
+## [1.44.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.44.2...v1.44.3) (2026-05-13)
+
+
+### Bug Fixes
+
+* **core:** add awLogDirectoryPath and awLogStaleThresholdMinutes to projectConfig.ts ([a4a5c8b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a4a5c8babeaa6435c4142989d90d09985649f396))
+* **core:** restore missing fs import in index.ts dropped during rebase ([c14d3c6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c14d3c63d43de8afdc67d85f47cbbb887f9dbf8d))
+* **core:** schedule command now applies Project V2 README config overrides ([1e83b71](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1e83b712a5322be79123abd8e4b12ce75fc9b960))
+
 ## [1.44.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.44.1...v1.44.2) (2026-05-13)
 
 
