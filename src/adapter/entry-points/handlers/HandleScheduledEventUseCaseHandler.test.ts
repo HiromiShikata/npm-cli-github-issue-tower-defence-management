@@ -126,7 +126,9 @@ import { RestIssueRepository } from '../../repositories/issue/RestIssueRepositor
 import { GraphqlProjectItemRepository } from '../../repositories/issue/GraphqlProjectItemRepository';
 import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3CheerioRestIssueRepository';
 
-const MockedOauthAPIProxyClaudeRepository = jest.mocked(OauthAPIProxyClaudeRepository);
+const MockedOauthAPIProxyClaudeRepository = jest.mocked(
+  OauthAPIProxyClaudeRepository,
+);
 const MockedStartPreparationUseCase = jest.mocked(StartPreparationUseCase);
 const mockFetchProjectReadme = jest.mocked(
   ProjectReadmeConfigFetcher.fetchProjectReadme,
@@ -264,7 +266,8 @@ describe('HandleScheduledEventUseCaseHandler', () => {
     await handler.handle('config.yml', false);
 
     expect(MockedOauthAPIProxyClaudeRepository).toHaveBeenCalledTimes(1);
-    const claudeRepoInstance = MockedOauthAPIProxyClaudeRepository.mock.instances[0];
+    const claudeRepoInstance =
+      MockedOauthAPIProxyClaudeRepository.mock.instances[0];
     expect(MockedStartPreparationUseCase).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -284,8 +287,12 @@ describe('HandleScheduledEventUseCaseHandler', () => {
   });
 
   it('should apply README config override to allowIssueCacheMinutes when set', async () => {
-    mockFetchProjectReadme.mockResolvedValueOnce('<details><summary>config</summary>\nallowIssueCacheMinutes: 99\n</details>');
-    mockParseProjectReadmeConfig.mockReturnValueOnce({ allowIssueCacheMinutes: 99 });
+    mockFetchProjectReadme.mockResolvedValueOnce(
+      '<details><summary>config</summary>\nallowIssueCacheMinutes: 99\n</details>',
+    );
+    mockParseProjectReadmeConfig.mockReturnValueOnce({
+      allowIssueCacheMinutes: 99,
+    });
 
     const handler = new HandleScheduledEventUseCaseHandler();
     await handler.handle('config.yml', false);
@@ -310,7 +317,9 @@ describe('HandleScheduledEventUseCaseHandler', () => {
     jest
       .mocked(fs.readFileSync)
       .mockReturnValue(YAML.stringify(configWithStartPreparation));
-    mockFetchProjectReadme.mockResolvedValueOnce('<details><summary>config</summary>\nmaximumPreparingIssuesCount: 0\n</details>');
+    mockFetchProjectReadme.mockResolvedValueOnce(
+      '<details><summary>config</summary>\nmaximumPreparingIssuesCount: 0\n</details>',
+    );
     mockParseProjectReadmeConfig.mockReturnValueOnce({
       maximumPreparingIssuesCount: 0,
     });

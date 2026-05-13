@@ -17,9 +17,7 @@ export type ProjectReadmeConfig = {
   codexHomeCandidates?: string[];
 };
 
-export const isRecord = (
-  value: unknown,
-): value is Record<string, unknown> =>
+export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 export const getStringValue = (
@@ -153,7 +151,10 @@ export const parseProjectReadmeConfig = (
       return {};
     }
     return {
-      awaitingWorkspaceStatus: getStringValue(parsed, 'awaitingWorkspaceStatus'),
+      awaitingWorkspaceStatus: getStringValue(
+        parsed,
+        'awaitingWorkspaceStatus',
+      ),
       preparationStatus: getStringValue(parsed, 'preparationStatus'),
       defaultAgentName: getStringValue(parsed, 'defaultAgentName'),
       defaultLlmModelName: getStringValue(parsed, 'defaultLlmModelName'),

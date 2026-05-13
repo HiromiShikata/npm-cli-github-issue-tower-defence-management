@@ -61,7 +61,6 @@ type NotifyFinishedOptions = {
   configFilePath: string;
 };
 
-
 export const loadConfigFile = (configFilePath: string): ConfigFile => {
   try {
     const content = fs.readFileSync(configFilePath, 'utf-8');
@@ -114,7 +113,10 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
   }
 };
 
-export { parseProjectReadmeConfig, fetchProjectReadme } from '../ProjectReadmeConfigFetcher';
+export {
+  parseProjectReadmeConfig,
+  fetchProjectReadme,
+} from '../ProjectReadmeConfigFetcher';
 
 export const mergeConfigs = (
   configFile: ConfigFile,
