@@ -1,3 +1,10 @@
+## [1.44.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.44.3...v1.44.4) (2026-05-13)
+
+
+### Bug Fixes
+
+* **core:** skip synthesised 100% entry when overage-disabled-reason indicates plan quota is still available ([b7e5833](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b7e58332953ece15d675430f3b47a37bd04a08c4)), closes [#533](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/533) [#538](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/538)
+
 ## [1.44.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.44.2...v1.44.3) (2026-05-13)
 
 
