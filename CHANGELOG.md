@@ -1,3 +1,11 @@
+## [1.43.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.43.1...v1.43.2) (2026-05-13)
+
+
+### Bug Fixes
+
+* **core:** upgrade jest-html-reporter to v4.4.0 for TypeScript 6 compatibility ([3966f59](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3966f59409d5d39dda143affa9c5cf2f800a367e))
+* **core:** upgrade TypeScript to v6.0 to support ts-patch v4 ([20c08c9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/20c08c9f53692b63eccc7f9a7b0060fa715e38d3)), closes [#535](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/535)
+
 ## [1.43.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.43.0...v1.43.1) (2026-05-12)
 
 
