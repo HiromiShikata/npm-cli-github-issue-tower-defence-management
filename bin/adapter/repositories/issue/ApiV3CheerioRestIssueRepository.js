@@ -484,8 +484,8 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             const { issues } = await this.getAllIssues(project.id, 0);
             return issues.filter((issue) => !issue.isClosed);
         };
-        this.getStoryObjectMap = async (project) => {
-            const { issues } = await this.getAllIssues(project.id, 0);
+        this.getStoryObjectMap = async (project, allowCacheMinutes) => {
+            const { issues } = await this.getAllIssues(project.id, allowCacheMinutes);
             const storyObjectMap = new Map();
             const targetStories = project.story?.stories || [];
             for (const story of targetStories) {

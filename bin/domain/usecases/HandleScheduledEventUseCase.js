@@ -230,6 +230,7 @@ ${JSON.stringify(e)}
                     utilizationPercentageThreshold: input.startPreparation.utilizationPercentageThreshold ?? 90,
                     allowedIssueAuthors: input.startPreparation.allowedIssueAuthors ?? null,
                     codexHomeCandidates: input.startPreparation.codexHomeCandidates ?? null,
+                    allowIssueCacheMinutes: input.allowIssueCacheMinutes,
                 });
             }
             if (input.notifyFinishedPreparation) {

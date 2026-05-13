@@ -51,7 +51,7 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     private computePrStatus;
     findRelatedOpenPRs: (issueUrl: string) => Promise<RelatedPullRequest[]>;
     getAllOpened: (project: Project) => Promise<Issue[]>;
-    getStoryObjectMap: (project: Project) => Promise<StoryObjectMap>;
+    getStoryObjectMap: (project: Project, allowCacheMinutes: number) => Promise<StoryObjectMap>;
     getOpenPullRequest: (prUrl: string) => Promise<RelatedPullRequest | null>;
 }
 //# sourceMappingURL=ApiV3CheerioRestIssueRepository.d.ts.map
