@@ -8,7 +8,11 @@ type ProxyFileHeaders = {
   'anthropic-ratelimit-unified-5h-reset'?: string;
   'anthropic-ratelimit-unified-7d-reset'?: string;
   'anthropic-ratelimit-unified-overage-status'?: string;
+  'anthropic-ratelimit-unified-overage-disabled-reason'?: string;
 };
+
+const OVERAGE_DISABLED_REASONS_INDICATING_AVAILABLE_PLAN_QUOTA: ReadonlySet<string> =
+  new Set(['org_level_disabled_until']);
 
 type ProxyFile = {
   headers?: ProxyFileHeaders;
@@ -86,8 +90,16 @@ export class OauthProxyClaudeRepository implements ClaudeRepository {
     }
 
     const overageStatus = headers['anthropic-ratelimit-unified-overage-status'];
+    const overageDisabledReason =
+      headers['anthropic-ratelimit-unified-overage-disabled-reason'];
+    const overageDisabledReasonIndicatesAvailablePlanQuota =
+      overageDisabledReason !== undefined &&
+      OVERAGE_DISABLED_REASONS_INDICATING_AVAILABLE_PLAN_QUOTA.has(
+        overageDisabledReason,
+      );
     if (
       overageStatus === 'rejected' &&
+      !overageDisabledReasonIndicatesAvailablePlanQuota &&
       !usages.some((u) => u.utilizationPercentage >= 100)
     ) {
       usages.push({
