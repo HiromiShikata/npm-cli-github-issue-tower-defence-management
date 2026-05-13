@@ -399,7 +399,23 @@ class HandleScheduledEventUseCaseHandler {
             const notifyFinishedIssuePreparationUseCase = new NotifyFinishedIssuePreparationUseCase_1.NotifyFinishedIssuePreparationUseCase(projectRepository, issueRepository, issueCommentRepository, webhookRepository);
             const revertOrphanedPreparationUseCase = new RevertOrphanedPreparationUseCase_1.RevertOrphanedPreparationUseCase(projectRepository, issueRepository, nodeLocalCommandRunner);
             const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabel, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, notifyFinishedIssuePreparationUseCase, revertOrphanedPreparationUseCase, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
-            return await handleScheduledEventUseCase.run(input);
+            const result = await handleScheduledEventUseCase.run(input);
+            if (result) {
+                const projectId = result.project.id;
+                const runtimeConfig = {
+                    resolvedAt: new Date().toISOString(),
+                    maximumPreparingIssuesCount: input.startPreparation?.maximumPreparingIssuesCount ?? null,
+                    utilizationPercentageThreshold: input.startPreparation?.utilizationPercentageThreshold ?? 90,
+                    allowIssueCacheMinutes: input.allowIssueCacheMinutes,
+                    thresholdForAutoReject: input.notifyFinishedPreparation?.thresholdForAutoReject ?? 3,
+                };
+                const finalPath = `${cachePath}/runtimeConfig-${projectId}.json`;
+                const tmpPath = `${finalPath}.tmp`;
+                fs_1.default.mkdirSync(cachePath, { recursive: true });
+                fs_1.default.writeFileSync(tmpPath, JSON.stringify(runtimeConfig));
+                fs_1.default.renameSync(tmpPath, finalPath);
+            }
+            return result;
         };
     }
 }

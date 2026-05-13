@@ -1,3 +1,15 @@
+# [1.44.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.43.2...v1.44.0) (2026-05-13)
+
+
+### Bug Fixes
+
+* **core:** use numeric defaults for missing optional runtimeConfig fields ([200ee12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/200ee124d3900264248e1c2d35cdc8a74a76b79d))
+
+
+### Features
+
+* **core:** persist resolved runtime numeric config to JSON cache file ([e1f0ea2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e1f0ea2e10362492d917c25d09637589e1041edd))
+
 ## [1.43.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.43.1...v1.43.2) (2026-05-13)
 
 
