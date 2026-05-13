@@ -63,6 +63,17 @@ class OauthProxyClaudeRepository {
                 });
             }
         }
+        const overageStatus = headers['anthropic-ratelimit-unified-overage-status'];
+        if (overageStatus === 'rejected' &&
+            !usages.some((u) => u.utilizationPercentage >= 100)) {
+            usages.push({
+                hour: 168,
+                utilizationPercentage: 100,
+                resetsAt: sevenDayReset
+                    ? new Date(parseInt(sevenDayReset, 10) * 1000)
+                    : new Date(),
+            });
+        }
         return usages;
     }
     async isClaudeAvailable(threshold) {

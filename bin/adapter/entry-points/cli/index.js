@@ -104,6 +104,8 @@ const loadConfigFile = (configFilePath) => {
             projectName: getStringValue(parsed, 'projectName'),
             preparationProcessCheckCommand: getStringValue(parsed, 'preparationProcessCheckCommand'),
             codexHomeCandidates: getStringArrayValue(parsed, 'codexHomeCandidates'),
+            awLogDirectoryPath: getStringValue(parsed, 'awLogDirectoryPath'),
+            awLogStaleThresholdMinutes: getNumberValue(parsed, 'awLogStaleThresholdMinutes'),
         };
     }
     catch (error) {
@@ -143,6 +145,8 @@ const parseProjectReadmeConfig = (readme) => {
             workflowBlockerResolvedWebhookUrl: getStringValue(parsed, 'workflowBlockerResolvedWebhookUrl'),
             preparationProcessCheckCommand: getStringValue(parsed, 'preparationProcessCheckCommand'),
             codexHomeCandidates: getStringArrayValue(parsed, 'codexHomeCandidates'),
+            awLogDirectoryPath: getStringValue(parsed, 'awLogDirectoryPath'),
+            awLogStaleThresholdMinutes: getNumberValue(parsed, 'awLogStaleThresholdMinutes'),
         };
     }
     catch {
@@ -196,6 +200,12 @@ const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
     codexHomeCandidates: readmeOverrides.codexHomeCandidates ??
         cliOverrides.codexHomeCandidates ??
         configFile.codexHomeCandidates,
+    awLogDirectoryPath: readmeOverrides.awLogDirectoryPath ??
+        cliOverrides.awLogDirectoryPath ??
+        configFile.awLogDirectoryPath,
+    awLogStaleThresholdMinutes: readmeOverrides.awLogStaleThresholdMinutes ??
+        cliOverrides.awLogStaleThresholdMinutes ??
+        configFile.awLogStaleThresholdMinutes,
 });
 exports.mergeConfigs = mergeConfigs;
 const isGraphqlProjectV2ReadmeResponse = (value) => {
@@ -398,6 +408,8 @@ exports.program
             awaitingWorkspaceStatus,
             allowIssueCacheMinutes,
             preparationProcessCheckCommand,
+            awLogDirectoryPath: config.awLogDirectoryPath,
+            awLogStaleThresholdMinutes: config.awLogStaleThresholdMinutes,
         });
     }
     const useCase = new StartPreparationUseCase_1.StartPreparationUseCase(projectRepository, issueRepository, claudeRepository, localCommandRunner);

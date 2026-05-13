@@ -214,6 +214,8 @@ ${JSON.stringify(e)}
                         awaitingWorkspaceStatus: input.startPreparation.awaitingWorkspaceStatus,
                         allowIssueCacheMinutes: input.allowIssueCacheMinutes,
                         preparationProcessCheckCommand: input.startPreparation.preparationProcessCheckCommand,
+                        awLogDirectoryPath: input.startPreparation.awLogDirectoryPath,
+                        awLogStaleThresholdMinutes: input.startPreparation.awLogStaleThresholdMinutes,
                     });
                 }
                 await this.startPreparationUseCase.run({

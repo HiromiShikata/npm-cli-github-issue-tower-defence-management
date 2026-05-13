@@ -12,6 +12,10 @@ export declare class RevertOrphanedPreparationUseCase {
         awaitingWorkspaceStatus: string;
         allowIssueCacheMinutes: number;
         preparationProcessCheckCommand: string;
+        awLogDirectoryPath?: string;
+        awLogStaleThresholdMinutes?: number;
     }) => Promise<void>;
+    private isOrphanedIssue;
+    private isAwLogStale;
 }
 //# sourceMappingURL=RevertOrphanedPreparationUseCase.d.ts.map

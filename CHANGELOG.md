@@ -1,3 +1,10 @@
+## [1.44.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.44.1...v1.44.2) (2026-05-13)
+
+
+### Bug Fixes
+
+* **core:** synthesise hour:168 100% entry when overage-status is rejected in OauthProxyClaudeRepository ([3396f91](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3396f91be11bdd296b9858b7e78b3eb67869c19f))
+
 # [1.44.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.43.2...v1.44.0) (2026-05-13)
 
 

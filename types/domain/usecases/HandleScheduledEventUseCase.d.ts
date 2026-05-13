@@ -74,6 +74,8 @@ export declare class HandleScheduledEventUseCase {
             allowedIssueAuthors?: string[] | null;
             preparationProcessCheckCommand?: string;
             codexHomeCandidates?: string[] | null;
+            awLogDirectoryPath?: string;
+            awLogStaleThresholdMinutes?: number;
         } | null;
         notifyFinishedPreparation?: {
             preparationStatus: string;

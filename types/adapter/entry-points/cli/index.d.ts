@@ -17,6 +17,8 @@ type ConfigFile = {
     projectName?: string;
     preparationProcessCheckCommand?: string;
     codexHomeCandidates?: string[];
+    awLogDirectoryPath?: string;
+    awLogStaleThresholdMinutes?: number;
 };
 export declare const loadConfigFile: (configFilePath: string) => ConfigFile;
 export declare const parseProjectReadmeConfig: (readme: string) => ConfigFile;

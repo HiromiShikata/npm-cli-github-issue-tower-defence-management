@@ -22,18 +22,50 @@ class RevertOrphanedPreparationUseCase {
                 return;
             }
             for (const issue of preparationIssues) {
-                const commandTemplate = params.preparationProcessCheckCommand.replace('{URL}', '$1');
-                const { exitCode } = await this.localCommandRunner.runCommand('sh', [
-                    '-c',
-                    commandTemplate,
-                    '--',
-                    issue.url,
-                ]);
-                if (exitCode !== 0) {
+                const isOrphaned = await this.isOrphanedIssue(issue, params);
+                if (isOrphaned) {
                     await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
                     await this.issueRepository.createComment(issue, `Orphaned preparation detected: no live worker process found for ${issue.url}. Status reverted to ${params.awaitingWorkspaceStatus}.`);
                 }
             }
+        };
+        this.isOrphanedIssue = async (issue, params) => {
+            const commandTemplate = params.preparationProcessCheckCommand.replace('{URL}', '$1');
+            const { exitCode } = await this.localCommandRunner.runCommand('sh', [
+                '-c',
+                commandTemplate,
+                '--',
+                issue.url,
+            ]);
+            if (exitCode !== 0)
+                return true;
+            const { awLogDirectoryPath, awLogStaleThresholdMinutes } = params;
+            if (!awLogDirectoryPath || !awLogStaleThresholdMinutes)
+                return false;
+            return this.isAwLogStale(issue, awLogDirectoryPath, awLogStaleThresholdMinutes);
+        };
+        this.isAwLogStale = async (issue, awLogDirectoryPath, awLogStaleThresholdMinutes) => {
+            const logPattern = `${issue.org}_${issue.repo}_${issue.number}_*`;
+            const { stdout: anyFilesOutput, exitCode: anyFilesExitCode } = await this.localCommandRunner.runCommand('sh', [
+                '-c',
+                'find "$1" -name "$2"',
+                '--',
+                awLogDirectoryPath,
+                logPattern,
+            ]);
+            if (anyFilesExitCode !== 0 || !anyFilesOutput.trim())
+                return false;
+            const { stdout: recentFilesOutput, exitCode: recentFilesExitCode } = await this.localCommandRunner.runCommand('sh', [
+                '-c',
+                'find "$1" -name "$2" -mmin -$3',
+                '--',
+                awLogDirectoryPath,
+                logPattern,
+                String(awLogStaleThresholdMinutes),
+            ]);
+            if (recentFilesExitCode !== 0)
+                return false;
+            return !recentFilesOutput.trim();
         };
     }
 }
