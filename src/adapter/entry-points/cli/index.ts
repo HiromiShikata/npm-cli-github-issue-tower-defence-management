@@ -662,7 +662,8 @@ program
       defaultLlmAgentName: config.defaultLlmAgentName ?? null,
       configFilePath: options.configFilePath,
       maximumPreparingIssuesCount,
-      utilizationPercentageThreshold,
+      utilizationPercentageThreshold:
+        config.utilizationPercentageThreshold ?? 90,
       allowedIssueAuthors,
       codexHomeCandidates,
     });

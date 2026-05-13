@@ -2,6 +2,8 @@ import { ClaudeRepository } from '../../domain/usecases/adapter-interfaces/Claud
 import { ClaudeWindowUsage } from '../../domain/entities/ClaudeWindowUsage';
 import { OauthProxyClaudeRepository } from './OauthProxyClaudeRepository';
 import { OauthAPIClaudeRepository } from './OauthAPIClaudeRepository';
+import * as os from 'os';
+import * as path from 'path';
 
 export class OauthAPIProxyClaudeRepository implements ClaudeRepository {
   constructor(
@@ -9,7 +11,9 @@ export class OauthAPIProxyClaudeRepository implements ClaudeRepository {
       ClaudeRepository,
       'getUsage'
     > = new OauthProxyClaudeRepository(),
-    private readonly apiRepository: ClaudeRepository = new OauthAPIClaudeRepository(),
+    private readonly apiRepository: ClaudeRepository = new OauthAPIClaudeRepository(
+      path.join(os.homedir(), '.claude'),
+    ),
   ) {}
 
   async getUsage(): Promise<ClaudeWindowUsage[]> {

@@ -41,6 +41,7 @@ exports.program = exports.fetchProjectReadme = exports.mergeConfigs = exports.pa
 const yaml_1 = __importDefault(require("yaml"));
 const commander_1 = require("commander");
 const fs = __importStar(require("fs"));
+const os = __importStar(require("os"));
 const HandleScheduledEventUseCaseHandler_1 = require("../handlers/HandleScheduledEventUseCaseHandler");
 const StartPreparationUseCase_1 = require("../../../domain/usecases/StartPreparationUseCase");
 const NotifyFinishedIssuePreparationUseCase_1 = require("../../../domain/usecases/NotifyFinishedIssuePreparationUseCase");
@@ -54,6 +55,7 @@ const LocalStorageCacheRepository_1 = require("../../repositories/LocalStorageCa
 const CheerioProjectRepository_1 = require("../../repositories/CheerioProjectRepository");
 const NodeLocalCommandRunner_1 = require("../../repositories/NodeLocalCommandRunner");
 const OauthAPIProxyClaudeRepository_1 = require("../../repositories/OauthAPIProxyClaudeRepository");
+const OauthAPIClaudeMultiCandidateRepository_1 = require("../../repositories/OauthAPIClaudeMultiCandidateRepository");
 const GitHubIssueCommentRepository_1 = require("../../repositories/GitHubIssueCommentRepository");
 const FetchWebhookRepository_1 = require("../../repositories/FetchWebhookRepository");
 const RevertOrphanedPreparationUseCase_1 = require("../../../domain/usecases/RevertOrphanedPreparationUseCase");
@@ -104,8 +106,7 @@ const loadConfigFile = (configFilePath) => {
             projectName: getStringValue(parsed, 'projectName'),
             preparationProcessCheckCommand: getStringValue(parsed, 'preparationProcessCheckCommand'),
             codexHomeCandidates: getStringArrayValue(parsed, 'codexHomeCandidates'),
-            awLogDirectoryPath: getStringValue(parsed, 'awLogDirectoryPath'),
-            awLogStaleThresholdMinutes: getNumberValue(parsed, 'awLogStaleThresholdMinutes'),
+            claudeConfigDirCandidates: getStringArrayValue(parsed, 'claudeConfigDirCandidates'),
         };
     }
     catch (error) {
@@ -145,8 +146,6 @@ const parseProjectReadmeConfig = (readme) => {
             workflowBlockerResolvedWebhookUrl: getStringValue(parsed, 'workflowBlockerResolvedWebhookUrl'),
             preparationProcessCheckCommand: getStringValue(parsed, 'preparationProcessCheckCommand'),
             codexHomeCandidates: getStringArrayValue(parsed, 'codexHomeCandidates'),
-            awLogDirectoryPath: getStringValue(parsed, 'awLogDirectoryPath'),
-            awLogStaleThresholdMinutes: getNumberValue(parsed, 'awLogStaleThresholdMinutes'),
         };
     }
     catch {
@@ -200,12 +199,8 @@ const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
     codexHomeCandidates: readmeOverrides.codexHomeCandidates ??
         cliOverrides.codexHomeCandidates ??
         configFile.codexHomeCandidates,
-    awLogDirectoryPath: readmeOverrides.awLogDirectoryPath ??
-        cliOverrides.awLogDirectoryPath ??
-        configFile.awLogDirectoryPath,
-    awLogStaleThresholdMinutes: readmeOverrides.awLogStaleThresholdMinutes ??
-        cliOverrides.awLogStaleThresholdMinutes ??
-        configFile.awLogStaleThresholdMinutes,
+    claudeConfigDirCandidates: cliOverrides.claudeConfigDirCandidates ??
+        configFile.claudeConfigDirCandidates,
 });
 exports.mergeConfigs = mergeConfigs;
 const isGraphqlProjectV2ReadmeResponse = (value) => {
@@ -397,7 +392,7 @@ exports.program
     const restIssueRepository = new RestIssueRepository_1.RestIssueRepository(...githubRepositoryParams);
     const graphqlProjectItemRepository = new GraphqlProjectItemRepository_1.GraphqlProjectItemRepository(...githubRepositoryParams);
     const issueRepository = new ApiV3CheerioRestIssueRepository_1.ApiV3CheerioRestIssueRepository(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, ...githubRepositoryParams);
-    const claudeRepository = new OauthAPIProxyClaudeRepository_1.OauthAPIProxyClaudeRepository();
+    const claudeRepository = new OauthAPIProxyClaudeRepository_1.OauthAPIProxyClaudeRepository(undefined, new OauthAPIClaudeMultiCandidateRepository_1.OauthAPIClaudeMultiCandidateRepository(config.claudeConfigDirCandidates ?? [], os.homedir()));
     const localCommandRunner = new NodeLocalCommandRunner_1.NodeLocalCommandRunner();
     const preparationProcessCheckCommand = config.preparationProcessCheckCommand;
     if (preparationProcessCheckCommand) {
@@ -408,8 +403,6 @@ exports.program
             awaitingWorkspaceStatus,
             allowIssueCacheMinutes,
             preparationProcessCheckCommand,
-            awLogDirectoryPath: config.awLogDirectoryPath,
-            awLogStaleThresholdMinutes: config.awLogStaleThresholdMinutes,
         });
     }
     const useCase = new StartPreparationUseCase_1.StartPreparationUseCase(projectRepository, issueRepository, claudeRepository, localCommandRunner);
