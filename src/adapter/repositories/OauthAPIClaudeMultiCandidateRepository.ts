@@ -22,7 +22,15 @@ export class OauthAPIClaudeMultiCandidateRepository implements ClaudeRepository 
 
   async isClaudeAvailable(threshold: number): Promise<boolean> {
     if (this.candidates.length === 0) {
-      const usages = await this.mainRepository.getUsage();
+      let usages: ClaudeWindowUsage[];
+      try {
+        usages = await this.mainRepository.getUsage();
+      } catch (error) {
+        if (error instanceof ClaudeConfigDirCandidateUnavailableError) {
+          return false;
+        }
+        throw error;
+      }
       return this.isNonWeeklyUnderThreshold(usages, threshold);
     }
 

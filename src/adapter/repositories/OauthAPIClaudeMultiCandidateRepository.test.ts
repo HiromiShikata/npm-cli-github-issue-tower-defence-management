@@ -71,6 +71,18 @@ describe('OauthAPIClaudeMultiCandidateRepository', () => {
 
         expect(result).toBe(true);
       });
+
+      it('should return false when main repo credentials are missing', async () => {
+        MockOauthAPIClaudeRepository.prototype.getUsage.mockRejectedValue(
+          new ClaudeConfigDirCandidateUnavailableError('credentials not found'),
+        );
+
+        const repo = new OauthAPIClaudeMultiCandidateRepository([], homeDir);
+        const result = await repo.isClaudeAvailable(threshold);
+
+        expect(result).toBe(false);
+        expect(mockCopyFileSync).not.toHaveBeenCalled();
+      });
     });
 
     describe('when candidates are configured', () => {

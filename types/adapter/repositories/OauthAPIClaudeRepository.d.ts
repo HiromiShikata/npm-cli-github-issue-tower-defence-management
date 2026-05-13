@@ -9,8 +9,6 @@ export declare class OauthAPIClaudeRepository implements ClaudeRepository {
     constructor(claudeConfigDir: string);
     private getAccessToken;
     getUsage(): Promise<ClaudeWindowUsage[]>;
-    private getUsageWithToken;
-    private isUsageUnderThreshold;
     isClaudeAvailable(threshold: number): Promise<boolean>;
 }
 //# sourceMappingURL=OauthAPIClaudeRepository.d.ts.map

@@ -179,3 +179,4 @@ reports
 *.rej
 *.diff
 tmp
+.cdp-tools

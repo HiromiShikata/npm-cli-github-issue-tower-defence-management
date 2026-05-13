@@ -47,7 +47,16 @@ class OauthAPIClaudeMultiCandidateRepository {
     }
     async isClaudeAvailable(threshold) {
         if (this.candidates.length === 0) {
-            const usages = await this.mainRepository.getUsage();
+            let usages;
+            try {
+                usages = await this.mainRepository.getUsage();
+            }
+            catch (error) {
+                if (error instanceof OauthAPIClaudeRepository_1.ClaudeConfigDirCandidateUnavailableError) {
+                    return false;
+                }
+                throw error;
+            }
             return this.isNonWeeklyUnderThreshold(usages, threshold);
         }
         for (const candidate of this.candidates) {
