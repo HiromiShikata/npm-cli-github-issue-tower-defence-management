@@ -86,7 +86,7 @@ describe('NodeLocalCommandRunner', () => {
       await runner.runCommand('echo', ['hello'], { MY_VAR: 'my_value' });
 
       expect(mockExecFileAsync).toHaveBeenCalledWith('echo', ['hello'], {
-        env: expect.objectContaining({ MY_VAR: 'my_value' }),
+        env: { ...process.env, MY_VAR: 'my_value' },
       });
     });
 

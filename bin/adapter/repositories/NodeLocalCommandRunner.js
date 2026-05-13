@@ -8,7 +8,9 @@ class NodeLocalCommandRunner {
     async runCommand(program, args, env) {
         try {
             const { stdout, stderr } = env
-                ? await execFileAsync(program, args, { env: { ...process.env, ...env } })
+                ? await execFileAsync(program, args, {
+                    env: { ...process.env, ...env },
+                })
                 : await execFileAsync(program, args);
             return {
                 stdout,
