@@ -20,7 +20,9 @@ jest.mock('../../repositories/LocalStorageCacheRepository', () => ({
   LocalStorageCacheRepository: jest.fn().mockImplementation(() => ({})),
 }));
 jest.mock('../../repositories/GraphqlProjectRepository', () => ({
-  GraphqlProjectRepository: jest.fn().mockImplementation(() => ({})),
+  GraphqlProjectRepository: jest.fn().mockImplementation(() => ({
+    findProjectIdByUrl: jest.fn().mockResolvedValue('PVT_kwHOtest456'),
+  })),
 }));
 jest.mock('../../repositories/CheerioProjectRepository', () => ({
   CheerioProjectRepository: jest.fn().mockImplementation(() => ({})),
@@ -103,6 +105,10 @@ describe('CLI', () => {
     }
     if (fs.existsSync(tmpDir)) {
       fs.rmdirSync(tmpDir);
+    }
+    const cacheDir = path.join(process.cwd(), 'tmp/cache');
+    if (fs.existsSync(cacheDir)) {
+      fs.rmSync(cacheDir, { recursive: true, force: true });
     }
   });
 
@@ -1062,6 +1068,52 @@ codexHomeCandidates:
           codexHomeCandidates: ['.codex-readme1', '.codex-readme2'],
         }),
       );
+    });
+
+    it('should write runtimeConfig-{projectId}.json atomically after useCase run', async () => {
+      const configWithNumericValues = {
+        ...defaultConfig,
+        maximumPreparingIssuesCount: 10,
+        utilizationPercentageThreshold: 97,
+        allowIssueCacheMinutes: 5,
+        thresholdForAutoReject: 30,
+      };
+      writeConfig(configWithNumericValues);
+
+      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
+      MockedStartPreparationUseCase.mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'startDaemon',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      const cacheDir = path.join(process.cwd(), 'tmp/cache/test-project');
+      const runtimeConfigPath = path.join(
+        cacheDir,
+        'runtimeConfig-PVT_kwHOtest456.json',
+      );
+      expect(fs.existsSync(runtimeConfigPath)).toBe(true);
+      const written: unknown = JSON.parse(
+        fs.readFileSync(runtimeConfigPath, 'utf-8'),
+      );
+      expect(written).toMatchObject({
+        maximumPreparingIssuesCount: 10,
+        utilizationPercentageThreshold: 97,
+        allowIssueCacheMinutes: 5,
+        thresholdForAutoReject: 30,
+      });
     });
   });
 

@@ -16,7 +16,7 @@ jest.mock('../../repositories/LocalStorageCacheRepository');
 jest.mock('../../repositories/BaseGitHubRepository');
 
 const mockRun = jest.fn().mockResolvedValue({
-  project: {},
+  project: { id: 'PVT_kwHOtest123' },
   issues: [],
   cacheUsed: false,
   targetDateTimes: [],
@@ -241,5 +241,93 @@ describe('HandleScheduledEventUseCaseHandler', () => {
         undefined,
       );
     }
+  });
+
+  it('should write runtimeConfig-{projectId}.json atomically after successful run', async () => {
+    const configWithPreparation = {
+      ...validConfig,
+      allowIssueCacheMinutes: 5,
+      startPreparation: {
+        awaitingWorkspaceStatus: 'Awaiting',
+        preparationStatus: 'Preparing',
+        defaultAgentName: 'agent1',
+        configFilePath: './config.yml',
+        maximumPreparingIssuesCount: 10,
+        utilizationPercentageThreshold: 97,
+      },
+      notifyFinishedPreparation: {
+        preparationStatus: 'Preparing',
+        awaitingWorkspaceStatus: 'Awaiting',
+        awaitingQualityCheckStatus: 'Awaiting QC',
+        thresholdForAutoReject: 30,
+        workflowBlockerResolvedWebhookUrl: null,
+      },
+    };
+    jest
+      .mocked(fs.readFileSync)
+      .mockReturnValue(YAML.stringify(configWithPreparation));
+
+    const handler = new HandleScheduledEventUseCaseHandler();
+    await handler.handle('config.yml', false);
+
+    const expectedCachePath = `./tmp/cache/${validConfig.projectName}`;
+    const expectedFinalPath = `${expectedCachePath}/runtimeConfig-PVT_kwHOtest123.json`;
+    const expectedTmpPath = `${expectedFinalPath}.tmp`;
+
+    expect(jest.mocked(fs.mkdirSync)).toHaveBeenCalledWith(expectedCachePath, {
+      recursive: true,
+    });
+    expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+      expectedTmpPath,
+      expect.stringContaining('"maximumPreparingIssuesCount":10'),
+    );
+    expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+      expectedTmpPath,
+      expect.stringContaining('"utilizationPercentageThreshold":97'),
+    );
+    expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+      expectedTmpPath,
+      expect.stringContaining('"allowIssueCacheMinutes":5'),
+    );
+    expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+      expectedTmpPath,
+      expect.stringContaining('"thresholdForAutoReject":30'),
+    );
+    expect(jest.mocked(fs.renameSync)).toHaveBeenCalledWith(
+      expectedTmpPath,
+      expectedFinalPath,
+    );
+  });
+
+  it('should write runtimeConfig with numeric defaults when optional fields are absent', async () => {
+    const handler = new HandleScheduledEventUseCaseHandler();
+    await handler.handle('config.yml', false);
+
+    const expectedCachePath = `./tmp/cache/${validConfig.projectName}`;
+    const expectedTmpPath = `${expectedCachePath}/runtimeConfig-PVT_kwHOtest123.json.tmp`;
+
+    expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+      expectedTmpPath,
+      expect.stringContaining('"utilizationPercentageThreshold":90'),
+    );
+    expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+      expectedTmpPath,
+      expect.stringContaining('"thresholdForAutoReject":3'),
+    );
+    expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+      expectedTmpPath,
+      expect.stringContaining('"maximumPreparingIssuesCount":null'),
+    );
+  });
+
+  it('should not write runtimeConfig when run returns null', async () => {
+    mockRun.mockResolvedValueOnce(null);
+    jest.mocked(fs.readFileSync).mockReturnValue(YAML.stringify(validConfig));
+
+    const handler = new HandleScheduledEventUseCaseHandler();
+    await handler.handle('config.yml', false);
+
+    expect(jest.mocked(fs.writeFileSync)).not.toHaveBeenCalled();
+    expect(jest.mocked(fs.renameSync)).not.toHaveBeenCalled();
   });
 });
