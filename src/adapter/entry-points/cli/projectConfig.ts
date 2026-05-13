@@ -102,7 +102,10 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
       ),
       codexHomeCandidates: getStringArrayValue(parsed, 'codexHomeCandidates'),
       awLogDirectoryPath: getStringValue(parsed, 'awLogDirectoryPath'),
-      awLogStaleThresholdMinutes: getNumberValue(parsed, 'awLogStaleThresholdMinutes'),
+      awLogStaleThresholdMinutes: getNumberValue(
+        parsed,
+        'awLogStaleThresholdMinutes',
+      ),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -162,13 +165,17 @@ export const parseProjectReadmeConfig = (readme: string): ConfigFile => {
         'preparationProcessCheckCommand',
       ),
       codexHomeCandidates: getStringArrayValue(parsed, 'codexHomeCandidates'),
+      awLogDirectoryPath: getStringValue(parsed, 'awLogDirectoryPath'),
+      awLogStaleThresholdMinutes: getNumberValue(
+        parsed,
+        'awLogStaleThresholdMinutes',
+      ),
     };
   } catch {
     console.warn('Failed to parse YAML from project README config section');
     return {};
   }
 };
-
 
 export const mergeConfigs = (
   configFile: ConfigFile,
