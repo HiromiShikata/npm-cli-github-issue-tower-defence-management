@@ -1,3 +1,11 @@
+## [1.44.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.44.4...v1.44.5) (2026-05-14)
+
+
+### Bug Fixes
+
+* **core:** propagate allowIssueCacheMinutes through getStoryObjectMap in StartPreparationUseCase ([93a6b57](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/93a6b57fa4fc4cb9ea0e25d6a1aec9f804034d67)), closes [#518](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/518)
+* **test:** add allowIssueCacheMinutes to startDaemon CLI test assertions ([3fc7df1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3fc7df1fb14d8b8ec4652810257a554f49ea50fb))
+
 ## [1.44.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.44.3...v1.44.4) (2026-05-13)
 
 
