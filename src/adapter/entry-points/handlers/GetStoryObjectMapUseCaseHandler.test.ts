@@ -11,7 +11,6 @@ jest.mock('../../repositories/issue/GraphqlProjectItemRepository');
 jest.mock('../../repositories/issue/ApiV3CheerioRestIssueRepository');
 jest.mock('../../repositories/LocalStorageCacheRepository');
 jest.mock('../../repositories/BaseGitHubRepository');
-jest.mock('../../repositories/CheerioProjectRepository');
 
 const mockRun = jest.fn().mockResolvedValue({
   project: {},
@@ -28,14 +27,12 @@ jest.mock('../../../domain/usecases/GetStoryObjectMapUseCase', () => ({
 
 import { GetStoryObjectMapUseCaseHandler } from './GetStoryObjectMapUseCaseHandler';
 import { GraphqlProjectRepository } from '../../repositories/GraphqlProjectRepository';
-import { CheerioProjectRepository } from '../../repositories/CheerioProjectRepository';
 import { ApiV3IssueRepository } from '../../repositories/issue/ApiV3IssueRepository';
 import { RestIssueRepository } from '../../repositories/issue/RestIssueRepository';
 import { GraphqlProjectItemRepository } from '../../repositories/issue/GraphqlProjectItemRepository';
 import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3CheerioRestIssueRepository';
 
 const MockedGraphqlProjectRepository = jest.mocked(GraphqlProjectRepository);
-const MockedCheerioProjectRepository = jest.mocked(CheerioProjectRepository);
 const MockedApiV3IssueRepository = jest.mocked(ApiV3IssueRepository);
 const MockedRestIssueRepository = jest.mocked(RestIssueRepository);
 const MockedGraphqlProjectItemRepository = jest.mocked(
@@ -122,7 +119,6 @@ describe('GetStoryObjectMapUseCaseHandler', () => {
 
     for (const MockedClass of [
       MockedGraphqlProjectRepository,
-      MockedCheerioProjectRepository,
       MockedApiV3IssueRepository,
       MockedRestIssueRepository,
       MockedGraphqlProjectItemRepository,
@@ -159,7 +155,6 @@ describe('GetStoryObjectMapUseCaseHandler', () => {
 
     for (const MockedClass of [
       MockedGraphqlProjectRepository,
-      MockedCheerioProjectRepository,
       MockedApiV3IssueRepository,
       MockedRestIssueRepository,
       MockedGraphqlProjectItemRepository,

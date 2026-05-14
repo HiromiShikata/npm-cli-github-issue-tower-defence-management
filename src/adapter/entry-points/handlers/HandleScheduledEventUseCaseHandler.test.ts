@@ -8,7 +8,6 @@ jest.mock('../../repositories/SystemDateRepository');
 jest.mock('../../repositories/LocalStorageRepository');
 jest.mock('../../repositories/GoogleSpreadsheetRepository');
 jest.mock('../../repositories/GraphqlProjectRepository');
-jest.mock('../../repositories/CheerioProjectRepository');
 jest.mock('../../repositories/issue/ApiV3IssueRepository');
 jest.mock('../../repositories/issue/RestIssueRepository');
 jest.mock('../../repositories/issue/GraphqlProjectItemRepository');
@@ -118,14 +117,12 @@ jest.mock('../../repositories/FetchWebhookRepository', () => ({
 
 import { HandleScheduledEventUseCaseHandler } from './HandleScheduledEventUseCaseHandler';
 import { GraphqlProjectRepository } from '../../repositories/GraphqlProjectRepository';
-import { CheerioProjectRepository } from '../../repositories/CheerioProjectRepository';
 import { ApiV3IssueRepository } from '../../repositories/issue/ApiV3IssueRepository';
 import { RestIssueRepository } from '../../repositories/issue/RestIssueRepository';
 import { GraphqlProjectItemRepository } from '../../repositories/issue/GraphqlProjectItemRepository';
 import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3CheerioRestIssueRepository';
 
 const MockedGraphqlProjectRepository = jest.mocked(GraphqlProjectRepository);
-const MockedCheerioProjectRepository = jest.mocked(CheerioProjectRepository);
 const MockedApiV3IssueRepository = jest.mocked(ApiV3IssueRepository);
 const MockedRestIssueRepository = jest.mocked(RestIssueRepository);
 const MockedGraphqlProjectItemRepository = jest.mocked(
@@ -211,7 +208,6 @@ describe('HandleScheduledEventUseCaseHandler', () => {
 
     for (const MockedClass of [
       MockedGraphqlProjectRepository,
-      MockedCheerioProjectRepository,
       MockedApiV3IssueRepository,
       MockedRestIssueRepository,
       MockedGraphqlProjectItemRepository,
@@ -248,7 +244,6 @@ describe('HandleScheduledEventUseCaseHandler', () => {
 
     for (const MockedClass of [
       MockedGraphqlProjectRepository,
-      MockedCheerioProjectRepository,
       MockedApiV3IssueRepository,
       MockedRestIssueRepository,
       MockedGraphqlProjectItemRepository,

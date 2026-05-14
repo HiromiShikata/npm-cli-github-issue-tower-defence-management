@@ -29,7 +29,6 @@ import { ConvertCheckboxToIssueInStoryIssueUseCase } from '../../../domain/useca
 import { ChangeStatusByStoryColorUseCase } from '../../../domain/usecases/ChangeStatusByStoryColorUseCase';
 import { SetNoStoryIssueToStoryUseCase } from '../../../domain/usecases/SetNoStoryIssueToStoryUseCase';
 import { CreateNewStoryByLabelUseCase } from '../../../domain/usecases/CreateNewStoryByLabelUseCase';
-import { CheerioProjectRepository } from '../../repositories/CheerioProjectRepository';
 import { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
 import { AssignNoAssigneeIssueToManagerUseCase } from '../../../domain/usecases/AssignNoAssigneeIssueToManagerUseCase';
 import { UpdateIssueStatusByLabelUseCase } from '../../../domain/usecases/UpdateIssueStatusByLabelUseCase';
@@ -177,7 +176,6 @@ export class HandleScheduledEventUseCaseHandler {
     ];
     const projectRepository: ProjectRepository = {
       ...new GraphqlProjectRepository(...githubRepositoryParams),
-      ...new CheerioProjectRepository(...githubRepositoryParams),
       prepareStatus: async (
         _name: string,
         project: Project,

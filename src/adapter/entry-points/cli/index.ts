@@ -25,7 +25,6 @@ import { RestIssueRepository } from '../../repositories/issue/RestIssueRepositor
 import { GraphqlProjectItemRepository } from '../../repositories/issue/GraphqlProjectItemRepository';
 import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3CheerioRestIssueRepository';
 import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
-import { CheerioProjectRepository } from '../../repositories/CheerioProjectRepository';
 import { BaseGitHubRepository } from '../../repositories/BaseGitHubRepository';
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
 import { OauthAPIProxyClaudeRepository } from '../../repositories/OauthAPIProxyClaudeRepository';
@@ -257,7 +256,7 @@ program
     );
     const projectRepository = {
       ...new GraphqlProjectRepository(...githubRepositoryParams),
-      ...new CheerioProjectRepository(...githubRepositoryParams),
+
       prepareStatus: async (
         _name: string,
         project: Project,
@@ -490,7 +489,7 @@ program
     );
     const projectRepository = {
       ...new GraphqlProjectRepository(...githubRepositoryParams),
-      ...new CheerioProjectRepository(...githubRepositoryParams),
+
       prepareStatus: async (
         _name: string,
         project: Project,

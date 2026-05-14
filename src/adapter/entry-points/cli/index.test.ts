@@ -24,9 +24,6 @@ jest.mock('../../repositories/GraphqlProjectRepository', () => ({
     findProjectIdByUrl: jest.fn().mockResolvedValue('PVT_kwHOtest456'),
   })),
 }));
-jest.mock('../../repositories/CheerioProjectRepository', () => ({
-  CheerioProjectRepository: jest.fn().mockImplementation(() => ({})),
-}));
 jest.mock('../../repositories/issue/ApiV3IssueRepository', () => ({
   ApiV3IssueRepository: jest.fn().mockImplementation(() => ({})),
 }));
