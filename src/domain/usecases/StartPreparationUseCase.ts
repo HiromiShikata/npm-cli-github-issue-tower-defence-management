@@ -11,7 +11,6 @@ export class StartPreparationUseCase {
     >,
     private readonly issueRepository: Pick<
       IssueRepository,
-      | 'getAllOpened'
       | 'getStoryObjectMap'
       | 'updateStatus'
       | 'findRelatedOpenPRs'
@@ -33,6 +32,7 @@ export class StartPreparationUseCase {
     utilizationPercentageThreshold: number;
     allowedIssueAuthors: string[] | null;
     codexHomeCandidates: string[] | null;
+    allowIssueCacheMinutes: number;
   }): Promise<void> => {
     const claudeUsages = await this.claudeRepository.getUsage();
     const weeklyWindowHours = 168;
@@ -91,10 +91,14 @@ export class StartPreparationUseCase {
       params.preparationStatus,
       project,
     );
-    const storyObjectMap =
-      await this.issueRepository.getStoryObjectMap(project);
-    const allIssues = await this.issueRepository.getAllOpened(project);
+    const storyObjectMap = await this.issueRepository.getStoryObjectMap(
+      project,
+      params.allowIssueCacheMinutes,
+    );
 
+    const allOpenedIssues = Array.from(storyObjectMap.values()).flatMap(
+      (storyObject) => storyObject.issues,
+    );
     const preparationStatusOption = project.status.statuses.find(
       (s) => s.name === params.preparationStatus,
     );
@@ -105,12 +109,10 @@ export class StartPreparationUseCase {
       return;
     }
 
-    const awaitingWorkspaceIssues = Array.from(storyObjectMap.values())
-      .map((storyObject) => storyObject.issues)
-      .flat()
+    const awaitingWorkspaceIssues = allOpenedIssues
       .filter((issue) => issue.status === params.awaitingWorkspaceStatus)
       .map((issue) => ({ ...issue }));
-    const currentPreparationIssueCount = allIssues.filter(
+    const currentPreparationIssueCount = allOpenedIssues.filter(
       (issue) => issue.status === params.preparationStatus,
     ).length;
     let updatedCurrentPreparationIssueCount = currentPreparationIssueCount;

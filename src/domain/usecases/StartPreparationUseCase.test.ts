@@ -83,7 +83,6 @@ describe('StartPreparationUseCase', () => {
   let mockIssueRepository: Mocked<
     Pick<
       IssueRepository,
-      | 'getAllOpened'
       | 'getStoryObjectMap'
       | 'updateStatus'
       | 'findRelatedOpenPRs'
@@ -105,7 +104,6 @@ describe('StartPreparationUseCase', () => {
         ),
     };
     mockIssueRepository = {
-      getAllOpened: jest.fn(),
       getStoryObjectMap: jest.fn().mockResolvedValue(new Map()),
       updateStatus: jest.fn(),
       findRelatedOpenPRs: jest.fn().mockResolvedValue([]),
@@ -134,7 +132,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap([]),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce([]);
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
@@ -148,6 +145,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
 
     expect(mockProjectRepository.prepareStatus).toHaveBeenCalledTimes(2);
@@ -175,7 +173,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -193,6 +190,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
     expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(mockProject);
@@ -238,7 +236,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([existingPR]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
@@ -257,6 +254,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -285,7 +283,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockIssueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/user/repo/pull/354',
       branchName: 'dependabot/npm_and_yarn/multi-cc382f683c',
@@ -313,6 +310,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -345,7 +343,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockIssueRepository.getOpenPullRequest.mockResolvedValue(null);
     const consoleWarnSpy = jest
       .spyOn(console, 'warn')
@@ -362,6 +359,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -384,7 +382,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockIssueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/user/repo/pull/999',
       branchName: null,
@@ -410,6 +407,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -431,7 +429,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockIssueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/user/repo/pull/999',
       branchName: 'evil$(rm -rf /)',
@@ -457,6 +454,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -498,7 +496,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([pr1, pr2]);
     const consoleWarnSpy = jest
       .spyOn(console, 'warn')
@@ -515,6 +512,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -546,7 +544,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
       prWithNullBranch,
     ]);
@@ -565,6 +562,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -592,7 +590,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -610,6 +607,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
     // Both awaiting issues should be updated (forward iteration: url1 first, then url2)
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
@@ -650,10 +648,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap([...preparationIssues, ...awaitingIssues]),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce([
-      ...preparationIssues,
-      ...awaitingIssues,
-    ]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -671,6 +665,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
     // Loop doesn't run because we're already at max (6 >= 6)
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -689,7 +684,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -707,6 +701,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -735,7 +730,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -753,6 +747,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -781,7 +776,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -799,6 +793,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -827,7 +822,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -845,6 +839,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -873,7 +868,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -891,6 +885,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -919,7 +914,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -937,6 +931,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -965,7 +960,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -986,6 +980,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       'No LLM model configured for issue url1. Provide --defaultLlmModelName or add an llm-model: label.',
@@ -1014,7 +1009,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1035,6 +1029,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       'No LLM model configured for issue url1. Provide --defaultLlmModelName or add an llm-model: label.',
@@ -1068,7 +1063,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(preparationIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(preparationIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1086,6 +1080,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
     // No issues are in 'Awaiting Workspace' status, so no updates should happen
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -1104,7 +1099,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1122,6 +1116,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(3);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
@@ -1139,7 +1134,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1157,6 +1151,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(6);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(6);
@@ -1203,10 +1198,6 @@ describe('StartPreparationUseCase', () => {
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(workflowBlockerMap);
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce([
-      blockerIssue,
-      issueInBlockedRepo,
-    ]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1225,6 +1216,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
@@ -1252,7 +1244,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
@@ -1266,6 +1257,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -1291,7 +1283,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1310,6 +1301,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -1334,7 +1326,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1353,6 +1344,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
 
     const weeklyUtilization = 91;
@@ -1388,7 +1380,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
@@ -1402,6 +1393,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -1425,7 +1417,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1444,6 +1435,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 100,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(6);
@@ -1467,7 +1459,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
@@ -1481,6 +1472,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
 
     expect(mockProjectRepository.getByUrl).not.toHaveBeenCalled();
@@ -1506,7 +1498,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1525,6 +1516,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
 
     const normalizedUtilizationBeyondThreshold = (95 - 90) / (100 - 90);
@@ -1557,6 +1549,7 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
         codexHomeCandidates: null,
+        allowIssueCacheMinutes: 0,
       }),
     ).rejects.toThrow('Claude credentials file not found');
 
@@ -1581,7 +1574,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
@@ -1595,6 +1587,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 70,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -1619,7 +1612,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1638,6 +1630,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 80,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -1664,10 +1657,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap([issueWithDependency, issueWithoutDependency]),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce([
-      issueWithDependency,
-      issueWithoutDependency,
-    ]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1686,6 +1675,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -1723,10 +1713,6 @@ describe('StartPreparationUseCase', () => {
           issueWithoutNextActionHour,
         ]),
       );
-      mockIssueRepository.getAllOpened.mockResolvedValueOnce([
-        issueWithFutureNextActionHour,
-        issueWithoutNextActionHour,
-      ]);
       mockLocalCommandRunner.runCommand.mockResolvedValue({
         stdout: '',
         stderr: '',
@@ -1745,6 +1731,7 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
         codexHomeCandidates: null,
+        allowIssueCacheMinutes: 0,
       });
 
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -1785,10 +1772,6 @@ describe('StartPreparationUseCase', () => {
           issueWithoutNextActionDate,
         ]),
       );
-      mockIssueRepository.getAllOpened.mockResolvedValueOnce([
-        issueWithFutureNextActionDate,
-        issueWithoutNextActionDate,
-      ]);
       mockLocalCommandRunner.runCommand.mockResolvedValue({
         stdout: '',
         stderr: '',
@@ -1807,6 +1790,7 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
         codexHomeCandidates: null,
+        allowIssueCacheMinutes: 0,
       });
 
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -1837,9 +1821,6 @@ describe('StartPreparationUseCase', () => {
       mockIssueRepository.getStoryObjectMap.mockResolvedValue(
         createMockStoryObjectMap([issueWithTodayNextActionDate]),
       );
-      mockIssueRepository.getAllOpened.mockResolvedValueOnce([
-        issueWithTodayNextActionDate,
-      ]);
       mockLocalCommandRunner.runCommand.mockResolvedValue({
         stdout: '',
         stderr: '',
@@ -1858,6 +1839,7 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
         codexHomeCandidates: null,
+        allowIssueCacheMinutes: 0,
       });
 
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -1888,9 +1870,6 @@ describe('StartPreparationUseCase', () => {
       mockIssueRepository.getStoryObjectMap.mockResolvedValue(
         createMockStoryObjectMap([issueWithPastNextActionDate]),
       );
-      mockIssueRepository.getAllOpened.mockResolvedValueOnce([
-        issueWithPastNextActionDate,
-      ]);
       mockLocalCommandRunner.runCommand.mockResolvedValue({
         stdout: '',
         stderr: '',
@@ -1909,6 +1888,7 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
         codexHomeCandidates: null,
+        allowIssueCacheMinutes: 0,
       });
 
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -1939,9 +1919,6 @@ describe('StartPreparationUseCase', () => {
       mockIssueRepository.getStoryObjectMap.mockResolvedValue(
         createMockStoryObjectMap([issueWithPastNextActionHour]),
       );
-      mockIssueRepository.getAllOpened.mockResolvedValueOnce([
-        issueWithPastNextActionHour,
-      ]);
       mockLocalCommandRunner.runCommand.mockResolvedValue({
         stdout: '',
         stderr: '',
@@ -1960,6 +1937,7 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
         codexHomeCandidates: null,
+        allowIssueCacheMinutes: 0,
       });
 
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -1996,10 +1974,6 @@ describe('StartPreparationUseCase', () => {
         issueFromNonAllowedAuthor,
       ]),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce([
-      issueFromAllowedAuthor,
-      issueFromNonAllowedAuthor,
-    ]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -2018,6 +1992,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['user1', 'user2'],
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -2048,7 +2023,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap([issue1, issue2]),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce([issue1, issue2]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -2067,6 +2041,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
@@ -2093,10 +2068,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap([towerDefenceIssue, normalIssue]),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce([
-      towerDefenceIssue,
-      normalIssue,
-    ]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -2115,6 +2086,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['user1', 'user2'],
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
@@ -2144,9 +2116,6 @@ describe('StartPreparationUseCase', () => {
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce([
-      issueWithoutAuthor,
-    ]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -2165,6 +2134,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['user1'],
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -2184,7 +2154,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -2203,6 +2172,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -2233,7 +2203,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -2252,6 +2221,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: [],
+      allowIssueCacheMinutes: 0,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -2282,7 +2252,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -2301,6 +2270,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: ['.codex-dev1'],
+      allowIssueCacheMinutes: 0,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -2351,7 +2321,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -2370,6 +2339,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: ['.codex-dev1', '.codex-dev2'],
+      allowIssueCacheMinutes: 0,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
@@ -2417,7 +2387,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap([awaitingIssue]),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce([awaitingIssue]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -2436,6 +2405,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -2482,7 +2452,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap([awaitingIssue]),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce([awaitingIssue]);
     const consoleErrorSpy = jest
       .spyOn(console, 'error')
       .mockImplementation(() => {});
@@ -2499,6 +2468,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -2507,5 +2477,32 @@ describe('StartPreparationUseCase', () => {
       "Preparation status option 'Preparation' not found in project.",
     );
     consoleErrorSpy.mockRestore();
+  });
+
+  it('should pass allowIssueCacheMinutes to getStoryObjectMap', async () => {
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([]),
+    );
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      preparationStatus: 'Preparation',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: null,
+      codexHomeCandidates: null,
+      allowIssueCacheMinutes: 5,
+    });
+
+    expect(mockIssueRepository.getStoryObjectMap).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'project-1' }),
+      5,
+    );
   });
 });

@@ -519,6 +519,7 @@ codexHomeCandidates:
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
         codexHomeCandidates: null,
+        allowIssueCacheMinutes: 0,
       });
     });
 
@@ -560,6 +561,7 @@ codexHomeCandidates:
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
         codexHomeCandidates: null,
+        allowIssueCacheMinutes: 0,
       });
     });
 

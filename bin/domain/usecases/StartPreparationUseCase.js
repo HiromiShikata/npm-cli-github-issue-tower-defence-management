@@ -35,19 +35,17 @@ class StartPreparationUseCase {
             let project = await this.projectRepository.getByUrl(params.projectUrl);
             project = await this.projectRepository.prepareStatus(params.awaitingWorkspaceStatus, project);
             project = await this.projectRepository.prepareStatus(params.preparationStatus, project);
-            const storyObjectMap = await this.issueRepository.getStoryObjectMap(project);
-            const allIssues = await this.issueRepository.getAllOpened(project);
+            const storyObjectMap = await this.issueRepository.getStoryObjectMap(project, params.allowIssueCacheMinutes);
+            const allOpenedIssues = Array.from(storyObjectMap.values()).flatMap((storyObject) => storyObject.issues);
             const preparationStatusOption = project.status.statuses.find((s) => s.name === params.preparationStatus);
             if (!preparationStatusOption) {
                 console.error(`Preparation status option '${params.preparationStatus}' not found in project.`);
                 return;
             }
-            const awaitingWorkspaceIssues = Array.from(storyObjectMap.values())
-                .map((storyObject) => storyObject.issues)
-                .flat()
+            const awaitingWorkspaceIssues = allOpenedIssues
                 .filter((issue) => issue.status === params.awaitingWorkspaceStatus)
                 .map((issue) => ({ ...issue }));
-            const currentPreparationIssueCount = allIssues.filter((issue) => issue.status === params.preparationStatus).length;
+            const currentPreparationIssueCount = allOpenedIssues.filter((issue) => issue.status === params.preparationStatus).length;
             let updatedCurrentPreparationIssueCount = currentPreparationIssueCount;
             let startedInThisRunCount = 0;
             const now = new Date();

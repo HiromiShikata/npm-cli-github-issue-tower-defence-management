@@ -7,7 +7,7 @@ export declare class StartPreparationUseCase {
     private readonly issueRepository;
     private readonly claudeRepository;
     private readonly localCommandRunner;
-    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl' | 'prepareStatus'>, issueRepository: Pick<IssueRepository, 'getAllOpened' | 'getStoryObjectMap' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest'>, claudeRepository: Pick<ClaudeRepository, 'getUsage'>, localCommandRunner: LocalCommandRunner);
+    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl' | 'prepareStatus'>, issueRepository: Pick<IssueRepository, 'getStoryObjectMap' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest'>, claudeRepository: Pick<ClaudeRepository, 'getUsage'>, localCommandRunner: LocalCommandRunner);
     run: (params: {
         projectUrl: string;
         awaitingWorkspaceStatus: string;
@@ -20,6 +20,7 @@ export declare class StartPreparationUseCase {
         utilizationPercentageThreshold: number;
         allowedIssueAuthors: string[] | null;
         codexHomeCandidates: string[] | null;
+        allowIssueCacheMinutes: number;
     }) => Promise<void>;
 }
 //# sourceMappingURL=StartPreparationUseCase.d.ts.map

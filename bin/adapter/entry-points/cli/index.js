@@ -226,6 +226,7 @@ exports.program
         utilizationPercentageThreshold: config.utilizationPercentageThreshold ?? 90,
         allowedIssueAuthors,
         codexHomeCandidates,
+        allowIssueCacheMinutes,
     });
     const projectId = await projectRepository.findProjectIdByUrl(projectUrl);
     if (projectId) {
