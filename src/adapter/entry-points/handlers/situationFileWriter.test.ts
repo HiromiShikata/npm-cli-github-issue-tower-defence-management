@@ -114,7 +114,9 @@ describe('writeSituationFile', () => {
 
       expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
         expect.any(String),
-        expect.stringContaining('"awaitingQualityCheckImmediatelyActionable":1'),
+        expect.stringContaining(
+          '"awaitingQualityCheckImmediatelyActionable":1',
+        ),
       );
     });
 
@@ -189,7 +191,9 @@ describe('writeSituationFile', () => {
 
       expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
         expect.any(String),
-        expect.stringContaining('"awaitingQualityCheckImmediatelyActionable":0'),
+        expect.stringContaining(
+          '"awaitingQualityCheckImmediatelyActionable":0',
+        ),
       );
       expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
         expect.any(String),
@@ -253,7 +257,9 @@ describe('writeSituationFile', () => {
 
       expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
         expect.any(String),
-        expect.stringContaining('"swap":{"usedPercent":0,"usedGib":0,"totalGib":0}'),
+        expect.stringContaining(
+          '"swap":{"usedPercent":0,"usedGib":0,"totalGib":0}',
+        ),
       );
     });
   });
@@ -325,15 +331,16 @@ describe('writeSituationFile', () => {
 
   describe('running preparation processes', () => {
     it('counts running processes via preparationProcessCheckCommand', async () => {
-      const mockRunCommand = jest.fn().mockImplementation(
-        async (_program: string, args: string[]) =>
+      const mockRunCommand = jest
+        .fn()
+        .mockImplementation(async (_program: string, args: string[]) =>
           Promise.resolve({
             stdout: '',
             stderr: '',
             exitCode:
               args[3] === 'https://github.com/owner/repo/issues/1' ? 0 : 1,
           }),
-      );
+        );
       const mockRunner: LocalCommandRunner = {
         runCommand: mockRunCommand,
       };
