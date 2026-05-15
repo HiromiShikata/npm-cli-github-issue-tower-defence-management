@@ -20,7 +20,6 @@ const GraphqlProjectItemRepository_1 = require("../../repositories/issue/Graphql
 const ApiV3CheerioRestIssueRepository_1 = require("../../repositories/issue/ApiV3CheerioRestIssueRepository");
 const LocalStorageCacheRepository_1 = require("../../repositories/LocalStorageCacheRepository");
 const NodeLocalCommandRunner_1 = require("../../repositories/NodeLocalCommandRunner");
-const situationFileWriter_1 = require("../handlers/situationFileWriter");
 const OauthAPIProxyClaudeRepository_1 = require("../../repositories/OauthAPIProxyClaudeRepository");
 const GitHubIssueCommentRepository_1 = require("../../repositories/GitHubIssueCommentRepository");
 const FetchWebhookRepository_1 = require("../../repositories/FetchWebhookRepository");
@@ -195,27 +194,6 @@ exports.program
         codexHomeCandidates,
         allowIssueCacheMinutes,
     });
-    const projectId = await projectRepository.findProjectIdByUrl(projectUrl);
-    if (projectId) {
-        await (0, situationFileWriter_1.writeSituationFile)({
-            cachePath,
-            projectId,
-            issues: [],
-            statusNames: {
-                awaitingQualityCheckStatus: null,
-                preparationStatus,
-                awaitingWorkspaceStatus,
-            },
-            config: {
-                maximumPreparingIssuesCount,
-                utilizationPercentageThreshold: config.utilizationPercentageThreshold ?? 90,
-                allowIssueCacheMinutes,
-                thresholdForAutoReject: config.thresholdForAutoReject ?? 3,
-            },
-            preparationProcessCheckCommand: config.preparationProcessCheckCommand ?? null,
-            localCommandRunner,
-        });
-    }
 });
 exports.program
     .command('notifyFinishedIssuePreparation')
