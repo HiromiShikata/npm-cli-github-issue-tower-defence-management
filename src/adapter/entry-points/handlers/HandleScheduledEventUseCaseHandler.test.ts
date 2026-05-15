@@ -3,7 +3,6 @@ import YAML from 'yaml';
 import type { HandleScheduledEventUseCase } from '../../../domain/usecases/HandleScheduledEventUseCase';
 
 jest.mock('fs');
-jest.mock('gh-cookie', () => ({ getCookieContent: jest.fn() }));
 jest.mock('../../repositories/SystemDateRepository');
 jest.mock('../../repositories/LocalStorageRepository');
 jest.mock('../../repositories/GoogleSpreadsheetRepository');

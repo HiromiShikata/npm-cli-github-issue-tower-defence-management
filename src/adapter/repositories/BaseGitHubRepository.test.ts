@@ -19,12 +19,6 @@ import fs from 'fs';
 import { BaseGitHubRepository } from './BaseGitHubRepository';
 import resetAllMocks = jest.resetAllMocks;
 import { LocalStorageRepository } from './LocalStorageRepository';
-
-const mockGetCookieContent = jest.fn<Promise<unknown>, unknown[]>();
-jest.mock('gh-cookie', () => ({
-  getCookieContent: (...args: unknown[]): Promise<unknown> =>
-    mockGetCookieContent(...args),
-}));
 describe('BaseGitHubRepository', () => {
   const jsonFilePath = './tmp/github.com.cookies.json';
   const localStorageRepository = new LocalStorageRepository();
@@ -133,7 +127,6 @@ describe('BaseGitHubRepository', () => {
           'dummy-password',
           'dummy-authenticator-key',
         );
-        this.cookieRefreshRetryDelayMs = 0;
       }
     }
 
@@ -153,8 +146,6 @@ describe('BaseGitHubRepository', () => {
     beforeEach(() => {
       mockKyGet.mockReset().mockReturnValue({ text: mockKyGetText });
       mockKyGetText.mockReset();
-      mockGetCookieContent.mockReset();
-      mockGetCookieContent.mockResolvedValue(validCookieJson);
       fs.writeFileSync(refreshCookieJsonFilePath, validCookieJson);
     });
 
@@ -182,10 +173,7 @@ describe('BaseGitHubRepository', () => {
     it('should fail when HTML contains username in content but not in user-login meta tag (not logged in)', async () => {
       const repository = new RefreshTestRepository();
       const notLoggedInHtml = `<html><head><meta name="user-login" content=""></head><body><h1>${ghUserName}</h1><p>Public profile</p></body></html>`;
-      mockKyGetText
-        .mockResolvedValueOnce(notLoggedInHtml)
-        .mockResolvedValueOnce(notLoggedInHtml)
-        .mockResolvedValueOnce(notLoggedInHtml);
+      mockKyGetText.mockResolvedValueOnce(notLoggedInHtml);
 
       await expect(repository.refreshCookie()).rejects.toThrow(
         'Failed to refresh cookie',
@@ -210,47 +198,14 @@ describe('BaseGitHubRepository', () => {
       );
     });
 
-    it('should throw when all three attempts fail', async () => {
+    it('should throw when the authentication check fails', async () => {
       const repository = new RefreshTestRepository();
       const notLoggedInHtml = `<html><head><meta name="user-login" content=""></head><body></body></html>`;
-      mockKyGetText
-        .mockResolvedValueOnce(notLoggedInHtml)
-        .mockResolvedValueOnce(notLoggedInHtml)
-        .mockResolvedValueOnce(notLoggedInHtml);
+      mockKyGetText.mockResolvedValueOnce(notLoggedInHtml);
 
       await expect(repository.refreshCookie()).rejects.toThrow(
         'Failed to refresh cookie',
       );
-    });
-
-    it('should reset cookie cache before regenerating so new cookie is used', async () => {
-      const repository = new RefreshTestRepository();
-      mockKyGetText
-        .mockResolvedValueOnce(
-          `<html><head><meta name="user-login" content=""></head><body></body></html>`,
-        )
-        .mockResolvedValueOnce(
-          `<html><head><meta name="user-login" content="${ghUserName}"></head><body></body></html>`,
-        );
-
-      await expect(repository.refreshCookie()).resolves.toBeUndefined();
-      expect(mockKyGet).toHaveBeenCalledTimes(2);
-      expect(mockGetCookieContent).toHaveBeenCalledTimes(1);
-    });
-
-    it('should succeed on third attempt after two failed cookie refresh attempts', async () => {
-      const repository = new RefreshTestRepository();
-      const notLoggedInHtml = `<html><head><meta name="user-login" content=""></head><body></body></html>`;
-      mockKyGetText
-        .mockResolvedValueOnce(notLoggedInHtml)
-        .mockResolvedValueOnce(notLoggedInHtml)
-        .mockResolvedValueOnce(
-          `<html><head><meta name="user-login" content="${ghUserName}"></head><body></body></html>`,
-        );
-
-      await expect(repository.refreshCookie()).resolves.toBeUndefined();
-      expect(mockKyGet).toHaveBeenCalledTimes(3);
-      expect(mockGetCookieContent).toHaveBeenCalledTimes(2);
     });
   });
 });

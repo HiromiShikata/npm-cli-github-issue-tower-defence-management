@@ -53,7 +53,6 @@ const RestIssueRepository_1 = require("../../repositories/issue/RestIssueReposit
 const GraphqlProjectItemRepository_1 = require("../../repositories/issue/GraphqlProjectItemRepository");
 const ApiV3CheerioRestIssueRepository_1 = require("../../repositories/issue/ApiV3CheerioRestIssueRepository");
 const LocalStorageCacheRepository_1 = require("../../repositories/LocalStorageCacheRepository");
-const CheerioProjectRepository_1 = require("../../repositories/CheerioProjectRepository");
 const NodeLocalCommandRunner_1 = require("../../repositories/NodeLocalCommandRunner");
 const OauthAPIProxyClaudeRepository_1 = require("../../repositories/OauthAPIProxyClaudeRepository");
 const GitHubIssueCommentRepository_1 = require("../../repositories/GitHubIssueCommentRepository");
@@ -179,7 +178,6 @@ exports.program
     const githubRepositoryParams = buildGithubRepositoryParams(localStorageRepository, cachePath, token);
     const projectRepository = {
         ...new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams),
-        ...new CheerioProjectRepository_1.CheerioProjectRepository(...githubRepositoryParams),
         prepareStatus: async (_name, project) => {
             return project;
         },
@@ -323,7 +321,6 @@ exports.program
     const githubRepositoryParams = buildGithubRepositoryParams(localStorageRepository, cachePath, token);
     const projectRepository = {
         ...new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams),
-        ...new CheerioProjectRepository_1.CheerioProjectRepository(...githubRepositoryParams),
         prepareStatus: async (_name, project) => {
             return project;
         },

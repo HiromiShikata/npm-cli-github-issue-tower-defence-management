@@ -1,6 +1,5 @@
 import { promises as fsPromises } from 'fs';
 import { serialize } from 'cookie';
-import { getCookieContent } from 'gh-cookie';
 import fs from 'fs';
 import { LocalStorageRepository } from './LocalStorageRepository';
 import ky from 'ky';
@@ -18,7 +17,6 @@ interface Cookie {
 
 export class BaseGitHubRepository {
   cookie: string | null;
-  protected cookieRefreshRetryDelayMs = 3000;
   constructor(
     readonly localStorageRepository: LocalStorageRepository,
     readonly jsonFilePath: string = './tmp/github.com.cookies.json',
@@ -82,19 +80,7 @@ export class BaseGitHubRepository {
   };
   protected createCookieStringFromFile = async (): Promise<string> => {
     if (!fs.existsSync(this.jsonFilePath)) {
-      if (
-        !this.ghUserName ||
-        !this.ghUserPassword ||
-        !this.ghAuthenticatorKey
-      ) {
-        throw new Error('No cookie file and no credentials provided');
-      }
-      const cookie = await getCookieContent(
-        this.ghUserName,
-        this.ghUserPassword,
-        this.ghAuthenticatorKey,
-      );
-      this.localStorageRepository.write(this.jsonFilePath, cookie);
+      throw new Error('No cookie file found');
     }
     const data = await fsPromises.readFile(this.jsonFilePath, {
       encoding: 'utf-8',
@@ -169,24 +155,10 @@ export class BaseGitHubRepository {
       );
     }
     const profileUrl = `https://github.com/${this.ghUserName}`;
-    const maxAttempts = 3;
-
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      if (attempt > 0) {
-        await new Promise<void>((resolve) =>
-          setTimeout(resolve, this.cookieRefreshRetryDelayMs),
-        );
-        this.localStorageRepository.remove(this.jsonFilePath);
-        this.cookie = null;
-      }
-      const headers = await this.createHeader();
-      const html = await ky.get(profileUrl, { headers }).text();
-      if (
-        html.includes(`meta name="user-login" content="${this.ghUserName}"`)
-      ) {
-        return;
-      }
+    const headers = await this.createHeader();
+    const html = await ky.get(profileUrl, { headers }).text();
+    if (!html.includes(`meta name="user-login" content="${this.ghUserName}"`)) {
+      throw new Error('Failed to refresh cookie');
     }
-    throw new Error('Failed to refresh cookie');
   };
 }

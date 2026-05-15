@@ -2,7 +2,6 @@ import fs from 'fs';
 import YAML from 'yaml';
 
 jest.mock('fs');
-jest.mock('gh-cookie', () => ({ getCookieContent: jest.fn() }));
 jest.mock('../../repositories/LocalStorageRepository');
 jest.mock('../../repositories/GraphqlProjectRepository');
 jest.mock('../../repositories/issue/ApiV3IssueRepository');

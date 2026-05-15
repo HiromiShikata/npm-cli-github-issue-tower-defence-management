@@ -48,7 +48,6 @@ const RestIssueRepository_1 = require("../../repositories/issue/RestIssueReposit
 const GraphqlProjectItemRepository_1 = require("../../repositories/issue/GraphqlProjectItemRepository");
 const ApiV3CheerioRestIssueRepository_1 = require("../../repositories/issue/ApiV3CheerioRestIssueRepository");
 const LocalStorageCacheRepository_1 = require("../../repositories/LocalStorageCacheRepository");
-const CheerioProjectRepository_1 = require("../../repositories/CheerioProjectRepository");
 const GetStoryObjectMapUseCase_1 = require("../../../domain/usecases/GetStoryObjectMapUseCase");
 class GetStoryObjectMapUseCaseHandler {
     constructor() {
@@ -150,7 +149,6 @@ class GetStoryObjectMapUseCaseHandler {
             ];
             const projectRepository = {
                 ...new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams),
-                ...new CheerioProjectRepository_1.CheerioProjectRepository(...githubRepositoryParams),
             };
             const apiV3IssueRepository = new ApiV3IssueRepository_1.ApiV3IssueRepository(...githubRepositoryParams);
             const restIssueRepository = new RestIssueRepository_1.RestIssueRepository(...githubRepositoryParams);

@@ -6,7 +6,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.BaseGitHubRepository = void 0;
 const fs_1 = require("fs");
 const cookie_1 = require("cookie");
-const gh_cookie_1 = require("gh-cookie");
 const fs_2 = __importDefault(require("fs"));
 const ky_1 = __importDefault(require("ky"));
 class BaseGitHubRepository {
@@ -18,7 +17,6 @@ class BaseGitHubRepository {
         this.ghUserName = ghUserName;
         this.ghUserPassword = ghUserPassword;
         this.ghAuthenticatorKey = ghAuthenticatorKey;
-        this.cookieRefreshRetryDelayMs = 3000;
         this.extractIssueFromUrl = (issueUrl) => {
             const match = issueUrl.match(/https:\/\/github.com\/([^/]+)\/([^/]+)\/(issues|pull)\/(\d+)/);
             if (!match) {
@@ -61,13 +59,7 @@ class BaseGitHubRepository {
         };
         this.createCookieStringFromFile = async () => {
             if (!fs_2.default.existsSync(this.jsonFilePath)) {
-                if (!this.ghUserName ||
-                    !this.ghUserPassword ||
-                    !this.ghAuthenticatorKey) {
-                    throw new Error('No cookie file and no credentials provided');
-                }
-                const cookie = await (0, gh_cookie_1.getCookieContent)(this.ghUserName, this.ghUserPassword, this.ghAuthenticatorKey);
-                this.localStorageRepository.write(this.jsonFilePath, cookie);
+                throw new Error('No cookie file found');
             }
             const data = await fs_1.promises.readFile(this.jsonFilePath, {
                 encoding: 'utf-8',
@@ -130,20 +122,11 @@ class BaseGitHubRepository {
                 throw new Error('GitHub username, password, and authenticator key must be set');
             }
             const profileUrl = `https://github.com/${this.ghUserName}`;
-            const maxAttempts = 3;
-            for (let attempt = 0; attempt < maxAttempts; attempt++) {
-                if (attempt > 0) {
-                    await new Promise((resolve) => setTimeout(resolve, this.cookieRefreshRetryDelayMs));
-                    this.localStorageRepository.remove(this.jsonFilePath);
-                    this.cookie = null;
-                }
-                const headers = await this.createHeader();
-                const html = await ky_1.default.get(profileUrl, { headers }).text();
-                if (html.includes(`meta name="user-login" content="${this.ghUserName}"`)) {
-                    return;
-                }
+            const headers = await this.createHeader();
+            const html = await ky_1.default.get(profileUrl, { headers }).text();
+            if (!html.includes(`meta name="user-login" content="${this.ghUserName}"`)) {
+                throw new Error('Failed to refresh cookie');
             }
-            throw new Error('Failed to refresh cookie');
         };
         this.cookie = null;
     }
