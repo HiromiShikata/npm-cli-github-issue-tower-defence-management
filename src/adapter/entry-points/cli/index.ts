@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import * as fs from 'fs';
 import { Command } from 'commander';
 import { HandleScheduledEventUseCaseHandler } from '../handlers/HandleScheduledEventUseCaseHandler';
 export {
@@ -27,6 +26,7 @@ import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3C
 import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
 import { BaseGitHubRepository } from '../../repositories/BaseGitHubRepository';
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
+import { writeSituationFile } from '../handlers/situationFileWriter';
 import { OauthAPIProxyClaudeRepository } from '../../repositories/OauthAPIProxyClaudeRepository';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
@@ -345,19 +345,26 @@ program
 
     const projectId = await projectRepository.findProjectIdByUrl(projectUrl);
     if (projectId) {
-      const runtimeConfig = {
-        resolvedAt: new Date().toISOString(),
-        maximumPreparingIssuesCount: maximumPreparingIssuesCount,
-        utilizationPercentageThreshold:
-          config.utilizationPercentageThreshold ?? 90,
-        allowIssueCacheMinutes: allowIssueCacheMinutes,
-        thresholdForAutoReject: config.thresholdForAutoReject ?? 3,
-      };
-      const finalPath = `${cachePath}/runtimeConfig-${projectId}.json`;
-      const tmpPath = `${finalPath}.tmp`;
-      fs.mkdirSync(cachePath, { recursive: true });
-      fs.writeFileSync(tmpPath, JSON.stringify(runtimeConfig));
-      fs.renameSync(tmpPath, finalPath);
+      await writeSituationFile({
+        cachePath,
+        projectId,
+        issues: [],
+        statusNames: {
+          awaitingQualityCheckStatus: null,
+          preparationStatus,
+          awaitingWorkspaceStatus,
+        },
+        config: {
+          maximumPreparingIssuesCount,
+          utilizationPercentageThreshold:
+            config.utilizationPercentageThreshold ?? 90,
+          allowIssueCacheMinutes,
+          thresholdForAutoReject: config.thresholdForAutoReject ?? 3,
+        },
+        preparationProcessCheckCommand:
+          config.preparationProcessCheckCommand ?? null,
+        localCommandRunner,
+      });
     }
   });
 

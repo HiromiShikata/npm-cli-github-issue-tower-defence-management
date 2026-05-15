@@ -10,6 +10,7 @@ import {
 } from './index';
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
+import { writeSituationFile } from '../handlers/situationFileWriter';
 
 jest.mock('../../../domain/usecases/StartPreparationUseCase');
 jest.mock('../../../domain/usecases/NotifyFinishedIssuePreparationUseCase');
@@ -57,6 +58,9 @@ jest.mock('../handlers/HandleScheduledEventUseCaseHandler', () => ({
   HandleScheduledEventUseCaseHandler: jest.fn().mockImplementation(() => ({
     handle: jest.fn().mockResolvedValue(null),
   })),
+}));
+jest.mock('../handlers/situationFileWriter', () => ({
+  writeSituationFile: jest.fn().mockResolvedValue(undefined),
 }));
 
 describe('CLI', () => {
@@ -1069,7 +1073,7 @@ codexHomeCandidates:
       );
     });
 
-    it('should write runtimeConfig-{projectId}.json atomically after useCase run', async () => {
+    it('should write situation file with resolved config values after useCase run', async () => {
       const configWithNumericValues = {
         ...defaultConfig,
         maximumPreparingIssuesCount: 10,
@@ -1098,21 +1102,13 @@ codexHomeCandidates:
         configFilePath,
       ]);
 
-      const cacheDir = path.join(process.cwd(), 'tmp/cache/test-project');
-      const runtimeConfigPath = path.join(
-        cacheDir,
-        'runtimeConfig-PVT_kwHOtest456.json',
-      );
-      expect(fs.existsSync(runtimeConfigPath)).toBe(true);
-      const written: unknown = JSON.parse(
-        fs.readFileSync(runtimeConfigPath, 'utf-8'),
-      );
-      expect(written).toMatchObject({
-        maximumPreparingIssuesCount: 10,
-        utilizationPercentageThreshold: 97,
-        allowIssueCacheMinutes: 5,
-        thresholdForAutoReject: 30,
-      });
+      const firstCallArg = jest.mocked(writeSituationFile).mock.calls[0][0];
+      expect(firstCallArg.cachePath).toBe('./tmp/cache/test-project');
+      expect(firstCallArg.projectId).toBe('PVT_kwHOtest456');
+      expect(firstCallArg.config.maximumPreparingIssuesCount).toBe(10);
+      expect(firstCallArg.config.utilizationPercentageThreshold).toBe(97);
+      expect(firstCallArg.config.allowIssueCacheMinutes).toBe(5);
+      expect(firstCallArg.config.thresholdForAutoReject).toBe(30);
     });
   });
 

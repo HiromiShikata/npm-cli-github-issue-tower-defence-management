@@ -232,6 +232,70 @@ For `startDaemon`, `schedule`, and `notifyFinishedIssuePreparation`, the GitHub 
 - files:write
 - files:read
 
+## Per-Project Situation Snapshot
+
+After each schedule cycle, TDPM writes a per-project situation snapshot to:
+
+```
+./tmp/cache/{projectName}/situation-{projectId}.json
+```
+
+This file is written atomically (written to a `.tmp` file then renamed) so external readers never see a partial write.
+
+### JSON Shape
+
+```json
+{
+  "capturedAt": "2025-01-01T00:00:00.000Z",
+  "config": {
+    "maximumPreparingIssuesCount": 6,
+    "utilizationPercentageThreshold": 90,
+    "allowIssueCacheMinutes": 0,
+    "thresholdForAutoReject": 3
+  },
+  "status": {
+    "awaitingQualityCheckImmediatelyActionable": 2,
+    "preparation": 4,
+    "awaitingWorkspaceImmediatelyActionable": 3,
+    "awaitingWorkspaceBlockedByDependency": 1
+  },
+  "processes": {
+    "runningPreparation": 4
+  },
+  "system": {
+    "memory": {
+      "usedPercent": 45.2,
+      "usedGib": 7.25,
+      "totalGib": 16.0
+    },
+    "swap": {
+      "usedPercent": 25.0,
+      "usedGib": 1.0,
+      "totalGib": 4.0
+    }
+  }
+}
+```
+
+### Field Descriptions
+
+- `capturedAt`: ISO 8601 timestamp when the snapshot was captured.
+- `config.maximumPreparingIssuesCount`: Resolved maximum number of issues allowed in preparation status (`null` if unconfigured).
+- `config.utilizationPercentageThreshold`: Resolved Claude utilization threshold percentage.
+- `config.allowIssueCacheMinutes`: Resolved issue cache duration in minutes.
+- `config.thresholdForAutoReject`: Resolved consecutive rejection count before auto-escalation.
+- `status.awaitingQualityCheckImmediatelyActionable`: Count of issues in the awaiting quality check status with no dependency URL, next action date, or next action hour set.
+- `status.preparation`: Count of issues currently in preparation status.
+- `status.awaitingWorkspaceImmediatelyActionable`: Count of issues in awaiting workspace status with no dependency URL, next action date, or next action hour set.
+- `status.awaitingWorkspaceBlockedByDependency`: Count of issues in awaiting workspace status that have a dependency URL set.
+- `processes.runningPreparation`: Count of spawned preparation processes confirmed running via `preparationProcessCheckCommand`. `null` if `preparationProcessCheckCommand` is not configured.
+- `system.memory.usedPercent`: Host memory usage as a percentage (MemTotal - MemAvailable / MemTotal × 100).
+- `system.memory.usedGib` / `system.memory.totalGib`: Used and total host memory in GiB.
+- `system.swap.usedPercent`: Host swap usage as a percentage.
+- `system.swap.usedGib` / `system.swap.totalGib`: Used and total host swap in GiB.
+
+System metrics are read from `/proc/meminfo` at snapshot write time.
+
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md)
