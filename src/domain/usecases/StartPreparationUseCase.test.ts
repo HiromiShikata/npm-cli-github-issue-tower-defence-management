@@ -2438,7 +2438,6 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.getAllOpened.mockResolvedValueOnce(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -2460,6 +2459,7 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
