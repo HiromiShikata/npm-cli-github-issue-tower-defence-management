@@ -76,5 +76,29 @@ describe('NodeLocalCommandRunner', () => {
         'Unexpected error',
       );
     });
+
+    it('should pass env vars to the executed command', async () => {
+      mockExecFileAsync.mockResolvedValue({
+        stdout: 'output',
+        stderr: '',
+      });
+
+      await runner.runCommand('echo', ['hello'], { MY_VAR: 'my_value' });
+
+      expect(mockExecFileAsync).toHaveBeenCalledWith('echo', ['hello'], {
+        env: { ...process.env, MY_VAR: 'my_value' },
+      });
+    });
+
+    it('should not pass env option when no env is provided', async () => {
+      mockExecFileAsync.mockResolvedValue({
+        stdout: 'output',
+        stderr: '',
+      });
+
+      await runner.runCommand('echo', ['hello']);
+
+      expect(mockExecFileAsync).toHaveBeenCalledWith('echo', ['hello']);
+    });
   });
 });

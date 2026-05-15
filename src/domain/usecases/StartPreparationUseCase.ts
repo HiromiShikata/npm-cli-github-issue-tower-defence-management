@@ -16,7 +16,10 @@ export class StartPreparationUseCase {
       | 'findRelatedOpenPRs'
       | 'getOpenPullRequest'
     >,
-    private readonly claudeRepository: Pick<ClaudeRepository, 'getUsage'>,
+    private readonly claudeRepository: Pick<
+      ClaudeRepository,
+      'getUsage' | 'getSelectedToken'
+    >,
     private readonly localCommandRunner: LocalCommandRunner,
   ) {}
 
@@ -35,6 +38,7 @@ export class StartPreparationUseCase {
     allowIssueCacheMinutes: number;
   }): Promise<void> => {
     const claudeUsages = await this.claudeRepository.getUsage();
+    const selectedToken = this.claudeRepository.getSelectedToken();
     const weeklyWindowHours = 168;
     const nonWeeklyUsages = claudeUsages.filter(
       (usage) => usage.hour !== weeklyWindowHours,
@@ -249,7 +253,13 @@ export class StartPreparationUseCase {
           ];
         awArgs.push('--codexHome', codexHome);
       }
-      await this.localCommandRunner.runCommand('aw', awArgs);
+      if (selectedToken !== null) {
+        await this.localCommandRunner.runCommand('aw', awArgs, {
+          CLAUDE_CODE_OAUTH_TOKEN: selectedToken,
+        });
+      } else {
+        await this.localCommandRunner.runCommand('aw', awArgs);
+      }
       startedInThisRunCount++;
       updatedCurrentPreparationIssueCount++;
     }

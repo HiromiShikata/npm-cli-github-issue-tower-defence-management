@@ -5,9 +5,13 @@ const child_process_1 = require("child_process");
 const util_1 = require("util");
 const execFileAsync = (0, util_1.promisify)(child_process_1.execFile);
 class NodeLocalCommandRunner {
-    async runCommand(program, args) {
+    async runCommand(program, args, env) {
         try {
-            const { stdout, stderr } = await execFileAsync(program, args);
+            const { stdout, stderr } = env
+                ? await execFileAsync(program, args, {
+                    env: { ...process.env, ...env },
+                })
+                : await execFileAsync(program, args);
             return {
                 stdout,
                 stderr,

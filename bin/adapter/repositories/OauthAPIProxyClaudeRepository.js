@@ -22,6 +22,9 @@ class OauthAPIProxyClaudeRepository {
         }
         return this.apiRepository.isClaudeAvailable(threshold);
     }
+    getSelectedToken() {
+        return this.apiRepository.getSelectedToken();
+    }
 }
 exports.OauthAPIProxyClaudeRepository = OauthAPIProxyClaudeRepository;
 //# sourceMappingURL=OauthAPIProxyClaudeRepository.js.map

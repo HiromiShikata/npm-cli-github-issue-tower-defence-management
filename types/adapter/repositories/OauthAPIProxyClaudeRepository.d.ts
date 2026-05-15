@@ -6,5 +6,6 @@ export declare class OauthAPIProxyClaudeRepository implements ClaudeRepository {
     constructor(proxyRepository?: Pick<ClaudeRepository, 'getUsage'>, apiRepository?: ClaudeRepository);
     getUsage(): Promise<ClaudeWindowUsage[]>;
     isClaudeAvailable(threshold: number): Promise<boolean>;
+    getSelectedToken(): string | null;
 }
 //# sourceMappingURL=OauthAPIProxyClaudeRepository.d.ts.map

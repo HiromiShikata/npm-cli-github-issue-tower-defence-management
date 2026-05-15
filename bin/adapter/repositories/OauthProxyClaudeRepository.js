@@ -88,6 +88,9 @@ class OauthProxyClaudeRepository {
         }
         return usages.every((usage) => usage.utilizationPercentage < threshold);
     }
+    getSelectedToken() {
+        return null;
+    }
 }
 exports.OauthProxyClaudeRepository = OauthProxyClaudeRepository;
 //# sourceMappingURL=OauthProxyClaudeRepository.js.map

@@ -5,5 +5,6 @@ export declare class OauthProxyClaudeRepository implements ClaudeRepository {
     constructor(filePath?: string);
     getUsage(): Promise<ClaudeWindowUsage[]>;
     isClaudeAvailable(threshold: number): Promise<boolean>;
+    getSelectedToken(): string | null;
 }
 //# sourceMappingURL=OauthProxyClaudeRepository.d.ts.map

@@ -34,6 +34,7 @@ describe('OauthAPIProxyClaudeRepository', () => {
     mockApiRepository = {
       getUsage: jest.fn(),
       isClaudeAvailable: jest.fn(),
+      getSelectedToken: jest.fn(),
     };
     repository = new OauthAPIProxyClaudeRepository(
       mockProxyRepository,
@@ -162,5 +163,24 @@ describe('OauthAPIProxyClaudeRepository', () => {
         }
       },
     );
+  });
+
+  describe('getSelectedToken', () => {
+    it('should delegate to API repository', () => {
+      mockApiRepository.getSelectedToken.mockReturnValue('selected-token');
+
+      const result = repository.getSelectedToken();
+
+      expect(result).toBe('selected-token');
+      expect(mockApiRepository.getSelectedToken.mock.calls).toHaveLength(1);
+    });
+
+    it('should return null when API repository returns null', () => {
+      mockApiRepository.getSelectedToken.mockReturnValue(null);
+
+      const result = repository.getSelectedToken();
+
+      expect(result).toBe(null);
+    });
   });
 });

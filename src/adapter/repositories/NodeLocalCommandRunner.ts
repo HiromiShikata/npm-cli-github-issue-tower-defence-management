@@ -8,13 +8,18 @@ export class NodeLocalCommandRunner implements LocalCommandRunner {
   async runCommand(
     program: string,
     args: string[],
+    env?: Record<string, string>,
   ): Promise<{
     stdout: string;
     stderr: string;
     exitCode: number;
   }> {
     try {
-      const { stdout, stderr } = await execFileAsync(program, args);
+      const { stdout, stderr } = env
+        ? await execFileAsync(program, args, {
+            env: { ...process.env, ...env },
+          })
+        : await execFileAsync(program, args);
       return {
         stdout,
         stderr,

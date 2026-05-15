@@ -20,6 +20,7 @@ export type ConfigFile = {
   codexHomeCandidates?: string[];
   awLogDirectoryPath?: string;
   awLogStaleThresholdMinutes?: number;
+  claudeCodeOauthTokenListJsonPath?: string;
 };
 
 const getStringValue = (
@@ -105,6 +106,10 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
       awLogStaleThresholdMinutes: getNumberValue(
         parsed,
         'awLogStaleThresholdMinutes',
+      ),
+      claudeCodeOauthTokenListJsonPath: getStringValue(
+        parsed,
+        'claudeCodeOauthTokenListJsonPath',
       ),
     };
   } catch (error) {
@@ -248,6 +253,7 @@ export const mergeConfigs = (
     readmeOverrides.awLogStaleThresholdMinutes ??
     cliOverrides.awLogStaleThresholdMinutes ??
     configFile.awLogStaleThresholdMinutes,
+  claudeCodeOauthTokenListJsonPath: configFile.claudeCodeOauthTokenListJsonPath,
 });
 
 type GraphqlProjectV2ReadmeResponse = {

@@ -74,49 +74,29 @@ const findCredentials = (filePathList) => {
     }
     return credentials.sort((a, b) => a.priority - b.priority);
 };
+const readTokenListFile = (filePath) => {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const parsed = JSON.parse(content);
+    if (!Array.isArray(parsed)) {
+        return [];
+    }
+    const tokens = [];
+    for (const item of parsed) {
+        if (typeof item === 'string') {
+            tokens.push(item);
+        }
+    }
+    return tokens;
+};
 class OauthAPIClaudeRepository {
-    constructor() {
+    constructor(claudeCodeOauthTokenListJsonPath) {
+        this.selectedAccessToken = null;
         this.claudeDir = path.join(os.homedir(), '.claude');
         this.credentialsPath = path.join(this.claudeDir, '.credentials.json');
+        this.claudeCodeOauthTokenListJsonPath =
+            claudeCodeOauthTokenListJsonPath ?? null;
     }
-    getAccessToken() {
-        if (!fs.existsSync(this.credentialsPath)) {
-            throw new Error(`Claude credentials file not found at ${this.credentialsPath}. Please login to Claude Code first using: claude login`);
-        }
-        const fileContent = fs.readFileSync(this.credentialsPath, 'utf-8');
-        const credentials = JSON.parse(fileContent);
-        if (!isCredentialsFile(credentials)) {
-            throw new Error('Invalid credentials file format');
-        }
-        const accessToken = credentials.claudeAiOauth?.accessToken;
-        if (!accessToken) {
-            throw new Error('No access token found in credentials file');
-        }
-        return accessToken;
-    }
-    async getUsage() {
-        const accessToken = this.getAccessToken();
-        const response = await fetch('https://api.anthropic.com/api/oauth/usage', {
-            method: 'GET',
-            headers: {
-                Accept: 'application/json, text/plain, */*',
-                'Content-Type': 'application/json',
-                'User-Agent': 'claude-code/2.0.32',
-                Authorization: `Bearer ${accessToken}`,
-                'anthropic-beta': 'oauth-2025-04-20',
-            },
-        });
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Claude API error: ${errorText}`);
-        }
-        const responseData = await response.json();
-        if (!isUsageResponse(responseData)) {
-            throw new Error('Invalid API response format');
-        }
-        if (responseData.error) {
-            throw new Error(`API error: ${responseData.error}`);
-        }
+    parseUsageResponse(responseData) {
         const usages = [];
         if (responseData.five_hour?.utilization !== undefined) {
             usages.push({
@@ -155,6 +135,47 @@ class OauthAPIClaudeRepository {
             });
         }
         return usages;
+    }
+    getSelectedToken() {
+        return this.selectedAccessToken;
+    }
+    getAccessToken() {
+        if (this.selectedAccessToken) {
+            return this.selectedAccessToken;
+        }
+        if (!fs.existsSync(this.credentialsPath)) {
+            throw new Error(`Claude credentials file not found at ${this.credentialsPath}. Please login to Claude Code first using: claude login`);
+        }
+        const fileContent = fs.readFileSync(this.credentialsPath, 'utf-8');
+        const credentials = JSON.parse(fileContent);
+        if (!isCredentialsFile(credentials)) {
+            throw new Error('Invalid credentials file format');
+        }
+        const accessToken = credentials.claudeAiOauth?.accessToken;
+        if (!accessToken) {
+            throw new Error('No access token found in credentials file');
+        }
+        return accessToken;
+    }
+    async getUsage() {
+        if (this.claudeCodeOauthTokenListJsonPath &&
+            this.selectedAccessToken === null &&
+            fs.existsSync(this.claudeCodeOauthTokenListJsonPath)) {
+            const accessTokens = readTokenListFile(this.claudeCodeOauthTokenListJsonPath);
+            for (const accessToken of accessTokens) {
+                try {
+                    const responseData = await this.getUsageWithToken(accessToken);
+                    this.selectedAccessToken = accessToken;
+                    return this.parseUsageResponse(responseData);
+                }
+                catch {
+                    continue;
+                }
+            }
+        }
+        const accessToken = this.getAccessToken();
+        const responseData = await this.getUsageWithToken(accessToken);
+        return this.parseUsageResponse(responseData);
     }
     async getUsageWithToken(accessToken) {
         const response = await fetch('https://api.anthropic.com/api/oauth/usage', {
@@ -196,6 +217,23 @@ class OauthAPIClaudeRepository {
         return true;
     }
     async isClaudeAvailable(threshold) {
+        if (this.claudeCodeOauthTokenListJsonPath &&
+            fs.existsSync(this.claudeCodeOauthTokenListJsonPath)) {
+            const accessTokens = readTokenListFile(this.claudeCodeOauthTokenListJsonPath);
+            for (const accessToken of accessTokens) {
+                try {
+                    const usageResponse = await this.getUsageWithToken(accessToken);
+                    if (this.isUsageUnderThreshold(usageResponse, threshold)) {
+                        this.selectedAccessToken = accessToken;
+                        return true;
+                    }
+                }
+                catch {
+                    continue;
+                }
+            }
+            return false;
+        }
         if (!fs.existsSync(this.claudeDir)) {
             return false;
         }

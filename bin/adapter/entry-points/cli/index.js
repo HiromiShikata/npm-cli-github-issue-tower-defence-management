@@ -56,6 +56,7 @@ const LocalStorageCacheRepository_1 = require("../../repositories/LocalStorageCa
 const CheerioProjectRepository_1 = require("../../repositories/CheerioProjectRepository");
 const NodeLocalCommandRunner_1 = require("../../repositories/NodeLocalCommandRunner");
 const OauthAPIProxyClaudeRepository_1 = require("../../repositories/OauthAPIProxyClaudeRepository");
+const OauthAPIClaudeRepository_1 = require("../../repositories/OauthAPIClaudeRepository");
 const GitHubIssueCommentRepository_1 = require("../../repositories/GitHubIssueCommentRepository");
 const FetchWebhookRepository_1 = require("../../repositories/FetchWebhookRepository");
 const RevertOrphanedPreparationUseCase_1 = require("../../../domain/usecases/RevertOrphanedPreparationUseCase");
@@ -188,7 +189,7 @@ exports.program
     const restIssueRepository = new RestIssueRepository_1.RestIssueRepository(...githubRepositoryParams);
     const graphqlProjectItemRepository = new GraphqlProjectItemRepository_1.GraphqlProjectItemRepository(...githubRepositoryParams);
     const issueRepository = new ApiV3CheerioRestIssueRepository_1.ApiV3CheerioRestIssueRepository(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, ...githubRepositoryParams);
-    const claudeRepository = new OauthAPIProxyClaudeRepository_1.OauthAPIProxyClaudeRepository();
+    const claudeRepository = new OauthAPIProxyClaudeRepository_1.OauthAPIProxyClaudeRepository(undefined, new OauthAPIClaudeRepository_1.OauthAPIClaudeRepository(config.claudeCodeOauthTokenListJsonPath));
     const localCommandRunner = new NodeLocalCommandRunner_1.NodeLocalCommandRunner();
     const preparationProcessCheckCommand = config.preparationProcessCheckCommand;
     if (preparationProcessCheckCommand) {

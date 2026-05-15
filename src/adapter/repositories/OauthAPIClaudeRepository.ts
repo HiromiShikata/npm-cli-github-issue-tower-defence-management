@@ -74,67 +74,35 @@ const findCredentials = (filePathList: string[]): CredentialInfo[] => {
   return credentials.sort((a, b) => a.priority - b.priority);
 };
 
+const readTokenListFile = (filePath: string): string[] => {
+  const content = fs.readFileSync(filePath, 'utf-8');
+  const parsed: unknown = JSON.parse(content);
+  if (!Array.isArray(parsed)) {
+    return [];
+  }
+  const tokens: string[] = [];
+  for (const item of parsed) {
+    if (typeof item === 'string') {
+      tokens.push(item);
+    }
+  }
+  return tokens;
+};
+
 export class OauthAPIClaudeRepository implements ClaudeRepository {
   private readonly credentialsPath: string;
   private readonly claudeDir: string;
+  private readonly claudeCodeOauthTokenListJsonPath: string | null;
+  private selectedAccessToken: string | null = null;
 
-  constructor() {
+  constructor(claudeCodeOauthTokenListJsonPath?: string) {
     this.claudeDir = path.join(os.homedir(), '.claude');
     this.credentialsPath = path.join(this.claudeDir, '.credentials.json');
+    this.claudeCodeOauthTokenListJsonPath =
+      claudeCodeOauthTokenListJsonPath ?? null;
   }
 
-  private getAccessToken(): string {
-    if (!fs.existsSync(this.credentialsPath)) {
-      throw new Error(
-        `Claude credentials file not found at ${this.credentialsPath}. Please login to Claude Code first using: claude login`,
-      );
-    }
-
-    const fileContent = fs.readFileSync(this.credentialsPath, 'utf-8');
-    const credentials: unknown = JSON.parse(fileContent);
-
-    if (!isCredentialsFile(credentials)) {
-      throw new Error('Invalid credentials file format');
-    }
-
-    const accessToken = credentials.claudeAiOauth?.accessToken;
-
-    if (!accessToken) {
-      throw new Error('No access token found in credentials file');
-    }
-
-    return accessToken;
-  }
-
-  async getUsage(): Promise<ClaudeWindowUsage[]> {
-    const accessToken = this.getAccessToken();
-
-    const response = await fetch('https://api.anthropic.com/api/oauth/usage', {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json, text/plain, */*',
-        'Content-Type': 'application/json',
-        'User-Agent': 'claude-code/2.0.32',
-        Authorization: `Bearer ${accessToken}`,
-        'anthropic-beta': 'oauth-2025-04-20',
-      },
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Claude API error: ${errorText}`);
-    }
-
-    const responseData: unknown = await response.json();
-
-    if (!isUsageResponse(responseData)) {
-      throw new Error('Invalid API response format');
-    }
-
-    if (responseData.error) {
-      throw new Error(`API error: ${responseData.error}`);
-    }
-
+  private parseUsageResponse(responseData: UsageResponse): ClaudeWindowUsage[] {
     const usages: ClaudeWindowUsage[] = [];
 
     if (responseData.five_hour?.utilization !== undefined) {
@@ -178,6 +146,63 @@ export class OauthAPIClaudeRepository implements ClaudeRepository {
     }
 
     return usages;
+  }
+
+  getSelectedToken(): string | null {
+    return this.selectedAccessToken;
+  }
+
+  private getAccessToken(): string {
+    if (this.selectedAccessToken) {
+      return this.selectedAccessToken;
+    }
+
+    if (!fs.existsSync(this.credentialsPath)) {
+      throw new Error(
+        `Claude credentials file not found at ${this.credentialsPath}. Please login to Claude Code first using: claude login`,
+      );
+    }
+
+    const fileContent = fs.readFileSync(this.credentialsPath, 'utf-8');
+    const credentials: unknown = JSON.parse(fileContent);
+
+    if (!isCredentialsFile(credentials)) {
+      throw new Error('Invalid credentials file format');
+    }
+
+    const accessToken = credentials.claudeAiOauth?.accessToken;
+
+    if (!accessToken) {
+      throw new Error('No access token found in credentials file');
+    }
+
+    return accessToken;
+  }
+
+  async getUsage(): Promise<ClaudeWindowUsage[]> {
+    if (
+      this.claudeCodeOauthTokenListJsonPath &&
+      this.selectedAccessToken === null &&
+      fs.existsSync(this.claudeCodeOauthTokenListJsonPath)
+    ) {
+      const accessTokens = readTokenListFile(
+        this.claudeCodeOauthTokenListJsonPath,
+      );
+
+      for (const accessToken of accessTokens) {
+        try {
+          const responseData = await this.getUsageWithToken(accessToken);
+          this.selectedAccessToken = accessToken;
+          return this.parseUsageResponse(responseData);
+        } catch {
+          continue;
+        }
+      }
+    }
+
+    const accessToken = this.getAccessToken();
+    const responseData = await this.getUsageWithToken(accessToken);
+    return this.parseUsageResponse(responseData);
   }
 
   private async getUsageWithToken(accessToken: string): Promise<UsageResponse> {
@@ -234,6 +259,30 @@ export class OauthAPIClaudeRepository implements ClaudeRepository {
   }
 
   async isClaudeAvailable(threshold: number): Promise<boolean> {
+    if (
+      this.claudeCodeOauthTokenListJsonPath &&
+      fs.existsSync(this.claudeCodeOauthTokenListJsonPath)
+    ) {
+      const accessTokens = readTokenListFile(
+        this.claudeCodeOauthTokenListJsonPath,
+      );
+
+      for (const accessToken of accessTokens) {
+        try {
+          const usageResponse = await this.getUsageWithToken(accessToken);
+
+          if (this.isUsageUnderThreshold(usageResponse, threshold)) {
+            this.selectedAccessToken = accessToken;
+            return true;
+          }
+        } catch {
+          continue;
+        }
+      }
+
+      return false;
+    }
+
     if (!fs.existsSync(this.claudeDir)) {
       return false;
     }

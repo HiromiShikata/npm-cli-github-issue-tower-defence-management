@@ -365,4 +365,14 @@ describe('OauthProxyClaudeRepository', () => {
       },
     );
   });
+
+  describe('getSelectedToken', () => {
+    it('should always return null', () => {
+      const repository = new OauthProxyClaudeRepository(
+        '/tmp/test-claude-ratelimit.json',
+      );
+
+      expect(repository.getSelectedToken()).toBe(null);
+    });
+  });
 });

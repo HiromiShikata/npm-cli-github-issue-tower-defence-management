@@ -188,7 +188,16 @@ preparationProcessCheckCommand?: string # Optional: Shell command template with 
 codexHomeCandidates?: string[] # Optional: Ordered list of CODEX_HOME directory paths for Codex profile cycling. Absent or empty keeps current behavior
 awLogDirectoryPath?: string # Optional: Directory path where aw log files named {org}_{repo}_{number}_* are written. Used with awLogStaleThresholdMinutes to detect zombie-wrapper orphans
 awLogStaleThresholdMinutes?: number # Optional: Minutes since last aw log mtime after which a Preparation issue is considered orphaned even when pgrep still returns 0. Requires awLogDirectoryPath
+claudeCodeOauthTokenListJsonPath?: string # Optional: Path to a JSON file containing a list of Claude Code OAuth access tokens. When set, these tokens are used for Claude availability checks instead of scanning ~/.claude for credential files
 ```
+
+The `claudeCodeOauthTokenListJsonPath` JSON file must be an array of access token strings:
+
+```json
+["access-token-1", "access-token-2", "access-token-3"]
+```
+
+Each token is tested against the Claude usage API in order. The first token whose utilization is below `utilizationPercentageThreshold` is selected for use.
 
 Example:
 
@@ -211,6 +220,7 @@ codexHomeCandidates:
   - .codex-dev1
   - .codex-dev2
   - .codex-main
+claudeCodeOauthTokenListJsonPath: '/path/to/claude-code-oauth-token-list.json'
 ```
 
 #### README-based Config Overrides
