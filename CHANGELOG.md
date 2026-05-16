@@ -1,3 +1,10 @@
+## [1.44.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.44.6...v1.44.7) (2026-05-16)
+
+
+### Bug Fixes
+
+* **core:** persist Project V2 Status via updateStatus in NotifyFinishedIssuePreparationUseCase ([93f1da4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/93f1da46d58e89c305bc101a3b0130caf75de329)), closes [#519](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/519)
+
 ## [1.44.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.44.5...v1.44.6) (2026-05-16)
 
 
