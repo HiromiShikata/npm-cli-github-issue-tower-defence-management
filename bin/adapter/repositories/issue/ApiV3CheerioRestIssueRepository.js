@@ -326,6 +326,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             return {
                 url: prUrl,
                 branchName: headRefName ?? null,
+                createdAt: new Date(0),
                 isConflicted,
                 isPassedAllCiJob,
                 isCiStateSuccess,
@@ -358,6 +359,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                       url
                       number
                       state
+                      createdAt
                       mergeable
                       headRefName
                       baseRefName
@@ -473,7 +475,11 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                     const pr = item.source;
                     const prUrl = pr.url || '';
                     const baseRefName = pr.baseRefName ?? pr.baseRef?.name;
-                    relatedPRsMap.set(prUrl, this.computePrStatus(prUrl, pr.headRefName, baseRefName, pr));
+                    const prStatus = this.computePrStatus(prUrl, pr.headRefName, baseRefName, pr);
+                    relatedPRsMap.set(prUrl, {
+                        ...prStatus,
+                        createdAt: pr.createdAt ? new Date(pr.createdAt) : new Date(0),
+                    });
                 }
                 hasNextPage = issueData.timelineItems.pageInfo.hasNextPage;
                 after = issueData.timelineItems.pageInfo.endCursor;
@@ -610,6 +616,35 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 return null;
             }
             return this.computePrStatus(pr.url, pr.headRefName, pr.baseRefName, pr);
+        };
+        this.closePullRequest = async (prUrl) => {
+            const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
+            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`, {
+                method: 'PATCH',
+                headers: {
+                    Authorization: `Bearer ${this.ghToken}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ state: 'closed' }),
+            });
+            if (!response.ok) {
+                throw new Error(`Failed to close PR ${prUrl}: HTTP ${response.status}`);
+            }
+        };
+        this.deletePullRequestBranch = async (prUrl, branchName) => {
+            const { owner, repo } = this.parseIssueUrl(prUrl);
+            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${encodeURIComponent(branchName)}`, {
+                method: 'DELETE',
+                headers: {
+                    Authorization: `Bearer ${this.ghToken}`,
+                },
+            });
+            if (!response.ok && response.status !== 422) {
+                throw new Error(`Failed to delete branch ${branchName} for PR ${prUrl}: HTTP ${response.status}`);
+            }
+        };
+        this.createCommentByUrl = async (issueOrPrUrl, commentBody) => {
+            await this.restIssueRepository.createComment(issueOrPrUrl, commentBody);
         };
     }
 }

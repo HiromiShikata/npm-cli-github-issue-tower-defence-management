@@ -15,6 +15,9 @@ export class StartPreparationUseCase {
       | 'updateStatus'
       | 'findRelatedOpenPRs'
       | 'getOpenPullRequest'
+      | 'closePullRequest'
+      | 'deletePullRequestBranch'
+      | 'createCommentByUrl'
     >,
     private readonly claudeRepository: Pick<ClaudeRepository, 'getUsage'>,
     private readonly localCommandRunner: LocalCommandRunner,
@@ -202,10 +205,36 @@ export class StartPreparationUseCase {
           issue.url,
         );
         if (relatedPRs.length > 1) {
-          console.warn(
-            `Skipping issue ${issue.url}: ${relatedPRs.length} related open PRs found (ambiguous).`,
+          const sortedPRs = [...relatedPRs].sort(
+            (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
           );
-          continue;
+          const canonicalPR = sortedPRs[0];
+          const duplicatePRs = sortedPRs.slice(1);
+          for (const duplicatePR of duplicatePRs) {
+            await this.issueRepository.closePullRequest(duplicatePR.url);
+            if (duplicatePR.branchName !== null) {
+              await this.issueRepository.deletePullRequestBranch(
+                duplicatePR.url,
+                duplicatePR.branchName,
+              );
+            }
+            await this.issueRepository.createCommentByUrl(
+              duplicatePR.url,
+              `This PR was automatically closed to resolve multiple-open-PR ambiguity for issue ${issue.url}. The adopted canonical PR is ${canonicalPR.url}.`,
+            );
+          }
+          const removedPrUrls = duplicatePRs.map((pr) => pr.url).join(', ');
+          await this.issueRepository.createCommentByUrl(
+            issue.url,
+            `${duplicatePRs.length} duplicate PR(s) were automatically closed to resolve multiple-open-PR ambiguity.\n\nRemoved PRs: ${removedPrUrls}\nAdopted PR: ${canonicalPR.url}`,
+          );
+          if (canonicalPR.branchName === null) {
+            console.warn(
+              `Skipping issue ${issue.url}: adopted canonical PR has unavailable head branch.`,
+            );
+            continue;
+          }
+          branchName = canonicalPR.branchName;
         } else if (relatedPRs.length === 1) {
           if (relatedPRs[0].branchName === null) {
             console.warn(

@@ -6,6 +6,7 @@ import { StoryObjectMap } from '../../entities/StoryObjectMap';
 export type RelatedPullRequest = {
   url: string;
   branchName: string | null;
+  createdAt: Date;
   isConflicted: boolean;
   isPassedAllCiJob: boolean;
   isCiStateSuccess: boolean;
@@ -73,6 +74,12 @@ export interface IssueRepository {
   update: (issue: Issue, project: Project) => Promise<void>;
   findRelatedOpenPRs: (issueUrl: string) => Promise<RelatedPullRequest[]>;
   getOpenPullRequest: (prUrl: string) => Promise<RelatedPullRequest | null>;
+  closePullRequest: (prUrl: string) => Promise<void>;
+  deletePullRequestBranch: (prUrl: string, branchName: string) => Promise<void>;
+  createCommentByUrl: (
+    issueOrPrUrl: string,
+    commentBody: string,
+  ) => Promise<void>;
   getAllOpened: (project: Project) => Promise<Issue[]>;
   getStoryObjectMap: (
     project: Project,
