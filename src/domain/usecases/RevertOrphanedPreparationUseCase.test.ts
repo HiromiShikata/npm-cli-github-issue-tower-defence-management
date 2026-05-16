@@ -82,6 +82,7 @@ const createMockProject = (): Project => ({
 const createPassingPr = () => ({
   url: 'https://github.com/user/repo/pull/5',
   branchName: 'i1',
+  createdAt: new Date('2024-01-01T00:00:00Z'),
   isConflicted: false,
   isPassedAllCiJob: true,
   isCiStateSuccess: true,
