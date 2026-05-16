@@ -20,10 +20,8 @@ import { CreateNewStoryByLabelUseCase } from './CreateNewStoryByLabelUseCase';
 import { AssignNoAssigneeIssueToManagerUseCase } from './AssignNoAssigneeIssueToManagerUseCase';
 import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCase';
 import { StartPreparationUseCase } from './StartPreparationUseCase';
-import { NotifyFinishedIssuePreparationUseCase } from './NotifyFinishedIssuePreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
 import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
-import { PREPARATION_STATUS_NAME } from '../entities/WorkflowStatus';
 
 export class ProjectNotFoundError extends Error {
   constructor(message: string) {
@@ -49,7 +47,6 @@ export class HandleScheduledEventUseCase {
     readonly assignNoAssigneeIssueToManagerUseCase: AssignNoAssigneeIssueToManagerUseCase,
     readonly updateIssueStatusByLabelUseCase: UpdateIssueStatusByLabelUseCase,
     readonly startPreparationUseCase: StartPreparationUseCase,
-    readonly notifyFinishedIssuePreparationUseCase: NotifyFinishedIssuePreparationUseCase,
     readonly revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase,
     readonly dateRepository: DateRepository,
     readonly spreadsheetRepository: SpreadsheetRepository,
@@ -82,10 +79,6 @@ export class HandleScheduledEventUseCase {
       codexHomeCandidates?: string[] | null;
       awLogDirectoryPath?: string;
       awLogStaleThresholdMinutes?: number;
-    } | null;
-    notifyFinishedPreparation?: {
-      thresholdForAutoReject: number;
-      workflowBlockerResolvedWebhookUrl: string | null;
     } | null;
   }): Promise<{
     project: Project;
@@ -354,22 +347,6 @@ ${JSON.stringify(e)}
         codexHomeCandidates: input.startPreparation.codexHomeCandidates ?? null,
         allowIssueCacheMinutes: input.allowIssueCacheMinutes,
       });
-    }
-    if (input.notifyFinishedPreparation) {
-      const notifyFinishedPreparation = input.notifyFinishedPreparation;
-      const preparationIssues = issues.filter(
-        (issue) => issue.status === PREPARATION_STATUS_NAME,
-      );
-      for (const issue of preparationIssues) {
-        await this.notifyFinishedIssuePreparationUseCase.run({
-          projectUrl: input.projectUrl,
-          issueUrl: issue.url,
-          thresholdForAutoReject:
-            notifyFinishedPreparation.thresholdForAutoReject,
-          workflowBlockerResolvedWebhookUrl:
-            notifyFinishedPreparation.workflowBlockerResolvedWebhookUrl,
-        });
-      }
     }
   };
   static createTargetDateTimes = (from: Date, to: Date): Date[] => {

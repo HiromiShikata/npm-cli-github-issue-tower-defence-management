@@ -35,10 +35,8 @@ import { UpdateIssueStatusByLabelUseCase } from '../../../domain/usecases/Update
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
 import { OauthAPIProxyClaudeRepository } from '../../repositories/OauthAPIProxyClaudeRepository';
-import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
-import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
 import { SetupTowerDefenceProjectUseCase } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
 import {
   AWAITING_QUALITY_CHECK_STATUS_NAME,
@@ -131,17 +129,6 @@ export class HandleScheduledEventUseCaseHandler {
               input.startPreparation.codexHomeCandidates,
           }
         : input.startPreparation,
-      notifyFinishedPreparation: input.notifyFinishedPreparation
-        ? {
-            ...input.notifyFinishedPreparation,
-            thresholdForAutoReject:
-              readmeConfig.thresholdForAutoReject ??
-              input.notifyFinishedPreparation.thresholdForAutoReject,
-            workflowBlockerResolvedWebhookUrl:
-              readmeConfig.workflowBlockerResolvedWebhookUrl ??
-              input.notifyFinishedPreparation.workflowBlockerResolvedWebhookUrl,
-          }
-        : input.notifyFinishedPreparation,
     };
 
     const systemDateRepository = new SystemDateRepository();
@@ -238,14 +225,6 @@ export class HandleScheduledEventUseCaseHandler {
     const issueCommentRepository = new GitHubIssueCommentRepository(
       input.credentials.bot.github.token,
     );
-    const webhookRepository = new FetchWebhookRepository();
-    const notifyFinishedIssuePreparationUseCase =
-      new NotifyFinishedIssuePreparationUseCase(
-        projectRepository,
-        issueRepository,
-        issueCommentRepository,
-        webhookRepository,
-      );
     const revertOrphanedPreparationUseCase =
       new RevertOrphanedPreparationUseCase(
         projectRepository,
@@ -270,7 +249,6 @@ export class HandleScheduledEventUseCaseHandler {
       assignNoAssigneeIssueToManagerUseCase,
       updateIssueStatusByLabelUseCase,
       startPreparationUseCase,
-      notifyFinishedIssuePreparationUseCase,
       revertOrphanedPreparationUseCase,
       systemDateRepository,
       googleSpreadsheetRepository,
@@ -295,8 +273,7 @@ export class HandleScheduledEventUseCaseHandler {
           utilizationPercentageThreshold:
             mergedInput.startPreparation?.utilizationPercentageThreshold ?? 90,
           allowIssueCacheMinutes: mergedInput.allowIssueCacheMinutes,
-          thresholdForAutoReject:
-            mergedInput.notifyFinishedPreparation?.thresholdForAutoReject ?? 3,
+          thresholdForAutoReject: 3,
         },
         preparationProcessCheckCommand:
           mergedInput.startPreparation?.preparationProcessCheckCommand ?? null,
