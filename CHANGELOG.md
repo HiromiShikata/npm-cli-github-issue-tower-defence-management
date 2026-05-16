@@ -1,3 +1,10 @@
+## [1.44.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.44.7...v1.44.8) (2026-05-16)
+
+
+### Bug Fixes
+
+* **src:** gate overage synth on unified-5h-status and unified-7d-status instead of enumerating reason strings ([1748556](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1748556b2228584e3af1c04f097638d674c4e9d5))
+
 ## [1.44.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.44.6...v1.44.7) (2026-05-16)
 
 
