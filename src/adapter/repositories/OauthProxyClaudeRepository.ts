@@ -3,6 +3,8 @@ import { ClaudeWindowUsage } from '../../domain/entities/ClaudeWindowUsage';
 import fs from 'fs';
 
 type ProxyFileHeaders = {
+  'anthropic-ratelimit-unified-5h-status'?: string;
+  'anthropic-ratelimit-unified-7d-status'?: string;
   'anthropic-ratelimit-unified-5h-utilization'?: string;
   'anthropic-ratelimit-unified-7d-utilization'?: string;
   'anthropic-ratelimit-unified-5h-reset'?: string;
@@ -10,9 +12,6 @@ type ProxyFileHeaders = {
   'anthropic-ratelimit-unified-overage-status'?: string;
   'anthropic-ratelimit-unified-overage-disabled-reason'?: string;
 };
-
-const OVERAGE_DISABLED_REASONS_INDICATING_AVAILABLE_PLAN_QUOTA: ReadonlySet<string> =
-  new Set(['org_level_disabled_until']);
 
 type ProxyFile = {
   headers?: ProxyFileHeaders;
@@ -90,16 +89,12 @@ export class OauthProxyClaudeRepository implements ClaudeRepository {
     }
 
     const overageStatus = headers['anthropic-ratelimit-unified-overage-status'];
-    const overageDisabledReason =
-      headers['anthropic-ratelimit-unified-overage-disabled-reason'];
-    const overageDisabledReasonIndicatesAvailablePlanQuota =
-      overageDisabledReason !== undefined &&
-      OVERAGE_DISABLED_REASONS_INDICATING_AVAILABLE_PLAN_QUOTA.has(
-        overageDisabledReason,
-      );
+    const baseQuotaAvailable =
+      headers['anthropic-ratelimit-unified-5h-status'] === 'allowed' &&
+      headers['anthropic-ratelimit-unified-7d-status'] === 'allowed';
     if (
       overageStatus === 'rejected' &&
-      !overageDisabledReasonIndicatesAvailablePlanQuota &&
+      !baseQuotaAvailable &&
       !usages.some((u) => u.utilizationPercentage >= 100)
     ) {
       usages.push({

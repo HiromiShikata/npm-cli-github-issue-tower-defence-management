@@ -167,6 +167,37 @@ describe('OauthProxyClaudeRepository', () => {
         ],
       },
       {
+        name: 'does not synthesise entry when overage-status is rejected but unified-5h-status and unified-7d-status are both allowed with org_level_disabled reason',
+        fileExists: true,
+        fileContent: JSON.stringify({
+          headers: {
+            'anthropic-ratelimit-unified-status': 'allowed',
+            'anthropic-ratelimit-unified-5h-status': 'allowed',
+            'anthropic-ratelimit-unified-5h-utilization': '0.12',
+            'anthropic-ratelimit-unified-5h-reset': '1772575200',
+            'anthropic-ratelimit-unified-7d-status': 'allowed',
+            'anthropic-ratelimit-unified-7d-utilization': '0.02',
+            'anthropic-ratelimit-unified-7d-reset': '1772769600',
+            'anthropic-ratelimit-unified-overage-status': 'rejected',
+            'anthropic-ratelimit-unified-overage-disabled-reason':
+              'org_level_disabled',
+          },
+          ts: 1234567890,
+        }),
+        expected: [
+          {
+            hour: 5,
+            utilizationPercentage: 12,
+            resetsAt: new Date(1772575200 * 1000),
+          },
+          {
+            hour: 168,
+            utilizationPercentage: 2,
+            resetsAt: new Date(1772769600 * 1000),
+          },
+        ],
+      },
+      {
         name: 'does not synthesise entry when overage-status is rejected but overage-disabled-reason is org_level_disabled_until',
         fileExists: true,
         fileContent: JSON.stringify({

@@ -5,7 +5,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OauthProxyClaudeRepository = void 0;
 const fs_1 = __importDefault(require("fs"));
-const OVERAGE_DISABLED_REASONS_INDICATING_AVAILABLE_PLAN_QUOTA = new Set(['org_level_disabled_until']);
 const isProxyFile = (value) => {
     if (typeof value !== 'object' || value === null)
         return false;
@@ -65,11 +64,10 @@ class OauthProxyClaudeRepository {
             }
         }
         const overageStatus = headers['anthropic-ratelimit-unified-overage-status'];
-        const overageDisabledReason = headers['anthropic-ratelimit-unified-overage-disabled-reason'];
-        const overageDisabledReasonIndicatesAvailablePlanQuota = overageDisabledReason !== undefined &&
-            OVERAGE_DISABLED_REASONS_INDICATING_AVAILABLE_PLAN_QUOTA.has(overageDisabledReason);
+        const baseQuotaAvailable = headers['anthropic-ratelimit-unified-5h-status'] === 'allowed' &&
+            headers['anthropic-ratelimit-unified-7d-status'] === 'allowed';
         if (overageStatus === 'rejected' &&
-            !overageDisabledReasonIndicatesAvailablePlanQuota &&
+            !baseQuotaAvailable &&
             !usages.some((u) => u.utilizationPercentage >= 100)) {
             usages.push({
                 hour: 168,
