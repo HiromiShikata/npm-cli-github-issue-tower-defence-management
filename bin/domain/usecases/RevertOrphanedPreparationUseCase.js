@@ -39,6 +39,9 @@ class RevertOrphanedPreparationUseCase {
             }
         };
         this.evaluateHasRejections = async (issue) => {
+            if (issue.isClosed) {
+                return false;
+            }
             const comments = await this.issueCommentRepository.getCommentsFromIssue(issue);
             const lastComment = comments[comments.length - 1];
             if (!lastComment || !lastComment.content.startsWith('From:')) {

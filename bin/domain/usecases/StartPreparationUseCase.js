@@ -43,7 +43,7 @@ class StartPreparationUseCase {
                 return;
             }
             const awaitingWorkspaceIssues = allOpenedIssues
-                .filter((issue) => issue.status === params.awaitingWorkspaceStatus)
+                .filter((issue) => issue.status === params.awaitingWorkspaceStatus && !issue.isClosed)
                 .map((issue) => ({ ...issue }));
             const currentPreparationIssueCount = allOpenedIssues.filter((issue) => issue.status === params.preparationStatus).length;
             let updatedCurrentPreparationIssueCount = currentPreparationIssueCount;

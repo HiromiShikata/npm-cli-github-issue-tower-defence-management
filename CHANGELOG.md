@@ -1,3 +1,10 @@
+## [1.44.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.44.8...v1.44.9) (2026-05-16)
+
+
+### Bug Fixes
+
+* **core:** skip closed issues in evaluateHasRejections and StartPreparation to break infinite cycle ([d29cfd2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d29cfd2f31d992345d13d80802342059ed731f68))
+
 ## [1.44.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.44.7...v1.44.8) (2026-05-16)
 
 
