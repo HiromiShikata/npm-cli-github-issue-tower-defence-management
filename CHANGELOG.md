@@ -1,3 +1,11 @@
+## [1.44.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.44.9...v1.44.10) (2026-05-16)
+
+
+### Bug Fixes
+
+* **deps:** update dependency ky to v2 ([c07ea6f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c07ea6f53b687f66685f0dea5e6c8975428eeead))
+* **deps:** update dependency ky to v2 ([#565](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/565)) ([5c5aa7f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5c5aa7faf02dac9340c25b9e731ec78e4a9d75a3))
+
 ## [1.44.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.44.8...v1.44.9) (2026-05-16)
 
 
