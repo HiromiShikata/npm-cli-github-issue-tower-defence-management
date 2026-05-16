@@ -264,6 +264,7 @@ export class HandleScheduledEventUseCaseHandler {
       new RevertOrphanedPreparationUseCase(
         projectRepository,
         issueRepository,
+        issueCommentRepository,
         nodeLocalCommandRunner,
       );
 

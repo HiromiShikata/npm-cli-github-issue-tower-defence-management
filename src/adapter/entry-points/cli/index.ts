@@ -287,15 +287,20 @@ program
     const preparationProcessCheckCommand =
       config.preparationProcessCheckCommand;
     if (preparationProcessCheckCommand) {
+      const revertIssueCommentRepository = new GitHubIssueCommentRepository(
+        token,
+      );
       const revertUseCase = new RevertOrphanedPreparationUseCase(
         projectRepository,
         issueRepository,
+        revertIssueCommentRepository,
         localCommandRunner,
       );
       await revertUseCase.run({
         projectUrl,
         preparationStatus,
         awaitingWorkspaceStatus,
+        awaitingQualityCheckStatus: config.awaitingQualityCheckStatus,
         allowIssueCacheMinutes,
         preparationProcessCheckCommand,
         awLogDirectoryPath: config.awLogDirectoryPath,

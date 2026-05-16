@@ -192,11 +192,13 @@ exports.program
     const localCommandRunner = new NodeLocalCommandRunner_1.NodeLocalCommandRunner();
     const preparationProcessCheckCommand = config.preparationProcessCheckCommand;
     if (preparationProcessCheckCommand) {
-        const revertUseCase = new RevertOrphanedPreparationUseCase_1.RevertOrphanedPreparationUseCase(projectRepository, issueRepository, localCommandRunner);
+        const revertIssueCommentRepository = new GitHubIssueCommentRepository_1.GitHubIssueCommentRepository(token);
+        const revertUseCase = new RevertOrphanedPreparationUseCase_1.RevertOrphanedPreparationUseCase(projectRepository, issueRepository, revertIssueCommentRepository, localCommandRunner);
         await revertUseCase.run({
             projectUrl,
             preparationStatus,
             awaitingWorkspaceStatus,
+            awaitingQualityCheckStatus: config.awaitingQualityCheckStatus,
             allowIssueCacheMinutes,
             preparationProcessCheckCommand,
             awLogDirectoryPath: config.awLogDirectoryPath,
