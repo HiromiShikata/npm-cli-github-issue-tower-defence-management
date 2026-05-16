@@ -1,3 +1,10 @@
+## [1.44.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.44.5...v1.44.6) (2026-05-16)
+
+
+### Bug Fixes
+
+* **RevertOrphanedPreparationUseCase:** reuse completion evaluation instead of unconditionally reverting to awaiting-workspace ([c1d8d5e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c1d8d5e087f70d4ba1f2ca3f5b716b1fd1fec5b6)), closes [#550](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/550)
+
 ## [1.44.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.44.4...v1.44.5) (2026-05-14)
 
 
