@@ -42,6 +42,12 @@ class GraphqlProjectItemRepository extends BaseGitHubRepository_1.BaseGitHubRepo
                     },
                 })
                     .json();
+                if (!response.data) {
+                    const errorMessages = response.errors
+                        ? response.errors.map((e) => e.message).join('; ')
+                        : 'no data field in response';
+                    throw new Error(`GitHub GraphQL API returned no data for fetchItemId: ${errorMessages}`);
+                }
                 const projectItems = response.data.repository.issue.projectItems.nodes;
                 const projectItemId = projectItems.find((item) => item.project.id === projectId)?.id;
                 return projectItemId;
@@ -331,6 +337,12 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
                 },
             })
                 .json();
+            if (!response.data) {
+                const errorMessages = response.errors
+                    ? response.errors.map((e) => e.message).join('; ')
+                    : 'no data field in response';
+                throw new Error(`GitHub GraphQL API returned no data for getProjectItemFields: ${errorMessages}`);
+            }
             const data = response.data;
             const issueFields = [];
             if (!data.repository.issue) {
@@ -443,6 +455,12 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
                 },
             })
                 .json();
+            if (!response.data) {
+                const errorMessages = response.errors
+                    ? response.errors.map((e) => e.message).join('; ')
+                    : 'no data field in response';
+                throw new Error(`GitHub GraphQL API returned no data for fetchProjectItemByUrl: ${errorMessages}`);
+            }
             const data = response.data;
             if (!data.repository.issue) {
                 return null;
