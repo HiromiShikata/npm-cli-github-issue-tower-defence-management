@@ -79,6 +79,7 @@ export class HandleScheduledEventUseCase {
       codexHomeCandidates?: string[] | null;
       awLogDirectoryPath?: string;
       awLogStaleThresholdMinutes?: number;
+      awaitingQualityCheckStatus?: string | null;
     } | null;
   }): Promise<{
     project: Project;
@@ -331,6 +332,8 @@ ${JSON.stringify(e)}
           awLogDirectoryPath: input.startPreparation.awLogDirectoryPath,
           awLogStaleThresholdMinutes:
             input.startPreparation.awLogStaleThresholdMinutes,
+          awaitingQualityCheckStatus:
+            input.startPreparation.awaitingQualityCheckStatus ?? undefined,
         });
       }
       await this.startPreparationUseCase.run({

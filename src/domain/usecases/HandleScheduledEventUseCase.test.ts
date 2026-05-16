@@ -272,6 +272,43 @@ describe('HandleScheduledEventUseCase', () => {
       );
     });
 
+    it('should pass awaitingQualityCheckStatus to revertOrphanedPreparationUseCase when startPreparation is configured', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabledStatus: 'disabled',
+        defaultStatus: null,
+        disabled: false,
+        allowIssueCacheMinutes: 60,
+        startPreparation: {
+          awaitingWorkspaceStatus: 'Awaiting Workspace',
+          preparationStatus: 'Preparation',
+          awaitingQualityCheckStatus: 'Awaiting Quality Check',
+          defaultAgentName: 'aw',
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+          preparationProcessCheckCommand: 'pgrep -f "{URL}"',
+        },
+      };
+
+      mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
+      await useCase.run(input);
+
+      expect(mockRevertOrphanedPreparationUseCase.run).toHaveBeenCalledWith(
+        expect.objectContaining({
+          awaitingQualityCheckStatus: 'Awaiting Quality Check',
+        }),
+      );
+    });
+
     describe('story issue creation progress logs', () => {
       const storyInput = {
         projectName: 'test-project',

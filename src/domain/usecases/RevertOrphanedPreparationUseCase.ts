@@ -38,6 +38,7 @@ export class RevertOrphanedPreparationUseCase {
     preparationProcessCheckCommand: string;
     awLogDirectoryPath?: string;
     awLogStaleThresholdMinutes?: number;
+    awaitingQualityCheckStatus?: string | null;
   }): Promise<void> => {
     const projectId = await this.projectRepository.findProjectIdByUrl(
       params.projectUrl,
@@ -67,8 +68,10 @@ export class RevertOrphanedPreparationUseCase {
       return;
     }
 
+    const resolvedQualityCheckStatusName =
+      params.awaitingQualityCheckStatus ?? AWAITING_QUALITY_CHECK_STATUS_NAME;
     const awaitingQualityCheckStatusOption = project.status.statuses.find(
-      (s) => s.name === AWAITING_QUALITY_CHECK_STATUS_NAME,
+      (s) => s.name === resolvedQualityCheckStatusName,
     );
 
     for (const issue of preparationIssues) {

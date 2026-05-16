@@ -23,7 +23,8 @@ class RevertOrphanedPreparationUseCase {
             if (!awaitingWorkspaceStatusOption) {
                 return;
             }
-            const awaitingQualityCheckStatusOption = project.status.statuses.find((s) => s.name === WorkflowStatus_1.AWAITING_QUALITY_CHECK_STATUS_NAME);
+            const resolvedQualityCheckStatusName = params.awaitingQualityCheckStatus ?? WorkflowStatus_1.AWAITING_QUALITY_CHECK_STATUS_NAME;
+            const awaitingQualityCheckStatusOption = project.status.statuses.find((s) => s.name === resolvedQualityCheckStatusName);
             for (const issue of preparationIssues) {
                 const isOrphaned = await this.isOrphanedIssue(issue, params);
                 if (isOrphaned) {
