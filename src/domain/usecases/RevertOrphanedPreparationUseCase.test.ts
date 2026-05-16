@@ -1,5 +1,6 @@
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
+import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { Issue } from '../entities/Issue';
@@ -46,6 +47,12 @@ const createMockProject = (): Project => ({
       { id: '1', name: 'Awaiting Workspace', color: 'GRAY', description: '' },
       { id: '2', name: 'Preparation', color: 'YELLOW', description: '' },
       { id: '3', name: 'Done', color: 'GREEN', description: '' },
+      {
+        id: '4',
+        name: 'Awaiting Quality Check',
+        color: 'BLUE',
+        description: '',
+      },
     ],
   },
   nextActionDate: null,
@@ -72,13 +79,33 @@ const createMockProject = (): Project => ({
   completionDate50PercentConfidence: null,
 });
 
+const createPassingPr = () => ({
+  url: 'https://github.com/user/repo/pull/5',
+  branchName: 'i1',
+  isConflicted: false,
+  isPassedAllCiJob: true,
+  isCiStateSuccess: true,
+  isResolvedAllReviewComments: true,
+  isBranchOutOfDate: false,
+  missingRequiredCheckNames: [],
+});
+
 describe('RevertOrphanedPreparationUseCase', () => {
   let useCase: RevertOrphanedPreparationUseCase;
   let mockProjectRepository: Mocked<
     Pick<ProjectRepository, 'findProjectIdByUrl' | 'getProject'>
   >;
   let mockIssueRepository: Mocked<
-    Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'createComment'>
+    Pick<
+      IssueRepository,
+      | 'getAllIssues'
+      | 'updateStatus'
+      | 'findRelatedOpenPRs'
+      | 'getOpenPullRequest'
+    >
+  >;
+  let mockIssueCommentRepository: Mocked<
+    Pick<IssueCommentRepository, 'getCommentsFromIssue'>
   >;
   let mockLocalCommandRunner: Mocked<LocalCommandRunner>;
   let mockProject: Project;
@@ -95,7 +122,11 @@ describe('RevertOrphanedPreparationUseCase', () => {
         .fn()
         .mockResolvedValue({ issues: [], cacheUsed: false }),
       updateStatus: jest.fn().mockResolvedValue(undefined),
-      createComment: jest.fn().mockResolvedValue(undefined),
+      findRelatedOpenPRs: jest.fn().mockResolvedValue([]),
+      getOpenPullRequest: jest.fn().mockResolvedValue(null),
+    };
+    mockIssueCommentRepository = {
+      getCommentsFromIssue: jest.fn().mockResolvedValue([]),
     };
     mockLocalCommandRunner = {
       runCommand: jest.fn(),
@@ -103,11 +134,12 @@ describe('RevertOrphanedPreparationUseCase', () => {
     useCase = new RevertOrphanedPreparationUseCase(
       mockProjectRepository,
       mockIssueRepository,
+      mockIssueCommentRepository,
       mockLocalCommandRunner,
     );
   });
 
-  it('should revert stuck-Preparation issue to Awaiting Workspace when check command exits non-zero', async () => {
+  it('should revert stuck-Preparation issue to Awaiting Workspace when check command exits non-zero and no agent report present', async () => {
     const stuckIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',
       status: 'Preparation',
@@ -121,6 +153,170 @@ describe('RevertOrphanedPreparationUseCase', () => {
       stderr: '',
       exitCode: 1,
     });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
+      allowIssueCacheMinutes: 60,
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(mockProject);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toBe(stuckIssue);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][0]).toBe('sh');
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toEqual([
+      '-c',
+      'pgrep -fa "claude-agent.*$1"',
+      '--',
+      'https://github.com/user/repo/issues/10',
+    ]);
+  });
+
+  it('should advance orphaned issue to Awaiting Quality Check when agent report and passing PR are present', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'bot',
+        content: 'From: agent report',
+        createdAt: new Date(),
+      },
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      createPassingPr(),
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
+      allowIssueCacheMinutes: 60,
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+  });
+
+  it('should revert orphaned issue to Awaiting Workspace when agent report present but PR CI is failing', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'bot',
+        content: 'From: agent report',
+        createdAt: new Date(),
+      },
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      {
+        ...createPassingPr(),
+        isPassedAllCiJob: false,
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
+      allowIssueCacheMinutes: 60,
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+  });
+
+  it('should revert orphaned issue to Awaiting Workspace when agent report present but no PR found', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'bot',
+        content: 'From: agent report',
+        createdAt: new Date(),
+      },
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
+      allowIssueCacheMinutes: 60,
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+  });
+
+  it('should revert orphaned issue to Awaiting Workspace when awaitingQualityCheckStatus is not provided', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'bot',
+        content: 'From: agent report',
+        createdAt: new Date(),
+      },
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      createPassingPr(),
+    ]);
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
@@ -131,19 +327,108 @@ describe('RevertOrphanedPreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(mockProject);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toBe(stuckIssue);
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
-    expect(mockIssueRepository.createComment.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.createComment.mock.calls[0][0]).toBe(stuckIssue);
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][0]).toBe('sh');
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toEqual([
-      '-c',
-      'pgrep -fa "claude-agent.*$1"',
-      '--',
-      'https://github.com/user/repo/issues/10',
+  });
+
+  it('should advance orphaned issue with llm-agent label to Awaiting Quality Check without PR check', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+      labels: ['llm-agent'],
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'bot',
+        content: 'From: agent report',
+        createdAt: new Date(),
+      },
     ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
+      allowIssueCacheMinutes: 60,
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+    });
+
+    expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+  });
+
+  it('should revert orphaned issue to Awaiting Workspace when report has nextStep set', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'bot',
+        content:
+          'From: agent report\n```json\n{"nextStep": "do something"}\n```',
+        createdAt: new Date(),
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
+      allowIssueCacheMinutes: 60,
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+  });
+
+  it('should never post a comment regardless of orphan outcome', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
+      allowIssueCacheMinutes: 60,
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
   });
 
   it('should leave in-flight Preparation issue untouched when check command exits zero', async () => {
@@ -165,12 +450,15 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       preparationStatus: 'Preparation',
       awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-    expect(mockIssueRepository.createComment.mock.calls).toHaveLength(0);
+    expect(
+      mockIssueCommentRepository.getCommentsFromIssue.mock.calls,
+    ).toHaveLength(0);
   });
 
   it('should only process issues in Preparation status and skip others', async () => {
@@ -191,11 +479,13 @@ describe('RevertOrphanedPreparationUseCase', () => {
       stderr: '',
       exitCode: 1,
     });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
       preparationStatus: 'Preparation',
       awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'check {URL}',
     });
@@ -231,18 +521,19 @@ describe('RevertOrphanedPreparationUseCase', () => {
         stderr: '',
         exitCode: 0,
       });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
       preparationStatus: 'Preparation',
       awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'check {URL}',
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
     expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toBe(stuckIssue);
-    expect(mockIssueRepository.createComment.mock.calls).toHaveLength(1);
   });
 
   it('should throw when project is not found by URL', async () => {
@@ -253,6 +544,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         projectUrl: 'https://github.com/user/repo',
         preparationStatus: 'Preparation',
         awaitingWorkspaceStatus: 'Awaiting Workspace',
+        awaitingQualityCheckStatus: 'Awaiting Quality Check',
         allowIssueCacheMinutes: 0,
         preparationProcessCheckCommand: 'check {URL}',
       }),
@@ -268,6 +560,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         projectUrl: 'https://github.com/user/repo',
         preparationStatus: 'Preparation',
         awaitingWorkspaceStatus: 'Awaiting Workspace',
+        awaitingQualityCheckStatus: 'Awaiting Quality Check',
         allowIssueCacheMinutes: 0,
         preparationProcessCheckCommand: 'check {URL}',
       }),
@@ -293,12 +586,12 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       preparationStatus: 'Preparation',
       awaitingWorkspaceStatus: 'NonExistentStatus',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 0,
       preparationProcessCheckCommand: 'check {URL}',
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-    expect(mockIssueRepository.createComment.mock.calls).toHaveLength(0);
   });
 
   it('should do nothing when there are no Preparation issues', async () => {
@@ -314,6 +607,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       preparationStatus: 'Preparation',
       awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'check {URL}',
     });
@@ -346,11 +640,13 @@ describe('RevertOrphanedPreparationUseCase', () => {
         exitCode: 0,
       })
       .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
       preparationStatus: 'Preparation',
       awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "Please handover {URL}"',
       awLogDirectoryPath: '/home/user/logs-aw',
@@ -358,7 +654,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
     expect(mockLocalCommandRunner.runCommand.mock.calls[1]).toEqual([
       'sh',
@@ -416,6 +711,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       preparationStatus: 'Preparation',
       awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "Please handover {URL}"',
       awLogDirectoryPath: '/home/user/logs-aw',
@@ -423,7 +719,9 @@ describe('RevertOrphanedPreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-    expect(mockIssueRepository.createComment.mock.calls).toHaveLength(0);
+    expect(
+      mockIssueCommentRepository.getCommentsFromIssue.mock.calls,
+    ).toHaveLength(0);
   });
 
   it('should leave issue untouched when pgrep exits zero and no aw log files exist yet', async () => {
@@ -450,6 +748,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       preparationStatus: 'Preparation',
       awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "Please handover {URL}"',
       awLogDirectoryPath: '/home/user/logs-aw',
@@ -457,7 +756,9 @@ describe('RevertOrphanedPreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-    expect(mockIssueRepository.createComment.mock.calls).toHaveLength(0);
+    expect(
+      mockIssueCommentRepository.getCommentsFromIssue.mock.calls,
+    ).toHaveLength(0);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
   });
 
@@ -480,6 +781,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       preparationStatus: 'Preparation',
       awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
     });
@@ -505,11 +807,13 @@ describe('RevertOrphanedPreparationUseCase', () => {
       stderr: '',
       exitCode: 1,
     });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
       preparationStatus: 'Preparation',
       awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "Please handover {URL}"',
       awLogDirectoryPath: '/home/user/logs-aw',
@@ -539,6 +843,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       preparationStatus: 'Preparation',
       awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 0,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
     });

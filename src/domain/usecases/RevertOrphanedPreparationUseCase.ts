@@ -1,4 +1,8 @@
-import { IssueRepository } from './adapter-interfaces/IssueRepository';
+import {
+  IssueRepository,
+  RelatedPullRequest,
+} from './adapter-interfaces/IssueRepository';
+import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { Issue } from '../entities/Issue';
@@ -11,7 +15,14 @@ export class RevertOrphanedPreparationUseCase {
     >,
     readonly issueRepository: Pick<
       IssueRepository,
-      'getAllIssues' | 'updateStatus' | 'createComment'
+      | 'getAllIssues'
+      | 'updateStatus'
+      | 'findRelatedOpenPRs'
+      | 'getOpenPullRequest'
+    >,
+    readonly issueCommentRepository: Pick<
+      IssueCommentRepository,
+      'getCommentsFromIssue'
     >,
     readonly localCommandRunner: LocalCommandRunner,
   ) {}
@@ -20,6 +31,7 @@ export class RevertOrphanedPreparationUseCase {
     projectUrl: string;
     preparationStatus: string;
     awaitingWorkspaceStatus: string;
+    awaitingQualityCheckStatus?: string;
     allowIssueCacheMinutes: number;
     preparationProcessCheckCommand: string;
     awLogDirectoryPath?: string;
@@ -53,20 +65,104 @@ export class RevertOrphanedPreparationUseCase {
       return;
     }
 
+    const awaitingQualityCheckStatusOption = params.awaitingQualityCheckStatus
+      ? project.status.statuses.find(
+          (s) => s.name === params.awaitingQualityCheckStatus,
+        )
+      : null;
+
     for (const issue of preparationIssues) {
       const isOrphaned = await this.isOrphanedIssue(issue, params);
       if (isOrphaned) {
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          awaitingWorkspaceStatusOption.id,
-        );
-        await this.issueRepository.createComment(
-          issue,
-          `Orphaned preparation detected: no live worker process found for ${issue.url}. Status reverted to ${params.awaitingWorkspaceStatus}.`,
-        );
+        const hasRejections = await this.evaluateHasRejections(issue);
+        if (!hasRejections && awaitingQualityCheckStatusOption) {
+          await this.issueRepository.updateStatus(
+            project,
+            issue,
+            awaitingQualityCheckStatusOption.id,
+          );
+        } else {
+          await this.issueRepository.updateStatus(
+            project,
+            issue,
+            awaitingWorkspaceStatusOption.id,
+          );
+        }
       }
     }
+  };
+
+  private evaluateHasRejections = async (issue: Issue): Promise<boolean> => {
+    const comments =
+      await this.issueCommentRepository.getCommentsFromIssue(issue);
+    const lastComment = comments[comments.length - 1];
+    if (!lastComment || !lastComment.content.startsWith('From:')) {
+      return true;
+    }
+    if (this.reportBodyHasNextStep(lastComment.content)) {
+      return true;
+    }
+
+    const categoryLabels = issue.labels.filter((label) =>
+      label.startsWith('category:'),
+    );
+    const hasLlmAgentLabel = issue.labels.some(
+      (l) => l === 'llm-agent' || l.startsWith('llm-agent:'),
+    );
+    if (
+      hasLlmAgentLabel ||
+      (categoryLabels.length > 0 && !categoryLabels.includes('category:e2e'))
+    ) {
+      return false;
+    }
+
+    const prsToCheck = issue.isPr
+      ? await this.resolveOpenPrsForPrItem(issue.url)
+      : await this.issueRepository.findRelatedOpenPRs(issue.url);
+
+    if (prsToCheck.length !== 1) {
+      return true;
+    }
+
+    const pr = prsToCheck[0];
+    return (
+      pr.isConflicted || !pr.isPassedAllCiJob || !pr.isResolvedAllReviewComments
+    );
+  };
+
+  private resolveOpenPrsForPrItem = async (
+    prUrl: string,
+  ): Promise<RelatedPullRequest[]> => {
+    const pr = await this.issueRepository.getOpenPullRequest(prUrl);
+    if (pr === null) {
+      return [];
+    }
+    return [pr];
+  };
+
+  private reportBodyHasNextStep = (body: string): boolean => {
+    const reportMatch = body.match(/```json\n([\s\S]*?)\n```/);
+    if (!reportMatch || reportMatch.length < 2) {
+      return false;
+    }
+    let reportJson: unknown;
+    try {
+      reportJson = JSON.parse(reportMatch[1]);
+    } catch (error) {
+      console.warn(
+        'Invalid JSON in report body while checking nextStep:',
+        error,
+      );
+      return false;
+    }
+    if (typeof reportJson !== 'object' || reportJson === null) {
+      return false;
+    }
+    if (!('nextStep' in reportJson)) {
+      return false;
+    }
+    const nextStepValue = Reflect.get(reportJson, 'nextStep');
+    return nextStepValue !== null && nextStepValue !== undefined;
   };
 
   private isOrphanedIssue = async (

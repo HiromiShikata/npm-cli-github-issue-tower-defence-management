@@ -341,6 +341,8 @@ ${JSON.stringify(e)}
           preparationStatus: input.startPreparation.preparationStatus,
           awaitingWorkspaceStatus:
             input.startPreparation.awaitingWorkspaceStatus,
+          awaitingQualityCheckStatus:
+            input.notifyFinishedPreparation?.awaitingQualityCheckStatus,
           allowIssueCacheMinutes: input.allowIssueCacheMinutes,
           preparationProcessCheckCommand:
             input.startPreparation.preparationProcessCheckCommand,
