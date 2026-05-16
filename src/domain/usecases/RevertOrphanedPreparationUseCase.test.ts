@@ -456,7 +456,9 @@ describe('RevertOrphanedPreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-    expect(mockIssueCommentRepository.getCommentsFromIssue.mock.calls).toHaveLength(0);
+    expect(
+      mockIssueCommentRepository.getCommentsFromIssue.mock.calls,
+    ).toHaveLength(0);
   });
 
   it('should only process issues in Preparation status and skip others', async () => {
@@ -717,7 +719,9 @@ describe('RevertOrphanedPreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-    expect(mockIssueCommentRepository.getCommentsFromIssue.mock.calls).toHaveLength(0);
+    expect(
+      mockIssueCommentRepository.getCommentsFromIssue.mock.calls,
+    ).toHaveLength(0);
   });
 
   it('should leave issue untouched when pgrep exits zero and no aw log files exist yet', async () => {
@@ -752,7 +756,9 @@ describe('RevertOrphanedPreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-    expect(mockIssueCommentRepository.getCommentsFromIssue.mock.calls).toHaveLength(0);
+    expect(
+      mockIssueCommentRepository.getCommentsFromIssue.mock.calls,
+    ).toHaveLength(0);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
   });
 
