@@ -12,7 +12,26 @@ const createMockProject = (overrides: Partial<Project> = {}): Project => ({
   status: {
     name: 'Status',
     fieldId: 'field-1',
-    statuses: [],
+    statuses: [
+      {
+        id: 'preparation-id',
+        name: 'Preparation',
+        color: 'YELLOW',
+        description: '',
+      },
+      {
+        id: 'awaiting-workspace-id',
+        name: 'Awaiting Workspace',
+        color: 'GRAY',
+        description: '',
+      },
+      {
+        id: 'awaiting-quality-check-id',
+        name: 'Awaiting Quality Check',
+        color: 'BLUE',
+        description: '',
+      },
+    ],
   },
   nextActionDate: null,
   nextActionHour: null,
@@ -66,6 +85,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   let mockIssueRepository: {
     get: jest.Mock;
     update: jest.Mock;
+    updateStatus: jest.Mock;
     updateNextActionDate: jest.Mock;
     findRelatedOpenPRs: jest.Mock;
     getStoryObjectMap: jest.Mock;
@@ -98,6 +118,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       getStoryObjectMap: jest.fn().mockResolvedValue(new Map()),
       get: jest.fn(),
       update: jest.fn(),
+      updateStatus: jest.fn(),
       updateNextActionDate: jest.fn(),
       findRelatedOpenPRs: jest.fn(),
       getOpenPullRequest: jest.fn(),
@@ -221,6 +242,15 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         status: 'Awaiting Quality Check',
       }),
       mockProject,
+    );
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledTimes(1);
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      mockProject,
+      expect.objectContaining({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Awaiting Quality Check',
+      }),
+      'awaiting-quality-check-id',
     );
 
     const expectedNextActionDate = new Date('2026-01-01T00:00:00Z');
@@ -353,6 +383,11 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect.objectContaining({ status: 'Awaiting Workspace' }),
       mockProject,
     );
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      mockProject,
+      expect.objectContaining({ status: 'Awaiting Workspace' }),
+      'awaiting-workspace-id',
+    );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
       expect.stringContaining(
@@ -433,6 +468,11 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect.objectContaining({ status: 'Awaiting Workspace' }),
       mockProject,
     );
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      mockProject,
+      expect.objectContaining({ status: 'Awaiting Workspace' }),
+      'awaiting-workspace-id',
+    );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
       expect.stringContaining('Issue has next action date or hour set:'),
@@ -462,6 +502,11 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'Awaiting Workspace' }),
       mockProject,
+    );
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      mockProject,
+      expect.objectContaining({ status: 'Awaiting Workspace' }),
+      'awaiting-workspace-id',
     );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
@@ -509,6 +554,11 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         status: 'Awaiting Workspace',
       }),
       mockProject,
+    );
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      mockProject,
+      expect.objectContaining({ status: 'Awaiting Workspace' }),
+      'awaiting-workspace-id',
     );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -722,6 +772,11 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         status: 'Awaiting Quality Check',
       }),
       mockProject,
+    );
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      mockProject,
+      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      'awaiting-quality-check-id',
     );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({

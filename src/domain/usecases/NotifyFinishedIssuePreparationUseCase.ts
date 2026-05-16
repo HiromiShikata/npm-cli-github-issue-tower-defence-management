@@ -44,6 +44,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       IssueRepository,
       | 'get'
       | 'update'
+      | 'updateStatus'
       | 'updateNextActionDate'
       | 'findRelatedOpenPRs'
       | 'getStoryObjectMap'
@@ -81,6 +82,25 @@ export class NotifyFinishedIssuePreparationUseCase {
       params.awaitingQualityCheckStatus,
       project,
     );
+
+    const awaitingWorkspaceStatusOption = project.status.statuses.find(
+      (s) => s.name === params.awaitingWorkspaceStatus,
+    );
+    if (!awaitingWorkspaceStatusOption) {
+      console.error(
+        `Awaiting workspace status option '${params.awaitingWorkspaceStatus}' not found in project.`,
+      );
+      return;
+    }
+    const awaitingQualityCheckStatusOption = project.status.statuses.find(
+      (s) => s.name === params.awaitingQualityCheckStatus,
+    );
+    if (!awaitingQualityCheckStatusOption) {
+      console.error(
+        `Awaiting quality check status option '${params.awaitingQualityCheckStatus}' not found in project.`,
+      );
+      return;
+    }
 
     const issue = await this.issueRepository.get(params.issueUrl, project);
 
@@ -120,6 +140,11 @@ export class NotifyFinishedIssuePreparationUseCase {
     if (issue.dependedIssueUrls.length > 0) {
       issue.status = params.awaitingWorkspaceStatus;
       await this.issueRepository.update(issue, project);
+      await this.issueRepository.updateStatus(
+        project,
+        issue,
+        awaitingWorkspaceStatusOption.id,
+      );
       await this.issueCommentRepository.createComment(
         issue,
         `Issue has dependent issue URLs: ${issue.dependedIssueUrls.join(', ')}`,
@@ -130,6 +155,11 @@ export class NotifyFinishedIssuePreparationUseCase {
     if (issue.nextActionDate !== null || issue.nextActionHour !== null) {
       issue.status = params.awaitingWorkspaceStatus;
       await this.issueRepository.update(issue, project);
+      await this.issueRepository.updateStatus(
+        project,
+        issue,
+        awaitingWorkspaceStatusOption.id,
+      );
       await this.issueCommentRepository.createComment(
         issue,
         `Issue has next action date or hour set: nextActionDate=${issue.nextActionDate?.toISOString() ?? 'null'}, nextActionHour=${issue.nextActionHour ?? 'null'}`,
@@ -165,6 +195,11 @@ export class NotifyFinishedIssuePreparationUseCase {
     ) {
       issue.status = params.awaitingQualityCheckStatus;
       await this.issueRepository.update(issue, project);
+      await this.issueRepository.updateStatus(
+        project,
+        issue,
+        awaitingQualityCheckStatusOption.id,
+      );
       const escalationStatusLine =
         rejections.length > 0
           ? rejectionStatusMessage
@@ -187,6 +222,11 @@ export class NotifyFinishedIssuePreparationUseCase {
     if (rejections.length <= 0) {
       issue.status = params.awaitingQualityCheckStatus;
       await this.issueRepository.update(issue, project);
+      await this.issueRepository.updateStatus(
+        project,
+        issue,
+        awaitingQualityCheckStatusOption.id,
+      );
       if (approvedPrUrl !== null) {
         await this.setPrNextActionDate(approvedPrUrl, project);
       }
@@ -200,6 +240,11 @@ export class NotifyFinishedIssuePreparationUseCase {
 
     issue.status = params.awaitingWorkspaceStatus;
     await this.issueRepository.update(issue, project);
+    await this.issueRepository.updateStatus(
+      project,
+      issue,
+      awaitingWorkspaceStatusOption.id,
+    );
 
     await this.issueCommentRepository.createComment(
       issue,
