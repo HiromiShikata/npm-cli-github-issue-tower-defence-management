@@ -37,9 +37,7 @@ describe('GraphqlProjectRepository error handling', () => {
     it('should throw a descriptive error when response has no data field', async () => {
       mockPost.mockReturnValueOnce(mockJsonResponse({}));
 
-      await expect(
-        repository.fetchProjectId('someOrg', 1),
-      ).rejects.toThrow(
+      await expect(repository.fetchProjectId('someOrg', 1)).rejects.toThrow(
         'GitHub GraphQL API returned no data for fetchProjectId: no data field in response',
       );
     });
@@ -54,9 +52,7 @@ describe('GraphqlProjectRepository error handling', () => {
         }),
       );
 
-      await expect(
-        repository.fetchProjectId('someOrg', 1),
-      ).rejects.toThrow(
+      await expect(repository.fetchProjectId('someOrg', 1)).rejects.toThrow(
         'GitHub GraphQL API returned no data for fetchProjectId: was submitted too quickly; secondary rate limit',
       );
     });
@@ -65,7 +61,9 @@ describe('GraphqlProjectRepository error handling', () => {
       mockPost.mockReturnValueOnce(
         mockJsonResponse({
           data: {
-            organization: { projectV2: { id: 'org-project-id', databaseId: 1 } },
+            organization: {
+              projectV2: { id: 'org-project-id', databaseId: 1 },
+            },
             user: { projectV2: null },
           },
         }),
@@ -94,9 +92,7 @@ describe('GraphqlProjectRepository error handling', () => {
     it('should throw a descriptive error when response has no data field', async () => {
       mockPost.mockReturnValueOnce(mockJsonResponse({}));
 
-      await expect(
-        repository.getProject('project-id'),
-      ).rejects.toThrow(
+      await expect(repository.getProject('project-id')).rejects.toThrow(
         'GitHub GraphQL API returned no data for getProject: no data field in response',
       );
     });
@@ -108,9 +104,7 @@ describe('GraphqlProjectRepository error handling', () => {
         }),
       );
 
-      await expect(
-        repository.getProject('project-id'),
-      ).rejects.toThrow(
+      await expect(repository.getProject('project-id')).rejects.toThrow(
         'GitHub GraphQL API returned no data for getProject: abuse detection triggered',
       );
     });
