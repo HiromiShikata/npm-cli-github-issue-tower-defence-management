@@ -857,4 +857,37 @@ describe('RevertOrphanedPreparationUseCase', () => {
       'https://github.com/org/project/issues/99',
     ]);
   });
+
+  it('should advance closed orphaned issue to Awaiting Quality Check without checking comments or PRs', async () => {
+    const closedIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+      isClosed: true,
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [closedIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationStatus: 'Preparation',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      awaitingQualityCheckStatus: 'Awaiting Quality Check',
+      allowIssueCacheMinutes: 60,
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+    });
+
+    expect(
+      mockIssueCommentRepository.getCommentsFromIssue.mock.calls,
+    ).toHaveLength(0);
+    expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+  });
 });

@@ -93,6 +93,9 @@ export class RevertOrphanedPreparationUseCase {
   };
 
   private evaluateHasRejections = async (issue: Issue): Promise<boolean> => {
+    if (issue.isClosed) {
+      return false;
+    }
     const comments =
       await this.issueCommentRepository.getCommentsFromIssue(issue);
     const lastComment = comments[comments.length - 1];

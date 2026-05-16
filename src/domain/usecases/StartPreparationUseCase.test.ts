@@ -2505,4 +2505,52 @@ describe('StartPreparationUseCase', () => {
       5,
     );
   });
+
+  it('should skip closed issues in awaiting workspace status', async () => {
+    const closedIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      title: 'Closed issue',
+      labels: [],
+      status: 'Awaiting Workspace',
+      isClosed: true,
+    });
+    const openIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/2',
+      number: 2,
+      title: 'Open issue',
+      labels: [],
+      status: 'Awaiting Workspace',
+      isClosed: false,
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([closedIssue, openIssue]),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      preparationStatus: 'Preparation',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-sonnet-4-6',
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: null,
+      codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+      url: 'https://github.com/user/repo/issues/2',
+    });
+  });
 });

@@ -110,7 +110,10 @@ export class StartPreparationUseCase {
     }
 
     const awaitingWorkspaceIssues = allOpenedIssues
-      .filter((issue) => issue.status === params.awaitingWorkspaceStatus)
+      .filter(
+        (issue) =>
+          issue.status === params.awaitingWorkspaceStatus && !issue.isClosed,
+      )
       .map((issue) => ({ ...issue }));
     const currentPreparationIssueCount = allOpenedIssues.filter(
       (issue) => issue.status === params.preparationStatus,
