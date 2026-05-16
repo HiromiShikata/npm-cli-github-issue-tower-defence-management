@@ -103,9 +103,6 @@ startPreparation?: # Optional: Enable automatic issue preparation workflow
   codexHomeCandidates?: string[] | null # Optional: Ordered list of CODEX_HOME directory paths. Each launched Codex job cycles through the list; absent or empty keeps current behavior
   awLogDirectoryPath?: string # Optional: Directory path where aw log files named {org}_{repo}_{number}_* are written. Used with awLogStaleThresholdMinutes to detect zombie-wrapper orphans
   awLogStaleThresholdMinutes?: number # Optional: Minutes since last aw log mtime after which a Preparation issue is considered orphaned even when pgrep still returns 0 (outer wrapper alive but inner claude dead). Requires awLogDirectoryPath
-notifyFinishedPreparation?: # Optional: Enable notification when issue preparation is finished
-  thresholdForAutoReject: number # Number of auto-rejections before escalating to quality check
-  workflowBlockerResolvedWebhookUrl: string | null # Webhook URL template called when a workflow blocker issue passes checks. Supports {URL} and {MESSAGE} placeholders
 ```
 
 Example:
@@ -145,9 +142,6 @@ startPreparation:
   preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"'
   awLogDirectoryPath: '/home/user/logs-aw'
   awLogStaleThresholdMinutes: 15
-notifyFinishedPreparation:
-  thresholdForAutoReject: 3
-  workflowBlockerResolvedWebhookUrl: 'https://example.com/webhook?url={URL}&msg={MESSAGE}'
 ```
 
 ### startDaemon and notifyFinishedIssuePreparation Commands Config
