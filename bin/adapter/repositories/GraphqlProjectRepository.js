@@ -222,6 +222,46 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             }
             return project;
         };
+        this.updateStoryList = async (project, newStoryList) => {
+            if (!project.story) {
+                throw new Error('Project has no story field');
+            }
+            const mutation = `mutation UpdateStoryOptions($fieldId: ID!, $options: [ProjectV2SingleSelectFieldOptionInput!]!) {
+  updateProjectV2Field(input: {
+    fieldId: $fieldId
+    singleSelectOptions: $options
+  }) {
+    projectV2Field {
+      ... on ProjectV2SingleSelectField {
+        options {
+          id
+          name
+          color
+          description
+        }
+      }
+    }
+  }
+}`;
+            const variables = {
+                fieldId: project.story.fieldId,
+                options: newStoryList.map(({ id, name, color, description }) => ({
+                    ...(id !== null ? { id } : {}),
+                    name,
+                    color,
+                    description,
+                })),
+            };
+            const response = await ky_1.default
+                .post('https://api.github.com/graphql', {
+                json: { query: mutation, variables },
+                headers: {
+                    Authorization: `Bearer ${this.ghToken}`,
+                },
+            })
+                .json();
+            return response.data.updateProjectV2Field.projectV2Field.options;
+        };
     }
 }
 exports.GraphqlProjectRepository = GraphqlProjectRepository;

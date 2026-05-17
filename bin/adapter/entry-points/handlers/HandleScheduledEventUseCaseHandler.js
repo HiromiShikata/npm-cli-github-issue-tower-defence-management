@@ -63,7 +63,6 @@ const ConvertCheckboxToIssueInStoryIssueUseCase_1 = require("../../../domain/use
 const ChangeStatusByStoryColorUseCase_1 = require("../../../domain/usecases/ChangeStatusByStoryColorUseCase");
 const SetNoStoryIssueToStoryUseCase_1 = require("../../../domain/usecases/SetNoStoryIssueToStoryUseCase");
 const CreateNewStoryByLabelUseCase_1 = require("../../../domain/usecases/CreateNewStoryByLabelUseCase");
-const CheerioProjectRepository_1 = require("../../repositories/CheerioProjectRepository");
 const AssignNoAssigneeIssueToManagerUseCase_1 = require("../../../domain/usecases/AssignNoAssigneeIssueToManagerUseCase");
 const UpdateIssueStatusByLabelUseCase_1 = require("../../../domain/usecases/UpdateIssueStatusByLabelUseCase");
 const StartPreparationUseCase_1 = require("../../../domain/usecases/StartPreparationUseCase");
@@ -429,7 +428,6 @@ class HandleScheduledEventUseCaseHandler {
             ];
             const projectRepository = {
                 ...new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams),
-                ...new CheerioProjectRepository_1.CheerioProjectRepository(...githubRepositoryParams),
                 prepareStatus: async (_name, project) => {
                     return project;
                 },

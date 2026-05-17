@@ -1,5 +1,6 @@
 import { GraphqlProjectRepository } from './GraphqlProjectRepository';
 import { LocalStorageRepository } from './LocalStorageRepository';
+import { FieldOption, Project } from '../../domain/entities/Project';
 
 describe('GraphqlProjectRepository', () => {
   const localStorageRepository = new LocalStorageRepository();
@@ -26,6 +27,77 @@ describe('GraphqlProjectRepository', () => {
     it('should extract project ID from URL and fetch it', async () => {
       const response = await repository.findProjectIdByUrl(projectUrl);
       expect(response).toEqual(projectId);
+    });
+  });
+
+  describe('updateStoryList', () => {
+    const storyFieldId = 'PVTSSF_lAHOAGJHa84AFhgFzg1oBms';
+    const existingStories: FieldOption[] = [
+      { id: 'af410dae', name: 'story1', color: 'GRAY', description: '' },
+      {
+        id: '696ccdef',
+        name: 'Workflow Management',
+        color: 'GRAY',
+        description: '',
+      },
+      { id: '4fa21881', name: 'test', color: 'GRAY', description: '' },
+    ];
+    const testProject: Project = {
+      id: projectId,
+      url: projectUrl,
+      databaseId: 1447941,
+      name: 'V2 project on owner for testing',
+      completionDate50PercentConfidence: null,
+      dependedIssueUrlSeparatedByComma: null,
+      nextActionDate: {
+        fieldId: 'PVTF_lAHOAGJHa84AFhgFzgVlnK4',
+        name: 'NextActionDate',
+      },
+      nextActionHour: null,
+      remainingEstimationMinutes: null,
+      status: {
+        fieldId: 'PVTSSF_lAHOAGJHa84AFhgFzgDLt0c',
+        name: 'Status',
+        statuses: [],
+      },
+      story: {
+        fieldId: storyFieldId,
+        databaseId: 224921195,
+        name: 'Story',
+        stories: existingStories,
+        workflowManagementStory: {
+          id: '696ccdef',
+          name: 'Workflow Management',
+        },
+      },
+    };
+
+    it('should add a new option while preserving all existing options', async () => {
+      const newOption: Omit<FieldOption, 'id'> & { id: null } = {
+        id: null,
+        name: 'test-story-from-graphql-unit-test',
+        color: 'BLUE',
+        description: 'created by graphql unit test',
+      };
+      const inputList: Parameters<typeof repository.updateStoryList>['1'] = [
+        ...existingStories,
+        newOption,
+      ];
+
+      const result = await repository.updateStoryList(testProject, inputList);
+
+      expect(result).toHaveLength(existingStories.length + 1);
+      existingStories.forEach((existing) => {
+        const found = result.find((r) => r.id === existing.id);
+        expect(found).toEqual(existing);
+      });
+      const added = result.find((r) => r.name === newOption.name);
+      expect(added).toBeDefined();
+      expect(added?.color).toEqual(newOption.color);
+      expect(added?.description).toEqual(newOption.description);
+      expect(added?.id).toBeDefined();
+
+      await repository.updateStoryList(testProject, existingStories);
     });
   });
 

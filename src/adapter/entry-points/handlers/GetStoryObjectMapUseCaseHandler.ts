@@ -11,7 +11,6 @@ import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCach
 import { Issue } from '../../../domain/entities/Issue';
 import { Project } from '../../../domain/entities/Project';
 import { BaseGitHubRepository } from '../../repositories/BaseGitHubRepository';
-import { CheerioProjectRepository } from '../../repositories/CheerioProjectRepository';
 import { GetStoryObjectMapUseCase } from '../../../domain/usecases/GetStoryObjectMapUseCase';
 import { StoryObjectMap } from '../../../domain/entities/StoryObjectMap';
 
@@ -65,7 +64,6 @@ export class GetStoryObjectMapUseCaseHandler {
     ];
     const projectRepository = {
       ...new GraphqlProjectRepository(...githubRepositoryParams),
-      ...new CheerioProjectRepository(...githubRepositoryParams),
     };
     const apiV3IssueRepository = new ApiV3IssueRepository(
       ...githubRepositoryParams,
