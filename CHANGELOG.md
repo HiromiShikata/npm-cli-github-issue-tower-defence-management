@@ -1,3 +1,15 @@
+# [1.45.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.44.10...v1.45.0) (2026-05-17)
+
+
+### Bug Fixes
+
+* **core:** add missing createdAt field to createPassingPr helper in RevertOrphanedPreparationUseCase tests ([7dde738](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7dde738f385ed3bbd997ee66fc2ec4cf4ad053d4))
+
+
+### Features
+
+* **core:** auto-resolve multiple-open-PR ambiguity by adopting oldest PR and closing newer ones ([6840f2c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6840f2c3890ad66e41ea0ac0bfc9deca1804c444)), closes [#561](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/561)
+
 ## [1.44.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.44.9...v1.44.10) (2026-05-16)
 
 
