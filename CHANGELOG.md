@@ -1,3 +1,11 @@
+# [1.46.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.45.0...v1.46.0) (2026-05-17)
+
+
+### Features
+
+* **core:** remove gh-cookie dependency ([f0321fd](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f0321fd2a84624dedafd44be58372d4bb61f5662)), closes [#cookie](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/cookie) [#cookie](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/cookie)
+* **core:** replace CheerioProjectRepository.updateStoryList with GraphQL updateProjectV2Field mutation ([91ced75](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/91ced75f8baf118f3ac75a8e4feec24ebbaa1404))
+
 # [1.45.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.44.10...v1.45.0) (2026-05-17)
 
 
