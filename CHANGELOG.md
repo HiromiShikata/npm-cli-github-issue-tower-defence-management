@@ -1,3 +1,15 @@
+# [1.47.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.46.0...v1.47.0) (2026-05-17)
+
+
+### Bug Fixes
+
+* **core:** remove startDaemon situation write with empty issue list ([fddc899](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/fddc899523fbd86b67002557c7bef0802a274352))
+
+
+### Features
+
+* **core:** replace runtimeConfig dump with per-project situation JSON ([29ebdb5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/29ebdb5401eb187142cb3653d336bf8e9748ddde))
+
 # [1.46.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.45.0...v1.46.0) (2026-05-17)
 
 
