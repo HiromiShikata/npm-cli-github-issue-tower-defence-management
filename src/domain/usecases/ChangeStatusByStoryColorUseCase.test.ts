@@ -18,9 +18,9 @@ describe('ChangeStatusByStoryColorUseCase', () => {
   mockReviewStatus.id = 'status2';
   mockReviewStatus.name = 'InReview';
 
-  const mockIceboxStatus = mock<FieldOption>();
-  mockIceboxStatus.id = 'status3';
-  mockIceboxStatus.name = 'Icebox';
+  const mockDisabledStatus = mock<FieldOption>();
+  mockDisabledStatus.id = 'status3';
+  mockDisabledStatus.name = 'Disabled';
 
   const basicProject = {
     ...mock<Project>(),
@@ -38,7 +38,7 @@ describe('ChangeStatusByStoryColorUseCase', () => {
     status: {
       name: 'Status Field',
       fieldId: 'statusFieldId',
-      statuses: [mockStatus, mockReviewStatus, mockIceboxStatus],
+      statuses: [mockStatus, mockReviewStatus, mockDisabledStatus],
     },
   };
 
@@ -118,7 +118,6 @@ describe('ChangeStatusByStoryColorUseCase', () => {
         cacheUsed: false,
         org: 'testOrg',
         repo: 'testRepo',
-        disabledStatus: 'Icebox',
         storyObjectMap: basicStoryObjectMap,
       },
       expectedCalls: {
@@ -133,7 +132,6 @@ describe('ChangeStatusByStoryColorUseCase', () => {
         cacheUsed: true,
         org: 'testOrg',
         repo: 'testRepo',
-        disabledStatus: 'Icebox',
         storyObjectMap: basicStoryObjectMap,
       },
       expectedCalls: {
@@ -148,7 +146,6 @@ describe('ChangeStatusByStoryColorUseCase', () => {
         cacheUsed: false,
         org: 'testOrg',
         repo: 'testRepo',
-        disabledStatus: 'Icebox',
         storyObjectMap: new Map([
           [
             'Story 1',
@@ -180,7 +177,6 @@ describe('ChangeStatusByStoryColorUseCase', () => {
         cacheUsed: false,
         org: 'testOrg',
         repo: 'testRepo',
-        disabledStatus: 'Icebox',
         storyObjectMap: new Map([
           [
             'Story 1',
@@ -189,7 +185,7 @@ describe('ChangeStatusByStoryColorUseCase', () => {
               issues: [
                 {
                   ...basicStoryObject1.issues[0],
-                  status: 'Icebox',
+                  status: 'Disabled',
                 },
               ],
             },
@@ -245,7 +241,6 @@ describe('ChangeStatusByStoryColorUseCase', () => {
           cacheUsed: false,
           org: 'testOrg',
           repo: 'testRepo',
-          disabledStatus: 'Icebox',
           storyObjectMap: basicStoryObjectMap,
         }),
       ).rejects.toThrow('First status is not found');

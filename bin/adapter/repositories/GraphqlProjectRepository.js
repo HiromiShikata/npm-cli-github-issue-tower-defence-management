@@ -262,6 +262,43 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
                 .json();
             return response.data.updateProjectV2Field.projectV2Field.options;
         };
+        this.updateStatusList = async (project, newStatusList) => {
+            const mutation = `mutation UpdateStatusOptions($fieldId: ID!, $options: [ProjectV2SingleSelectFieldOptionInput!]!) {
+  updateProjectV2Field(input: {
+    fieldId: $fieldId
+    singleSelectOptions: $options
+  }) {
+    projectV2Field {
+      ... on ProjectV2SingleSelectField {
+        options {
+          id
+          name
+          color
+          description
+        }
+      }
+    }
+  }
+}`;
+            const variables = {
+                fieldId: project.status.fieldId,
+                options: newStatusList.map(({ id, name, color, description }) => ({
+                    ...(id !== null ? { id } : {}),
+                    name,
+                    color,
+                    description,
+                })),
+            };
+            const response = await ky_1.default
+                .post('https://api.github.com/graphql', {
+                json: { query: mutation, variables },
+                headers: {
+                    Authorization: `Bearer ${this.ghToken}`,
+                },
+            })
+                .json();
+            return response.data.updateProjectV2Field.projectV2Field.options;
+        };
     }
 }
 exports.GraphqlProjectRepository = GraphqlProjectRepository;

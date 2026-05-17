@@ -86,7 +86,6 @@ describe('UpdateIssueStatusByLabelUseCase', () => {
     const testCases: {
       name: string;
       issues: Issue[];
-      defaultStatus: string | null;
       expectedCalls: {
         updateStatus: [unknown, unknown, string][];
         removeLabel: [unknown, string][];
@@ -101,7 +100,6 @@ describe('UpdateIssueStatusByLabelUseCase', () => {
             status: 'ToDo',
           },
         ],
-        defaultStatus: null,
         expectedCalls: {
           updateStatus: [],
           removeLabel: [],
@@ -116,7 +114,6 @@ describe('UpdateIssueStatusByLabelUseCase', () => {
             status: 'ToDo',
           },
         ],
-        defaultStatus: null,
         expectedCalls: {
           updateStatus: [[expect.anything(), expect.anything(), 'status2']],
           removeLabel: [[expect.anything(), 'status:In Progress']],
@@ -131,7 +128,6 @@ describe('UpdateIssueStatusByLabelUseCase', () => {
             status: 'ToDo',
           },
         ],
-        defaultStatus: null,
         expectedCalls: {
           updateStatus: [],
           removeLabel: [[expect.anything(), 'status:ToDo']],
@@ -146,7 +142,6 @@ describe('UpdateIssueStatusByLabelUseCase', () => {
             status: 'In Progress',
           },
         ],
-        defaultStatus: null,
         expectedCalls: {
           updateStatus: [],
           removeLabel: [[expect.anything(), 'status:in-progress']],
@@ -161,7 +156,6 @@ describe('UpdateIssueStatusByLabelUseCase', () => {
             status: 'In Progress',
           },
         ],
-        defaultStatus: null,
         expectedCalls: {
           updateStatus: [],
           removeLabel: [[expect.anything(), 'status:in_progress']],
@@ -176,7 +170,6 @@ describe('UpdateIssueStatusByLabelUseCase', () => {
             status: 'ToDo',
           },
         ],
-        defaultStatus: null,
         expectedCalls: {
           updateStatus: [],
           removeLabel: [],
@@ -196,7 +189,6 @@ describe('UpdateIssueStatusByLabelUseCase', () => {
             status: 'ToDo',
           },
         ],
-        defaultStatus: null,
         expectedCalls: {
           updateStatus: [
             [expect.anything(), expect.anything(), 'status2'],
@@ -217,7 +209,6 @@ describe('UpdateIssueStatusByLabelUseCase', () => {
             status: 'ToDo',
           },
         ],
-        defaultStatus: null,
         expectedCalls: {
           updateStatus: [[expect.anything(), expect.anything(), 'status3']],
           removeLabel: [[expect.anything(), 'Status:Icebox']],
@@ -232,7 +223,6 @@ describe('UpdateIssueStatusByLabelUseCase', () => {
             status: null,
           },
         ],
-        defaultStatus: null,
         expectedCalls: {
           updateStatus: [[expect.anything(), expect.anything(), 'status1']],
           removeLabel: [[expect.anything(), 'status:ToDo']],
@@ -247,7 +237,6 @@ describe('UpdateIssueStatusByLabelUseCase', () => {
             status: 'ToDo',
           },
         ],
-        defaultStatus: null,
         expectedCalls: {
           updateStatus: [[expect.anything(), expect.anything(), 'status2']],
           removeLabel: [[expect.anything(), 'status:In Progress']],
@@ -256,14 +245,13 @@ describe('UpdateIssueStatusByLabelUseCase', () => {
       {
         name: 'should handle empty issues array',
         issues: [],
-        defaultStatus: null,
         expectedCalls: {
           updateStatus: [],
           removeLabel: [],
         },
       },
       {
-        name: 'should not change when status label value does not match any project status',
+        name: 'should not update when status label value does not match any project status',
         issues: [
           {
             ...mock<Issue>(),
@@ -271,50 +259,18 @@ describe('UpdateIssueStatusByLabelUseCase', () => {
             status: 'ToDo',
           },
         ],
-        defaultStatus: 'Unread',
         expectedCalls: {
           updateStatus: [],
           removeLabel: [],
-        },
-      },
-      {
-        name: 'should not update when status label value does not match and defaultStatus is null',
-        issues: [
-          {
-            ...mock<Issue>(),
-            labels: ['status:UnknownStatus'],
-            status: 'ToDo',
-          },
-        ],
-        defaultStatus: null,
-        expectedCalls: {
-          updateStatus: [],
-          removeLabel: [],
-        },
-      },
-      {
-        name: 'should use matched status over defaultStatus when label matches a project status',
-        issues: [
-          {
-            ...mock<Issue>(),
-            labels: ['status:In Progress'],
-            status: 'ToDo',
-          },
-        ],
-        defaultStatus: 'Unread',
-        expectedCalls: {
-          updateStatus: [[expect.anything(), expect.anything(), 'status2']],
-          removeLabel: [[expect.anything(), 'status:In Progress']],
         },
       },
     ];
 
-    testCases.forEach(({ name, issues, defaultStatus, expectedCalls }) => {
+    testCases.forEach(({ name, issues, expectedCalls }) => {
       it(name, async () => {
         await useCase.run({
           project: basicProject,
           issues,
-          defaultStatus,
         });
 
         expect(mockIssueRepository.updateStatus.mock.calls).toEqual(
@@ -341,7 +297,6 @@ describe('UpdateIssueStatusByLabelUseCase', () => {
         useCase.run({
           project: basicProject,
           issues: [issueWithUrl],
-          defaultStatus: null,
         }),
       ).rejects.toThrow(
         'Failed to remove label status:In Progress from issue https://github.com/testOrg/testRepo/issues/42: Request failed with status code 403 Forbidden',

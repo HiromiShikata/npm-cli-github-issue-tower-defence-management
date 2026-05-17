@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HandleScheduledEventUseCase = exports.ProjectNotFoundError = void 0;
+const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 class ProjectNotFoundError extends Error {
     constructor(message) {
         super(message);
@@ -9,7 +10,8 @@ class ProjectNotFoundError extends Error {
 }
 exports.ProjectNotFoundError = ProjectNotFoundError;
 class HandleScheduledEventUseCase {
-    constructor(actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, notifyFinishedIssuePreparationUseCase, revertOrphanedPreparationUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
+    constructor(setupTowerDefenceProjectUseCase, actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, notifyFinishedIssuePreparationUseCase, revertOrphanedPreparationUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
+        this.setupTowerDefenceProjectUseCase = setupTowerDefenceProjectUseCase;
         this.actionAnnouncementUseCase = actionAnnouncementUseCase;
         this.setWorkflowManagementIssueToStoryUseCase = setWorkflowManagementIssueToStoryUseCase;
         this.clearPastNextActionUseCase = clearPastNextActionUseCase;
@@ -34,6 +36,9 @@ class HandleScheduledEventUseCase {
             if (input.disabled) {
                 return null;
             }
+            await this.setupTowerDefenceProjectUseCase.run({
+                projectUrl: input.projectUrl,
+            });
             const projectId = await this.projectRepository.findProjectIdByUrl(input.projectUrl);
             if (!projectId) {
                 throw new ProjectNotFoundError(`Project not found. projectUrl: ${input.projectUrl}`);
@@ -169,7 +174,6 @@ ${JSON.stringify(e)}
                 org: input.org,
                 repo: input.workingReport.repo,
                 urlOfStoryView: input.urlOfStoryView,
-                disabledStatus: input.disabledStatus,
                 storyObjectMap: storyObjectMap,
             });
             await this.convertCheckboxToIssueInStoryIssueUseCase.run({
@@ -177,7 +181,6 @@ ${JSON.stringify(e)}
                 issues,
                 cacheUsed,
                 urlOfStoryView: input.urlOfStoryView,
-                disabledStatus: input.disabledStatus,
                 storyObjectMap: storyObjectMap,
             });
             await this.changeStatusByStoryColorUseCase.run({
@@ -185,7 +188,6 @@ ${JSON.stringify(e)}
                 cacheUsed,
                 org: input.org,
                 repo: input.workingReport.repo,
-                disabledStatus: input.disabledStatus,
                 storyObjectMap: storyObjectMap,
             });
             await this.createNewStoryByLabelUseCase.run({
@@ -193,7 +195,6 @@ ${JSON.stringify(e)}
                 cacheUsed,
                 org: input.org,
                 repo: input.workingReport.repo,
-                disabledStatus: input.disabledStatus,
                 storyObjectMap: storyObjectMap,
             });
             await this.assignNoAssigneeIssueToManagerUseCase.run({
@@ -204,15 +205,11 @@ ${JSON.stringify(e)}
             await this.updateIssueStatusByLabelUseCase.run({
                 project,
                 issues,
-                defaultStatus: input.defaultStatus,
             });
             if (input.startPreparation) {
                 if (input.startPreparation.preparationProcessCheckCommand) {
                     await this.revertOrphanedPreparationUseCase.run({
                         projectUrl: input.projectUrl,
-                        preparationStatus: input.startPreparation.preparationStatus,
-                        awaitingWorkspaceStatus: input.startPreparation.awaitingWorkspaceStatus,
-                        awaitingQualityCheckStatus: input.notifyFinishedPreparation?.awaitingQualityCheckStatus,
                         allowIssueCacheMinutes: input.allowIssueCacheMinutes,
                         preparationProcessCheckCommand: input.startPreparation.preparationProcessCheckCommand,
                         awLogDirectoryPath: input.startPreparation.awLogDirectoryPath,
@@ -221,8 +218,6 @@ ${JSON.stringify(e)}
                 }
                 await this.startPreparationUseCase.run({
                     projectUrl: input.projectUrl,
-                    awaitingWorkspaceStatus: input.startPreparation.awaitingWorkspaceStatus,
-                    preparationStatus: input.startPreparation.preparationStatus,
                     defaultAgentName: input.startPreparation.defaultAgentName,
                     defaultLlmModelName: input.startPreparation.defaultLlmModelName ?? null,
                     defaultLlmAgentName: input.startPreparation.defaultLlmAgentName ?? null,
@@ -236,16 +231,13 @@ ${JSON.stringify(e)}
             }
             if (input.notifyFinishedPreparation) {
                 const notifyFinishedPreparation = input.notifyFinishedPreparation;
-                const preparationIssues = issues.filter((issue) => issue.status === notifyFinishedPreparation.preparationStatus);
+                const preparationIssues = issues.filter((issue) => issue.status === WorkflowStatus_1.PREPARATION_STATUS_NAME);
                 for (const issue of preparationIssues) {
                     await this.notifyFinishedIssuePreparationUseCase.run({
                         projectUrl: input.projectUrl,
                         issueUrl: issue.url,
-                        preparationStatus: input.notifyFinishedPreparation.preparationStatus,
-                        awaitingWorkspaceStatus: input.notifyFinishedPreparation.awaitingWorkspaceStatus,
-                        awaitingQualityCheckStatus: input.notifyFinishedPreparation.awaitingQualityCheckStatus,
-                        thresholdForAutoReject: input.notifyFinishedPreparation.thresholdForAutoReject,
-                        workflowBlockerResolvedWebhookUrl: input.notifyFinishedPreparation.workflowBlockerResolvedWebhookUrl,
+                        thresholdForAutoReject: notifyFinishedPreparation.thresholdForAutoReject,
+                        workflowBlockerResolvedWebhookUrl: notifyFinishedPreparation.workflowBlockerResolvedWebhookUrl,
                     });
                 }
             }

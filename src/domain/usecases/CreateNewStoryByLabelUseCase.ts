@@ -18,7 +18,6 @@ export class CreateNewStoryByLabelUseCase {
     cacheUsed: boolean;
     org: string;
     repo: string;
-    disabledStatus: string;
     storyObjectMap: StoryObjectMap;
   }): Promise<void> => {
     const projectStory = input.project.story;

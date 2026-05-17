@@ -3,8 +3,6 @@ import * as fs from 'fs';
 
 export type ConfigFile = {
   projectUrl?: string;
-  awaitingWorkspaceStatus?: string;
-  preparationStatus?: string;
   defaultAgentName?: string;
   defaultLlmModelName?: string;
   defaultLlmAgentName?: string;
@@ -12,7 +10,6 @@ export type ConfigFile = {
   allowIssueCacheMinutes?: number;
   utilizationPercentageThreshold?: number;
   allowedIssueAuthors?: string;
-  awaitingQualityCheckStatus?: string;
   thresholdForAutoReject?: number;
   workflowBlockerResolvedWebhookUrl?: string;
   projectName?: string;
@@ -68,11 +65,6 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
     }
     return {
       projectUrl: getStringValue(parsed, 'projectUrl'),
-      awaitingWorkspaceStatus: getStringValue(
-        parsed,
-        'awaitingWorkspaceStatus',
-      ),
-      preparationStatus: getStringValue(parsed, 'preparationStatus'),
       defaultAgentName: getStringValue(parsed, 'defaultAgentName'),
       defaultLlmModelName: getStringValue(parsed, 'defaultLlmModelName'),
       defaultLlmAgentName: getStringValue(parsed, 'defaultLlmAgentName'),
@@ -86,10 +78,6 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         'utilizationPercentageThreshold',
       ),
       allowedIssueAuthors: getStringValue(parsed, 'allowedIssueAuthors'),
-      awaitingQualityCheckStatus: getStringValue(
-        parsed,
-        'awaitingQualityCheckStatus',
-      ),
       thresholdForAutoReject: getNumberValue(parsed, 'thresholdForAutoReject'),
       workflowBlockerResolvedWebhookUrl: getStringValue(
         parsed,
@@ -133,11 +121,6 @@ export const parseProjectReadmeConfig = (readme: string): ConfigFile => {
       return {};
     }
     return {
-      awaitingWorkspaceStatus: getStringValue(
-        parsed,
-        'awaitingWorkspaceStatus',
-      ),
-      preparationStatus: getStringValue(parsed, 'preparationStatus'),
       defaultAgentName: getStringValue(parsed, 'defaultAgentName'),
       defaultLlmModelName: getStringValue(parsed, 'defaultLlmModelName'),
       defaultLlmAgentName: getStringValue(parsed, 'defaultLlmAgentName'),
@@ -151,10 +134,6 @@ export const parseProjectReadmeConfig = (readme: string): ConfigFile => {
         'utilizationPercentageThreshold',
       ),
       allowedIssueAuthors: getStringValue(parsed, 'allowedIssueAuthors'),
-      awaitingQualityCheckStatus: getStringValue(
-        parsed,
-        'awaitingQualityCheckStatus',
-      ),
       thresholdForAutoReject: getNumberValue(parsed, 'thresholdForAutoReject'),
       workflowBlockerResolvedWebhookUrl: getStringValue(
         parsed,
@@ -183,14 +162,6 @@ export const mergeConfigs = (
   readmeOverrides: ConfigFile,
 ): ConfigFile => ({
   projectUrl: cliOverrides.projectUrl ?? configFile.projectUrl,
-  awaitingWorkspaceStatus:
-    readmeOverrides.awaitingWorkspaceStatus ??
-    cliOverrides.awaitingWorkspaceStatus ??
-    configFile.awaitingWorkspaceStatus,
-  preparationStatus:
-    readmeOverrides.preparationStatus ??
-    cliOverrides.preparationStatus ??
-    configFile.preparationStatus,
   defaultAgentName:
     readmeOverrides.defaultAgentName ??
     cliOverrides.defaultAgentName ??
@@ -219,10 +190,6 @@ export const mergeConfigs = (
     readmeOverrides.allowedIssueAuthors ??
     cliOverrides.allowedIssueAuthors ??
     configFile.allowedIssueAuthors,
-  awaitingQualityCheckStatus:
-    readmeOverrides.awaitingQualityCheckStatus ??
-    cliOverrides.awaitingQualityCheckStatus ??
-    configFile.awaitingQualityCheckStatus,
   thresholdForAutoReject:
     readmeOverrides.thresholdForAutoReject ??
     cliOverrides.thresholdForAutoReject ??

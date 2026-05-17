@@ -30,8 +30,6 @@ Options for schedule:
 Options for startDaemon:
   --configFilePath <path>                          Path to config file for tower defence management (required)
   --projectUrl <url>                               GitHub project URL
-  --awaitingWorkspaceStatus <status>               Status for issues awaiting workspace
-  --preparationStatus <status>                     Status for issues in preparation
   --defaultAgentName <name>                        Default agent name
   --defaultLlmModelName <name>                     Default LLM model name
   --defaultLlmAgentName <name>                     Default LLM agent name
@@ -45,9 +43,6 @@ Options for notifyFinishedIssuePreparation:
   --configFilePath <path>                          Path to config file for tower defence management (required)
   --issueUrl <url>                                 GitHub issue URL (required)
   --projectUrl <url>                               GitHub project URL
-  --preparationStatus <status>                     Status for issues in preparation
-  --awaitingWorkspaceStatus <status>               Status for issues awaiting workspace
-  --awaitingQualityCheckStatus <status>            Status for issues awaiting quality check
   --thresholdForAutoReject <count>                 Threshold for auto-escalation after consecutive rejections (default: 3)
   --workflowBlockerResolvedWebhookUrl <url>        Webhook URL to notify when a workflow blocker issue status changes
 ```
@@ -78,12 +73,13 @@ npx github-issue-tower-defence-management notifyFinishedIssuePreparation --confi
 
 The `config.yaml` for the `schedule` command must match the input type of `HandleScheduledEventUseCase.run()`. Below is the structure:
 
+Workflow status names (`Unread`, `Awaiting Workspace`, `Preparation`, `Awaiting Quality Check`, `Disabled`) are fixed code constants and cannot be overridden from CLI options, config files, or project README. The `schedule` command automatically creates any missing required statuses on the target project on each run via `SetupTowerDefenceProjectUseCase`.
+
 ```yaml
 disabled: boolean # When true, skip all processing and return null
 org: string # Organization name
 projectUrl: string # URL of the target project
 manager: string # GitHub account name of the manager
-defaultStatus?: string | null # Optional: Fallback status used when a status label value does not match any project status
 workingReport:
   repo: string # Repository name
   members: # Array of member's GitHub account names
@@ -96,8 +92,6 @@ workingReport:
     - string
     - string
 startPreparation?: # Optional: Enable automatic issue preparation workflow
-  awaitingWorkspaceStatus: string # Project status name for issues awaiting workspace
-  preparationStatus: string # Project status name for issues in preparation
   defaultAgentName: string # Default agent name to assign for preparation
   configFilePath: string # Path to config file passed to the aw command
   defaultLlmModelName?: string | null # Optional: Default LLM model name (overridable via llm-model: label)
@@ -105,14 +99,11 @@ startPreparation?: # Optional: Enable automatic issue preparation workflow
   maximumPreparingIssuesCount: number | null # Max concurrent preparing issues (null = unlimited)
   utilizationPercentageThreshold?: number # Optional: Claude usage % threshold above which preparation is throttled (default: 90)
   allowedIssueAuthors?: string[] | null # Optional: Only start preparation for issues from these authors (null = all authors)
-  preparationProcessCheckCommand?: string # Optional: Shell command template with {URL} placeholder to check if a preparation process is alive. When set, orphaned Preparation issues (process exits non-zero, or stale aw log) are evaluated for completion: if work is done they advance to awaitingQualityCheckStatus (when configured); otherwise they fall back to awaitingWorkspaceStatus
+  preparationProcessCheckCommand?: string # Optional: Shell command template with {URL} placeholder to check if a preparation process is alive. When set, orphaned Preparation issues (process exits non-zero, or stale aw log) are evaluated for completion: if work is done they advance to Awaiting Quality Check; otherwise they fall back to Awaiting Workspace
   codexHomeCandidates?: string[] | null # Optional: Ordered list of CODEX_HOME directory paths. Each launched Codex job cycles through the list; absent or empty keeps current behavior
   awLogDirectoryPath?: string # Optional: Directory path where aw log files named {org}_{repo}_{number}_* are written. Used with awLogStaleThresholdMinutes to detect zombie-wrapper orphans
   awLogStaleThresholdMinutes?: number # Optional: Minutes since last aw log mtime after which a Preparation issue is considered orphaned even when pgrep still returns 0 (outer wrapper alive but inner claude dead). Requires awLogDirectoryPath
 notifyFinishedPreparation?: # Optional: Enable notification when issue preparation is finished
-  preparationStatus: string # Status name for issues in preparation
-  awaitingWorkspaceStatus: string # Status name for issues awaiting workspace
-  awaitingQualityCheckStatus: string # Status name for issues awaiting quality check
   thresholdForAutoReject: number # Number of auto-rejections before escalating to quality check
   workflowBlockerResolvedWebhookUrl: string | null # Webhook URL template called when a workflow blocker issue passes checks. Supports {URL} and {MESSAGE} placeholders
 ```
@@ -124,7 +115,6 @@ disabled: false
 org: 'my-org'
 projectUrl: 'https://github.com/orgs/my-org/projects/1'
 manager: 'HiromiShikata'
-defaultStatus: 'Unread'
 workingReport:
   repo: 'work-report'
   members:
@@ -147,8 +137,6 @@ workingReport:
   slack:
     userToken: 'xoxp-xxx'
 startPreparation:
-  awaitingWorkspaceStatus: 'Awaiting Workspace'
-  preparationStatus: 'Preparation'
   defaultAgentName: 'aw'
   configFilePath: '/path/to/agent-config.yml'
   defaultLlmModelName: 'claude-opus-4-5'
@@ -158,9 +146,6 @@ startPreparation:
   awLogDirectoryPath: '/home/user/logs-aw'
   awLogStaleThresholdMinutes: 15
 notifyFinishedPreparation:
-  preparationStatus: 'Preparation'
-  awaitingWorkspaceStatus: 'Awaiting Workspace'
-  awaitingQualityCheckStatus: 'Awaiting Quality Check'
   thresholdForAutoReject: 3
   workflowBlockerResolvedWebhookUrl: 'https://example.com/webhook?url={URL}&msg={MESSAGE}'
 ```
@@ -172,8 +157,6 @@ The config YAML for `startDaemon` and `notifyFinishedIssuePreparation` commands:
 ```yaml
 projectUrl: string # URL of the GitHub project
 projectName: string # Project name (used for cache directory path)
-awaitingWorkspaceStatus: string # Status name for issues awaiting workspace
-preparationStatus: string # Status name for issues in preparation
 defaultAgentName: string # Default agent name for issue preparation
 defaultLlmModelName?: string # Optional: Default LLM model name
 defaultLlmAgentName?: string # Optional: Default LLM agent name
@@ -181,27 +164,25 @@ maximumPreparingIssuesCount?: number # Optional: Max concurrent preparing issues
 allowIssueCacheMinutes?: number # Optional: Allow cache for issues in minutes (default: 0)
 utilizationPercentageThreshold?: number # Optional: Claude usage % threshold (default: 90)
 allowedIssueAuthors?: string # Optional: Comma-separated list of allowed issue authors
-awaitingQualityCheckStatus: string # Status name for issues awaiting quality check
 thresholdForAutoReject?: number # Optional: Consecutive rejections before escalation (default: 3)
 workflowBlockerResolvedWebhookUrl?: string # Optional: Webhook URL. Supports {URL} and {MESSAGE} placeholders
-preparationProcessCheckCommand?: string # Optional: Shell command template with {URL} placeholder to check if a preparation process is alive. Orphaned Preparation issues (process exits non-zero, or stale aw log) are evaluated for completion: if work is done they advance to awaitingQualityCheckStatus (when set); otherwise they fall back to awaitingWorkspaceStatus
+preparationProcessCheckCommand?: string # Optional: Shell command template with {URL} placeholder to check if a preparation process is alive. Orphaned Preparation issues (process exits non-zero, or stale aw log) are evaluated for completion: if work is done they advance to Awaiting Quality Check; otherwise they fall back to Awaiting Workspace
 codexHomeCandidates?: string[] # Optional: Ordered list of CODEX_HOME directory paths for Codex profile cycling. Absent or empty keeps current behavior
 awLogDirectoryPath?: string # Optional: Directory path where aw log files named {org}_{repo}_{number}_* are written. Used with awLogStaleThresholdMinutes to detect zombie-wrapper orphans
 awLogStaleThresholdMinutes?: number # Optional: Minutes since last aw log mtime after which a Preparation issue is considered orphaned even when pgrep still returns 0. Requires awLogDirectoryPath
 ```
+
+Workflow status names (`Unread`, `Awaiting Workspace`, `Preparation`, `Awaiting Quality Check`, `Disabled`) are hardcoded constants and are not accepted via this config, the CLI, or the project README. To ensure they exist on the target project, run the `schedule` command — it invokes `SetupTowerDefenceProjectUseCase` automatically.
 
 Example:
 
 ```yaml
 projectUrl: 'https://github.com/orgs/my-org/projects/1'
 projectName: 'my-project'
-awaitingWorkspaceStatus: 'Awaiting Workspace'
-preparationStatus: 'Preparation'
 defaultAgentName: 'aw'
 defaultLlmModelName: 'claude-opus-4-5'
 maximumPreparingIssuesCount: 3
 utilizationPercentageThreshold: 90
-awaitingQualityCheckStatus: 'Awaiting Quality Check'
 thresholdForAutoReject: 3
 workflowBlockerResolvedWebhookUrl: 'https://example.com/webhook?url={URL}&msg={MESSAGE}'
 preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"'

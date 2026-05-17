@@ -158,9 +158,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
     });
@@ -206,9 +203,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
     });
@@ -247,9 +241,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
     });
@@ -283,46 +274,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
-      allowIssueCacheMinutes: 60,
-      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
-    });
-
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
-  });
-
-  it('should revert orphaned issue to Awaiting Workspace when awaitingQualityCheckStatus is not provided', async () => {
-    const stuckIssue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/10',
-      status: 'Preparation',
-    });
-    mockIssueRepository.getAllIssues.mockResolvedValue({
-      issues: [stuckIssue],
-      cacheUsed: false,
-    });
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 1,
-    });
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      {
-        author: 'bot',
-        content: 'From: agent report',
-        createdAt: new Date(),
-      },
-    ]);
-    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
-      createPassingPr(),
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
     });
@@ -356,9 +307,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
     });
@@ -393,9 +341,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
     });
@@ -422,9 +367,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
     });
@@ -449,9 +391,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
     });
@@ -484,9 +423,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'check {URL}',
     });
@@ -526,9 +462,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'check {URL}',
     });
@@ -543,9 +476,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
     await expect(
       useCase.run({
         projectUrl: 'https://github.com/user/repo',
-        preparationStatus: 'Preparation',
-        awaitingWorkspaceStatus: 'Awaiting Workspace',
-        awaitingQualityCheckStatus: 'Awaiting Quality Check',
         allowIssueCacheMinutes: 0,
         preparationProcessCheckCommand: 'check {URL}',
       }),
@@ -559,20 +489,29 @@ describe('RevertOrphanedPreparationUseCase', () => {
     await expect(
       useCase.run({
         projectUrl: 'https://github.com/user/repo',
-        preparationStatus: 'Preparation',
-        awaitingWorkspaceStatus: 'Awaiting Workspace',
-        awaitingQualityCheckStatus: 'Awaiting Quality Check',
         allowIssueCacheMinutes: 0,
         preparationProcessCheckCommand: 'check {URL}',
       }),
     ).rejects.toThrow('Project not found. projectId: project-1');
   });
 
-  it('should do nothing when awaitingWorkspaceStatus is not found in project statuses', async () => {
+  it('should do nothing when Awaiting Workspace status is not found in project statuses', async () => {
     const preparationIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',
       status: 'Preparation',
     });
+    const projectWithoutAwaitingWorkspace = {
+      ...mockProject,
+      status: {
+        ...mockProject.status,
+        statuses: mockProject.status.statuses.filter(
+          (s) => s.name !== 'Awaiting Workspace',
+        ),
+      },
+    };
+    mockProjectRepository.getProject.mockResolvedValue(
+      projectWithoutAwaitingWorkspace,
+    );
     mockIssueRepository.getAllIssues.mockResolvedValue({
       issues: [preparationIssue],
       cacheUsed: false,
@@ -585,9 +524,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'NonExistentStatus',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 0,
       preparationProcessCheckCommand: 'check {URL}',
     });
@@ -606,9 +542,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'check {URL}',
     });
@@ -645,9 +578,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "Please handover {URL}"',
       awLogDirectoryPath: '/home/user/logs-aw',
@@ -710,9 +640,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "Please handover {URL}"',
       awLogDirectoryPath: '/home/user/logs-aw',
@@ -747,9 +674,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "Please handover {URL}"',
       awLogDirectoryPath: '/home/user/logs-aw',
@@ -780,9 +704,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
     });
@@ -812,9 +733,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "Please handover {URL}"',
       awLogDirectoryPath: '/home/user/logs-aw',
@@ -842,9 +760,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 0,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
     });
@@ -877,9 +792,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
     });

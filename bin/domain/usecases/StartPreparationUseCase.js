@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StartPreparationUseCase = void 0;
+const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 class StartPreparationUseCase {
     constructor(projectRepository, issueRepository, claudeRepository, localCommandRunner) {
         this.projectRepository = projectRepository;
@@ -32,20 +33,18 @@ class StartPreparationUseCase {
                     console.warn(`Weekly Claude usage (${maxWeeklyUtilization}%) exceeds threshold (${params.utilizationPercentageThreshold}%). Reducing maximumPreparingIssuesCount to ${maximumPreparingIssuesCount}.`);
                 }
             }
-            let project = await this.projectRepository.getByUrl(params.projectUrl);
-            project = await this.projectRepository.prepareStatus(params.awaitingWorkspaceStatus, project);
-            project = await this.projectRepository.prepareStatus(params.preparationStatus, project);
+            const project = await this.projectRepository.getByUrl(params.projectUrl);
             const storyObjectMap = await this.issueRepository.getStoryObjectMap(project, params.allowIssueCacheMinutes);
             const allOpenedIssues = Array.from(storyObjectMap.values()).flatMap((storyObject) => storyObject.issues);
-            const preparationStatusOption = project.status.statuses.find((s) => s.name === params.preparationStatus);
+            const preparationStatusOption = project.status.statuses.find((s) => s.name === WorkflowStatus_1.PREPARATION_STATUS_NAME);
             if (!preparationStatusOption) {
-                console.error(`Preparation status option '${params.preparationStatus}' not found in project.`);
+                console.error(`Preparation status option '${WorkflowStatus_1.PREPARATION_STATUS_NAME}' not found in project.`);
                 return;
             }
             const awaitingWorkspaceIssues = allOpenedIssues
-                .filter((issue) => issue.status === params.awaitingWorkspaceStatus && !issue.isClosed)
+                .filter((issue) => issue.status === WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME && !issue.isClosed)
                 .map((issue) => ({ ...issue }));
-            const currentPreparationIssueCount = allOpenedIssues.filter((issue) => issue.status === params.preparationStatus).length;
+            const currentPreparationIssueCount = allOpenedIssues.filter((issue) => issue.status === WorkflowStatus_1.PREPARATION_STATUS_NAME).length;
             let updatedCurrentPreparationIssueCount = currentPreparationIssueCount;
             let startedInThisRunCount = 0;
             const now = new Date();
@@ -139,7 +138,7 @@ class StartPreparationUseCase {
                     continue;
                 }
                 await this.issueRepository.updateStatus(project, issue, preparationStatusOption.id);
-                issue.status = params.preparationStatus;
+                issue.status = WorkflowStatus_1.PREPARATION_STATUS_NAME;
                 const awArgs = [
                     issue.url,
                     agent,

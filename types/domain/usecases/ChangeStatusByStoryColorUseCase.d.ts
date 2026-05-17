@@ -11,7 +11,6 @@ export declare class ChangeStatusByStoryColorUseCase {
         cacheUsed: boolean;
         org: string;
         repo: string;
-        disabledStatus: string;
         storyObjectMap: StoryObjectMap;
     }) => Promise<void>;
 }

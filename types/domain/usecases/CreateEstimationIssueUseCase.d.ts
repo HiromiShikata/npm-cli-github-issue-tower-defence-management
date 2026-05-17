@@ -17,7 +17,6 @@ export declare class CreateEstimationIssueUseCase {
         org: string;
         repo: string;
         urlOfStoryView: string;
-        disabledStatus: string;
         storyObjectMap: StoryObjectMap;
     }) => Promise<void>;
     createEstimationIssueBody: (storyObject: {

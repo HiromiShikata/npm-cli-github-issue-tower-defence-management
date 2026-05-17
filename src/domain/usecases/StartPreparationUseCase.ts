@@ -2,13 +2,14 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { ClaudeRepository } from './adapter-interfaces/ClaudeRepository';
+import {
+  AWAITING_WORKSPACE_STATUS_NAME,
+  PREPARATION_STATUS_NAME,
+} from '../entities/WorkflowStatus';
 
 export class StartPreparationUseCase {
   constructor(
-    private readonly projectRepository: Pick<
-      ProjectRepository,
-      'getByUrl' | 'prepareStatus'
-    >,
+    private readonly projectRepository: Pick<ProjectRepository, 'getByUrl'>,
     private readonly issueRepository: Pick<
       IssueRepository,
       | 'getStoryObjectMap'
@@ -25,8 +26,6 @@ export class StartPreparationUseCase {
 
   run = async (params: {
     projectUrl: string;
-    awaitingWorkspaceStatus: string;
-    preparationStatus: string;
     defaultAgentName: string;
     defaultLlmModelName: string | null;
     defaultLlmAgentName: string | null;
@@ -85,15 +84,7 @@ export class StartPreparationUseCase {
         );
       }
     }
-    let project = await this.projectRepository.getByUrl(params.projectUrl);
-    project = await this.projectRepository.prepareStatus(
-      params.awaitingWorkspaceStatus,
-      project,
-    );
-    project = await this.projectRepository.prepareStatus(
-      params.preparationStatus,
-      project,
-    );
+    const project = await this.projectRepository.getByUrl(params.projectUrl);
     const storyObjectMap = await this.issueRepository.getStoryObjectMap(
       project,
       params.allowIssueCacheMinutes,
@@ -103,11 +94,11 @@ export class StartPreparationUseCase {
       (storyObject) => storyObject.issues,
     );
     const preparationStatusOption = project.status.statuses.find(
-      (s) => s.name === params.preparationStatus,
+      (s) => s.name === PREPARATION_STATUS_NAME,
     );
     if (!preparationStatusOption) {
       console.error(
-        `Preparation status option '${params.preparationStatus}' not found in project.`,
+        `Preparation status option '${PREPARATION_STATUS_NAME}' not found in project.`,
       );
       return;
     }
@@ -115,11 +106,11 @@ export class StartPreparationUseCase {
     const awaitingWorkspaceIssues = allOpenedIssues
       .filter(
         (issue) =>
-          issue.status === params.awaitingWorkspaceStatus && !issue.isClosed,
+          issue.status === AWAITING_WORKSPACE_STATUS_NAME && !issue.isClosed,
       )
       .map((issue) => ({ ...issue }));
     const currentPreparationIssueCount = allOpenedIssues.filter(
-      (issue) => issue.status === params.preparationStatus,
+      (issue) => issue.status === PREPARATION_STATUS_NAME,
     ).length;
     let updatedCurrentPreparationIssueCount = currentPreparationIssueCount;
     let startedInThisRunCount = 0;
@@ -260,7 +251,7 @@ export class StartPreparationUseCase {
         issue,
         preparationStatusOption.id,
       );
-      issue.status = params.preparationStatus;
+      issue.status = PREPARATION_STATUS_NAME;
 
       const awArgs: string[] = [
         issue.url,

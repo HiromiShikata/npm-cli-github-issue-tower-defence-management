@@ -17,7 +17,6 @@ export declare class AnalyzeStoriesUseCase {
         org: string;
         repo: string;
         urlOfStoryView: string;
-        disabledStatus: string;
         storyObjectMap: StoryObjectMap;
         members: Member["name"][];
     }) => Promise<void>;

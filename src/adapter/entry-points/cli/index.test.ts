@@ -66,10 +66,7 @@ describe('CLI', () => {
 
   const defaultConfig = {
     projectUrl: 'https://github.com/orgs/test/projects/1',
-    awaitingWorkspaceStatus: 'Awaiting',
-    preparationStatus: 'Preparing',
     defaultAgentName: 'agent1',
-    awaitingQualityCheckStatus: 'Awaiting QC',
     projectName: 'test-project',
   };
 
@@ -128,8 +125,6 @@ describe('CLI', () => {
     it('should load config from YAML file', () => {
       const config = {
         projectUrl: 'https://github.com/orgs/test/projects/1',
-        awaitingWorkspaceStatus: 'Awaiting',
-        preparationStatus: 'Preparing',
         defaultAgentName: 'agent1',
         defaultLlmModelName: 'claude-opus-4-5',
         defaultLlmAgentName: 'aw',
@@ -137,7 +132,6 @@ describe('CLI', () => {
         allowIssueCacheMinutes: 5,
         utilizationPercentageThreshold: 80,
         allowedIssueAuthors: 'user1,user2',
-        awaitingQualityCheckStatus: 'Awaiting QC',
         thresholdForAutoReject: 5,
         workflowBlockerResolvedWebhookUrl: 'https://example.com/webhook',
         projectName: 'test-project',
@@ -197,14 +191,14 @@ describe('CLI', () => {
     it('should ignore non-string values for string fields', () => {
       const config = {
         projectUrl: 123,
-        awaitingWorkspaceStatus: true,
+        defaultAgentName: true,
       };
       writeConfig(config);
 
       const result = loadConfigFile(configFilePath);
 
       expect(result.projectUrl).toBeUndefined();
-      expect(result.awaitingWorkspaceStatus).toBeUndefined();
+      expect(result.defaultAgentName).toBeUndefined();
     });
 
     it('should ignore non-number values for number fields', () => {
@@ -263,16 +257,14 @@ describe('CLI', () => {
 Some description
 <details>
 <summary>config</summary>
-awaitingWorkspaceStatus: 'Custom Awaiting'
-preparationStatus: 'Custom Preparing'
 defaultAgentName: 'readme-agent'
+defaultLlmModelName: 'claude-opus-4-5'
 </details>`;
 
       const result = parseProjectReadmeConfig(readme);
 
-      expect(result.awaitingWorkspaceStatus).toBe('Custom Awaiting');
-      expect(result.preparationStatus).toBe('Custom Preparing');
       expect(result.defaultAgentName).toBe('readme-agent');
+      expect(result.defaultLlmModelName).toBe('claude-opus-4-5');
     });
 
     it('should return empty config when no details/summary section exists', () => {
@@ -506,8 +498,6 @@ codexHomeCandidates:
       expect(mockRun).toHaveBeenCalledTimes(1);
       expect(mockRun).toHaveBeenCalledWith({
         projectUrl: 'https://github.com/orgs/test/projects/1',
-        awaitingWorkspaceStatus: 'Awaiting',
-        preparationStatus: 'Preparing',
         defaultAgentName: 'agent1',
         defaultLlmModelName: null,
         defaultLlmAgentName: null,
@@ -548,8 +538,6 @@ codexHomeCandidates:
       expect(mockRun).toHaveBeenCalledTimes(1);
       expect(mockRun).toHaveBeenCalledWith({
         projectUrl: 'https://github.com/orgs/override/projects/2',
-        awaitingWorkspaceStatus: 'Awaiting',
-        preparationStatus: 'Preparing',
         defaultAgentName: 'override-agent',
         defaultLlmModelName: null,
         defaultLlmAgentName: null,
@@ -750,8 +738,6 @@ codexHomeCandidates:
 
     it('should exit with error when projectUrl is missing from both CLI and config', async () => {
       const configWithoutProjectUrl = {
-        awaitingWorkspaceStatus: 'Awaiting',
-        preparationStatus: 'Preparing',
         defaultAgentName: 'agent1',
       };
       writeConfig(configWithoutProjectUrl);
@@ -782,79 +768,9 @@ codexHomeCandidates:
       processExitSpy.mockRestore();
     });
 
-    it('should exit with error when awaitingWorkspaceStatus is missing', async () => {
-      const configMissing = {
-        projectUrl: 'https://github.com/orgs/test/projects/1',
-        preparationStatus: 'Preparing',
-        defaultAgentName: 'agent1',
-      };
-      writeConfig(configMissing);
-
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-      const processExitSpy = jest
-        .spyOn(process, 'exit')
-        .mockImplementation(() => {
-          throw new Error('process.exit called');
-        });
-
-      await expect(
-        program.parseAsync([
-          'node',
-          'test',
-          'startDaemon',
-          '--configFilePath',
-          configFilePath,
-        ]),
-      ).rejects.toThrow('process.exit called');
-
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'awaitingWorkspaceStatus is required. Provide via --awaitingWorkspaceStatus, config file, or project README.',
-      );
-      expect(processExitSpy).toHaveBeenCalledWith(1);
-
-      consoleErrorSpy.mockRestore();
-      processExitSpy.mockRestore();
-    });
-
-    it('should exit with error when preparationStatus is missing', async () => {
-      const configMissing = {
-        projectUrl: 'https://github.com/orgs/test/projects/1',
-        awaitingWorkspaceStatus: 'Awaiting',
-        defaultAgentName: 'agent1',
-      };
-      writeConfig(configMissing);
-
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-      const processExitSpy = jest
-        .spyOn(process, 'exit')
-        .mockImplementation(() => {
-          throw new Error('process.exit called');
-        });
-
-      await expect(
-        program.parseAsync([
-          'node',
-          'test',
-          'startDaemon',
-          '--configFilePath',
-          configFilePath,
-        ]),
-      ).rejects.toThrow('process.exit called');
-
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'preparationStatus is required. Provide via --preparationStatus, config file, or project README.',
-      );
-      expect(processExitSpy).toHaveBeenCalledWith(1);
-
-      consoleErrorSpy.mockRestore();
-      processExitSpy.mockRestore();
-    });
-
     it('should exit with error when defaultAgentName is missing', async () => {
       const configMissing = {
         projectUrl: 'https://github.com/orgs/test/projects/1',
-        awaitingWorkspaceStatus: 'Awaiting',
-        preparationStatus: 'Preparing',
       };
       writeConfig(configMissing);
 
@@ -1098,9 +1014,6 @@ codexHomeCandidates:
       expect(mockRun).toHaveBeenCalledWith({
         projectUrl: 'https://github.com/orgs/test/projects/1',
         issueUrl: 'https://github.com/test/repo/issues/1',
-        preparationStatus: 'Preparing',
-        awaitingWorkspaceStatus: 'Awaiting',
-        awaitingQualityCheckStatus: 'Awaiting QC',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
       });
@@ -1129,16 +1042,11 @@ codexHomeCandidates:
         'https://github.com/test/repo/issues/1',
         '--projectUrl',
         'https://github.com/orgs/override/projects/2',
-        '--awaitingQualityCheckStatus',
-        'Override QC',
       ]);
 
       expect(mockRun).toHaveBeenCalledWith({
         projectUrl: 'https://github.com/orgs/override/projects/2',
         issueUrl: 'https://github.com/test/repo/issues/1',
-        preparationStatus: 'Preparing',
-        awaitingWorkspaceStatus: 'Awaiting',
-        awaitingQualityCheckStatus: 'Override QC',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
       });
@@ -1274,11 +1182,7 @@ codexHomeCandidates:
     });
 
     it('should exit with error when projectUrl is missing', async () => {
-      const configMissing = {
-        preparationStatus: 'Preparing',
-        awaitingWorkspaceStatus: 'Awaiting',
-        awaitingQualityCheckStatus: 'Awaiting QC',
-      };
+      const configMissing = {};
       writeConfig(configMissing);
 
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
@@ -1302,114 +1206,6 @@ codexHomeCandidates:
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'projectUrl is required. Provide via --projectUrl, config file, or project README.',
-      );
-      expect(processExitSpy).toHaveBeenCalledWith(1);
-
-      consoleErrorSpy.mockRestore();
-      processExitSpy.mockRestore();
-    });
-
-    it('should exit with error when preparationStatus is missing', async () => {
-      const configMissing = {
-        projectUrl: 'https://github.com/orgs/test/projects/1',
-        awaitingWorkspaceStatus: 'Awaiting',
-        awaitingQualityCheckStatus: 'Awaiting QC',
-      };
-      writeConfig(configMissing);
-
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-      const processExitSpy = jest
-        .spyOn(process, 'exit')
-        .mockImplementation(() => {
-          throw new Error('process.exit called');
-        });
-
-      await expect(
-        program.parseAsync([
-          'node',
-          'test',
-          'notifyFinishedIssuePreparation',
-          '--configFilePath',
-          configFilePath,
-          '--issueUrl',
-          'https://github.com/test/repo/issues/1',
-        ]),
-      ).rejects.toThrow('process.exit called');
-
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'preparationStatus is required. Provide via --preparationStatus, config file, or project README.',
-      );
-      expect(processExitSpy).toHaveBeenCalledWith(1);
-
-      consoleErrorSpy.mockRestore();
-      processExitSpy.mockRestore();
-    });
-
-    it('should exit with error when awaitingWorkspaceStatus is missing', async () => {
-      const configMissing = {
-        projectUrl: 'https://github.com/orgs/test/projects/1',
-        preparationStatus: 'Preparing',
-        awaitingQualityCheckStatus: 'Awaiting QC',
-      };
-      writeConfig(configMissing);
-
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-      const processExitSpy = jest
-        .spyOn(process, 'exit')
-        .mockImplementation(() => {
-          throw new Error('process.exit called');
-        });
-
-      await expect(
-        program.parseAsync([
-          'node',
-          'test',
-          'notifyFinishedIssuePreparation',
-          '--configFilePath',
-          configFilePath,
-          '--issueUrl',
-          'https://github.com/test/repo/issues/1',
-        ]),
-      ).rejects.toThrow('process.exit called');
-
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'awaitingWorkspaceStatus is required. Provide via --awaitingWorkspaceStatus, config file, or project README.',
-      );
-      expect(processExitSpy).toHaveBeenCalledWith(1);
-
-      consoleErrorSpy.mockRestore();
-      processExitSpy.mockRestore();
-    });
-
-    it('should exit with error when awaitingQualityCheckStatus is missing', async () => {
-      const configMissing = {
-        projectUrl: 'https://github.com/orgs/test/projects/1',
-        preparationStatus: 'Preparing',
-        awaitingWorkspaceStatus: 'Awaiting',
-      };
-      writeConfig(configMissing);
-
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-      const processExitSpy = jest
-        .spyOn(process, 'exit')
-        .mockImplementation(() => {
-          throw new Error('process.exit called');
-        });
-
-      await expect(
-        program.parseAsync([
-          'node',
-          'test',
-          'notifyFinishedIssuePreparation',
-          '--configFilePath',
-          configFilePath,
-          '--issueUrl',
-          'https://github.com/test/repo/issues/1',
-        ]),
-      ).rejects.toThrow('process.exit called');
-
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'awaitingQualityCheckStatus is required. Provide via --awaitingQualityCheckStatus, config file, or project README.',
       );
       expect(processExitSpy).toHaveBeenCalledWith(1);
 
@@ -1455,12 +1251,12 @@ codexHomeCandidates:
       );
     });
 
-    it('should apply README config overrides', async () => {
+    it('should apply README config overrides for thresholdForAutoReject', async () => {
       const readmeContent = [
         '# Project',
         '<details>',
         '<summary>config</summary>',
-        "awaitingQualityCheckStatus: 'README QC'",
+        'thresholdForAutoReject: 9',
         '</details>',
       ].join('\n');
       mockFetchReturningReadme(readmeContent);
@@ -1489,7 +1285,7 @@ codexHomeCandidates:
 
       expect(mockRun).toHaveBeenCalledWith(
         expect.objectContaining({
-          awaitingQualityCheckStatus: 'README QC',
+          thresholdForAutoReject: 9,
         }),
       );
     });

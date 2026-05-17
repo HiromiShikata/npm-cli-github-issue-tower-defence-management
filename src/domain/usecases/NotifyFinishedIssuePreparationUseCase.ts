@@ -5,6 +5,11 @@ import {
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import { WebhookRepository } from './adapter-interfaces/WebhookRepository';
+import {
+  AWAITING_QUALITY_CHECK_STATUS_NAME,
+  AWAITING_WORKSPACE_STATUS_NAME,
+  PREPARATION_STATUS_NAME,
+} from '../entities/WorkflowStatus';
 
 export class IssueNotFoundError extends Error {
   constructor(issueUrl: string) {
@@ -36,10 +41,7 @@ type RejectedReasonType =
 
 export class NotifyFinishedIssuePreparationUseCase {
   constructor(
-    private readonly projectRepository: Pick<
-      ProjectRepository,
-      'getByUrl' | 'prepareStatus'
-    >,
+    private readonly projectRepository: Pick<ProjectRepository, 'getByUrl'>,
     private readonly issueRepository: Pick<
       IssueRepository,
       | 'get'
@@ -63,41 +65,26 @@ export class NotifyFinishedIssuePreparationUseCase {
   run = async (params: {
     projectUrl: string;
     issueUrl: string;
-    preparationStatus: string;
-    awaitingWorkspaceStatus: string;
-    awaitingQualityCheckStatus: string;
     thresholdForAutoReject: number;
     workflowBlockerResolvedWebhookUrl: string | null;
   }): Promise<void> => {
-    let project = await this.projectRepository.getByUrl(params.projectUrl);
-    project = await this.projectRepository.prepareStatus(
-      params.preparationStatus,
-      project,
-    );
-    project = await this.projectRepository.prepareStatus(
-      params.awaitingWorkspaceStatus,
-      project,
-    );
-    project = await this.projectRepository.prepareStatus(
-      params.awaitingQualityCheckStatus,
-      project,
-    );
+    const project = await this.projectRepository.getByUrl(params.projectUrl);
 
     const awaitingWorkspaceStatusOption = project.status.statuses.find(
-      (s) => s.name === params.awaitingWorkspaceStatus,
+      (s) => s.name === AWAITING_WORKSPACE_STATUS_NAME,
     );
     if (!awaitingWorkspaceStatusOption) {
       console.error(
-        `Awaiting workspace status option '${params.awaitingWorkspaceStatus}' not found in project.`,
+        `Awaiting workspace status option '${AWAITING_WORKSPACE_STATUS_NAME}' not found in project.`,
       );
       return;
     }
     const awaitingQualityCheckStatusOption = project.status.statuses.find(
-      (s) => s.name === params.awaitingQualityCheckStatus,
+      (s) => s.name === AWAITING_QUALITY_CHECK_STATUS_NAME,
     );
     if (!awaitingQualityCheckStatusOption) {
       console.error(
-        `Awaiting quality check status option '${params.awaitingQualityCheckStatus}' not found in project.`,
+        `Awaiting quality check status option '${AWAITING_QUALITY_CHECK_STATUS_NAME}' not found in project.`,
       );
       return;
     }
@@ -106,11 +93,11 @@ export class NotifyFinishedIssuePreparationUseCase {
 
     if (!issue) {
       throw new IssueNotFoundError(params.issueUrl);
-    } else if (issue.status !== params.preparationStatus) {
+    } else if (issue.status !== PREPARATION_STATUS_NAME) {
       throw new IllegalIssueStatusError(
         params.issueUrl,
         issue.status,
-        params.preparationStatus,
+        PREPARATION_STATUS_NAME,
       );
     }
 
@@ -138,7 +125,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     }
 
     if (issue.dependedIssueUrls.length > 0) {
-      issue.status = params.awaitingWorkspaceStatus;
+      issue.status = AWAITING_WORKSPACE_STATUS_NAME;
       await this.issueRepository.update(issue, project);
       await this.issueRepository.updateStatus(
         project,
@@ -153,7 +140,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     }
 
     if (issue.nextActionDate !== null || issue.nextActionHour !== null) {
-      issue.status = params.awaitingWorkspaceStatus;
+      issue.status = AWAITING_WORKSPACE_STATUS_NAME;
       await this.issueRepository.update(issue, project);
       await this.issueRepository.updateStatus(
         project,
@@ -193,7 +180,7 @@ export class NotifyFinishedIssuePreparationUseCase {
           .includes('failed to pass the check automatically'),
       )
     ) {
-      issue.status = params.awaitingQualityCheckStatus;
+      issue.status = AWAITING_QUALITY_CHECK_STATUS_NAME;
       await this.issueRepository.update(issue, project);
       await this.issueRepository.updateStatus(
         project,
@@ -220,7 +207,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     }
 
     if (rejections.length <= 0) {
-      issue.status = params.awaitingQualityCheckStatus;
+      issue.status = AWAITING_QUALITY_CHECK_STATUS_NAME;
       await this.issueRepository.update(issue, project);
       await this.issueRepository.updateStatus(
         project,
@@ -238,7 +225,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       return;
     }
 
-    issue.status = params.awaitingWorkspaceStatus;
+    issue.status = AWAITING_WORKSPACE_STATUS_NAME;
     await this.issueRepository.update(issue, project);
     await this.issueRepository.updateStatus(
       project,

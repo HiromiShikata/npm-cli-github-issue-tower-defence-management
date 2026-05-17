@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AnalyzeStoriesUseCase = void 0;
 const utils_1 = require("./utils");
+const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 class AnalyzeStoriesUseCase {
     constructor(issueRepository, dateRepository) {
         this.issueRepository = issueRepository;
@@ -31,7 +32,7 @@ class AnalyzeStoriesUseCase {
                     ...storyIssue,
                     ...story,
                 };
-                if (storyIssue.status === input.disabledStatus) {
+                if (storyIssue.status === WorkflowStatus_1.DISABLED_STATUS_NAME) {
                     phases.get('others')?.push(storyIssueObject);
                 }
                 else if (storyIssue.labels.includes('story:phase:finished-qa')) {

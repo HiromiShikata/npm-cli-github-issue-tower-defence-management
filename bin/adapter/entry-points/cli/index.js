@@ -58,8 +58,6 @@ exports.program
     .description('Start daemon to prepare GitHub issues')
     .requiredOption('--configFilePath <path>', 'Path to config file for tower defence management')
     .option('--projectUrl <url>', 'GitHub project URL')
-    .option('--awaitingWorkspaceStatus <status>', 'Status for issues awaiting workspace')
-    .option('--preparationStatus <status>', 'Status for issues in preparation')
     .option('--defaultAgentName <name>', 'Default agent name')
     .option('--defaultLlmModelName <name>', 'Default LLM model name')
     .option('--defaultLlmAgentName <name>', 'Default LLM agent name')
@@ -77,8 +75,6 @@ exports.program
     const configFileValues = (0, projectConfig_2.loadConfigFile)(options.configFilePath);
     const cliOverrides = {
         projectUrl: options.projectUrl,
-        awaitingWorkspaceStatus: options.awaitingWorkspaceStatus,
-        preparationStatus: options.preparationStatus,
         defaultAgentName: options.defaultAgentName,
         defaultLlmModelName: options.defaultLlmModelName,
         defaultLlmAgentName: options.defaultLlmAgentName,
@@ -104,19 +100,9 @@ exports.program
     }
     const config = (0, projectConfig_2.mergeConfigs)(configFileValues, cliOverrides, readmeOverrides);
     const projectUrl = config.projectUrl;
-    const awaitingWorkspaceStatus = config.awaitingWorkspaceStatus;
-    const preparationStatus = config.preparationStatus;
     const defaultAgentName = config.defaultAgentName;
     if (!projectUrl) {
         console.error('projectUrl is required. Provide via --projectUrl, config file, or project README.');
-        process.exit(1);
-    }
-    if (!awaitingWorkspaceStatus) {
-        console.error('awaitingWorkspaceStatus is required. Provide via --awaitingWorkspaceStatus, config file, or project README.');
-        process.exit(1);
-    }
-    if (!preparationStatus) {
-        console.error('preparationStatus is required. Provide via --preparationStatus, config file, or project README.');
         process.exit(1);
     }
     if (!defaultAgentName) {
@@ -142,12 +128,7 @@ exports.program
     const cachePath = `./tmp/cache/${projectName}`;
     const localStorageCacheRepository = new LocalStorageCacheRepository_1.LocalStorageCacheRepository(localStorageRepository, cachePath);
     const githubRepositoryParams = buildGithubRepositoryParams(localStorageRepository, cachePath, token);
-    const projectRepository = {
-        ...new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams),
-        prepareStatus: async (_name, project) => {
-            return project;
-        },
-    };
+    const projectRepository = new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams);
     const apiV3IssueRepository = new ApiV3IssueRepository_1.ApiV3IssueRepository(...githubRepositoryParams);
     const restIssueRepository = new RestIssueRepository_1.RestIssueRepository(...githubRepositoryParams);
     const graphqlProjectItemRepository = new GraphqlProjectItemRepository_1.GraphqlProjectItemRepository(...githubRepositoryParams);
@@ -160,9 +141,6 @@ exports.program
         const revertUseCase = new RevertOrphanedPreparationUseCase_1.RevertOrphanedPreparationUseCase(projectRepository, issueRepository, revertIssueCommentRepository, localCommandRunner);
         await revertUseCase.run({
             projectUrl,
-            preparationStatus,
-            awaitingWorkspaceStatus,
-            awaitingQualityCheckStatus: config.awaitingQualityCheckStatus,
             allowIssueCacheMinutes,
             preparationProcessCheckCommand,
             awLogDirectoryPath: config.awLogDirectoryPath,
@@ -182,8 +160,6 @@ exports.program
         : null;
     await useCase.run({
         projectUrl,
-        awaitingWorkspaceStatus,
-        preparationStatus,
         defaultAgentName,
         defaultLlmModelName: config.defaultLlmModelName ?? null,
         defaultLlmAgentName: config.defaultLlmAgentName ?? null,
@@ -201,9 +177,6 @@ exports.program
     .requiredOption('--configFilePath <path>', 'Path to config file for tower defence management')
     .requiredOption('--issueUrl <url>', 'GitHub issue URL')
     .option('--projectUrl <url>', 'GitHub project URL')
-    .option('--preparationStatus <status>', 'Status for issues in preparation')
-    .option('--awaitingWorkspaceStatus <status>', 'Status for issues awaiting workspace')
-    .option('--awaitingQualityCheckStatus <status>', 'Status for issues awaiting quality check')
     .option('--thresholdForAutoReject <count>', 'Threshold for auto-escalation after consecutive rejections (default: 3)')
     .option('--workflowBlockerResolvedWebhookUrl <url>', 'Webhook URL to notify when a workflow blocker issue status changes to awaiting quality check. Supports {URL} and {MESSAGE} placeholders.')
     .action(async (options) => {
@@ -215,9 +188,6 @@ exports.program
     const configFileValues = (0, projectConfig_2.loadConfigFile)(options.configFilePath);
     const cliOverrides = {
         projectUrl: options.projectUrl,
-        preparationStatus: options.preparationStatus,
-        awaitingWorkspaceStatus: options.awaitingWorkspaceStatus,
-        awaitingQualityCheckStatus: options.awaitingQualityCheckStatus,
         thresholdForAutoReject: options.thresholdForAutoReject
             ? Number(options.thresholdForAutoReject)
             : undefined,
@@ -233,23 +203,8 @@ exports.program
     }
     const config = (0, projectConfig_2.mergeConfigs)(configFileValues, cliOverrides, readmeOverrides);
     const projectUrl = config.projectUrl;
-    const preparationStatus = config.preparationStatus;
-    const awaitingWorkspaceStatus = config.awaitingWorkspaceStatus;
-    const awaitingQualityCheckStatus = config.awaitingQualityCheckStatus;
     if (!projectUrl) {
         console.error('projectUrl is required. Provide via --projectUrl, config file, or project README.');
-        process.exit(1);
-    }
-    if (!preparationStatus) {
-        console.error('preparationStatus is required. Provide via --preparationStatus, config file, or project README.');
-        process.exit(1);
-    }
-    if (!awaitingWorkspaceStatus) {
-        console.error('awaitingWorkspaceStatus is required. Provide via --awaitingWorkspaceStatus, config file, or project README.');
-        process.exit(1);
-    }
-    if (!awaitingQualityCheckStatus) {
-        console.error('awaitingQualityCheckStatus is required. Provide via --awaitingQualityCheckStatus, config file, or project README.');
         process.exit(1);
     }
     let thresholdForAutoReject = 3;
@@ -270,12 +225,7 @@ exports.program
     const cachePath = `./tmp/cache/${projectName}`;
     const localStorageCacheRepository = new LocalStorageCacheRepository_1.LocalStorageCacheRepository(localStorageRepository, cachePath);
     const githubRepositoryParams = buildGithubRepositoryParams(localStorageRepository, cachePath, token);
-    const projectRepository = {
-        ...new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams),
-        prepareStatus: async (_name, project) => {
-            return project;
-        },
-    };
+    const projectRepository = new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams);
     const apiV3IssueRepository = new ApiV3IssueRepository_1.ApiV3IssueRepository(...githubRepositoryParams);
     const restIssueRepository = new RestIssueRepository_1.RestIssueRepository(...githubRepositoryParams);
     const graphqlProjectItemRepository = new GraphqlProjectItemRepository_1.GraphqlProjectItemRepository(...githubRepositoryParams);
@@ -286,9 +236,6 @@ exports.program
     await useCase.run({
         projectUrl,
         issueUrl: options.issueUrl,
-        preparationStatus,
-        awaitingWorkspaceStatus,
-        awaitingQualityCheckStatus,
         thresholdForAutoReject,
         workflowBlockerResolvedWebhookUrl,
     });

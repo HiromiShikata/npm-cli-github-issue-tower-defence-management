@@ -9,7 +9,6 @@ export declare class UpdateIssueStatusByLabelUseCase {
     run: (input: {
         project: Project;
         issues: Issue[];
-        defaultStatus: string | null;
     }) => Promise<void>;
 }
 //# sourceMappingURL=UpdateIssueStatusByLabelUseCase.d.ts.map

@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ConvertCheckboxToIssueInStoryIssueUseCase = void 0;
 const utils_1 = require("./utils");
+const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 class ConvertCheckboxToIssueInStoryIssueUseCase {
     constructor(issueRepository) {
         this.issueRepository = issueRepository;
@@ -20,7 +21,7 @@ class ConvertCheckboxToIssueInStoryIssueUseCase {
                     throw new Error(`Story issue not found: ${storyOption.name}`);
                 }
                 else if (storyIssue.isClosed ||
-                    storyIssue.status === input.disabledStatus) {
+                    storyIssue.status === WorkflowStatus_1.DISABLED_STATUS_NAME) {
                     continue;
                 }
                 const storyViewLink = this.buildStoryViewLink(input.urlOfStoryView, storyOption.name);

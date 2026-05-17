@@ -77,9 +77,7 @@ const createMockProject = (): Project => ({
 
 describe('StartPreparationUseCase', () => {
   let useCase: StartPreparationUseCase;
-  let mockProjectRepository: Mocked<
-    Pick<ProjectRepository, 'getByUrl' | 'prepareStatus'>
-  >;
+  let mockProjectRepository: Mocked<Pick<ProjectRepository, 'getByUrl'>>;
   let mockIssueRepository: Mocked<
     Pick<
       IssueRepository,
@@ -100,11 +98,6 @@ describe('StartPreparationUseCase', () => {
     mockProject = createMockProject();
     mockProjectRepository = {
       getByUrl: jest.fn(),
-      prepareStatus: jest
-        .fn()
-        .mockImplementation((_name: string, project: Project) =>
-          Promise.resolve(project),
-        ),
     };
     mockIssueRepository = {
       getStoryObjectMap: jest.fn().mockResolvedValue(new Map()),
@@ -128,44 +121,6 @@ describe('StartPreparationUseCase', () => {
       mockLocalCommandRunner,
     );
   });
-  it('should call prepareStatus for awaitingWorkspaceStatus and preparationStatus with chained project objects', async () => {
-    const projectAfterFirstPrepare = createMockProject();
-    const projectAfterSecondPrepare = createMockProject();
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockProjectRepository.prepareStatus
-      .mockResolvedValueOnce(projectAfterFirstPrepare)
-      .mockResolvedValueOnce(projectAfterSecondPrepare);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([]),
-    );
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: null,
-      codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
-    });
-
-    expect(mockProjectRepository.prepareStatus).toHaveBeenCalledTimes(2);
-    expect(mockProjectRepository.prepareStatus).toHaveBeenNthCalledWith(
-      1,
-      'Awaiting Workspace',
-      mockProject,
-    );
-    expect(mockProjectRepository.prepareStatus).toHaveBeenNthCalledWith(
-      2,
-      'Preparation',
-      projectAfterFirstPrepare,
-    );
-  });
   it('should run aw command for awaiting workspace issues', async () => {
     const awaitingIssues: Issue[] = [
       createMockIssue({
@@ -186,8 +141,6 @@ describe('StartPreparationUseCase', () => {
     });
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
       defaultLlmAgentName: null,
@@ -251,8 +204,6 @@ describe('StartPreparationUseCase', () => {
     });
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
       defaultLlmAgentName: null,
@@ -308,8 +259,6 @@ describe('StartPreparationUseCase', () => {
     });
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
       defaultLlmAgentName: null,
@@ -357,8 +306,6 @@ describe('StartPreparationUseCase', () => {
       .mockImplementation(() => {});
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
       defaultLlmAgentName: null,
@@ -406,8 +353,6 @@ describe('StartPreparationUseCase', () => {
       .mockImplementation(() => {});
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
       defaultLlmAgentName: null,
@@ -454,8 +399,6 @@ describe('StartPreparationUseCase', () => {
       .mockImplementation(() => {});
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
       defaultLlmAgentName: null,
@@ -519,8 +462,6 @@ describe('StartPreparationUseCase', () => {
     });
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
       defaultLlmAgentName: null,
@@ -607,8 +548,6 @@ describe('StartPreparationUseCase', () => {
       .mockImplementation(() => {});
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
       defaultLlmAgentName: null,
@@ -670,8 +609,6 @@ describe('StartPreparationUseCase', () => {
       .mockImplementation(() => {});
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
       defaultLlmAgentName: null,
@@ -715,8 +652,6 @@ describe('StartPreparationUseCase', () => {
     });
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
       defaultLlmAgentName: null,
@@ -773,8 +708,6 @@ describe('StartPreparationUseCase', () => {
     });
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: null,
       defaultLlmAgentName: null,
@@ -809,8 +742,6 @@ describe('StartPreparationUseCase', () => {
     });
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
       defaultLlmAgentName: null,
@@ -855,8 +786,6 @@ describe('StartPreparationUseCase', () => {
     });
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
       defaultLlmAgentName: null,
@@ -901,8 +830,6 @@ describe('StartPreparationUseCase', () => {
     });
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
       defaultLlmAgentName: 'default-llm-agent',
@@ -947,8 +874,6 @@ describe('StartPreparationUseCase', () => {
     });
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
       defaultLlmAgentName: 'default-llm-agent',
@@ -993,8 +918,6 @@ describe('StartPreparationUseCase', () => {
     });
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
       defaultLlmAgentName: 'default-llm-agent',
@@ -1039,8 +962,6 @@ describe('StartPreparationUseCase', () => {
     });
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
       defaultLlmAgentName: null,
@@ -1088,8 +1009,6 @@ describe('StartPreparationUseCase', () => {
       .mockImplementation(() => {});
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: null,
       defaultLlmAgentName: null,
@@ -1137,8 +1056,6 @@ describe('StartPreparationUseCase', () => {
       .mockImplementation(() => {});
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: null,
       defaultLlmAgentName: null,
@@ -1188,8 +1105,6 @@ describe('StartPreparationUseCase', () => {
     });
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: null,
       defaultLlmAgentName: null,
@@ -1224,8 +1139,6 @@ describe('StartPreparationUseCase', () => {
     });
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
       defaultLlmAgentName: null,
@@ -1259,8 +1172,6 @@ describe('StartPreparationUseCase', () => {
     });
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
       defaultLlmAgentName: null,
@@ -1324,8 +1235,6 @@ describe('StartPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
       defaultLlmAgentName: null,
@@ -1365,8 +1274,6 @@ describe('StartPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: null,
       defaultLlmAgentName: null,
@@ -1409,8 +1316,6 @@ describe('StartPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
       defaultLlmAgentName: null,
@@ -1452,8 +1357,6 @@ describe('StartPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
       defaultLlmAgentName: null,
@@ -1501,8 +1404,6 @@ describe('StartPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: null,
       defaultLlmAgentName: null,
@@ -1543,8 +1444,6 @@ describe('StartPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
       defaultLlmAgentName: null,
@@ -1580,8 +1479,6 @@ describe('StartPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: null,
       defaultLlmAgentName: null,
@@ -1624,8 +1521,6 @@ describe('StartPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
       defaultLlmAgentName: null,
@@ -1657,8 +1552,6 @@ describe('StartPreparationUseCase', () => {
     await expect(
       useCase.run({
         projectUrl: 'https://github.com/user/repo',
-        awaitingWorkspaceStatus: 'Awaiting Workspace',
-        preparationStatus: 'Preparation',
         defaultAgentName: 'agent1',
         defaultLlmModelName: null,
         defaultLlmAgentName: null,
@@ -1695,8 +1588,6 @@ describe('StartPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: null,
       defaultLlmAgentName: null,
@@ -1738,8 +1629,6 @@ describe('StartPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
       defaultLlmAgentName: null,
@@ -1783,8 +1672,6 @@ describe('StartPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
       defaultLlmAgentName: null,
@@ -1839,8 +1726,6 @@ describe('StartPreparationUseCase', () => {
 
       await useCase.run({
         projectUrl: 'https://github.com/user/repo',
-        awaitingWorkspaceStatus: 'Awaiting Workspace',
-        preparationStatus: 'Preparation',
         defaultAgentName: 'agent1',
         defaultLlmModelName: 'claude-sonnet-4-6',
         defaultLlmAgentName: null,
@@ -1898,8 +1783,6 @@ describe('StartPreparationUseCase', () => {
 
       await useCase.run({
         projectUrl: 'https://github.com/user/repo',
-        awaitingWorkspaceStatus: 'Awaiting Workspace',
-        preparationStatus: 'Preparation',
         defaultAgentName: 'agent1',
         defaultLlmModelName: 'claude-sonnet-4-6',
         defaultLlmAgentName: null,
@@ -1947,8 +1830,6 @@ describe('StartPreparationUseCase', () => {
 
       await useCase.run({
         projectUrl: 'https://github.com/user/repo',
-        awaitingWorkspaceStatus: 'Awaiting Workspace',
-        preparationStatus: 'Preparation',
         defaultAgentName: 'agent1',
         defaultLlmModelName: 'claude-sonnet-4-6',
         defaultLlmAgentName: null,
@@ -1996,8 +1877,6 @@ describe('StartPreparationUseCase', () => {
 
       await useCase.run({
         projectUrl: 'https://github.com/user/repo',
-        awaitingWorkspaceStatus: 'Awaiting Workspace',
-        preparationStatus: 'Preparation',
         defaultAgentName: 'agent1',
         defaultLlmModelName: 'claude-sonnet-4-6',
         defaultLlmAgentName: null,
@@ -2045,8 +1924,6 @@ describe('StartPreparationUseCase', () => {
 
       await useCase.run({
         projectUrl: 'https://github.com/user/repo',
-        awaitingWorkspaceStatus: 'Awaiting Workspace',
-        preparationStatus: 'Preparation',
         defaultAgentName: 'agent1',
         defaultLlmModelName: 'claude-sonnet-4-6',
         defaultLlmAgentName: null,
@@ -2100,8 +1977,6 @@ describe('StartPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
       defaultLlmAgentName: null,
@@ -2149,8 +2024,6 @@ describe('StartPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
       defaultLlmAgentName: null,
@@ -2194,8 +2067,6 @@ describe('StartPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
       defaultLlmAgentName: null,
@@ -2242,8 +2113,6 @@ describe('StartPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
       defaultLlmAgentName: null,
@@ -2280,8 +2149,6 @@ describe('StartPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
       defaultLlmAgentName: null,
@@ -2329,8 +2196,6 @@ describe('StartPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
       defaultLlmAgentName: null,
@@ -2378,8 +2243,6 @@ describe('StartPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
       defaultLlmAgentName: null,
@@ -2447,8 +2310,6 @@ describe('StartPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
       defaultLlmAgentName: null,
@@ -2513,8 +2374,6 @@ describe('StartPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
       defaultLlmAgentName: null,
@@ -2564,9 +2423,6 @@ describe('StartPreparationUseCase', () => {
       status: 'Awaiting Workspace',
     });
     mockProjectRepository.getByUrl.mockResolvedValue(projectWithoutPreparation);
-    mockProjectRepository.prepareStatus.mockImplementation(() =>
-      Promise.resolve(projectWithoutPreparation),
-    );
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap([awaitingIssue]),
     );
@@ -2576,8 +2432,6 @@ describe('StartPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
       defaultLlmAgentName: null,
@@ -2605,8 +2459,6 @@ describe('StartPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: null,
       defaultLlmAgentName: null,
@@ -2653,8 +2505,6 @@ describe('StartPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      preparationStatus: 'Preparation',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
       defaultLlmAgentName: null,

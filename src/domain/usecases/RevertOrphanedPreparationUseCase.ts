@@ -6,6 +6,11 @@ import { IssueCommentRepository } from './adapter-interfaces/IssueCommentReposit
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { Issue } from '../entities/Issue';
+import {
+  AWAITING_QUALITY_CHECK_STATUS_NAME,
+  AWAITING_WORKSPACE_STATUS_NAME,
+  PREPARATION_STATUS_NAME,
+} from '../entities/WorkflowStatus';
 
 export class RevertOrphanedPreparationUseCase {
   constructor(
@@ -29,9 +34,6 @@ export class RevertOrphanedPreparationUseCase {
 
   run = async (params: {
     projectUrl: string;
-    preparationStatus: string;
-    awaitingWorkspaceStatus: string;
-    awaitingQualityCheckStatus?: string;
     allowIssueCacheMinutes: number;
     preparationProcessCheckCommand: string;
     awLogDirectoryPath?: string;
@@ -55,21 +57,19 @@ export class RevertOrphanedPreparationUseCase {
     );
 
     const preparationIssues = issues.filter(
-      (issue) => issue.status === params.preparationStatus,
+      (issue) => issue.status === PREPARATION_STATUS_NAME,
     );
 
     const awaitingWorkspaceStatusOption = project.status.statuses.find(
-      (s) => s.name === params.awaitingWorkspaceStatus,
+      (s) => s.name === AWAITING_WORKSPACE_STATUS_NAME,
     );
     if (!awaitingWorkspaceStatusOption) {
       return;
     }
 
-    const awaitingQualityCheckStatusOption = params.awaitingQualityCheckStatus
-      ? project.status.statuses.find(
-          (s) => s.name === params.awaitingQualityCheckStatus,
-        )
-      : null;
+    const awaitingQualityCheckStatusOption = project.status.statuses.find(
+      (s) => s.name === AWAITING_QUALITY_CHECK_STATUS_NAME,
+    );
 
     for (const issue of preparationIssues) {
       const isOrphaned = await this.isOrphanedIssue(issue, params);
