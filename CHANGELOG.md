@@ -1,3 +1,15 @@
+# [1.48.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.47.0...v1.48.0) (2026-05-17)
+
+
+### Bug Fixes
+
+* **core:** update test to expect hardcoded workflow status names ([deacb6b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/deacb6be4b1d7b18c08393973cae80f04d37b2c4))
+
+
+### Features
+
+* **core:** hardcode workflow status names and add SetupTowerDefenceProjectUseCase ([b99c71a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b99c71adade6671967a65b4b7d26214c1dc65301))
+
 # [1.47.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.46.0...v1.47.0) (2026-05-17)
 
 
