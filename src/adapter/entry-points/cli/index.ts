@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import * as fs from 'fs';
 import { Command } from 'commander';
 import { HandleScheduledEventUseCaseHandler } from '../handlers/HandleScheduledEventUseCaseHandler';
 export {
@@ -342,23 +341,6 @@ program
       codexHomeCandidates,
       allowIssueCacheMinutes,
     });
-
-    const projectId = await projectRepository.findProjectIdByUrl(projectUrl);
-    if (projectId) {
-      const runtimeConfig = {
-        resolvedAt: new Date().toISOString(),
-        maximumPreparingIssuesCount: maximumPreparingIssuesCount,
-        utilizationPercentageThreshold:
-          config.utilizationPercentageThreshold ?? 90,
-        allowIssueCacheMinutes: allowIssueCacheMinutes,
-        thresholdForAutoReject: config.thresholdForAutoReject ?? 3,
-      };
-      const finalPath = `${cachePath}/runtimeConfig-${projectId}.json`;
-      const tmpPath = `${finalPath}.tmp`;
-      fs.mkdirSync(cachePath, { recursive: true });
-      fs.writeFileSync(tmpPath, JSON.stringify(runtimeConfig));
-      fs.renameSync(tmpPath, finalPath);
-    }
   });
 
 program

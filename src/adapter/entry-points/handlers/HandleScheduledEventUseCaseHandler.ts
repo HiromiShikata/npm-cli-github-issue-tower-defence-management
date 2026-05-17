@@ -1,6 +1,7 @@
 import YAML from 'yaml';
 import TYPIA from 'typia';
 import fs from 'fs';
+import { writeSituationFile } from './situationFileWriter';
 import {
   fetchProjectReadme,
   parseProjectReadmeConfig,
@@ -291,22 +292,32 @@ export class HandleScheduledEventUseCaseHandler {
 
     const result = await handleScheduledEventUseCase.run(mergedInput);
     if (result) {
-      const projectId = result.project.id;
-      const runtimeConfig = {
-        resolvedAt: new Date().toISOString(),
-        maximumPreparingIssuesCount:
-          mergedInput.startPreparation?.maximumPreparingIssuesCount ?? null,
-        utilizationPercentageThreshold:
-          mergedInput.startPreparation?.utilizationPercentageThreshold ?? 90,
-        allowIssueCacheMinutes: mergedInput.allowIssueCacheMinutes,
-        thresholdForAutoReject:
-          mergedInput.notifyFinishedPreparation?.thresholdForAutoReject ?? 3,
-      };
-      const finalPath = `${cachePath}/runtimeConfig-${projectId}.json`;
-      const tmpPath = `${finalPath}.tmp`;
-      fs.mkdirSync(cachePath, { recursive: true });
-      fs.writeFileSync(tmpPath, JSON.stringify(runtimeConfig));
-      fs.renameSync(tmpPath, finalPath);
+      await writeSituationFile({
+        cachePath,
+        projectId: result.project.id,
+        issues: result.issues,
+        statusNames: {
+          awaitingQualityCheckStatus:
+            mergedInput.notifyFinishedPreparation?.awaitingQualityCheckStatus ??
+            null,
+          preparationStatus:
+            mergedInput.startPreparation?.preparationStatus ?? null,
+          awaitingWorkspaceStatus:
+            mergedInput.startPreparation?.awaitingWorkspaceStatus ?? null,
+        },
+        config: {
+          maximumPreparingIssuesCount:
+            mergedInput.startPreparation?.maximumPreparingIssuesCount ?? null,
+          utilizationPercentageThreshold:
+            mergedInput.startPreparation?.utilizationPercentageThreshold ?? 90,
+          allowIssueCacheMinutes: mergedInput.allowIssueCacheMinutes,
+          thresholdForAutoReject:
+            mergedInput.notifyFinishedPreparation?.thresholdForAutoReject ?? 3,
+        },
+        preparationProcessCheckCommand:
+          mergedInput.startPreparation?.preparationProcessCheckCommand ?? null,
+        localCommandRunner: nodeLocalCommandRunner,
+      });
     }
     return result;
   };

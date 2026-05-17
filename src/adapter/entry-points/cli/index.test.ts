@@ -1068,52 +1068,6 @@ codexHomeCandidates:
         }),
       );
     });
-
-    it('should write runtimeConfig-{projectId}.json atomically after useCase run', async () => {
-      const configWithNumericValues = {
-        ...defaultConfig,
-        maximumPreparingIssuesCount: 10,
-        utilizationPercentageThreshold: 97,
-        allowIssueCacheMinutes: 5,
-        thresholdForAutoReject: 30,
-      };
-      writeConfig(configWithNumericValues);
-
-      const mockRun = jest.fn().mockResolvedValue(undefined);
-      const MockedStartPreparationUseCase = jest.mocked(
-        StartPreparationUseCase,
-      );
-      MockedStartPreparationUseCase.mockImplementation(function (
-        this: StartPreparationUseCase,
-      ) {
-        this.run = mockRun;
-        return this;
-      });
-
-      await program.parseAsync([
-        'node',
-        'test',
-        'startDaemon',
-        '--configFilePath',
-        configFilePath,
-      ]);
-
-      const cacheDir = path.join(process.cwd(), 'tmp/cache/test-project');
-      const runtimeConfigPath = path.join(
-        cacheDir,
-        'runtimeConfig-PVT_kwHOtest456.json',
-      );
-      expect(fs.existsSync(runtimeConfigPath)).toBe(true);
-      const written: unknown = JSON.parse(
-        fs.readFileSync(runtimeConfigPath, 'utf-8'),
-      );
-      expect(written).toMatchObject({
-        maximumPreparingIssuesCount: 10,
-        utilizationPercentageThreshold: 97,
-        allowIssueCacheMinutes: 5,
-        thresholdForAutoReject: 30,
-      });
-    });
   });
 
   describe('notifyFinishedIssuePreparation', () => {

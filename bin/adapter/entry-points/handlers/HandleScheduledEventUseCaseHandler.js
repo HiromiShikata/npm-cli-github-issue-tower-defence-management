@@ -41,6 +41,7 @@ const __typia_transform__validateReport = __importStar(require("typia/lib/intern
 const yaml_1 = __importDefault(require("yaml"));
 const typia_1 = __importDefault(require("typia"));
 const fs_1 = __importDefault(require("fs"));
+const situationFileWriter_1 = require("./situationFileWriter");
 const projectConfig_1 = require("../cli/projectConfig");
 const SystemDateRepository_1 = require("../../repositories/SystemDateRepository");
 const LocalStorageRepository_1 = require("../../repositories/LocalStorageRepository");
@@ -459,19 +460,25 @@ class HandleScheduledEventUseCaseHandler {
             const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabel, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, notifyFinishedIssuePreparationUseCase, revertOrphanedPreparationUseCase, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
             const result = await handleScheduledEventUseCase.run(mergedInput);
             if (result) {
-                const projectId = result.project.id;
-                const runtimeConfig = {
-                    resolvedAt: new Date().toISOString(),
-                    maximumPreparingIssuesCount: mergedInput.startPreparation?.maximumPreparingIssuesCount ?? null,
-                    utilizationPercentageThreshold: mergedInput.startPreparation?.utilizationPercentageThreshold ?? 90,
-                    allowIssueCacheMinutes: mergedInput.allowIssueCacheMinutes,
-                    thresholdForAutoReject: mergedInput.notifyFinishedPreparation?.thresholdForAutoReject ?? 3,
-                };
-                const finalPath = `${cachePath}/runtimeConfig-${projectId}.json`;
-                const tmpPath = `${finalPath}.tmp`;
-                fs_1.default.mkdirSync(cachePath, { recursive: true });
-                fs_1.default.writeFileSync(tmpPath, JSON.stringify(runtimeConfig));
-                fs_1.default.renameSync(tmpPath, finalPath);
+                await (0, situationFileWriter_1.writeSituationFile)({
+                    cachePath,
+                    projectId: result.project.id,
+                    issues: result.issues,
+                    statusNames: {
+                        awaitingQualityCheckStatus: mergedInput.notifyFinishedPreparation?.awaitingQualityCheckStatus ??
+                            null,
+                        preparationStatus: mergedInput.startPreparation?.preparationStatus ?? null,
+                        awaitingWorkspaceStatus: mergedInput.startPreparation?.awaitingWorkspaceStatus ?? null,
+                    },
+                    config: {
+                        maximumPreparingIssuesCount: mergedInput.startPreparation?.maximumPreparingIssuesCount ?? null,
+                        utilizationPercentageThreshold: mergedInput.startPreparation?.utilizationPercentageThreshold ?? 90,
+                        allowIssueCacheMinutes: mergedInput.allowIssueCacheMinutes,
+                        thresholdForAutoReject: mergedInput.notifyFinishedPreparation?.thresholdForAutoReject ?? 3,
+                    },
+                    preparationProcessCheckCommand: mergedInput.startPreparation?.preparationProcessCheckCommand ?? null,
+                    localCommandRunner: nodeLocalCommandRunner,
+                });
             }
             return result;
         };
