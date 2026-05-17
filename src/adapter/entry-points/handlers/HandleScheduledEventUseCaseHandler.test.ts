@@ -291,10 +291,12 @@ describe('HandleScheduledEventUseCaseHandler', () => {
     expect(firstCallArg.config.allowIssueCacheMinutes).toBe(5);
     expect(firstCallArg.config.thresholdForAutoReject).toBe(30);
     expect(firstCallArg.statusNames.awaitingQualityCheckStatus).toBe(
-      'Awaiting QC',
+      'Awaiting Quality Check',
     );
-    expect(firstCallArg.statusNames.preparationStatus).toBe('Preparing');
-    expect(firstCallArg.statusNames.awaitingWorkspaceStatus).toBe('Awaiting');
+    expect(firstCallArg.statusNames.preparationStatus).toBe('Preparation');
+    expect(firstCallArg.statusNames.awaitingWorkspaceStatus).toBe(
+      'Awaiting Workspace',
+    );
   });
 
   it('should write situation file with numeric defaults when optional fields are absent', async () => {
