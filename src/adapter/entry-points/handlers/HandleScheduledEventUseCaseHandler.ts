@@ -30,7 +30,6 @@ import { ConvertCheckboxToIssueInStoryIssueUseCase } from '../../../domain/useca
 import { ChangeStatusByStoryColorUseCase } from '../../../domain/usecases/ChangeStatusByStoryColorUseCase';
 import { SetNoStoryIssueToStoryUseCase } from '../../../domain/usecases/SetNoStoryIssueToStoryUseCase';
 import { CreateNewStoryByLabelUseCase } from '../../../domain/usecases/CreateNewStoryByLabelUseCase';
-import { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
 import { AssignNoAssigneeIssueToManagerUseCase } from '../../../domain/usecases/AssignNoAssigneeIssueToManagerUseCase';
 import { UpdateIssueStatusByLabelUseCase } from '../../../domain/usecases/UpdateIssueStatusByLabelUseCase';
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
@@ -40,6 +39,12 @@ import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
+import { SetupTowerDefenceProjectUseCase } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
+import {
+  AWAITING_QUALITY_CHECK_STATUS_NAME,
+  AWAITING_WORKSPACE_STATUS_NAME,
+  PREPARATION_STATUS_NAME,
+} from '../../../domain/entities/WorkflowStatus';
 
 export class HandleScheduledEventUseCaseHandler {
   handle = async (
@@ -97,12 +102,6 @@ export class HandleScheduledEventUseCaseHandler {
       startPreparation: input.startPreparation
         ? {
             ...input.startPreparation,
-            awaitingWorkspaceStatus:
-              readmeConfig.awaitingWorkspaceStatus ??
-              input.startPreparation.awaitingWorkspaceStatus,
-            preparationStatus:
-              readmeConfig.preparationStatus ??
-              input.startPreparation.preparationStatus,
             defaultAgentName:
               readmeConfig.defaultAgentName ??
               input.startPreparation.defaultAgentName,
@@ -135,15 +134,6 @@ export class HandleScheduledEventUseCaseHandler {
       notifyFinishedPreparation: input.notifyFinishedPreparation
         ? {
             ...input.notifyFinishedPreparation,
-            awaitingWorkspaceStatus:
-              readmeConfig.awaitingWorkspaceStatus ??
-              input.notifyFinishedPreparation.awaitingWorkspaceStatus,
-            preparationStatus:
-              readmeConfig.preparationStatus ??
-              input.notifyFinishedPreparation.preparationStatus,
-            awaitingQualityCheckStatus:
-              readmeConfig.awaitingQualityCheckStatus ??
-              input.notifyFinishedPreparation.awaitingQualityCheckStatus,
             thresholdForAutoReject:
               readmeConfig.thresholdForAutoReject ??
               input.notifyFinishedPreparation.thresholdForAutoReject,
@@ -175,15 +165,9 @@ export class HandleScheduledEventUseCaseHandler {
       input.credentials.bot.github.password,
       input.credentials.bot.github.authenticatorKey,
     ];
-    const projectRepository: ProjectRepository = {
-      ...new GraphqlProjectRepository(...githubRepositoryParams),
-      prepareStatus: async (
-        _name: string,
-        project: Project,
-      ): Promise<Project> => {
-        return project;
-      },
-    };
+    const projectRepository = new GraphqlProjectRepository(
+      ...githubRepositoryParams,
+    );
     const apiV3IssueRepository = new ApiV3IssueRepository(
       ...githubRepositoryParams,
     );
@@ -199,6 +183,9 @@ export class HandleScheduledEventUseCaseHandler {
       graphqlProjectItemRepository,
       localStorageCacheRepository,
       ...githubRepositoryParams,
+    );
+    const setupTowerDefenceProjectUseCase = new SetupTowerDefenceProjectUseCase(
+      projectRepository,
     );
     const actionAnnouncement = new ActionAnnouncementUseCase(issueRepository);
     const setWorkflowManagementIssueToStoryUseCase =
@@ -268,6 +255,7 @@ export class HandleScheduledEventUseCaseHandler {
       );
 
     const handleScheduledEventUseCase = new HandleScheduledEventUseCase(
+      setupTowerDefenceProjectUseCase,
       actionAnnouncement,
       setWorkflowManagementIssueToStoryUseCase,
       clearPastNextActionUseCase,
@@ -297,13 +285,9 @@ export class HandleScheduledEventUseCaseHandler {
         projectId: result.project.id,
         issues: result.issues,
         statusNames: {
-          awaitingQualityCheckStatus:
-            mergedInput.notifyFinishedPreparation?.awaitingQualityCheckStatus ??
-            null,
-          preparationStatus:
-            mergedInput.startPreparation?.preparationStatus ?? null,
-          awaitingWorkspaceStatus:
-            mergedInput.startPreparation?.awaitingWorkspaceStatus ?? null,
+          awaitingQualityCheckStatus: AWAITING_QUALITY_CHECK_STATUS_NAME,
+          preparationStatus: PREPARATION_STATUS_NAME,
+          awaitingWorkspaceStatus: AWAITING_WORKSPACE_STATUS_NAME,
         },
         config: {
           maximumPreparingIssuesCount:

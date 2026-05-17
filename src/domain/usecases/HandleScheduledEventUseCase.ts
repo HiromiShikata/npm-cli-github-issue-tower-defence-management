@@ -22,6 +22,8 @@ import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCa
 import { StartPreparationUseCase } from './StartPreparationUseCase';
 import { NotifyFinishedIssuePreparationUseCase } from './NotifyFinishedIssuePreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
+import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
+import { PREPARATION_STATUS_NAME } from '../entities/WorkflowStatus';
 
 export class ProjectNotFoundError extends Error {
   constructor(message: string) {
@@ -32,6 +34,7 @@ export class ProjectNotFoundError extends Error {
 
 export class HandleScheduledEventUseCase {
   constructor(
+    readonly setupTowerDefenceProjectUseCase: SetupTowerDefenceProjectUseCase,
     readonly actionAnnouncementUseCase: ActionAnnouncementUseCase,
     readonly setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase,
     readonly clearPastNextActionUseCase: ClearPastNextActionDateHourUseCase,
@@ -65,13 +68,9 @@ export class HandleScheduledEventUseCase {
       spreadsheetUrl: string;
     };
     urlOfStoryView: string;
-    disabledStatus: string;
-    defaultStatus: string | null;
     disabled: boolean;
     allowIssueCacheMinutes: number;
     startPreparation?: {
-      awaitingWorkspaceStatus: string;
-      preparationStatus: string;
       defaultAgentName: string;
       defaultLlmModelName?: string | null;
       defaultLlmAgentName?: string | null;
@@ -85,9 +84,6 @@ export class HandleScheduledEventUseCase {
       awLogStaleThresholdMinutes?: number;
     } | null;
     notifyFinishedPreparation?: {
-      preparationStatus: string;
-      awaitingWorkspaceStatus: string;
-      awaitingQualityCheckStatus: string;
       thresholdForAutoReject: number;
       workflowBlockerResolvedWebhookUrl: string | null;
     } | null;
@@ -101,6 +97,9 @@ export class HandleScheduledEventUseCase {
     if (input.disabled) {
       return null;
     }
+    await this.setupTowerDefenceProjectUseCase.run({
+      projectUrl: input.projectUrl,
+    });
     const projectId = await this.projectRepository.findProjectIdByUrl(
       input.projectUrl,
     );
@@ -297,7 +296,6 @@ ${JSON.stringify(e)}
       org: input.org,
       repo: input.workingReport.repo,
       urlOfStoryView: input.urlOfStoryView,
-      disabledStatus: input.disabledStatus,
       storyObjectMap: storyObjectMap,
     });
     await this.convertCheckboxToIssueInStoryIssueUseCase.run({
@@ -305,7 +303,6 @@ ${JSON.stringify(e)}
       issues,
       cacheUsed,
       urlOfStoryView: input.urlOfStoryView,
-      disabledStatus: input.disabledStatus,
       storyObjectMap: storyObjectMap,
     });
     await this.changeStatusByStoryColorUseCase.run({
@@ -313,7 +310,6 @@ ${JSON.stringify(e)}
       cacheUsed,
       org: input.org,
       repo: input.workingReport.repo,
-      disabledStatus: input.disabledStatus,
       storyObjectMap: storyObjectMap,
     });
     await this.createNewStoryByLabelUseCase.run({
@@ -321,7 +317,6 @@ ${JSON.stringify(e)}
       cacheUsed,
       org: input.org,
       repo: input.workingReport.repo,
-      disabledStatus: input.disabledStatus,
       storyObjectMap: storyObjectMap,
     });
     await this.assignNoAssigneeIssueToManagerUseCase.run({
@@ -332,17 +327,11 @@ ${JSON.stringify(e)}
     await this.updateIssueStatusByLabelUseCase.run({
       project,
       issues,
-      defaultStatus: input.defaultStatus,
     });
     if (input.startPreparation) {
       if (input.startPreparation.preparationProcessCheckCommand) {
         await this.revertOrphanedPreparationUseCase.run({
           projectUrl: input.projectUrl,
-          preparationStatus: input.startPreparation.preparationStatus,
-          awaitingWorkspaceStatus:
-            input.startPreparation.awaitingWorkspaceStatus,
-          awaitingQualityCheckStatus:
-            input.notifyFinishedPreparation?.awaitingQualityCheckStatus,
           allowIssueCacheMinutes: input.allowIssueCacheMinutes,
           preparationProcessCheckCommand:
             input.startPreparation.preparationProcessCheckCommand,
@@ -353,8 +342,6 @@ ${JSON.stringify(e)}
       }
       await this.startPreparationUseCase.run({
         projectUrl: input.projectUrl,
-        awaitingWorkspaceStatus: input.startPreparation.awaitingWorkspaceStatus,
-        preparationStatus: input.startPreparation.preparationStatus,
         defaultAgentName: input.startPreparation.defaultAgentName,
         defaultLlmModelName: input.startPreparation.defaultLlmModelName ?? null,
         defaultLlmAgentName: input.startPreparation.defaultLlmAgentName ?? null,
@@ -371,21 +358,16 @@ ${JSON.stringify(e)}
     if (input.notifyFinishedPreparation) {
       const notifyFinishedPreparation = input.notifyFinishedPreparation;
       const preparationIssues = issues.filter(
-        (issue) => issue.status === notifyFinishedPreparation.preparationStatus,
+        (issue) => issue.status === PREPARATION_STATUS_NAME,
       );
       for (const issue of preparationIssues) {
         await this.notifyFinishedIssuePreparationUseCase.run({
           projectUrl: input.projectUrl,
           issueUrl: issue.url,
-          preparationStatus: input.notifyFinishedPreparation.preparationStatus,
-          awaitingWorkspaceStatus:
-            input.notifyFinishedPreparation.awaitingWorkspaceStatus,
-          awaitingQualityCheckStatus:
-            input.notifyFinishedPreparation.awaitingQualityCheckStatus,
           thresholdForAutoReject:
-            input.notifyFinishedPreparation.thresholdForAutoReject,
+            notifyFinishedPreparation.thresholdForAutoReject,
           workflowBlockerResolvedWebhookUrl:
-            input.notifyFinishedPreparation.workflowBlockerResolvedWebhookUrl,
+            notifyFinishedPreparation.workflowBlockerResolvedWebhookUrl,
         });
       }
     }

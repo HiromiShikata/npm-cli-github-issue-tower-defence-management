@@ -3,6 +3,7 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
 import { StoryObjectMap } from '../entities/StoryObjectMap';
 import { encodeForURI } from './utils';
+import { DISABLED_STATUS_NAME } from '../entities/WorkflowStatus';
 
 export class ConvertCheckboxToIssueInStoryIssueUseCase {
   constructor(
@@ -17,7 +18,6 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
     issues: Issue[];
     cacheUsed: boolean;
     urlOfStoryView: string;
-    disabledStatus: string;
     storyObjectMap: StoryObjectMap;
   }): Promise<void> => {
     const story = input.project.story;
@@ -36,7 +36,7 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
         throw new Error(`Story issue not found: ${storyOption.name}`);
       } else if (
         storyIssue.isClosed ||
-        storyIssue.status === input.disabledStatus
+        storyIssue.status === DISABLED_STATUS_NAME
       ) {
         continue;
       }

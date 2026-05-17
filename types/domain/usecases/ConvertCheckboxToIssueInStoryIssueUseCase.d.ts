@@ -10,7 +10,6 @@ export declare class ConvertCheckboxToIssueInStoryIssueUseCase {
         issues: Issue[];
         cacheUsed: boolean;
         urlOfStoryView: string;
-        disabledStatus: string;
         storyObjectMap: StoryObjectMap;
     }) => Promise<void>;
     buildStoryViewLink: (urlOfStoryView: string, storyName: string) => string;

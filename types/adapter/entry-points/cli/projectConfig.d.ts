@@ -1,7 +1,5 @@
 export type ConfigFile = {
     projectUrl?: string;
-    awaitingWorkspaceStatus?: string;
-    preparationStatus?: string;
     defaultAgentName?: string;
     defaultLlmModelName?: string;
     defaultLlmAgentName?: string;
@@ -9,7 +7,6 @@ export type ConfigFile = {
     allowIssueCacheMinutes?: number;
     utilizationPercentageThreshold?: number;
     allowedIssueAuthors?: string;
-    awaitingQualityCheckStatus?: string;
     thresholdForAutoReject?: number;
     workflowBlockerResolvedWebhookUrl?: string;
     projectName?: string;

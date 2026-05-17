@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreateEstimationIssueUseCase = void 0;
 const utils_1 = require("./utils");
+const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 class CreateEstimationIssueUseCase {
     constructor(issueRepository, dateRepository) {
         this.issueRepository = issueRepository;
@@ -38,7 +39,7 @@ class CreateEstimationIssueUseCase {
                     if (issueInStory.isClosed ||
                         issueInStory.isPr ||
                         issueInStory.labels.includes('story') ||
-                        issueInStory.status === input.disabledStatus) {
+                        issueInStory.status === WorkflowStatus_1.DISABLED_STATUS_NAME) {
                         continue;
                     }
                     if (estimationMinutesField &&

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RevertOrphanedPreparationUseCase = void 0;
+const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 class RevertOrphanedPreparationUseCase {
     constructor(projectRepository, issueRepository, issueCommentRepository, localCommandRunner) {
         this.projectRepository = projectRepository;
@@ -17,14 +18,12 @@ class RevertOrphanedPreparationUseCase {
                 throw new Error(`Project not found. projectId: ${projectId} projectUrl: ${params.projectUrl}`);
             }
             const { issues } = await this.issueRepository.getAllIssues(projectId, params.allowIssueCacheMinutes);
-            const preparationIssues = issues.filter((issue) => issue.status === params.preparationStatus);
-            const awaitingWorkspaceStatusOption = project.status.statuses.find((s) => s.name === params.awaitingWorkspaceStatus);
+            const preparationIssues = issues.filter((issue) => issue.status === WorkflowStatus_1.PREPARATION_STATUS_NAME);
+            const awaitingWorkspaceStatusOption = project.status.statuses.find((s) => s.name === WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME);
             if (!awaitingWorkspaceStatusOption) {
                 return;
             }
-            const awaitingQualityCheckStatusOption = params.awaitingQualityCheckStatus
-                ? project.status.statuses.find((s) => s.name === params.awaitingQualityCheckStatus)
-                : null;
+            const awaitingQualityCheckStatusOption = project.status.statuses.find((s) => s.name === WorkflowStatus_1.AWAITING_QUALITY_CHECK_STATUS_NAME);
             for (const issue of preparationIssues) {
                 const isOrphaned = await this.isOrphanedIssue(issue, params);
                 if (isOrphaned) {

@@ -30,12 +30,9 @@ import { OauthAPIProxyClaudeRepository } from '../../repositories/OauthAPIProxyC
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
-import { Project } from '../../../domain/entities/Project';
 
 type StartDaemonOptions = {
   projectUrl?: string;
-  awaitingWorkspaceStatus?: string;
-  preparationStatus?: string;
   defaultAgentName?: string;
   defaultLlmModelName?: string;
   defaultLlmAgentName?: string;
@@ -50,9 +47,6 @@ type StartDaemonOptions = {
 type NotifyFinishedOptions = {
   issueUrl: string;
   projectUrl?: string;
-  preparationStatus?: string;
-  awaitingWorkspaceStatus?: string;
-  awaitingQualityCheckStatus?: string;
   thresholdForAutoReject?: string;
   workflowBlockerResolvedWebhookUrl?: string;
   configFilePath: string;
@@ -114,11 +108,6 @@ program
     'Path to config file for tower defence management',
   )
   .option('--projectUrl <url>', 'GitHub project URL')
-  .option(
-    '--awaitingWorkspaceStatus <status>',
-    'Status for issues awaiting workspace',
-  )
-  .option('--preparationStatus <status>', 'Status for issues in preparation')
   .option('--defaultAgentName <name>', 'Default agent name')
   .option('--defaultLlmModelName <name>', 'Default LLM model name')
   .option('--defaultLlmAgentName <name>', 'Default LLM agent name')
@@ -153,8 +142,6 @@ program
 
     const cliOverrides: ConfigFile = {
       projectUrl: options.projectUrl,
-      awaitingWorkspaceStatus: options.awaitingWorkspaceStatus,
-      preparationStatus: options.preparationStatus,
       defaultAgentName: options.defaultAgentName,
       defaultLlmModelName: options.defaultLlmModelName,
       defaultLlmAgentName: options.defaultLlmAgentName,
@@ -189,25 +176,11 @@ program
     );
 
     const projectUrl = config.projectUrl;
-    const awaitingWorkspaceStatus = config.awaitingWorkspaceStatus;
-    const preparationStatus = config.preparationStatus;
     const defaultAgentName = config.defaultAgentName;
 
     if (!projectUrl) {
       console.error(
         'projectUrl is required. Provide via --projectUrl, config file, or project README.',
-      );
-      process.exit(1);
-    }
-    if (!awaitingWorkspaceStatus) {
-      console.error(
-        'awaitingWorkspaceStatus is required. Provide via --awaitingWorkspaceStatus, config file, or project README.',
-      );
-      process.exit(1);
-    }
-    if (!preparationStatus) {
-      console.error(
-        'preparationStatus is required. Provide via --preparationStatus, config file, or project README.',
       );
       process.exit(1);
     }
@@ -253,16 +226,9 @@ program
       cachePath,
       token,
     );
-    const projectRepository = {
-      ...new GraphqlProjectRepository(...githubRepositoryParams),
-
-      prepareStatus: async (
-        _name: string,
-        project: Project,
-      ): Promise<Project> => {
-        return project;
-      },
-    };
+    const projectRepository = new GraphqlProjectRepository(
+      ...githubRepositoryParams,
+    );
     const apiV3IssueRepository = new ApiV3IssueRepository(
       ...githubRepositoryParams,
     );
@@ -296,9 +262,6 @@ program
       );
       await revertUseCase.run({
         projectUrl,
-        preparationStatus,
-        awaitingWorkspaceStatus,
-        awaitingQualityCheckStatus: config.awaitingQualityCheckStatus,
         allowIssueCacheMinutes,
         preparationProcessCheckCommand,
         awLogDirectoryPath: config.awLogDirectoryPath,
@@ -328,8 +291,6 @@ program
 
     await useCase.run({
       projectUrl,
-      awaitingWorkspaceStatus,
-      preparationStatus,
       defaultAgentName,
       defaultLlmModelName: config.defaultLlmModelName ?? null,
       defaultLlmAgentName: config.defaultLlmAgentName ?? null,
@@ -352,15 +313,6 @@ program
   )
   .requiredOption('--issueUrl <url>', 'GitHub issue URL')
   .option('--projectUrl <url>', 'GitHub project URL')
-  .option('--preparationStatus <status>', 'Status for issues in preparation')
-  .option(
-    '--awaitingWorkspaceStatus <status>',
-    'Status for issues awaiting workspace',
-  )
-  .option(
-    '--awaitingQualityCheckStatus <status>',
-    'Status for issues awaiting quality check',
-  )
   .option(
     '--thresholdForAutoReject <count>',
     'Threshold for auto-escalation after consecutive rejections (default: 3)',
@@ -380,9 +332,6 @@ program
 
     const cliOverrides: ConfigFile = {
       projectUrl: options.projectUrl,
-      preparationStatus: options.preparationStatus,
-      awaitingWorkspaceStatus: options.awaitingWorkspaceStatus,
-      awaitingQualityCheckStatus: options.awaitingQualityCheckStatus,
       thresholdForAutoReject: options.thresholdForAutoReject
         ? Number(options.thresholdForAutoReject)
         : undefined,
@@ -408,31 +357,10 @@ program
     );
 
     const projectUrl = config.projectUrl;
-    const preparationStatus = config.preparationStatus;
-    const awaitingWorkspaceStatus = config.awaitingWorkspaceStatus;
-    const awaitingQualityCheckStatus = config.awaitingQualityCheckStatus;
 
     if (!projectUrl) {
       console.error(
         'projectUrl is required. Provide via --projectUrl, config file, or project README.',
-      );
-      process.exit(1);
-    }
-    if (!preparationStatus) {
-      console.error(
-        'preparationStatus is required. Provide via --preparationStatus, config file, or project README.',
-      );
-      process.exit(1);
-    }
-    if (!awaitingWorkspaceStatus) {
-      console.error(
-        'awaitingWorkspaceStatus is required. Provide via --awaitingWorkspaceStatus, config file, or project README.',
-      );
-      process.exit(1);
-    }
-    if (!awaitingQualityCheckStatus) {
-      console.error(
-        'awaitingQualityCheckStatus is required. Provide via --awaitingQualityCheckStatus, config file, or project README.',
       );
       process.exit(1);
     }
@@ -469,16 +397,9 @@ program
       cachePath,
       token,
     );
-    const projectRepository = {
-      ...new GraphqlProjectRepository(...githubRepositoryParams),
-
-      prepareStatus: async (
-        _name: string,
-        project: Project,
-      ): Promise<Project> => {
-        return project;
-      },
-    };
+    const projectRepository = new GraphqlProjectRepository(
+      ...githubRepositoryParams,
+    );
     const apiV3IssueRepository = new ApiV3IssueRepository(
       ...githubRepositoryParams,
     );
@@ -508,9 +429,6 @@ program
     await useCase.run({
       projectUrl,
       issueUrl: options.issueUrl,
-      preparationStatus,
-      awaitingWorkspaceStatus,
-      awaitingQualityCheckStatus,
       thresholdForAutoReject,
       workflowBlockerResolvedWebhookUrl,
     });

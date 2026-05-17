@@ -12,7 +12,6 @@ export declare class CreateNewStoryByLabelUseCase {
         cacheUsed: boolean;
         org: string;
         repo: string;
-        disabledStatus: string;
         storyObjectMap: StoryObjectMap;
     }) => Promise<void>;
     findNewStoryIssues: (storyObjectMap: StoryObjectMap) => Issue[];

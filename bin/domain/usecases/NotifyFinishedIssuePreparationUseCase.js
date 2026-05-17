@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NotifyFinishedIssuePreparationUseCase = exports.IllegalIssueStatusError = exports.IssueNotFoundError = void 0;
+const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 class IssueNotFoundError extends Error {
     constructor(issueUrl) {
         super(`Issue not found: ${issueUrl}`);
@@ -22,26 +23,23 @@ class NotifyFinishedIssuePreparationUseCase {
         this.issueCommentRepository = issueCommentRepository;
         this.webhookRepository = webhookRepository;
         this.run = async (params) => {
-            let project = await this.projectRepository.getByUrl(params.projectUrl);
-            project = await this.projectRepository.prepareStatus(params.preparationStatus, project);
-            project = await this.projectRepository.prepareStatus(params.awaitingWorkspaceStatus, project);
-            project = await this.projectRepository.prepareStatus(params.awaitingQualityCheckStatus, project);
-            const awaitingWorkspaceStatusOption = project.status.statuses.find((s) => s.name === params.awaitingWorkspaceStatus);
+            const project = await this.projectRepository.getByUrl(params.projectUrl);
+            const awaitingWorkspaceStatusOption = project.status.statuses.find((s) => s.name === WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME);
             if (!awaitingWorkspaceStatusOption) {
-                console.error(`Awaiting workspace status option '${params.awaitingWorkspaceStatus}' not found in project.`);
+                console.error(`Awaiting workspace status option '${WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME}' not found in project.`);
                 return;
             }
-            const awaitingQualityCheckStatusOption = project.status.statuses.find((s) => s.name === params.awaitingQualityCheckStatus);
+            const awaitingQualityCheckStatusOption = project.status.statuses.find((s) => s.name === WorkflowStatus_1.AWAITING_QUALITY_CHECK_STATUS_NAME);
             if (!awaitingQualityCheckStatusOption) {
-                console.error(`Awaiting quality check status option '${params.awaitingQualityCheckStatus}' not found in project.`);
+                console.error(`Awaiting quality check status option '${WorkflowStatus_1.AWAITING_QUALITY_CHECK_STATUS_NAME}' not found in project.`);
                 return;
             }
             const issue = await this.issueRepository.get(params.issueUrl, project);
             if (!issue) {
                 throw new IssueNotFoundError(params.issueUrl);
             }
-            else if (issue.status !== params.preparationStatus) {
-                throw new IllegalIssueStatusError(params.issueUrl, issue.status, params.preparationStatus);
+            else if (issue.status !== WorkflowStatus_1.PREPARATION_STATUS_NAME) {
+                throw new IllegalIssueStatusError(params.issueUrl, issue.status, WorkflowStatus_1.PREPARATION_STATUS_NAME);
             }
             if (issue.dependedIssueUrls.length === 0) {
                 try {
@@ -59,14 +57,14 @@ class NotifyFinishedIssuePreparationUseCase {
                 }
             }
             if (issue.dependedIssueUrls.length > 0) {
-                issue.status = params.awaitingWorkspaceStatus;
+                issue.status = WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME;
                 await this.issueRepository.update(issue, project);
                 await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
                 await this.issueCommentRepository.createComment(issue, `Issue has dependent issue URLs: ${issue.dependedIssueUrls.join(', ')}`);
                 return;
             }
             if (issue.nextActionDate !== null || issue.nextActionHour !== null) {
-                issue.status = params.awaitingWorkspaceStatus;
+                issue.status = WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME;
                 await this.issueRepository.update(issue, project);
                 await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
                 await this.issueCommentRepository.createComment(issue, `Issue has next action date or hour set: nextActionDate=${issue.nextActionDate?.toISOString() ?? 'null'}, nextActionHour=${issue.nextActionHour ?? 'null'}`);
@@ -82,7 +80,7 @@ class NotifyFinishedIssuePreparationUseCase {
                 !lastTargetComments.some((comment) => comment.content
                     .toLowerCase()
                     .includes('failed to pass the check automatically'))) {
-                issue.status = params.awaitingQualityCheckStatus;
+                issue.status = WorkflowStatus_1.AWAITING_QUALITY_CHECK_STATUS_NAME;
                 await this.issueRepository.update(issue, project);
                 await this.issueRepository.updateStatus(project, issue, awaitingQualityCheckStatusOption.id);
                 const escalationStatusLine = rejections.length > 0
@@ -96,7 +94,7 @@ class NotifyFinishedIssuePreparationUseCase {
                 return;
             }
             if (rejections.length <= 0) {
-                issue.status = params.awaitingQualityCheckStatus;
+                issue.status = WorkflowStatus_1.AWAITING_QUALITY_CHECK_STATUS_NAME;
                 await this.issueRepository.update(issue, project);
                 await this.issueRepository.updateStatus(project, issue, awaitingQualityCheckStatusOption.id);
                 if (approvedPrUrl !== null) {
@@ -105,7 +103,7 @@ class NotifyFinishedIssuePreparationUseCase {
                 await this.sendWorkflowBlockerNotification(params.issueUrl, params.workflowBlockerResolvedWebhookUrl, project);
                 return;
             }
-            issue.status = params.awaitingWorkspaceStatus;
+            issue.status = WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME;
             await this.issueRepository.update(issue, project);
             await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
             await this.issueCommentRepository.createComment(issue, rejectionStatusMessage);

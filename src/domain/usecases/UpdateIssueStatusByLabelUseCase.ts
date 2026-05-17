@@ -15,11 +15,7 @@ export class UpdateIssueStatusByLabelUseCase {
   static normalizeStatus = (status: string): string =>
     status.toLowerCase().replace(/[\s\-_]/g, '');
 
-  run = async (input: {
-    project: Project;
-    issues: Issue[];
-    defaultStatus: string | null;
-  }): Promise<void> => {
+  run = async (input: { project: Project; issues: Issue[] }): Promise<void> => {
     for (const issue of input.issues) {
       const statusLabel = issue.labels.find((label) =>
         label

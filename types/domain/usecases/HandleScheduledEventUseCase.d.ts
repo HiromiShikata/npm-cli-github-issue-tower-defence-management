@@ -22,10 +22,12 @@ import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCa
 import { StartPreparationUseCase } from './StartPreparationUseCase';
 import { NotifyFinishedIssuePreparationUseCase } from './NotifyFinishedIssuePreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
+import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
 export declare class ProjectNotFoundError extends Error {
     constructor(message: string);
 }
 export declare class HandleScheduledEventUseCase {
+    readonly setupTowerDefenceProjectUseCase: SetupTowerDefenceProjectUseCase;
     readonly actionAnnouncementUseCase: ActionAnnouncementUseCase;
     readonly setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase;
     readonly clearPastNextActionUseCase: ClearPastNextActionDateHourUseCase;
@@ -46,7 +48,7 @@ export declare class HandleScheduledEventUseCase {
     readonly spreadsheetRepository: SpreadsheetRepository;
     readonly projectRepository: ProjectRepository;
     readonly issueRepository: IssueRepository;
-    constructor(actionAnnouncementUseCase: ActionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase: ClearPastNextActionDateHourUseCase, analyzeProblemByIssueUseCase: AnalyzeProblemByIssueUseCase, analyzeStoriesUseCase: AnalyzeStoriesUseCase, clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase, createEstimationIssueUseCase: CreateEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase: ConvertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase: SetNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase: CreateNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase: AssignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase: UpdateIssueStatusByLabelUseCase, startPreparationUseCase: StartPreparationUseCase, notifyFinishedIssuePreparationUseCase: NotifyFinishedIssuePreparationUseCase, revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase, dateRepository: DateRepository, spreadsheetRepository: SpreadsheetRepository, projectRepository: ProjectRepository, issueRepository: IssueRepository);
+    constructor(setupTowerDefenceProjectUseCase: SetupTowerDefenceProjectUseCase, actionAnnouncementUseCase: ActionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase: ClearPastNextActionDateHourUseCase, analyzeProblemByIssueUseCase: AnalyzeProblemByIssueUseCase, analyzeStoriesUseCase: AnalyzeStoriesUseCase, clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase, createEstimationIssueUseCase: CreateEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase: ConvertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase: SetNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase: CreateNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase: AssignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase: UpdateIssueStatusByLabelUseCase, startPreparationUseCase: StartPreparationUseCase, notifyFinishedIssuePreparationUseCase: NotifyFinishedIssuePreparationUseCase, revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase, dateRepository: DateRepository, spreadsheetRepository: SpreadsheetRepository, projectRepository: ProjectRepository, issueRepository: IssueRepository);
     run: (input: {
         projectName: string;
         org: string;
@@ -58,13 +60,9 @@ export declare class HandleScheduledEventUseCase {
             spreadsheetUrl: string;
         };
         urlOfStoryView: string;
-        disabledStatus: string;
-        defaultStatus: string | null;
         disabled: boolean;
         allowIssueCacheMinutes: number;
         startPreparation?: {
-            awaitingWorkspaceStatus: string;
-            preparationStatus: string;
             defaultAgentName: string;
             defaultLlmModelName?: string | null;
             defaultLlmAgentName?: string | null;
@@ -78,9 +76,6 @@ export declare class HandleScheduledEventUseCase {
             awLogStaleThresholdMinutes?: number;
         } | null;
         notifyFinishedPreparation?: {
-            preparationStatus: string;
-            awaitingWorkspaceStatus: string;
-            awaitingQualityCheckStatus: string;
             thresholdForAutoReject: number;
             workflowBlockerResolvedWebhookUrl: string | null;
         } | null;

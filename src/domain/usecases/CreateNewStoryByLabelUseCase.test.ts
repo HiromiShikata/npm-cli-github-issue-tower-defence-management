@@ -84,7 +84,6 @@ describe('CreateNewStoryByLabelUseCase', () => {
         cacheUsed: false,
         org: 'testOrg',
         repo: 'testRepo',
-        disabledStatus: 'Icebox',
         storyObjectMap: new Map([['Story 1', storyObjectWithNewStoryIssues]]),
       });
 
@@ -105,7 +104,6 @@ describe('CreateNewStoryByLabelUseCase', () => {
         cacheUsed: false,
         org: 'testOrg',
         repo: 'testRepo',
-        disabledStatus: 'Icebox',
         storyObjectMap: new Map([
           ['Story 1', storyObjectWithoutNewStoryIssues],
         ]),
@@ -142,7 +140,6 @@ describe('CreateNewStoryByLabelUseCase', () => {
         cacheUsed: false,
         org: 'testOrg',
         repo: 'testRepo',
-        disabledStatus: 'Icebox',
         storyObjectMap: new Map([['Story 1', storyObjectWithNewStoryIssues]]),
       });
 
@@ -239,7 +236,6 @@ describe('CreateNewStoryByLabelUseCase', () => {
         cacheUsed: false,
         org: 'testOrg',
         repo: 'testRepo',
-        disabledStatus: 'Icebox',
         storyObjectMap: new Map([['Story 1', storyObject]]),
       });
 

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ChangeStatusByStoryColorUseCase = void 0;
+const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 class ChangeStatusByStoryColorUseCase {
     constructor(dateRepository, issueRepository) {
         this.dateRepository = dateRepository;
@@ -13,7 +14,7 @@ class ChangeStatusByStoryColorUseCase {
             else if (input.cacheUsed) {
                 return;
             }
-            const disabledStatusObject = input.project.status.statuses.find((status) => status.name === input.disabledStatus);
+            const disabledStatusObject = input.project.status.statuses.find((status) => status.name === WorkflowStatus_1.DISABLED_STATUS_NAME);
             if (!disabledStatusObject) {
                 throw new Error('Disabled status is not found');
             }
@@ -21,14 +22,14 @@ class ChangeStatusByStoryColorUseCase {
                 const isStoryDisabled = storyObject.story.color === 'GRAY';
                 for (const issue of storyObject.issues) {
                     if (isStoryDisabled) {
-                        if (issue.status && issue.status === input.disabledStatus) {
+                        if (issue.status && issue.status === WorkflowStatus_1.DISABLED_STATUS_NAME) {
                             continue;
                         }
                         await this.issueRepository.updateStatus(input.project, issue, disabledStatusObject.id);
                         await this.issueRepository.createComment(issue, `This issue status is changed because the story is disabled.`);
                     }
                     else if (!isStoryDisabled) {
-                        if (issue.status && issue.status !== input.disabledStatus) {
+                        if (issue.status && issue.status !== WorkflowStatus_1.DISABLED_STATUS_NAME) {
                             continue;
                         }
                         await this.issueRepository.updateStatus(input.project, issue, firstStatus.id);

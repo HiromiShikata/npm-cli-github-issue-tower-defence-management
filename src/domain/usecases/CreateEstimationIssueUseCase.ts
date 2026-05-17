@@ -5,6 +5,7 @@ import { Member } from '../entities/Member';
 import { DateRepository } from './adapter-interfaces/DateRepository';
 import { StoryObjectMap } from '../entities/StoryObjectMap';
 import { encodeForURI } from './utils';
+import { DISABLED_STATUS_NAME } from '../entities/WorkflowStatus';
 
 export class CreateEstimationIssueUseCase {
   constructor(
@@ -24,7 +25,6 @@ export class CreateEstimationIssueUseCase {
     org: string;
     repo: string;
     urlOfStoryView: string;
-    disabledStatus: string;
     storyObjectMap: StoryObjectMap;
   }): Promise<void> => {
     const story = input.project.story;
@@ -66,7 +66,7 @@ export class CreateEstimationIssueUseCase {
           issueInStory.isClosed ||
           issueInStory.isPr ||
           issueInStory.labels.includes('story') ||
-          issueInStory.status === input.disabledStatus
+          issueInStory.status === DISABLED_STATUS_NAME
         ) {
           continue;
         }

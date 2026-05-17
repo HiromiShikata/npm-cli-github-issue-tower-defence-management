@@ -99,7 +99,6 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
         issues: Issue[];
         cacheUsed: boolean;
         urlOfStoryView: string;
-        disabledStatus: string;
         storyObjectMap: StoryObjectMap;
       };
       expectedThrowError?: Error;
@@ -122,7 +121,6 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           issues: [basicStoryIssue1],
           cacheUsed: false,
           urlOfStoryView: 'https://example.com',
-          disabledStatus: 'Closed',
           storyObjectMap: basicStoryObjectMap,
         },
         expectedCreateNewIssueCalls: [],
@@ -137,7 +135,6 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           issues: [basicStoryIssue1],
           cacheUsed: true,
           urlOfStoryView: 'https://example.com',
-          disabledStatus: 'Closed',
           storyObjectMap: basicStoryObjectMap,
         },
         expectedCreateNewIssueCalls: [],
@@ -152,7 +149,6 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           issues: [basicStoryIssue1],
           cacheUsed: false,
           urlOfStoryView: 'https://example.com',
-          disabledStatus: 'Closed',
           storyObjectMap: regularStoryObjectMap,
         },
         expectedCreateNewIssueCalls: [],
@@ -167,7 +163,6 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           issues: [],
           cacheUsed: false,
           urlOfStoryView: 'https://example.com',
-          disabledStatus: 'Closed',
           storyObjectMap: basicStoryObjectMap,
         },
         expectedThrowError: new Error('Story issue not found: Story 1'),
@@ -194,7 +189,6 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           ],
           cacheUsed: false,
           urlOfStoryView: 'https://example.com',
-          disabledStatus: 'Disabled',
           storyObjectMap: basicStoryObjectMap,
         },
         expectedCreateNewIssueCalls: [],
@@ -209,7 +203,6 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           issues: [basicStoryIssue1, basicStoryIssue2],
           cacheUsed: false,
           urlOfStoryView: 'https://example.com',
-          disabledStatus: 'Closed',
           storyObjectMap: basicStoryObjectMap,
         },
         expectedCreateNewIssueCalls: [
@@ -365,7 +358,6 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           ],
           cacheUsed: false,
           urlOfStoryView: 'https://example.com',
-          disabledStatus: 'Closed',
           storyObjectMap: new Map([['Story 1', basicStoryObject1]]),
         },
         expectedCreateNewIssueCalls: [
@@ -428,7 +420,6 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           ],
           cacheUsed: false,
           urlOfStoryView: 'https://example.com',
-          disabledStatus: 'Closed',
           storyObjectMap: new Map([
             [
               'Story 1',
@@ -470,7 +461,6 @@ Some description without checkboxes`,
           ],
           cacheUsed: false,
           urlOfStoryView: 'https://example.com',
-          disabledStatus: 'Closed',
           storyObjectMap: basicStoryObjectMap,
         },
         expectedCreateNewIssueCalls: [
@@ -624,7 +614,6 @@ Some description without checkboxes`,
           ],
           cacheUsed: false,
           urlOfStoryView: 'https://example.com',
-          disabledStatus: 'Closed',
           storyObjectMap: new Map([
             [
               'Story 1',

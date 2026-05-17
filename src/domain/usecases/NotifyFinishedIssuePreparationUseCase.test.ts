@@ -80,7 +80,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   let useCase: NotifyFinishedIssuePreparationUseCase;
   let mockProjectRepository: {
     getByUrl: jest.Mock;
-    prepareStatus: jest.Mock;
   };
   let mockIssueRepository: {
     get: jest.Mock;
@@ -107,11 +106,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     mockProjectRepository = {
       getByUrl: jest.fn(),
-      prepareStatus: jest
-        .fn()
-        .mockImplementation((_name: string, project: Project) =>
-          Promise.resolve(project),
-        ),
     };
 
     mockIssueRepository = {
@@ -138,64 +132,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockIssueRepository,
       mockIssueCommentRepository,
       mockWebhookRepository,
-    );
-  });
-
-  it('should call prepareStatus for preparationStatus, awaitingWorkspaceStatus, and awaitingQualityCheckStatus with chained project objects', async () => {
-    const projectAfterFirstPrepare = createMockProject();
-    const projectAfterSecondPrepare = createMockProject();
-    const projectAfterThirdPrepare = createMockProject();
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockProjectRepository.prepareStatus
-      .mockResolvedValueOnce(projectAfterFirstPrepare)
-      .mockResolvedValueOnce(projectAfterSecondPrepare)
-      .mockResolvedValueOnce(projectAfterThirdPrepare);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'From: Test report' }),
-    ]);
-    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
-      {
-        url: 'https://github.com/user/repo/pull/1',
-        isConflicted: false,
-        isPassedAllCiJob: true,
-        isCiStateSuccess: true,
-        isResolvedAllReviewComments: true,
-        isBranchOutOfDate: false,
-        missingRequiredCheckNames: [],
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
-      thresholdForAutoReject: 3,
-      workflowBlockerResolvedWebhookUrl: null,
-    });
-
-    expect(mockProjectRepository.prepareStatus).toHaveBeenCalledTimes(3);
-    expect(mockProjectRepository.prepareStatus).toHaveBeenNthCalledWith(
-      1,
-      'Preparation',
-      mockProject,
-    );
-    expect(mockProjectRepository.prepareStatus).toHaveBeenNthCalledWith(
-      2,
-      'Awaiting Workspace',
-      projectAfterFirstPrepare,
-    );
-    expect(mockProjectRepository.prepareStatus).toHaveBeenNthCalledWith(
-      3,
-      'Awaiting Quality Check',
-      projectAfterSecondPrepare,
     );
   });
 
@@ -228,9 +164,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -295,9 +228,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -321,9 +251,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         issueUrl: 'https://github.com/user/repo/issues/999',
-        preparationStatus: 'Preparation',
-        awaitingWorkspaceStatus: 'Awaiting Workspace',
-        awaitingQualityCheckStatus: 'Awaiting Quality Check',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
       }),
@@ -345,9 +272,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         issueUrl: 'https://github.com/user/repo/issues/1',
-        preparationStatus: 'Preparation',
-        awaitingWorkspaceStatus: 'Awaiting Workspace',
-        awaitingQualityCheckStatus: 'Awaiting Quality Check',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
       }),
@@ -372,9 +296,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -427,9 +348,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -457,9 +375,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -492,9 +407,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -542,9 +454,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -594,9 +503,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -639,9 +545,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -684,9 +587,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -729,9 +629,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -760,9 +657,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -828,9 +722,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -889,9 +780,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -936,9 +824,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -985,9 +870,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -1032,9 +914,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -1061,9 +940,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -1117,9 +993,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -1164,9 +1037,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -1211,9 +1081,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -1258,9 +1125,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -1311,9 +1175,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -1364,9 +1225,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -1405,9 +1263,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -1442,9 +1297,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -1485,9 +1337,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -1519,9 +1368,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -1557,9 +1403,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -1587,9 +1430,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -1619,9 +1459,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -1662,9 +1499,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/pull/10',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -1747,9 +1581,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         issueUrl: 'https://github.com/user/repo/issues/1',
-        preparationStatus: 'Preparation',
-        awaitingWorkspaceStatus: 'Awaiting Workspace',
-        awaitingQualityCheckStatus: 'Awaiting Quality Check',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl:
           'https://example.com/webhook?url={URL}&msg={MESSAGE}',
@@ -1789,9 +1620,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         issueUrl: 'https://github.com/user/repo/issues/1',
-        preparationStatus: 'Preparation',
-        awaitingWorkspaceStatus: 'Awaiting Workspace',
-        awaitingQualityCheckStatus: 'Awaiting Quality Check',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl:
           'https://example.com/notify={MESSAGE}',
@@ -1832,9 +1660,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         issueUrl: 'https://github.com/user/repo/issues/1',
-        preparationStatus: 'Preparation',
-        awaitingWorkspaceStatus: 'Awaiting Workspace',
-        awaitingQualityCheckStatus: 'Awaiting Quality Check',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl:
           'https://example.com/webhook?msg={MESSAGE}',
@@ -1869,9 +1694,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         issueUrl: 'https://github.com/user/repo/issues/1',
-        preparationStatus: 'Preparation',
-        awaitingWorkspaceStatus: 'Awaiting Workspace',
-        awaitingQualityCheckStatus: 'Awaiting Quality Check',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
       });
@@ -1915,9 +1737,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         issueUrl: 'https://github.com/user/repo/issues/1',
-        preparationStatus: 'Preparation',
-        awaitingWorkspaceStatus: 'Awaiting Workspace',
-        awaitingQualityCheckStatus: 'Awaiting Quality Check',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl:
           'https://example.com/webhook?msg={MESSAGE}',
@@ -1968,9 +1787,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         issueUrl: 'https://github.com/user/repo/issues/1',
-        preparationStatus: 'Preparation',
-        awaitingWorkspaceStatus: 'Awaiting Workspace',
-        awaitingQualityCheckStatus: 'Awaiting Quality Check',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl:
           'https://example.com/runTasker/notify=:={MESSAGE}',
@@ -2023,9 +1839,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -2059,9 +1872,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/pull/10',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -2107,9 +1917,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -2148,9 +1955,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -2190,9 +1994,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -2231,9 +2032,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
-      preparationStatus: 'Preparation',
-      awaitingWorkspaceStatus: 'Awaiting Workspace',
-      awaitingQualityCheckStatus: 'Awaiting Quality Check',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });

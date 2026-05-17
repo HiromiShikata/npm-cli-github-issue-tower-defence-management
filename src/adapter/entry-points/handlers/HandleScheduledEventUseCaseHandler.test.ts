@@ -141,8 +141,6 @@ const validConfig = {
   projectUrl: 'https://github.com/users/TestOrg/projects/1',
   manager: 'TestManager',
   urlOfStoryView: 'https://github.com/users/TestOrg/projects/1/views/1',
-  disabledStatus: 'Icebox',
-  defaultStatus: 'Unread',
   disabled: false,
   allowIssueCacheMinutes: 1,
   workingReport: {
@@ -267,17 +265,12 @@ describe('HandleScheduledEventUseCaseHandler', () => {
       ...validConfig,
       allowIssueCacheMinutes: 5,
       startPreparation: {
-        awaitingWorkspaceStatus: 'Awaiting',
-        preparationStatus: 'Preparing',
         defaultAgentName: 'agent1',
         configFilePath: './config.yml',
         maximumPreparingIssuesCount: 10,
         utilizationPercentageThreshold: 97,
       },
       notifyFinishedPreparation: {
-        preparationStatus: 'Preparing',
-        awaitingWorkspaceStatus: 'Awaiting',
-        awaitingQualityCheckStatus: 'Awaiting QC',
         thresholdForAutoReject: 30,
         workflowBlockerResolvedWebhookUrl: null,
       },
@@ -329,8 +322,6 @@ describe('HandleScheduledEventUseCaseHandler', () => {
       ...validConfig,
       allowIssueCacheMinutes: 5,
       startPreparation: {
-        awaitingWorkspaceStatus: 'Awaiting workspace',
-        preparationStatus: 'Preparation',
         defaultAgentName: 'yaml-agent',
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: 10,
@@ -342,8 +333,6 @@ describe('HandleScheduledEventUseCaseHandler', () => {
       const readmeContent = `<details>
 <summary>config</summary>
 maximumPreparingIssuesCount: 0
-awaitingWorkspaceStatus: README Awaiting
-preparationStatus: README Preparation
 defaultAgentName: readme-agent
 utilizationPercentageThreshold: 80
 </details>`;
@@ -358,8 +347,6 @@ utilizationPercentageThreshold: 80
       expect(capturedRunInputs[0][0]).toMatchObject({
         startPreparation: {
           maximumPreparingIssuesCount: 0,
-          awaitingWorkspaceStatus: 'README Awaiting',
-          preparationStatus: 'README Preparation',
           defaultAgentName: 'readme-agent',
           utilizationPercentageThreshold: 80,
         },
@@ -419,7 +406,6 @@ allowedIssueAuthors: 'user1, user2, user3'
         allowIssueCacheMinutes: 5,
         startPreparation: {
           maximumPreparingIssuesCount: 10,
-          awaitingWorkspaceStatus: 'Awaiting workspace',
           defaultAgentName: 'yaml-agent',
         },
       });

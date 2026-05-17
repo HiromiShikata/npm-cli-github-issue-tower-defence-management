@@ -7,11 +7,9 @@ export declare class StartPreparationUseCase {
     private readonly issueRepository;
     private readonly claudeRepository;
     private readonly localCommandRunner;
-    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl' | 'prepareStatus'>, issueRepository: Pick<IssueRepository, 'getStoryObjectMap' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'closePullRequest' | 'deletePullRequestBranch' | 'createCommentByUrl'>, claudeRepository: Pick<ClaudeRepository, 'getUsage'>, localCommandRunner: LocalCommandRunner);
+    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl'>, issueRepository: Pick<IssueRepository, 'getStoryObjectMap' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'closePullRequest' | 'deletePullRequestBranch' | 'createCommentByUrl'>, claudeRepository: Pick<ClaudeRepository, 'getUsage'>, localCommandRunner: LocalCommandRunner);
     run: (params: {
         projectUrl: string;
-        awaitingWorkspaceStatus: string;
-        preparationStatus: string;
         defaultAgentName: string;
         defaultLlmModelName: string | null;
         defaultLlmAgentName: string | null;

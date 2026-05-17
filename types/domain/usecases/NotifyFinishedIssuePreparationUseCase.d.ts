@@ -13,13 +13,10 @@ export declare class NotifyFinishedIssuePreparationUseCase {
     private readonly issueRepository;
     private readonly issueCommentRepository;
     private readonly webhookRepository;
-    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl' | 'prepareStatus'>, issueRepository: Pick<IssueRepository, 'get' | 'update' | 'updateStatus' | 'updateNextActionDate' | 'findRelatedOpenPRs' | 'getStoryObjectMap' | 'getOpenPullRequest'>, issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>, webhookRepository: Pick<WebhookRepository, 'sendGetRequest'>);
+    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl'>, issueRepository: Pick<IssueRepository, 'get' | 'update' | 'updateStatus' | 'updateNextActionDate' | 'findRelatedOpenPRs' | 'getStoryObjectMap' | 'getOpenPullRequest'>, issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>, webhookRepository: Pick<WebhookRepository, 'sendGetRequest'>);
     run: (params: {
         projectUrl: string;
         issueUrl: string;
-        preparationStatus: string;
-        awaitingWorkspaceStatus: string;
-        awaitingQualityCheckStatus: string;
         thresholdForAutoReject: number;
         workflowBlockerResolvedWebhookUrl: string | null;
     }) => Promise<void>;

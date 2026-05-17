@@ -1,7 +1,7 @@
 import { BaseGitHubRepository } from './BaseGitHubRepository';
 import { ProjectRepository } from '../../domain/usecases/adapter-interfaces/ProjectRepository';
 import { FieldOption, Project } from '../../domain/entities/Project';
-export declare class GraphqlProjectRepository extends BaseGitHubRepository implements Pick<ProjectRepository, 'getProject' | 'findProjectIdByUrl' | 'getByUrl' | 'updateStoryList'> {
+export declare class GraphqlProjectRepository extends BaseGitHubRepository implements Pick<ProjectRepository, 'getProject' | 'findProjectIdByUrl' | 'getByUrl' | 'updateStoryList' | 'updateStatusList'> {
     extractProjectFromUrl: (projectUrl: string) => {
         owner: string;
         projectNumber: number;
@@ -11,6 +11,9 @@ export declare class GraphqlProjectRepository extends BaseGitHubRepository imple
     getProject: (projectId: Project["id"]) => Promise<Project | null>;
     getByUrl: (url: string) => Promise<Project>;
     updateStoryList: (project: Project, newStoryList: (Omit<FieldOption, "id"> & {
+        id: FieldOption["id"] | null;
+    })[]) => Promise<FieldOption[]>;
+    updateStatusList: (project: Project, newStatusList: (Omit<FieldOption, "id"> & {
         id: FieldOption["id"] | null;
     })[]) => Promise<FieldOption[]>;
 }

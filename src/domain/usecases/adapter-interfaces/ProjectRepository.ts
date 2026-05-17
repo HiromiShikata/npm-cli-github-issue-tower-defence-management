@@ -7,6 +7,11 @@ export interface ProjectRepository {
     projectId: Project,
     storyOption: (Omit<FieldOption, 'id'> & { id: FieldOption['id'] | null })[],
   ) => Promise<FieldOption[]>;
+  updateStatusList: (
+    project: Project,
+    statusOptions: (Omit<FieldOption, 'id'> & {
+      id: FieldOption['id'] | null;
+    })[],
+  ) => Promise<FieldOption[]>;
   getByUrl: (url: string) => Promise<Project>;
-  prepareStatus: (name: string, project: Project) => Promise<Project>;
 }

@@ -22,6 +22,7 @@ import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCa
 import { StartPreparationUseCase } from './StartPreparationUseCase';
 import { NotifyFinishedIssuePreparationUseCase } from './NotifyFinishedIssuePreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
+import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
 
 describe('HandleScheduledEventUseCase', () => {
   describe('createTargetDateTimes', () => {
@@ -80,6 +81,8 @@ describe('HandleScheduledEventUseCase', () => {
   });
 
   describe('run', () => {
+    const mockSetupTowerDefenceProjectUseCase =
+      mock<SetupTowerDefenceProjectUseCase>();
     const mockActionAnnouncementUseCase = mock<ActionAnnouncementUseCase>();
     const mockSetWorkflowManagementIssueToStoryUseCase =
       mock<SetWorkflowManagementIssueToStoryUseCase>();
@@ -115,6 +118,7 @@ describe('HandleScheduledEventUseCase', () => {
     const mockIssueRepository = mock<IssueRepository>();
 
     const useCase = new HandleScheduledEventUseCase(
+      mockSetupTowerDefenceProjectUseCase,
       mockActionAnnouncementUseCase,
       mockSetWorkflowManagementIssueToStoryUseCase,
       mockClearPastNextActionDateHourUseCase,
@@ -166,8 +170,6 @@ describe('HandleScheduledEventUseCase', () => {
           spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
         },
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
-        disabledStatus: 'disabled',
-        defaultStatus: null,
         disabled: false,
         allowIssueCacheMinutes: 60,
       };
@@ -190,8 +192,6 @@ describe('HandleScheduledEventUseCase', () => {
           spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
         },
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
-        disabledStatus: 'disabled',
-        defaultStatus: 'ToDo',
         disabled: false,
         allowIssueCacheMinutes: 60,
       };
@@ -202,35 +202,6 @@ describe('HandleScheduledEventUseCase', () => {
       expect(mockUpdateIssueStatusByLabelUseCase.run).toHaveBeenCalledWith({
         project: mockProject,
         issues: [],
-        defaultStatus: 'ToDo',
-      });
-    });
-
-    it('should accept null for defaultStatus parameter', async () => {
-      const input = {
-        projectName: 'test-project',
-        org: 'test-org',
-        projectUrl: 'https://github.com/test-org/test-project',
-        manager: 'test-manager',
-        workingReport: {
-          repo: 'test-repo',
-          members: ['member1'],
-          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
-        },
-        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
-        disabledStatus: 'disabled',
-        defaultStatus: null,
-        disabled: false,
-        allowIssueCacheMinutes: 60,
-      };
-
-      const mockProject = mock<Project>();
-      mockProjectRepository.getProject.mockResolvedValue(mockProject);
-      await useCase.run(input);
-      expect(mockUpdateIssueStatusByLabelUseCase.run).toHaveBeenCalledWith({
-        project: mockProject,
-        issues: [],
-        defaultStatus: null,
       });
     });
 
@@ -246,8 +217,6 @@ describe('HandleScheduledEventUseCase', () => {
           spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
         },
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
-        disabledStatus: 'disabled',
-        defaultStatus: null,
         disabled: true,
         allowIssueCacheMinutes: 60,
       };
@@ -271,8 +240,6 @@ describe('HandleScheduledEventUseCase', () => {
           spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
         },
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
-        disabledStatus: 'disabled',
-        defaultStatus: null,
         disabled: false,
         allowIssueCacheMinutes: 60,
       };
@@ -296,8 +263,6 @@ describe('HandleScheduledEventUseCase', () => {
           spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
         },
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
-        disabledStatus: 'disabled',
-        defaultStatus: null,
         disabled: false,
         allowIssueCacheMinutes: 120,
       };
@@ -323,8 +288,6 @@ describe('HandleScheduledEventUseCase', () => {
           spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
         },
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
-        disabledStatus: 'disabled',
-        defaultStatus: null,
         disabled: false,
         allowIssueCacheMinutes: 60,
       };
