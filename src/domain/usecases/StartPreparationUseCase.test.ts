@@ -87,6 +87,9 @@ describe('StartPreparationUseCase', () => {
       | 'updateStatus'
       | 'findRelatedOpenPRs'
       | 'getOpenPullRequest'
+      | 'closePullRequest'
+      | 'deletePullRequestBranch'
+      | 'createCommentByUrl'
     >
   >;
   let mockClaudeRepository: Mocked<Pick<ClaudeRepository, 'getUsage'>>;
@@ -108,6 +111,9 @@ describe('StartPreparationUseCase', () => {
       updateStatus: jest.fn(),
       findRelatedOpenPRs: jest.fn().mockResolvedValue([]),
       getOpenPullRequest: jest.fn().mockResolvedValue(null),
+      closePullRequest: jest.fn().mockResolvedValue(undefined),
+      deletePullRequestBranch: jest.fn().mockResolvedValue(undefined),
+      createCommentByUrl: jest.fn().mockResolvedValue(undefined),
     };
     mockClaudeRepository = {
       getUsage: jest.fn().mockResolvedValue([]),
@@ -225,6 +231,7 @@ describe('StartPreparationUseCase', () => {
     const existingPR: RelatedPullRequest = {
       url: 'https://github.com/user/repo/pull/42',
       branchName: 'i1',
+      createdAt: new Date('2024-01-01'),
       isConflicted: false,
       isPassedAllCiJob: false,
       isCiStateSuccess: false,
@@ -286,6 +293,7 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/user/repo/pull/354',
       branchName: 'dependabot/npm_and_yarn/multi-cc382f683c',
+      createdAt: new Date('2024-01-01'),
       isConflicted: false,
       isPassedAllCiJob: false,
       isCiStateSuccess: false,
@@ -385,6 +393,7 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/user/repo/pull/999',
       branchName: null,
+      createdAt: new Date('2024-01-01'),
       isConflicted: false,
       isPassedAllCiJob: false,
       isCiStateSuccess: false,
@@ -432,6 +441,7 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/user/repo/pull/999',
       branchName: 'evil$(rm -rf /)',
+      createdAt: new Date('2024-01-01'),
       isConflicted: false,
       isPassedAllCiJob: false,
       isCiStateSuccess: false,
@@ -463,18 +473,19 @@ describe('StartPreparationUseCase', () => {
     );
     consoleErrorSpy.mockRestore();
   });
-  it('should skip and not call wrapper when issue has multiple related open PRs', async () => {
+  it('should auto-resolve by adopting oldest PR, closing newer PR with branch delete and comments when issue has multiple related open PRs', async () => {
     const awaitingIssues: Issue[] = [
       createMockIssue({
-        url: 'url1',
+        url: 'https://github.com/user/repo/issues/1',
         title: 'Issue 1',
         labels: ['category:impl'],
         status: 'Awaiting Workspace',
       }),
     ];
-    const pr1: RelatedPullRequest = {
+    const olderPR: RelatedPullRequest = {
       url: 'https://github.com/user/repo/pull/42',
       branchName: 'i1',
+      createdAt: new Date('2024-01-01T00:00:00Z'),
       isConflicted: false,
       isPassedAllCiJob: false,
       isCiStateSuccess: false,
@@ -482,9 +493,10 @@ describe('StartPreparationUseCase', () => {
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
     };
-    const pr2: RelatedPullRequest = {
+    const newerPR: RelatedPullRequest = {
       url: 'https://github.com/user/repo/pull/43',
       branchName: 'i1-fix',
+      createdAt: new Date('2024-01-02T00:00:00Z'),
       isConflicted: false,
       isPassedAllCiJob: false,
       isCiStateSuccess: false,
@@ -496,7 +508,100 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
-    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([pr1, pr2]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      olderPR,
+      newerPR,
+    ]);
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      awaitingWorkspaceStatus: 'Awaiting Workspace',
+      preparationStatus: 'Preparation',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: null,
+      codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
+    });
+    expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
+      newerPR.url,
+    );
+    expect(mockIssueRepository.deletePullRequestBranch).toHaveBeenCalledWith(
+      newerPR.url,
+      newerPR.branchName,
+    );
+    expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
+      newerPR.url,
+      expect.stringContaining(olderPR.url),
+    );
+    expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
+      'https://github.com/user/repo/issues/1',
+      expect.stringContaining(newerPR.url),
+    );
+    expect(mockIssueRepository.closePullRequest).not.toHaveBeenCalledWith(
+      olderPR.url,
+    );
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
+      'aw',
+      [
+        'https://github.com/user/repo/issues/1',
+        'impl',
+        'claude-opus',
+        '--configFilePath',
+        '/path/to/config.yml',
+        '--branch',
+        'i1',
+      ],
+    ]);
+  });
+  it('should skip issue after resolving duplicates when adopted canonical PR has null branchName', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+      }),
+    ];
+    const olderPRNullBranch: RelatedPullRequest = {
+      url: 'https://github.com/user/repo/pull/42',
+      branchName: null,
+      createdAt: new Date('2024-01-01T00:00:00Z'),
+      isConflicted: false,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isResolvedAllReviewComments: false,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+    };
+    const newerPR: RelatedPullRequest = {
+      url: 'https://github.com/user/repo/pull/43',
+      branchName: 'i1-fix',
+      createdAt: new Date('2024-01-02T00:00:00Z'),
+      isConflicted: false,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isResolvedAllReviewComments: false,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+    };
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      olderPRNullBranch,
+      newerPR,
+    ]);
     const consoleWarnSpy = jest
       .spyOn(console, 'warn')
       .mockImplementation(() => {});
@@ -514,10 +619,22 @@ describe('StartPreparationUseCase', () => {
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
     });
+    expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
+      newerPR.url,
+    );
+    expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
+      newerPR.url,
+      expect.stringContaining(olderPRNullBranch.url),
+    );
+    expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
+      'https://github.com/user/repo/issues/1',
+      expect.stringContaining(newerPR.url),
+    );
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     expect(consoleWarnSpy).toHaveBeenCalledWith(
-      'Skipping issue url1: 2 related open PRs found (ambiguous).',
+      expect.stringContaining(
+        'adopted canonical PR has unavailable head branch',
+      ),
     );
     consoleWarnSpy.mockRestore();
   });
@@ -533,6 +650,7 @@ describe('StartPreparationUseCase', () => {
     const prWithNullBranch: RelatedPullRequest = {
       url: 'https://github.com/user/repo/pull/42',
       branchName: null,
+      createdAt: new Date('2024-01-01'),
       isConflicted: false,
       isPassedAllCiJob: false,
       isCiStateSuccess: false,
