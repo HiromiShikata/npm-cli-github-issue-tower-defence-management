@@ -1,3 +1,10 @@
+# [1.49.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.48.0...v1.49.0) (2026-05-18)
+
+
+### Features
+
+* **core:** redefine REQUIRED_WORKFLOW_STATUSES to 10 statuses without descriptions ([c147066](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c1470661776a20ee064555b74e067afc7eca07d9))
+
 # [1.48.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.47.0...v1.48.0) (2026-05-17)
 
 
