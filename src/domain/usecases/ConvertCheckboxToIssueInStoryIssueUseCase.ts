@@ -3,7 +3,7 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
 import { StoryObjectMap } from '../entities/StoryObjectMap';
 import { encodeForURI } from './utils';
-import { DISABLED_STATUS_NAME } from '../entities/WorkflowStatus';
+import { ICEBOX_STATUS_NAME } from '../entities/WorkflowStatus';
 
 export class ConvertCheckboxToIssueInStoryIssueUseCase {
   constructor(
@@ -36,7 +36,7 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
         throw new Error(`Story issue not found: ${storyOption.name}`);
       } else if (
         storyIssue.isClosed ||
-        storyIssue.status === DISABLED_STATUS_NAME
+        storyIssue.status === ICEBOX_STATUS_NAME
       ) {
         continue;
       }

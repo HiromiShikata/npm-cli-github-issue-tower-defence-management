@@ -20,7 +20,7 @@ class SetupTowerDefenceProjectUseCase {
                         id: found ? found.id : null,
                         name: required.name,
                         color: required.color,
-                        description: required.description,
+                        description: '',
                     };
                 }),
                 ...others.map((other) => ({
@@ -41,7 +41,9 @@ SetupTowerDefenceProjectUseCase.hasRequiredStatusesInCanonicalOrder = (existing)
     }
     return WorkflowStatus_1.REQUIRED_WORKFLOW_STATUSES.every((required, index) => {
         const actual = existing[index];
-        return actual.name === required.name && actual.color === required.color;
+        return (actual.name === required.name &&
+            actual.color === required.color &&
+            actual.description === '');
     });
 };
 //# sourceMappingURL=SetupTowerDefenceProjectUseCase.js.map

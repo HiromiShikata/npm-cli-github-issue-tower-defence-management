@@ -73,7 +73,7 @@ npx github-issue-tower-defence-management notifyFinishedIssuePreparation --confi
 
 The `config.yaml` for the `schedule` command must match the input type of `HandleScheduledEventUseCase.run()`. Below is the structure:
 
-Workflow status names (`Unread`, `Awaiting Workspace`, `Preparation`, `Awaiting Quality Check`, `Disabled`) are fixed code constants and cannot be overridden from CLI options, config files, or project README. The `schedule` command automatically creates any missing required statuses on the target project on each run via `SetupTowerDefenceProjectUseCase`.
+Workflow status names (`Unread`, `Awaiting Task Breakdown`, `Awaiting Workspace`, `Preparation`, `Awaiting Quality Check`, `Todo`, `PC Todo`, `In Tmux`, `Done`, `Icebox`) are fixed code constants and cannot be overridden from CLI options, config files, or project README. The `schedule` command automatically creates any missing required statuses on the target project on each run via `SetupTowerDefenceProjectUseCase`.
 
 ```yaml
 disabled: boolean # When true, skip all processing and return null
@@ -172,7 +172,7 @@ awLogDirectoryPath?: string # Optional: Directory path where aw log files named 
 awLogStaleThresholdMinutes?: number # Optional: Minutes since last aw log mtime after which a Preparation issue is considered orphaned even when pgrep still returns 0. Requires awLogDirectoryPath
 ```
 
-Workflow status names (`Unread`, `Awaiting Workspace`, `Preparation`, `Awaiting Quality Check`, `Disabled`) are hardcoded constants and are not accepted via this config, the CLI, or the project README. To ensure they exist on the target project, run the `schedule` command — it invokes `SetupTowerDefenceProjectUseCase` automatically.
+Workflow status names (`Unread`, `Awaiting Task Breakdown`, `Awaiting Workspace`, `Preparation`, `Awaiting Quality Check`, `Todo`, `PC Todo`, `In Tmux`, `Done`, `Icebox`) are hardcoded constants and are not accepted via this config, the CLI, or the project README. To ensure they exist on the target project, run the `schedule` command — it invokes `SetupTowerDefenceProjectUseCase` automatically.
 
 Example:
 

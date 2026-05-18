@@ -39,7 +39,7 @@ class CreateEstimationIssueUseCase {
                     if (issueInStory.isClosed ||
                         issueInStory.isPr ||
                         issueInStory.labels.includes('story') ||
-                        issueInStory.status === WorkflowStatus_1.DISABLED_STATUS_NAME) {
+                        issueInStory.status === WorkflowStatus_1.ICEBOX_STATUS_NAME) {
                         continue;
                     }
                     if (estimationMinutesField &&

@@ -18,9 +18,9 @@ describe('ChangeStatusByStoryColorUseCase', () => {
   mockReviewStatus.id = 'status2';
   mockReviewStatus.name = 'InReview';
 
-  const mockDisabledStatus = mock<FieldOption>();
-  mockDisabledStatus.id = 'status3';
-  mockDisabledStatus.name = 'Disabled';
+  const mockIceboxStatus = mock<FieldOption>();
+  mockIceboxStatus.id = 'status3';
+  mockIceboxStatus.name = 'Icebox';
 
   const basicProject = {
     ...mock<Project>(),
@@ -38,7 +38,7 @@ describe('ChangeStatusByStoryColorUseCase', () => {
     status: {
       name: 'Status Field',
       fieldId: 'statusFieldId',
-      statuses: [mockStatus, mockReviewStatus, mockDisabledStatus],
+      statuses: [mockStatus, mockReviewStatus, mockIceboxStatus],
     },
   };
 
@@ -185,7 +185,7 @@ describe('ChangeStatusByStoryColorUseCase', () => {
               issues: [
                 {
                   ...basicStoryObject1.issues[0],
-                  status: 'Disabled',
+                  status: 'Icebox',
                 },
               ],
             },

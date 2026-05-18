@@ -2,7 +2,7 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
 import { DateRepository } from './adapter-interfaces/DateRepository';
 import { StoryObjectMap } from '../entities/StoryObjectMap';
-import { DISABLED_STATUS_NAME } from '../entities/WorkflowStatus';
+import { ICEBOX_STATUS_NAME } from '../entities/WorkflowStatus';
 
 export class ChangeStatusByStoryColorUseCase {
   constructor(
@@ -27,16 +27,16 @@ export class ChangeStatusByStoryColorUseCase {
       return;
     }
     const disabledStatusObject = input.project.status.statuses.find(
-      (status) => status.name === DISABLED_STATUS_NAME,
+      (status) => status.name === ICEBOX_STATUS_NAME,
     );
     if (!disabledStatusObject) {
-      throw new Error('Disabled status is not found');
+      throw new Error('Icebox status is not found');
     }
     for (const storyObject of Array.from(input.storyObjectMap.values())) {
       const isStoryDisabled = storyObject.story.color === 'GRAY';
       for (const issue of storyObject.issues) {
         if (isStoryDisabled) {
-          if (issue.status && issue.status === DISABLED_STATUS_NAME) {
+          if (issue.status && issue.status === ICEBOX_STATUS_NAME) {
             continue;
           }
           await this.issueRepository.updateStatus(
@@ -49,7 +49,7 @@ export class ChangeStatusByStoryColorUseCase {
             `This issue status is changed because the story is disabled.`,
           );
         } else if (!isStoryDisabled) {
-          if (issue.status && issue.status !== DISABLED_STATUS_NAME) {
+          if (issue.status && issue.status !== ICEBOX_STATUS_NAME) {
             continue;
           }
           await this.issueRepository.updateStatus(
