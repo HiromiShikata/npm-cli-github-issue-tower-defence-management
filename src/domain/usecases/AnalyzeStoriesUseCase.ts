@@ -5,7 +5,7 @@ import { Member } from '../entities/Member';
 import { DateRepository } from './adapter-interfaces/DateRepository';
 import { StoryObjectMap } from '../entities/StoryObjectMap';
 import { encodeForURI } from './utils';
-import { DISABLED_STATUS_NAME } from '../entities/WorkflowStatus';
+import { ICEBOX_STATUS_NAME } from '../entities/WorkflowStatus';
 
 export class AnalyzeStoriesUseCase {
   constructor(
@@ -66,7 +66,7 @@ export class AnalyzeStoriesUseCase {
         ...story,
       };
 
-      if (storyIssue.status === DISABLED_STATUS_NAME) {
+      if (storyIssue.status === ICEBOX_STATUS_NAME) {
         phases.get('others')?.push(storyIssueObject);
       } else if (storyIssue.labels.includes('story:phase:finished-qa')) {
         phases.get('story:phase:finished-qa')?.push(storyIssueObject);

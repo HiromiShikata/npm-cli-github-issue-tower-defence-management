@@ -39,7 +39,7 @@ export class SetupTowerDefenceProjectUseCase {
           id: found ? found.id : null,
           name: required.name,
           color: required.color,
-          description: required.description,
+          description: '',
         };
       }),
       ...others.map((other) => ({
@@ -62,7 +62,11 @@ export class SetupTowerDefenceProjectUseCase {
     return REQUIRED_WORKFLOW_STATUSES.every(
       (required: WorkflowStatusDefinition, index: number) => {
         const actual = existing[index];
-        return actual.name === required.name && actual.color === required.color;
+        return (
+          actual.name === required.name &&
+          actual.color === required.color &&
+          actual.description === ''
+        );
       },
     );
   };

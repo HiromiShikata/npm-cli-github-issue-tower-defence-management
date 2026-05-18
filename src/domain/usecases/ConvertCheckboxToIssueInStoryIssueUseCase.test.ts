@@ -173,7 +173,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
       },
 
       {
-        name: 'should skip closed story issues or disabled status',
+        name: 'should skip closed story issues or icebox status',
         input: {
           project: basicProject,
           issues: [
@@ -184,7 +184,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             },
             {
               ...basicStoryIssue2,
-              status: 'Disabled',
+              status: 'Icebox',
             },
           ],
           cacheUsed: false,

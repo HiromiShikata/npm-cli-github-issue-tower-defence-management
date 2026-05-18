@@ -14,22 +14,22 @@ class ChangeStatusByStoryColorUseCase {
             else if (input.cacheUsed) {
                 return;
             }
-            const disabledStatusObject = input.project.status.statuses.find((status) => status.name === WorkflowStatus_1.DISABLED_STATUS_NAME);
+            const disabledStatusObject = input.project.status.statuses.find((status) => status.name === WorkflowStatus_1.ICEBOX_STATUS_NAME);
             if (!disabledStatusObject) {
-                throw new Error('Disabled status is not found');
+                throw new Error('Icebox status is not found');
             }
             for (const storyObject of Array.from(input.storyObjectMap.values())) {
                 const isStoryDisabled = storyObject.story.color === 'GRAY';
                 for (const issue of storyObject.issues) {
                     if (isStoryDisabled) {
-                        if (issue.status && issue.status === WorkflowStatus_1.DISABLED_STATUS_NAME) {
+                        if (issue.status && issue.status === WorkflowStatus_1.ICEBOX_STATUS_NAME) {
                             continue;
                         }
                         await this.issueRepository.updateStatus(input.project, issue, disabledStatusObject.id);
                         await this.issueRepository.createComment(issue, `This issue status is changed because the story is disabled.`);
                     }
                     else if (!isStoryDisabled) {
-                        if (issue.status && issue.status !== WorkflowStatus_1.DISABLED_STATUS_NAME) {
+                        if (issue.status && issue.status !== WorkflowStatus_1.ICEBOX_STATUS_NAME) {
                             continue;
                         }
                         await this.issueRepository.updateStatus(input.project, issue, firstStatus.id);

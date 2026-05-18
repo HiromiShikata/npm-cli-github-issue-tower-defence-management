@@ -21,7 +21,7 @@ class ConvertCheckboxToIssueInStoryIssueUseCase {
                     throw new Error(`Story issue not found: ${storyOption.name}`);
                 }
                 else if (storyIssue.isClosed ||
-                    storyIssue.status === WorkflowStatus_1.DISABLED_STATUS_NAME) {
+                    storyIssue.status === WorkflowStatus_1.ICEBOX_STATUS_NAME) {
                     continue;
                 }
                 const storyViewLink = this.buildStoryViewLink(input.urlOfStoryView, storyOption.name);

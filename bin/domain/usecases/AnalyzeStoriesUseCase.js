@@ -32,7 +32,7 @@ class AnalyzeStoriesUseCase {
                     ...storyIssue,
                     ...story,
                 };
-                if (storyIssue.status === WorkflowStatus_1.DISABLED_STATUS_NAME) {
+                if (storyIssue.status === WorkflowStatus_1.ICEBOX_STATUS_NAME) {
                     phases.get('others')?.push(storyIssueObject);
                 }
                 else if (storyIssue.labels.includes('story:phase:finished-qa')) {
