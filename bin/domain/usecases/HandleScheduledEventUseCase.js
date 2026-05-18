@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HandleScheduledEventUseCase = exports.ProjectNotFoundError = void 0;
-const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 class ProjectNotFoundError extends Error {
     constructor(message) {
         super(message);
@@ -10,7 +9,7 @@ class ProjectNotFoundError extends Error {
 }
 exports.ProjectNotFoundError = ProjectNotFoundError;
 class HandleScheduledEventUseCase {
-    constructor(setupTowerDefenceProjectUseCase, actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, notifyFinishedIssuePreparationUseCase, revertOrphanedPreparationUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
+    constructor(setupTowerDefenceProjectUseCase, actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
         this.setupTowerDefenceProjectUseCase = setupTowerDefenceProjectUseCase;
         this.actionAnnouncementUseCase = actionAnnouncementUseCase;
         this.setWorkflowManagementIssueToStoryUseCase = setWorkflowManagementIssueToStoryUseCase;
@@ -26,7 +25,6 @@ class HandleScheduledEventUseCase {
         this.assignNoAssigneeIssueToManagerUseCase = assignNoAssigneeIssueToManagerUseCase;
         this.updateIssueStatusByLabelUseCase = updateIssueStatusByLabelUseCase;
         this.startPreparationUseCase = startPreparationUseCase;
-        this.notifyFinishedIssuePreparationUseCase = notifyFinishedIssuePreparationUseCase;
         this.revertOrphanedPreparationUseCase = revertOrphanedPreparationUseCase;
         this.dateRepository = dateRepository;
         this.spreadsheetRepository = spreadsheetRepository;
@@ -214,6 +212,7 @@ ${JSON.stringify(e)}
                         preparationProcessCheckCommand: input.startPreparation.preparationProcessCheckCommand,
                         awLogDirectoryPath: input.startPreparation.awLogDirectoryPath,
                         awLogStaleThresholdMinutes: input.startPreparation.awLogStaleThresholdMinutes,
+                        awaitingQualityCheckStatus: input.startPreparation.awaitingQualityCheckStatus ?? undefined,
                     });
                 }
                 await this.startPreparationUseCase.run({
@@ -228,18 +227,6 @@ ${JSON.stringify(e)}
                     codexHomeCandidates: input.startPreparation.codexHomeCandidates ?? null,
                     allowIssueCacheMinutes: input.allowIssueCacheMinutes,
                 });
-            }
-            if (input.notifyFinishedPreparation) {
-                const notifyFinishedPreparation = input.notifyFinishedPreparation;
-                const preparationIssues = issues.filter((issue) => issue.status === WorkflowStatus_1.PREPARATION_STATUS_NAME);
-                for (const issue of preparationIssues) {
-                    await this.notifyFinishedIssuePreparationUseCase.run({
-                        projectUrl: input.projectUrl,
-                        issueUrl: issue.url,
-                        thresholdForAutoReject: notifyFinishedPreparation.thresholdForAutoReject,
-                        workflowBlockerResolvedWebhookUrl: notifyFinishedPreparation.workflowBlockerResolvedWebhookUrl,
-                    });
-                }
             }
         };
         this.findTargetDateAndUpdateLastExecutionDateTime = async (spreadsheetUrl, now) => {

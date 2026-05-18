@@ -20,7 +20,6 @@ import { CreateNewStoryByLabelUseCase } from './CreateNewStoryByLabelUseCase';
 import { AssignNoAssigneeIssueToManagerUseCase } from './AssignNoAssigneeIssueToManagerUseCase';
 import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCase';
 import { StartPreparationUseCase } from './StartPreparationUseCase';
-import { NotifyFinishedIssuePreparationUseCase } from './NotifyFinishedIssuePreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
 import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
 
@@ -108,8 +107,6 @@ describe('HandleScheduledEventUseCase', () => {
     const mockUpdateIssueStatusByLabelUseCase =
       mock<UpdateIssueStatusByLabelUseCase>();
     const mockStartPreparationUseCase = mock<StartPreparationUseCase>();
-    const mockNotifyFinishedIssuePreparationUseCase =
-      mock<NotifyFinishedIssuePreparationUseCase>();
     const mockRevertOrphanedPreparationUseCase =
       mock<RevertOrphanedPreparationUseCase>();
     const mockDateRepository = mock<DateRepository>();
@@ -133,7 +130,6 @@ describe('HandleScheduledEventUseCase', () => {
       mockAssignNoAssigneeIssueToManagerUseCase,
       mockUpdateIssueStatusByLabelUseCase,
       mockStartPreparationUseCase,
-      mockNotifyFinishedIssuePreparationUseCase,
       mockRevertOrphanedPreparationUseCase,
       mockDateRepository,
       mockSpreadsheetRepository,
@@ -273,6 +269,43 @@ describe('HandleScheduledEventUseCase', () => {
       expect(mockIssueRepository.getAllIssues).toHaveBeenCalledWith(
         'project-1',
         120,
+      );
+    });
+
+    it('should pass awaitingQualityCheckStatus to revertOrphanedPreparationUseCase when startPreparation is configured', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabledStatus: 'disabled',
+        defaultStatus: null,
+        disabled: false,
+        allowIssueCacheMinutes: 60,
+        startPreparation: {
+          awaitingWorkspaceStatus: 'Awaiting Workspace',
+          preparationStatus: 'Preparation',
+          awaitingQualityCheckStatus: 'Awaiting Quality Check',
+          defaultAgentName: 'aw',
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+          preparationProcessCheckCommand: 'pgrep -f "{URL}"',
+        },
+      };
+
+      mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
+      await useCase.run(input);
+
+      expect(mockRevertOrphanedPreparationUseCase.run).toHaveBeenCalledWith(
+        expect.objectContaining({
+          awaitingQualityCheckStatus: 'Awaiting Quality Check',
+        }),
       );
     });
 
