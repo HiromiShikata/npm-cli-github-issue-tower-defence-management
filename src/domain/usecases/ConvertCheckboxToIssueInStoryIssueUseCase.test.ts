@@ -450,7 +450,9 @@ Some description without checkboxes`,
           ],
         ],
         expectedUpdateStoryCalls: [],
-        expectedGetIssueByUrlCalls: [['https://github.com/org/repo/issues/123']],
+        expectedGetIssueByUrlCalls: [
+          ['https://github.com/org/repo/issues/123'],
+        ],
       },
       {
         name: 'should create new issues with replaced STORYNAME for checkboxes and update story issue',
