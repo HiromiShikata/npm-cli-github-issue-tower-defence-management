@@ -129,18 +129,146 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
         expectedGetIssueByUrlCalls: [],
       },
       {
-        name: 'should not process when cache is used',
+        name: 'should process story issues even when cache is used',
         input: {
           project: basicProject,
-          issues: [basicStoryIssue1],
+          issues: [basicStoryIssue1, basicStoryIssue2],
           cacheUsed: true,
           urlOfStoryView: 'https://example.com',
           storyObjectMap: basicStoryObjectMap,
         },
-        expectedCreateNewIssueCalls: [],
-        expectedUpdateIssueCalls: [],
-        expectedUpdateStoryCalls: [],
-        expectedGetIssueByUrlCalls: [],
+        expectedCreateNewIssueCalls: [
+          [
+            'org',
+            'repo',
+            'Task 1',
+            '- Parent issue: https://github.com/org/repo/issues/123',
+            [],
+            [],
+          ],
+          [
+            'org',
+            'repo',
+            'Task 2',
+            '- Parent issue: https://github.com/org/repo/issues/123',
+            [],
+            [],
+          ],
+          [
+            'org',
+            'repo',
+            'Task 3',
+            '- Parent issue: https://github.com/org/repo/issues/456',
+            [],
+            [],
+          ],
+          [
+            'org',
+            'repo',
+            'Task 4',
+            '- Parent issue: https://github.com/org/repo/issues/456',
+            [],
+            [],
+          ],
+        ],
+        expectedUpdateIssueCalls: [
+          [
+            {
+              ...basicStoryIssue1,
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+
+- [ ] Task 1
+- [ ] Task 2`,
+            },
+          ],
+          [
+            {
+              ...basicStoryIssue1,
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+
+- [ ] https://github.com/org/repo/issues/1
+- [ ] Task 2`,
+            },
+          ],
+          [
+            {
+              ...basicStoryIssue1,
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+
+- [ ] https://github.com/org/repo/issues/1
+- [ ] https://github.com/org/repo/issues/2`,
+            },
+          ],
+          [
+            {
+              ...basicStoryIssue2,
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+
+- [ ] Task 3
+- [ ] Task 4`,
+            },
+          ],
+          [
+            {
+              ...basicStoryIssue2,
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+
+- [ ] https://github.com/org/repo/issues/3
+- [ ] Task 4`,
+            },
+          ],
+          [
+            {
+              ...basicStoryIssue2,
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+
+- [ ] https://github.com/org/repo/issues/3
+- [ ] https://github.com/org/repo/issues/4`,
+            },
+          ],
+        ],
+        expectedUpdateStoryCalls: [
+          [
+            basicProject,
+            {
+              ...mock<Issue>(),
+              url: 'https://github.com/org/repo/issues/1',
+            },
+            'story1',
+          ],
+          [
+            basicProject,
+            {
+              ...mock<Issue>(),
+              url: 'https://github.com/org/repo/issues/2',
+            },
+            'story1',
+          ],
+          [
+            basicProject,
+            {
+              ...mock<Issue>(),
+              url: 'https://github.com/org/repo/issues/3',
+            },
+            'story2',
+          ],
+          [
+            basicProject,
+            {
+              ...mock<Issue>(),
+              url: 'https://github.com/org/repo/issues/4',
+            },
+            'story2',
+          ],
+        ],
+        expectedGetIssueByUrlCalls: [
+          ['https://github.com/org/repo/issues/123'],
+          ['https://github.com/org/repo/issues/1'],
+          ['https://github.com/org/repo/issues/2'],
+          ['https://github.com/org/repo/issues/456'],
+          ['https://github.com/org/repo/issues/3'],
+          ['https://github.com/org/repo/issues/4'],
+        ],
       },
       {
         name: 'should skip regular stories',
@@ -767,10 +895,16 @@ Some description without checkboxes`,
           const storyIssuesByUrl = new Map(
             input.issues.map((issue) => [issue.url, issue]),
           );
-          mockIssueRepository.getIssueByUrl.mockImplementation(
-            async (url) =>
-              storyIssuesByUrl.get(url) ?? { ...mock<Issue>(), url },
-          );
+          mockIssueRepository.getIssueByUrl.mockImplementation(async (url) => {
+            const storyIssue = storyIssuesByUrl.get(url);
+            if (storyIssue) {
+              return storyIssue;
+            }
+            return {
+              ...mock<Issue>(),
+              url,
+            };
+          });
 
           const useCase = new ConvertCheckboxToIssueInStoryIssueUseCase(
             mockIssueRepository,

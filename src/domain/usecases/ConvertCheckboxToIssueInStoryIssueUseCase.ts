@@ -21,7 +21,7 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
     storyObjectMap: StoryObjectMap;
   }): Promise<void> => {
     const story = input.project.story;
-    if (!story || input.cacheUsed) {
+    if (!story) {
       return;
     }
 
@@ -40,9 +40,9 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
       ) {
         continue;
       }
-      const freshStoryIssue = await this.issueRepository.getIssueByUrl(
-        storyIssue.url,
-      );
+      const freshStoryIssue = input.cacheUsed
+        ? await this.issueRepository.getIssueByUrl(storyIssue.url)
+        : storyIssue;
       if (!freshStoryIssue) {
         throw new Error(`Story issue not found by URL: ${storyIssue.url}`);
       }

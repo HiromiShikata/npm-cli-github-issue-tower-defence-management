@@ -117,7 +117,7 @@ program
   )
   .option(
     '--allowIssueCacheMinutes <minutes>',
-    'Allow cache for issues in minutes (default: 0)',
+    'Allow cache for issues in minutes (default: 10)',
   )
   .option(
     '--utilizationPercentageThreshold <percent>',
@@ -208,7 +208,7 @@ program
       maximumPreparingIssuesCount = parsedCount;
     }
 
-    const allowIssueCacheMinutes = config.allowIssueCacheMinutes ?? 0;
+    const allowIssueCacheMinutes = config.allowIssueCacheMinutes ?? 10;
 
     console.log(
       `maximumPreparingIssuesCount: ${maximumPreparingIssuesCount ?? 'null (default: 6)'}`,

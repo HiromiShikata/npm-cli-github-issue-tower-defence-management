@@ -34,7 +34,7 @@ Options for startDaemon:
   --defaultLlmModelName <name>                     Default LLM model name
   --defaultLlmAgentName <name>                     Default LLM agent name
   --maximumPreparingIssuesCount <count>            Maximum number of issues in preparation status (default: 6)
-  --allowIssueCacheMinutes <minutes>               Allow cache for issues in minutes (default: 0)
+  --allowIssueCacheMinutes <minutes>               Allow cache for issues in minutes (default: 10)
   --utilizationPercentageThreshold <percent>       Claude utilization percentage threshold (default: 90)
   --allowedIssueAuthors <authors>                  Comma-separated list of allowed issue authors
   --preparationProcessCheckCommand <template>      Shell command template with {URL} placeholder to check if a preparation process is alive
@@ -157,7 +157,7 @@ defaultAgentName: string # Default agent name for issue preparation
 defaultLlmModelName?: string # Optional: Default LLM model name
 defaultLlmAgentName?: string # Optional: Default LLM agent name
 maximumPreparingIssuesCount?: number # Optional: Max concurrent preparing issues (omitted = 6)
-allowIssueCacheMinutes?: number # Optional: Allow cache for issues in minutes (default: 0)
+allowIssueCacheMinutes?: number # Optional: Allow cache for issues in minutes (default: 10)
 utilizationPercentageThreshold?: number # Optional: Claude usage % threshold (default: 90)
 allowedIssueAuthors?: string # Optional: Comma-separated list of allowed issue authors
 thresholdForAutoReject?: number # Optional: Consecutive rejections before escalation (default: 3)
@@ -272,6 +272,45 @@ This file is written atomically (written to a `.tmp` file then renamed) so exter
 - `system.swap.usedGib` / `system.swap.totalGib`: Used and total host swap in GiB.
 
 System metrics are read from `/proc/meminfo` at snapshot write time.
+
+## Cadence and Cache Contract
+
+The `schedule` command runs two distinct processing loops within a single invocation:
+
+### Fast path (runs every cycle)
+
+The following use cases execute on every `schedule` trigger (cadence is determined by the caller's cron/daemon, typically ~3 minutes):
+
+- `RevertOrphanedPreparationUseCase` — reverts orphaned preparation issues back to awaiting-workspace
+- `StartPreparationUseCase` — starts preparation for issues ready to be worked on
+- `NotifyFinishedIssuePreparationUseCase` — checks preparation-status issues and advances them
+
+### Slow path (runs at most once per 600 seconds)
+
+The following use cases run only when at least 600 seconds have elapsed since the last slow sweep:
+
+- `AnalyzeStoriesUseCase`
+- `CreateNewStoryByLabelUseCase`
+- `ChangeStatusByStoryColorUseCase`
+- `UpdateIssueStatusByLabelUseCase`
+- `SetWorkflowManagementIssueToStoryUseCase`
+- `SetNoStoryIssueToStoryUseCase`
+- `AnalyzeProblemByIssueUseCase`
+- `ActionAnnouncementUseCase`
+- `ClearPastNextActionDateHourUseCase`
+- `ClearDependedIssueURLUseCase`
+- `CreateEstimationIssueUseCase`
+- `ConvertCheckboxToIssueInStoryIssueUseCase`
+- `AssignNoAssigneeIssueToManagerUseCase`
+
+The timestamp of the last slow sweep is stored in the `HandleScheduledEvent` Google Spreadsheet sheet (column E, row 2), under the header `LastSlowSweepDateTime`.
+
+### Issue cache contract
+
+The `allowIssueCacheMinutes` parameter (default: 10) controls how long the on-disk issue cache is considered fresh. With the default value of 10 minutes:
+
+- The fast path reuses the slow path's cached issue list when it was populated within the last 10 minutes, avoiding redundant GitHub API calls.
+- `ConvertCheckboxToIssueInStoryIssueUseCase` always fetches the latest story-issue body directly via `getIssueByUrl` regardless of the cache TTL, ensuring story bodies are never stale when converting checkboxes to issues.
 
 ## Contributing
 
