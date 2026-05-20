@@ -2,33 +2,6 @@ import { IssueCommentRepository } from '../../domain/usecases/adapter-interfaces
 import { Issue } from '../../domain/entities/Issue';
 import { Comment } from '../../domain/entities/Comment';
 
-type CommentNode = {
-  author: {
-    login: string;
-  } | null;
-  body: string;
-  createdAt: string;
-};
-
-type CommentsData = {
-  comments: {
-    pageInfo: {
-      endCursor: string;
-      hasNextPage: boolean;
-    };
-    nodes: CommentNode[];
-  };
-};
-
-type IssueCommentsResponse = {
-  data?: {
-    repository?: {
-      issue?: CommentsData;
-      pullRequest?: CommentsData;
-    };
-  };
-};
-
 type CreateCommentResponse = {
   data?: {
     addComment?: {
@@ -54,13 +27,6 @@ type IssueIdResponse = {
     };
   };
 };
-
-function isIssueCommentsResponse(
-  value: unknown,
-): value is IssueCommentsResponse {
-  if (typeof value !== 'object' || value === null) return false;
-  return true;
-}
 
 function isCreateCommentResponse(
   value: unknown,
@@ -98,86 +64,46 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
   }
 
   async getCommentsFromIssue(issue: Issue): Promise<Comment[]> {
-    const { owner, repo, issueNumber, isPr } = this.parseIssueUrl(issue);
-
-    const entityType = isPr ? 'pullRequest' : 'issue';
-    const query = `
-      query($owner: String!, $repo: String!, $issueNumber: Int!, $after: String) {
-        repository(owner: $owner, name: $repo) {
-          ${entityType}(number: $issueNumber) {
-            comments(first: 100, after: $after) {
-              pageInfo {
-                endCursor
-                hasNextPage
-              }
-              nodes {
-                author {
-                  login
-                }
-                body
-                createdAt
-              }
-            }
-          }
-        }
-      }
-    `;
+    const { owner, repo, issueNumber } = this.parseIssueUrl(issue);
 
     const comments: Comment[] = [];
-    let after: string | null = null;
-    let hasNextPage = true;
+    let page = 1;
 
-    while (hasNextPage) {
-      const response = await fetch('https://api.github.com/graphql', {
-        method: 'POST',
+    while (true) {
+      const url = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments?per_page=100&page=${page}`;
+      const response = await fetch(url, {
         headers: {
           Authorization: `Bearer ${this.token}`,
-          'Content-Type': 'application/json',
+          Accept: 'application/vnd.github+json',
         },
-        body: JSON.stringify({
-          query,
-          variables: {
-            owner,
-            repo,
-            issueNumber,
-            after,
-          },
-        }),
       });
 
       if (!response.ok) {
         throw new Error(
-          `Failed to fetch comments from GitHub GraphQL API: ${response.status} ${response.statusText}`,
+          `Failed to fetch comments from GitHub REST API: ${response.status} ${response.statusText}`,
         );
       }
 
-      const responseData: unknown = await response.json();
-      if (!isIssueCommentsResponse(responseData)) {
-        throw new Error(
-          'Unexpected response shape when fetching comments from GitHub GraphQL API',
-        );
-      }
+      const payloads = (await response.json()) as Array<{
+        user: { login: string } | null;
+        body: string;
+        created_at: string;
+      }>;
 
-      const issueData = isPr
-        ? responseData.data?.repository?.pullRequest
-        : responseData.data?.repository?.issue;
-      if (!issueData) {
-        throw new Error(
-          `${isPr ? 'Pull request' : 'Issue'} not found when fetching comments from GitHub GraphQL API`,
-        );
-      }
-
-      const commentNodes = issueData.comments.nodes;
-      for (const node of commentNodes) {
+      for (const payload of payloads) {
         comments.push({
-          author: node.author?.login || '',
-          content: node.body,
-          createdAt: new Date(node.createdAt),
+          author: payload.user?.login ?? '',
+          content: payload.body,
+          createdAt: new Date(payload.created_at),
         });
       }
 
-      hasNextPage = issueData.comments.pageInfo.hasNextPage;
-      after = issueData.comments.pageInfo.endCursor;
+      const linkHeader = response.headers.get('Link') ?? '';
+      if (!linkHeader.includes('rel="next"')) {
+        break;
+      }
+
+      page++;
     }
 
     return comments;
