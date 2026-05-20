@@ -2,6 +2,12 @@ import { IssueCommentRepository } from '../../domain/usecases/adapter-interfaces
 import { Issue } from '../../domain/entities/Issue';
 import { Comment } from '../../domain/entities/Comment';
 
+type RestCommentPayload = {
+  user: { login: string } | null;
+  body: string;
+  created_at: string;
+};
+
 type CreateCommentResponse = {
   data?: {
     addComment?: {
@@ -27,6 +33,13 @@ type IssueIdResponse = {
     };
   };
 };
+
+function isRestCommentPayloadArray(
+  value: unknown,
+): value is RestCommentPayload[] {
+  if (!Array.isArray(value)) return false;
+  return true;
+}
 
 function isCreateCommentResponse(
   value: unknown,
@@ -68,8 +81,9 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
 
     const comments: Comment[] = [];
     let page = 1;
+    let hasNextPage = true;
 
-    while (true) {
+    while (hasNextPage) {
       const url = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments?per_page=100&page=${page}`;
       const response = await fetch(url, {
         headers: {
@@ -84,13 +98,14 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
         );
       }
 
-      const payloads = (await response.json()) as Array<{
-        user: { login: string } | null;
-        body: string;
-        created_at: string;
-      }>;
+      const responseData: unknown = await response.json();
+      if (!isRestCommentPayloadArray(responseData)) {
+        throw new Error(
+          'Unexpected response shape when fetching comments from GitHub REST API',
+        );
+      }
 
-      for (const payload of payloads) {
+      for (const payload of responseData) {
         comments.push({
           author: payload.user?.login ?? '',
           content: payload.body,
@@ -99,9 +114,7 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
       }
 
       const linkHeader = response.headers.get('Link') ?? '';
-      if (!linkHeader.includes('rel="next"')) {
-        break;
-      }
+      hasNextPage = linkHeader.includes('rel="next"');
 
       page++;
     }

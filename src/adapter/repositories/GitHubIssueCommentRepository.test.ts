@@ -59,15 +59,12 @@ describe('GitHubIssueCommentRepository', () => {
       );
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
-      expect(fetchSpy).toHaveBeenCalledWith(
-        EXPECTED_REST_URL,
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            Authorization: 'Bearer test-token',
-            Accept: 'application/vnd.github+json',
-          }),
-        }),
-      );
+      expect(fetchSpy).toHaveBeenCalledWith(EXPECTED_REST_URL, {
+        headers: {
+          Authorization: 'Bearer test-token',
+          Accept: 'application/vnd.github+json',
+        },
+      });
       expect(result).toEqual([
         {
           author: 'testuser',
