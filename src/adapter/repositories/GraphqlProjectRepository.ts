@@ -4,6 +4,8 @@ import { ProjectRepository } from '../../domain/usecases/adapter-interfaces/Proj
 import { FieldOption, Project } from '../../domain/entities/Project';
 import { normalizeFieldName } from './utils';
 
+const ONE_HOUR_MS = 60 * 60 * 1000;
+
 export class GraphqlProjectRepository
   extends BaseGitHubRepository
   implements
@@ -16,6 +18,9 @@ export class GraphqlProjectRepository
       | 'updateStatusList'
     >
 {
+  private readonly projectIdCache = new Map<string, string>();
+  private readonly fetchProjectIdFailedAt = new Map<string, number>();
+
   extractProjectFromUrl = (
     projectUrl: string,
   ): {
@@ -32,6 +37,17 @@ export class GraphqlProjectRepository
     login: string,
     projectNumber: number,
   ): Promise<string> => {
+    const cacheKey = `${login}:${projectNumber}`;
+    const cached = this.projectIdCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+    const failedAt = this.fetchProjectIdFailedAt.get(cacheKey);
+    if (failedAt !== undefined && Date.now() - failedAt < ONE_HOUR_MS) {
+      throw new Error(
+        `fetchProjectId for ${login}/${projectNumber} is in backoff after a recent failure`,
+      );
+    }
     const graphqlQuery = {
       query: `query GetProjectID($login: String!, $number: Int!) {
   organization(login: $login) {
@@ -53,32 +69,41 @@ export class GraphqlProjectRepository
       },
     };
 
-    const response = await ky
-      .post('https://api.github.com/graphql', {
-        json: graphqlQuery,
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-        },
-      })
-      .json<{
-        data?: {
-          organization: {
-            projectV2: {
-              id: string;
-              databaseId: number;
-            };
-          };
-          user: {
-            projectV2: {
-              id: string;
-              databaseId: number;
-            };
-          };
-        };
-        errors?: { message: string }[];
-      }>();
+    let response: {
+      data?: {
+        organization?: {
+          projectV2?: {
+            id: string;
+            databaseId: number;
+          } | null;
+        } | null;
+        user?: {
+          projectV2?: {
+            id: string;
+            databaseId: number;
+          } | null;
+        } | null;
+      } | null;
+      errors?: { message: string }[];
+    };
+    try {
+      response = await ky
+        .post('https://api.github.com/graphql', {
+          json: graphqlQuery,
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+          },
+        })
+        .json();
+    } catch (error) {
+      this.fetchProjectIdFailedAt.set(cacheKey, Date.now());
+      throw new Error(
+        `fetchProjectId network error for ${login}/${projectNumber}: ${String(error)}`,
+      );
+    }
 
     if (!response.data) {
+      this.fetchProjectIdFailedAt.set(cacheKey, Date.now());
       const errorMessages = response.errors
         ? response.errors.map((e) => e.message).join('; ')
         : 'no data field in response';
@@ -90,8 +115,12 @@ export class GraphqlProjectRepository
       response.data.organization?.projectV2?.id ||
       response.data.user?.projectV2?.id;
     if (!projectId) {
-      throw new Error('projectId is not found');
+      this.fetchProjectIdFailedAt.set(cacheKey, Date.now());
+      throw new Error(
+        `fetchProjectId: project not found for ${login}/${projectNumber}`,
+      );
     }
+    this.projectIdCache.set(cacheKey, projectId);
     return projectId;
   };
   findProjectIdByUrl = async (
