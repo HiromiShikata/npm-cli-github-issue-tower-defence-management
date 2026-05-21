@@ -1,3 +1,10 @@
+# [1.50.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.49.2...v1.50.0) (2026-05-21)
+
+
+### Features
+
+* **core:** drop body from bulk fetchProjectItems and lazy-fetch story-issue body ([29ba658](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/29ba658f4e552f7b68b9c32f7d72915626e4085a))
+
 ## [1.49.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.49.1...v1.49.2) (2026-05-21)
 
 

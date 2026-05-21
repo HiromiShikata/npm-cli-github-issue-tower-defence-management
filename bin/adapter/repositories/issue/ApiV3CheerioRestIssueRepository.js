@@ -123,7 +123,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 story: story || null,
                 org: owner,
                 repo: repo,
-                body: item.body,
+                body: item.body ?? '',
                 itemId: item.id,
                 isPr: item.url.includes('/pull/'),
                 isInProgress: (0, utils_1.normalizeFieldName)(status || '').includes('progress'),

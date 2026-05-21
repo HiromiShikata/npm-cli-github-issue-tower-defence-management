@@ -8,7 +8,7 @@ export type ProjectItem = {
     title: string;
     state: 'OPEN' | 'CLOSED' | 'MERGED';
     url: string;
-    body: string;
+    body: string | null;
     labels: string[];
     assignees: string[];
     createdAt: string;

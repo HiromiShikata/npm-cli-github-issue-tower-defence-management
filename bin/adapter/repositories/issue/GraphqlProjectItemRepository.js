@@ -115,7 +115,6 @@ query GetProjectItems($projectId: ID!, $after: String) {
               title
               state
               url
-              body
               createdAt
               labels(first: 100) {
                 nodes {
@@ -136,7 +135,6 @@ query GetProjectItems($projectId: ID!, $after: String) {
               title
               state
               url
-              body
               createdAt
               labels(first: 100) {
                 nodes {
@@ -217,7 +215,7 @@ query GetProjectItems($projectId: ID!, $after: String) {
                         title: item.content.title,
                         state: this.convertStrToState(item.content.state),
                         url: item.content.url,
-                        body: item.content.body,
+                        body: null,
                         labels: item.content.labels?.nodes?.map((l) => l.name) || [],
                         assignees: item.content.assignees?.nodes?.map((a) => a.login) || [],
                         createdAt: item.content.createdAt || new Date().toISOString(),
