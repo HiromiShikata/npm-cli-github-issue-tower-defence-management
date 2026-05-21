@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GitHubIssueCommentRepository = void 0;
-function isIssueCommentsResponse(value) {
-    if (typeof value !== 'object' || value === null)
+function isRestCommentPayloadArray(value) {
+    if (!Array.isArray(value))
         return false;
     return true;
 }
@@ -33,72 +33,35 @@ class GitHubIssueCommentRepository {
         };
     }
     async getCommentsFromIssue(issue) {
-        const { owner, repo, issueNumber, isPr } = this.parseIssueUrl(issue);
-        const entityType = isPr ? 'pullRequest' : 'issue';
-        const query = `
-      query($owner: String!, $repo: String!, $issueNumber: Int!, $after: String) {
-        repository(owner: $owner, name: $repo) {
-          ${entityType}(number: $issueNumber) {
-            comments(first: 100, after: $after) {
-              pageInfo {
-                endCursor
-                hasNextPage
-              }
-              nodes {
-                author {
-                  login
-                }
-                body
-                createdAt
-              }
-            }
-          }
-        }
-      }
-    `;
+        const { owner, repo, issueNumber } = this.parseIssueUrl(issue);
         const comments = [];
-        let after = null;
+        let page = 1;
         let hasNextPage = true;
         while (hasNextPage) {
-            const response = await fetch('https://api.github.com/graphql', {
-                method: 'POST',
+            const url = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments?per_page=100&page=${page}`;
+            const response = await fetch(url, {
                 headers: {
                     Authorization: `Bearer ${this.token}`,
-                    'Content-Type': 'application/json',
+                    Accept: 'application/vnd.github+json',
                 },
-                body: JSON.stringify({
-                    query,
-                    variables: {
-                        owner,
-                        repo,
-                        issueNumber,
-                        after,
-                    },
-                }),
             });
             if (!response.ok) {
-                throw new Error(`Failed to fetch comments from GitHub GraphQL API: ${response.status} ${response.statusText}`);
+                throw new Error(`Failed to fetch comments from GitHub REST API: ${response.status} ${response.statusText}`);
             }
             const responseData = await response.json();
-            if (!isIssueCommentsResponse(responseData)) {
-                throw new Error('Unexpected response shape when fetching comments from GitHub GraphQL API');
+            if (!isRestCommentPayloadArray(responseData)) {
+                throw new Error('Unexpected response shape when fetching comments from GitHub REST API');
             }
-            const issueData = isPr
-                ? responseData.data?.repository?.pullRequest
-                : responseData.data?.repository?.issue;
-            if (!issueData) {
-                throw new Error(`${isPr ? 'Pull request' : 'Issue'} not found when fetching comments from GitHub GraphQL API`);
-            }
-            const commentNodes = issueData.comments.nodes;
-            for (const node of commentNodes) {
+            for (const payload of responseData) {
                 comments.push({
-                    author: node.author?.login || '',
-                    content: node.body,
-                    createdAt: new Date(node.createdAt),
+                    author: payload.user?.login ?? '',
+                    content: payload.body,
+                    createdAt: new Date(payload.created_at),
                 });
             }
-            hasNextPage = issueData.comments.pageInfo.hasNextPage;
-            after = issueData.comments.pageInfo.endCursor;
+            const linkHeader = response.headers.get('Link') ?? '';
+            hasNextPage = linkHeader.includes('rel="next"');
+            page++;
         }
         return comments;
     }

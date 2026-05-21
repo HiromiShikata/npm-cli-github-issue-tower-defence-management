@@ -1,3 +1,10 @@
+## [1.49.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.49.1...v1.49.2) (2026-05-21)
+
+
+### Bug Fixes
+
+* **core:** resolve lint errors in getCommentsFromIssue REST implementation ([e876cdf](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e876cdfd5830063e0bbed922913c3ddc4a7eff35))
+
 ## [1.49.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.49.0...v1.49.1) (2026-05-21)
 
 
