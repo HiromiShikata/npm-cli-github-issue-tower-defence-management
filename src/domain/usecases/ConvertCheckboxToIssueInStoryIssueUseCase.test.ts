@@ -330,8 +330,10 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           ],
         ],
         expectedGetIssueByUrlCalls: [
+          ['https://github.com/org/repo/issues/123'],
           ['https://github.com/org/repo/issues/1'],
           ['https://github.com/org/repo/issues/2'],
+          ['https://github.com/org/repo/issues/456'],
           ['https://github.com/org/repo/issues/3'],
           ['https://github.com/org/repo/issues/4'],
         ],
@@ -398,7 +400,10 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             'story1',
           ],
         ],
-        expectedGetIssueByUrlCalls: [['https://github.com/org/repo/issues/1']],
+        expectedGetIssueByUrlCalls: [
+          ['https://github.com/org/repo/issues/123'],
+          ['https://github.com/org/repo/issues/1'],
+        ],
       },
       {
         name: 'should add story view link even when no checkboxes exist',
@@ -445,7 +450,9 @@ Some description without checkboxes`,
           ],
         ],
         expectedUpdateStoryCalls: [],
-        expectedGetIssueByUrlCalls: [],
+        expectedGetIssueByUrlCalls: [
+          ['https://github.com/org/repo/issues/123'],
+        ],
       },
       {
         name: 'should create new issues with replaced STORYNAME for checkboxes and update story issue',
@@ -588,8 +595,10 @@ Some description without checkboxes`,
           ],
         ],
         expectedGetIssueByUrlCalls: [
+          ['https://github.com/org/repo/issues/123'],
           ['https://github.com/org/repo/issues/1'],
           ['https://github.com/org/repo/issues/2'],
+          ['https://github.com/org/repo/issues/456'],
           ['https://github.com/org/repo/issues/3'],
           ['https://github.com/org/repo/issues/4'],
         ],
@@ -730,7 +739,9 @@ Some description without checkboxes`,
           ],
         ],
         expectedGetIssueByUrlCalls: [
+          ['https://github.com/org/repo/issues/123'],
           ['https://github.com/orgA/repoA/issues/1'],
+          ['https://github.com/org/repo/issues/456'],
           ['https://github.com/orgB/repoB/issues/2'],
         ],
       },
@@ -753,10 +764,13 @@ Some description without checkboxes`,
           mockIssueRepository.createNewIssue.mockImplementation(
             async () => issueCounter++,
           );
-          mockIssueRepository.getIssueByUrl.mockImplementation(async (url) => ({
-            ...mock<Issue>(),
-            url,
-          }));
+          const storyIssuesByUrl = new Map(
+            input.issues.map((issue) => [issue.url, issue]),
+          );
+          mockIssueRepository.getIssueByUrl.mockImplementation(
+            async (url) =>
+              storyIssuesByUrl.get(url) ?? { ...mock<Issue>(), url },
+          );
 
           const useCase = new ConvertCheckboxToIssueInStoryIssueUseCase(
             mockIssueRepository,

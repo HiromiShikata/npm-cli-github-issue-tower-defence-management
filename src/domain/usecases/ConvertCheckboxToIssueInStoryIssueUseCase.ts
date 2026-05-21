@@ -40,15 +40,21 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
       ) {
         continue;
       }
+      const freshStoryIssue = await this.issueRepository.getIssueByUrl(
+        storyIssue.url,
+      );
+      if (!freshStoryIssue) {
+        throw new Error(`Story issue not found by URL: ${storyIssue.url}`);
+      }
       const storyViewLink = this.buildStoryViewLink(
         input.urlOfStoryView,
         storyOption.name,
       );
-      let newBody = storyIssue.body;
-      if (!storyIssue.body.includes(storyViewLink)) {
+      let newBody = freshStoryIssue.body;
+      if (!freshStoryIssue.body.includes(storyViewLink)) {
         newBody = `${storyViewLink}\n\n${newBody}`;
         await this.issueRepository.updateIssue({
-          ...storyIssue,
+          ...freshStoryIssue,
           body: newBody,
         });
       }
@@ -60,24 +66,24 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
       for (const checkboxText of checkboxTextsNotCreatedIssue) {
         const issueTitle = checkboxText.replace(
           'STORYNAME',
-          `${storyOption.name} #${storyIssue.number}`,
+          `${storyOption.name} #${freshStoryIssue.number}`,
         );
-        const newIssueBody = `- Parent issue: ${storyIssue.url}`;
+        const newIssueBody = `- Parent issue: ${freshStoryIssue.url}`;
         const newIssueNumber = await this.issueRepository.createNewIssue(
-          storyIssue.org,
-          storyIssue.repo,
+          freshStoryIssue.org,
+          freshStoryIssue.repo,
           issueTitle,
           newIssueBody,
           [],
           [],
         );
-        const newIssueUrl = `https://github.com/${storyIssue.org}/${storyIssue.repo}/issues/${newIssueNumber}`;
+        const newIssueUrl = `https://github.com/${freshStoryIssue.org}/${freshStoryIssue.repo}/issues/${newIssueNumber}`;
         newBody = newBody.replace(
           `- [ ] ${checkboxText}`,
           `- [ ] ${newIssueUrl}`,
         );
         await this.issueRepository.updateIssue({
-          ...storyIssue,
+          ...freshStoryIssue,
           body: newBody,
         });
         await new Promise((resolve) => setTimeout(resolve, 30 * 1000));

@@ -370,7 +370,7 @@ export class ApiV3CheerioRestIssueRepository
       story: story || null,
       org: owner,
       repo: repo,
-      body: item.body,
+      body: item.body ?? '',
       itemId: item.id,
       isPr: item.url.includes('/pull/'),
       isInProgress: normalizeFieldName(status || '').includes('progress'),

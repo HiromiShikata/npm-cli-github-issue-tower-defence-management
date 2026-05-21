@@ -9,7 +9,7 @@ export type ProjectItem = {
   title: string;
   state: 'OPEN' | 'CLOSED' | 'MERGED';
   url: string;
-  body: string;
+  body: string | null;
   labels: string[];
   assignees: string[];
   createdAt: string;
@@ -149,7 +149,6 @@ query GetProjectItems($projectId: ID!, $after: String) {
               title
               state
               url
-              body
               createdAt
               labels(first: 100) {
                 nodes {
@@ -170,7 +169,6 @@ query GetProjectItems($projectId: ID!, $after: String) {
               title
               state
               url
-              body
               createdAt
               labels(first: 100) {
                 nodes {
@@ -223,7 +221,6 @@ query GetProjectItems($projectId: ID!, $after: String) {
               title: string;
               state: string;
               url: string;
-              body: string;
               createdAt: string;
               labels: { nodes: { name: string }[] };
               assignees: { nodes: { login: string }[] };
@@ -274,7 +271,6 @@ query GetProjectItems($projectId: ID!, $after: String) {
                     title: string;
                     state: string;
                     url: string;
-                    body: string;
                     createdAt: string;
                     labels: { nodes: { name: string }[] };
                     assignees: { nodes: { login: string }[] };
@@ -341,7 +337,6 @@ query GetProjectItems($projectId: ID!, $after: String) {
           title: string;
           state: string;
           url: string;
-          body: string;
           createdAt: string;
           labels: { nodes: { name: string }[] };
           assignees: { nodes: { login: string }[] };
@@ -358,7 +353,7 @@ query GetProjectItems($projectId: ID!, $after: String) {
           title: item.content.title,
           state: this.convertStrToState(item.content.state),
           url: item.content.url,
-          body: item.content.body,
+          body: null,
           labels: item.content.labels?.nodes?.map((l) => l.name) || [],
           assignees: item.content.assignees?.nodes?.map((a) => a.login) || [],
           createdAt: item.content.createdAt || new Date().toISOString(),
