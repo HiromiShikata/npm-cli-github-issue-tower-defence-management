@@ -122,6 +122,9 @@ query GetProjectItems($projectId: ID!, $after: String) {
               state
               url
               createdAt
+              author {
+                login
+              }
               labels(first: 100) {
                 nodes {
                   name
@@ -142,6 +145,9 @@ query GetProjectItems($projectId: ID!, $after: String) {
               state
               url
               createdAt
+              author {
+                login
+              }
               labels(first: 100) {
                 nodes {
                   name
@@ -225,6 +231,7 @@ query GetProjectItems($projectId: ID!, $after: String) {
                         labels: item.content.labels?.nodes?.map((l) => l.name) || [],
                         assignees: item.content.assignees?.nodes?.map((a) => a.login) || [],
                         createdAt: item.content.createdAt || new Date().toISOString(),
+                        author: item.content.author?.login || '',
                         customFields: item.fieldValues.nodes
                             .filter((field) => !!field.field)
                             .map((field) => {
@@ -373,6 +380,9 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       url
       body
       createdAt
+      author {
+        login
+      }
       labels(first: 100) {
         nodes {
           name
@@ -481,6 +491,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
                 labels: data.repository.issue.labels?.nodes?.map((l) => l.name) || [],
                 assignees: data.repository.issue.assignees?.nodes?.map((a) => a.login) || [],
                 createdAt: data.repository.issue.createdAt || new Date().toISOString(),
+                author: data.repository.issue.author?.login || '',
                 customFields: item.fieldValues.nodes
                     .filter((field) => !!field.field)
                     .map((field) => {

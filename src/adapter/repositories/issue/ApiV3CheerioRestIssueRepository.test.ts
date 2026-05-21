@@ -31,6 +31,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             labels: [],
             assignees: [],
             createdAt: '2024-01-01T00:00:00Z',
+            author: 'test-author',
             customFields: [
               { name: 'nextActionDate', value: '2000-01-01' },
               { name: 'nextActionHour', value: '1' },
@@ -63,7 +64,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           isInProgress: false,
           isClosed: false,
           createdAt: new Date('2024-01-01T00:00:00Z'),
-          author: '',
+          author: 'test-author',
         },
       },
       {
@@ -80,6 +81,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             labels: [],
             assignees: [],
             createdAt: '2024-01-01T00:00:00Z',
+            author: '',
             customFields: [
               {
                 name: 'DependedIssueUrls',

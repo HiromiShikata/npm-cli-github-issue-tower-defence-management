@@ -2039,25 +2039,27 @@ describe('StartPreparationUseCase', () => {
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
   });
 
-  it('should not skip issues with empty author (tower defence issues)', async () => {
-    const towerDefenceIssue = createMockIssue({
+  it('should skip issues with empty author when allowedIssueAuthors is configured (deny-by-default)', async () => {
+    const issueWithEmptyAuthor = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
-      title: 'Tower defence issue',
+      title: 'Issue with empty author',
       labels: [],
       status: 'Awaiting Workspace',
       author: '',
     });
-    const normalIssue = createMockIssue({
+    const issueWithKnownAuthor = createMockIssue({
       url: 'https://github.com/user/repo/issues/2',
-      title: 'Normal issue',
+      title: 'Issue with known author',
       labels: [],
       status: 'Awaiting Workspace',
       author: 'user1',
+      number: 2,
+      itemId: 'item-2',
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([towerDefenceIssue, normalIssue]),
+      createMockStoryObjectMap([issueWithEmptyAuthor, issueWithKnownAuthor]),
     );
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
@@ -2078,33 +2080,26 @@ describe('StartPreparationUseCase', () => {
       allowIssueCacheMinutes: 0,
     });
 
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+      url: 'https://github.com/user/repo/issues/2',
+    });
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
   });
 
-  it('should not skip issues without author property when allowedIssueAuthors is set', async () => {
-    const issueWithoutAuthor = createMockIssue({
+  it('should skip issue with empty author when allowedIssueAuthors is set', async () => {
+    const issueWithEmptyAuthor = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
-      title: 'Issue without author property',
+      title: 'Issue with empty author',
       labels: [],
       status: 'Awaiting Workspace',
       author: '',
     });
 
-    const storyObjectMap: StoryObjectMap = new Map();
-    storyObjectMap.set('Default Story', {
-      story: {
-        id: 'story-1',
-        name: 'Default Story',
-        color: 'GRAY',
-        description: '',
-      },
-      storyIssue: null,
-      issues: [issueWithoutAuthor],
-    });
-
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([issueWithEmptyAuthor]),
+    );
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -2124,8 +2119,8 @@ describe('StartPreparationUseCase', () => {
       allowIssueCacheMinutes: 0,
     });
 
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
   });
 
   it('should not pass --codexHome when codexHomeCandidates is null', async () => {
