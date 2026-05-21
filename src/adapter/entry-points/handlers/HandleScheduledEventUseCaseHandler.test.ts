@@ -99,19 +99,8 @@ jest.mock('../../repositories/NodeLocalCommandRunner', () => ({
 jest.mock('../../repositories/OauthAPIProxyClaudeRepository', () => ({
   OauthAPIProxyClaudeRepository: jest.fn().mockImplementation(() => ({})),
 }));
-jest.mock(
-  '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase',
-  () => ({
-    NotifyFinishedIssuePreparationUseCase: jest
-      .fn()
-      .mockImplementation(() => ({})),
-  }),
-);
 jest.mock('../../repositories/GitHubIssueCommentRepository', () => ({
   GitHubIssueCommentRepository: jest.fn().mockImplementation(() => ({})),
-}));
-jest.mock('../../repositories/FetchWebhookRepository', () => ({
-  FetchWebhookRepository: jest.fn().mockImplementation(() => ({})),
 }));
 jest.mock('./situationFileWriter', () => ({
   writeSituationFile: jest.fn().mockResolvedValue(undefined),
@@ -270,10 +259,6 @@ describe('HandleScheduledEventUseCaseHandler', () => {
         maximumPreparingIssuesCount: 10,
         utilizationPercentageThreshold: 97,
       },
-      notifyFinishedPreparation: {
-        thresholdForAutoReject: 30,
-        workflowBlockerResolvedWebhookUrl: null,
-      },
     };
     jest
       .mocked(fs.readFileSync)
@@ -289,7 +274,7 @@ describe('HandleScheduledEventUseCaseHandler', () => {
     expect(firstCallArg.config.maximumPreparingIssuesCount).toBe(10);
     expect(firstCallArg.config.utilizationPercentageThreshold).toBe(97);
     expect(firstCallArg.config.allowIssueCacheMinutes).toBe(5);
-    expect(firstCallArg.config.thresholdForAutoReject).toBe(30);
+    expect(firstCallArg.config.thresholdForAutoReject).toBe(3);
     expect(firstCallArg.statusNames.awaitingQualityCheckStatus).toBe(
       'Awaiting Quality Check',
     );

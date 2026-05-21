@@ -100,12 +100,10 @@ startPreparation?: # Optional: Enable automatic issue preparation workflow
   utilizationPercentageThreshold?: number # Optional: Claude usage % threshold above which preparation is throttled (default: 90)
   allowedIssueAuthors?: string[] | null # Optional: Only start preparation for issues from these authors (null = all authors)
   preparationProcessCheckCommand?: string # Optional: Shell command template with {URL} placeholder to check if a preparation process is alive. When set, orphaned Preparation issues (process exits non-zero, or stale aw log) are evaluated for completion: if work is done they advance to Awaiting Quality Check; otherwise they fall back to Awaiting Workspace
+  awaitingQualityCheckStatus?: string | null # Optional: Project status name for issues awaiting quality check. When set with preparationProcessCheckCommand, orphaned issues with no rejections advance to this status instead of awaitingWorkspaceStatus
   codexHomeCandidates?: string[] | null # Optional: Ordered list of CODEX_HOME directory paths. Each launched Codex job cycles through the list; absent or empty keeps current behavior
   awLogDirectoryPath?: string # Optional: Directory path where aw log files named {org}_{repo}_{number}_* are written. Used with awLogStaleThresholdMinutes to detect zombie-wrapper orphans
   awLogStaleThresholdMinutes?: number # Optional: Minutes since last aw log mtime after which a Preparation issue is considered orphaned even when pgrep still returns 0 (outer wrapper alive but inner claude dead). Requires awLogDirectoryPath
-notifyFinishedPreparation?: # Optional: Enable notification when issue preparation is finished
-  thresholdForAutoReject: number # Number of auto-rejections before escalating to quality check
-  workflowBlockerResolvedWebhookUrl: string | null # Webhook URL template called when a workflow blocker issue passes checks. Supports {URL} and {MESSAGE} placeholders
 ```
 
 Example:
@@ -143,11 +141,9 @@ startPreparation:
   maximumPreparingIssuesCount: 3
   utilizationPercentageThreshold: 90
   preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"'
+  awaitingQualityCheckStatus: 'Awaiting Quality Check'
   awLogDirectoryPath: '/home/user/logs-aw'
   awLogStaleThresholdMinutes: 15
-notifyFinishedPreparation:
-  thresholdForAutoReject: 3
-  workflowBlockerResolvedWebhookUrl: 'https://example.com/webhook?url={URL}&msg={MESSAGE}'
 ```
 
 ### startDaemon and notifyFinishedIssuePreparation Commands Config
