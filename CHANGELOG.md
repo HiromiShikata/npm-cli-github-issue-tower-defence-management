@@ -1,3 +1,10 @@
+## [1.49.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.49.0...v1.49.1) (2026-05-21)
+
+
+### Bug Fixes
+
+* **core:** restore awaitingQualityCheckStatus in schedule command revert path ([b2903d6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b2903d6b652b20ec1d6ade2adef58aa5ff424f6f))
+
 # [1.49.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.48.0...v1.49.0) (2026-05-18)
 
 
