@@ -473,10 +473,6 @@ describe('HandleScheduledEventUseCase', () => {
           defaultLlmModelName: null,
           defaultLlmAgentName: null,
         },
-        notifyFinishedPreparation: {
-          thresholdForAutoReject: 3,
-          workflowBlockerResolvedWebhookUrl: null,
-        },
       };
 
       it('should run slow sweep use cases when no LastSlowSweepDateTime is recorded', async () => {
@@ -541,9 +537,6 @@ describe('HandleScheduledEventUseCase', () => {
         await useCase.run(baseInput);
 
         expect(mockStartPreparationUseCase.run).toHaveBeenCalled();
-        expect(
-          mockNotifyFinishedIssuePreparationUseCase.run,
-        ).not.toHaveBeenCalled();
       });
 
       it('should run slow sweep use cases when LastSlowSweepDateTime is exactly 600 seconds ago', async () => {

@@ -281,22 +281,6 @@ ${JSON.stringify(e)}
         allowIssueCacheMinutes: input.allowIssueCacheMinutes,
       });
     }
-    if (input.notifyFinishedPreparation) {
-      const notifyFinishedPreparation = input.notifyFinishedPreparation;
-      const preparationIssues = issues.filter(
-        (issue) => issue.status === PREPARATION_STATUS_NAME,
-      );
-      for (const issue of preparationIssues) {
-        await this.notifyFinishedIssuePreparationUseCase.run({
-          projectUrl: input.projectUrl,
-          issueUrl: issue.url,
-          thresholdForAutoReject:
-            notifyFinishedPreparation.thresholdForAutoReject,
-          workflowBlockerResolvedWebhookUrl:
-            notifyFinishedPreparation.workflowBlockerResolvedWebhookUrl,
-        });
-      }
-    }
   };
   runSlowSweepUseCases = async (
     input: Parameters<HandleScheduledEventUseCase['run']>[0],
