@@ -22,3 +22,4 @@ LICENSE
 CODEOWNERS
 types
 bin
+.npmrc
