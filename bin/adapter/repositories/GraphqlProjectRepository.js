@@ -46,6 +46,12 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
                 },
             })
                 .json();
+            if (!response.data) {
+                const errorMessages = response.errors
+                    ? response.errors.map((e) => e.message).join('; ')
+                    : 'no data field in response';
+                throw new Error(`GitHub GraphQL API returned no data for fetchProjectId: ${errorMessages}`);
+            }
             const projectId = response.data.organization?.projectV2?.id ||
                 response.data.user?.projectV2?.id;
             if (!projectId) {
@@ -122,6 +128,12 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
                 },
             })
                 .json();
+            if (!response.data) {
+                const errorMessages = response.errors
+                    ? response.errors.map((e) => e.message).join('; ')
+                    : 'no data field in response';
+                throw new Error(`GitHub GraphQL API returned no data for getProject: ${errorMessages}`);
+            }
             const project = response.data.node;
             if (!project) {
                 return null;

@@ -58,7 +58,7 @@ export class GraphqlProjectItemRepository extends BaseGitHubRepository {
           },
         })
         .json<{
-          data: {
+          data?: {
             repository: {
               issue: {
                 projectItems: {
@@ -70,8 +70,17 @@ export class GraphqlProjectItemRepository extends BaseGitHubRepository {
               };
             };
           };
+          errors?: { message: string }[];
         }>();
 
+      if (!response.data) {
+        const errorMessages = response.errors
+          ? response.errors.map((e) => e.message).join('; ')
+          : 'no data field in response';
+        throw new Error(
+          `GitHub GraphQL API returned no data for fetchItemId: ${errorMessages}`,
+        );
+      }
       const projectItems: {
         id: string;
         project: { id: string };
@@ -495,7 +504,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
         },
       })
       .json<{
-        data: {
+        data?: {
           repository: {
             issue: {
               projectItems: {
@@ -517,8 +526,17 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
             };
           };
         };
+        errors?: { message: string }[];
       }>();
 
+    if (!response.data) {
+      const errorMessages = response.errors
+        ? response.errors.map((e) => e.message).join('; ')
+        : 'no data field in response';
+      throw new Error(
+        `GitHub GraphQL API returned no data for getProjectItemFields: ${errorMessages}`,
+      );
+    }
     const data = response.data;
     const issueFields: {
       fieldName: string;
@@ -651,7 +669,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
         },
       })
       .json<{
-        data: {
+        data?: {
           repository: {
             issue: {
               number: number;
@@ -682,7 +700,16 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
             };
           };
         };
+        errors?: { message: string }[];
       }>();
+    if (!response.data) {
+      const errorMessages = response.errors
+        ? response.errors.map((e) => e.message).join('; ')
+        : 'no data field in response';
+      throw new Error(
+        `GitHub GraphQL API returned no data for fetchProjectItemByUrl: ${errorMessages}`,
+      );
+    }
     const data = response.data;
     if (!data.repository.issue) {
       return null;
