@@ -1,3 +1,10 @@
+## [1.50.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.50.0...v1.50.1) (2026-05-21)
+
+
+### Bug Fixes
+
+* **src:** resolve format and test CI failures caused by .npmrc settings ([0ce24ea](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0ce24eaa2e8a6421194e25e2ea7d34ebd9609555)), closes [#cookie](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/cookie)
+
 # [1.50.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.49.2...v1.50.0) (2026-05-21)
 
 
