@@ -683,7 +683,12 @@ export class ApiV3CheerioRestIssueRepository
       (name) => !seenContextNames.has(name),
     );
     const allRequiredChecksPassed = missingRequiredCheckNames.length === 0;
-    const isCiStateSuccess = ciState === 'SUCCESS';
+    const hasCommit = lastCommit != null;
+    const hasStatusCheckRollup = lastCommit?.statusCheckRollup != null;
+    const isCiStateSuccess =
+      hasCommit && !hasStatusCheckRollup
+        ? allRequiredChecksPassed
+        : ciState === 'SUCCESS';
     const isPassedAllCiJob = isCiStateSuccess && allRequiredChecksPassed;
 
     const reviewThreads = data.reviewThreads?.nodes || [];

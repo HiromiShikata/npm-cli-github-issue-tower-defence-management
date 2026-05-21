@@ -265,6 +265,127 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('findRelatedOpenPRs', () => {
+    it('should return isPassedAllCiJob as true when PR has no statusCheckRollup and no required checks', async () => {
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              repository: {
+                issue: {
+                  timelineItems: {
+                    pageInfo: { hasNextPage: false, endCursor: null },
+                    nodes: [
+                      {
+                        __typename: 'CrossReferencedEvent',
+                        willCloseTarget: true,
+                        source: {
+                          __typename: 'PullRequest',
+                          url: 'https://github.com/user/repo/pull/1',
+                          number: 1,
+                          state: 'OPEN',
+                          mergeable: 'MERGEABLE',
+                          commits: {
+                            nodes: [
+                              {
+                                commit: {
+                                  statusCheckRollup: null,
+                                },
+                              },
+                            ],
+                          },
+                          reviewThreads: { nodes: [] },
+                          baseRef: { name: 'main' },
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          }),
+          { status: 200 },
+        ),
+      );
+
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/user/repo/issues/1',
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(result).toHaveLength(1);
+      expect(result[0].isPassedAllCiJob).toBe(true);
+    });
+
+    it('should return isPassedAllCiJob as false when PR has no statusCheckRollup but has required checks', async () => {
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              repository: {
+                issue: {
+                  timelineItems: {
+                    pageInfo: { hasNextPage: false, endCursor: null },
+                    nodes: [
+                      {
+                        __typename: 'CrossReferencedEvent',
+                        willCloseTarget: true,
+                        source: {
+                          __typename: 'PullRequest',
+                          url: 'https://github.com/user/repo/pull/1',
+                          number: 1,
+                          state: 'OPEN',
+                          mergeable: 'MERGEABLE',
+                          baseRefName: 'main',
+                          baseRepository: {
+                            branchProtectionRules: {
+                              nodes: [
+                                {
+                                  pattern: 'main',
+                                  requiredStatusCheckContexts: ['test', 'lint'],
+                                },
+                              ],
+                            },
+                            rulesets: { nodes: [] },
+                            defaultBranchRef: { name: 'main' },
+                          },
+                          commits: {
+                            nodes: [
+                              {
+                                commit: {
+                                  statusCheckRollup: null,
+                                },
+                              },
+                            ],
+                          },
+                          reviewThreads: { nodes: [] },
+                          baseRef: { name: 'main' },
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          }),
+          { status: 200 },
+        ),
+      );
+
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/user/repo/issues/1',
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].isPassedAllCiJob).toBe(false);
+      expect(result[0].missingRequiredCheckNames).toEqual(
+        expect.arrayContaining(['test', 'lint']),
+      );
+    });
+  });
+
   const createApiV3CheerioRestIssueRepository = () => {
     const apiV3IssueRepository = mock<ApiV3IssueRepository>();
     const restIssueRepository = mock<RestIssueRepository>();
