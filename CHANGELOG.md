@@ -1,3 +1,10 @@
+## [1.50.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.50.1...v1.50.2) (2026-05-21)
+
+
+### Bug Fixes
+
+* **core:** guard against undefined response.data in GraphQL repository methods ([6a6718a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6a6718a07dd390490da0fb47aa68e776cc773991))
+
 ## [1.50.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.50.0...v1.50.1) (2026-05-21)
 
 
