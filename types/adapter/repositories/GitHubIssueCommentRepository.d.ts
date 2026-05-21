@@ -6,7 +6,6 @@ export declare class GitHubIssueCommentRepository implements IssueCommentReposit
     constructor(token: string);
     private parseIssueUrl;
     getCommentsFromIssue(issue: Issue): Promise<Comment[]>;
-    private getIssueNodeId;
     createComment(issue: Issue, commentContent: string): Promise<void>;
 }
 //# sourceMappingURL=GitHubIssueCommentRepository.d.ts.map

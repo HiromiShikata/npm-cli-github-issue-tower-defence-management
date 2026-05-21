@@ -6,16 +6,6 @@ function isRestCommentPayloadArray(value) {
         return false;
     return true;
 }
-function isCreateCommentResponse(value) {
-    if (typeof value !== 'object' || value === null)
-        return false;
-    return true;
-}
-function isIssueIdResponse(value) {
-    if (typeof value !== 'object' || value === null)
-        return false;
-    return true;
-}
 class GitHubIssueCommentRepository {
     constructor(token) {
         this.token = token;
@@ -65,87 +55,19 @@ class GitHubIssueCommentRepository {
         }
         return comments;
     }
-    async getIssueNodeId(issue) {
-        const { owner, repo, issueNumber, isPr } = this.parseIssueUrl(issue);
-        const entityType = isPr ? 'pullRequest' : 'issue';
-        const query = `
-      query($owner: String!, $repo: String!, $issueNumber: Int!) {
-        repository(owner: $owner, name: $repo) {
-          ${entityType}(number: $issueNumber) {
-            id
-          }
-        }
-      }
-    `;
-        const response = await fetch('https://api.github.com/graphql', {
-            method: 'POST',
-            headers: {
-                Authorization: `Bearer ${this.token}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                query,
-                variables: {
-                    owner,
-                    repo,
-                    issueNumber,
-                },
-            }),
-        });
-        if (!response.ok) {
-            throw new Error(`Failed to fetch issue ID from GitHub GraphQL API: ${response.status} ${response.statusText}`);
-        }
-        const responseData = await response.json();
-        if (!isIssueIdResponse(responseData)) {
-            throw new Error('Unexpected response shape when fetching issue ID from GitHub GraphQL API');
-        }
-        const issueId = isPr
-            ? responseData.data?.repository?.pullRequest?.id
-            : responseData.data?.repository?.issue?.id;
-        if (!issueId) {
-            throw new Error(`${isPr ? 'Pull request' : 'Issue'} not found when fetching issue ID from GitHub GraphQL API`);
-        }
-        return issueId;
-    }
     async createComment(issue, commentContent) {
-        const issueId = await this.getIssueNodeId(issue);
-        const mutation = `
-      mutation($issueId: ID!, $body: String!) {
-        addComment(input: {
-          subjectId: $issueId
-          body: $body
-        }) {
-          commentEdge {
-            node {
-              id
-            }
-          }
-        }
-      }
-    `;
-        const response = await fetch('https://api.github.com/graphql', {
+        const { owner, repo, issueNumber } = this.parseIssueUrl(issue);
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`, {
             method: 'POST',
             headers: {
                 Authorization: `Bearer ${this.token}`,
+                Accept: 'application/vnd.github+json',
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                query: mutation,
-                variables: {
-                    issueId,
-                    body: commentContent,
-                },
-            }),
+            body: JSON.stringify({ body: commentContent }),
         });
         if (!response.ok) {
-            throw new Error(`Failed to create comment via GitHub GraphQL API: ${response.status} ${response.statusText}`);
-        }
-        const responseData = await response.json();
-        if (!isCreateCommentResponse(responseData)) {
-            throw new Error('Invalid API response format when creating comment');
-        }
-        if (responseData.errors) {
-            throw new Error(`GraphQL errors when creating comment: ${JSON.stringify(responseData.errors)}`);
+            throw new Error(`Failed to create comment via GitHub REST API: ${response.status} ${response.statusText}`);
         }
     }
 }
