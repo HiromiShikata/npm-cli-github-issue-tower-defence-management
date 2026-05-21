@@ -8,6 +8,7 @@ import {
   AWAITING_WORKSPACE_STATUS_NAME,
   DEFAULT_STATUS_NAME,
   DONE_STATUS_NAME,
+  FAILED_PREPARATION_STATUS_NAME,
   ICEBOX_STATUS_NAME,
   IN_TMUX_STATUS_NAME,
   PC_TODO_STATUS_NAME,
@@ -43,12 +44,13 @@ const buildCanonicalStatuses = (): FieldOption[] =>
   }));
 
 describe('SetupTowerDefenceProjectUseCase', () => {
-  it('should define exactly the 10 required statuses in the documented order with the documented colors and no descriptions', () => {
+  it('should define exactly the 11 required statuses in the documented order with the documented colors and no descriptions', () => {
     expect(REQUIRED_WORKFLOW_STATUSES).toEqual([
       { name: DEFAULT_STATUS_NAME, color: 'ORANGE' },
       { name: AWAITING_TASK_BREAKDOWN_STATUS_NAME, color: 'ORANGE' },
       { name: AWAITING_WORKSPACE_STATUS_NAME, color: 'BLUE' },
       { name: PREPARATION_STATUS_NAME, color: 'YELLOW' },
+      { name: FAILED_PREPARATION_STATUS_NAME, color: 'RED' },
       { name: AWAITING_QUALITY_CHECK_STATUS_NAME, color: 'GREEN' },
       { name: TODO_STATUS_NAME, color: 'PINK' },
       { name: PC_TODO_STATUS_NAME, color: 'PINK' },
@@ -169,6 +171,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
         },
         {
           id: null,
+          name: FAILED_PREPARATION_STATUS_NAME,
+          color: 'RED',
+          description: '',
+        },
+        {
+          id: null,
           name: AWAITING_QUALITY_CHECK_STATUS_NAME,
           color: 'GREEN',
           description: '',
@@ -238,6 +246,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       AWAITING_TASK_BREAKDOWN_STATUS_NAME,
       AWAITING_WORKSPACE_STATUS_NAME,
       PREPARATION_STATUS_NAME,
+      FAILED_PREPARATION_STATUS_NAME,
       AWAITING_QUALITY_CHECK_STATUS_NAME,
       TODO_STATUS_NAME,
       PC_TODO_STATUS_NAME,

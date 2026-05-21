@@ -4,6 +4,7 @@ export const DEFAULT_STATUS_NAME = 'Unread';
 export const AWAITING_TASK_BREAKDOWN_STATUS_NAME = 'Awaiting Task Breakdown';
 export const AWAITING_WORKSPACE_STATUS_NAME = 'Awaiting Workspace';
 export const PREPARATION_STATUS_NAME = 'Preparation';
+export const FAILED_PREPARATION_STATUS_NAME = 'Failed Preparation';
 export const AWAITING_QUALITY_CHECK_STATUS_NAME = 'Awaiting Quality Check';
 export const TODO_STATUS_NAME = 'Todo';
 export const PC_TODO_STATUS_NAME = 'PC Todo';
@@ -32,6 +33,10 @@ export const REQUIRED_WORKFLOW_STATUSES: WorkflowStatusDefinition[] = [
   {
     name: PREPARATION_STATUS_NAME,
     color: 'YELLOW',
+  },
+  {
+    name: FAILED_PREPARATION_STATUS_NAME,
+    color: 'RED',
   },
   {
     name: AWAITING_QUALITY_CHECK_STATUS_NAME,

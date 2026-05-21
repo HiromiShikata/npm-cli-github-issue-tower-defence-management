@@ -8,6 +8,7 @@ import { WebhookRepository } from './adapter-interfaces/WebhookRepository';
 import {
   AWAITING_QUALITY_CHECK_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
+  FAILED_PREPARATION_STATUS_NAME,
   PREPARATION_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 
@@ -85,6 +86,15 @@ export class NotifyFinishedIssuePreparationUseCase {
     if (!awaitingQualityCheckStatusOption) {
       console.error(
         `Awaiting quality check status option '${AWAITING_QUALITY_CHECK_STATUS_NAME}' not found in project.`,
+      );
+      return;
+    }
+    const failedPreparationStatusOption = project.status.statuses.find(
+      (s) => s.name === FAILED_PREPARATION_STATUS_NAME,
+    );
+    if (!failedPreparationStatusOption) {
+      console.error(
+        `Failed preparation status option '${FAILED_PREPARATION_STATUS_NAME}' not found in project.`,
       );
       return;
     }
@@ -180,12 +190,12 @@ export class NotifyFinishedIssuePreparationUseCase {
           .includes('failed to pass the check automatically'),
       )
     ) {
-      issue.status = AWAITING_QUALITY_CHECK_STATUS_NAME;
+      issue.status = FAILED_PREPARATION_STATUS_NAME;
       await this.issueRepository.update(issue, project);
       await this.issueRepository.updateStatus(
         project,
         issue,
-        awaitingQualityCheckStatusOption.id,
+        failedPreparationStatusOption.id,
       );
       const escalationStatusLine =
         rejections.length > 0
