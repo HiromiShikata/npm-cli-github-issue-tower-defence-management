@@ -30,6 +30,8 @@ export class ProjectNotFoundError extends Error {
   }
 }
 
+const SLOW_SWEEP_INTERVAL_SECONDS = 600;
+
 export class HandleScheduledEventUseCase {
   constructor(
     readonly setupTowerDefenceProjectUseCase: SetupTowerDefenceProjectUseCase,
@@ -191,6 +193,11 @@ export class HandleScheduledEventUseCase {
         now,
       );
 
+    const runSlowSweep = await this.shouldRunSlowSweep(
+      input.workingReport.spreadsheetUrl,
+      now,
+    );
+
     try {
       await this.runEachUseCases(
         input,
@@ -199,6 +206,7 @@ export class HandleScheduledEventUseCase {
         cacheUsed,
         targetDateTimes,
         storyIssues,
+        runSlowSweep,
       );
     } catch (e) {
       if (!(e instanceof Error)) {
@@ -226,6 +234,55 @@ ${JSON.stringify(e)}
     return { project, issues, cacheUsed, targetDateTimes, storyIssues };
   };
   runEachUseCases = async (
+    input: Parameters<HandleScheduledEventUseCase['run']>[0],
+    project: Project,
+    issues: Issue[],
+    cacheUsed: boolean,
+    targetDateTimes: Date[],
+    storyObjectMap: StoryObjectMap,
+    runSlowSweep: boolean,
+  ): Promise<void> => {
+    if (runSlowSweep) {
+      await this.runSlowSweepUseCases(
+        input,
+        project,
+        issues,
+        cacheUsed,
+        targetDateTimes,
+        storyObjectMap,
+      );
+    }
+    if (input.startPreparation) {
+      if (input.startPreparation.preparationProcessCheckCommand) {
+        await this.revertOrphanedPreparationUseCase.run({
+          projectUrl: input.projectUrl,
+          allowIssueCacheMinutes: input.allowIssueCacheMinutes,
+          preparationProcessCheckCommand:
+            input.startPreparation.preparationProcessCheckCommand,
+          awLogDirectoryPath: input.startPreparation.awLogDirectoryPath,
+          awLogStaleThresholdMinutes:
+            input.startPreparation.awLogStaleThresholdMinutes,
+          awaitingQualityCheckStatus:
+            input.startPreparation.awaitingQualityCheckStatus ?? undefined,
+        });
+      }
+      await this.startPreparationUseCase.run({
+        projectUrl: input.projectUrl,
+        defaultAgentName: input.startPreparation.defaultAgentName,
+        defaultLlmModelName: input.startPreparation.defaultLlmModelName ?? null,
+        defaultLlmAgentName: input.startPreparation.defaultLlmAgentName ?? null,
+        configFilePath: input.startPreparation.configFilePath,
+        maximumPreparingIssuesCount:
+          input.startPreparation.maximumPreparingIssuesCount,
+        utilizationPercentageThreshold:
+          input.startPreparation.utilizationPercentageThreshold ?? 90,
+        allowedIssueAuthors: input.startPreparation.allowedIssueAuthors ?? null,
+        codexHomeCandidates: input.startPreparation.codexHomeCandidates ?? null,
+        allowIssueCacheMinutes: input.allowIssueCacheMinutes,
+      });
+    }
+  };
+  runSlowSweepUseCases = async (
     input: Parameters<HandleScheduledEventUseCase['run']>[0],
     project: Project,
     issues: Issue[],
@@ -322,35 +379,6 @@ ${JSON.stringify(e)}
       project,
       issues,
     });
-    if (input.startPreparation) {
-      if (input.startPreparation.preparationProcessCheckCommand) {
-        await this.revertOrphanedPreparationUseCase.run({
-          projectUrl: input.projectUrl,
-          allowIssueCacheMinutes: input.allowIssueCacheMinutes,
-          preparationProcessCheckCommand:
-            input.startPreparation.preparationProcessCheckCommand,
-          awLogDirectoryPath: input.startPreparation.awLogDirectoryPath,
-          awLogStaleThresholdMinutes:
-            input.startPreparation.awLogStaleThresholdMinutes,
-          awaitingQualityCheckStatus:
-            input.startPreparation.awaitingQualityCheckStatus ?? undefined,
-        });
-      }
-      await this.startPreparationUseCase.run({
-        projectUrl: input.projectUrl,
-        defaultAgentName: input.startPreparation.defaultAgentName,
-        defaultLlmModelName: input.startPreparation.defaultLlmModelName ?? null,
-        defaultLlmAgentName: input.startPreparation.defaultLlmAgentName ?? null,
-        configFilePath: input.startPreparation.configFilePath,
-        maximumPreparingIssuesCount:
-          input.startPreparation.maximumPreparingIssuesCount,
-        utilizationPercentageThreshold:
-          input.startPreparation.utilizationPercentageThreshold ?? 90,
-        allowedIssueAuthors: input.startPreparation.allowedIssueAuthors ?? null,
-        codexHomeCandidates: input.startPreparation.codexHomeCandidates ?? null,
-        allowIssueCacheMinutes: input.allowIssueCacheMinutes,
-      });
-    }
   };
   static createTargetDateTimes = (from: Date, to: Date): Date[] => {
     const targetDateTimes: Date[] = [];
@@ -408,6 +436,40 @@ ${JSON.stringify(e)}
       targetDateTimes[targetDateTimes.length - 1].toISOString(),
     );
     return targetDateTimes;
+  };
+  shouldRunSlowSweep = async (
+    spreadsheetUrl: string,
+    now: Date,
+  ): Promise<boolean> => {
+    const sheetValues = await this.spreadsheetRepository.getSheet(
+      spreadsheetUrl,
+      'HandleScheduledEvent',
+    );
+    const lastSlowSweepDateTime =
+      sheetValues && sheetValues[1] && sheetValues[1][4]
+        ? new Date(sheetValues[1][4])
+        : null;
+    const elapsedSeconds = lastSlowSweepDateTime
+      ? (now.getTime() - lastSlowSweepDateTime.getTime()) / 1000
+      : Infinity;
+    if (elapsedSeconds < SLOW_SWEEP_INTERVAL_SECONDS) {
+      return false;
+    }
+    await this.spreadsheetRepository.updateCell(
+      spreadsheetUrl,
+      'HandleScheduledEvent',
+      1,
+      3,
+      'LastSlowSweepDateTime',
+    );
+    await this.spreadsheetRepository.updateCell(
+      spreadsheetUrl,
+      'HandleScheduledEvent',
+      1,
+      4,
+      now.toISOString(),
+    );
+    return true;
   };
   storyIssues = async (input: {
     project: Project;

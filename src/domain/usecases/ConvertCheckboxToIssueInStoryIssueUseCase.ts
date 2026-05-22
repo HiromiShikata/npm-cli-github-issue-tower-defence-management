@@ -21,7 +21,7 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
     storyObjectMap: StoryObjectMap;
   }): Promise<void> => {
     const story = input.project.story;
-    if (!story || input.cacheUsed) {
+    if (!story) {
       return;
     }
 

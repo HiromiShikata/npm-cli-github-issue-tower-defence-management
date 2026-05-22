@@ -81,9 +81,11 @@ export declare class HandleScheduledEventUseCase {
         targetDateTimes: Date[];
         storyIssues: StoryObjectMap;
     } | null>;
-    runEachUseCases: (input: Parameters<HandleScheduledEventUseCase["run"]>[0], project: Project, issues: Issue[], cacheUsed: boolean, targetDateTimes: Date[], storyObjectMap: StoryObjectMap) => Promise<void>;
+    runEachUseCases: (input: Parameters<HandleScheduledEventUseCase["run"]>[0], project: Project, issues: Issue[], cacheUsed: boolean, targetDateTimes: Date[], storyObjectMap: StoryObjectMap, runSlowSweep: boolean) => Promise<void>;
+    runSlowSweepUseCases: (input: Parameters<HandleScheduledEventUseCase["run"]>[0], project: Project, issues: Issue[], cacheUsed: boolean, targetDateTimes: Date[], storyObjectMap: StoryObjectMap) => Promise<void>;
     static createTargetDateTimes: (from: Date, to: Date) => Date[];
     findTargetDateAndUpdateLastExecutionDateTime: (spreadsheetUrl: string, now: Date) => Promise<Date[]>;
+    shouldRunSlowSweep: (spreadsheetUrl: string, now: Date) => Promise<boolean>;
     storyIssues: (input: {
         project: Project;
         issues: Issue[];

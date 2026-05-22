@@ -451,5 +451,165 @@ describe('HandleScheduledEventUseCase', () => {
         expect(capturedLogs[4]).toContain('Story issue created');
       });
     });
+
+    describe('slow sweep cadence', () => {
+      const baseInput = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        allowIssueCacheMinutes: 10,
+        startPreparation: {
+          defaultAgentName: 'test-agent',
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+          defaultLlmModelName: null,
+          defaultLlmAgentName: null,
+        },
+      };
+
+      it('should run slow sweep use cases when no LastSlowSweepDateTime is recorded', async () => {
+        mockSpreadsheetRepository.getSheet.mockResolvedValue([
+          ['LastExecutionDateTime'],
+          ['2024-01-01T00:00:00Z'],
+        ]);
+        mockDateRepository.now.mockResolvedValue(
+          new Date('2024-01-01T00:10:00Z'),
+        );
+
+        await useCase.run(baseInput);
+
+        expect(mockAnalyzeStoriesUseCase.run).toHaveBeenCalled();
+        expect(mockUpdateIssueStatusByLabelUseCase.run).toHaveBeenCalled();
+        expect(mockChangeStatusByStoryColorUseCase.run).toHaveBeenCalled();
+        expect(mockCreateNewStoryByLabelUseCase.run).toHaveBeenCalled();
+      });
+
+      it('should skip slow sweep use cases when LastSlowSweepDateTime is within 600 seconds', async () => {
+        const now = new Date('2024-01-01T00:10:00Z');
+        const recentSlowSweep = new Date(
+          now.getTime() - 300 * 1000,
+        ).toISOString();
+        mockSpreadsheetRepository.getSheet.mockResolvedValue([
+          ['LastExecutionDateTime'],
+          [
+            '2024-01-01T00:00:00Z',
+            '',
+            '',
+            'LastSlowSweepDateTime',
+            recentSlowSweep,
+          ],
+        ]);
+        mockDateRepository.now.mockResolvedValue(now);
+
+        await useCase.run(baseInput);
+
+        expect(mockAnalyzeStoriesUseCase.run).not.toHaveBeenCalled();
+        expect(mockUpdateIssueStatusByLabelUseCase.run).not.toHaveBeenCalled();
+        expect(mockChangeStatusByStoryColorUseCase.run).not.toHaveBeenCalled();
+        expect(mockCreateNewStoryByLabelUseCase.run).not.toHaveBeenCalled();
+      });
+
+      it('should still run preparation use cases even when slow sweep is skipped', async () => {
+        const now = new Date('2024-01-01T00:10:00Z');
+        const recentSlowSweep = new Date(
+          now.getTime() - 300 * 1000,
+        ).toISOString();
+        mockSpreadsheetRepository.getSheet.mockResolvedValue([
+          ['LastExecutionDateTime'],
+          [
+            '2024-01-01T00:00:00Z',
+            '',
+            '',
+            'LastSlowSweepDateTime',
+            recentSlowSweep,
+          ],
+        ]);
+        mockDateRepository.now.mockResolvedValue(now);
+
+        await useCase.run(baseInput);
+
+        expect(mockStartPreparationUseCase.run).toHaveBeenCalled();
+      });
+
+      it('should run slow sweep use cases when LastSlowSweepDateTime is exactly 600 seconds ago', async () => {
+        const now = new Date('2024-01-01T00:10:00Z');
+        const exactThresholdSlowSweep = new Date(
+          now.getTime() - 600 * 1000,
+        ).toISOString();
+        mockSpreadsheetRepository.getSheet.mockResolvedValue([
+          ['LastExecutionDateTime'],
+          [
+            '2024-01-01T00:00:00Z',
+            '',
+            '',
+            'LastSlowSweepDateTime',
+            exactThresholdSlowSweep,
+          ],
+        ]);
+        mockDateRepository.now.mockResolvedValue(now);
+
+        await useCase.run(baseInput);
+
+        expect(mockAnalyzeStoriesUseCase.run).toHaveBeenCalled();
+        expect(mockUpdateIssueStatusByLabelUseCase.run).toHaveBeenCalled();
+      });
+
+      it('should update LastSlowSweepDateTime in spreadsheet when slow sweep runs', async () => {
+        mockSpreadsheetRepository.getSheet.mockResolvedValue([
+          ['LastExecutionDateTime'],
+          ['2024-01-01T00:00:00Z'],
+        ]);
+        const now = new Date('2024-01-01T00:10:00Z');
+        mockDateRepository.now.mockResolvedValue(now);
+
+        await useCase.run(baseInput);
+
+        const updateCellCalls = mockSpreadsheetRepository.updateCell.mock.calls;
+        const slowSweepHeaderCall = updateCellCalls.find(
+          (call) => call[2] === 1 && call[3] === 3,
+        );
+        const slowSweepValueCall = updateCellCalls.find(
+          (call) => call[2] === 1 && call[3] === 4,
+        );
+        expect(slowSweepHeaderCall).toBeDefined();
+        expect(slowSweepHeaderCall?.[4]).toBe('LastSlowSweepDateTime');
+        expect(slowSweepValueCall).toBeDefined();
+        expect(slowSweepValueCall?.[4]).toBe(now.toISOString());
+      });
+
+      it('should not update LastSlowSweepDateTime when slow sweep is skipped', async () => {
+        const now = new Date('2024-01-01T00:10:00Z');
+        const recentSlowSweep = new Date(
+          now.getTime() - 300 * 1000,
+        ).toISOString();
+        mockSpreadsheetRepository.getSheet.mockResolvedValue([
+          ['LastExecutionDateTime'],
+          [
+            '2024-01-01T00:00:00Z',
+            '',
+            '',
+            'LastSlowSweepDateTime',
+            recentSlowSweep,
+          ],
+        ]);
+        mockDateRepository.now.mockResolvedValue(now);
+
+        await useCase.run(baseInput);
+
+        const updateCellCalls = mockSpreadsheetRepository.updateCell.mock.calls;
+        const slowSweepValueCall = updateCellCalls.find(
+          (call) => call[2] === 1 && call[3] === 4,
+        );
+        expect(slowSweepValueCall).toBeUndefined();
+      });
+    });
   });
 });
