@@ -26,6 +26,12 @@ const createMockProject = (overrides: Partial<Project> = {}): Project => ({
         description: '',
       },
       {
+        id: 'failed-preparation-id',
+        name: 'Failed Preparation',
+        color: 'RED',
+        description: '',
+      },
+      {
         id: 'awaiting-quality-check-id',
         name: 'Awaiting Quality Check',
         color: 'BLUE',
@@ -639,7 +645,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should auto-escalate to Awaiting Quality Check after threshold rejections', async () => {
+  it('should auto-escalate to Failed Preparation after threshold rejections', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -663,14 +669,14 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        status: 'Awaiting Quality Check',
+        status: 'Failed Preparation',
       }),
       mockProject,
     );
     expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
       mockProject,
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
-      'awaiting-quality-check-id',
+      expect.objectContaining({ status: 'Failed Preparation' }),
+      'failed-preparation-id',
     );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -727,7 +733,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      expect.objectContaining({ status: 'Failed Preparation' }),
       mockProject,
     );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
