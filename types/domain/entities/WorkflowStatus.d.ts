@@ -3,6 +3,7 @@ export declare const DEFAULT_STATUS_NAME = "Unread";
 export declare const AWAITING_TASK_BREAKDOWN_STATUS_NAME = "Awaiting Task Breakdown";
 export declare const AWAITING_WORKSPACE_STATUS_NAME = "Awaiting Workspace";
 export declare const PREPARATION_STATUS_NAME = "Preparation";
+export declare const FAILED_PREPARATION_STATUS_NAME = "Failed Preparation";
 export declare const AWAITING_QUALITY_CHECK_STATUS_NAME = "Awaiting Quality Check";
 export declare const TODO_STATUS_NAME = "Todo";
 export declare const PC_TODO_STATUS_NAME = "PC Todo";

@@ -1,3 +1,10 @@
+# [1.51.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.50.3...v1.51.0) (2026-05-22)
+
+
+### Features
+
+* **core:** add Failed Preparation status and route escalated issues there instead of Awaiting Quality Check ([bca02c4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bca02c4de9f7f69b2e706582978ba2340ae3a63d))
+
 ## [1.50.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.50.2...v1.50.3) (2026-05-22)
 
 

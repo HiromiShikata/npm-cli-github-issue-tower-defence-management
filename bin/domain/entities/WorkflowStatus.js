@@ -1,10 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.REQUIRED_WORKFLOW_STATUSES = exports.ICEBOX_STATUS_NAME = exports.DONE_STATUS_NAME = exports.IN_TMUX_STATUS_NAME = exports.PC_TODO_STATUS_NAME = exports.TODO_STATUS_NAME = exports.AWAITING_QUALITY_CHECK_STATUS_NAME = exports.PREPARATION_STATUS_NAME = exports.AWAITING_WORKSPACE_STATUS_NAME = exports.AWAITING_TASK_BREAKDOWN_STATUS_NAME = exports.DEFAULT_STATUS_NAME = void 0;
+exports.REQUIRED_WORKFLOW_STATUSES = exports.ICEBOX_STATUS_NAME = exports.DONE_STATUS_NAME = exports.IN_TMUX_STATUS_NAME = exports.PC_TODO_STATUS_NAME = exports.TODO_STATUS_NAME = exports.AWAITING_QUALITY_CHECK_STATUS_NAME = exports.FAILED_PREPARATION_STATUS_NAME = exports.PREPARATION_STATUS_NAME = exports.AWAITING_WORKSPACE_STATUS_NAME = exports.AWAITING_TASK_BREAKDOWN_STATUS_NAME = exports.DEFAULT_STATUS_NAME = void 0;
 exports.DEFAULT_STATUS_NAME = 'Unread';
 exports.AWAITING_TASK_BREAKDOWN_STATUS_NAME = 'Awaiting Task Breakdown';
 exports.AWAITING_WORKSPACE_STATUS_NAME = 'Awaiting Workspace';
 exports.PREPARATION_STATUS_NAME = 'Preparation';
+exports.FAILED_PREPARATION_STATUS_NAME = 'Failed Preparation';
 exports.AWAITING_QUALITY_CHECK_STATUS_NAME = 'Awaiting Quality Check';
 exports.TODO_STATUS_NAME = 'Todo';
 exports.PC_TODO_STATUS_NAME = 'PC Todo';
@@ -27,6 +28,10 @@ exports.REQUIRED_WORKFLOW_STATUSES = [
     {
         name: exports.PREPARATION_STATUS_NAME,
         color: 'YELLOW',
+    },
+    {
+        name: exports.FAILED_PREPARATION_STATUS_NAME,
+        color: 'RED',
     },
     {
         name: exports.AWAITING_QUALITY_CHECK_STATUS_NAME,
