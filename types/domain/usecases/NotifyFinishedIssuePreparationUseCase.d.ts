@@ -13,6 +13,7 @@ export declare class NotifyFinishedIssuePreparationUseCase {
     private readonly issueRepository;
     private readonly issueCommentRepository;
     private readonly webhookRepository;
+    private readonly issueRejectionEvaluator;
     constructor(projectRepository: Pick<ProjectRepository, 'getByUrl'>, issueRepository: Pick<IssueRepository, 'get' | 'update' | 'updateStatus' | 'updateNextActionDate' | 'findRelatedOpenPRs' | 'getStoryObjectMap' | 'getOpenPullRequest'>, issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>, webhookRepository: Pick<WebhookRepository, 'sendGetRequest'>);
     run: (params: {
         projectUrl: string;
@@ -21,7 +22,6 @@ export declare class NotifyFinishedIssuePreparationUseCase {
         workflowBlockerResolvedWebhookUrl: string | null;
     }) => Promise<void>;
     private collectRejections;
-    private resolveOpenPrsForPrItem;
     private reportBodyHasNextStep;
     private setPrNextActionDate;
     private sendWorkflowBlockerNotification;

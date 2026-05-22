@@ -1,7 +1,4 @@
-import {
-  IssueRepository,
-  RelatedPullRequest,
-} from './adapter-interfaces/IssueRepository';
+import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import { WebhookRepository } from './adapter-interfaces/WebhookRepository';
@@ -11,6 +8,10 @@ import {
   FAILED_PREPARATION_STATUS_NAME,
   PREPARATION_STATUS_NAME,
 } from '../entities/WorkflowStatus';
+import {
+  IssueRejectionEvaluator,
+  PrRejectedReasonType,
+} from './IssueRejectionEvaluator';
 
 export class IssueNotFoundError extends Error {
   constructor(issueUrl: string) {
@@ -33,14 +34,11 @@ export class IllegalIssueStatusError extends Error {
 type RejectedReasonType =
   | 'NO_REPORT_FROM_AGENT_BOT'
   | 'REPORT_HAS_NEXT_STEP'
-  | 'PULL_REQUEST_NOT_FOUND'
-  | 'MULTIPLE_PULL_REQUESTS_FOUND'
-  | 'PULL_REQUEST_CONFLICTED'
-  | 'ANY_CI_JOB_FAILED_OR_IN_PROGRESS'
-  | 'REQUIRED_CI_JOB_NEVER_STARTED'
-  | 'ANY_REVIEW_COMMENT_NOT_RESOLVED';
+  | PrRejectedReasonType;
 
 export class NotifyFinishedIssuePreparationUseCase {
+  private readonly issueRejectionEvaluator: IssueRejectionEvaluator;
+
   constructor(
     private readonly projectRepository: Pick<ProjectRepository, 'getByUrl'>,
     private readonly issueRepository: Pick<
@@ -61,7 +59,9 @@ export class NotifyFinishedIssuePreparationUseCase {
       WebhookRepository,
       'sendGetRequest'
     >,
-  ) {}
+  ) {
+    this.issueRejectionEvaluator = new IssueRejectionEvaluator(issueRepository);
+  }
 
   run = async (params: {
     projectUrl: string;
@@ -257,7 +257,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     approvedPrUrl: string | null;
   }> => {
     const rejections: { type: RejectedReasonType; detail: string }[] = [];
-    let approvedPrUrl: string | null = null;
+
     const lastComment = comments[comments.length - 1];
     if (!lastComment || !lastComment.content.startsWith('From:')) {
       rejections.push({
@@ -271,83 +271,9 @@ export class NotifyFinishedIssuePreparationUseCase {
       });
     }
 
-    const categoryLabels = issue.labels.filter((label) =>
-      label.startsWith('category:'),
-    );
-    const hasLlmAgentLabel = issue.labels.some(
-      (l) => l === 'llm-agent' || l.startsWith('llm-agent:'),
-    );
-    if (
-      !hasLlmAgentLabel &&
-      (categoryLabels.length <= 0 || categoryLabels.includes('category:e2e'))
-    ) {
-      const prsToCheck = issue.isPr
-        ? await this.resolveOpenPrsForPrItem(issue.url)
-        : await this.issueRepository.findRelatedOpenPRs(issue.url);
-
-      if (prsToCheck.length <= 0) {
-        rejections.push({
-          type: 'PULL_REQUEST_NOT_FOUND',
-          detail: 'PULL_REQUEST_NOT_FOUND',
-        });
-      } else if (prsToCheck.length > 1) {
-        rejections.push({
-          type: 'MULTIPLE_PULL_REQUESTS_FOUND',
-          detail: `MULTIPLE_PULL_REQUESTS_FOUND: ${prsToCheck.map((pr) => pr.url).join(', ')}`,
-        });
-      } else {
-        const pr = prsToCheck[0];
-        if (pr.isConflicted) {
-          rejections.push({
-            type: 'PULL_REQUEST_CONFLICTED',
-            detail: `PULL_REQUEST_CONFLICTED: ${pr.url}`,
-          });
-        }
-        if (!pr.isPassedAllCiJob) {
-          const missingChecks = pr.missingRequiredCheckNames;
-          const missingSuffix =
-            missingChecks.length > 0
-              ? ` (missing: ${missingChecks.join(', ')})`
-              : '';
-          if (pr.isCiStateSuccess && missingChecks.length > 0) {
-            rejections.push({
-              type: 'REQUIRED_CI_JOB_NEVER_STARTED',
-              detail: `REQUIRED_CI_JOB_NEVER_STARTED: ${pr.url}${missingSuffix}`,
-            });
-          } else {
-            rejections.push({
-              type: 'ANY_CI_JOB_FAILED_OR_IN_PROGRESS',
-              detail: `ANY_CI_JOB_FAILED_OR_IN_PROGRESS: ${pr.url}${missingSuffix}`,
-            });
-          }
-        }
-        if (!pr.isResolvedAllReviewComments) {
-          rejections.push({
-            type: 'ANY_REVIEW_COMMENT_NOT_RESOLVED',
-            detail: `ANY_REVIEW_COMMENT_NOT_RESOLVED: ${pr.url}`,
-          });
-        }
-        if (
-          !pr.isConflicted &&
-          pr.isPassedAllCiJob &&
-          pr.isResolvedAllReviewComments
-        ) {
-          approvedPrUrl = pr.url;
-        }
-      }
-    }
-
-    return { rejections, approvedPrUrl };
-  };
-
-  private resolveOpenPrsForPrItem = async (
-    prUrl: string,
-  ): Promise<RelatedPullRequest[]> => {
-    const pr = await this.issueRepository.getOpenPullRequest(prUrl);
-    if (pr === null) {
-      return [];
-    }
-    return [pr];
+    const { rejections: prRejections, approvedPrUrl } =
+      await this.issueRejectionEvaluator.evaluate(issue);
+    return { rejections: [...rejections, ...prRejections], approvedPrUrl };
   };
 
   private reportBodyHasNextStep = (body: string): boolean => {

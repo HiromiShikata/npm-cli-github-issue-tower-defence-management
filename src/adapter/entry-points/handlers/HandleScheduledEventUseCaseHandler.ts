@@ -36,6 +36,7 @@ import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparati
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
 import { OauthAPIProxyClaudeRepository } from '../../repositories/OauthAPIProxyClaudeRepository';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
+import { RevertNotReadyAwaitingQualityCheckUseCase } from '../../../domain/usecases/RevertNotReadyAwaitingQualityCheckUseCase';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { SetupTowerDefenceProjectUseCase } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
 import {
@@ -232,6 +233,12 @@ export class HandleScheduledEventUseCaseHandler {
         issueCommentRepository,
         nodeLocalCommandRunner,
       );
+    const revertNotReadyAwaitingQualityCheckUseCase =
+      new RevertNotReadyAwaitingQualityCheckUseCase(
+        projectRepository,
+        issueRepository,
+        issueCommentRepository,
+      );
 
     const handleScheduledEventUseCase = new HandleScheduledEventUseCase(
       setupTowerDefenceProjectUseCase,
@@ -250,6 +257,7 @@ export class HandleScheduledEventUseCaseHandler {
       updateIssueStatusByLabelUseCase,
       startPreparationUseCase,
       revertOrphanedPreparationUseCase,
+      revertNotReadyAwaitingQualityCheckUseCase,
       systemDateRepository,
       googleSpreadsheetRepository,
       projectRepository,
