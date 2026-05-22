@@ -313,6 +313,56 @@ describe('HandleScheduledEventUseCase', () => {
       );
     });
 
+    it('should invoke revertNotReadyAwaitingQualityCheckUseCase when notifyFinishedPreparation is configured', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        allowIssueCacheMinutes: 60,
+        notifyFinishedPreparation: {},
+      };
+
+      mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
+      await useCase.run(input);
+
+      expect(mockRevertNotReadyAwaitingQualityCheckUseCase.run).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectUrl: 'https://github.com/test-org/test-project',
+          allowIssueCacheMinutes: 60,
+        }),
+      );
+    });
+
+    it('should not invoke revertNotReadyAwaitingQualityCheckUseCase when notifyFinishedPreparation is absent', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        allowIssueCacheMinutes: 60,
+      };
+
+      mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
+      await useCase.run(input);
+
+      expect(mockRevertNotReadyAwaitingQualityCheckUseCase.run).not.toHaveBeenCalled();
+    });
+
     describe('story issue creation progress logs', () => {
       const storyInput = {
         projectName: 'test-project',
