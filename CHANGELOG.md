@@ -1,3 +1,16 @@
+# [1.52.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.51.0...v1.52.0) (2026-05-22)
+
+
+### Bug Fixes
+
+* **core:** always fetch fresh story issue body in ConvertCheckboxToIssueInStoryIssueUseCase and rebuild bin ([1be8818](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1be881838186edb165f76c9c3174ca8bccfa7ad5))
+* **core:** remove stale notifyFinishedPreparation references after rebase on main ([99c2c9b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/99c2c9b339f1f0ee0ef91364cac2f2fa3a01b948))
+
+
+### Features
+
+* **core:** split scheduled sweep onto 600s slow loop and default allowIssueCacheMinutes to 10 ([81d185c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/81d185c09d408eca63692d9e22fb6b4c3c049fa3))
+
 # [1.51.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.50.3...v1.51.0) (2026-05-22)
 
 
