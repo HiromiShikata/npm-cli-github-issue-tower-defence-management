@@ -62,7 +62,7 @@ exports.program
     .option('--defaultLlmModelName <name>', 'Default LLM model name')
     .option('--defaultLlmAgentName <name>', 'Default LLM agent name')
     .option('--maximumPreparingIssuesCount <count>', 'Maximum number of issues in preparation status (default: 6)')
-    .option('--allowIssueCacheMinutes <minutes>', 'Allow cache for issues in minutes (default: 0)')
+    .option('--allowIssueCacheMinutes <minutes>', 'Allow cache for issues in minutes (default: 10)')
     .option('--utilizationPercentageThreshold <percent>', 'Claude utilization percentage threshold (default: 90)')
     .option('--allowedIssueAuthors <authors>', 'Comma-separated list of allowed issue authors')
     .option('--preparationProcessCheckCommand <template>', 'Shell command template with {URL} placeholder to check if a preparation process is alive')
@@ -121,7 +121,7 @@ exports.program
         }
         maximumPreparingIssuesCount = parsedCount;
     }
-    const allowIssueCacheMinutes = config.allowIssueCacheMinutes ?? 0;
+    const allowIssueCacheMinutes = config.allowIssueCacheMinutes ?? 10;
     console.log(`maximumPreparingIssuesCount: ${maximumPreparingIssuesCount ?? 'null (default: 6)'}`);
     const projectName = config.projectName ?? 'default';
     const localStorageRepository = new LocalStorageRepository_1.LocalStorageRepository();

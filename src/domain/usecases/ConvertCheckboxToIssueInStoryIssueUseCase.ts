@@ -40,9 +40,9 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
       ) {
         continue;
       }
-      const freshStoryIssue = input.cacheUsed
-        ? await this.issueRepository.getIssueByUrl(storyIssue.url)
-        : storyIssue;
+      const freshStoryIssue = await this.issueRepository.getIssueByUrl(
+        storyIssue.url,
+      );
       if (!freshStoryIssue) {
         throw new Error(`Story issue not found by URL: ${storyIssue.url}`);
       }

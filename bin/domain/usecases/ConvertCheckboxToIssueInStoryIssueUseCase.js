@@ -8,7 +8,7 @@ class ConvertCheckboxToIssueInStoryIssueUseCase {
         this.issueRepository = issueRepository;
         this.run = async (input) => {
             const story = input.project.story;
-            if (!story || input.cacheUsed) {
+            if (!story) {
                 return;
             }
             for (const storyOption of input.project.story?.stories || []) {
