@@ -12,6 +12,7 @@ export type ProjectItem = {
     labels: string[];
     assignees: string[];
     createdAt: string;
+    author: string;
     customFields: {
         name: string;
         value: string | null;

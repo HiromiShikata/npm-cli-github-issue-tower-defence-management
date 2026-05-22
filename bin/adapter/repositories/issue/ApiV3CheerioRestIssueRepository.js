@@ -129,7 +129,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 isInProgress: (0, utils_1.normalizeFieldName)(status || '').includes('progress'),
                 isClosed: item.state !== 'OPEN',
                 createdAt: new Date(item.createdAt || '2000-01-01'),
-                author: '',
+                author: item.author,
             };
         };
         this.getAllIssuesFromCache = async (cacheKey, allowCacheMinutes) => {

@@ -376,7 +376,7 @@ export class ApiV3CheerioRestIssueRepository
       isInProgress: normalizeFieldName(status || '').includes('progress'),
       isClosed: item.state !== 'OPEN',
       createdAt: new Date(item.createdAt || '2000-01-01'),
-      author: '',
+      author: item.author,
     };
   };
   getAllIssuesFromCache = async (

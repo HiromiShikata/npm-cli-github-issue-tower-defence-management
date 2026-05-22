@@ -149,7 +149,6 @@ export class StartPreparationUseCase {
       }
       if (
         params.allowedIssueAuthors !== null &&
-        issue.author !== '' &&
         !params.allowedIssueAuthors.includes(issue.author)
       ) {
         continue;

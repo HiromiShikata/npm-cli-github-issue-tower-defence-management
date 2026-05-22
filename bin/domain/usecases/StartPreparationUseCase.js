@@ -65,7 +65,6 @@ class StartPreparationUseCase {
                     continue;
                 }
                 if (params.allowedIssueAuthors !== null &&
-                    issue.author !== '' &&
                     !params.allowedIssueAuthors.includes(issue.author)) {
                     continue;
                 }
