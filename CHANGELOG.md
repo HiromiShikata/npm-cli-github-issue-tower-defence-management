@@ -1,3 +1,11 @@
+## [1.50.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.50.2...v1.50.3) (2026-05-22)
+
+
+### Bug Fixes
+
+* **core:** populate Issue.author from GitHub API and enforce deny-by-default for allowedIssueAuthors ([9fd44fd](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9fd44fd437342800c84647ede441c7c0b9964e5f))
+* **core:** rebuild bin with correct typia transforms and revert unrelated package-lock.json changes ([836fb7d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/836fb7d2e6eb96686f86963b5a540761d1f56b21))
+
 ## [1.50.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.50.1...v1.50.2) (2026-05-21)
 
 
