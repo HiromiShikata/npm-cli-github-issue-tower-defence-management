@@ -2,6 +2,8 @@ import { BaseGitHubRepository } from './BaseGitHubRepository';
 import { ProjectRepository } from '../../domain/usecases/adapter-interfaces/ProjectRepository';
 import { FieldOption, Project } from '../../domain/entities/Project';
 export declare class GraphqlProjectRepository extends BaseGitHubRepository implements Pick<ProjectRepository, 'getProject' | 'findProjectIdByUrl' | 'getByUrl' | 'updateStoryList' | 'updateStatusList'> {
+    private readonly projectIdCache;
+    private readonly fetchProjectIdFailedAt;
     extractProjectFromUrl: (projectUrl: string) => {
         owner: string;
         projectNumber: number;

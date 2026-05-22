@@ -1,3 +1,10 @@
+## [1.52.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.52.0...v1.52.1) (2026-05-22)
+
+
+### Bug Fixes
+
+* **core:** harden fetchProjectId for user-owned projects, errors-only responses, and memoize project IDs ([4a7d641](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4a7d641ab4c57f335d4f87266a4446b348904030))
+
 # [1.52.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.51.0...v1.52.0) (2026-05-22)
 
 

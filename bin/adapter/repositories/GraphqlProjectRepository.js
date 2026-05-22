@@ -7,9 +7,12 @@ exports.GraphqlProjectRepository = void 0;
 const ky_1 = __importDefault(require("ky"));
 const BaseGitHubRepository_1 = require("./BaseGitHubRepository");
 const utils_1 = require("./utils");
+const ONE_HOUR_MS = 60 * 60 * 1000;
 class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
     constructor() {
         super(...arguments);
+        this.projectIdCache = new Map();
+        this.fetchProjectIdFailedAt = new Map();
         this.extractProjectFromUrl = (projectUrl) => {
             const url = new URL(projectUrl);
             const path = url.pathname.split('/');
@@ -18,6 +21,15 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             return { owner, projectNumber };
         };
         this.fetchProjectId = async (login, projectNumber) => {
+            const cacheKey = `${login}:${projectNumber}`;
+            const cached = this.projectIdCache.get(cacheKey);
+            if (cached) {
+                return cached;
+            }
+            const failedAt = this.fetchProjectIdFailedAt.get(cacheKey);
+            if (failedAt !== undefined && Date.now() - failedAt < ONE_HOUR_MS) {
+                throw new Error(`fetchProjectId for ${login}/${projectNumber} is in backoff after a recent failure`);
+            }
             const graphqlQuery = {
                 query: `query GetProjectID($login: String!, $number: Int!) {
   organization(login: $login) {
@@ -38,15 +50,23 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
                     number: projectNumber,
                 },
             };
-            const response = await ky_1.default
-                .post('https://api.github.com/graphql', {
-                json: graphqlQuery,
-                headers: {
-                    Authorization: `Bearer ${this.ghToken}`,
-                },
-            })
-                .json();
+            let response;
+            try {
+                response = await ky_1.default
+                    .post('https://api.github.com/graphql', {
+                    json: graphqlQuery,
+                    headers: {
+                        Authorization: `Bearer ${this.ghToken}`,
+                    },
+                })
+                    .json();
+            }
+            catch (error) {
+                this.fetchProjectIdFailedAt.set(cacheKey, Date.now());
+                throw new Error(`fetchProjectId network error for ${login}/${projectNumber}: ${String(error)}`);
+            }
             if (!response.data) {
+                this.fetchProjectIdFailedAt.set(cacheKey, Date.now());
                 const errorMessages = response.errors
                     ? response.errors.map((e) => e.message).join('; ')
                     : 'no data field in response';
@@ -55,8 +75,10 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             const projectId = response.data.organization?.projectV2?.id ||
                 response.data.user?.projectV2?.id;
             if (!projectId) {
-                throw new Error('projectId is not found');
+                this.fetchProjectIdFailedAt.set(cacheKey, Date.now());
+                throw new Error(`fetchProjectId: project not found for ${login}/${projectNumber}`);
             }
+            this.projectIdCache.set(cacheKey, projectId);
             return projectId;
         };
         this.findProjectIdByUrl = async (projectUrl) => {
