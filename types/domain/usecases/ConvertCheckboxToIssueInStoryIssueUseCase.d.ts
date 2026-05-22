@@ -4,8 +4,8 @@ import { Project } from '../entities/Project';
 import { StoryObjectMap } from '../entities/StoryObjectMap';
 import { Member } from '../entities/Member';
 export declare class ConvertCheckboxToIssueInStoryIssueUseCase {
-    readonly issueRepository: Pick<IssueRepository, 'createNewIssue' | 'updateIssue' | 'updateStory' | 'getIssueByUrl'>;
-    constructor(issueRepository: Pick<IssueRepository, 'createNewIssue' | 'updateIssue' | 'updateStory' | 'getIssueByUrl'>);
+    readonly issueRepository: Pick<IssueRepository, 'createNewIssue' | 'updateIssue' | 'updateStory' | 'getIssueByUrl' | 'addIssueToProject'>;
+    constructor(issueRepository: Pick<IssueRepository, 'createNewIssue' | 'updateIssue' | 'updateStory' | 'getIssueByUrl' | 'addIssueToProject'>);
     run: (input: {
         project: Project;
         issues: Issue[];

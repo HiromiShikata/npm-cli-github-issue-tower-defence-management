@@ -45,5 +45,6 @@ export declare class GraphqlProjectItemRepository extends BaseGitHubRepository {
     updateProjectTextField: (project: Project["id"], fieldId: string, issue: Issue["itemId"], text: string) => Promise<void>;
     removeItemFromProject: (projectId: string, itemId: string) => Promise<void>;
     removeItemFromProjectByIssueUrl: (issueUrl: string, projectId: string) => Promise<void>;
+    addIssueToProject: (projectId: string, issueUrl: string) => Promise<void>;
 }
 //# sourceMappingURL=GraphqlProjectItemRepository.d.ts.map

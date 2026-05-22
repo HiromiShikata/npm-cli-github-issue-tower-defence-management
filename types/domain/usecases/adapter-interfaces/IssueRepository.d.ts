@@ -44,5 +44,6 @@ export interface IssueRepository {
     createCommentByUrl: (issueOrPrUrl: string, commentBody: string) => Promise<void>;
     getAllOpened: (project: Project) => Promise<Issue[]>;
     getStoryObjectMap: (project: Project, allowCacheMinutes: number) => Promise<StoryObjectMap>;
+    addIssueToProject: (project: Project, issueUrl: string) => Promise<void>;
 }
 //# sourceMappingURL=IssueRepository.d.ts.map

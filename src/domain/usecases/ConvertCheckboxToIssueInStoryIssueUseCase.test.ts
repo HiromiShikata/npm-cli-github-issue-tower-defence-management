@@ -114,6 +114,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
       expectedUpdateIssueCalls: [Issue][];
       expectedUpdateStoryCalls: [Project, Issue, string][];
       expectedGetIssueByUrlCalls: [string][];
+      expectedAddIssueToProjectCalls: [Project, string][];
     }[] = [
       {
         name: 'should not process when story is not set',
@@ -129,6 +130,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
         expectedUpdateIssueCalls: [],
         expectedUpdateStoryCalls: [],
         expectedGetIssueByUrlCalls: [],
+        expectedAddIssueToProjectCalls: [],
       },
       {
         name: 'should process story issues even when cache is used',
@@ -272,6 +274,12 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           ['https://github.com/org/repo/issues/3'],
           ['https://github.com/org/repo/issues/4'],
         ],
+        expectedAddIssueToProjectCalls: [
+          [basicProject, 'https://github.com/org/repo/issues/1'],
+          [basicProject, 'https://github.com/org/repo/issues/2'],
+          [basicProject, 'https://github.com/org/repo/issues/3'],
+          [basicProject, 'https://github.com/org/repo/issues/4'],
+        ],
       },
       {
         name: 'should skip regular stories',
@@ -287,6 +295,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
         expectedUpdateIssueCalls: [],
         expectedUpdateStoryCalls: [],
         expectedGetIssueByUrlCalls: [],
+        expectedAddIssueToProjectCalls: [],
       },
       {
         name: 'should throw error when story issue not found',
@@ -303,6 +312,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
         expectedUpdateIssueCalls: [],
         expectedUpdateStoryCalls: [],
         expectedGetIssueByUrlCalls: [],
+        expectedAddIssueToProjectCalls: [],
       },
 
       {
@@ -329,6 +339,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
         expectedUpdateIssueCalls: [],
         expectedUpdateStoryCalls: [],
         expectedGetIssueByUrlCalls: [],
+        expectedAddIssueToProjectCalls: [],
       },
       {
         name: 'should add story view link and create new issues for checkboxes',
@@ -472,6 +483,12 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           ['https://github.com/org/repo/issues/3'],
           ['https://github.com/org/repo/issues/4'],
         ],
+        expectedAddIssueToProjectCalls: [
+          [basicProject, 'https://github.com/org/repo/issues/1'],
+          [basicProject, 'https://github.com/org/repo/issues/2'],
+          [basicProject, 'https://github.com/org/repo/issues/3'],
+          [basicProject, 'https://github.com/org/repo/issues/4'],
+        ],
       },
       {
         name: 'should not add story view link when it already exists',
@@ -540,6 +557,20 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           ['https://github.com/org/repo/issues/123'],
           ['https://github.com/org/repo/issues/1'],
         ],
+        expectedAddIssueToProjectCalls: [
+          [
+            {
+              ...basicProject,
+              story: {
+                ...basicStory,
+                stories: [
+                  { ...mock<StoryOption>(), id: 'story1', name: 'Story 1' },
+                ],
+              },
+            },
+            'https://github.com/org/repo/issues/1',
+          ],
+        ],
       },
       {
         name: 'should add story view link even when no checkboxes exist',
@@ -590,6 +621,7 @@ Some description without checkboxes`,
         expectedGetIssueByUrlCalls: [
           ['https://github.com/org/repo/issues/123'],
         ],
+        expectedAddIssueToProjectCalls: [],
       },
       {
         name: 'should create new issues with replaced STORYNAME for checkboxes and update story issue',
@@ -740,6 +772,12 @@ Some description without checkboxes`,
           ['https://github.com/org/repo/issues/3'],
           ['https://github.com/org/repo/issues/4'],
         ],
+        expectedAddIssueToProjectCalls: [
+          [basicProject, 'https://github.com/org/repo/issues/1'],
+          [basicProject, 'https://github.com/org/repo/issues/2'],
+          [basicProject, 'https://github.com/org/repo/issues/3'],
+          [basicProject, 'https://github.com/org/repo/issues/4'],
+        ],
       },
       {
         name: 'should create new issues in same repo as parent story issue when different stories have different repos',
@@ -883,6 +921,10 @@ Some description without checkboxes`,
           ['https://github.com/org/repo/issues/456'],
           ['https://github.com/orgB/repoB/issues/2'],
         ],
+        expectedAddIssueToProjectCalls: [
+          [basicProject, 'https://github.com/orgA/repoA/issues/1'],
+          [basicProject, 'https://github.com/orgB/repoB/issues/2'],
+        ],
       },
     ];
 
@@ -895,6 +937,7 @@ Some description without checkboxes`,
         expectedUpdateIssueCalls,
         expectedUpdateStoryCalls,
         expectedGetIssueByUrlCalls,
+        expectedAddIssueToProjectCalls,
       }) => {
         it(name, async () => {
           jest.clearAllMocks();
@@ -942,6 +985,9 @@ Some description without checkboxes`,
           );
           expect(mockIssueRepository.getIssueByUrl.mock.calls).toEqual(
             expectedGetIssueByUrlCalls,
+          );
+          expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual(
+            expectedAddIssueToProjectCalls,
           );
         });
       },

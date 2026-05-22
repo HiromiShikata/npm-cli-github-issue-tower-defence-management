@@ -10,7 +10,11 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
   constructor(
     readonly issueRepository: Pick<
       IssueRepository,
-      'createNewIssue' | 'updateIssue' | 'updateStory' | 'getIssueByUrl'
+      | 'createNewIssue'
+      | 'updateIssue'
+      | 'updateStory'
+      | 'getIssueByUrl'
+      | 'addIssueToProject'
     >,
   ) {}
 
@@ -88,7 +92,10 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
           ...freshStoryIssue,
           body: newBody,
         });
-        await new Promise((resolve) => setTimeout(resolve, 30 * 1000));
+        await this.issueRepository.addIssueToProject(
+          input.project,
+          newIssueUrl,
+        );
         const newIssue = await this.issueRepository.getIssueByUrl(newIssueUrl);
         if (!newIssue) {
           throw new Error(`Issue not found: ${newIssueUrl}`);
