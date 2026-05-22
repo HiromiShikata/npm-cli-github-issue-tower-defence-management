@@ -333,7 +333,9 @@ describe('HandleScheduledEventUseCase', () => {
       mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
       await useCase.run(input);
 
-      expect(mockRevertNotReadyAwaitingQualityCheckUseCase.run).toHaveBeenCalledWith(
+      expect(
+        mockRevertNotReadyAwaitingQualityCheckUseCase.run,
+      ).toHaveBeenCalledWith(
         expect.objectContaining({
           projectUrl: 'https://github.com/test-org/test-project',
           allowIssueCacheMinutes: 60,
@@ -360,7 +362,9 @@ describe('HandleScheduledEventUseCase', () => {
       mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
       await useCase.run(input);
 
-      expect(mockRevertNotReadyAwaitingQualityCheckUseCase.run).not.toHaveBeenCalled();
+      expect(
+        mockRevertNotReadyAwaitingQualityCheckUseCase.run,
+      ).not.toHaveBeenCalled();
     });
 
     describe('story issue creation progress logs', () => {
