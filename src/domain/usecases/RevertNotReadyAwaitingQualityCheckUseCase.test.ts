@@ -99,7 +99,9 @@ describe('RevertNotReadyAwaitingQualityCheckUseCase', () => {
     };
 
     mockIssueRepository = {
-      getAllIssues: jest.fn().mockResolvedValue({ issues: [], cacheUsed: false }),
+      getAllIssues: jest
+        .fn()
+        .mockResolvedValue({ issues: [], cacheUsed: false }),
       updateStatus: jest.fn().mockResolvedValue(undefined),
       findRelatedOpenPRs: jest.fn().mockResolvedValue([]),
       getOpenPullRequest: jest.fn().mockResolvedValue(null),

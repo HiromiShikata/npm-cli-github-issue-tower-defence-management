@@ -17,7 +17,10 @@ export class RevertNotReadyAwaitingQualityCheckUseCase {
     >,
     private readonly issueRepository: Pick<
       IssueRepository,
-      'getAllIssues' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest'
+      | 'getAllIssues'
+      | 'updateStatus'
+      | 'findRelatedOpenPRs'
+      | 'getOpenPullRequest'
     >,
     private readonly issueCommentRepository: Pick<
       IssueCommentRepository,
