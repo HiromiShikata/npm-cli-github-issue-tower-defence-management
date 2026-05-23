@@ -1,3 +1,10 @@
+# [1.54.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.53.0...v1.54.0) (2026-05-23)
+
+
+### Features
+
+* **core:** change status ([b027776](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b0277767b231cca3f5910998e63b1b2fc1166e0e))
+
 # [1.53.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.52.1...v1.53.0) (2026-05-23)
 
 
