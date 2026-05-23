@@ -1,3 +1,10 @@
+# [1.55.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.54.0...v1.55.0) (2026-05-23)
+
+
+### Features
+
+* **core:** assign manager when creating new task from story issue ([325dd60](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/325dd600aa9c31a44eae2699c36edd862efef1ab))
+
 # [1.54.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.53.0...v1.54.0) (2026-05-23)
 
 

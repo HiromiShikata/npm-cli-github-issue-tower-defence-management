@@ -218,6 +218,7 @@ ${JSON.stringify(e)}
                 cacheUsed,
                 urlOfStoryView: input.urlOfStoryView,
                 storyObjectMap: storyObjectMap,
+                manager: input.manager,
             });
             await this.changeStatusByStoryColorUseCase.run({
                 project,

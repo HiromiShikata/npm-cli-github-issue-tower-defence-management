@@ -44,7 +44,7 @@ class ConvertCheckboxToIssueInStoryIssueUseCase {
                 for (const checkboxText of checkboxTextsNotCreatedIssue) {
                     const issueTitle = checkboxText.replace('STORYNAME', `${storyOption.name} #${freshStoryIssue.number}`);
                     const newIssueBody = `- Parent issue: ${freshStoryIssue.url}`;
-                    const newIssueNumber = await this.issueRepository.createNewIssue(freshStoryIssue.org, freshStoryIssue.repo, issueTitle, newIssueBody, [], []);
+                    const newIssueNumber = await this.issueRepository.createNewIssue(freshStoryIssue.org, freshStoryIssue.repo, issueTitle, newIssueBody, [input.manager], []);
                     const newIssueUrl = `https://github.com/${freshStoryIssue.org}/${freshStoryIssue.repo}/issues/${newIssueNumber}`;
                     newBody = newBody.replace(`- [ ] ${checkboxText}`, `- [ ] ${newIssueUrl}`);
                     await this.issueRepository.updateIssue({

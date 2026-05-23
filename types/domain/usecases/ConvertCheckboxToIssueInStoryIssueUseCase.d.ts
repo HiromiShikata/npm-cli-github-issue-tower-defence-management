@@ -2,6 +2,7 @@ import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
 import { StoryObjectMap } from '../entities/StoryObjectMap';
+import { Member } from '../entities/Member';
 export declare class ConvertCheckboxToIssueInStoryIssueUseCase {
     readonly issueRepository: Pick<IssueRepository, 'createNewIssue' | 'updateIssue' | 'updateStory' | 'getIssueByUrl'>;
     constructor(issueRepository: Pick<IssueRepository, 'createNewIssue' | 'updateIssue' | 'updateStory' | 'getIssueByUrl'>);
@@ -11,6 +12,7 @@ export declare class ConvertCheckboxToIssueInStoryIssueUseCase {
         cacheUsed: boolean;
         urlOfStoryView: string;
         storyObjectMap: StoryObjectMap;
+        manager: Member["name"];
     }) => Promise<void>;
     buildStoryViewLink: (urlOfStoryView: string, storyName: string) => string;
     findCheckboxTextsNotCreatedIssue: (storyIssueBody: string) => string[];
