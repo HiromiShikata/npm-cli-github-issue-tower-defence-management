@@ -1,3 +1,10 @@
+# [1.58.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.57.0...v1.58.0) (2026-05-23)
+
+
+### Features
+
+* **core:** wire long-term OAuth token rotation into the schedule path ([c5a4fe7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c5a4fe72cfa3dd2a3bc62def6ee127e2b9952fd2)), closes [#615](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/615)
+
 # [1.57.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.56.1...v1.57.0) (2026-05-23)
 
 
