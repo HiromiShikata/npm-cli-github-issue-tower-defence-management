@@ -159,8 +159,8 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockImplementation(
-      (url: string) => Promise.resolve(url === issueUrl ? issue : prIssue),
+    mockIssueRepository.get.mockImplementation((url: string) =>
+      Promise.resolve(url === issueUrl ? issue : prIssue),
     );
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({ content: 'From: Test report' }),
@@ -225,8 +225,8 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockImplementation(
-      (url: string) => Promise.resolve(url === issueUrl ? issue : prIssue),
+    mockIssueRepository.get.mockImplementation((url: string) =>
+      Promise.resolve(url === issueUrl ? issue : prIssue),
     );
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({ content: 'From: Agent report' }),
@@ -716,13 +716,11 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockImplementation(
-      async (url: string) => {
-        if (url === issueUrl) return issue;
-        if (url === prUrl) return prIssue;
-        return null;
-      },
-    );
+    mockIssueRepository.get.mockImplementation(async (url: string) => {
+      if (url === issueUrl) return issue;
+      if (url === prUrl) return prIssue;
+      return null;
+    });
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({ content: 'Auto Status Check: REJECTED - first' }),
       createMockComment({ content: 'Auto Status Check: REJECTED - second' }),
