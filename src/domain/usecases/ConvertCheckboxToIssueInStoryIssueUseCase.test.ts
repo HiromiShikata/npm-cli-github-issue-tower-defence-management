@@ -100,6 +100,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
         cacheUsed: boolean;
         urlOfStoryView: string;
         storyObjectMap: StoryObjectMap;
+        manager: string;
       };
       expectedThrowError?: Error;
       expectedCreateNewIssueCalls: [
@@ -122,6 +123,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           cacheUsed: false,
           urlOfStoryView: 'https://example.com',
           storyObjectMap: basicStoryObjectMap,
+          manager: 'manager',
         },
         expectedCreateNewIssueCalls: [],
         expectedUpdateIssueCalls: [],
@@ -136,6 +138,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           cacheUsed: true,
           urlOfStoryView: 'https://example.com',
           storyObjectMap: basicStoryObjectMap,
+          manager: 'manager',
         },
         expectedCreateNewIssueCalls: [
           [
@@ -143,7 +146,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             'repo',
             'Task 1',
             '- Parent issue: https://github.com/org/repo/issues/123',
-            [],
+            ['manager'],
             [],
           ],
           [
@@ -151,7 +154,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             'repo',
             'Task 2',
             '- Parent issue: https://github.com/org/repo/issues/123',
-            [],
+            ['manager'],
             [],
           ],
           [
@@ -159,7 +162,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             'repo',
             'Task 3',
             '- Parent issue: https://github.com/org/repo/issues/456',
-            [],
+            ['manager'],
             [],
           ],
           [
@@ -167,7 +170,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             'repo',
             'Task 4',
             '- Parent issue: https://github.com/org/repo/issues/456',
-            [],
+            ['manager'],
             [],
           ],
         ],
@@ -278,6 +281,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           cacheUsed: false,
           urlOfStoryView: 'https://example.com',
           storyObjectMap: regularStoryObjectMap,
+          manager: 'manager',
         },
         expectedCreateNewIssueCalls: [],
         expectedUpdateIssueCalls: [],
@@ -292,6 +296,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           cacheUsed: false,
           urlOfStoryView: 'https://example.com',
           storyObjectMap: basicStoryObjectMap,
+          manager: 'manager',
         },
         expectedThrowError: new Error('Story issue not found: Story 1'),
         expectedCreateNewIssueCalls: [],
@@ -318,6 +323,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           cacheUsed: false,
           urlOfStoryView: 'https://example.com',
           storyObjectMap: basicStoryObjectMap,
+          manager: 'manager',
         },
         expectedCreateNewIssueCalls: [],
         expectedUpdateIssueCalls: [],
@@ -332,6 +338,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           cacheUsed: false,
           urlOfStoryView: 'https://example.com',
           storyObjectMap: basicStoryObjectMap,
+          manager: 'manager',
         },
         expectedCreateNewIssueCalls: [
           [
@@ -339,7 +346,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             'repo',
             'Task 1',
             '- Parent issue: https://github.com/org/repo/issues/123',
-            [],
+            ['manager'],
             [],
           ],
           [
@@ -347,7 +354,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             'repo',
             'Task 2',
             '- Parent issue: https://github.com/org/repo/issues/123',
-            [],
+            ['manager'],
             [],
           ],
           [
@@ -355,7 +362,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             'repo',
             'Task 3',
             '- Parent issue: https://github.com/org/repo/issues/456',
-            [],
+            ['manager'],
             [],
           ],
           [
@@ -363,7 +370,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             'repo',
             'Task 4',
             '- Parent issue: https://github.com/org/repo/issues/456',
-            [],
+            ['manager'],
             [],
           ],
         ],
@@ -489,6 +496,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           cacheUsed: false,
           urlOfStoryView: 'https://example.com',
           storyObjectMap: new Map([['Story 1', basicStoryObject1]]),
+          manager: 'manager',
         },
         expectedCreateNewIssueCalls: [
           [
@@ -496,7 +504,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             'repo',
             'Task 1',
             '- Parent issue: https://github.com/org/repo/issues/123',
-            [],
+            ['manager'],
             [],
           ],
         ],
@@ -565,6 +573,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
               },
             ],
           ]),
+          manager: 'manager',
         },
         expectedCreateNewIssueCalls: [],
         expectedUpdateIssueCalls: [
@@ -597,6 +606,7 @@ Some description without checkboxes`,
           cacheUsed: false,
           urlOfStoryView: 'https://example.com',
           storyObjectMap: basicStoryObjectMap,
+          manager: 'manager',
         },
         expectedCreateNewIssueCalls: [
           [
@@ -604,7 +614,7 @@ Some description without checkboxes`,
             'repo',
             'Task 1',
             '- Parent issue: https://github.com/org/repo/issues/123',
-            [],
+            ['manager'],
             [],
           ],
           [
@@ -612,7 +622,7 @@ Some description without checkboxes`,
             'repo',
             'Task 2 for `Story 1 #123`',
             '- Parent issue: https://github.com/org/repo/issues/123',
-            [],
+            ['manager'],
             [],
           ],
           [
@@ -620,7 +630,7 @@ Some description without checkboxes`,
             'repo',
             'Task 3',
             '- Parent issue: https://github.com/org/repo/issues/456',
-            [],
+            ['manager'],
             [],
           ],
           [
@@ -628,7 +638,7 @@ Some description without checkboxes`,
             'repo',
             'Task 4',
             '- Parent issue: https://github.com/org/repo/issues/456',
-            [],
+            ['manager'],
             [],
           ],
         ],
@@ -787,6 +797,7 @@ Some description without checkboxes`,
               },
             ],
           ]),
+          manager: 'manager',
         },
         expectedCreateNewIssueCalls: [
           [
@@ -794,7 +805,7 @@ Some description without checkboxes`,
             'repoA',
             'Task 1',
             '- Parent issue: https://github.com/org/repo/issues/123',
-            [],
+            ['manager'],
             [],
           ],
           [
@@ -802,7 +813,7 @@ Some description without checkboxes`,
             'repoB',
             'Task 2',
             '- Parent issue: https://github.com/org/repo/issues/456',
-            [],
+            ['manager'],
             [],
           ],
         ],

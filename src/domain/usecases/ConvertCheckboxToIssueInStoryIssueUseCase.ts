@@ -4,6 +4,7 @@ import { Project } from '../entities/Project';
 import { StoryObjectMap } from '../entities/StoryObjectMap';
 import { encodeForURI } from './utils';
 import { ICEBOX_STATUS_NAME } from '../entities/WorkflowStatus';
+import { Member } from '../entities/Member';
 
 export class ConvertCheckboxToIssueInStoryIssueUseCase {
   constructor(
@@ -19,6 +20,7 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
     cacheUsed: boolean;
     urlOfStoryView: string;
     storyObjectMap: StoryObjectMap;
+    manager: Member['name'];
   }): Promise<void> => {
     const story = input.project.story;
     if (!story) {
@@ -74,7 +76,7 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
           freshStoryIssue.repo,
           issueTitle,
           newIssueBody,
-          [],
+          [input.manager],
           [],
         );
         const newIssueUrl = `https://github.com/${freshStoryIssue.org}/${freshStoryIssue.repo}/issues/${newIssueNumber}`;
