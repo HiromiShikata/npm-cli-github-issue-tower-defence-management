@@ -34,6 +34,8 @@ export class StartPreparationUseCase {
     utilizationPercentageThreshold: number;
     allowedIssueAuthors: string[] | null;
     codexHomeCandidates: string[] | null;
+    claudeCodeOauthTokens: string[] | null;
+    claudeProxyBaseUrl: string | null;
     allowIssueCacheMinutes: number;
   }): Promise<void> => {
     const claudeUsages = await this.claudeRepository.getUsage();
@@ -271,7 +273,24 @@ export class StartPreparationUseCase {
           ];
         awArgs.push('--codexHome', codexHome);
       }
-      await this.localCommandRunner.runCommand('aw', awArgs);
+      let spawnEnv: Record<string, string> | undefined;
+      if (
+        params.claudeCodeOauthTokens !== null &&
+        params.claudeCodeOauthTokens.length > 0 &&
+        params.claudeProxyBaseUrl !== null
+      ) {
+        const tokens = params.claudeCodeOauthTokens;
+        const selected = tokens[startedInThisRunCount % tokens.length];
+        spawnEnv = {
+          CLAUDE_CODE_OAUTH_TOKEN: selected,
+          ANTHROPIC_BASE_URL: params.claudeProxyBaseUrl,
+        };
+      }
+      await this.localCommandRunner.runCommand(
+        'aw',
+        awArgs,
+        spawnEnv ? { env: spawnEnv } : undefined,
+      );
       startedInThisRunCount++;
       updatedCurrentPreparationIssueCount++;
     }

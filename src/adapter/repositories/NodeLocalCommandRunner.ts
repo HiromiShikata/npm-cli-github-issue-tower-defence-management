@@ -1,4 +1,7 @@
-import { LocalCommandRunner } from '../../domain/usecases/adapter-interfaces/LocalCommandRunner';
+import {
+  LocalCommandRunner,
+  LocalCommandRunnerOptions,
+} from '../../domain/usecases/adapter-interfaces/LocalCommandRunner';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 
@@ -8,16 +11,27 @@ export class NodeLocalCommandRunner implements LocalCommandRunner {
   async runCommand(
     program: string,
     args: string[],
+    options?: LocalCommandRunnerOptions,
   ): Promise<{
     stdout: string;
     stderr: string;
     exitCode: number;
   }> {
+    const execOptions: Parameters<typeof execFileAsync>[2] = {
+      encoding: 'utf8',
+    };
+    if (options?.env) {
+      execOptions.env = { ...process.env, ...options.env };
+    }
     try {
-      const { stdout, stderr } = await execFileAsync(program, args);
+      const { stdout, stderr } = await execFileAsync(
+        program,
+        args,
+        execOptions,
+      );
       return {
-        stdout,
-        stderr,
+        stdout: String(stdout),
+        stderr: String(stderr),
         exitCode: 0,
       };
     } catch (error) {

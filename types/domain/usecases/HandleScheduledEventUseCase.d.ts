@@ -72,6 +72,8 @@ export declare class HandleScheduledEventUseCase {
             allowedIssueAuthors?: string[] | null;
             preparationProcessCheckCommand?: string;
             codexHomeCandidates?: string[] | null;
+            claudeCodeOauthTokens?: string[] | null;
+            claudeProxyBaseUrl?: string | null;
             awLogDirectoryPath?: string;
             awLogStaleThresholdMinutes?: number;
             awaitingQualityCheckStatus?: string | null;

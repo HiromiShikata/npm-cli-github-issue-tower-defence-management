@@ -11,6 +11,9 @@ Object.defineProperty(exports, "mergeConfigs", { enumerable: true, get: function
 Object.defineProperty(exports, "fetchProjectReadme", { enumerable: true, get: function () { return projectConfig_1.fetchProjectReadme; } });
 const projectConfig_2 = require("./projectConfig");
 const StartPreparationUseCase_1 = require("../../../domain/usecases/StartPreparationUseCase");
+const TokenListLoader_1 = require("../../proxy/TokenListLoader");
+const ensureProxyRunning_1 = require("../../proxy/ensureProxyRunning");
+const RateLimitCache_1 = require("../../proxy/RateLimitCache");
 const NotifyFinishedIssuePreparationUseCase_1 = require("../../../domain/usecases/NotifyFinishedIssuePreparationUseCase");
 const LocalStorageRepository_1 = require("../../repositories/LocalStorageRepository");
 const GraphqlProjectRepository_1 = require("../../repositories/GraphqlProjectRepository");
@@ -158,6 +161,30 @@ exports.program
     const codexHomeCandidates = config.codexHomeCandidates && config.codexHomeCandidates.length > 0
         ? config.codexHomeCandidates
         : null;
+    const rawTokens = config.claudeCodeOauthTokenListJsonPath
+        ? (0, TokenListLoader_1.loadTokens)(config.claudeCodeOauthTokenListJsonPath)
+        : null;
+    let claudeCodeOauthTokens = null;
+    let claudeProxyBaseUrl = null;
+    if (rawTokens !== null && rawTokens.length > 0) {
+        await (0, ensureProxyRunning_1.ensureProxyRunning)(RateLimitCache_1.PROXY_PORT);
+        const ranked = rawTokens
+            .map((token) => {
+            const snapshot = (0, RateLimitCache_1.readRateLimit)(token);
+            return {
+                token,
+                utilization: snapshot ? snapshot.fiveHourUtilization : 0,
+                blocked: snapshot?.blocked ?? false,
+            };
+        })
+            .filter((entry) => !entry.blocked)
+            .sort((a, b) => a.utilization - b.utilization)
+            .map((entry) => entry.token);
+        if (ranked.length > 0) {
+            claudeCodeOauthTokens = ranked;
+            claudeProxyBaseUrl = `http://127.0.0.1:${RateLimitCache_1.PROXY_PORT}`;
+        }
+    }
     await useCase.run({
         projectUrl,
         defaultAgentName,
@@ -168,6 +195,8 @@ exports.program
         utilizationPercentageThreshold: config.utilizationPercentageThreshold ?? 90,
         allowedIssueAuthors,
         codexHomeCandidates,
+        claudeCodeOauthTokens,
+        claudeProxyBaseUrl,
         allowIssueCacheMinutes,
     });
 });

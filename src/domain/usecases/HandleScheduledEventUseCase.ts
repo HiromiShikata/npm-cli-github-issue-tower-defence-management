@@ -81,6 +81,8 @@ export class HandleScheduledEventUseCase {
       allowedIssueAuthors?: string[] | null;
       preparationProcessCheckCommand?: string;
       codexHomeCandidates?: string[] | null;
+      claudeCodeOauthTokens?: string[] | null;
+      claudeProxyBaseUrl?: string | null;
       awLogDirectoryPath?: string;
       awLogStaleThresholdMinutes?: number;
       awaitingQualityCheckStatus?: string | null;
@@ -289,6 +291,9 @@ ${JSON.stringify(e)}
           input.startPreparation.utilizationPercentageThreshold ?? 90,
         allowedIssueAuthors: input.startPreparation.allowedIssueAuthors ?? null,
         codexHomeCandidates: input.startPreparation.codexHomeCandidates ?? null,
+        claudeCodeOauthTokens:
+          input.startPreparation.claudeCodeOauthTokens ?? null,
+        claudeProxyBaseUrl: input.startPreparation.claudeProxyBaseUrl ?? null,
         allowIssueCacheMinutes: input.allowIssueCacheMinutes,
       });
     }

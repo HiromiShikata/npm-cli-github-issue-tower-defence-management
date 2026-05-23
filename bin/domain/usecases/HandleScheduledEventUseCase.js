@@ -148,6 +148,8 @@ ${JSON.stringify(e)}
                     utilizationPercentageThreshold: input.startPreparation.utilizationPercentageThreshold ?? 90,
                     allowedIssueAuthors: input.startPreparation.allowedIssueAuthors ?? null,
                     codexHomeCandidates: input.startPreparation.codexHomeCandidates ?? null,
+                    claudeCodeOauthTokens: input.startPreparation.claudeCodeOauthTokens ?? null,
+                    claudeProxyBaseUrl: input.startPreparation.claudeProxyBaseUrl ?? null,
                     allowIssueCacheMinutes: input.allowIssueCacheMinutes,
                 });
             }

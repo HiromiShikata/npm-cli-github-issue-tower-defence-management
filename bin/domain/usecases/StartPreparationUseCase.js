@@ -152,7 +152,18 @@ class StartPreparationUseCase {
                     const codexHome = params.codexHomeCandidates[startedInThisRunCount % params.codexHomeCandidates.length];
                     awArgs.push('--codexHome', codexHome);
                 }
-                await this.localCommandRunner.runCommand('aw', awArgs);
+                let spawnEnv;
+                if (params.claudeCodeOauthTokens !== null &&
+                    params.claudeCodeOauthTokens.length > 0 &&
+                    params.claudeProxyBaseUrl !== null) {
+                    const tokens = params.claudeCodeOauthTokens;
+                    const selected = tokens[startedInThisRunCount % tokens.length];
+                    spawnEnv = {
+                        CLAUDE_CODE_OAUTH_TOKEN: selected,
+                        ANTHROPIC_BASE_URL: params.claudeProxyBaseUrl,
+                    };
+                }
+                await this.localCommandRunner.runCommand('aw', awArgs, spawnEnv ? { env: spawnEnv } : undefined);
                 startedInThisRunCount++;
                 updatedCurrentPreparationIssueCount++;
             }

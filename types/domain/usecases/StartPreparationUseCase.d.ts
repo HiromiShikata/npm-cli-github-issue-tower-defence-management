@@ -18,6 +18,8 @@ export declare class StartPreparationUseCase {
         utilizationPercentageThreshold: number;
         allowedIssueAuthors: string[] | null;
         codexHomeCandidates: string[] | null;
+        claudeCodeOauthTokens: string[] | null;
+        claudeProxyBaseUrl: string | null;
         allowIssueCacheMinutes: number;
     }) => Promise<void>;
 }

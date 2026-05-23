@@ -12,6 +12,7 @@ export type ConfigFile = {
     projectName?: string;
     preparationProcessCheckCommand?: string;
     codexHomeCandidates?: string[];
+    claudeCodeOauthTokenListJsonPath?: string;
     awLogDirectoryPath?: string;
     awLogStaleThresholdMinutes?: number;
 };

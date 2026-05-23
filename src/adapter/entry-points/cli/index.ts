@@ -16,6 +16,9 @@ import {
   fetchProjectReadme,
 } from './projectConfig';
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
+import { loadTokens } from '../../proxy/TokenListLoader';
+import { ensureProxyRunning } from '../../proxy/ensureProxyRunning';
+import { PROXY_PORT, readRateLimit } from '../../proxy/RateLimitCache';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
 import { LocalStorageRepository } from '../../repositories/LocalStorageRepository';
 import { GraphqlProjectRepository } from '../../repositories/GraphqlProjectRepository';
@@ -289,6 +292,31 @@ program
         ? config.codexHomeCandidates
         : null;
 
+    const rawTokens = config.claudeCodeOauthTokenListJsonPath
+      ? loadTokens(config.claudeCodeOauthTokenListJsonPath)
+      : null;
+    let claudeCodeOauthTokens: string[] | null = null;
+    let claudeProxyBaseUrl: string | null = null;
+    if (rawTokens !== null && rawTokens.length > 0) {
+      await ensureProxyRunning(PROXY_PORT);
+      const ranked = rawTokens
+        .map((token) => {
+          const snapshot = readRateLimit(token);
+          return {
+            token,
+            utilization: snapshot ? snapshot.fiveHourUtilization : 0,
+            blocked: snapshot?.blocked ?? false,
+          };
+        })
+        .filter((entry) => !entry.blocked)
+        .sort((a, b) => a.utilization - b.utilization)
+        .map((entry) => entry.token);
+      if (ranked.length > 0) {
+        claudeCodeOauthTokens = ranked;
+        claudeProxyBaseUrl = `http://127.0.0.1:${PROXY_PORT}`;
+      }
+    }
+
     await useCase.run({
       projectUrl,
       defaultAgentName,
@@ -300,6 +328,8 @@ program
         config.utilizationPercentageThreshold ?? 90,
       allowedIssueAuthors,
       codexHomeCandidates,
+      claudeCodeOauthTokens,
+      claudeProxyBaseUrl,
       allowIssueCacheMinutes,
     });
   });

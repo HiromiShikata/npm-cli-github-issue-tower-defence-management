@@ -506,6 +506,8 @@ codexHomeCandidates:
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
         codexHomeCandidates: null,
+        claudeCodeOauthTokens: null,
+        claudeProxyBaseUrl: null,
         allowIssueCacheMinutes: 10,
       });
     });
@@ -546,6 +548,8 @@ codexHomeCandidates:
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
         codexHomeCandidates: null,
+        claudeCodeOauthTokens: null,
+        claudeProxyBaseUrl: null,
         allowIssueCacheMinutes: 10,
       });
     });

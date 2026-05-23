@@ -32,7 +32,9 @@ describe('NodeLocalCommandRunner', () => {
         stderr: '',
         exitCode: 0,
       });
-      expect(mockExecFileAsync).toHaveBeenCalledWith('echo', ['"test"']);
+      expect(mockExecFileAsync).toHaveBeenCalledWith('echo', ['"test"'], {
+        encoding: 'utf8',
+      });
     });
 
     it('should handle command errors with exit code', async () => {

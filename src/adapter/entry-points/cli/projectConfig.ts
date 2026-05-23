@@ -15,6 +15,7 @@ export type ConfigFile = {
   projectName?: string;
   preparationProcessCheckCommand?: string;
   codexHomeCandidates?: string[];
+  claudeCodeOauthTokenListJsonPath?: string;
   awLogDirectoryPath?: string;
   awLogStaleThresholdMinutes?: number;
 };
@@ -89,6 +90,10 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         'preparationProcessCheckCommand',
       ),
       codexHomeCandidates: getStringArrayValue(parsed, 'codexHomeCandidates'),
+      claudeCodeOauthTokenListJsonPath: getStringValue(
+        parsed,
+        'claudeCodeOauthTokenListJsonPath',
+      ),
       awLogDirectoryPath: getStringValue(parsed, 'awLogDirectoryPath'),
       awLogStaleThresholdMinutes: getNumberValue(
         parsed,
@@ -144,6 +149,10 @@ export const parseProjectReadmeConfig = (readme: string): ConfigFile => {
         'preparationProcessCheckCommand',
       ),
       codexHomeCandidates: getStringArrayValue(parsed, 'codexHomeCandidates'),
+      claudeCodeOauthTokenListJsonPath: getStringValue(
+        parsed,
+        'claudeCodeOauthTokenListJsonPath',
+      ),
       awLogDirectoryPath: getStringValue(parsed, 'awLogDirectoryPath'),
       awLogStaleThresholdMinutes: getNumberValue(
         parsed,
@@ -207,6 +216,10 @@ export const mergeConfigs = (
     readmeOverrides.codexHomeCandidates ??
     cliOverrides.codexHomeCandidates ??
     configFile.codexHomeCandidates,
+  claudeCodeOauthTokenListJsonPath:
+    readmeOverrides.claudeCodeOauthTokenListJsonPath ??
+    cliOverrides.claudeCodeOauthTokenListJsonPath ??
+    configFile.claudeCodeOauthTokenListJsonPath,
   awLogDirectoryPath:
     readmeOverrides.awLogDirectoryPath ??
     cliOverrides.awLogDirectoryPath ??
