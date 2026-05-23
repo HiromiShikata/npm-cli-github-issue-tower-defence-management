@@ -21,6 +21,7 @@ import { AssignNoAssigneeIssueToManagerUseCase } from './AssignNoAssigneeIssueTo
 import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCase';
 import { StartPreparationUseCase } from './StartPreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
+import { RevertNotReadyAwaitingQualityCheckUseCase } from './RevertNotReadyAwaitingQualityCheckUseCase';
 import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
 
 export class ProjectNotFoundError extends Error {
@@ -50,6 +51,7 @@ export class HandleScheduledEventUseCase {
     readonly updateIssueStatusByLabelUseCase: UpdateIssueStatusByLabelUseCase,
     readonly startPreparationUseCase: StartPreparationUseCase,
     readonly revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase,
+    readonly revertNotReadyAwaitingQualityCheckUseCase: RevertNotReadyAwaitingQualityCheckUseCase,
     readonly dateRepository: DateRepository,
     readonly spreadsheetRepository: SpreadsheetRepository,
     readonly projectRepository: ProjectRepository,
@@ -82,6 +84,9 @@ export class HandleScheduledEventUseCase {
       awLogDirectoryPath?: string;
       awLogStaleThresholdMinutes?: number;
       awaitingQualityCheckStatus?: string | null;
+    } | null;
+    notifyFinishedPreparation?: {
+      awaitingQualityCheckStatusName?: string | null;
     } | null;
   }): Promise<{
     project: Project;
@@ -251,6 +256,12 @@ ${JSON.stringify(e)}
         targetDateTimes,
         storyObjectMap,
       );
+    }
+    if (input.notifyFinishedPreparation) {
+      await this.revertNotReadyAwaitingQualityCheckUseCase.run({
+        projectUrl: input.projectUrl,
+        allowIssueCacheMinutes: input.allowIssueCacheMinutes,
+      });
     }
     if (input.startPreparation) {
       if (input.startPreparation.preparationProcessCheckCommand) {

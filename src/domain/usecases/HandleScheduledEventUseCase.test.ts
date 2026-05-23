@@ -21,6 +21,7 @@ import { AssignNoAssigneeIssueToManagerUseCase } from './AssignNoAssigneeIssueTo
 import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCase';
 import { StartPreparationUseCase } from './StartPreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
+import { RevertNotReadyAwaitingQualityCheckUseCase } from './RevertNotReadyAwaitingQualityCheckUseCase';
 import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
 
 describe('HandleScheduledEventUseCase', () => {
@@ -109,6 +110,8 @@ describe('HandleScheduledEventUseCase', () => {
     const mockStartPreparationUseCase = mock<StartPreparationUseCase>();
     const mockRevertOrphanedPreparationUseCase =
       mock<RevertOrphanedPreparationUseCase>();
+    const mockRevertNotReadyAwaitingQualityCheckUseCase =
+      mock<RevertNotReadyAwaitingQualityCheckUseCase>();
     const mockDateRepository = mock<DateRepository>();
     const mockSpreadsheetRepository = mock<SpreadsheetRepository>();
     const mockProjectRepository = mock<ProjectRepository>();
@@ -131,6 +134,7 @@ describe('HandleScheduledEventUseCase', () => {
       mockUpdateIssueStatusByLabelUseCase,
       mockStartPreparationUseCase,
       mockRevertOrphanedPreparationUseCase,
+      mockRevertNotReadyAwaitingQualityCheckUseCase,
       mockDateRepository,
       mockSpreadsheetRepository,
       mockProjectRepository,
@@ -307,6 +311,60 @@ describe('HandleScheduledEventUseCase', () => {
           awaitingQualityCheckStatus: 'Awaiting Quality Check',
         }),
       );
+    });
+
+    it('should invoke revertNotReadyAwaitingQualityCheckUseCase when notifyFinishedPreparation is configured', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        allowIssueCacheMinutes: 60,
+        notifyFinishedPreparation: {},
+      };
+
+      mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
+      await useCase.run(input);
+
+      expect(
+        mockRevertNotReadyAwaitingQualityCheckUseCase.run,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectUrl: 'https://github.com/test-org/test-project',
+          allowIssueCacheMinutes: 60,
+        }),
+      );
+    });
+
+    it('should not invoke revertNotReadyAwaitingQualityCheckUseCase when notifyFinishedPreparation is absent', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        allowIssueCacheMinutes: 60,
+      };
+
+      mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
+      await useCase.run(input);
+
+      expect(
+        mockRevertNotReadyAwaitingQualityCheckUseCase.run,
+      ).not.toHaveBeenCalled();
     });
 
     describe('story issue creation progress logs', () => {
