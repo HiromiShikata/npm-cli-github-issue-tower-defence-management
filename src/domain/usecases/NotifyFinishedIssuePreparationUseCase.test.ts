@@ -258,6 +258,94 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
+  it('should skip updateProjectTextField and log warning when dependedIssueUrlSeparatedByComma is not configured', async () => {
+    const issueUrl = 'https://github.com/user/repo/issues/1';
+    const prUrl = 'https://github.com/user/repo/pull/42';
+    const projectWithoutDependedField = createMockProject({
+      dependedIssueUrlSeparatedByComma: null,
+    });
+
+    const issue = createMockIssue({
+      url: issueUrl,
+      status: 'Preparation',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(projectWithoutDependedField);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({ content: 'From: Agent report' }),
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      {
+        url: prUrl,
+        isConflicted: false,
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl,
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+    });
+
+    expect(mockIssueRepository.updateProjectTextField).not.toHaveBeenCalled();
+    expect(mockIssueRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      projectWithoutDependedField,
+    );
+  });
+
+  it('should skip updateProjectTextField and log warning when PR issue is not found', async () => {
+    const issueUrl = 'https://github.com/user/repo/issues/1';
+    const prUrl = 'https://github.com/user/repo/pull/42';
+
+    const issue = createMockIssue({
+      url: issueUrl,
+      status: 'Preparation',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockImplementation(
+      async (url: string) => {
+        if (url === issueUrl) return issue;
+        return null;
+      },
+    );
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({ content: 'From: Agent report' }),
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      {
+        url: prUrl,
+        isConflicted: false,
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl,
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+    });
+
+    expect(mockIssueRepository.updateProjectTextField).not.toHaveBeenCalled();
+    expect(mockIssueRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      mockProject,
+    );
+  });
+
   it('should throw IssueNotFoundError when issue does not exist', async () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(null);
