@@ -83,7 +83,6 @@ describe('GraphqlProjectItemRepository', () => {
       const localStorageRepository = new LocalStorageRepository();
       const repository = new GraphqlProjectItemRepository(
         localStorageRepository,
-        '',
         'dummy-token',
       );
 
@@ -109,7 +108,6 @@ describe('GraphqlProjectItemRepository', () => {
       const localStorageRepository = new LocalStorageRepository();
       const repository = new GraphqlProjectItemRepository(
         localStorageRepository,
-        '',
         'dummy-token',
       );
 
@@ -157,7 +155,6 @@ describe('GraphqlProjectItemRepository', () => {
       const localStorageRepository = new LocalStorageRepository();
       const repository = new GraphqlProjectItemRepository(
         localStorageRepository,
-        '',
         'dummy-token',
       );
 
@@ -176,7 +173,6 @@ describe('GraphqlProjectItemRepository', () => {
       const localStorageRepository = new LocalStorageRepository();
       const repository = new GraphqlProjectItemRepository(
         localStorageRepository,
-        '',
         'dummy-token',
       );
 
@@ -195,7 +191,6 @@ describe('GraphqlProjectItemRepository', () => {
       const localStorageRepository = new LocalStorageRepository();
       const repository = new GraphqlProjectItemRepository(
         localStorageRepository,
-        '',
         'dummy-token',
       );
 
@@ -244,7 +239,6 @@ describe('GraphqlProjectItemRepository', () => {
       const localStorageRepository = new LocalStorageRepository();
       const repository = new GraphqlProjectItemRepository(
         localStorageRepository,
-        '',
         'dummy-token',
       );
 
@@ -277,7 +271,6 @@ describe('GraphqlProjectItemRepository', () => {
       const localStorageRepository = new LocalStorageRepository();
       const repository = new GraphqlProjectItemRepository(
         localStorageRepository,
-        '',
         'dummy-token',
       );
 
@@ -305,7 +298,6 @@ describe('GraphqlProjectItemRepository', () => {
       const localStorageRepository = new LocalStorageRepository();
       const repository = new GraphqlProjectItemRepository(
         localStorageRepository,
-        '',
         'dummy-token',
       );
 

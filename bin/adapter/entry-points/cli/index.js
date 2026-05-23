@@ -24,13 +24,9 @@ const NodeLocalCommandRunner_1 = require("../../repositories/NodeLocalCommandRun
 const GitHubIssueCommentRepository_1 = require("../../repositories/GitHubIssueCommentRepository");
 const FetchWebhookRepository_1 = require("../../repositories/FetchWebhookRepository");
 const RevertOrphanedPreparationUseCase_1 = require("../../../domain/usecases/RevertOrphanedPreparationUseCase");
-const buildGithubRepositoryParams = (localStorageRepository, cachePath, token) => [
+const buildGithubRepositoryParams = (localStorageRepository, token) => [
     localStorageRepository,
-    `${cachePath}/github.com.cookies.json`,
     token,
-    undefined,
-    undefined,
-    undefined,
 ];
 exports.program = new commander_1.Command();
 exports.program
@@ -127,7 +123,7 @@ exports.program
     const localStorageRepository = new LocalStorageRepository_1.LocalStorageRepository();
     const cachePath = `./tmp/cache/${projectName}`;
     const localStorageCacheRepository = new LocalStorageCacheRepository_1.LocalStorageCacheRepository(localStorageRepository, cachePath);
-    const githubRepositoryParams = buildGithubRepositoryParams(localStorageRepository, cachePath, token);
+    const githubRepositoryParams = buildGithubRepositoryParams(localStorageRepository, token);
     const projectRepository = new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams);
     const apiV3IssueRepository = new ApiV3IssueRepository_1.ApiV3IssueRepository(...githubRepositoryParams);
     const restIssueRepository = new RestIssueRepository_1.RestIssueRepository(...githubRepositoryParams);
@@ -224,7 +220,7 @@ exports.program
     const localStorageRepository = new LocalStorageRepository_1.LocalStorageRepository();
     const cachePath = `./tmp/cache/${projectName}`;
     const localStorageCacheRepository = new LocalStorageCacheRepository_1.LocalStorageCacheRepository(localStorageRepository, cachePath);
-    const githubRepositoryParams = buildGithubRepositoryParams(localStorageRepository, cachePath, token);
+    const githubRepositoryParams = buildGithubRepositoryParams(localStorageRepository, token);
     const projectRepository = new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams);
     const apiV3IssueRepository = new ApiV3IssueRepository_1.ApiV3IssueRepository(...githubRepositoryParams);
     const restIssueRepository = new RestIssueRepository_1.RestIssueRepository(...githubRepositoryParams);

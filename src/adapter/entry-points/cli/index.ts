@@ -54,15 +54,10 @@ type NotifyFinishedOptions = {
 
 const buildGithubRepositoryParams = (
   localStorageRepository: LocalStorageRepository,
-  cachePath: string,
   token: string,
 ): ConstructorParameters<typeof BaseGitHubRepository> => [
   localStorageRepository,
-  `${cachePath}/github.com.cookies.json`,
   token,
-  undefined,
-  undefined,
-  undefined,
 ];
 
 interface ScheduleOptions {
@@ -223,7 +218,6 @@ program
     );
     const githubRepositoryParams = buildGithubRepositoryParams(
       localStorageRepository,
-      cachePath,
       token,
     );
     const projectRepository = new GraphqlProjectRepository(
@@ -396,7 +390,6 @@ program
     );
     const githubRepositoryParams = buildGithubRepositoryParams(
       localStorageRepository,
-      cachePath,
       token,
     );
     const projectRepository = new GraphqlProjectRepository(

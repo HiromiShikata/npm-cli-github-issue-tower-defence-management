@@ -76,9 +76,6 @@ export class HandleScheduledEventUseCaseHandler {
         bot: {
           github: {
             token: string;
-            name?: string;
-            password?: string;
-            authenticatorKey?: string;
           };
         };
       };
@@ -151,14 +148,7 @@ export class HandleScheduledEventUseCaseHandler {
     );
     const githubRepositoryParams: ConstructorParameters<
       typeof BaseGitHubRepository
-    > = [
-      localStorageRepository,
-      `${cachePath}/github.com.cookies.json`,
-      input.credentials.bot.github.token,
-      input.credentials.bot.github.name,
-      input.credentials.bot.github.password,
-      input.credentials.bot.github.authenticatorKey,
-    ];
+    > = [localStorageRepository, input.credentials.bot.github.token];
     const projectRepository = new GraphqlProjectRepository(
       ...githubRepositoryParams,
     );

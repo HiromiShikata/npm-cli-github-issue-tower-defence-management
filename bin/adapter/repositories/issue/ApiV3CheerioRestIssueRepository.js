@@ -75,19 +75,14 @@ const fnmatch = (pattern, str) => {
     }
 };
 class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
-    constructor(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, localStorageRepository, jsonFilePath = './tmp/github.com.cookies.json', ghToken = process.env.GH_TOKEN || 'dummy', ghUserName = process.env.GH_USER_NAME, ghUserPassword = process.env.GH_USER_PASSWORD, ghAuthenticatorKey = process.env
-        .GH_AUTHENTICATOR_KEY) {
-        super(localStorageRepository, jsonFilePath, ghToken, ghUserName, ghUserPassword, ghAuthenticatorKey);
+    constructor(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, localStorageRepository, ghToken = process.env.GH_TOKEN || 'dummy') {
+        super(localStorageRepository, ghToken);
         this.apiV3IssueRepository = apiV3IssueRepository;
         this.restIssueRepository = restIssueRepository;
         this.graphqlProjectItemRepository = graphqlProjectItemRepository;
         this.localStorageCacheRepository = localStorageCacheRepository;
         this.localStorageRepository = localStorageRepository;
-        this.jsonFilePath = jsonFilePath;
         this.ghToken = ghToken;
-        this.ghUserName = ghUserName;
-        this.ghUserPassword = ghUserPassword;
-        this.ghAuthenticatorKey = ghAuthenticatorKey;
         this.updateStatus = async (project, issue, statusId) => {
             await this.graphqlProjectItemRepository.updateProjectField(project.id, project.status.fieldId, issue.itemId, { singleSelectOptionId: statusId });
         };
