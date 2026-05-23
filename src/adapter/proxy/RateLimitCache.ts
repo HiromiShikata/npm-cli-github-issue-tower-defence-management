@@ -9,6 +9,7 @@ export interface RateLimitSnapshot {
   sevenDayUtilization: number;
   sevenDayReset: number;
   blocked: boolean;
+  rejected: boolean;
 }
 
 export const PROXY_PORT = 8787;
@@ -105,6 +106,10 @@ export const readRateLimit = (token: string): RateLimitSnapshot | null => {
         status === 'blocked' ||
         fiveHourStatus === 'blocked' ||
         sevenDayStatus === 'blocked',
+      rejected:
+        status === 'rejected' ||
+        fiveHourStatus === 'rejected' ||
+        sevenDayStatus === 'rejected',
     };
   } catch {
     return null;

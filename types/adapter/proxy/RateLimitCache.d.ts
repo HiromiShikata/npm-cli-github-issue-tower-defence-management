@@ -4,6 +4,7 @@ export interface RateLimitSnapshot {
     sevenDayUtilization: number;
     sevenDayReset: number;
     blocked: boolean;
+    rejected: boolean;
 }
 export declare const PROXY_PORT = 8787;
 export declare const cacheDir: () => string;

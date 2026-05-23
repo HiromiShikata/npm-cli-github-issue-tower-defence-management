@@ -27,7 +27,6 @@ import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3C
 import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
 import { BaseGitHubRepository } from '../../repositories/BaseGitHubRepository';
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
-import { OauthAPIProxyClaudeRepository } from '../../repositories/OauthAPIProxyClaudeRepository';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
@@ -246,7 +245,6 @@ program
       localStorageCacheRepository,
       ...githubRepositoryParams,
     );
-    const claudeRepository = new OauthAPIProxyClaudeRepository();
     const localCommandRunner = new NodeLocalCommandRunner();
 
     const preparationProcessCheckCommand =
@@ -276,7 +274,6 @@ program
     const useCase = new StartPreparationUseCase(
       projectRepository,
       issueRepository,
-      claudeRepository,
       localCommandRunner,
       claudeTokenUsageRepository,
     );

@@ -113,6 +113,9 @@ const readRateLimit = (token) => {
             blocked: status === 'blocked' ||
                 fiveHourStatus === 'blocked' ||
                 sevenDayStatus === 'blocked',
+            rejected: status === 'rejected' ||
+                fiveHourStatus === 'rejected' ||
+                sevenDayStatus === 'rejected',
         };
     }
     catch {

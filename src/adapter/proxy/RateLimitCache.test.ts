@@ -84,6 +84,7 @@ describe('RateLimitCache', () => {
       expect(snapshot.sevenDayUtilization).toBe(17);
       expect(snapshot.sevenDayReset).toBe(1700100000);
       expect(snapshot.blocked).toBe(false);
+      expect(snapshot.rejected).toBe(false);
     });
 
     it('should mark snapshot as blocked when status header is blocked', () => {
@@ -99,6 +100,67 @@ describe('RateLimitCache', () => {
       });
       const snapshot = readRateLimit(token);
       expect(snapshot?.blocked).toBe(true);
+    });
+
+    it('should mark snapshot as rejected when unified status header is rejected', () => {
+      const token = 'rejected-unified-token';
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-status': 'rejected',
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': '1700000000',
+        'anthropic-ratelimit-unified-5h-utilization': '100',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '1700100000',
+        'anthropic-ratelimit-unified-7d-utilization': '99',
+      });
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.rejected).toBe(true);
+      expect(snapshot?.blocked).toBe(false);
+    });
+
+    it('should mark snapshot as rejected when 5h status header is rejected', () => {
+      const token = 'rejected-5h-token';
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-status': 'rejected',
+        'anthropic-ratelimit-unified-5h-reset': '1700000000',
+        'anthropic-ratelimit-unified-5h-utilization': '100',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '1700100000',
+        'anthropic-ratelimit-unified-7d-utilization': '99',
+      });
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.rejected).toBe(true);
+    });
+
+    it('should mark snapshot as rejected when 7d status header is rejected', () => {
+      const token = 'rejected-7d-token';
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': '1700000000',
+        'anthropic-ratelimit-unified-5h-utilization': '50',
+        'anthropic-ratelimit-unified-7d-status': 'rejected',
+        'anthropic-ratelimit-unified-7d-reset': '1700100000',
+        'anthropic-ratelimit-unified-7d-utilization': '100',
+      });
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.rejected).toBe(true);
+    });
+
+    it('should not mark snapshot as rejected when no status header is rejected', () => {
+      const token = 'allowed-token';
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': '1700000000',
+        'anthropic-ratelimit-unified-5h-utilization': '50',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '1700100000',
+        'anthropic-ratelimit-unified-7d-utilization': '40',
+      });
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.rejected).toBe(false);
     });
 
     it('should return null when file does not exist', () => {

@@ -75,6 +75,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
             sevenDayUtilization: 0,
             sevenDayReset: 0,
             blocked: false,
+            rejected: false,
           };
         }
         return null;
@@ -84,8 +85,18 @@ describe('ProxyClaudeTokenUsageRepository', () => {
       const result = await repository.getAvailableTokenUsages();
 
       expect(result).toEqual([
-        { token: 'token-a', fiveHourUtilization: 42, blocked: false },
-        { token: 'token-b', fiveHourUtilization: 0, blocked: false },
+        {
+          token: 'token-a',
+          fiveHourUtilization: 42,
+          blocked: false,
+          rejected: false,
+        },
+        {
+          token: 'token-b',
+          fiveHourUtilization: 0,
+          blocked: false,
+          rejected: false,
+        },
       ]);
     });
 
@@ -97,13 +108,60 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         sevenDayUtilization: 0,
         sevenDayReset: 0,
         blocked: true,
+        rejected: false,
       });
       const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
 
       const result = await repository.getAvailableTokenUsages();
 
       expect(result).toEqual([
-        { token: 'token-a', fiveHourUtilization: 5, blocked: true },
+        {
+          token: 'token-a',
+          fiveHourUtilization: 5,
+          blocked: true,
+          rejected: false,
+        },
+      ]);
+    });
+
+    it('should propagate the rejected status from the cache', async () => {
+      mockLoadTokens.mockReturnValue(['token-a']);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 100,
+        fiveHourReset: 0,
+        sevenDayUtilization: 0,
+        sevenDayReset: 0,
+        blocked: false,
+        rejected: true,
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result).toEqual([
+        {
+          token: 'token-a',
+          fiveHourUtilization: 100,
+          blocked: false,
+          rejected: true,
+        },
+      ]);
+    });
+
+    it('should default rejected to false when no snapshot exists', async () => {
+      mockLoadTokens.mockReturnValue(['token-a']);
+      mockReadRateLimit.mockReturnValue(null);
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result).toEqual([
+        {
+          token: 'token-a',
+          fiveHourUtilization: 0,
+          blocked: false,
+          rejected: false,
+        },
       ]);
     });
   });

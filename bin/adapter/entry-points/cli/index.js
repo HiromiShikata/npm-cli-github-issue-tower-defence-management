@@ -21,7 +21,6 @@ const GraphqlProjectItemRepository_1 = require("../../repositories/issue/Graphql
 const ApiV3CheerioRestIssueRepository_1 = require("../../repositories/issue/ApiV3CheerioRestIssueRepository");
 const LocalStorageCacheRepository_1 = require("../../repositories/LocalStorageCacheRepository");
 const NodeLocalCommandRunner_1 = require("../../repositories/NodeLocalCommandRunner");
-const OauthAPIProxyClaudeRepository_1 = require("../../repositories/OauthAPIProxyClaudeRepository");
 const GitHubIssueCommentRepository_1 = require("../../repositories/GitHubIssueCommentRepository");
 const FetchWebhookRepository_1 = require("../../repositories/FetchWebhookRepository");
 const RevertOrphanedPreparationUseCase_1 = require("../../../domain/usecases/RevertOrphanedPreparationUseCase");
@@ -134,7 +133,6 @@ exports.program
     const restIssueRepository = new RestIssueRepository_1.RestIssueRepository(...githubRepositoryParams);
     const graphqlProjectItemRepository = new GraphqlProjectItemRepository_1.GraphqlProjectItemRepository(...githubRepositoryParams);
     const issueRepository = new ApiV3CheerioRestIssueRepository_1.ApiV3CheerioRestIssueRepository(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, ...githubRepositoryParams);
-    const claudeRepository = new OauthAPIProxyClaudeRepository_1.OauthAPIProxyClaudeRepository();
     const localCommandRunner = new NodeLocalCommandRunner_1.NodeLocalCommandRunner();
     const preparationProcessCheckCommand = config.preparationProcessCheckCommand;
     if (preparationProcessCheckCommand) {
@@ -149,7 +147,7 @@ exports.program
         });
     }
     const claudeTokenUsageRepository = new ProxyClaudeTokenUsageRepository_1.ProxyClaudeTokenUsageRepository(config.claudeCodeOauthTokenListJsonPath ?? null);
-    const useCase = new StartPreparationUseCase_1.StartPreparationUseCase(projectRepository, issueRepository, claudeRepository, localCommandRunner, claudeTokenUsageRepository);
+    const useCase = new StartPreparationUseCase_1.StartPreparationUseCase(projectRepository, issueRepository, localCommandRunner, claudeTokenUsageRepository);
     const rawAllowedIssueAuthors = config.allowedIssueAuthors;
     const allowedIssueAuthors = rawAllowedIssueAuthors
         ? rawAllowedIssueAuthors

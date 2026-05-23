@@ -28,6 +28,7 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
         token,
         fiveHourUtilization: snapshot ? snapshot.fiveHourUtilization : 0,
         blocked: snapshot?.blocked ?? false,
+        rejected: snapshot?.rejected ?? false,
       };
     });
   };

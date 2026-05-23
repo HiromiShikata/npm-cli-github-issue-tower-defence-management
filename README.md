@@ -97,7 +97,7 @@ startPreparation?: # Optional: Enable automatic issue preparation workflow
   defaultLlmModelName?: string | null # Optional: Default LLM model name (overridable via llm-model: label)
   defaultLlmAgentName?: string | null # Optional: Default LLM agent name (overridable via llm-agent: label)
   maximumPreparingIssuesCount: number | null # Max concurrent preparing issues (null = unlimited)
-  utilizationPercentageThreshold?: number # Optional: Claude usage % threshold above which preparation is throttled (default: 90)
+  utilizationPercentageThreshold?: number # Optional: Per-token Claude 5h utilization % threshold; tokens at or above it are excluded from rotation, and preparation is skipped when no token remains (default: 90)
   allowedIssueAuthors?: string[] | null # Optional: Only start preparation for issues from these authors (null = all authors)
   preparationProcessCheckCommand?: string # Optional: Shell command template with {URL} placeholder to check if a preparation process is alive. When set, orphaned Preparation issues (process exits non-zero, or stale aw log) are evaluated for completion: if work is done they advance to Awaiting Quality Check; otherwise they fall back to Awaiting Workspace
   awaitingQualityCheckStatus?: string | null # Optional: Project status name for issues awaiting quality check. When set with preparationProcessCheckCommand, orphaned issues with no rejections advance to this status instead of awaitingWorkspaceStatus

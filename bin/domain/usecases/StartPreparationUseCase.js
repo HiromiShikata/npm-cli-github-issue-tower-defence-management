@@ -3,51 +3,31 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.StartPreparationUseCase = void 0;
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 class StartPreparationUseCase {
-    constructor(projectRepository, issueRepository, claudeRepository, localCommandRunner, claudeTokenUsageRepository) {
+    constructor(projectRepository, issueRepository, localCommandRunner, claudeTokenUsageRepository) {
         this.projectRepository = projectRepository;
         this.issueRepository = issueRepository;
-        this.claudeRepository = claudeRepository;
         this.localCommandRunner = localCommandRunner;
         this.claudeTokenUsageRepository = claudeTokenUsageRepository;
-        this.selectRotationTokens = (tokenUsages) => tokenUsages
+        this.selectRotationTokens = (tokenUsages, utilizationPercentageThreshold) => tokenUsages
             .filter((usage) => !usage.blocked)
+            .filter((usage) => !usage.rejected)
+            .filter((usage) => usage.fiveHourUtilization * 100 < utilizationPercentageThreshold)
             .sort((a, b) => a.fiveHourUtilization - b.fiveHourUtilization)
             .map((usage) => usage.token);
         this.run = async (params) => {
-            const claudeUsages = await this.claudeRepository.getUsage();
-            const weeklyWindowHours = 168;
-            const nonWeeklyUsages = claudeUsages.filter((usage) => usage.hour !== weeklyWindowHours);
-            if (nonWeeklyUsages.some((usage) => usage.utilizationPercentage > params.utilizationPercentageThreshold)) {
-                console.warn('Claude usage limit exceeded. Skipping starting preparation.');
-                return;
-            }
-            let maximumPreparingIssuesCount = params.maximumPreparingIssuesCount ?? 6;
-            const weeklyUsages = claudeUsages.filter((usage) => usage.hour === weeklyWindowHours);
-            if (weeklyUsages.length > 0 &&
-                params.utilizationPercentageThreshold < 100) {
-                const maxWeeklyUtilization = Math.max(...weeklyUsages.map((usage) => usage.utilizationPercentage));
-                if (maxWeeklyUtilization > params.utilizationPercentageThreshold) {
-                    const normalizedUtilizationBeyondThreshold = (maxWeeklyUtilization - params.utilizationPercentageThreshold) /
-                        (100 - params.utilizationPercentageThreshold);
-                    maximumPreparingIssuesCount = Math.floor(maximumPreparingIssuesCount *
-                        Math.pow(1 - normalizedUtilizationBeyondThreshold, 2));
-                    if (maximumPreparingIssuesCount <= 0) {
-                        console.warn(`Weekly Claude usage (${maxWeeklyUtilization}%) exceeds threshold (${params.utilizationPercentageThreshold}%). Skipping starting preparation.`);
-                        return;
-                    }
-                    console.warn(`Weekly Claude usage (${maxWeeklyUtilization}%) exceeds threshold (${params.utilizationPercentageThreshold}%). Reducing maximumPreparingIssuesCount to ${maximumPreparingIssuesCount}.`);
-                }
-            }
+            const maximumPreparingIssuesCount = params.maximumPreparingIssuesCount ?? 6;
             const tokenUsages = await this.claudeTokenUsageRepository.getAvailableTokenUsages();
             let rotationTokens = null;
             let proxyBaseUrl = null;
             if (tokenUsages.length > 0) {
-                const ranked = this.selectRotationTokens(tokenUsages);
-                if (ranked.length > 0) {
-                    await this.claudeTokenUsageRepository.ensureObservable();
-                    rotationTokens = ranked;
-                    proxyBaseUrl = this.claudeTokenUsageRepository.proxyBaseUrl();
+                const ranked = this.selectRotationTokens(tokenUsages, params.utilizationPercentageThreshold);
+                if (ranked.length === 0) {
+                    console.warn(`All ${tokenUsages.length} configured Claude OAuth token(s) are unavailable (blocked, rejected, or 5h utilization >= ${params.utilizationPercentageThreshold}%). Skipping starting preparation.`);
+                    return;
                 }
+                await this.claudeTokenUsageRepository.ensureObservable();
+                rotationTokens = ranked;
+                proxyBaseUrl = this.claudeTokenUsageRepository.proxyBaseUrl();
             }
             const project = await this.projectRepository.getByUrl(params.projectUrl);
             const storyObjectMap = await this.issueRepository.getStoryObjectMap(project, params.allowIssueCacheMinutes);
