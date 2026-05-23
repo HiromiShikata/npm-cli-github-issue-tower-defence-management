@@ -195,10 +195,7 @@ describe('HandleScheduledEventUseCaseHandler', () => {
       MockedRestIssueRepository,
       MockedGraphqlProjectItemRepository,
     ]) {
-      expect(MockedClass).toHaveBeenCalledWith(
-        expect.anything(),
-        'test-token',
-      );
+      expect(MockedClass).toHaveBeenCalledWith(expect.anything(), 'test-token');
     }
 
     expect(MockedApiV3CheerioRestIssueRepository).toHaveBeenCalledWith(
