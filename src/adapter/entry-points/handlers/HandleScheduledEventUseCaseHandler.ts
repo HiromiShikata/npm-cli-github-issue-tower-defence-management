@@ -129,6 +129,9 @@ export class HandleScheduledEventUseCaseHandler {
             codexHomeCandidates:
               readmeConfig.codexHomeCandidates ??
               input.startPreparation.codexHomeCandidates,
+            claudeCodeOauthTokenListJsonPath:
+              readmeConfig.claudeCodeOauthTokenListJsonPath ??
+              input.startPreparation.claudeCodeOauthTokenListJsonPath,
           }
         : input.startPreparation,
     };
@@ -219,7 +222,7 @@ export class HandleScheduledEventUseCaseHandler {
     const nodeLocalCommandRunner = new NodeLocalCommandRunner();
     const claudeRepository = new OauthAPIProxyClaudeRepository();
     const claudeTokenUsageRepository = new ProxyClaudeTokenUsageRepository(
-      null,
+      mergedInput.startPreparation?.claudeCodeOauthTokenListJsonPath ?? null,
     );
     const startPreparationUseCase = new StartPreparationUseCase(
       projectRepository,

@@ -99,6 +99,9 @@ jest.mock('../../repositories/NodeLocalCommandRunner', () => ({
 jest.mock('../../repositories/OauthAPIProxyClaudeRepository', () => ({
   OauthAPIProxyClaudeRepository: jest.fn().mockImplementation(() => ({})),
 }));
+jest.mock('../../repositories/ProxyClaudeTokenUsageRepository', () => ({
+  ProxyClaudeTokenUsageRepository: jest.fn().mockImplementation(() => ({})),
+}));
 jest.mock('../../repositories/GitHubIssueCommentRepository', () => ({
   GitHubIssueCommentRepository: jest.fn().mockImplementation(() => ({})),
 }));
@@ -113,6 +116,7 @@ import { ApiV3IssueRepository } from '../../repositories/issue/ApiV3IssueReposit
 import { RestIssueRepository } from '../../repositories/issue/RestIssueRepository';
 import { GraphqlProjectItemRepository } from '../../repositories/issue/GraphqlProjectItemRepository';
 import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3CheerioRestIssueRepository';
+import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
 
 const MockedGraphqlProjectRepository = jest.mocked(GraphqlProjectRepository);
 const MockedApiV3IssueRepository = jest.mocked(ApiV3IssueRepository);
@@ -122,6 +126,9 @@ const MockedGraphqlProjectItemRepository = jest.mocked(
 );
 const MockedApiV3CheerioRestIssueRepository = jest.mocked(
   ApiV3CheerioRestIssueRepository,
+);
+const MockedProxyClaudeTokenUsageRepository = jest.mocked(
+  ProxyClaudeTokenUsageRepository,
 );
 
 const validConfig = {
@@ -412,6 +419,86 @@ allowedIssueAuthors: 'user1, user2, user3'
       expect(capturedRunInputs[0][0]).toMatchObject({
         projectUrl: validConfig.projectUrl,
       });
+    });
+  });
+
+  describe('Claude OAuth token rotation wiring', () => {
+    it('should pass claudeCodeOauthTokenListJsonPath from startPreparation to ProxyClaudeTokenUsageRepository', async () => {
+      const configWithTokenPath = {
+        ...validConfig,
+        startPreparation: {
+          defaultAgentName: 'agent1',
+          configFilePath: './config.yml',
+          maximumPreparingIssuesCount: 3,
+          claudeCodeOauthTokenListJsonPath:
+            '/home/user/creds/claudeCodeOauthTokenList.json',
+        },
+      };
+      jest
+        .mocked(fs.readFileSync)
+        .mockReturnValue(YAML.stringify(configWithTokenPath));
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(MockedProxyClaudeTokenUsageRepository).toHaveBeenCalledWith(
+        '/home/user/creds/claudeCodeOauthTokenList.json',
+      );
+    });
+
+    it('should pass null when claudeCodeOauthTokenListJsonPath is absent', async () => {
+      const configWithoutTokenPath = {
+        ...validConfig,
+        startPreparation: {
+          defaultAgentName: 'agent1',
+          configFilePath: './config.yml',
+          maximumPreparingIssuesCount: 3,
+        },
+      };
+      jest
+        .mocked(fs.readFileSync)
+        .mockReturnValue(YAML.stringify(configWithoutTokenPath));
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(MockedProxyClaudeTokenUsageRepository).toHaveBeenCalledWith(null);
+    });
+
+    it('should pass null when startPreparation is absent', async () => {
+      jest.mocked(fs.readFileSync).mockReturnValue(YAML.stringify(validConfig));
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(MockedProxyClaudeTokenUsageRepository).toHaveBeenCalledWith(null);
+    });
+
+    it('should let README claudeCodeOauthTokenListJsonPath override the YAML value', async () => {
+      const readmeContent = `<details>
+<summary>config</summary>
+claudeCodeOauthTokenListJsonPath: /readme/tokens.json
+</details>`;
+      mockFetchReturningReadme(readmeContent);
+      const configWithTokenPath = {
+        ...validConfig,
+        startPreparation: {
+          defaultAgentName: 'agent1',
+          configFilePath: './config.yml',
+          maximumPreparingIssuesCount: 3,
+          claudeCodeOauthTokenListJsonPath: '/yaml/tokens.json',
+        },
+      };
+      jest
+        .mocked(fs.readFileSync)
+        .mockReturnValue(YAML.stringify(configWithTokenPath));
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(MockedProxyClaudeTokenUsageRepository).toHaveBeenCalledWith(
+        '/readme/tokens.json',
+      );
     });
   });
 });
