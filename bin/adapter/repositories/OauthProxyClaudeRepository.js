@@ -64,9 +64,12 @@ class OauthProxyClaudeRepository {
             }
         }
         const overageStatus = headers['anthropic-ratelimit-unified-overage-status'];
+        const overageDisabledReason = headers['anthropic-ratelimit-unified-overage-disabled-reason'];
+        const isAdministrativeOverageDisable = overageDisabledReason?.startsWith('org_level_disabled') ?? false;
         const baseQuotaAvailable = headers['anthropic-ratelimit-unified-5h-status'] === 'allowed' &&
             headers['anthropic-ratelimit-unified-7d-status'] === 'allowed';
         if (overageStatus === 'rejected' &&
+            !isAdministrativeOverageDisable &&
             !baseQuotaAvailable &&
             !usages.some((u) => u.utilizationPercentage >= 100)) {
             usages.push({

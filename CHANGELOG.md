@@ -1,3 +1,10 @@
+## [1.56.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.56.0...v1.56.1) (2026-05-23)
+
+
+### Bug Fixes
+
+* **core:** suppress synth-100% when overage-disabled-reason is org_level_disabled* regardless of 7d-status ([20cf8fc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/20cf8fc25d2ba8a3c5299a9149f06486636de5c7))
+
 # [1.56.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.55.0...v1.56.0) (2026-05-23)
 
 
