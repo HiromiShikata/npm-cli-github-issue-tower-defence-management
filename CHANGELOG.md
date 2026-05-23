@@ -1,3 +1,10 @@
+# [1.56.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.55.0...v1.56.0) (2026-05-23)
+
+
+### Features
+
+* **proxy:** rotate long-term OAuth tokens by per-token rate-limit utilization with internal proxy ([f7284e8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f7284e8327ea97e6c0671d14b5a9c45678c25006)), closes [#603](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/603)
+
 # [1.55.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.54.0...v1.55.0) (2026-05-23)
 
 
