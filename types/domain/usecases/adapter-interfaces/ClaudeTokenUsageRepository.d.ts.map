@@ -1,0 +1,1 @@
+{"version":3,"file":"ClaudeTokenUsageRepository.d.ts","sourceRoot":"","sources":["../../../../src/domain/usecases/adapter-interfaces/ClaudeTokenUsageRepository.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,gBAAgB,EAAE,MAAM,iCAAiC,CAAC;AAEnE,MAAM,WAAW,0BAA0B;IACzC,gBAAgB,IAAI,OAAO,CAAC,IAAI,CAAC,CAAC;IAClC,uBAAuB,IAAI,OAAO,CAAC,gBAAgB,EAAE,CAAC,CAAC;IACvD,YAAY,IAAI,MAAM,CAAC;CACxB"}

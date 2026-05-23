@@ -6,6 +6,7 @@ import {
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { ClaudeRepository } from './adapter-interfaces/ClaudeRepository';
+import { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsageRepository';
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { StoryObjectMap } from '../entities/StoryObjectMap';
@@ -92,6 +93,7 @@ describe('StartPreparationUseCase', () => {
   >;
   let mockClaudeRepository: Mocked<Pick<ClaudeRepository, 'getUsage'>>;
   let mockLocalCommandRunner: Mocked<LocalCommandRunner>;
+  let mockClaudeTokenUsageRepository: Mocked<ClaudeTokenUsageRepository>;
   let mockProject: Project;
   beforeEach(() => {
     jest.resetAllMocks();
@@ -114,11 +116,17 @@ describe('StartPreparationUseCase', () => {
     mockLocalCommandRunner = {
       runCommand: jest.fn(),
     };
+    mockClaudeTokenUsageRepository = {
+      ensureObservable: jest.fn().mockResolvedValue(undefined),
+      getAvailableTokenUsages: jest.fn().mockResolvedValue([]),
+      proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
+    };
     useCase = new StartPreparationUseCase(
       mockProjectRepository,
       mockIssueRepository,
       mockClaudeRepository,
       mockLocalCommandRunner,
+      mockClaudeTokenUsageRepository,
     );
   });
   it('should run aw command for awaiting workspace issues', async () => {
@@ -149,8 +157,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -214,8 +220,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -271,8 +275,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -320,8 +322,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
@@ -369,8 +369,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
@@ -417,8 +415,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
@@ -482,8 +478,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
     expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
@@ -570,8 +564,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
     expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
@@ -633,8 +625,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
@@ -678,8 +668,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
     // Both awaiting issues should be updated (forward iteration: url1 first, then url2)
@@ -736,8 +724,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
     // Loop doesn't run because we're already at max (6 >= 6)
@@ -772,8 +758,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -818,8 +802,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -864,8 +846,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -910,8 +890,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -956,8 +934,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -1002,8 +978,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -1051,8 +1025,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
     expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -1100,8 +1072,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
     expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -1151,8 +1121,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
     // No issues are in 'Awaiting Workspace' status, so no updates should happen
@@ -1187,8 +1155,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(3);
@@ -1222,8 +1188,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(6);
@@ -1287,8 +1251,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
 
@@ -1328,8 +1290,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
 
@@ -1372,8 +1332,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
 
@@ -1415,8 +1373,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
 
@@ -1464,8 +1420,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
 
@@ -1506,8 +1460,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 100,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
 
@@ -1543,8 +1495,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
 
@@ -1587,8 +1537,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
 
@@ -1620,8 +1568,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
         codexHomeCandidates: null,
-        claudeCodeOauthTokens: null,
-        claudeProxyBaseUrl: null,
         allowIssueCacheMinutes: 0,
       }),
     ).rejects.toThrow('Claude credentials file not found');
@@ -1658,8 +1604,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 70,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
 
@@ -1701,8 +1645,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 80,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
 
@@ -1746,8 +1688,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
 
@@ -1802,8 +1742,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
         codexHomeCandidates: null,
-        claudeCodeOauthTokens: null,
-        claudeProxyBaseUrl: null,
         allowIssueCacheMinutes: 0,
       });
 
@@ -1861,8 +1799,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
         codexHomeCandidates: null,
-        claudeCodeOauthTokens: null,
-        claudeProxyBaseUrl: null,
         allowIssueCacheMinutes: 0,
       });
 
@@ -1910,8 +1846,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
         codexHomeCandidates: null,
-        claudeCodeOauthTokens: null,
-        claudeProxyBaseUrl: null,
         allowIssueCacheMinutes: 0,
       });
 
@@ -1959,8 +1893,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
         codexHomeCandidates: null,
-        claudeCodeOauthTokens: null,
-        claudeProxyBaseUrl: null,
         allowIssueCacheMinutes: 0,
       });
 
@@ -2008,8 +1940,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
         codexHomeCandidates: null,
-        claudeCodeOauthTokens: null,
-        claudeProxyBaseUrl: null,
         allowIssueCacheMinutes: 0,
       });
 
@@ -2063,8 +1993,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['user1', 'user2'],
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
 
@@ -2112,8 +2040,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
 
@@ -2159,8 +2085,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['user1', 'user2'],
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
 
@@ -2200,8 +2124,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['user1'],
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
 
@@ -2238,8 +2160,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
 
@@ -2287,8 +2207,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: [],
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
 
@@ -2336,8 +2254,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: ['.codex-dev1'],
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
 
@@ -2405,8 +2321,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: ['.codex-dev1', '.codex-dev2'],
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
 
@@ -2471,8 +2385,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
 
@@ -2531,8 +2443,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
 
@@ -2560,8 +2470,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 5,
     });
 
@@ -2608,8 +2516,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
 
@@ -2619,7 +2525,7 @@ describe('StartPreparationUseCase', () => {
     });
   });
 
-  it('should pass CLAUDE_CODE_OAUTH_TOKEN and ANTHROPIC_BASE_URL to runCommand when token list is provided', async () => {
+  it('should pass CLAUDE_CODE_OAUTH_TOKEN and ANTHROPIC_BASE_URL to runCommand when tokens are available', async () => {
     const awaitingIssue = createMockIssue({
       url: 'url1',
       title: 'Issue 1',
@@ -2637,6 +2543,9 @@ describe('StartPreparationUseCase', () => {
       stderr: '',
       exitCode: 0,
     });
+    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+      { token: 'token-a', fiveHourUtilization: 0, blocked: false },
+    ]);
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
@@ -2648,11 +2557,15 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: ['token-a'],
-      claudeProxyBaseUrl: 'http://127.0.0.1:8787',
       allowIssueCacheMinutes: 0,
     });
 
+    expect(
+      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mock.calls,
+    ).toHaveLength(1);
+    expect(
+      mockClaudeTokenUsageRepository.ensureObservable.mock.calls,
+    ).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
       env: {
@@ -2698,6 +2611,10 @@ describe('StartPreparationUseCase', () => {
       stderr: '',
       exitCode: 0,
     });
+    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+      { token: 'token-a', fiveHourUtilization: 0, blocked: false },
+      { token: 'token-b', fiveHourUtilization: 0, blocked: false },
+    ]);
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
@@ -2709,8 +2626,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: ['token-a', 'token-b'],
-      claudeProxyBaseUrl: 'http://127.0.0.1:8787',
       allowIssueCacheMinutes: 0,
     });
 
@@ -2735,7 +2650,7 @@ describe('StartPreparationUseCase', () => {
     });
   });
 
-  it('should not pass any env when claudeCodeOauthTokens is null', async () => {
+  it('should not inject env when no tokens are available', async () => {
     const awaitingIssue = createMockIssue({
       url: 'url1',
       title: 'Issue 1',
@@ -2753,6 +2668,9 @@ describe('StartPreparationUseCase', () => {
       stderr: '',
       exitCode: 0,
     });
+    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue(
+      [],
+    );
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
@@ -2764,11 +2682,145 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      claudeCodeOauthTokens: null,
-      claudeProxyBaseUrl: null,
       allowIssueCacheMinutes: 0,
     });
 
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toBeUndefined();
+    expect(
+      mockClaudeTokenUsageRepository.ensureObservable.mock.calls,
+    ).toHaveLength(0);
+  });
+
+  it('should pick the least-utilized token first', async () => {
+    const awaitingIssue = createMockIssue({
+      url: 'url1',
+      title: 'Issue 1',
+      labels: ['category:impl'],
+      status: 'Awaiting Workspace',
+      number: 1,
+      itemId: 'item-1',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([awaitingIssue]),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+      { token: 'token-high', fiveHourUtilization: 80, blocked: false },
+      { token: 'token-low', fiveHourUtilization: 10, blocked: false },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: null,
+      codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
+    });
+
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
+      env: {
+        CLAUDE_CODE_OAUTH_TOKEN: 'token-low',
+        ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
+      },
+    });
+  });
+
+  it('should exclude blocked tokens from rotation', async () => {
+    const awaitingIssue = createMockIssue({
+      url: 'url1',
+      title: 'Issue 1',
+      labels: ['category:impl'],
+      status: 'Awaiting Workspace',
+      number: 1,
+      itemId: 'item-1',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([awaitingIssue]),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+      { token: 'token-blocked', fiveHourUtilization: 5, blocked: true },
+      { token: 'token-ok', fiveHourUtilization: 50, blocked: false },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: null,
+      codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
+    });
+
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
+      env: {
+        CLAUDE_CODE_OAUTH_TOKEN: 'token-ok',
+        ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
+      },
+    });
+  });
+
+  it('should not inject env when every available token is blocked', async () => {
+    const awaitingIssue = createMockIssue({
+      url: 'url1',
+      title: 'Issue 1',
+      labels: ['category:impl'],
+      status: 'Awaiting Workspace',
+      number: 1,
+      itemId: 'item-1',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([awaitingIssue]),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+      { token: 'token-a', fiveHourUtilization: 5, blocked: true },
+      { token: 'token-b', fiveHourUtilization: 8, blocked: true },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: null,
+      codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
+    });
+
+    expect(
+      mockClaudeTokenUsageRepository.ensureObservable.mock.calls,
+    ).toHaveLength(0);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toBeUndefined();
   });

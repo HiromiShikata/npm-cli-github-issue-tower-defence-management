@@ -3,11 +3,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.StartPreparationUseCase = void 0;
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 class StartPreparationUseCase {
-    constructor(projectRepository, issueRepository, claudeRepository, localCommandRunner) {
+    constructor(projectRepository, issueRepository, claudeRepository, localCommandRunner, claudeTokenUsageRepository) {
         this.projectRepository = projectRepository;
         this.issueRepository = issueRepository;
         this.claudeRepository = claudeRepository;
         this.localCommandRunner = localCommandRunner;
+        this.claudeTokenUsageRepository = claudeTokenUsageRepository;
+        this.selectRotationTokens = (tokenUsages) => tokenUsages
+            .filter((usage) => !usage.blocked)
+            .sort((a, b) => a.fiveHourUtilization - b.fiveHourUtilization)
+            .map((usage) => usage.token);
         this.run = async (params) => {
             const claudeUsages = await this.claudeRepository.getUsage();
             const weeklyWindowHours = 168;
@@ -31,6 +36,17 @@ class StartPreparationUseCase {
                         return;
                     }
                     console.warn(`Weekly Claude usage (${maxWeeklyUtilization}%) exceeds threshold (${params.utilizationPercentageThreshold}%). Reducing maximumPreparingIssuesCount to ${maximumPreparingIssuesCount}.`);
+                }
+            }
+            const tokenUsages = await this.claudeTokenUsageRepository.getAvailableTokenUsages();
+            let rotationTokens = null;
+            let proxyBaseUrl = null;
+            if (tokenUsages.length > 0) {
+                const ranked = this.selectRotationTokens(tokenUsages);
+                if (ranked.length > 0) {
+                    await this.claudeTokenUsageRepository.ensureObservable();
+                    rotationTokens = ranked;
+                    proxyBaseUrl = this.claudeTokenUsageRepository.proxyBaseUrl();
                 }
             }
             const project = await this.projectRepository.getByUrl(params.projectUrl);
@@ -153,14 +169,11 @@ class StartPreparationUseCase {
                     awArgs.push('--codexHome', codexHome);
                 }
                 let spawnEnv;
-                if (params.claudeCodeOauthTokens !== null &&
-                    params.claudeCodeOauthTokens.length > 0 &&
-                    params.claudeProxyBaseUrl !== null) {
-                    const tokens = params.claudeCodeOauthTokens;
-                    const selected = tokens[startedInThisRunCount % tokens.length];
+                if (rotationTokens !== null && proxyBaseUrl !== null) {
+                    const selected = rotationTokens[startedInThisRunCount % rotationTokens.length];
                     spawnEnv = {
                         CLAUDE_CODE_OAUTH_TOKEN: selected,
-                        ANTHROPIC_BASE_URL: params.claudeProxyBaseUrl,
+                        ANTHROPIC_BASE_URL: proxyBaseUrl,
                     };
                 }
                 await this.localCommandRunner.runCommand('aw', awArgs, spawnEnv ? { env: spawnEnv } : undefined);
