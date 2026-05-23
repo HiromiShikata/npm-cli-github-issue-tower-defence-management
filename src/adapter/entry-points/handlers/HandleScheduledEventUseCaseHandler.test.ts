@@ -423,15 +423,15 @@ allowedIssueAuthors: 'user1, user2, user3'
   });
 
   describe('Claude OAuth token rotation wiring', () => {
-    it('should pass claudeCodeOauthTokenListJsonPath from startPreparation to ProxyClaudeTokenUsageRepository', async () => {
+    it('should pass top-level claudeCodeOauthTokenListJsonPath to ProxyClaudeTokenUsageRepository', async () => {
       const configWithTokenPath = {
         ...validConfig,
+        claudeCodeOauthTokenListJsonPath:
+          '/home/user/creds/claudeCodeOauthTokenList.json',
         startPreparation: {
           defaultAgentName: 'agent1',
           configFilePath: './config.yml',
           maximumPreparingIssuesCount: 3,
-          claudeCodeOauthTokenListJsonPath:
-            '/home/user/creds/claudeCodeOauthTokenList.json',
         },
       };
       jest
@@ -465,7 +465,7 @@ allowedIssueAuthors: 'user1, user2, user3'
       expect(MockedProxyClaudeTokenUsageRepository).toHaveBeenCalledWith(null);
     });
 
-    it('should pass null when startPreparation is absent', async () => {
+    it('should pass null when claudeCodeOauthTokenListJsonPath is unset and startPreparation is absent', async () => {
       jest.mocked(fs.readFileSync).mockReturnValue(YAML.stringify(validConfig));
 
       const handler = new HandleScheduledEventUseCaseHandler();
@@ -482,11 +482,11 @@ claudeCodeOauthTokenListJsonPath: /readme/tokens.json
       mockFetchReturningReadme(readmeContent);
       const configWithTokenPath = {
         ...validConfig,
+        claudeCodeOauthTokenListJsonPath: '/yaml/tokens.json',
         startPreparation: {
           defaultAgentName: 'agent1',
           configFilePath: './config.yml',
           maximumPreparingIssuesCount: 3,
-          claudeCodeOauthTokenListJsonPath: '/yaml/tokens.json',
         },
       };
       jest
