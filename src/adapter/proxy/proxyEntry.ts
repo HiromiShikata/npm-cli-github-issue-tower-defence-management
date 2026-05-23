@@ -4,13 +4,18 @@ import { PROXY_PORT, writeRateLimit } from './RateLimitCache';
 
 const UPSTREAM_HOST = 'api.anthropic.com';
 
+const BEARER_PREFIX = 'bearer ';
+
 const extractToken = (
   authorization: string | string[] | undefined,
 ): string | null => {
   const value = Array.isArray(authorization) ? authorization[0] : authorization;
   if (typeof value !== 'string') return null;
-  const match = value.match(/^Bearer\s+(.+)$/i);
-  return match ? match[1] : null;
+  if (value.length < BEARER_PREFIX.length) return null;
+  if (value.slice(0, BEARER_PREFIX.length).toLowerCase() !== BEARER_PREFIX)
+    return null;
+  const token = value.slice(BEARER_PREFIX.length).trim();
+  return token.length > 0 ? token : null;
 };
 
 const startProxy = (port: number): void => {
@@ -61,4 +66,4 @@ if (require.main === module) {
   startProxy(PROXY_PORT);
 }
 
-export { startProxy };
+export { startProxy, extractToken };

@@ -33,18 +33,24 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.startProxy = void 0;
+exports.extractToken = exports.startProxy = void 0;
 const http = __importStar(require("http"));
 const https = __importStar(require("https"));
 const RateLimitCache_1 = require("./RateLimitCache");
 const UPSTREAM_HOST = 'api.anthropic.com';
+const BEARER_PREFIX = 'bearer ';
 const extractToken = (authorization) => {
     const value = Array.isArray(authorization) ? authorization[0] : authorization;
     if (typeof value !== 'string')
         return null;
-    const match = value.match(/^Bearer\s+(.+)$/i);
-    return match ? match[1] : null;
+    if (value.length < BEARER_PREFIX.length)
+        return null;
+    if (value.slice(0, BEARER_PREFIX.length).toLowerCase() !== BEARER_PREFIX)
+        return null;
+    const token = value.slice(BEARER_PREFIX.length).trim();
+    return token.length > 0 ? token : null;
 };
+exports.extractToken = extractToken;
 const startProxy = (port) => {
     const server = http.createServer((clientRequest, clientResponse) => {
         const token = extractToken(clientRequest.headers['authorization']);
