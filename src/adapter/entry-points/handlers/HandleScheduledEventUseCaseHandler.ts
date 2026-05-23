@@ -59,6 +59,7 @@ export class HandleScheduledEventUseCaseHandler {
     const configFileContent = fs.readFileSync(configFilePath, 'utf8');
     const input: unknown = YAML.parse(configFileContent);
     type inputType = Parameters<HandleScheduledEventUseCase['run']>[0] & {
+      claudeCodeOauthTokenListJsonPath?: string;
       credentials: {
         manager: {
           github: {
@@ -99,6 +100,9 @@ export class HandleScheduledEventUseCaseHandler {
       ...input,
       allowIssueCacheMinutes:
         readmeConfig.allowIssueCacheMinutes ?? input.allowIssueCacheMinutes,
+      claudeCodeOauthTokenListJsonPath:
+        readmeConfig.claudeCodeOauthTokenListJsonPath ??
+        input.claudeCodeOauthTokenListJsonPath,
       startPreparation: input.startPreparation
         ? {
             ...input.startPreparation,
@@ -129,9 +133,6 @@ export class HandleScheduledEventUseCaseHandler {
             codexHomeCandidates:
               readmeConfig.codexHomeCandidates ??
               input.startPreparation.codexHomeCandidates,
-            claudeCodeOauthTokenListJsonPath:
-              readmeConfig.claudeCodeOauthTokenListJsonPath ??
-              input.startPreparation.claudeCodeOauthTokenListJsonPath,
           }
         : input.startPreparation,
     };
@@ -222,7 +223,7 @@ export class HandleScheduledEventUseCaseHandler {
     const nodeLocalCommandRunner = new NodeLocalCommandRunner();
     const claudeRepository = new OauthAPIProxyClaudeRepository();
     const claudeTokenUsageRepository = new ProxyClaudeTokenUsageRepository(
-      mergedInput.startPreparation?.claudeCodeOauthTokenListJsonPath ?? null,
+      mergedInput.claudeCodeOauthTokenListJsonPath ?? null,
     );
     const startPreparationUseCase = new StartPreparationUseCase(
       projectRepository,
