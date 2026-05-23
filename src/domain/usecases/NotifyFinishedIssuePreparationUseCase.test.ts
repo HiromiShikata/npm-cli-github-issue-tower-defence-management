@@ -270,7 +270,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       status: 'Preparation',
     });
 
-    mockProjectRepository.getByUrl.mockResolvedValue(projectWithoutDependedField);
+    mockProjectRepository.getByUrl.mockResolvedValue(
+      projectWithoutDependedField,
+    );
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({ content: 'From: Agent report' }),
@@ -311,12 +313,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockImplementation(
-      async (url: string) => {
-        if (url === issueUrl) return issue;
-        return null;
-      },
-    );
+    mockIssueRepository.get.mockImplementation(async (url: string) => {
+      if (url === issueUrl) return issue;
+      return null;
+    });
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({ content: 'From: Agent report' }),
     ]);
