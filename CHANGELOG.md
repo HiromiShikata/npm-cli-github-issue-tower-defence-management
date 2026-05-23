@@ -1,3 +1,15 @@
+# [1.53.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.52.1...v1.53.0) (2026-05-23)
+
+
+### Bug Fixes
+
+* **core:** update HandleScheduledEventUseCase test to pass new revertNotReadyAwaitingQualityCheckUseCase constructor argument ([25b2eb0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/25b2eb0605bfea1a0a135b92d7fcac706563e79d))
+
+
+### Features
+
+* **core:** add scheduled use case to revert Awaiting Quality Check issues whose linked PR is no longer review-ready, sharing the rejection-evaluation helper with NotifyFinishedIssuePreparationUseCase ([f11b2aa](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f11b2aad8fec0747ed8cc96055c78189570da7ee)), closes [#586](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/586)
+
 ## [1.52.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.52.0...v1.52.1) (2026-05-22)
 
 
