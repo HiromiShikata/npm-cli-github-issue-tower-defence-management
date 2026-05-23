@@ -795,6 +795,21 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       | { date: string }
       | { singleSelectOptionId: string },
   ): Promise<void> => {
+    if (!projectId) {
+      throw new Error(
+        `updateProjectField called with empty projectId (fieldId: ${fieldId}, itemId: ${itemId})`,
+      );
+    }
+    if (!fieldId) {
+      throw new Error(
+        `updateProjectField called with empty fieldId (projectId: ${projectId}, itemId: ${itemId})`,
+      );
+    }
+    if (!itemId) {
+      throw new Error(
+        `updateProjectField called with empty itemId (projectId: ${projectId}, fieldId: ${fieldId})`,
+      );
+    }
     const graphqlQuery = {
       query: `mutation {
       updateProjectV2ItemFieldValue(input: {

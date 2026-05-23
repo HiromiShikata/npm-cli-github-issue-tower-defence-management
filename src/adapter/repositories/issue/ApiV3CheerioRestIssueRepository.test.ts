@@ -267,6 +267,97 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('updateStory', () => {
+    const createProjectWithStory = () => ({
+      id: 'test-project-id',
+      url: 'https://github.com/users/test/projects/1',
+      databaseId: 1,
+      name: 'test-project',
+      status: {
+        name: 'Status',
+        fieldId: 'test-status-field-id',
+        statuses: [],
+      },
+      nextActionDate: null,
+      nextActionHour: null,
+      story: {
+        name: 'Story',
+        fieldId: 'test-story-field-id',
+        databaseId: 2,
+        stories: [],
+        workflowManagementStory: {
+          id: 'workflow-story-option-id',
+          name: 'workflow management',
+        },
+      },
+      remainingEstimationMinutes: null,
+      dependedIssueUrlSeparatedByComma: null,
+      completionDate50PercentConfidence: null,
+    });
+
+    const createIssue = (itemId: string) => ({
+      nameWithOwner: 'HiromiShikata/test-repository',
+      number: 38,
+      title: 'test-title',
+      state: 'OPEN' as const,
+      status: null,
+      story: null,
+      nextActionDate: null,
+      nextActionHour: null,
+      estimationMinutes: null,
+      dependedIssueUrls: [],
+      completionDate50PercentConfidence: null,
+      url: 'https://github.com/HiromiShikata/test-repository/issues/38',
+      assignees: [],
+      labels: [],
+      org: 'HiromiShikata',
+      repo: 'test-repository',
+      body: 'test-body',
+      itemId,
+      isPr: false,
+      isInProgress: false,
+      isClosed: false,
+      createdAt: new Date('2024-01-01'),
+      author: '',
+    });
+
+    it('should call graphqlProjectItemRepository.updateProjectField with correct parameters', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue();
+
+      const project = createProjectWithStory();
+      const issue = createIssue('test-item-id');
+
+      await repository.updateStory(project, issue, 'workflow-story-option-id');
+
+      expect(
+        graphqlProjectItemRepository.updateProjectField,
+      ).toHaveBeenCalledWith(
+        'test-project-id',
+        'test-story-field-id',
+        'test-item-id',
+        {
+          singleSelectOptionId: 'workflow-story-option-id',
+        },
+      );
+    });
+
+    it('should skip calling updateProjectField when issue itemId is empty', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+
+      const project = createProjectWithStory();
+      const issue = createIssue('');
+
+      await repository.updateStory(project, issue, 'workflow-story-option-id');
+
+      expect(
+        graphqlProjectItemRepository.updateProjectField,
+      ).not.toHaveBeenCalled();
+    });
+  });
+
   const createApiV3CheerioRestIssueRepository = () => {
     const apiV3IssueRepository = mock<ApiV3IssueRepository>();
     const restIssueRepository = mock<RestIssueRepository>();

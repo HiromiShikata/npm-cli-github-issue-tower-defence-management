@@ -523,6 +523,12 @@ export class ApiV3CheerioRestIssueRepository
     issue: Issue,
     storyOptionId: string,
   ): Promise<void> => {
+    if (!issue.itemId) {
+      console.warn(
+        `[updateStory] Skipping story update for issue ${issue.url}: itemId is empty`,
+      );
+      return;
+    }
     await this.graphqlProjectItemRepository.updateProjectField(
       project.id,
       project.story.fieldId,
