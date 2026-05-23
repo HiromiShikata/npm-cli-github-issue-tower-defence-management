@@ -8,14 +8,21 @@ class SetupTowerDefenceProjectUseCase {
         this.run = async (params) => {
             const project = await this.projectRepository.getByUrl(params.projectUrl);
             const existing = project.status.statuses;
-            if (SetupTowerDefenceProjectUseCase.hasRequiredStatusesInCanonicalOrder(existing)) {
+            const hasMigratedFromName = existing.some((s) => SetupTowerDefenceProjectUseCase.MIGRATED_FROM_NAMES.has(s.name));
+            if (!hasMigratedFromName &&
+                SetupTowerDefenceProjectUseCase.hasRequiredStatusesInCanonicalOrder(existing)) {
                 return;
             }
             const requiredNames = new Set(WorkflowStatus_1.REQUIRED_WORKFLOW_STATUSES.map((s) => s.name));
-            const others = existing.filter((status) => !requiredNames.has(status.name));
+            const others = existing.filter((status) => !requiredNames.has(status.name) &&
+                !SetupTowerDefenceProjectUseCase.MIGRATED_FROM_NAMES.has(status.name));
             const newStatusList = [
                 ...WorkflowStatus_1.REQUIRED_WORKFLOW_STATUSES.map((required) => {
-                    const found = existing.find((status) => status.name === required.name);
+                    const legacyName = SetupTowerDefenceProjectUseCase.LEGACY_STATUS_NAMES[required.name];
+                    const found = existing.find((status) => status.name === required.name) ??
+                        (legacyName !== undefined
+                            ? existing.find((status) => status.name === legacyName)
+                            : undefined);
                     return {
                         id: found ? found.id : null,
                         name: required.name,
@@ -35,6 +42,15 @@ class SetupTowerDefenceProjectUseCase {
     }
 }
 exports.SetupTowerDefenceProjectUseCase = SetupTowerDefenceProjectUseCase;
+SetupTowerDefenceProjectUseCase.LEGACY_STATUS_NAMES = {
+    [WorkflowStatus_1.TODO_STATUS_NAME]: WorkflowStatus_1.LEGACY_TODO_STATUS_NAME,
+    [WorkflowStatus_1.IN_TMUX_STATUS_NAME]: WorkflowStatus_1.LEGACY_IN_TMUX_STATUS_NAME,
+};
+SetupTowerDefenceProjectUseCase.MIGRATED_FROM_NAMES = new Set([
+    WorkflowStatus_1.LEGACY_TODO_STATUS_NAME,
+    WorkflowStatus_1.LEGACY_IN_TMUX_STATUS_NAME,
+    WorkflowStatus_1.PC_TODO_STATUS_NAME,
+]);
 SetupTowerDefenceProjectUseCase.hasRequiredStatusesInCanonicalOrder = (existing) => {
     if (existing.length < WorkflowStatus_1.REQUIRED_WORKFLOW_STATUSES.length) {
         return false;

@@ -11,6 +11,8 @@ import {
   FAILED_PREPARATION_STATUS_NAME,
   ICEBOX_STATUS_NAME,
   IN_TMUX_STATUS_NAME,
+  LEGACY_IN_TMUX_STATUS_NAME,
+  LEGACY_TODO_STATUS_NAME,
   PC_TODO_STATUS_NAME,
   PREPARATION_STATUS_NAME,
   REQUIRED_WORKFLOW_STATUSES,
@@ -44,7 +46,7 @@ const buildCanonicalStatuses = (): FieldOption[] =>
   }));
 
 describe('SetupTowerDefenceProjectUseCase', () => {
-  it('should define exactly the 11 required statuses in the documented order with the documented colors and no descriptions', () => {
+  it('should define exactly the 10 required statuses in the documented order with the documented colors and no descriptions', () => {
     expect(REQUIRED_WORKFLOW_STATUSES).toEqual([
       { name: DEFAULT_STATUS_NAME, color: 'ORANGE' },
       { name: AWAITING_TASK_BREAKDOWN_STATUS_NAME, color: 'ORANGE' },
@@ -53,7 +55,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       { name: FAILED_PREPARATION_STATUS_NAME, color: 'RED' },
       { name: AWAITING_QUALITY_CHECK_STATUS_NAME, color: 'GREEN' },
       { name: TODO_STATUS_NAME, color: 'PINK' },
-      { name: PC_TODO_STATUS_NAME, color: 'PINK' },
       { name: IN_TMUX_STATUS_NAME, color: 'RED' },
       { name: DONE_STATUS_NAME, color: 'PURPLE' },
       { name: ICEBOX_STATUS_NAME, color: 'GRAY' },
@@ -189,12 +190,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
         },
         {
           id: null,
-          name: PC_TODO_STATUS_NAME,
-          color: 'PINK',
-          description: '',
-        },
-        {
-          id: null,
           name: IN_TMUX_STATUS_NAME,
           color: 'RED',
           description: '',
@@ -249,7 +244,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       FAILED_PREPARATION_STATUS_NAME,
       AWAITING_QUALITY_CHECK_STATUS_NAME,
       TODO_STATUS_NAME,
-      PC_TODO_STATUS_NAME,
       IN_TMUX_STATUS_NAME,
       DONE_STATUS_NAME,
       ICEBOX_STATUS_NAME,
@@ -271,5 +265,179 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     expect(mockProjectRepository.updateStatusList).toHaveBeenCalledTimes(1);
     const [, payload] = mockProjectRepository.updateStatusList.mock.calls[0];
     expect(payload[2].color).toBe(REQUIRED_WORKFLOW_STATUSES[2].color);
+  });
+
+  it('should rename legacy "Todo" to "Todo by human" by reusing the existing option ID', async () => {
+    const mockProjectRepository =
+      mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
+    const statuses: FieldOption[] = REQUIRED_WORKFLOW_STATUSES.map(
+      (required, index) => ({
+        id: `id-${index}`,
+        name:
+          required.name === TODO_STATUS_NAME
+            ? LEGACY_TODO_STATUS_NAME
+            : required.name,
+        color: required.color,
+        description: '',
+      }),
+    );
+    const project = buildProject(statuses);
+    mockProjectRepository.getByUrl.mockResolvedValue(project);
+    mockProjectRepository.updateStatusList.mockResolvedValue([]);
+
+    const useCase = new SetupTowerDefenceProjectUseCase(mockProjectRepository);
+    await useCase.run({ projectUrl: project.url });
+
+    expect(mockProjectRepository.updateStatusList).toHaveBeenCalledTimes(1);
+    const [, payload] = mockProjectRepository.updateStatusList.mock.calls[0];
+    const todoEntry = payload.find((s) => s.name === TODO_STATUS_NAME);
+    expect(todoEntry).toBeDefined();
+    expect(todoEntry?.id).toBe('id-6');
+    expect(payload.some((s) => s.name === LEGACY_TODO_STATUS_NAME)).toBe(false);
+  });
+
+  it('should rename legacy "In Tmux" to "In Tmux by human" by reusing the existing option ID', async () => {
+    const mockProjectRepository =
+      mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
+    const statuses: FieldOption[] = REQUIRED_WORKFLOW_STATUSES.map(
+      (required, index) => ({
+        id: `id-${index}`,
+        name:
+          required.name === IN_TMUX_STATUS_NAME
+            ? LEGACY_IN_TMUX_STATUS_NAME
+            : required.name,
+        color: required.color,
+        description: '',
+      }),
+    );
+    const project = buildProject(statuses);
+    mockProjectRepository.getByUrl.mockResolvedValue(project);
+    mockProjectRepository.updateStatusList.mockResolvedValue([]);
+
+    const useCase = new SetupTowerDefenceProjectUseCase(mockProjectRepository);
+    await useCase.run({ projectUrl: project.url });
+
+    expect(mockProjectRepository.updateStatusList).toHaveBeenCalledTimes(1);
+    const [, payload] = mockProjectRepository.updateStatusList.mock.calls[0];
+    const inTmuxEntry = payload.find((s) => s.name === IN_TMUX_STATUS_NAME);
+    expect(inTmuxEntry).toBeDefined();
+    expect(inTmuxEntry?.id).toBe('id-7');
+    expect(payload.some((s) => s.name === LEGACY_IN_TMUX_STATUS_NAME)).toBe(
+      false,
+    );
+  });
+
+  it('should remove "PC Todo" from the status list and not include it in others', async () => {
+    const mockProjectRepository =
+      mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
+    const statuses: FieldOption[] = [
+      ...buildCanonicalStatuses(),
+      {
+        id: 'pc-todo-id',
+        name: PC_TODO_STATUS_NAME,
+        color: 'PINK',
+        description: '',
+      },
+    ];
+    const project = buildProject(statuses);
+    mockProjectRepository.getByUrl.mockResolvedValue(project);
+    mockProjectRepository.updateStatusList.mockResolvedValue([]);
+
+    const useCase = new SetupTowerDefenceProjectUseCase(mockProjectRepository);
+    await useCase.run({ projectUrl: project.url });
+
+    expect(mockProjectRepository.updateStatusList).toHaveBeenCalledTimes(1);
+    const [, payload] = mockProjectRepository.updateStatusList.mock.calls[0];
+    expect(payload.some((s) => s.name === PC_TODO_STATUS_NAME)).toBe(false);
+  });
+
+  it('should migrate a project with legacy statuses: rename Todo and In Tmux by ID, remove PC Todo', async () => {
+    const mockProjectRepository =
+      mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
+    const statuses: FieldOption[] = [
+      {
+        id: 'id-0',
+        name: DEFAULT_STATUS_NAME,
+        color: 'ORANGE',
+        description: '',
+      },
+      {
+        id: 'id-1',
+        name: AWAITING_TASK_BREAKDOWN_STATUS_NAME,
+        color: 'ORANGE',
+        description: '',
+      },
+      {
+        id: 'id-2',
+        name: AWAITING_WORKSPACE_STATUS_NAME,
+        color: 'BLUE',
+        description: '',
+      },
+      {
+        id: 'id-3',
+        name: PREPARATION_STATUS_NAME,
+        color: 'YELLOW',
+        description: '',
+      },
+      {
+        id: 'id-4',
+        name: FAILED_PREPARATION_STATUS_NAME,
+        color: 'RED',
+        description: '',
+      },
+      {
+        id: 'id-5',
+        name: AWAITING_QUALITY_CHECK_STATUS_NAME,
+        color: 'GREEN',
+        description: '',
+      },
+      {
+        id: 'id-6',
+        name: LEGACY_TODO_STATUS_NAME,
+        color: 'PINK',
+        description: '',
+      },
+      { id: 'id-7', name: PC_TODO_STATUS_NAME, color: 'PINK', description: '' },
+      {
+        id: 'id-8',
+        name: LEGACY_IN_TMUX_STATUS_NAME,
+        color: 'RED',
+        description: '',
+      },
+      { id: 'id-9', name: DONE_STATUS_NAME, color: 'PURPLE', description: '' },
+      { id: 'id-10', name: ICEBOX_STATUS_NAME, color: 'GRAY', description: '' },
+    ];
+    const project = buildProject(statuses);
+    mockProjectRepository.getByUrl.mockResolvedValue(project);
+    mockProjectRepository.updateStatusList.mockResolvedValue([]);
+
+    const useCase = new SetupTowerDefenceProjectUseCase(mockProjectRepository);
+    await useCase.run({ projectUrl: project.url });
+
+    expect(mockProjectRepository.updateStatusList).toHaveBeenCalledTimes(1);
+    const [, payload] = mockProjectRepository.updateStatusList.mock.calls[0];
+
+    expect(payload.map((s) => s.name)).toEqual([
+      DEFAULT_STATUS_NAME,
+      AWAITING_TASK_BREAKDOWN_STATUS_NAME,
+      AWAITING_WORKSPACE_STATUS_NAME,
+      PREPARATION_STATUS_NAME,
+      FAILED_PREPARATION_STATUS_NAME,
+      AWAITING_QUALITY_CHECK_STATUS_NAME,
+      TODO_STATUS_NAME,
+      IN_TMUX_STATUS_NAME,
+      DONE_STATUS_NAME,
+      ICEBOX_STATUS_NAME,
+    ]);
+
+    expect(payload.find((s) => s.name === TODO_STATUS_NAME)?.id).toBe('id-6');
+    expect(payload.find((s) => s.name === IN_TMUX_STATUS_NAME)?.id).toBe(
+      'id-8',
+    );
+    expect(payload.some((s) => s.name === PC_TODO_STATUS_NAME)).toBe(false);
+    expect(payload.some((s) => s.name === LEGACY_TODO_STATUS_NAME)).toBe(false);
+    expect(payload.some((s) => s.name === LEGACY_IN_TMUX_STATUS_NAME)).toBe(
+      false,
+    );
   });
 });
