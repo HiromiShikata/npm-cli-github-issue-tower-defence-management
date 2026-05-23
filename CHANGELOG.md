@@ -1,3 +1,10 @@
+# [1.57.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.56.1...v1.57.0) (2026-05-23)
+
+
+### Features
+
+* **core:** add item to project when create issue from story issue checkbox ([bf52fa6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bf52fa6faa39f673745f751cd65c3c85eebde603))
+
 ## [1.56.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.56.0...v1.56.1) (2026-05-23)
 
 
