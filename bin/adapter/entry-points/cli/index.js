@@ -11,6 +11,7 @@ Object.defineProperty(exports, "mergeConfigs", { enumerable: true, get: function
 Object.defineProperty(exports, "fetchProjectReadme", { enumerable: true, get: function () { return projectConfig_1.fetchProjectReadme; } });
 const projectConfig_2 = require("./projectConfig");
 const StartPreparationUseCase_1 = require("../../../domain/usecases/StartPreparationUseCase");
+const ProxyClaudeTokenUsageRepository_1 = require("../../repositories/ProxyClaudeTokenUsageRepository");
 const NotifyFinishedIssuePreparationUseCase_1 = require("../../../domain/usecases/NotifyFinishedIssuePreparationUseCase");
 const LocalStorageRepository_1 = require("../../repositories/LocalStorageRepository");
 const GraphqlProjectRepository_1 = require("../../repositories/GraphqlProjectRepository");
@@ -147,7 +148,8 @@ exports.program
             awLogStaleThresholdMinutes: config.awLogStaleThresholdMinutes,
         });
     }
-    const useCase = new StartPreparationUseCase_1.StartPreparationUseCase(projectRepository, issueRepository, claudeRepository, localCommandRunner);
+    const claudeTokenUsageRepository = new ProxyClaudeTokenUsageRepository_1.ProxyClaudeTokenUsageRepository(config.claudeCodeOauthTokenListJsonPath ?? null);
+    const useCase = new StartPreparationUseCase_1.StartPreparationUseCase(projectRepository, issueRepository, claudeRepository, localCommandRunner, claudeTokenUsageRepository);
     const rawAllowedIssueAuthors = config.allowedIssueAuthors;
     const allowedIssueAuthors = rawAllowedIssueAuthors
         ? rawAllowedIssueAuthors

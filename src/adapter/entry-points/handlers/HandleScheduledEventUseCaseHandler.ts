@@ -35,6 +35,7 @@ import { UpdateIssueStatusByLabelUseCase } from '../../../domain/usecases/Update
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
 import { OauthAPIProxyClaudeRepository } from '../../repositories/OauthAPIProxyClaudeRepository';
+import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import { RevertNotReadyAwaitingQualityCheckUseCase } from '../../../domain/usecases/RevertNotReadyAwaitingQualityCheckUseCase';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
@@ -217,11 +218,15 @@ export class HandleScheduledEventUseCaseHandler {
     );
     const nodeLocalCommandRunner = new NodeLocalCommandRunner();
     const claudeRepository = new OauthAPIProxyClaudeRepository();
+    const claudeTokenUsageRepository = new ProxyClaudeTokenUsageRepository(
+      null,
+    );
     const startPreparationUseCase = new StartPreparationUseCase(
       projectRepository,
       issueRepository,
       claudeRepository,
       nodeLocalCommandRunner,
+      claudeTokenUsageRepository,
     );
     const issueCommentRepository = new GitHubIssueCommentRepository(
       input.credentials.bot.github.token,

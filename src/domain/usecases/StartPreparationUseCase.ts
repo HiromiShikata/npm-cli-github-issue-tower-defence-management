@@ -2,6 +2,8 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { ClaudeRepository } from './adapter-interfaces/ClaudeRepository';
+import { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsageRepository';
+import { ClaudeTokenUsage } from '../entities/ClaudeTokenUsage';
 import {
   AWAITING_WORKSPACE_STATUS_NAME,
   PREPARATION_STATUS_NAME,
@@ -22,7 +24,14 @@ export class StartPreparationUseCase {
     >,
     private readonly claudeRepository: Pick<ClaudeRepository, 'getUsage'>,
     private readonly localCommandRunner: LocalCommandRunner,
+    private readonly claudeTokenUsageRepository: ClaudeTokenUsageRepository,
   ) {}
+
+  private selectRotationTokens = (tokenUsages: ClaudeTokenUsage[]): string[] =>
+    tokenUsages
+      .filter((usage) => !usage.blocked)
+      .sort((a, b) => a.fiveHourUtilization - b.fiveHourUtilization)
+      .map((usage) => usage.token);
 
   run = async (params: {
     projectUrl: string;
@@ -84,6 +93,20 @@ export class StartPreparationUseCase {
         );
       }
     }
+
+    const tokenUsages =
+      await this.claudeTokenUsageRepository.getAvailableTokenUsages();
+    let rotationTokens: string[] | null = null;
+    let proxyBaseUrl: string | null = null;
+    if (tokenUsages.length > 0) {
+      const ranked = this.selectRotationTokens(tokenUsages);
+      if (ranked.length > 0) {
+        await this.claudeTokenUsageRepository.ensureObservable();
+        rotationTokens = ranked;
+        proxyBaseUrl = this.claudeTokenUsageRepository.proxyBaseUrl();
+      }
+    }
+
     const project = await this.projectRepository.getByUrl(params.projectUrl);
     const storyObjectMap = await this.issueRepository.getStoryObjectMap(
       project,
@@ -271,7 +294,20 @@ export class StartPreparationUseCase {
           ];
         awArgs.push('--codexHome', codexHome);
       }
-      await this.localCommandRunner.runCommand('aw', awArgs);
+      let spawnEnv: Record<string, string> | undefined;
+      if (rotationTokens !== null && proxyBaseUrl !== null) {
+        const selected =
+          rotationTokens[startedInThisRunCount % rotationTokens.length];
+        spawnEnv = {
+          CLAUDE_CODE_OAUTH_TOKEN: selected,
+          ANTHROPIC_BASE_URL: proxyBaseUrl,
+        };
+      }
+      await this.localCommandRunner.runCommand(
+        'aw',
+        awArgs,
+        spawnEnv ? { env: spawnEnv } : undefined,
+      );
       startedInThisRunCount++;
       updatedCurrentPreparationIssueCount++;
     }

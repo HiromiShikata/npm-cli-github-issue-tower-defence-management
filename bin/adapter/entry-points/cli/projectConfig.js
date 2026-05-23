@@ -84,6 +84,7 @@ const loadConfigFile = (configFilePath) => {
             projectName: getStringValue(parsed, 'projectName'),
             preparationProcessCheckCommand: getStringValue(parsed, 'preparationProcessCheckCommand'),
             codexHomeCandidates: getStringArrayValue(parsed, 'codexHomeCandidates'),
+            claudeCodeOauthTokenListJsonPath: getStringValue(parsed, 'claudeCodeOauthTokenListJsonPath'),
             awLogDirectoryPath: getStringValue(parsed, 'awLogDirectoryPath'),
             awLogStaleThresholdMinutes: getNumberValue(parsed, 'awLogStaleThresholdMinutes'),
         };
@@ -122,6 +123,7 @@ const parseProjectReadmeConfig = (readme) => {
             workflowBlockerResolvedWebhookUrl: getStringValue(parsed, 'workflowBlockerResolvedWebhookUrl'),
             preparationProcessCheckCommand: getStringValue(parsed, 'preparationProcessCheckCommand'),
             codexHomeCandidates: getStringArrayValue(parsed, 'codexHomeCandidates'),
+            claudeCodeOauthTokenListJsonPath: getStringValue(parsed, 'claudeCodeOauthTokenListJsonPath'),
             awLogDirectoryPath: getStringValue(parsed, 'awLogDirectoryPath'),
             awLogStaleThresholdMinutes: getNumberValue(parsed, 'awLogStaleThresholdMinutes'),
         };
@@ -168,6 +170,9 @@ const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
     codexHomeCandidates: readmeOverrides.codexHomeCandidates ??
         cliOverrides.codexHomeCandidates ??
         configFile.codexHomeCandidates,
+    claudeCodeOauthTokenListJsonPath: readmeOverrides.claudeCodeOauthTokenListJsonPath ??
+        cliOverrides.claudeCodeOauthTokenListJsonPath ??
+        configFile.claudeCodeOauthTokenListJsonPath,
     awLogDirectoryPath: readmeOverrides.awLogDirectoryPath ??
         cliOverrides.awLogDirectoryPath ??
         configFile.awLogDirectoryPath,

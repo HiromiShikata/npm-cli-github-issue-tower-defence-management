@@ -16,6 +16,7 @@ import {
   fetchProjectReadme,
 } from './projectConfig';
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
+import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
 import { LocalStorageRepository } from '../../repositories/LocalStorageRepository';
 import { GraphqlProjectRepository } from '../../repositories/GraphqlProjectRepository';
@@ -269,11 +270,15 @@ program
       });
     }
 
+    const claudeTokenUsageRepository = new ProxyClaudeTokenUsageRepository(
+      config.claudeCodeOauthTokenListJsonPath ?? null,
+    );
     const useCase = new StartPreparationUseCase(
       projectRepository,
       issueRepository,
       claudeRepository,
       localCommandRunner,
+      claudeTokenUsageRepository,
     );
 
     const rawAllowedIssueAuthors = config.allowedIssueAuthors;
