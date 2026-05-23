@@ -93,7 +93,7 @@ class NotifyFinishedIssuePreparationUseCase {
                     ? rejectionStatusMessage
                     : 'Auto Status Check: APPROVED (escalated due to prior failures)';
                 if (rejections.length === 0 && approvedPrUrl !== null) {
-                    await this.setPrNextActionDate(approvedPrUrl, project);
+                    await this.setPrDependedIssueUrl(approvedPrUrl, project, params.issueUrl);
                 }
                 await this.issueCommentRepository.createComment(issue, `${escalationStatusLine}\n\nFailed to pass the check automatically for ${params.thresholdForAutoReject} times`);
                 await this.sendWorkflowBlockerNotification(params.issueUrl, params.workflowBlockerResolvedWebhookUrl, project);
@@ -104,7 +104,7 @@ class NotifyFinishedIssuePreparationUseCase {
                 await this.issueRepository.update(issue, project);
                 await this.issueRepository.updateStatus(project, issue, awaitingQualityCheckStatusOption.id);
                 if (approvedPrUrl !== null) {
-                    await this.setPrNextActionDate(approvedPrUrl, project);
+                    await this.setPrDependedIssueUrl(approvedPrUrl, project, params.issueUrl);
                 }
                 await this.sendWorkflowBlockerNotification(params.issueUrl, params.workflowBlockerResolvedWebhookUrl, project);
                 return;
@@ -154,10 +154,17 @@ class NotifyFinishedIssuePreparationUseCase {
             const nextStepValue = Reflect.get(reportJson, 'nextStep');
             return nextStepValue !== null && nextStepValue !== undefined;
         };
-        this.setPrNextActionDate = async (prUrl, project) => {
-            const nextActionDate = new Date();
-            nextActionDate.setMonth(nextActionDate.getMonth() + 1);
-            await this.issueRepository.updateNextActionDate(prUrl, project, nextActionDate);
+        this.setPrDependedIssueUrl = async (prUrl, project, taskIssueUrl) => {
+            if (!project.dependedIssueUrlSeparatedByComma) {
+                console.warn(`dependedIssueUrlSeparatedByComma field not configured in project, skipping PR depended issue URL update for ${prUrl}`);
+                return;
+            }
+            const prIssue = await this.issueRepository.get(prUrl, project);
+            if (!prIssue) {
+                console.warn(`PR issue not found for URL ${prUrl}, skipping depended issue URL update`);
+                return;
+            }
+            await this.issueRepository.updateProjectTextField(project, project.dependedIssueUrlSeparatedByComma.fieldId, prIssue, taskIssueUrl);
         };
         this.sendWorkflowBlockerNotification = async (issueUrl, webhookUrlTemplate, project) => {
             if (webhookUrlTemplate === null) {

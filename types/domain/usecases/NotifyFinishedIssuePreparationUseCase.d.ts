@@ -14,7 +14,7 @@ export declare class NotifyFinishedIssuePreparationUseCase {
     private readonly issueCommentRepository;
     private readonly webhookRepository;
     private readonly issueRejectionEvaluator;
-    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl'>, issueRepository: Pick<IssueRepository, 'get' | 'update' | 'updateStatus' | 'updateNextActionDate' | 'findRelatedOpenPRs' | 'getStoryObjectMap' | 'getOpenPullRequest'>, issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>, webhookRepository: Pick<WebhookRepository, 'sendGetRequest'>);
+    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl'>, issueRepository: Pick<IssueRepository, 'get' | 'update' | 'updateStatus' | 'updateProjectTextField' | 'findRelatedOpenPRs' | 'getStoryObjectMap' | 'getOpenPullRequest'>, issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>, webhookRepository: Pick<WebhookRepository, 'sendGetRequest'>);
     run: (params: {
         projectUrl: string;
         issueUrl: string;
@@ -23,7 +23,7 @@ export declare class NotifyFinishedIssuePreparationUseCase {
     }) => Promise<void>;
     private collectRejections;
     private reportBodyHasNextStep;
-    private setPrNextActionDate;
+    private setPrDependedIssueUrl;
     private sendWorkflowBlockerNotification;
 }
 //# sourceMappingURL=NotifyFinishedIssuePreparationUseCase.d.ts.map

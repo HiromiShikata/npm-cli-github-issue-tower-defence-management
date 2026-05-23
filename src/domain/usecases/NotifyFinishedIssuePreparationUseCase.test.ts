@@ -43,7 +43,10 @@ const createMockProject = (overrides: Partial<Project> = {}): Project => ({
   nextActionHour: null,
   story: null,
   remainingEstimationMinutes: null,
-  dependedIssueUrlSeparatedByComma: null,
+  dependedIssueUrlSeparatedByComma: {
+    name: 'Depended Issue URL separated by comma',
+    fieldId: 'depended-issue-url-field-id',
+  },
   completionDate50PercentConfidence: null,
   ...overrides,
 });
@@ -91,7 +94,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     get: jest.Mock;
     update: jest.Mock;
     updateStatus: jest.Mock;
-    updateNextActionDate: jest.Mock;
+    updateProjectTextField: jest.Mock;
     findRelatedOpenPRs: jest.Mock;
     getStoryObjectMap: jest.Mock;
     getOpenPullRequest: jest.Mock;
@@ -119,7 +122,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       get: jest.fn(),
       update: jest.fn(),
       updateStatus: jest.fn(),
-      updateNextActionDate: jest.fn(),
+      updateProjectTextField: jest.fn(),
       findRelatedOpenPRs: jest.fn(),
       getOpenPullRequest: jest.fn(),
     };
@@ -142,22 +145,29 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   });
 
   it('should update issue status from Preparation to Awaiting Quality Check when last comment starts with From:', async () => {
-    jest.useFakeTimers();
-    jest.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+    const issueUrl = 'https://github.com/user/repo/issues/1';
+    const prUrl = 'https://github.com/user/repo/pull/1';
 
     const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
+      url: issueUrl,
       status: 'Preparation',
+    });
+    const prIssue = createMockIssue({
+      url: prUrl,
+      itemId: 'pr-item-1',
+      isPr: true,
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueRepository.get.mockImplementation(
+      (url: string) => Promise.resolve(url === issueUrl ? issue : prIssue),
+    );
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({ content: 'From: Test report' }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
       {
-        url: 'https://github.com/user/repo/pull/1',
+        url: prUrl,
         isConflicted: false,
         isPassedAllCiJob: true,
         isCiStateSuccess: true,
@@ -169,7 +179,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
+      issueUrl,
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -177,7 +187,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueRepository.update).toHaveBeenCalledTimes(1);
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        url: 'https://github.com/user/repo/issues/1',
+        url: issueUrl,
         status: 'Awaiting Quality Check',
       }),
       mockProject,
@@ -186,36 +196,38 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
       mockProject,
       expect.objectContaining({
-        url: 'https://github.com/user/repo/issues/1',
+        url: issueUrl,
         status: 'Awaiting Quality Check',
       }),
       'awaiting-quality-check-id',
     );
 
-    const expectedNextActionDate = new Date('2026-01-01T00:00:00Z');
-    expectedNextActionDate.setMonth(expectedNextActionDate.getMonth() + 1);
-    expect(mockIssueRepository.updateNextActionDate).toHaveBeenCalledWith(
-      'https://github.com/user/repo/pull/1',
+    expect(mockIssueRepository.updateProjectTextField).toHaveBeenCalledWith(
       mockProject,
-      expectedNextActionDate,
+      'depended-issue-url-field-id',
+      prIssue,
+      issueUrl,
     );
-
-    jest.useRealTimers();
   });
 
-  it('should set PR next action date to 1 month from now when approved', async () => {
-    jest.useFakeTimers();
-    const now = new Date('2026-03-15T12:00:00Z');
-    jest.setSystemTime(now);
-
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-    });
+  it('should set PR depended issue URL to task issue URL when approved', async () => {
+    const issueUrl = 'https://github.com/user/repo/issues/1';
     const prUrl = 'https://github.com/user/repo/pull/42';
 
+    const issue = createMockIssue({
+      url: issueUrl,
+      status: 'Preparation',
+    });
+    const prIssue = createMockIssue({
+      url: prUrl,
+      itemId: 'pr-item-42',
+      isPr: true,
+    });
+
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueRepository.get.mockImplementation(
+      (url: string) => Promise.resolve(url === issueUrl ? issue : prIssue),
+    );
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({ content: 'From: Agent report' }),
     ]);
@@ -233,20 +245,17 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
+      issueUrl,
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
 
-    const expectedDate = new Date(now);
-    expectedDate.setMonth(expectedDate.getMonth() + 1);
-    expect(mockIssueRepository.updateNextActionDate).toHaveBeenCalledWith(
-      prUrl,
+    expect(mockIssueRepository.updateProjectTextField).toHaveBeenCalledWith(
       mockProject,
-      expectedDate,
+      'depended-issue-url-field-id',
+      prIssue,
+      issueUrl,
     );
-
-    jest.useRealTimers();
   });
 
   it('should throw IssueNotFoundError when issue does not exist', async () => {
@@ -694,19 +703,26 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should use APPROVED escalation wording and set PR next action date when current check passes but threshold is met', async () => {
-    jest.useFakeTimers();
-    const now = new Date('2026-02-01T00:00:00Z');
-    jest.setSystemTime(now);
-
+  it('should use APPROVED escalation wording and set PR depended issue URL when current check passes but threshold is met', async () => {
+    const issueUrl = 'https://github.com/user/repo/issues/1';
+    const prUrl = 'https://github.com/user/repo/pull/1';
     const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
+      url: issueUrl,
       status: 'Preparation',
     });
-    const prUrl = 'https://github.com/user/repo/pull/1';
+    const prIssue = createMockIssue({
+      url: prUrl,
+      status: 'Preparation',
+    });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueRepository.get.mockImplementation(
+      async (url: string) => {
+        if (url === issueUrl) return issue;
+        if (url === prUrl) return prIssue;
+        return null;
+      },
+    );
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({ content: 'Auto Status Check: REJECTED - first' }),
       createMockComment({ content: 'Auto Status Check: REJECTED - second' }),
@@ -727,7 +743,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
+      issueUrl,
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
@@ -737,26 +753,23 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockProject,
     );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-      expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
+      expect.objectContaining({ url: issueUrl }),
       expect.stringContaining(
         'Auto Status Check: APPROVED (escalated due to prior failures)',
       ),
     );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-      expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
+      expect.objectContaining({ url: issueUrl }),
       expect.stringContaining(
         'Failed to pass the check automatically for 3 times',
       ),
     );
-    const expectedDate = new Date(now);
-    expectedDate.setMonth(expectedDate.getMonth() + 1);
-    expect(mockIssueRepository.updateNextActionDate).toHaveBeenCalledWith(
-      prUrl,
+    expect(mockIssueRepository.updateProjectTextField).toHaveBeenCalledWith(
       mockProject,
-      expectedDate,
+      'depended-issue-url-field-id',
+      prIssue,
+      issueUrl,
     );
-
-    jest.useRealTimers();
   });
 
   it('should not auto-escalate when rejections are below threshold', async () => {

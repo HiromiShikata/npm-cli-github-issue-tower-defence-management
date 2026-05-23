@@ -46,7 +46,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       | 'get'
       | 'update'
       | 'updateStatus'
-      | 'updateNextActionDate'
+      | 'updateProjectTextField'
       | 'findRelatedOpenPRs'
       | 'getStoryObjectMap'
       | 'getOpenPullRequest'
@@ -202,7 +202,11 @@ export class NotifyFinishedIssuePreparationUseCase {
           ? rejectionStatusMessage
           : 'Auto Status Check: APPROVED (escalated due to prior failures)';
       if (rejections.length === 0 && approvedPrUrl !== null) {
-        await this.setPrNextActionDate(approvedPrUrl, project);
+        await this.setPrDependedIssueUrl(
+          approvedPrUrl,
+          project,
+          params.issueUrl,
+        );
       }
       await this.issueCommentRepository.createComment(
         issue,
@@ -225,7 +229,11 @@ export class NotifyFinishedIssuePreparationUseCase {
         awaitingQualityCheckStatusOption.id,
       );
       if (approvedPrUrl !== null) {
-        await this.setPrNextActionDate(approvedPrUrl, project);
+        await this.setPrDependedIssueUrl(
+          approvedPrUrl,
+          project,
+          params.issueUrl,
+        );
       }
       await this.sendWorkflowBlockerNotification(
         params.issueUrl,
@@ -301,16 +309,29 @@ export class NotifyFinishedIssuePreparationUseCase {
     return nextStepValue !== null && nextStepValue !== undefined;
   };
 
-  private setPrNextActionDate = async (
+  private setPrDependedIssueUrl = async (
     prUrl: string,
     project: Parameters<IssueRepository['get']>[1],
+    taskIssueUrl: string,
   ): Promise<void> => {
-    const nextActionDate = new Date();
-    nextActionDate.setMonth(nextActionDate.getMonth() + 1);
-    await this.issueRepository.updateNextActionDate(
-      prUrl,
+    if (!project.dependedIssueUrlSeparatedByComma) {
+      console.warn(
+        `dependedIssueUrlSeparatedByComma field not configured in project, skipping PR depended issue URL update for ${prUrl}`,
+      );
+      return;
+    }
+    const prIssue = await this.issueRepository.get(prUrl, project);
+    if (!prIssue) {
+      console.warn(
+        `PR issue not found for URL ${prUrl}, skipping depended issue URL update`,
+      );
+      return;
+    }
+    await this.issueRepository.updateProjectTextField(
       project,
-      nextActionDate,
+      project.dependedIssueUrlSeparatedByComma.fieldId,
+      prIssue,
+      taskIssueUrl,
     );
   };
 
