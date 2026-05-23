@@ -286,6 +286,7 @@ export class ApiV3CheerioRestIssueRepository
       | 'updateProjectField'
       | 'clearProjectField'
       | 'updateProjectTextField'
+      | 'addIssueToProject'
     >,
     readonly localStorageCacheRepository: Pick<
       LocalStorageCacheRepository,
@@ -483,6 +484,15 @@ export class ApiV3CheerioRestIssueRepository
       return null;
     }
     return this.convertProjectItemToIssue(projectItem);
+  };
+  addIssueToProject = async (
+    project: Project,
+    issueUrl: string,
+  ): Promise<void> => {
+    await this.graphqlProjectItemRepository.addIssueToProject(
+      project.id,
+      issueUrl,
+    );
   };
   updateNextActionDate = async (
     issueUrl: string,

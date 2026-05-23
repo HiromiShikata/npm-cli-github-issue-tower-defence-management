@@ -599,6 +599,50 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
             }
             await this.removeItemFromProject(projectId, itemId);
         };
+        this.addIssueToProject = async (projectId, issueUrl) => {
+            const { owner, repo, issueNumber } = this.extractIssueFromUrl(issueUrl);
+            const nodeIdQuery = {
+                query: `query GetIssueNodeId($owner: String!, $repo: String!, $number: Int!) {
+        repository(owner: $owner, name: $repo) {
+          issue(number: $number) {
+            id
+          }
+        }
+      }`,
+                variables: { owner, repo, number: issueNumber },
+            };
+            const nodeIdRes = await ky_1.default
+                .post('https://api.github.com/graphql', {
+                json: nodeIdQuery,
+                headers: {
+                    Authorization: `Bearer ${this.ghToken}`,
+                },
+            })
+                .json();
+            if (nodeIdRes.errors) {
+                throw new Error(nodeIdRes.errors.map((e) => e.message).join('\n'));
+            }
+            const contentId = nodeIdRes.data.repository.issue.id;
+            const addQuery = {
+                query: `mutation AddIssueToProject($projectId: ID!, $contentId: ID!) {
+        addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
+          item { id }
+        }
+      }`,
+                variables: { projectId, contentId },
+            };
+            const addRes = await ky_1.default
+                .post('https://api.github.com/graphql', {
+                json: addQuery,
+                headers: {
+                    Authorization: `Bearer ${this.ghToken}`,
+                },
+            })
+                .json();
+            if (addRes.errors) {
+                throw new Error(addRes.errors.map((e) => e.message).join('\n'));
+            }
+        };
     }
 }
 exports.GraphqlProjectItemRepository = GraphqlProjectItemRepository;
