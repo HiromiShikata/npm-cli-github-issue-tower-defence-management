@@ -73,9 +73,7 @@ describe('ensureProxyRunning', () => {
       throw new Error('Expected first spawn argument to be a string');
     }
     expect(firstArg.endsWith(path.join('proxy', 'proxyEntry.js'))).toBe(true);
-    const isObject = (
-      value: unknown,
-    ): value is { [key: string]: unknown } =>
+    const isObject = (value: unknown): value is { [key: string]: unknown } =>
       value !== null && typeof value === 'object' && !Array.isArray(value);
     if (!isObject(options)) {
       throw new Error('Expected spawn options to be an object');
