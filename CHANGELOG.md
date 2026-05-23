@@ -1,3 +1,10 @@
+## [1.58.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.58.0...v1.58.1) (2026-05-23)
+
+
+### Bug Fixes
+
+* **core:** read claudeCodeOauthTokenListJsonPath from top-level config in schedule handler ([deb1e35](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/deb1e358261bfec76994387a700ab78a84544687)), closes [#616](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/616) [#617](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/617)
+
 # [1.58.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.57.0...v1.58.0) (2026-05-23)
 
 
