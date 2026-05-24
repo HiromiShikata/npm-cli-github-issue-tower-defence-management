@@ -8,6 +8,8 @@ import {
   PREPARATION_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 
+const SEVEN_DAY_UTILIZATION_THRESHOLD_PERCENTAGE = 85;
+
 export class StartPreparationUseCase {
   constructor(
     private readonly projectRepository: Pick<ProjectRepository, 'getByUrl'>,
@@ -58,7 +60,11 @@ export class StartPreparationUseCase {
         (usage) =>
           usage.fiveHourUtilization * 100 < utilizationPercentageThreshold,
       )
-      .filter((usage) => usage.sevenDayUtilization * 100 < 85)
+      .filter(
+        (usage) =>
+          usage.sevenDayUtilization * 100 <
+          SEVEN_DAY_UTILIZATION_THRESHOLD_PERCENTAGE,
+      )
       .sort((a, b) => a.sevenDayUtilization - b.sevenDayUtilization)
       .map((usage) => usage.token);
   };
@@ -89,7 +95,7 @@ export class StartPreparationUseCase {
       );
       if (ranked.length === 0) {
         console.warn(
-          `All ${tokenUsages.length} configured Claude OAuth token(s) are unavailable (blocked, rejected, weekly limit for ${this.weeklyLimitTypeForModel(params.defaultLlmModelName)} exhausted, 5h utilization >= ${params.utilizationPercentageThreshold}%, or 7d utilization >= 85%). Skipping starting preparation.`,
+          `All ${tokenUsages.length} configured Claude OAuth token(s) are unavailable (blocked, rejected, weekly limit for ${this.weeklyLimitTypeForModel(params.defaultLlmModelName)} exhausted, 5h utilization >= ${params.utilizationPercentageThreshold}%, or 7d utilization >= ${SEVEN_DAY_UTILIZATION_THRESHOLD_PERCENTAGE}%). Skipping starting preparation.`,
         );
         return;
       }
