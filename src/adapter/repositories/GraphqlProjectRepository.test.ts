@@ -73,9 +73,10 @@ describe('GraphqlProjectRepository', () => {
     };
 
     it('should add a new option while preserving all existing options', async () => {
+      const uniqueSuffix = Date.now().toString(36);
       const newOption: Omit<FieldOption, 'id'> & { id: null } = {
         id: null,
-        name: 'test-story-from-graphql-unit-test',
+        name: `test-story-graphql-${uniqueSuffix}`,
         color: 'BLUE',
         description: 'created by graphql unit test',
       };
