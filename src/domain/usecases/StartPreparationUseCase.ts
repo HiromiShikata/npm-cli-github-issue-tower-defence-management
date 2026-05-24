@@ -348,6 +348,15 @@ export class StartPreparationUseCase {
         params.allowedIssueAuthors !== null &&
         !params.allowedIssueAuthors.includes(issue.author)
       ) {
+        if (issue.author === '') {
+          console.warn(
+            `Skipping issue ${issue.url}: author is unknown (empty string); deny-by-default when allowedIssueAuthors is configured.`,
+          );
+        } else {
+          console.warn(
+            `Skipping issue ${issue.url}: author '${issue.author}' is not in the allowedIssueAuthors list.`,
+          );
+        }
         continue;
       }
       const agent =
