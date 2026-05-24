@@ -1,3 +1,10 @@
+## [1.58.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.58.1...v1.58.2) (2026-05-24)
+
+
+### Bug Fixes
+
+* **test:** use unique name per run to prevent concurrent test race condition ([c6aff80](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c6aff80cd075f6abe1ad9c340573e578b63e356b))
+
 ## [1.58.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.58.0...v1.58.1) (2026-05-23)
 
 
