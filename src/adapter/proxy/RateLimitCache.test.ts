@@ -220,6 +220,66 @@ describe('RateLimitCache', () => {
     });
   });
 
+  describe('writeRateLimit stores all anthropic-ratelimit-* headers', () => {
+    const isRecord = (value: unknown): value is Record<string, unknown> =>
+      value !== null && typeof value === 'object' && !Array.isArray(value);
+
+    const readStoredHeaders = (token: string): Record<string, unknown> => {
+      const filePath = cachePathForToken(token);
+      const raw: unknown = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      if (isRecord(raw) && isRecord(raw.headers)) {
+        return raw.headers;
+      }
+      return {};
+    };
+
+    it('should store any anthropic-ratelimit-* header present in the response', () => {
+      const token = 'extra-header-token';
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': '1700000000',
+        'anthropic-ratelimit-unified-5h-utilization': '10',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '1700100000',
+        'anthropic-ratelimit-unified-7d-utilization': '5',
+        'anthropic-ratelimit-unified-reset': '1700000000',
+        'anthropic-ratelimit-requests-limit': '100',
+        'anthropic-ratelimit-requests-remaining': '99',
+        'content-type': 'application/json',
+      });
+      const storedHeaders = readStoredHeaders(token);
+      expect(storedHeaders['anthropic-ratelimit-unified-reset']).toBe(
+        '1700000000',
+      );
+      expect(storedHeaders['anthropic-ratelimit-requests-limit']).toBe('100');
+      expect(storedHeaders['anthropic-ratelimit-requests-remaining']).toBe(
+        '99',
+      );
+      expect(storedHeaders['content-type']).toBeUndefined();
+    });
+
+    it('should not store non-anthropic-ratelimit headers', () => {
+      const token = 'non-ratelimit-header-token';
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': '1700000000',
+        'anthropic-ratelimit-unified-5h-utilization': '10',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '1700100000',
+        'anthropic-ratelimit-unified-7d-utilization': '5',
+        'x-request-id': 'abc123',
+        'content-type': 'application/json',
+        'transfer-encoding': 'chunked',
+      });
+      const storedHeaders = readStoredHeaders(token);
+      expect(storedHeaders['x-request-id']).toBeUndefined();
+      expect(storedHeaders['content-type']).toBeUndefined();
+      expect(storedHeaders['transfer-encoding']).toBeUndefined();
+    });
+  });
+
   describe('parseModelRateLimitsFromBody', () => {
     it('should extract a rejected seven_day_sonnet limit from a rate_limit event body', () => {
       const body =

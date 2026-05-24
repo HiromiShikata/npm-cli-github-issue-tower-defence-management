@@ -35,6 +35,8 @@ import { UpdateIssueStatusByLabelUseCase } from '../../../domain/usecases/Update
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
 import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
+import { ProxyRateLimitCacheRepository } from '../../repositories/ProxyRateLimitCacheRepository';
+import { UpdateRateLimitCacheUseCase } from '../../../domain/usecases/UpdateRateLimitCacheUseCase';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import { RevertNotReadyAwaitingQualityCheckUseCase } from '../../../domain/usecases/RevertNotReadyAwaitingQualityCheckUseCase';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
@@ -229,6 +231,12 @@ export class HandleScheduledEventUseCaseHandler {
       nodeLocalCommandRunner,
       claudeTokenUsageRepository,
     );
+    const proxyRateLimitCacheRepository = new ProxyRateLimitCacheRepository(
+      mergedInput.claudeCodeOauthTokenListJsonPath ?? null,
+    );
+    const updateRateLimitCacheUseCase = mergedInput.startPreparation
+      ? new UpdateRateLimitCacheUseCase(proxyRateLimitCacheRepository)
+      : null;
     const issueCommentRepository = new GitHubIssueCommentRepository(
       input.credentials.bot.github.token,
     );
@@ -264,6 +272,7 @@ export class HandleScheduledEventUseCaseHandler {
       startPreparationUseCase,
       revertOrphanedPreparationUseCase,
       revertNotReadyAwaitingQualityCheckUseCase,
+      updateRateLimitCacheUseCase,
       systemDateRepository,
       googleSpreadsheetRepository,
       projectRepository,

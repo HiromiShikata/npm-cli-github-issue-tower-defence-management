@@ -102,6 +102,12 @@ jest.mock('../../repositories/OauthAPIProxyClaudeRepository', () => ({
 jest.mock('../../repositories/ProxyClaudeTokenUsageRepository', () => ({
   ProxyClaudeTokenUsageRepository: jest.fn().mockImplementation(() => ({})),
 }));
+jest.mock('../../repositories/ProxyRateLimitCacheRepository', () => ({
+  ProxyRateLimitCacheRepository: jest.fn().mockImplementation(() => ({})),
+}));
+jest.mock('../../../domain/usecases/UpdateRateLimitCacheUseCase', () => ({
+  UpdateRateLimitCacheUseCase: jest.fn().mockImplementation(() => ({})),
+}));
 jest.mock('../../repositories/GitHubIssueCommentRepository', () => ({
   GitHubIssueCommentRepository: jest.fn().mockImplementation(() => ({})),
 }));
