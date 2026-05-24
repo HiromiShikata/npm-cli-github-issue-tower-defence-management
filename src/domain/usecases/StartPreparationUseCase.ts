@@ -58,7 +58,8 @@ export class StartPreparationUseCase {
         (usage) =>
           usage.fiveHourUtilization * 100 < utilizationPercentageThreshold,
       )
-      .sort((a, b) => a.fiveHourUtilization - b.fiveHourUtilization)
+      .filter((usage) => usage.sevenDayUtilization * 100 < 85)
+      .sort((a, b) => a.sevenDayUtilization - b.sevenDayUtilization)
       .map((usage) => usage.token);
   };
 
@@ -88,7 +89,7 @@ export class StartPreparationUseCase {
       );
       if (ranked.length === 0) {
         console.warn(
-          `All ${tokenUsages.length} configured Claude OAuth token(s) are unavailable (blocked, rejected, weekly limit for ${this.weeklyLimitTypeForModel(params.defaultLlmModelName)} exhausted, or 5h utilization >= ${params.utilizationPercentageThreshold}%). Skipping starting preparation.`,
+          `All ${tokenUsages.length} configured Claude OAuth token(s) are unavailable (blocked, rejected, weekly limit for ${this.weeklyLimitTypeForModel(params.defaultLlmModelName)} exhausted, 5h utilization >= ${params.utilizationPercentageThreshold}%, or 7d utilization >= 85%). Skipping starting preparation.`,
         );
         return;
       }

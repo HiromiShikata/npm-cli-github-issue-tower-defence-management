@@ -6,6 +6,7 @@ export type ClaudeModelWeeklyLimit = {
 export type ClaudeTokenUsage = {
   token: string;
   fiveHourUtilization: number;
+  sevenDayUtilization: number;
   blocked: boolean;
   rejected: boolean;
   modelWeeklyLimits: Record<string, ClaudeModelWeeklyLimit>;

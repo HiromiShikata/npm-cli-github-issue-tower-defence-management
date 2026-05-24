@@ -2151,6 +2151,7 @@ describe('StartPreparationUseCase', () => {
       {
         token: 'token-a',
         fiveHourUtilization: 0,
+        sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
         modelWeeklyLimits: {},
@@ -2225,6 +2226,7 @@ describe('StartPreparationUseCase', () => {
       {
         token: 'token-a',
         fiveHourUtilization: 0,
+        sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
         modelWeeklyLimits: {},
@@ -2232,6 +2234,7 @@ describe('StartPreparationUseCase', () => {
       {
         token: 'token-b',
         fiveHourUtilization: 0,
+        sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
         modelWeeklyLimits: {},
@@ -2314,7 +2317,7 @@ describe('StartPreparationUseCase', () => {
     ).toHaveLength(0);
   });
 
-  it('should pick the least-utilized token first', async () => {
+  it('should pick the least-7d-utilized token first', async () => {
     const awaitingIssue = createMockIssue({
       url: 'url1',
       title: 'Issue 1',
@@ -2336,6 +2339,7 @@ describe('StartPreparationUseCase', () => {
       {
         token: 'token-high',
         fiveHourUtilization: 0.8,
+        sevenDayUtilization: 0.7,
         blocked: false,
         rejected: false,
         modelWeeklyLimits: {},
@@ -2343,6 +2347,7 @@ describe('StartPreparationUseCase', () => {
       {
         token: 'token-low',
         fiveHourUtilization: 0.1,
+        sevenDayUtilization: 0.2,
         blocked: false,
         rejected: false,
         modelWeeklyLimits: {},
@@ -2393,6 +2398,7 @@ describe('StartPreparationUseCase', () => {
       {
         token: 'token-blocked',
         fiveHourUtilization: 0.05,
+        sevenDayUtilization: 0,
         blocked: true,
         rejected: false,
         modelWeeklyLimits: {},
@@ -2400,6 +2406,7 @@ describe('StartPreparationUseCase', () => {
       {
         token: 'token-ok',
         fiveHourUtilization: 0.5,
+        sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
         modelWeeklyLimits: {},
@@ -2450,6 +2457,7 @@ describe('StartPreparationUseCase', () => {
       {
         token: 'token-a',
         fiveHourUtilization: 0.05,
+        sevenDayUtilization: 0,
         blocked: true,
         rejected: false,
         modelWeeklyLimits: {},
@@ -2457,6 +2465,7 @@ describe('StartPreparationUseCase', () => {
       {
         token: 'token-b',
         fiveHourUtilization: 0.08,
+        sevenDayUtilization: 0,
         blocked: true,
         rejected: false,
         modelWeeklyLimits: {},
@@ -2491,7 +2500,7 @@ describe('StartPreparationUseCase', () => {
     consoleWarnSpy.mockRestore();
   });
 
-  it('should return all tokens sorted ascending when all are below the threshold', async () => {
+  it('should return all tokens sorted ascending by 7-day utilization when all are below thresholds', async () => {
     const awaitingIssues: Issue[] = [
       createMockIssue({
         url: 'url1',
@@ -2529,22 +2538,25 @@ describe('StartPreparationUseCase', () => {
     });
     mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
       {
-        token: 'token-mid',
-        fiveHourUtilization: 0.5,
-        blocked: false,
-        rejected: false,
-        modelWeeklyLimits: {},
-      },
-      {
-        token: 'token-low',
+        token: 'token-7d-mid',
         fiveHourUtilization: 0.1,
+        sevenDayUtilization: 0.5,
         blocked: false,
         rejected: false,
         modelWeeklyLimits: {},
       },
       {
-        token: 'token-high',
+        token: 'token-7d-low',
         fiveHourUtilization: 0.8,
+        sevenDayUtilization: 0.1,
+        blocked: false,
+        rejected: false,
+        modelWeeklyLimits: {},
+      },
+      {
+        token: 'token-7d-high',
+        fiveHourUtilization: 0.5,
+        sevenDayUtilization: 0.7,
         blocked: false,
         rejected: false,
         modelWeeklyLimits: {},
@@ -2566,13 +2578,13 @@ describe('StartPreparationUseCase', () => {
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toMatchObject({
-      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-low' },
+      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-7d-low' },
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls[1][2]).toMatchObject({
-      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-mid' },
+      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-7d-mid' },
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls[2][2]).toMatchObject({
-      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-high' },
+      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-7d-high' },
     });
   });
 
@@ -2598,6 +2610,7 @@ describe('StartPreparationUseCase', () => {
       {
         token: 'token-at-threshold',
         fiveHourUtilization: 0.9,
+        sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
         modelWeeklyLimits: {},
@@ -2605,6 +2618,7 @@ describe('StartPreparationUseCase', () => {
       {
         token: 'token-below',
         fiveHourUtilization: 0.4,
+        sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
         modelWeeklyLimits: {},
@@ -2633,6 +2647,65 @@ describe('StartPreparationUseCase', () => {
     });
   });
 
+  it('should exclude a token whose 7d utilization is at or above 85%', async () => {
+    const awaitingIssue = createMockIssue({
+      url: 'url1',
+      title: 'Issue 1',
+      labels: ['category:impl'],
+      status: 'Awaiting Workspace',
+      number: 1,
+      itemId: 'item-1',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([awaitingIssue]),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+      {
+        token: 'token-7d-exhausted',
+        fiveHourUtilization: 0.1,
+        sevenDayUtilization: 0.85,
+        blocked: false,
+        rejected: false,
+        modelWeeklyLimits: {},
+      },
+      {
+        token: 'token-7d-ok',
+        fiveHourUtilization: 0.1,
+        sevenDayUtilization: 0.84,
+        blocked: false,
+        rejected: false,
+        modelWeeklyLimits: {},
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: null,
+      codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
+    });
+
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
+      env: {
+        CLAUDE_CODE_OAUTH_TOKEN: 'token-7d-ok',
+        ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
+      },
+    });
+  });
+
   it('should exclude a rejected token from rotation', async () => {
     const awaitingIssue = createMockIssue({
       url: 'url1',
@@ -2655,6 +2728,7 @@ describe('StartPreparationUseCase', () => {
       {
         token: 'token-rejected',
         fiveHourUtilization: 0.1,
+        sevenDayUtilization: 0,
         blocked: false,
         rejected: true,
         modelWeeklyLimits: {},
@@ -2662,6 +2736,7 @@ describe('StartPreparationUseCase', () => {
       {
         token: 'token-ok',
         fiveHourUtilization: 0.5,
+        sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
         modelWeeklyLimits: {},
@@ -2712,6 +2787,7 @@ describe('StartPreparationUseCase', () => {
       {
         token: 'token-reset',
         fiveHourUtilization: 0,
+        sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
         modelWeeklyLimits: {},
@@ -2719,6 +2795,7 @@ describe('StartPreparationUseCase', () => {
       {
         token: 'token-busy',
         fiveHourUtilization: 0.5,
+        sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
         modelWeeklyLimits: {},
@@ -2769,6 +2846,7 @@ describe('StartPreparationUseCase', () => {
       {
         token: 'token-saturated',
         fiveHourUtilization: 0.95,
+        sevenDayUtilization: 0,
         blocked: false,
         rejected: true,
         modelWeeklyLimits: {},
@@ -2776,6 +2854,7 @@ describe('StartPreparationUseCase', () => {
       {
         token: 'token-ok',
         fiveHourUtilization: 0.2,
+        sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
         modelWeeklyLimits: {},
@@ -2826,6 +2905,7 @@ describe('StartPreparationUseCase', () => {
       {
         token: 'token-a',
         fiveHourUtilization: 0.1,
+        sevenDayUtilization: 0,
         blocked: false,
         rejected: true,
         modelWeeklyLimits: {},
@@ -2833,6 +2913,7 @@ describe('StartPreparationUseCase', () => {
       {
         token: 'token-b',
         fiveHourUtilization: 0.2,
+        sevenDayUtilization: 0,
         blocked: false,
         rejected: true,
         modelWeeklyLimits: {},
@@ -2933,6 +3014,7 @@ describe('StartPreparationUseCase', () => {
       {
         token: 'token-sonnet-exhausted',
         fiveHourUtilization: 0.1,
+        sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
         modelWeeklyLimits: {
@@ -2942,6 +3024,7 @@ describe('StartPreparationUseCase', () => {
       {
         token: 'token-ok',
         fiveHourUtilization: 0.5,
+        sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
         modelWeeklyLimits: {},
@@ -2993,6 +3076,7 @@ describe('StartPreparationUseCase', () => {
       {
         token: 'token-recovered',
         fiveHourUtilization: 0.1,
+        sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
         modelWeeklyLimits: {
@@ -3002,6 +3086,7 @@ describe('StartPreparationUseCase', () => {
       {
         token: 'token-busy',
         fiveHourUtilization: 0.5,
+        sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
         modelWeeklyLimits: {},
@@ -3053,6 +3138,7 @@ describe('StartPreparationUseCase', () => {
       {
         token: 'token-sonnet-exhausted',
         fiveHourUtilization: 0.1,
+        sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
         modelWeeklyLimits: {
@@ -3062,6 +3148,7 @@ describe('StartPreparationUseCase', () => {
       {
         token: 'token-higher-util',
         fiveHourUtilization: 0.5,
+        sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
         modelWeeklyLimits: {},
@@ -3113,6 +3200,7 @@ describe('StartPreparationUseCase', () => {
       {
         token: 'token-weekly-exhausted',
         fiveHourUtilization: 0.1,
+        sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
         modelWeeklyLimits: {
@@ -3122,6 +3210,7 @@ describe('StartPreparationUseCase', () => {
       {
         token: 'token-ok',
         fiveHourUtilization: 0.5,
+        sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
         modelWeeklyLimits: {},

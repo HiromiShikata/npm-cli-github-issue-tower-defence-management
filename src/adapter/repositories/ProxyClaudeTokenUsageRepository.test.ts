@@ -95,6 +95,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         {
           token: 'token-a',
           fiveHourUtilization: 42,
+          sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
           modelWeeklyLimits: {},
@@ -102,6 +103,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         {
           token: 'token-b',
           fiveHourUtilization: 0,
+          sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
           modelWeeklyLimits: {},
@@ -131,6 +133,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         {
           token: 'token-a',
           fiveHourUtilization: 5,
+          sevenDayUtilization: 0,
           blocked: true,
           rejected: false,
           modelWeeklyLimits: {},
@@ -160,6 +163,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         {
           token: 'token-a',
           fiveHourUtilization: 100,
+          sevenDayUtilization: 0,
           blocked: false,
           rejected: true,
           modelWeeklyLimits: {},
@@ -189,6 +193,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         {
           token: 'token-a',
           fiveHourUtilization: 0,
+          sevenDayUtilization: 30,
           blocked: false,
           rejected: false,
           modelWeeklyLimits: {},
@@ -218,6 +223,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         {
           token: 'token-a',
           fiveHourUtilization: 95,
+          sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
           modelWeeklyLimits: {},
@@ -247,6 +253,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         {
           token: 'token-a',
           fiveHourUtilization: 0,
+          sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
           modelWeeklyLimits: {},
@@ -276,6 +283,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         {
           token: 'token-a',
           fiveHourUtilization: 10,
+          sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
           modelWeeklyLimits: {},
@@ -305,6 +313,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         {
           token: 'token-a',
           fiveHourUtilization: 100,
+          sevenDayUtilization: 0,
           blocked: false,
           rejected: true,
           modelWeeklyLimits: {},
@@ -334,6 +343,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         {
           token: 'token-a',
           fiveHourUtilization: 0,
+          sevenDayUtilization: 100,
           blocked: false,
           rejected: true,
           modelWeeklyLimits: {},
@@ -363,6 +373,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         {
           token: 'token-a',
           fiveHourUtilization: 0,
+          sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
           modelWeeklyLimits: {},
@@ -381,6 +392,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         {
           token: 'token-a',
           fiveHourUtilization: 0,
+          sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
           modelWeeklyLimits: {},
@@ -412,6 +424,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         {
           token: 'token-a',
           fiveHourUtilization: 5,
+          sevenDayUtilization: 10,
           blocked: false,
           rejected: false,
           modelWeeklyLimits: {
@@ -445,11 +458,72 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         {
           token: 'token-a',
           fiveHourUtilization: 5,
+          sevenDayUtilization: 10,
           blocked: false,
           rejected: false,
           modelWeeklyLimits: {
             seven_day_sonnet: { rejected: false, resetsAt: pastReset },
           },
+        },
+      ]);
+    });
+
+    it('should normalize sevenDayUtilization to 0 when the 7d reset has passed', async () => {
+      mockLoadTokens.mockReturnValue(['token-a']);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 10,
+        fiveHourReset: futureReset,
+        sevenDayUtilization: 75,
+        sevenDayReset: pastReset,
+        blocked: false,
+        rejected: false,
+        unifiedRejected: false,
+        fiveHourRejected: false,
+        sevenDayRejected: false,
+        modelWeeklyLimits: {},
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result).toEqual([
+        {
+          token: 'token-a',
+          fiveHourUtilization: 10,
+          sevenDayUtilization: 0,
+          blocked: false,
+          rejected: false,
+          modelWeeklyLimits: {},
+        },
+      ]);
+    });
+
+    it('should keep sevenDayUtilization when the 7d reset is in the future', async () => {
+      mockLoadTokens.mockReturnValue(['token-a']);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 10,
+        fiveHourReset: futureReset,
+        sevenDayUtilization: 60,
+        sevenDayReset: futureReset,
+        blocked: false,
+        rejected: false,
+        unifiedRejected: false,
+        fiveHourRejected: false,
+        sevenDayRejected: false,
+        modelWeeklyLimits: {},
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result).toEqual([
+        {
+          token: 'token-a',
+          fiveHourUtilization: 10,
+          sevenDayUtilization: 60,
+          blocked: false,
+          rejected: false,
+          modelWeeklyLimits: {},
         },
       ]);
     });
