@@ -11,6 +11,7 @@ Object.defineProperty(exports, "mergeConfigs", { enumerable: true, get: function
 Object.defineProperty(exports, "fetchProjectReadme", { enumerable: true, get: function () { return projectConfig_1.fetchProjectReadme; } });
 const projectConfig_2 = require("./projectConfig");
 const StartPreparationUseCase_1 = require("../../../domain/usecases/StartPreparationUseCase");
+const rotationOrderFileWriter_1 = require("../handlers/rotationOrderFileWriter");
 const ProxyClaudeTokenUsageRepository_1 = require("../../repositories/ProxyClaudeTokenUsageRepository");
 const NotifyFinishedIssuePreparationUseCase_1 = require("../../../domain/usecases/NotifyFinishedIssuePreparationUseCase");
 const LocalStorageRepository_1 = require("../../repositories/LocalStorageRepository");
@@ -154,7 +155,7 @@ exports.program
     const codexHomeCandidates = config.codexHomeCandidates && config.codexHomeCandidates.length > 0
         ? config.codexHomeCandidates
         : null;
-    await useCase.run({
+    const preparationResult = await useCase.run({
         projectUrl,
         defaultAgentName,
         defaultLlmModelName: config.defaultLlmModelName ?? null,
@@ -166,6 +167,9 @@ exports.program
         codexHomeCandidates,
         allowIssueCacheMinutes,
     });
+    if (preparationResult.rotationOrder !== null) {
+        (0, rotationOrderFileWriter_1.writeRotationOrderFile)(preparationResult.rotationOrder);
+    }
 });
 exports.program
     .command('notifyFinishedIssuePreparation')

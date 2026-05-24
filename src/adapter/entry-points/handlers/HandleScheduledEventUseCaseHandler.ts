@@ -2,6 +2,7 @@ import YAML from 'yaml';
 import TYPIA from 'typia';
 import fs from 'fs';
 import { writeSituationFile } from './situationFileWriter';
+import { writeRotationOrderFile } from './rotationOrderFileWriter';
 import {
   fetchProjectReadme,
   parseProjectReadmeConfig,
@@ -44,6 +45,7 @@ import { SetupTowerDefenceProjectUseCase } from '../../../domain/usecases/SetupT
 import {
   AWAITING_QUALITY_CHECK_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
+  FAILED_PREPARATION_STATUS_NAME,
   PREPARATION_STATUS_NAME,
 } from '../../../domain/entities/WorkflowStatus';
 
@@ -271,6 +273,9 @@ export class HandleScheduledEventUseCaseHandler {
 
     const result = await handleScheduledEventUseCase.run(mergedInput);
     if (result) {
+      if (result.rotationOrder !== null) {
+        writeRotationOrderFile(result.rotationOrder);
+      }
       await writeSituationFile({
         cachePath,
         projectId: result.project.id,
@@ -279,6 +284,7 @@ export class HandleScheduledEventUseCaseHandler {
           awaitingQualityCheckStatus: AWAITING_QUALITY_CHECK_STATUS_NAME,
           preparationStatus: PREPARATION_STATUS_NAME,
           awaitingWorkspaceStatus: AWAITING_WORKSPACE_STATUS_NAME,
+          failedPreparationStatus: FAILED_PREPARATION_STATUS_NAME,
         },
         config: {
           maximumPreparingIssuesCount:

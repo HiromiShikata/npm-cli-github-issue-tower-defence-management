@@ -19,7 +19,10 @@ import { SetNoStoryIssueToStoryUseCase } from './SetNoStoryIssueToStoryUseCase';
 import { CreateNewStoryByLabelUseCase } from './CreateNewStoryByLabelUseCase';
 import { AssignNoAssigneeIssueToManagerUseCase } from './AssignNoAssigneeIssueToManagerUseCase';
 import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCase';
-import { StartPreparationUseCase } from './StartPreparationUseCase';
+import {
+  RotationOrderEntry,
+  StartPreparationUseCase,
+} from './StartPreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
 import { RevertNotReadyAwaitingQualityCheckUseCase } from './RevertNotReadyAwaitingQualityCheckUseCase';
 import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
@@ -96,6 +99,7 @@ export class HandleScheduledEventUseCase {
     cacheUsed: boolean;
     targetDateTimes: Date[];
     storyIssues: StoryObjectMap;
+    rotationOrder: RotationOrderEntry[] | null;
   } | null> => {
     if (input.disabled) {
       return null;
@@ -205,8 +209,9 @@ export class HandleScheduledEventUseCase {
       now,
     );
 
+    let rotationOrder: RotationOrderEntry[] | null = null;
     try {
-      await this.runEachUseCases(
+      const useCaseResult = await this.runEachUseCases(
         input,
         project,
         issues,
@@ -215,6 +220,7 @@ export class HandleScheduledEventUseCase {
         storyIssues,
         runSlowSweep,
       );
+      rotationOrder = useCaseResult.rotationOrder;
     } catch (e) {
       if (!(e instanceof Error)) {
         throw e;
@@ -238,7 +244,7 @@ ${JSON.stringify(e)}
       throw e;
     }
 
-    return { project, issues, cacheUsed, targetDateTimes, storyIssues };
+    return { project, issues, cacheUsed, targetDateTimes, storyIssues, rotationOrder };
   };
   runEachUseCases = async (
     input: Parameters<HandleScheduledEventUseCase['run']>[0],
@@ -248,7 +254,7 @@ ${JSON.stringify(e)}
     targetDateTimes: Date[],
     storyObjectMap: StoryObjectMap,
     runSlowSweep: boolean,
-  ): Promise<void> => {
+  ): Promise<{ rotationOrder: RotationOrderEntry[] | null }> => {
     if (runSlowSweep) {
       await this.runSlowSweepUseCases(
         input,
@@ -284,7 +290,7 @@ ${JSON.stringify(e)}
             input.startPreparation.awaitingQualityCheckStatus ?? undefined,
         });
       }
-      await this.startPreparationUseCase.run({
+      const preparationResult = await this.startPreparationUseCase.run({
         projectUrl: input.projectUrl,
         defaultAgentName: input.startPreparation.defaultAgentName,
         defaultLlmModelName: input.startPreparation.defaultLlmModelName ?? null,
@@ -298,7 +304,9 @@ ${JSON.stringify(e)}
         codexHomeCandidates: input.startPreparation.codexHomeCandidates ?? null,
         allowIssueCacheMinutes: input.allowIssueCacheMinutes,
       });
+      return { rotationOrder: preparationResult.rotationOrder };
     }
+    return { rotationOrder: null };
   };
   runSlowSweepUseCases = async (
     input: Parameters<HandleScheduledEventUseCase['run']>[0],

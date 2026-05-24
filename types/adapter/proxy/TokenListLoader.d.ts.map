@@ -1,1 +1,1 @@
-{"version":3,"file":"TokenListLoader.d.ts","sourceRoot":"","sources":["../../../src/adapter/proxy/TokenListLoader.ts"],"names":[],"mappings":"AAiBA,eAAO,MAAM,UAAU,GAAI,UAAU,MAAM,KAAG,MAAM,EAAE,GAAG,IAiBxD,CAAC"}
+{"version":3,"file":"TokenListLoader.d.ts","sourceRoot":"","sources":["../../../src/adapter/proxy/TokenListLoader.ts"],"names":[],"mappings":"AAiBA,MAAM,MAAM,UAAU,GAAG;IACvB,IAAI,EAAE,MAAM,CAAC;IACb,KAAK,EAAE,MAAM,CAAC;CACf,CAAC;AAEF,eAAO,MAAM,gBAAgB,GAAI,UAAU,MAAM,KAAG,UAAU,EAAE,GAAG,IAuBlE,CAAC;AAEF,eAAO,MAAM,UAAU,GAAI,UAAU,MAAM,KAAG,MAAM,EAAE,GAAG,IAIxD,CAAC"}

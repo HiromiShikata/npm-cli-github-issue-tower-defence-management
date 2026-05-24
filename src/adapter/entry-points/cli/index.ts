@@ -16,6 +16,7 @@ import {
   fetchProjectReadme,
 } from './projectConfig';
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
+import { writeRotationOrderFile } from '../handlers/rotationOrderFileWriter';
 import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
 import { LocalStorageRepository } from '../../repositories/LocalStorageRepository';
@@ -285,7 +286,7 @@ program
         ? config.codexHomeCandidates
         : null;
 
-    await useCase.run({
+    const preparationResult = await useCase.run({
       projectUrl,
       defaultAgentName,
       defaultLlmModelName: config.defaultLlmModelName ?? null,
@@ -298,6 +299,9 @@ program
       codexHomeCandidates,
       allowIssueCacheMinutes,
     });
+    if (preparationResult.rotationOrder !== null) {
+      writeRotationOrderFile(preparationResult.rotationOrder);
+    }
   });
 
 program

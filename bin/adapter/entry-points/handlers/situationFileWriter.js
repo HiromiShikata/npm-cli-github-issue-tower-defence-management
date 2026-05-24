@@ -48,6 +48,10 @@ const writeSituationFile = async (params) => {
     const awaitingWorkspaceIssues = statusNames.awaitingWorkspaceStatus !== null
         ? issues.filter((i) => i.status === statusNames.awaitingWorkspaceStatus)
         : [];
+    const failedPreparation = statusNames.failedPreparationStatus !== null
+        ? issues.filter((i) => i.status === statusNames.failedPreparationStatus)
+            .length
+        : 0;
     const awaitingWorkspaceImmediatelyActionable = awaitingWorkspaceIssues.filter(isImmediatelyActionable).length;
     const awaitingWorkspaceBlockedByDependency = awaitingWorkspaceIssues.filter((i) => i.dependedIssueUrls.length > 0).length;
     let runningPreparation = null;
@@ -71,6 +75,7 @@ const writeSituationFile = async (params) => {
             preparation: preparationIssues.length,
             awaitingWorkspaceImmediatelyActionable,
             awaitingWorkspaceBlockedByDependency,
+            failedPreparation,
         },
         processes: {
             runningPreparation,

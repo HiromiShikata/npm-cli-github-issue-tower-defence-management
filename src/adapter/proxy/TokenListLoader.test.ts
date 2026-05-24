@@ -1,7 +1,53 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { loadTokens } from './TokenListLoader';
+import { loadTokenEntries, loadTokens } from './TokenListLoader';
+
+describe('loadTokenEntries', () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'token-entries-loader-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('should return entries with name and token', () => {
+    const filePath = path.join(tempDir, 'tokens.json');
+    fs.writeFileSync(
+      filePath,
+      JSON.stringify([
+        { name: 'alice', token: 'token-a' },
+        { name: 'bob', token: 'token-b' },
+      ]),
+    );
+    expect(loadTokenEntries(filePath)).toEqual([
+      { name: 'alice', token: 'token-a' },
+      { name: 'bob', token: 'token-b' },
+    ]);
+  });
+
+  it('should return empty name string when name is absent from entry', () => {
+    const filePath = path.join(tempDir, 'tokens.json');
+    fs.writeFileSync(
+      filePath,
+      JSON.stringify([{ token: 'token-a' }]),
+    );
+    expect(loadTokenEntries(filePath)).toEqual([{ name: '', token: 'token-a' }]);
+  });
+
+  it('should return null when file does not exist', () => {
+    expect(loadTokenEntries(path.join(tempDir, 'missing.json'))).toBeNull();
+  });
+
+  it('should return null when every entry is invalid', () => {
+    const filePath = path.join(tempDir, 'invalid.json');
+    fs.writeFileSync(filePath, JSON.stringify([{ name: 'no-token' }]));
+    expect(loadTokenEntries(filePath)).toBeNull();
+  });
+});
 
 describe('TokenListLoader', () => {
   let tempDir: string;

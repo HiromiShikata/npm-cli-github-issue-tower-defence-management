@@ -2,7 +2,7 @@ import { ClaudeTokenUsage } from '../../domain/entities/ClaudeTokenUsage';
 import { ClaudeTokenUsageRepository } from '../../domain/usecases/adapter-interfaces/ClaudeTokenUsageRepository';
 import { ensureProxyRunning } from '../proxy/ensureProxyRunning';
 import { PROXY_PORT, readRateLimit } from '../proxy/RateLimitCache';
-import { loadTokens } from '../proxy/TokenListLoader';
+import { loadTokenEntries } from '../proxy/TokenListLoader';
 
 export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageRepository {
   constructor(
@@ -18,15 +18,16 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
     if (this.tokenListJsonPath === null) {
       return [];
     }
-    const tokens = loadTokens(this.tokenListJsonPath);
-    if (tokens === null) {
+    const entries = loadTokenEntries(this.tokenListJsonPath);
+    if (entries === null) {
       return [];
     }
     const nowEpochSeconds = Date.now() / 1000;
-    return tokens.map((token) => {
+    return entries.map(({ name, token }) => {
       const snapshot = readRateLimit(token);
       if (snapshot === null) {
         return {
+          name,
           token,
           fiveHourUtilization: 0,
           blocked: false,
@@ -63,6 +64,7 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
         };
       }
       return {
+        name,
         token,
         fiveHourUtilization,
         blocked: snapshot.blocked,

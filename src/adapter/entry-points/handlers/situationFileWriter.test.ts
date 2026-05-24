@@ -50,6 +50,7 @@ const baseParams = {
     awaitingQualityCheckStatus: 'Awaiting quality check',
     preparationStatus: 'Preparation',
     awaitingWorkspaceStatus: 'Awaiting workspace',
+    failedPreparationStatus: 'Failed Preparation',
   },
   config: {
     maximumPreparingIssuesCount: 6,
@@ -183,6 +184,7 @@ describe('writeSituationFile', () => {
           awaitingQualityCheckStatus: null,
           preparationStatus: null,
           awaitingWorkspaceStatus: null,
+          failedPreparationStatus: null,
         },
         issues,
       };
@@ -206,6 +208,40 @@ describe('writeSituationFile', () => {
       expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
         expect.any(String),
         expect.stringContaining('"awaitingWorkspaceBlockedByDependency":0'),
+      );
+      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining('"failedPreparation":0'),
+      );
+    });
+
+    it('counts failedPreparation correctly from fixture issues', async () => {
+      const issues = [
+        createIssue({ status: 'Failed Preparation' }),
+        createIssue({ status: 'Failed Preparation' }),
+        createIssue({ status: 'Preparation' }),
+        createIssue({ status: 'Awaiting workspace' }),
+      ];
+
+      await writeSituationFile({ ...baseParams, issues });
+
+      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining('"failedPreparation":2'),
+      );
+    });
+
+    it('sets failedPreparation to 0 when no issues match the failed preparation status', async () => {
+      const issues = [
+        createIssue({ status: 'Preparation' }),
+        createIssue({ status: 'Awaiting workspace' }),
+      ];
+
+      await writeSituationFile({ ...baseParams, issues });
+
+      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining('"failedPreparation":0'),
       );
     });
   });

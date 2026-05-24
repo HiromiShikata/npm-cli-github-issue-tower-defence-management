@@ -19,7 +19,7 @@ import { SetNoStoryIssueToStoryUseCase } from './SetNoStoryIssueToStoryUseCase';
 import { CreateNewStoryByLabelUseCase } from './CreateNewStoryByLabelUseCase';
 import { AssignNoAssigneeIssueToManagerUseCase } from './AssignNoAssigneeIssueToManagerUseCase';
 import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCase';
-import { StartPreparationUseCase } from './StartPreparationUseCase';
+import { RotationOrderEntry, StartPreparationUseCase } from './StartPreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
 import { RevertNotReadyAwaitingQualityCheckUseCase } from './RevertNotReadyAwaitingQualityCheckUseCase';
 import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
@@ -87,8 +87,11 @@ export declare class HandleScheduledEventUseCase {
         cacheUsed: boolean;
         targetDateTimes: Date[];
         storyIssues: StoryObjectMap;
+        rotationOrder: RotationOrderEntry[] | null;
     } | null>;
-    runEachUseCases: (input: Parameters<HandleScheduledEventUseCase["run"]>[0], project: Project, issues: Issue[], cacheUsed: boolean, targetDateTimes: Date[], storyObjectMap: StoryObjectMap, runSlowSweep: boolean) => Promise<void>;
+    runEachUseCases: (input: Parameters<HandleScheduledEventUseCase["run"]>[0], project: Project, issues: Issue[], cacheUsed: boolean, targetDateTimes: Date[], storyObjectMap: StoryObjectMap, runSlowSweep: boolean) => Promise<{
+        rotationOrder: RotationOrderEntry[] | null;
+    }>;
     runSlowSweepUseCases: (input: Parameters<HandleScheduledEventUseCase["run"]>[0], project: Project, issues: Issue[], cacheUsed: boolean, targetDateTimes: Date[], storyObjectMap: StoryObjectMap) => Promise<void>;
     static createTargetDateTimes: (from: Date, to: Date) => Date[];
     findTargetDateAndUpdateLastExecutionDateTime: (spreadsheetUrl: string, now: Date) => Promise<Date[]>;

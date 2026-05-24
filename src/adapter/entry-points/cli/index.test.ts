@@ -475,7 +475,7 @@ codexHomeCandidates:
 
   describe('startDaemon', () => {
     it('should read parameters from config file', async () => {
-      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
       const MockedStartPreparationUseCase = jest.mocked(
         StartPreparationUseCase,
       );
@@ -511,7 +511,7 @@ codexHomeCandidates:
     });
 
     it('should allow CLI args to override config file values', async () => {
-      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
       const MockedStartPreparationUseCase = jest.mocked(
         StartPreparationUseCase,
       );
@@ -558,7 +558,7 @@ codexHomeCandidates:
       };
       writeConfig(configWithLlm);
 
-      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
       const MockedStartPreparationUseCase = jest.mocked(
         StartPreparationUseCase,
       );
@@ -593,7 +593,7 @@ codexHomeCandidates:
       };
       writeConfig(configWithCount);
 
-      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
       const MockedStartPreparationUseCase = jest.mocked(
         StartPreparationUseCase,
       );
@@ -621,7 +621,7 @@ codexHomeCandidates:
     });
 
     it('should pass maximumPreparingIssuesCount from CLI overriding config', async () => {
-      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
       const MockedStartPreparationUseCase = jest.mocked(
         StartPreparationUseCase,
       );
@@ -815,7 +815,7 @@ codexHomeCandidates:
         });
       const mockRun = jest.fn().mockImplementation(() => {
         callOrder.push('useCase.run');
-        return Promise.resolve(undefined);
+        return Promise.resolve({ rotationOrder: null });
       });
       const MockedStartPreparationUseCase = jest.mocked(
         StartPreparationUseCase,
@@ -857,7 +857,7 @@ codexHomeCandidates:
       ].join('\n');
       mockFetchReturningReadme(readmeContent);
 
-      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
       const MockedStartPreparationUseCase = jest.mocked(
         StartPreparationUseCase,
       );
@@ -891,7 +891,7 @@ codexHomeCandidates:
       };
       writeConfig(configWithCandidates);
 
-      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
       const MockedStartPreparationUseCase = jest.mocked(
         StartPreparationUseCase,
       );
@@ -919,7 +919,7 @@ codexHomeCandidates:
     });
 
     it('should pass codexHomeCandidates as null when not in config', async () => {
-      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
       const MockedStartPreparationUseCase = jest.mocked(
         StartPreparationUseCase,
       );
@@ -958,7 +958,7 @@ codexHomeCandidates:
       ].join('\n');
       mockFetchReturningReadme(readmeContent);
 
-      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
       const MockedStartPreparationUseCase = jest.mocked(
         StartPreparationUseCase,
       );
@@ -988,7 +988,7 @@ codexHomeCandidates:
 
   describe('notifyFinishedIssuePreparation', () => {
     it('should read parameters from config file', async () => {
-      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
       const MockedNotifyFinishedUseCase = jest.mocked(
         NotifyFinishedIssuePreparationUseCase,
       );
@@ -1020,7 +1020,7 @@ codexHomeCandidates:
     });
 
     it('should allow CLI args to override config file values', async () => {
-      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
       const MockedNotifyFinishedUseCase = jest.mocked(
         NotifyFinishedIssuePreparationUseCase,
       );
@@ -1059,7 +1059,7 @@ codexHomeCandidates:
       };
       writeConfig(configWithThreshold);
 
-      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
       const MockedNotifyFinishedUseCase = jest.mocked(
         NotifyFinishedIssuePreparationUseCase,
       );
@@ -1089,7 +1089,7 @@ codexHomeCandidates:
     });
 
     it('should pass custom thresholdForAutoReject from CLI overriding config', async () => {
-      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
       const MockedNotifyFinishedUseCase = jest.mocked(
         NotifyFinishedIssuePreparationUseCase,
       );
@@ -1221,7 +1221,7 @@ codexHomeCandidates:
       };
       writeConfig(configWithWebhook);
 
-      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
       const MockedNotifyFinishedUseCase = jest.mocked(
         NotifyFinishedIssuePreparationUseCase,
       );
@@ -1261,7 +1261,7 @@ codexHomeCandidates:
       ].join('\n');
       mockFetchReturningReadme(readmeContent);
 
-      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
       const MockedNotifyFinishedUseCase = jest.mocked(
         NotifyFinishedIssuePreparationUseCase,
       );
