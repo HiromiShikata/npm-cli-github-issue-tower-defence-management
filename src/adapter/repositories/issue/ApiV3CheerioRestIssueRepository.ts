@@ -27,6 +27,7 @@ type TimelineItem = {
     number?: number;
     state?: string;
     createdAt?: string;
+    isDraft?: boolean;
     mergeable?: string;
     headRefName?: string;
     baseRefName?: string;
@@ -117,6 +118,7 @@ type IssueTimelineResponse = {
 };
 
 type PrStatusComputationData = {
+  isDraft?: boolean;
   mergeable?: string;
   baseRepository?: {
     branchProtectionRules?: {
@@ -705,6 +707,7 @@ export class ApiV3CheerioRestIssueRepository
       url: prUrl,
       branchName: headRefName ?? null,
       createdAt: new Date(0),
+      isDraft: data.isDraft === true,
       isConflicted,
       isPassedAllCiJob,
       isCiStateSuccess,
@@ -744,6 +747,7 @@ export class ApiV3CheerioRestIssueRepository
                       number
                       state
                       createdAt
+                      isDraft
                       mergeable
                       headRefName
                       baseRefName
@@ -932,6 +936,7 @@ export class ApiV3CheerioRestIssueRepository
           pullRequest(number: $prNumber) {
             url
             state
+            isDraft
             headRefName
             baseRefName
             mergeable

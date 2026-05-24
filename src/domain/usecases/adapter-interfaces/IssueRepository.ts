@@ -7,6 +7,7 @@ export type RelatedPullRequest = {
   url: string;
   branchName: string | null;
   createdAt: Date;
+  isDraft: boolean;
   isConflicted: boolean;
   isPassedAllCiJob: boolean;
   isCiStateSuccess: boolean;
