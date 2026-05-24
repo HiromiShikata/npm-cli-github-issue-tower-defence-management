@@ -25,19 +25,42 @@ export class StartPreparationUseCase {
     private readonly claudeTokenUsageRepository: ClaudeTokenUsageRepository,
   ) {}
 
+  private weeklyLimitTypeForModel = (modelName: string | null): string => {
+    const normalized = (modelName ?? '').toLowerCase();
+    if (normalized.includes('sonnet')) return 'seven_day_sonnet';
+    if (normalized.includes('opus')) return 'seven_day_opus';
+    return 'seven_day';
+  };
+
+  private isModelWeeklyLimitRejected = (
+    usage: ClaudeTokenUsage,
+    weeklyLimitType: string,
+  ): boolean => {
+    const specific = usage.modelWeeklyLimits[weeklyLimitType];
+    if (specific !== undefined && specific.rejected) return true;
+    const general = usage.modelWeeklyLimits['seven_day'];
+    return general !== undefined && general.rejected;
+  };
+
   private selectRotationTokens = (
     tokenUsages: ClaudeTokenUsage[],
     utilizationPercentageThreshold: number,
-  ): string[] =>
-    tokenUsages
+    modelName: string | null,
+  ): string[] => {
+    const weeklyLimitType = this.weeklyLimitTypeForModel(modelName);
+    return tokenUsages
       .filter((usage) => !usage.blocked)
       .filter((usage) => !usage.rejected)
+      .filter(
+        (usage) => !this.isModelWeeklyLimitRejected(usage, weeklyLimitType),
+      )
       .filter(
         (usage) =>
           usage.fiveHourUtilization * 100 < utilizationPercentageThreshold,
       )
       .sort((a, b) => a.fiveHourUtilization - b.fiveHourUtilization)
       .map((usage) => usage.token);
+  };
 
   run = async (params: {
     projectUrl: string;
@@ -61,10 +84,11 @@ export class StartPreparationUseCase {
       const ranked = this.selectRotationTokens(
         tokenUsages,
         params.utilizationPercentageThreshold,
+        params.defaultLlmModelName,
       );
       if (ranked.length === 0) {
         console.warn(
-          `All ${tokenUsages.length} configured Claude OAuth token(s) are unavailable (blocked, rejected, or 5h utilization >= ${params.utilizationPercentageThreshold}%). Skipping starting preparation.`,
+          `All ${tokenUsages.length} configured Claude OAuth token(s) are unavailable (blocked, rejected, weekly limit for ${this.weeklyLimitTypeForModel(params.defaultLlmModelName)} exhausted, or 5h utilization >= ${params.utilizationPercentageThreshold}%). Skipping starting preparation.`,
         );
         return;
       }
