@@ -471,9 +471,9 @@ describe('ProxyClaudeTokenUsageRepository', () => {
     it('should normalize sevenDayUtilization to 0 when the 7d reset has passed', async () => {
       mockLoadTokens.mockReturnValue(['token-a']);
       mockReadRateLimit.mockReturnValue({
-        fiveHourUtilization: 10,
+        fiveHourUtilization: 0.1,
         fiveHourReset: futureReset,
-        sevenDayUtilization: 75,
+        sevenDayUtilization: 0.75,
         sevenDayReset: pastReset,
         blocked: false,
         rejected: false,
@@ -489,7 +489,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
       expect(result).toEqual([
         {
           token: 'token-a',
-          fiveHourUtilization: 10,
+          fiveHourUtilization: 0.1,
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
@@ -501,9 +501,9 @@ describe('ProxyClaudeTokenUsageRepository', () => {
     it('should keep sevenDayUtilization when the 7d reset is in the future', async () => {
       mockLoadTokens.mockReturnValue(['token-a']);
       mockReadRateLimit.mockReturnValue({
-        fiveHourUtilization: 10,
+        fiveHourUtilization: 0.1,
         fiveHourReset: futureReset,
-        sevenDayUtilization: 60,
+        sevenDayUtilization: 0.6,
         sevenDayReset: futureReset,
         blocked: false,
         rejected: false,
@@ -519,8 +519,8 @@ describe('ProxyClaudeTokenUsageRepository', () => {
       expect(result).toEqual([
         {
           token: 'token-a',
-          fiveHourUtilization: 10,
-          sevenDayUtilization: 60,
+          fiveHourUtilization: 0.1,
+          sevenDayUtilization: 0.6,
           blocked: false,
           rejected: false,
           modelWeeklyLimits: {},
