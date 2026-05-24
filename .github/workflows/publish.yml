@@ -19,6 +19,15 @@ jobs:
       pull-requests: write
       id-token: write
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            api.github.com:443
+            github.com:443
+            registry.npmjs.org:443
+            nodejs.org:443
       - uses: actions/create-github-app-token@v3
         id: app-token
         with:
