@@ -1,3 +1,12 @@
+## [1.58.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.58.2...v1.58.3) (2026-05-24)
+
+
+### Bug Fixes
+
+* **core:** exclude tokens whose model-specific weekly limit (seven_day_sonnet) is exhausted ([4d10303](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4d10303646007a3345c2921525d168afccd83d22))
+* **core:** expire stale rate-limit observations so reset tokens re-enter rotation ([7a63c1d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7a63c1d0c365526833dcd1293430adb5b9b27bba))
+* **core:** gate preparation on per-token 5h utilization threshold and remove legacy getUsage() global gate ([cf7cb93](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cf7cb93b12c6e4e04e6c20a8100805d0cc0abc0e)), closes [#622](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/622)
+
 ## [1.58.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.58.1...v1.58.2) (2026-05-24)
 
 
