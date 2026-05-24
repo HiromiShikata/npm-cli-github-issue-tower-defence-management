@@ -29,6 +29,7 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
         return {
           token,
           fiveHourUtilization: 0,
+          sevenDayReset: null,
           blocked: false,
           rejected: false,
           modelWeeklyLimits: {},
@@ -65,6 +66,7 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
       return {
         token,
         fiveHourUtilization,
+        sevenDayReset: sevenDayExpired ? null : snapshot.sevenDayReset,
         blocked: snapshot.blocked,
         rejected,
         modelWeeklyLimits,

@@ -30,7 +30,14 @@ class StartPreparationUseCase {
                 .filter((usage) => !usage.rejected)
                 .filter((usage) => !this.isModelWeeklyLimitRejected(usage, weeklyLimitType))
                 .filter((usage) => usage.fiveHourUtilization * 100 < utilizationPercentageThreshold)
-                .sort((a, b) => a.fiveHourUtilization - b.fiveHourUtilization)
+                .sort((a, b) => {
+                const sevenDayResetA = a.sevenDayReset ?? Infinity;
+                const sevenDayResetB = b.sevenDayReset ?? Infinity;
+                if (sevenDayResetA !== sevenDayResetB) {
+                    return sevenDayResetA - sevenDayResetB;
+                }
+                return a.fiveHourUtilization - b.fiveHourUtilization;
+            })
                 .map((usage) => usage.token);
         };
         this.run = async (params) => {
