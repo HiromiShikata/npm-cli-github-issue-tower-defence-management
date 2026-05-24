@@ -2674,6 +2674,116 @@ describe('StartPreparationUseCase', () => {
     });
   });
 
+  it('should re-admit a token after its 5h window reset normalizes utilization to 0 and clears rejection', async () => {
+    const awaitingIssue = createMockIssue({
+      url: 'url1',
+      title: 'Issue 1',
+      labels: ['category:impl'],
+      status: 'Awaiting Workspace',
+      number: 1,
+      itemId: 'item-1',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([awaitingIssue]),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+      {
+        token: 'token-reset',
+        fiveHourUtilization: 0,
+        blocked: false,
+        rejected: false,
+      },
+      {
+        token: 'token-busy',
+        fiveHourUtilization: 0.5,
+        blocked: false,
+        rejected: false,
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: null,
+      codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
+    });
+
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
+      env: {
+        CLAUDE_CODE_OAUTH_TOKEN: 'token-reset',
+        ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
+      },
+    });
+  });
+
+  it('should exclude a token whose 5h window has not reset and remains at or above threshold', async () => {
+    const awaitingIssue = createMockIssue({
+      url: 'url1',
+      title: 'Issue 1',
+      labels: ['category:impl'],
+      status: 'Awaiting Workspace',
+      number: 1,
+      itemId: 'item-1',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([awaitingIssue]),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+      {
+        token: 'token-saturated',
+        fiveHourUtilization: 0.95,
+        blocked: false,
+        rejected: true,
+      },
+      {
+        token: 'token-ok',
+        fiveHourUtilization: 0.2,
+        blocked: false,
+        rejected: false,
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: null,
+      codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
+    });
+
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
+      env: {
+        CLAUDE_CODE_OAUTH_TOKEN: 'token-ok',
+        ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
+      },
+    });
+  });
+
   it('should skip preparation when every configured token is rejected', async () => {
     const awaitingIssue = createMockIssue({
       url: 'url1',

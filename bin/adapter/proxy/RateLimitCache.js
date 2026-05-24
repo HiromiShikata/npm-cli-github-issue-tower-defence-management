@@ -105,6 +105,9 @@ const readRateLimit = (token) => {
         const status = headers['anthropic-ratelimit-unified-status'];
         const fiveHourStatus = headers['anthropic-ratelimit-unified-5h-status'];
         const sevenDayStatus = headers['anthropic-ratelimit-unified-7d-status'];
+        const unifiedRejected = status === 'rejected';
+        const fiveHourRejected = fiveHourStatus === 'rejected';
+        const sevenDayRejected = sevenDayStatus === 'rejected';
         return {
             fiveHourUtilization: num('anthropic-ratelimit-unified-5h-utilization'),
             fiveHourReset: num('anthropic-ratelimit-unified-5h-reset'),
@@ -113,9 +116,10 @@ const readRateLimit = (token) => {
             blocked: status === 'blocked' ||
                 fiveHourStatus === 'blocked' ||
                 sevenDayStatus === 'blocked',
-            rejected: status === 'rejected' ||
-                fiveHourStatus === 'rejected' ||
-                sevenDayStatus === 'rejected',
+            rejected: unifiedRejected || fiveHourRejected || sevenDayRejected,
+            unifiedRejected,
+            fiveHourRejected,
+            sevenDayRejected,
         };
     }
     catch {

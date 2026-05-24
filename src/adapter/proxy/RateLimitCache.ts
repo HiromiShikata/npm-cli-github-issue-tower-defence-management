@@ -10,6 +10,9 @@ export interface RateLimitSnapshot {
   sevenDayReset: number;
   blocked: boolean;
   rejected: boolean;
+  unifiedRejected: boolean;
+  fiveHourRejected: boolean;
+  sevenDayRejected: boolean;
 }
 
 export const PROXY_PORT = 8787;
@@ -97,6 +100,9 @@ export const readRateLimit = (token: string): RateLimitSnapshot | null => {
     const status = headers['anthropic-ratelimit-unified-status'];
     const fiveHourStatus = headers['anthropic-ratelimit-unified-5h-status'];
     const sevenDayStatus = headers['anthropic-ratelimit-unified-7d-status'];
+    const unifiedRejected = status === 'rejected';
+    const fiveHourRejected = fiveHourStatus === 'rejected';
+    const sevenDayRejected = sevenDayStatus === 'rejected';
     return {
       fiveHourUtilization: num('anthropic-ratelimit-unified-5h-utilization'),
       fiveHourReset: num('anthropic-ratelimit-unified-5h-reset'),
@@ -106,10 +112,10 @@ export const readRateLimit = (token: string): RateLimitSnapshot | null => {
         status === 'blocked' ||
         fiveHourStatus === 'blocked' ||
         sevenDayStatus === 'blocked',
-      rejected:
-        status === 'rejected' ||
-        fiveHourStatus === 'rejected' ||
-        sevenDayStatus === 'rejected',
+      rejected: unifiedRejected || fiveHourRejected || sevenDayRejected,
+      unifiedRejected,
+      fiveHourRejected,
+      sevenDayRejected,
     };
   } catch {
     return null;

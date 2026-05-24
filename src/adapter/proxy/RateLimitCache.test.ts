@@ -116,6 +116,9 @@ describe('RateLimitCache', () => {
       const snapshot = readRateLimit(token);
       expect(snapshot?.rejected).toBe(true);
       expect(snapshot?.blocked).toBe(false);
+      expect(snapshot?.unifiedRejected).toBe(true);
+      expect(snapshot?.fiveHourRejected).toBe(false);
+      expect(snapshot?.sevenDayRejected).toBe(false);
     });
 
     it('should mark snapshot as rejected when 5h status header is rejected', () => {
@@ -131,6 +134,9 @@ describe('RateLimitCache', () => {
       });
       const snapshot = readRateLimit(token);
       expect(snapshot?.rejected).toBe(true);
+      expect(snapshot?.fiveHourRejected).toBe(true);
+      expect(snapshot?.sevenDayRejected).toBe(false);
+      expect(snapshot?.unifiedRejected).toBe(false);
     });
 
     it('should mark snapshot as rejected when 7d status header is rejected', () => {
@@ -146,6 +152,9 @@ describe('RateLimitCache', () => {
       });
       const snapshot = readRateLimit(token);
       expect(snapshot?.rejected).toBe(true);
+      expect(snapshot?.sevenDayRejected).toBe(true);
+      expect(snapshot?.fiveHourRejected).toBe(false);
+      expect(snapshot?.unifiedRejected).toBe(false);
     });
 
     it('should not mark snapshot as rejected when no status header is rejected', () => {
@@ -161,6 +170,9 @@ describe('RateLimitCache', () => {
       });
       const snapshot = readRateLimit(token);
       expect(snapshot?.rejected).toBe(false);
+      expect(snapshot?.unifiedRejected).toBe(false);
+      expect(snapshot?.fiveHourRejected).toBe(false);
+      expect(snapshot?.sevenDayRejected).toBe(false);
     });
 
     it('should return null when file does not exist', () => {

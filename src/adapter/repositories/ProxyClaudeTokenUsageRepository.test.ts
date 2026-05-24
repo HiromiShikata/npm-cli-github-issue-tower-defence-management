@@ -65,17 +65,23 @@ describe('ProxyClaudeTokenUsageRepository', () => {
       expect(mockLoadTokens.mock.calls).toEqual([['/tokens.json']]);
     });
 
+    const futureReset = Math.floor(Date.now() / 1000) + 3600;
+    const pastReset = Math.floor(Date.now() / 1000) - 3600;
+
     it('should map each token to its cached utilization', async () => {
       mockLoadTokens.mockReturnValue(['token-a', 'token-b']);
       mockReadRateLimit.mockImplementation((token: string) => {
         if (token === 'token-a') {
           return {
             fiveHourUtilization: 42,
-            fiveHourReset: 0,
+            fiveHourReset: futureReset,
             sevenDayUtilization: 0,
-            sevenDayReset: 0,
+            sevenDayReset: futureReset,
             blocked: false,
             rejected: false,
+            unifiedRejected: false,
+            fiveHourRejected: false,
+            sevenDayRejected: false,
           };
         }
         return null;
@@ -104,11 +110,14 @@ describe('ProxyClaudeTokenUsageRepository', () => {
       mockLoadTokens.mockReturnValue(['token-a']);
       mockReadRateLimit.mockReturnValue({
         fiveHourUtilization: 5,
-        fiveHourReset: 0,
+        fiveHourReset: futureReset,
         sevenDayUtilization: 0,
-        sevenDayReset: 0,
+        sevenDayReset: futureReset,
         blocked: true,
         rejected: false,
+        unifiedRejected: false,
+        fiveHourRejected: false,
+        sevenDayRejected: false,
       });
       const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
 
@@ -128,11 +137,14 @@ describe('ProxyClaudeTokenUsageRepository', () => {
       mockLoadTokens.mockReturnValue(['token-a']);
       mockReadRateLimit.mockReturnValue({
         fiveHourUtilization: 100,
-        fiveHourReset: 0,
+        fiveHourReset: futureReset,
         sevenDayUtilization: 0,
-        sevenDayReset: 0,
+        sevenDayReset: futureReset,
         blocked: false,
         rejected: true,
+        unifiedRejected: false,
+        fiveHourRejected: true,
+        sevenDayRejected: false,
       });
       const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
 
@@ -144,6 +156,195 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           fiveHourUtilization: 100,
           blocked: false,
           rejected: true,
+        },
+      ]);
+    });
+
+    it('should normalize fiveHourUtilization to 0 when the 5h reset has passed', async () => {
+      mockLoadTokens.mockReturnValue(['token-a']);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 100,
+        fiveHourReset: pastReset,
+        sevenDayUtilization: 30,
+        sevenDayReset: futureReset,
+        blocked: false,
+        rejected: false,
+        unifiedRejected: false,
+        fiveHourRejected: false,
+        sevenDayRejected: false,
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result).toEqual([
+        {
+          token: 'token-a',
+          fiveHourUtilization: 0,
+          blocked: false,
+          rejected: false,
+        },
+      ]);
+    });
+
+    it('should keep fiveHourUtilization when the 5h reset is in the future', async () => {
+      mockLoadTokens.mockReturnValue(['token-a']);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 95,
+        fiveHourReset: futureReset,
+        sevenDayUtilization: 0,
+        sevenDayReset: futureReset,
+        blocked: false,
+        rejected: false,
+        unifiedRejected: false,
+        fiveHourRejected: false,
+        sevenDayRejected: false,
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result).toEqual([
+        {
+          token: 'token-a',
+          fiveHourUtilization: 95,
+          blocked: false,
+          rejected: false,
+        },
+      ]);
+    });
+
+    it('should clear a 5h-origin rejection once the 5h reset has passed', async () => {
+      mockLoadTokens.mockReturnValue(['token-a']);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 100,
+        fiveHourReset: pastReset,
+        sevenDayUtilization: 0,
+        sevenDayReset: futureReset,
+        blocked: false,
+        rejected: true,
+        unifiedRejected: false,
+        fiveHourRejected: true,
+        sevenDayRejected: false,
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result).toEqual([
+        {
+          token: 'token-a',
+          fiveHourUtilization: 0,
+          blocked: false,
+          rejected: false,
+        },
+      ]);
+    });
+
+    it('should clear a 7d-origin rejection once the 7d reset has passed', async () => {
+      mockLoadTokens.mockReturnValue(['token-a']);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 10,
+        fiveHourReset: futureReset,
+        sevenDayUtilization: 100,
+        sevenDayReset: pastReset,
+        blocked: false,
+        rejected: true,
+        unifiedRejected: false,
+        fiveHourRejected: false,
+        sevenDayRejected: true,
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result).toEqual([
+        {
+          token: 'token-a',
+          fiveHourUtilization: 10,
+          blocked: false,
+          rejected: false,
+        },
+      ]);
+    });
+
+    it('should keep a 5h-origin rejection while the 5h reset is in the future', async () => {
+      mockLoadTokens.mockReturnValue(['token-a']);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 100,
+        fiveHourReset: futureReset,
+        sevenDayUtilization: 0,
+        sevenDayReset: futureReset,
+        blocked: false,
+        rejected: true,
+        unifiedRejected: false,
+        fiveHourRejected: true,
+        sevenDayRejected: false,
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result).toEqual([
+        {
+          token: 'token-a',
+          fiveHourUtilization: 100,
+          blocked: false,
+          rejected: true,
+        },
+      ]);
+    });
+
+    it('should keep a still-active 7d rejection after the 5h reset has passed', async () => {
+      mockLoadTokens.mockReturnValue(['token-a']);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 100,
+        fiveHourReset: pastReset,
+        sevenDayUtilization: 100,
+        sevenDayReset: futureReset,
+        blocked: false,
+        rejected: true,
+        unifiedRejected: false,
+        fiveHourRejected: false,
+        sevenDayRejected: true,
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result).toEqual([
+        {
+          token: 'token-a',
+          fiveHourUtilization: 0,
+          blocked: false,
+          rejected: true,
+        },
+      ]);
+    });
+
+    it('should clear a unified rejection once the 5h reset has passed', async () => {
+      mockLoadTokens.mockReturnValue(['token-a']);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 100,
+        fiveHourReset: pastReset,
+        sevenDayUtilization: 0,
+        sevenDayReset: futureReset,
+        blocked: false,
+        rejected: true,
+        unifiedRejected: true,
+        fiveHourRejected: false,
+        sevenDayRejected: false,
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result).toEqual([
+        {
+          token: 'token-a',
+          fiveHourUtilization: 0,
+          blocked: false,
+          rejected: false,
         },
       ]);
     });
