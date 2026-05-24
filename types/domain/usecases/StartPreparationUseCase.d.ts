@@ -8,6 +8,8 @@ export declare class StartPreparationUseCase {
     private readonly localCommandRunner;
     private readonly claudeTokenUsageRepository;
     constructor(projectRepository: Pick<ProjectRepository, 'getByUrl'>, issueRepository: Pick<IssueRepository, 'getStoryObjectMap' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'closePullRequest' | 'deletePullRequestBranch' | 'createCommentByUrl'>, localCommandRunner: LocalCommandRunner, claudeTokenUsageRepository: ClaudeTokenUsageRepository);
+    private weeklyLimitTypeForModel;
+    private isModelWeeklyLimitRejected;
     private selectRotationTokens;
     run: (params: {
         projectUrl: string;

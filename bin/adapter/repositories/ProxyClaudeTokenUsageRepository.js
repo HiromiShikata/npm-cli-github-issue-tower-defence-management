@@ -28,6 +28,7 @@ class ProxyClaudeTokenUsageRepository {
                         fiveHourUtilization: 0,
                         blocked: false,
                         rejected: false,
+                        modelWeeklyLimits: {},
                     };
                 }
                 const fiveHourExpired = nowEpochSeconds > snapshot.fiveHourReset;
@@ -41,11 +42,20 @@ class ProxyClaudeTokenUsageRepository {
                 const rejected = unifiedRejectionActive ||
                     fiveHourRejectionActive ||
                     sevenDayRejectionActive;
+                const modelWeeklyLimits = {};
+                for (const [limitType, limit] of Object.entries(snapshot.modelWeeklyLimits)) {
+                    const expired = nowEpochSeconds > limit.resetsAt;
+                    modelWeeklyLimits[limitType] = {
+                        rejected: limit.rejected && !expired,
+                        resetsAt: limit.resetsAt,
+                    };
+                }
                 return {
                     token,
                     fiveHourUtilization,
                     blocked: snapshot.blocked,
                     rejected,
+                    modelWeeklyLimits,
                 };
             });
         };

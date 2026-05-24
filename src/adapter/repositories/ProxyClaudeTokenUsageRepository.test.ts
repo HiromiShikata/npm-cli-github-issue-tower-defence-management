@@ -82,6 +82,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
             unifiedRejected: false,
             fiveHourRejected: false,
             sevenDayRejected: false,
+            modelWeeklyLimits: {},
           };
         }
         return null;
@@ -96,12 +97,14 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           fiveHourUtilization: 42,
           blocked: false,
           rejected: false,
+          modelWeeklyLimits: {},
         },
         {
           token: 'token-b',
           fiveHourUtilization: 0,
           blocked: false,
           rejected: false,
+          modelWeeklyLimits: {},
         },
       ]);
     });
@@ -118,6 +121,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         unifiedRejected: false,
         fiveHourRejected: false,
         sevenDayRejected: false,
+        modelWeeklyLimits: {},
       });
       const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
 
@@ -129,6 +133,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           fiveHourUtilization: 5,
           blocked: true,
           rejected: false,
+          modelWeeklyLimits: {},
         },
       ]);
     });
@@ -145,6 +150,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         unifiedRejected: false,
         fiveHourRejected: true,
         sevenDayRejected: false,
+        modelWeeklyLimits: {},
       });
       const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
 
@@ -156,6 +162,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           fiveHourUtilization: 100,
           blocked: false,
           rejected: true,
+          modelWeeklyLimits: {},
         },
       ]);
     });
@@ -172,6 +179,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         unifiedRejected: false,
         fiveHourRejected: false,
         sevenDayRejected: false,
+        modelWeeklyLimits: {},
       });
       const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
 
@@ -183,6 +191,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           fiveHourUtilization: 0,
           blocked: false,
           rejected: false,
+          modelWeeklyLimits: {},
         },
       ]);
     });
@@ -199,6 +208,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         unifiedRejected: false,
         fiveHourRejected: false,
         sevenDayRejected: false,
+        modelWeeklyLimits: {},
       });
       const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
 
@@ -210,6 +220,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           fiveHourUtilization: 95,
           blocked: false,
           rejected: false,
+          modelWeeklyLimits: {},
         },
       ]);
     });
@@ -226,6 +237,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         unifiedRejected: false,
         fiveHourRejected: true,
         sevenDayRejected: false,
+        modelWeeklyLimits: {},
       });
       const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
 
@@ -237,6 +249,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           fiveHourUtilization: 0,
           blocked: false,
           rejected: false,
+          modelWeeklyLimits: {},
         },
       ]);
     });
@@ -253,6 +266,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         unifiedRejected: false,
         fiveHourRejected: false,
         sevenDayRejected: true,
+        modelWeeklyLimits: {},
       });
       const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
 
@@ -264,6 +278,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           fiveHourUtilization: 10,
           blocked: false,
           rejected: false,
+          modelWeeklyLimits: {},
         },
       ]);
     });
@@ -280,6 +295,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         unifiedRejected: false,
         fiveHourRejected: true,
         sevenDayRejected: false,
+        modelWeeklyLimits: {},
       });
       const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
 
@@ -291,6 +307,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           fiveHourUtilization: 100,
           blocked: false,
           rejected: true,
+          modelWeeklyLimits: {},
         },
       ]);
     });
@@ -307,6 +324,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         unifiedRejected: false,
         fiveHourRejected: false,
         sevenDayRejected: true,
+        modelWeeklyLimits: {},
       });
       const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
 
@@ -318,6 +336,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           fiveHourUtilization: 0,
           blocked: false,
           rejected: true,
+          modelWeeklyLimits: {},
         },
       ]);
     });
@@ -334,6 +353,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         unifiedRejected: true,
         fiveHourRejected: false,
         sevenDayRejected: false,
+        modelWeeklyLimits: {},
       });
       const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
 
@@ -345,6 +365,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           fiveHourUtilization: 0,
           blocked: false,
           rejected: false,
+          modelWeeklyLimits: {},
         },
       ]);
     });
@@ -362,6 +383,73 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           fiveHourUtilization: 0,
           blocked: false,
           rejected: false,
+          modelWeeklyLimits: {},
+        },
+      ]);
+    });
+
+    it('should keep a model weekly rejection while its reset is in the future', async () => {
+      mockLoadTokens.mockReturnValue(['token-a']);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 5,
+        fiveHourReset: futureReset,
+        sevenDayUtilization: 10,
+        sevenDayReset: futureReset,
+        blocked: false,
+        rejected: false,
+        unifiedRejected: false,
+        fiveHourRejected: false,
+        sevenDayRejected: false,
+        modelWeeklyLimits: {
+          seven_day_sonnet: { rejected: true, resetsAt: futureReset },
+        },
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result).toEqual([
+        {
+          token: 'token-a',
+          fiveHourUtilization: 5,
+          blocked: false,
+          rejected: false,
+          modelWeeklyLimits: {
+            seven_day_sonnet: { rejected: true, resetsAt: futureReset },
+          },
+        },
+      ]);
+    });
+
+    it('should clear a model weekly rejection once its reset has passed', async () => {
+      mockLoadTokens.mockReturnValue(['token-a']);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 5,
+        fiveHourReset: futureReset,
+        sevenDayUtilization: 10,
+        sevenDayReset: futureReset,
+        blocked: false,
+        rejected: false,
+        unifiedRejected: false,
+        fiveHourRejected: false,
+        sevenDayRejected: false,
+        modelWeeklyLimits: {
+          seven_day_sonnet: { rejected: true, resetsAt: pastReset },
+        },
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result).toEqual([
+        {
+          token: 'token-a',
+          fiveHourUtilization: 5,
+          blocked: false,
+          rejected: false,
+          modelWeeklyLimits: {
+            seven_day_sonnet: { rejected: false, resetsAt: pastReset },
+          },
         },
       ]);
     });

@@ -38,6 +38,7 @@ const http = __importStar(require("http"));
 const https = __importStar(require("https"));
 const RateLimitCache_1 = require("./RateLimitCache");
 const UPSTREAM_HOST = 'api.anthropic.com';
+const MAX_INSPECTED_BODY_BYTES = 1024 * 1024;
 const BEARER_PREFIX = 'bearer ';
 const extractToken = (authorization) => {
     const value = Array.isArray(authorization) ? authorization[0] : authorization;
@@ -72,6 +73,24 @@ const startProxy = (port) => {
                 catch (error) {
                     console.error('Failed to write rate limit cache:', error);
                 }
+                const inspectedChunks = [];
+                let inspectedBytes = 0;
+                upstreamResponse.on('data', (chunk) => {
+                    if (inspectedBytes >= MAX_INSPECTED_BODY_BYTES)
+                        return;
+                    inspectedChunks.push(new Uint8Array(chunk));
+                    inspectedBytes += chunk.length;
+                });
+                upstreamResponse.on('end', () => {
+                    try {
+                        const body = Buffer.concat(inspectedChunks).toString('utf8');
+                        const limits = (0, RateLimitCache_1.parseModelRateLimitsFromBody)(body);
+                        (0, RateLimitCache_1.writeModelRateLimit)(token, limits);
+                    }
+                    catch (error) {
+                        console.error('Failed to write model rate limit cache:', error);
+                    }
+                });
             }
             clientResponse.writeHead(upstreamResponse.statusCode ?? 502, upstreamResponse.headers);
             upstreamResponse.pipe(clientResponse);

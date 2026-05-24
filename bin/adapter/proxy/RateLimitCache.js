@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.readRateLimit = exports.writeRateLimit = exports.cachePathForToken = exports.hashToken = exports.cacheDir = exports.PROXY_PORT = void 0;
+exports.readRateLimit = exports.parseModelRateLimitsFromBody = exports.writeModelRateLimit = exports.writeRateLimit = exports.cachePathForToken = exports.hashToken = exports.cacheDir = exports.PROXY_PORT = void 0;
 const crypto = __importStar(require("crypto"));
 const fs = __importStar(require("fs"));
 const os = __importStar(require("os"));
@@ -49,6 +49,35 @@ const hashToken = (token) => crypto.createHash(HASH_ALGORITHM).update(token).dig
 exports.hashToken = hashToken;
 const cachePathForToken = (token) => path.join((0, exports.cacheDir)(), `${(0, exports.hashToken)(token)}.json`);
 exports.cachePathForToken = cachePathForToken;
+const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
+const readPayload = (filePath) => {
+    if (!fs.existsSync(filePath))
+        return {};
+    try {
+        const raw = fs.readFileSync(filePath, 'utf8');
+        const parsed = JSON.parse(raw);
+        return isRecord(parsed) ? parsed : {};
+    }
+    catch {
+        return {};
+    }
+};
+const readModelWeeklyLimits = (payload) => {
+    const stored = payload.modelWeeklyLimits;
+    const result = {};
+    if (!isRecord(stored))
+        return result;
+    for (const [limitType, value] of Object.entries(stored)) {
+        if (!isRecord(value))
+            continue;
+        const rejected = value.rejected;
+        const resetsAt = value.resetsAt;
+        if (typeof rejected === 'boolean' && typeof resetsAt === 'number') {
+            result[limitType] = { rejected, resetsAt };
+        }
+    }
+    return result;
+};
 const writeRateLimit = (token, headers) => {
     const dir = (0, exports.cacheDir)();
     if (!fs.existsSync(dir)) {
@@ -60,6 +89,8 @@ const writeRateLimit = (token, headers) => {
             return value[0];
         return value;
     };
+    const filePath = path.join(dir, `${(0, exports.hashToken)(token)}.json`);
+    const existing = readPayload(filePath);
     const payload = {
         ts: Date.now() / 1000,
         headers: {
@@ -71,11 +102,64 @@ const writeRateLimit = (token, headers) => {
             'anthropic-ratelimit-unified-7d-reset': pick('anthropic-ratelimit-unified-7d-reset'),
             'anthropic-ratelimit-unified-7d-utilization': pick('anthropic-ratelimit-unified-7d-utilization'),
         },
+        modelWeeklyLimits: readModelWeeklyLimits(existing),
     };
-    const filePath = path.join(dir, `${(0, exports.hashToken)(token)}.json`);
     fs.writeFileSync(filePath, JSON.stringify(payload));
 };
 exports.writeRateLimit = writeRateLimit;
+const writeModelRateLimit = (token, limits) => {
+    const limitTypes = Object.keys(limits);
+    if (limitTypes.length === 0)
+        return;
+    const dir = (0, exports.cacheDir)();
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
+    const filePath = path.join(dir, `${(0, exports.hashToken)(token)}.json`);
+    const existing = readPayload(filePath);
+    const merged = {
+        ...readModelWeeklyLimits(existing),
+        ...limits,
+    };
+    const payload = {
+        ...existing,
+        modelWeeklyLimits: merged,
+    };
+    fs.writeFileSync(filePath, JSON.stringify(payload));
+};
+exports.writeModelRateLimit = writeModelRateLimit;
+const parseModelRateLimitsFromBody = (body) => {
+    const result = {};
+    const matches = body.match(/\{[^{}]*"rateLimitType"[^{}]*\}|\{[^{}]*"resetsAt"[^{}]*"rateLimitType"[^{}]*\}/g);
+    if (matches === null)
+        return result;
+    for (const candidate of matches) {
+        let parsed;
+        try {
+            parsed = JSON.parse(candidate);
+        }
+        catch {
+            continue;
+        }
+        if (!isRecord(parsed))
+            continue;
+        const rateLimitType = parsed.rateLimitType;
+        const status = parsed.status;
+        const resetsAt = parsed.resetsAt;
+        if (typeof rateLimitType !== 'string')
+            continue;
+        if (typeof status !== 'string')
+            continue;
+        if (typeof resetsAt !== 'number')
+            continue;
+        result[rateLimitType] = {
+            rejected: status === 'rejected',
+            resetsAt,
+        };
+    }
+    return result;
+};
+exports.parseModelRateLimitsFromBody = parseModelRateLimitsFromBody;
 const readRateLimit = (token) => {
     const filePath = (0, exports.cachePathForToken)(token);
     if (!fs.existsSync(filePath))
@@ -83,7 +167,6 @@ const readRateLimit = (token) => {
     try {
         const raw = fs.readFileSync(filePath, 'utf8');
         const parsed = JSON.parse(raw);
-        const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
         if (!isRecord(parsed))
             return null;
         const headersUnknown = parsed.headers;
@@ -120,6 +203,7 @@ const readRateLimit = (token) => {
             unifiedRejected,
             fiveHourRejected,
             sevenDayRejected,
+            modelWeeklyLimits: readModelWeeklyLimits(parsed),
         };
     }
     catch {
