@@ -267,6 +267,152 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('getOpenPullRequest — computePrStatus SKIPPED conclusion handling', () => {
+    const buildDirectPrResponse = (
+      checkRunContexts: Array<{
+        __typename: 'CheckRun';
+        name: string;
+        conclusion: string | null;
+      }>,
+      requiredStatusCheckContexts: string[],
+    ) => ({
+      data: {
+        repository: {
+          pullRequest: {
+            url: 'https://github.com/HiromiShikata/test-repository/pull/1',
+            state: 'OPEN',
+            headRefName: 'feature-branch',
+            baseRefName: 'main',
+            mergeable: 'MERGEABLE',
+            baseRepository: {
+              branchProtectionRules: {
+                nodes: [
+                  {
+                    pattern: 'main',
+                    requiredStatusCheckContexts,
+                  },
+                ],
+              },
+              defaultBranchRef: { name: 'main' },
+              rulesets: { nodes: [] },
+            },
+            commits: {
+              nodes: [
+                {
+                  commit: {
+                    statusCheckRollup: {
+                      state: 'SUCCESS',
+                      contexts: {
+                        nodes: checkRunContexts,
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+            reviewThreads: { nodes: [] },
+          },
+        },
+      },
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('treats a CheckRun with conclusion SUCCESS on a required check as present', async () => {
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      jest.spyOn(global, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify(
+            buildDirectPrResponse(
+              [
+                {
+                  __typename: 'CheckRun',
+                  name: 'required-check',
+                  conclusion: 'SUCCESS',
+                },
+              ],
+              ['required-check'],
+            ),
+          ),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const result = await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/1',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.isPassedAllCiJob).toBe(true);
+      expect(result?.missingRequiredCheckNames).toEqual([]);
+    });
+
+    it('treats a CheckRun with conclusion SKIPPED on a required check as missing', async () => {
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      jest.spyOn(global, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify(
+            buildDirectPrResponse(
+              [
+                {
+                  __typename: 'CheckRun',
+                  name: 'required-check',
+                  conclusion: 'SKIPPED',
+                },
+              ],
+              ['required-check'],
+            ),
+          ),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const result = await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/1',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.isPassedAllCiJob).toBe(false);
+      expect(result?.missingRequiredCheckNames).toEqual(['required-check']);
+    });
+
+    it('does not affect allRequiredChecksPassed when a non-required check is SKIPPED', async () => {
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      jest.spyOn(global, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify(
+            buildDirectPrResponse(
+              [
+                {
+                  __typename: 'CheckRun',
+                  name: 'required-check',
+                  conclusion: 'SUCCESS',
+                },
+                {
+                  __typename: 'CheckRun',
+                  name: 'optional-check',
+                  conclusion: 'SKIPPED',
+                },
+              ],
+              ['required-check'],
+            ),
+          ),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const result = await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/1',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.isPassedAllCiJob).toBe(true);
+      expect(result?.missingRequiredCheckNames).toEqual([]);
+    });
+  });
+
   const createApiV3CheerioRestIssueRepository = () => {
     const apiV3IssueRepository = mock<ApiV3IssueRepository>();
     const restIssueRepository = mock<RestIssueRepository>();

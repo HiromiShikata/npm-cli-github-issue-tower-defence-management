@@ -682,7 +682,9 @@ export class ApiV3CheerioRestIssueRepository
     const seenContextNames = new Set<string>();
     for (const ctx of contexts) {
       if ('name' in ctx) {
-        seenContextNames.add(ctx.name);
+        if (ctx.conclusion !== 'SKIPPED') {
+          seenContextNames.add(ctx.name);
+        }
       }
       if ('context' in ctx) {
         seenContextNames.add(ctx.context);
