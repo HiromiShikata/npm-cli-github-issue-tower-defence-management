@@ -69,6 +69,8 @@ const UpdateIssueStatusByLabelUseCase_1 = require("../../../domain/usecases/Upda
 const StartPreparationUseCase_1 = require("../../../domain/usecases/StartPreparationUseCase");
 const NodeLocalCommandRunner_1 = require("../../repositories/NodeLocalCommandRunner");
 const ProxyClaudeTokenUsageRepository_1 = require("../../repositories/ProxyClaudeTokenUsageRepository");
+const ProxyRateLimitCacheRepository_1 = require("../../repositories/ProxyRateLimitCacheRepository");
+const UpdateRateLimitCacheUseCase_1 = require("../../../domain/usecases/UpdateRateLimitCacheUseCase");
 const RevertOrphanedPreparationUseCase_1 = require("../../../domain/usecases/RevertOrphanedPreparationUseCase");
 const RevertNotReadyAwaitingQualityCheckUseCase_1 = require("../../../domain/usecases/RevertNotReadyAwaitingQualityCheckUseCase");
 const GitHubIssueCommentRepository_1 = require("../../repositories/GitHubIssueCommentRepository");
@@ -409,10 +411,14 @@ class HandleScheduledEventUseCaseHandler {
             const nodeLocalCommandRunner = new NodeLocalCommandRunner_1.NodeLocalCommandRunner();
             const claudeTokenUsageRepository = new ProxyClaudeTokenUsageRepository_1.ProxyClaudeTokenUsageRepository(mergedInput.claudeCodeOauthTokenListJsonPath ?? null);
             const startPreparationUseCase = new StartPreparationUseCase_1.StartPreparationUseCase(projectRepository, issueRepository, nodeLocalCommandRunner, claudeTokenUsageRepository);
+            const proxyRateLimitCacheRepository = new ProxyRateLimitCacheRepository_1.ProxyRateLimitCacheRepository(mergedInput.claudeCodeOauthTokenListJsonPath ?? null);
+            const updateRateLimitCacheUseCase = mergedInput.startPreparation
+                ? new UpdateRateLimitCacheUseCase_1.UpdateRateLimitCacheUseCase(proxyRateLimitCacheRepository)
+                : null;
             const issueCommentRepository = new GitHubIssueCommentRepository_1.GitHubIssueCommentRepository(input.credentials.bot.github.token);
             const revertOrphanedPreparationUseCase = new RevertOrphanedPreparationUseCase_1.RevertOrphanedPreparationUseCase(projectRepository, issueRepository, issueCommentRepository, nodeLocalCommandRunner);
             const revertNotReadyAwaitingQualityCheckUseCase = new RevertNotReadyAwaitingQualityCheckUseCase_1.RevertNotReadyAwaitingQualityCheckUseCase(projectRepository, issueRepository, issueCommentRepository);
-            const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(setupTowerDefenceProjectUseCase, actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabel, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, revertNotReadyAwaitingQualityCheckUseCase, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
+            const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(setupTowerDefenceProjectUseCase, actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabel, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, revertNotReadyAwaitingQualityCheckUseCase, updateRateLimitCacheUseCase, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
             const result = await handleScheduledEventUseCase.run(mergedInput);
             if (result) {
                 await (0, situationFileWriter_1.writeSituationFile)({

@@ -91,17 +91,18 @@ const writeRateLimit = (token, headers) => {
     };
     const filePath = path.join(dir, `${(0, exports.hashToken)(token)}.json`);
     const existing = readPayload(filePath);
+    const rateLimitHeaders = {};
+    for (const key of Object.keys(headers)) {
+        if (key.startsWith('anthropic-ratelimit-')) {
+            const value = pick(key);
+            if (value !== undefined) {
+                rateLimitHeaders[key] = value;
+            }
+        }
+    }
     const payload = {
         ts: Date.now() / 1000,
-        headers: {
-            'anthropic-ratelimit-unified-status': pick('anthropic-ratelimit-unified-status'),
-            'anthropic-ratelimit-unified-5h-status': pick('anthropic-ratelimit-unified-5h-status'),
-            'anthropic-ratelimit-unified-5h-reset': pick('anthropic-ratelimit-unified-5h-reset'),
-            'anthropic-ratelimit-unified-5h-utilization': pick('anthropic-ratelimit-unified-5h-utilization'),
-            'anthropic-ratelimit-unified-7d-status': pick('anthropic-ratelimit-unified-7d-status'),
-            'anthropic-ratelimit-unified-7d-reset': pick('anthropic-ratelimit-unified-7d-reset'),
-            'anthropic-ratelimit-unified-7d-utilization': pick('anthropic-ratelimit-unified-7d-utilization'),
-        },
+        headers: rateLimitHeaders,
         modelWeeklyLimits: readModelWeeklyLimits(existing),
     };
     fs.writeFileSync(filePath, JSON.stringify(payload));

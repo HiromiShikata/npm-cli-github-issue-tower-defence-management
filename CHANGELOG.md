@@ -1,3 +1,15 @@
+# [1.59.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.58.3...v1.59.0) (2026-05-24)
+
+
+### Bug Fixes
+
+* **core:** resolve eslint errors in UpdateRateLimitCacheUseCase and related tests ([fd90ad6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/fd90ad620ff003b9b222829713db6ba2b46781f8))
+
+
+### Features
+
+* **core:** persist all rate-limit headers and add UpdateRateLimitCacheUseCase ([47d33b9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/47d33b9503dcf5d4162ddb32ba57fa43d8ab21ee)), closes [#638](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/638)
+
 ## [1.58.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.58.2...v1.58.3) (2026-05-24)
 
 

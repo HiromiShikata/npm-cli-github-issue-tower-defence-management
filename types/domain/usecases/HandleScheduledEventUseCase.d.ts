@@ -23,6 +23,7 @@ import { StartPreparationUseCase } from './StartPreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
 import { RevertNotReadyAwaitingQualityCheckUseCase } from './RevertNotReadyAwaitingQualityCheckUseCase';
 import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
+import { UpdateRateLimitCacheUseCase } from './UpdateRateLimitCacheUseCase';
 export declare class ProjectNotFoundError extends Error {
     constructor(message: string);
 }
@@ -44,11 +45,12 @@ export declare class HandleScheduledEventUseCase {
     readonly startPreparationUseCase: StartPreparationUseCase;
     readonly revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase;
     readonly revertNotReadyAwaitingQualityCheckUseCase: RevertNotReadyAwaitingQualityCheckUseCase;
+    readonly updateRateLimitCacheUseCase: UpdateRateLimitCacheUseCase | null;
     readonly dateRepository: DateRepository;
     readonly spreadsheetRepository: SpreadsheetRepository;
     readonly projectRepository: ProjectRepository;
     readonly issueRepository: IssueRepository;
-    constructor(setupTowerDefenceProjectUseCase: SetupTowerDefenceProjectUseCase, actionAnnouncementUseCase: ActionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase: ClearPastNextActionDateHourUseCase, analyzeProblemByIssueUseCase: AnalyzeProblemByIssueUseCase, analyzeStoriesUseCase: AnalyzeStoriesUseCase, clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase, createEstimationIssueUseCase: CreateEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase: ConvertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase: SetNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase: CreateNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase: AssignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase: UpdateIssueStatusByLabelUseCase, startPreparationUseCase: StartPreparationUseCase, revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase, revertNotReadyAwaitingQualityCheckUseCase: RevertNotReadyAwaitingQualityCheckUseCase, dateRepository: DateRepository, spreadsheetRepository: SpreadsheetRepository, projectRepository: ProjectRepository, issueRepository: IssueRepository);
+    constructor(setupTowerDefenceProjectUseCase: SetupTowerDefenceProjectUseCase, actionAnnouncementUseCase: ActionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase: ClearPastNextActionDateHourUseCase, analyzeProblemByIssueUseCase: AnalyzeProblemByIssueUseCase, analyzeStoriesUseCase: AnalyzeStoriesUseCase, clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase, createEstimationIssueUseCase: CreateEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase: ConvertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase: SetNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase: CreateNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase: AssignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase: UpdateIssueStatusByLabelUseCase, startPreparationUseCase: StartPreparationUseCase, revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase, revertNotReadyAwaitingQualityCheckUseCase: RevertNotReadyAwaitingQualityCheckUseCase, updateRateLimitCacheUseCase: UpdateRateLimitCacheUseCase | null, dateRepository: DateRepository, spreadsheetRepository: SpreadsheetRepository, projectRepository: ProjectRepository, issueRepository: IssueRepository);
     run: (input: {
         projectName: string;
         org: string;
