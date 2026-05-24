@@ -32,7 +32,7 @@ const extractToken = (
 const startProxy = (
   port: number,
   claudeMessageResponseRepository: ClaudeMessageResponseRepository | null = null,
-): void => {
+): http.Server => {
   const server = http.createServer((clientRequest, clientResponse) => {
     const token = extractToken(clientRequest.headers['authorization']);
     const upstreamHeaders: Record<string, string | string[] | undefined> = {
@@ -106,6 +106,7 @@ const startProxy = (
   server.listen(port, '127.0.0.1', () => {
     console.log(`tdpm proxy listening on 127.0.0.1:${port}`);
   });
+  return server;
 };
 
 if (require.main === module) {
