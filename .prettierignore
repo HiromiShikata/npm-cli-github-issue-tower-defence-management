@@ -1,6 +1,7 @@
 *.xml
 .gitignore
 .prettierignore
+.gitattributes
 .gitkeep
 
 
