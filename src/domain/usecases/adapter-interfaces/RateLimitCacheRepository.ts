@@ -4,6 +4,6 @@ export interface TokenRateLimitCache {
 }
 
 export interface RateLimitCacheRepository {
-  getTokenRateLimitCaches(): TokenRateLimitCache[];
-  probeToken(token: string): Promise<void>;
+  getTokenRateLimitCaches: () => TokenRateLimitCache[];
+  probeToken: (token: string) => Promise<void>;
 }

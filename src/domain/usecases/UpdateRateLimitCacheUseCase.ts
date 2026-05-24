@@ -6,8 +6,7 @@ export class UpdateRateLimitCacheUseCase {
   ) {}
 
   run = async (params: { nowEpochSeconds: number }): Promise<void> => {
-    const caches =
-      this.rateLimitCacheRepository.getTokenRateLimitCaches();
+    const caches = this.rateLimitCacheRepository.getTokenRateLimitCaches();
     for (const cache of caches) {
       if (cache.unifiedReset < params.nowEpochSeconds) {
         await this.rateLimitCacheRepository.probeToken(cache.token);

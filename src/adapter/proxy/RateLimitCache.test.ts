@@ -221,6 +221,18 @@ describe('RateLimitCache', () => {
   });
 
   describe('writeRateLimit stores all anthropic-ratelimit-* headers', () => {
+    const isRecord = (value: unknown): value is Record<string, unknown> =>
+      value !== null && typeof value === 'object' && !Array.isArray(value);
+
+    const readStoredHeaders = (token: string): Record<string, unknown> => {
+      const filePath = cachePathForToken(token);
+      const raw: unknown = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      if (isRecord(raw) && isRecord(raw.headers)) {
+        return raw.headers;
+      }
+      return {};
+    };
+
     it('should store any anthropic-ratelimit-* header present in the response', () => {
       const token = 'extra-header-token';
       writeRateLimit(token, {
@@ -236,11 +248,7 @@ describe('RateLimitCache', () => {
         'anthropic-ratelimit-requests-remaining': '99',
         'content-type': 'application/json',
       });
-      const filePath = cachePathForToken(token);
-      const raw = JSON.parse(
-        require('fs').readFileSync(filePath, 'utf8'),
-      ) as Record<string, unknown>;
-      const storedHeaders = raw.headers as Record<string, string>;
+      const storedHeaders = readStoredHeaders(token);
       expect(storedHeaders['anthropic-ratelimit-unified-reset']).toBe(
         '1700000000',
       );
@@ -265,11 +273,7 @@ describe('RateLimitCache', () => {
         'content-type': 'application/json',
         'transfer-encoding': 'chunked',
       });
-      const filePath = cachePathForToken(token);
-      const raw = JSON.parse(
-        require('fs').readFileSync(filePath, 'utf8'),
-      ) as Record<string, unknown>;
-      const storedHeaders = raw.headers as Record<string, string>;
+      const storedHeaders = readStoredHeaders(token);
       expect(storedHeaders['x-request-id']).toBeUndefined();
       expect(storedHeaders['content-type']).toBeUndefined();
       expect(storedHeaders['transfer-encoding']).toBeUndefined();

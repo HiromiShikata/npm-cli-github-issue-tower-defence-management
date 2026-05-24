@@ -1,4 +1,3 @@
-import * as https from 'https';
 import * as http from 'http';
 import { RateLimitCacheRepository } from '../../domain/usecases/adapter-interfaces/RateLimitCacheRepository';
 import { TokenRateLimitCache } from '../../domain/usecases/adapter-interfaces/RateLimitCacheRepository';

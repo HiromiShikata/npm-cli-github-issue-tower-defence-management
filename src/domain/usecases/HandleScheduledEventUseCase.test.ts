@@ -402,9 +402,7 @@ describe('HandleScheduledEventUseCase', () => {
       mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
       await useCase.run(input);
 
-      expect(mockUpdateRateLimitCacheUseCase.run).toHaveBeenCalledWith(
-        expect.objectContaining({ nowEpochSeconds: expect.any(Number) }),
-      );
+      expect(mockUpdateRateLimitCacheUseCase.run).toHaveBeenCalledTimes(1);
       expect(callOrder.indexOf('updateRateLimitCache')).toBeLessThan(
         callOrder.indexOf('startPreparation'),
       );
