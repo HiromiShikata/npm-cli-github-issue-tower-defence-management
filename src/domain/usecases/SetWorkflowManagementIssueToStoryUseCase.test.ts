@@ -386,6 +386,8 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
             repositoryName: 'xcare-platform',
             type: 'issue',
             state: 'open',
+            title:
+              'TDPM: story label "story:routine-management" has no matching "regular / routine-management" Story option',
           },
         ],
       ]);

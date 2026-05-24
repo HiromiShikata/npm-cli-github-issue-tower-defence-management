@@ -138,6 +138,7 @@ export class SetWorkflowManagementIssueToStoryUseCase {
       repositoryName: issue.repo,
       type: 'issue',
       state: 'open',
+      title,
     });
     const alreadyNotified = existingOpenIssues.some(
       (existing) => existing.title === title,
