@@ -5,7 +5,9 @@ import {
   cacheDir,
   cachePathForToken,
   hashToken,
+  parseModelRateLimitsFromBody,
   readRateLimit,
+  writeModelRateLimit,
   writeRateLimit,
 } from './RateLimitCache';
 
@@ -84,6 +86,7 @@ describe('RateLimitCache', () => {
       expect(snapshot.sevenDayUtilization).toBe(17);
       expect(snapshot.sevenDayReset).toBe(1700100000);
       expect(snapshot.blocked).toBe(false);
+      expect(snapshot.rejected).toBe(false);
     });
 
     it('should mark snapshot as blocked when status header is blocked', () => {
@@ -99,6 +102,79 @@ describe('RateLimitCache', () => {
       });
       const snapshot = readRateLimit(token);
       expect(snapshot?.blocked).toBe(true);
+    });
+
+    it('should mark snapshot as rejected when unified status header is rejected', () => {
+      const token = 'rejected-unified-token';
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-status': 'rejected',
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': '1700000000',
+        'anthropic-ratelimit-unified-5h-utilization': '100',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '1700100000',
+        'anthropic-ratelimit-unified-7d-utilization': '99',
+      });
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.rejected).toBe(true);
+      expect(snapshot?.blocked).toBe(false);
+      expect(snapshot?.unifiedRejected).toBe(true);
+      expect(snapshot?.fiveHourRejected).toBe(false);
+      expect(snapshot?.sevenDayRejected).toBe(false);
+    });
+
+    it('should mark snapshot as rejected when 5h status header is rejected', () => {
+      const token = 'rejected-5h-token';
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-status': 'rejected',
+        'anthropic-ratelimit-unified-5h-reset': '1700000000',
+        'anthropic-ratelimit-unified-5h-utilization': '100',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '1700100000',
+        'anthropic-ratelimit-unified-7d-utilization': '99',
+      });
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.rejected).toBe(true);
+      expect(snapshot?.fiveHourRejected).toBe(true);
+      expect(snapshot?.sevenDayRejected).toBe(false);
+      expect(snapshot?.unifiedRejected).toBe(false);
+    });
+
+    it('should mark snapshot as rejected when 7d status header is rejected', () => {
+      const token = 'rejected-7d-token';
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': '1700000000',
+        'anthropic-ratelimit-unified-5h-utilization': '50',
+        'anthropic-ratelimit-unified-7d-status': 'rejected',
+        'anthropic-ratelimit-unified-7d-reset': '1700100000',
+        'anthropic-ratelimit-unified-7d-utilization': '100',
+      });
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.rejected).toBe(true);
+      expect(snapshot?.sevenDayRejected).toBe(true);
+      expect(snapshot?.fiveHourRejected).toBe(false);
+      expect(snapshot?.unifiedRejected).toBe(false);
+    });
+
+    it('should not mark snapshot as rejected when no status header is rejected', () => {
+      const token = 'allowed-token';
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': '1700000000',
+        'anthropic-ratelimit-unified-5h-utilization': '50',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '1700100000',
+        'anthropic-ratelimit-unified-7d-utilization': '40',
+      });
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.rejected).toBe(false);
+      expect(snapshot?.unifiedRejected).toBe(false);
+      expect(snapshot?.fiveHourRejected).toBe(false);
+      expect(snapshot?.sevenDayRejected).toBe(false);
     });
 
     it('should return null when file does not exist', () => {
@@ -126,6 +202,120 @@ describe('RateLimitCache', () => {
       const snapshot = readRateLimit(token);
       expect(snapshot?.fiveHourUtilization).toBe(55);
       expect(snapshot?.fiveHourReset).toBe(1700000000);
+    });
+
+    it('should default modelWeeklyLimits to an empty object when none are recorded', () => {
+      const token = 'no-model-limits-token';
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': '1700000000',
+        'anthropic-ratelimit-unified-5h-utilization': '10',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '1700100000',
+        'anthropic-ratelimit-unified-7d-utilization': '5',
+      });
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.modelWeeklyLimits).toEqual({});
+    });
+  });
+
+  describe('parseModelRateLimitsFromBody', () => {
+    it('should extract a rejected seven_day_sonnet limit from a rate_limit event body', () => {
+      const body =
+        'event: error\n' +
+        'data: {"status":"rejected","resetsAt":1779642000,"rateLimitType":"seven_day_sonnet","overageStatus":"rejected"}\n\n';
+      expect(parseModelRateLimitsFromBody(body)).toEqual({
+        seven_day_sonnet: { rejected: true, resetsAt: 1779642000 },
+      });
+    });
+
+    it('should extract multiple distinct rate limit types', () => {
+      const body =
+        'data: {"status":"rejected","resetsAt":1779642000,"rateLimitType":"seven_day_sonnet"}\n' +
+        'data: {"status":"allowed","resetsAt":1779700000,"rateLimitType":"seven_day"}\n';
+      expect(parseModelRateLimitsFromBody(body)).toEqual({
+        seven_day_sonnet: { rejected: true, resetsAt: 1779642000 },
+        seven_day: { rejected: false, resetsAt: 1779700000 },
+      });
+    });
+
+    it('should return an empty object when no rate limit information is present', () => {
+      const body =
+        'event: message_start\n' +
+        'data: {"type":"message_start","message":{"id":"msg_1"}}\n\n';
+      expect(parseModelRateLimitsFromBody(body)).toEqual({});
+    });
+
+    it('should ignore entries that lack a numeric resetsAt', () => {
+      const body =
+        'data: {"status":"rejected","rateLimitType":"seven_day_sonnet"}\n';
+      expect(parseModelRateLimitsFromBody(body)).toEqual({});
+    });
+  });
+
+  describe('writeModelRateLimit', () => {
+    it('should persist model weekly limits readable by readRateLimit', () => {
+      const token = 'model-limit-token';
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': '1700000000',
+        'anthropic-ratelimit-unified-5h-utilization': '10',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '1700100000',
+        'anthropic-ratelimit-unified-7d-utilization': '5',
+      });
+      writeModelRateLimit(token, {
+        seven_day_sonnet: { rejected: true, resetsAt: 1779642000 },
+      });
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.modelWeeklyLimits).toEqual({
+        seven_day_sonnet: { rejected: true, resetsAt: 1779642000 },
+      });
+      expect(snapshot?.fiveHourUtilization).toBe(10);
+    });
+
+    it('should preserve previously recorded model limits when headers are rewritten', () => {
+      const token = 'preserve-token';
+      writeModelRateLimit(token, {
+        seven_day_sonnet: { rejected: true, resetsAt: 1779642000 },
+      });
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': '1700000000',
+        'anthropic-ratelimit-unified-5h-utilization': '20',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '1700100000',
+        'anthropic-ratelimit-unified-7d-utilization': '5',
+      });
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.modelWeeklyLimits).toEqual({
+        seven_day_sonnet: { rejected: true, resetsAt: 1779642000 },
+      });
+      expect(snapshot?.fiveHourUtilization).toBe(20);
+    });
+
+    it('should merge new model limits with existing ones', () => {
+      const token = 'merge-token';
+      writeModelRateLimit(token, {
+        seven_day_sonnet: { rejected: true, resetsAt: 1779642000 },
+      });
+      writeModelRateLimit(token, {
+        seven_day: { rejected: false, resetsAt: 1779700000 },
+      });
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.modelWeeklyLimits).toEqual({
+        seven_day_sonnet: { rejected: true, resetsAt: 1779642000 },
+        seven_day: { rejected: false, resetsAt: 1779700000 },
+      });
+    });
+
+    it('should not write a file when there are no limits to record', () => {
+      const token = 'empty-limits-token';
+      writeModelRateLimit(token, {});
+      expect(readRateLimit(token)).toBeNull();
     });
   });
 });

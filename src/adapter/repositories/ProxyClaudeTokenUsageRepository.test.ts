@@ -65,16 +65,24 @@ describe('ProxyClaudeTokenUsageRepository', () => {
       expect(mockLoadTokens.mock.calls).toEqual([['/tokens.json']]);
     });
 
+    const futureReset = Math.floor(Date.now() / 1000) + 3600;
+    const pastReset = Math.floor(Date.now() / 1000) - 3600;
+
     it('should map each token to its cached utilization', async () => {
       mockLoadTokens.mockReturnValue(['token-a', 'token-b']);
       mockReadRateLimit.mockImplementation((token: string) => {
         if (token === 'token-a') {
           return {
             fiveHourUtilization: 42,
-            fiveHourReset: 0,
+            fiveHourReset: futureReset,
             sevenDayUtilization: 0,
-            sevenDayReset: 0,
+            sevenDayReset: futureReset,
             blocked: false,
+            rejected: false,
+            unifiedRejected: false,
+            fiveHourRejected: false,
+            sevenDayRejected: false,
+            modelWeeklyLimits: {},
           };
         }
         return null;
@@ -84,8 +92,20 @@ describe('ProxyClaudeTokenUsageRepository', () => {
       const result = await repository.getAvailableTokenUsages();
 
       expect(result).toEqual([
-        { token: 'token-a', fiveHourUtilization: 42, blocked: false },
-        { token: 'token-b', fiveHourUtilization: 0, blocked: false },
+        {
+          token: 'token-a',
+          fiveHourUtilization: 42,
+          blocked: false,
+          rejected: false,
+          modelWeeklyLimits: {},
+        },
+        {
+          token: 'token-b',
+          fiveHourUtilization: 0,
+          blocked: false,
+          rejected: false,
+          modelWeeklyLimits: {},
+        },
       ]);
     });
 
@@ -93,17 +113,344 @@ describe('ProxyClaudeTokenUsageRepository', () => {
       mockLoadTokens.mockReturnValue(['token-a']);
       mockReadRateLimit.mockReturnValue({
         fiveHourUtilization: 5,
-        fiveHourReset: 0,
+        fiveHourReset: futureReset,
         sevenDayUtilization: 0,
-        sevenDayReset: 0,
+        sevenDayReset: futureReset,
         blocked: true,
+        rejected: false,
+        unifiedRejected: false,
+        fiveHourRejected: false,
+        sevenDayRejected: false,
+        modelWeeklyLimits: {},
       });
       const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
 
       const result = await repository.getAvailableTokenUsages();
 
       expect(result).toEqual([
-        { token: 'token-a', fiveHourUtilization: 5, blocked: true },
+        {
+          token: 'token-a',
+          fiveHourUtilization: 5,
+          blocked: true,
+          rejected: false,
+          modelWeeklyLimits: {},
+        },
+      ]);
+    });
+
+    it('should propagate the rejected status from the cache', async () => {
+      mockLoadTokens.mockReturnValue(['token-a']);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 100,
+        fiveHourReset: futureReset,
+        sevenDayUtilization: 0,
+        sevenDayReset: futureReset,
+        blocked: false,
+        rejected: true,
+        unifiedRejected: false,
+        fiveHourRejected: true,
+        sevenDayRejected: false,
+        modelWeeklyLimits: {},
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result).toEqual([
+        {
+          token: 'token-a',
+          fiveHourUtilization: 100,
+          blocked: false,
+          rejected: true,
+          modelWeeklyLimits: {},
+        },
+      ]);
+    });
+
+    it('should normalize fiveHourUtilization to 0 when the 5h reset has passed', async () => {
+      mockLoadTokens.mockReturnValue(['token-a']);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 100,
+        fiveHourReset: pastReset,
+        sevenDayUtilization: 30,
+        sevenDayReset: futureReset,
+        blocked: false,
+        rejected: false,
+        unifiedRejected: false,
+        fiveHourRejected: false,
+        sevenDayRejected: false,
+        modelWeeklyLimits: {},
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result).toEqual([
+        {
+          token: 'token-a',
+          fiveHourUtilization: 0,
+          blocked: false,
+          rejected: false,
+          modelWeeklyLimits: {},
+        },
+      ]);
+    });
+
+    it('should keep fiveHourUtilization when the 5h reset is in the future', async () => {
+      mockLoadTokens.mockReturnValue(['token-a']);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 95,
+        fiveHourReset: futureReset,
+        sevenDayUtilization: 0,
+        sevenDayReset: futureReset,
+        blocked: false,
+        rejected: false,
+        unifiedRejected: false,
+        fiveHourRejected: false,
+        sevenDayRejected: false,
+        modelWeeklyLimits: {},
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result).toEqual([
+        {
+          token: 'token-a',
+          fiveHourUtilization: 95,
+          blocked: false,
+          rejected: false,
+          modelWeeklyLimits: {},
+        },
+      ]);
+    });
+
+    it('should clear a 5h-origin rejection once the 5h reset has passed', async () => {
+      mockLoadTokens.mockReturnValue(['token-a']);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 100,
+        fiveHourReset: pastReset,
+        sevenDayUtilization: 0,
+        sevenDayReset: futureReset,
+        blocked: false,
+        rejected: true,
+        unifiedRejected: false,
+        fiveHourRejected: true,
+        sevenDayRejected: false,
+        modelWeeklyLimits: {},
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result).toEqual([
+        {
+          token: 'token-a',
+          fiveHourUtilization: 0,
+          blocked: false,
+          rejected: false,
+          modelWeeklyLimits: {},
+        },
+      ]);
+    });
+
+    it('should clear a 7d-origin rejection once the 7d reset has passed', async () => {
+      mockLoadTokens.mockReturnValue(['token-a']);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 10,
+        fiveHourReset: futureReset,
+        sevenDayUtilization: 100,
+        sevenDayReset: pastReset,
+        blocked: false,
+        rejected: true,
+        unifiedRejected: false,
+        fiveHourRejected: false,
+        sevenDayRejected: true,
+        modelWeeklyLimits: {},
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result).toEqual([
+        {
+          token: 'token-a',
+          fiveHourUtilization: 10,
+          blocked: false,
+          rejected: false,
+          modelWeeklyLimits: {},
+        },
+      ]);
+    });
+
+    it('should keep a 5h-origin rejection while the 5h reset is in the future', async () => {
+      mockLoadTokens.mockReturnValue(['token-a']);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 100,
+        fiveHourReset: futureReset,
+        sevenDayUtilization: 0,
+        sevenDayReset: futureReset,
+        blocked: false,
+        rejected: true,
+        unifiedRejected: false,
+        fiveHourRejected: true,
+        sevenDayRejected: false,
+        modelWeeklyLimits: {},
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result).toEqual([
+        {
+          token: 'token-a',
+          fiveHourUtilization: 100,
+          blocked: false,
+          rejected: true,
+          modelWeeklyLimits: {},
+        },
+      ]);
+    });
+
+    it('should keep a still-active 7d rejection after the 5h reset has passed', async () => {
+      mockLoadTokens.mockReturnValue(['token-a']);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 100,
+        fiveHourReset: pastReset,
+        sevenDayUtilization: 100,
+        sevenDayReset: futureReset,
+        blocked: false,
+        rejected: true,
+        unifiedRejected: false,
+        fiveHourRejected: false,
+        sevenDayRejected: true,
+        modelWeeklyLimits: {},
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result).toEqual([
+        {
+          token: 'token-a',
+          fiveHourUtilization: 0,
+          blocked: false,
+          rejected: true,
+          modelWeeklyLimits: {},
+        },
+      ]);
+    });
+
+    it('should clear a unified rejection once the 5h reset has passed', async () => {
+      mockLoadTokens.mockReturnValue(['token-a']);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 100,
+        fiveHourReset: pastReset,
+        sevenDayUtilization: 0,
+        sevenDayReset: futureReset,
+        blocked: false,
+        rejected: true,
+        unifiedRejected: true,
+        fiveHourRejected: false,
+        sevenDayRejected: false,
+        modelWeeklyLimits: {},
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result).toEqual([
+        {
+          token: 'token-a',
+          fiveHourUtilization: 0,
+          blocked: false,
+          rejected: false,
+          modelWeeklyLimits: {},
+        },
+      ]);
+    });
+
+    it('should default rejected to false when no snapshot exists', async () => {
+      mockLoadTokens.mockReturnValue(['token-a']);
+      mockReadRateLimit.mockReturnValue(null);
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result).toEqual([
+        {
+          token: 'token-a',
+          fiveHourUtilization: 0,
+          blocked: false,
+          rejected: false,
+          modelWeeklyLimits: {},
+        },
+      ]);
+    });
+
+    it('should keep a model weekly rejection while its reset is in the future', async () => {
+      mockLoadTokens.mockReturnValue(['token-a']);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 5,
+        fiveHourReset: futureReset,
+        sevenDayUtilization: 10,
+        sevenDayReset: futureReset,
+        blocked: false,
+        rejected: false,
+        unifiedRejected: false,
+        fiveHourRejected: false,
+        sevenDayRejected: false,
+        modelWeeklyLimits: {
+          seven_day_sonnet: { rejected: true, resetsAt: futureReset },
+        },
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result).toEqual([
+        {
+          token: 'token-a',
+          fiveHourUtilization: 5,
+          blocked: false,
+          rejected: false,
+          modelWeeklyLimits: {
+            seven_day_sonnet: { rejected: true, resetsAt: futureReset },
+          },
+        },
+      ]);
+    });
+
+    it('should clear a model weekly rejection once its reset has passed', async () => {
+      mockLoadTokens.mockReturnValue(['token-a']);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 5,
+        fiveHourReset: futureReset,
+        sevenDayUtilization: 10,
+        sevenDayReset: futureReset,
+        blocked: false,
+        rejected: false,
+        unifiedRejected: false,
+        fiveHourRejected: false,
+        sevenDayRejected: false,
+        modelWeeklyLimits: {
+          seven_day_sonnet: { rejected: true, resetsAt: pastReset },
+        },
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result).toEqual([
+        {
+          token: 'token-a',
+          fiveHourUtilization: 5,
+          blocked: false,
+          rejected: false,
+          modelWeeklyLimits: {
+            seven_day_sonnet: { rejected: false, resetsAt: pastReset },
+          },
+        },
       ]);
     });
   });
