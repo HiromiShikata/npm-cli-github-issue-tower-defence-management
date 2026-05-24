@@ -474,6 +474,23 @@ export class ApiV3CheerioRestIssueRepository
       labels,
     );
   };
+  searchIssue = async (query: {
+    owner: string;
+    repositoryName: string;
+    type?: 'issue' | 'pr';
+    state?: 'open' | 'closed' | 'all';
+    title?: string;
+    createdFrom?: string;
+    assignee?: string;
+  }): Promise<
+    {
+      url: string;
+      title: string;
+      number: string;
+    }[]
+  > => {
+    return await this.apiV3IssueRepository.searchIssue(query);
+  };
   updateIssue = async (issue: Issue): Promise<void> => {
     await this.restIssueRepository.updateIssue(issue);
   };
