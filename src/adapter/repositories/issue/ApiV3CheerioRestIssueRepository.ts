@@ -508,8 +508,7 @@ export class ApiV3CheerioRestIssueRepository
       return;
     }
     const existingValue = projectItem.customFields.find(
-      (field) =>
-        field.name === project.dependedIssueUrlSeparatedByComma?.name,
+      (field) => field.name === project.dependedIssueUrlSeparatedByComma?.name,
     )?.value;
     if (existingValue) {
       return;

@@ -167,10 +167,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     const comments =
       await this.issueCommentRepository.getCommentsFromIssue(issue);
 
-    const { rejections } = await this.collectRejections(
-      issue,
-      comments,
-    );
+    const { rejections } = await this.collectRejections(issue, comments);
 
     const rejectionStatusMessage =
       rejections.length > 0
