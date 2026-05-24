@@ -23,6 +23,7 @@ import { StartPreparationUseCase } from './StartPreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
 import { RevertNotReadyAwaitingQualityCheckUseCase } from './RevertNotReadyAwaitingQualityCheckUseCase';
 import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
+import { UpdateRateLimitCacheUseCase } from './UpdateRateLimitCacheUseCase';
 
 export class ProjectNotFoundError extends Error {
   constructor(message: string) {
@@ -52,6 +53,7 @@ export class HandleScheduledEventUseCase {
     readonly startPreparationUseCase: StartPreparationUseCase,
     readonly revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase,
     readonly revertNotReadyAwaitingQualityCheckUseCase: RevertNotReadyAwaitingQualityCheckUseCase,
+    readonly updateRateLimitCacheUseCase: UpdateRateLimitCacheUseCase | null,
     readonly dateRepository: DateRepository,
     readonly spreadsheetRepository: SpreadsheetRepository,
     readonly projectRepository: ProjectRepository,
@@ -264,6 +266,11 @@ ${JSON.stringify(e)}
       });
     }
     if (input.startPreparation) {
+      if (this.updateRateLimitCacheUseCase !== null) {
+        await this.updateRateLimitCacheUseCase.run({
+          nowEpochSeconds: Date.now() / 1000,
+        });
+      }
       if (input.startPreparation.preparationProcessCheckCommand) {
         await this.revertOrphanedPreparationUseCase.run({
           projectUrl: input.projectUrl,

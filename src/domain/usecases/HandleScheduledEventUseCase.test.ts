@@ -23,6 +23,7 @@ import { StartPreparationUseCase } from './StartPreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
 import { RevertNotReadyAwaitingQualityCheckUseCase } from './RevertNotReadyAwaitingQualityCheckUseCase';
 import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
+import { UpdateRateLimitCacheUseCase } from './UpdateRateLimitCacheUseCase';
 
 describe('HandleScheduledEventUseCase', () => {
   describe('createTargetDateTimes', () => {
@@ -112,6 +113,7 @@ describe('HandleScheduledEventUseCase', () => {
       mock<RevertOrphanedPreparationUseCase>();
     const mockRevertNotReadyAwaitingQualityCheckUseCase =
       mock<RevertNotReadyAwaitingQualityCheckUseCase>();
+    const mockUpdateRateLimitCacheUseCase = mock<UpdateRateLimitCacheUseCase>();
     const mockDateRepository = mock<DateRepository>();
     const mockSpreadsheetRepository = mock<SpreadsheetRepository>();
     const mockProjectRepository = mock<ProjectRepository>();
@@ -135,6 +137,7 @@ describe('HandleScheduledEventUseCase', () => {
       mockStartPreparationUseCase,
       mockRevertOrphanedPreparationUseCase,
       mockRevertNotReadyAwaitingQualityCheckUseCase,
+      mockUpdateRateLimitCacheUseCase,
       mockDateRepository,
       mockSpreadsheetRepository,
       mockProjectRepository,
@@ -365,6 +368,68 @@ describe('HandleScheduledEventUseCase', () => {
       expect(
         mockRevertNotReadyAwaitingQualityCheckUseCase.run,
       ).not.toHaveBeenCalled();
+    });
+
+    it('should invoke UpdateRateLimitCacheUseCase before StartPreparationUseCase when startPreparation is configured', async () => {
+      const callOrder: string[] = [];
+      mockUpdateRateLimitCacheUseCase.run.mockImplementation(async () => {
+        callOrder.push('updateRateLimitCache');
+      });
+      mockStartPreparationUseCase.run.mockImplementation(async () => {
+        callOrder.push('startPreparation');
+      });
+
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        allowIssueCacheMinutes: 60,
+        startPreparation: {
+          defaultAgentName: 'aw',
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+        },
+      };
+
+      mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
+      await useCase.run(input);
+
+      expect(mockUpdateRateLimitCacheUseCase.run).toHaveBeenCalledWith(
+        expect.objectContaining({ nowEpochSeconds: expect.any(Number) }),
+      );
+      expect(callOrder.indexOf('updateRateLimitCache')).toBeLessThan(
+        callOrder.indexOf('startPreparation'),
+      );
+    });
+
+    it('should not invoke UpdateRateLimitCacheUseCase when startPreparation is absent', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        allowIssueCacheMinutes: 60,
+      };
+
+      mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
+      await useCase.run(input);
+
+      expect(mockUpdateRateLimitCacheUseCase.run).not.toHaveBeenCalled();
     });
 
     describe('story issue creation progress logs', () => {
