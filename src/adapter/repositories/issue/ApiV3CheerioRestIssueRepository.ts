@@ -494,6 +494,34 @@ export class ApiV3CheerioRestIssueRepository
       issueUrl,
     );
   };
+  setDependedIssueUrl = async (
+    prUrl: string,
+    project: Project,
+    issueUrl: string,
+  ): Promise<void> => {
+    if (!project.dependedIssueUrlSeparatedByComma) {
+      return;
+    }
+    const projectItem =
+      await this.graphqlProjectItemRepository.fetchProjectItemByUrl(prUrl);
+    if (!projectItem) {
+      return;
+    }
+    const existingValue = projectItem.customFields.find(
+      (field) =>
+        field.name === project.dependedIssueUrlSeparatedByComma?.name,
+    )?.value;
+    if (existingValue) {
+      return;
+    }
+    await this.graphqlProjectItemRepository.updateProjectTextField(
+      project.id,
+      project.dependedIssueUrlSeparatedByComma.fieldId,
+      projectItem.id,
+      issueUrl,
+    );
+  };
+
   updateNextActionDate = async (
     issueUrl: string,
     project: Project,

@@ -46,10 +46,10 @@ export class NotifyFinishedIssuePreparationUseCase {
       | 'get'
       | 'update'
       | 'updateStatus'
-      | 'updateNextActionDate'
       | 'findRelatedOpenPRs'
       | 'getStoryObjectMap'
       | 'getOpenPullRequest'
+      | 'setDependedIssueUrl'
     >,
     private readonly issueCommentRepository: Pick<
       IssueCommentRepository,
@@ -167,7 +167,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     const comments =
       await this.issueCommentRepository.getCommentsFromIssue(issue);
 
-    const { rejections, approvedPrUrl } = await this.collectRejections(
+    const { rejections } = await this.collectRejections(
       issue,
       comments,
     );
@@ -201,9 +201,11 @@ export class NotifyFinishedIssuePreparationUseCase {
         rejections.length > 0
           ? rejectionStatusMessage
           : 'Auto Status Check: APPROVED (escalated due to prior failures)';
-      if (rejections.length === 0 && approvedPrUrl !== null) {
-        await this.setPrNextActionDate(approvedPrUrl, project);
-      }
+      await this.setDependedIssueUrlForAllOpenPRs(
+        issue,
+        params.issueUrl,
+        project,
+      );
       await this.issueCommentRepository.createComment(
         issue,
         `${escalationStatusLine}\n\nFailed to pass the check automatically for ${params.thresholdForAutoReject} times`,
@@ -224,9 +226,11 @@ export class NotifyFinishedIssuePreparationUseCase {
         issue,
         awaitingQualityCheckStatusOption.id,
       );
-      if (approvedPrUrl !== null) {
-        await this.setPrNextActionDate(approvedPrUrl, project);
-      }
+      await this.setDependedIssueUrlForAllOpenPRs(
+        issue,
+        params.issueUrl,
+        project,
+      );
       await this.sendWorkflowBlockerNotification(
         params.issueUrl,
         params.workflowBlockerResolvedWebhookUrl,
@@ -241,6 +245,12 @@ export class NotifyFinishedIssuePreparationUseCase {
       project,
       issue,
       awaitingWorkspaceStatusOption.id,
+    );
+
+    await this.setDependedIssueUrlForAllOpenPRs(
+      issue,
+      params.issueUrl,
+      project,
     );
 
     await this.issueCommentRepository.createComment(
@@ -301,17 +311,27 @@ export class NotifyFinishedIssuePreparationUseCase {
     return nextStepValue !== null && nextStepValue !== undefined;
   };
 
-  private setPrNextActionDate = async (
-    prUrl: string,
+  private setDependedIssueUrlForAllOpenPRs = async (
+    issue: { url: string; labels: string[]; isPr: boolean },
+    issueUrl: string,
     project: Parameters<IssueRepository['get']>[1],
   ): Promise<void> => {
-    const nextActionDate = new Date();
-    nextActionDate.setMonth(nextActionDate.getMonth() + 1);
-    await this.issueRepository.updateNextActionDate(
-      prUrl,
-      project,
-      nextActionDate,
-    );
+    const openPRs = issue.isPr
+      ? await this.resolveOpenPrsForPrItem(issue.url)
+      : await this.issueRepository.findRelatedOpenPRs(issue.url);
+    for (const pr of openPRs) {
+      await this.issueRepository.setDependedIssueUrl(pr.url, project, issueUrl);
+    }
+  };
+
+  private resolveOpenPrsForPrItem = async (
+    prUrl: string,
+  ): Promise<{ url: string }[]> => {
+    const pr = await this.issueRepository.getOpenPullRequest(prUrl);
+    if (pr === null) {
+      return [];
+    }
+    return [pr];
   };
 
   private sendWorkflowBlockerNotification = async (
