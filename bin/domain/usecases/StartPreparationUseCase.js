@@ -2,6 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StartPreparationUseCase = void 0;
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
+const MAXIMUM_PREPARING_PROCESS_COUNT_PER_TOKEN = 6;
+const PROCESS_COUNT_DECAY_START_UTILIZATION = 0.8;
+const PROCESS_COUNT_ZERO_UTILIZATION = 0.95;
+const PROCESS_COUNT_DECAY_STEEPNESS = 2;
 class StartPreparationUseCase {
     constructor(projectRepository, issueRepository, localCommandRunner, claudeTokenUsageRepository) {
         this.projectRepository = projectRepository;
@@ -23,31 +27,70 @@ class StartPreparationUseCase {
             const general = usage.modelWeeklyLimits['seven_day'];
             return general !== undefined && general.rejected;
         };
-        this.selectRotationTokens = (tokenUsages, utilizationPercentageThreshold, modelName) => {
+        this.maximumPreparingProcessCountForToken = (fiveHourUtilization) => {
+            if (fiveHourUtilization <= PROCESS_COUNT_DECAY_START_UTILIZATION) {
+                return MAXIMUM_PREPARING_PROCESS_COUNT_PER_TOKEN;
+            }
+            if (fiveHourUtilization >= PROCESS_COUNT_ZERO_UTILIZATION) {
+                return 0;
+            }
+            const decayProgress = (fiveHourUtilization - PROCESS_COUNT_DECAY_START_UTILIZATION) /
+                (PROCESS_COUNT_ZERO_UTILIZATION - PROCESS_COUNT_DECAY_START_UTILIZATION);
+            const minimumMultiplier = Math.exp(-PROCESS_COUNT_DECAY_STEEPNESS);
+            const remainingRatio = (Math.exp(-PROCESS_COUNT_DECAY_STEEPNESS * decayProgress) -
+                minimumMultiplier) /
+                (1 - minimumMultiplier);
+            return Math.max(1, Math.floor(MAXIMUM_PREPARING_PROCESS_COUNT_PER_TOKEN * remainingRatio));
+        };
+        this.selectRotationTokens = (tokenUsages, modelName) => {
             const weeklyLimitType = this.weeklyLimitTypeForModel(modelName);
             return tokenUsages
                 .filter((usage) => !usage.blocked)
                 .filter((usage) => !usage.rejected)
                 .filter((usage) => !this.isModelWeeklyLimitRejected(usage, weeklyLimitType))
-                .filter((usage) => usage.fiveHourUtilization * 100 < utilizationPercentageThreshold)
+                .map((usage) => ({
+                token: usage.token,
+                fiveHourUtilization: usage.fiveHourUtilization,
+                maximumPreparingProcessCount: this.maximumPreparingProcessCountForToken(usage.fiveHourUtilization),
+            }))
+                .filter((usage) => usage.maximumPreparingProcessCount > 0)
                 .sort((a, b) => a.fiveHourUtilization - b.fiveHourUtilization)
-                .map((usage) => usage.token);
+                .map((usage) => ({
+                token: usage.token,
+                maximumPreparingProcessCount: usage.maximumPreparingProcessCount,
+            }));
+        };
+        this.createRotationTokenSlots = (rotationTokens) => {
+            const slotCount = Math.max(...rotationTokens.map((token) => token.maximumPreparingProcessCount));
+            const tokenSlots = [];
+            for (let i = 0; i < slotCount; i++) {
+                tokenSlots.push(...rotationTokens
+                    .filter((token) => i < token.maximumPreparingProcessCount)
+                    .map((token) => token.token));
+            }
+            return tokenSlots;
+        };
+        this.resolveMaximumPreparingIssuesCount = (configuredMaximumPreparingIssuesCount, rotationTokenSlots) => {
+            if (rotationTokenSlots === null) {
+                return configuredMaximumPreparingIssuesCount ?? 6;
+            }
+            return Math.min(configuredMaximumPreparingIssuesCount ?? rotationTokenSlots.length, rotationTokenSlots.length);
         };
         this.run = async (params) => {
-            const maximumPreparingIssuesCount = params.maximumPreparingIssuesCount ?? 6;
             const tokenUsages = await this.claudeTokenUsageRepository.getAvailableTokenUsages();
-            let rotationTokens = null;
+            let rotationTokenSlots = null;
             let proxyBaseUrl = null;
             if (tokenUsages.length > 0) {
-                const ranked = this.selectRotationTokens(tokenUsages, params.utilizationPercentageThreshold, params.defaultLlmModelName);
+                const ranked = this.selectRotationTokens(tokenUsages, params.defaultLlmModelName);
                 if (ranked.length === 0) {
-                    console.warn(`All ${tokenUsages.length} configured Claude OAuth token(s) are unavailable (blocked, rejected, weekly limit for ${this.weeklyLimitTypeForModel(params.defaultLlmModelName)} exhausted, or 5h utilization >= ${params.utilizationPercentageThreshold}%). Skipping starting preparation.`);
+                    console.warn(`All ${tokenUsages.length} configured Claude OAuth token(s) are unavailable (blocked, rejected, weekly limit for ${this.weeklyLimitTypeForModel(params.defaultLlmModelName)} exhausted, or 5h utilization >= 95%). Skipping starting preparation.`);
                     return;
                 }
                 await this.claudeTokenUsageRepository.ensureObservable();
-                rotationTokens = ranked;
+                rotationTokenSlots = this.createRotationTokenSlots(ranked);
                 proxyBaseUrl = this.claudeTokenUsageRepository.proxyBaseUrl();
             }
+            const maximumPreparingIssuesCount = this.resolveMaximumPreparingIssuesCount(params.maximumPreparingIssuesCount, rotationTokenSlots);
             const project = await this.projectRepository.getByUrl(params.projectUrl);
             const storyObjectMap = await this.issueRepository.getStoryObjectMap(project, params.allowIssueCacheMinutes);
             const allOpenedIssues = Array.from(storyObjectMap.values()).flatMap((storyObject) => storyObject.issues);
@@ -168,8 +211,9 @@ class StartPreparationUseCase {
                     awArgs.push('--codexHome', codexHome);
                 }
                 let spawnEnv;
-                if (rotationTokens !== null && proxyBaseUrl !== null) {
-                    const selected = rotationTokens[startedInThisRunCount % rotationTokens.length];
+                if (rotationTokenSlots !== null && proxyBaseUrl !== null) {
+                    const selected = rotationTokenSlots[(currentPreparationIssueCount + startedInThisRunCount) %
+                        rotationTokenSlots.length];
                     spawnEnv = {
                         CLAUDE_CODE_OAUTH_TOKEN: selected,
                         ANTHROPIC_BASE_URL: proxyBaseUrl,

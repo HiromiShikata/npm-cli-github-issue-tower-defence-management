@@ -10,7 +10,10 @@ export declare class StartPreparationUseCase {
     constructor(projectRepository: Pick<ProjectRepository, 'getByUrl'>, issueRepository: Pick<IssueRepository, 'getStoryObjectMap' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'closePullRequest' | 'deletePullRequestBranch' | 'createCommentByUrl'>, localCommandRunner: LocalCommandRunner, claudeTokenUsageRepository: ClaudeTokenUsageRepository);
     private weeklyLimitTypeForModel;
     private isModelWeeklyLimitRejected;
+    private maximumPreparingProcessCountForToken;
     private selectRotationTokens;
+    private createRotationTokenSlots;
+    private resolveMaximumPreparingIssuesCount;
     run: (params: {
         projectUrl: string;
         defaultAgentName: string;

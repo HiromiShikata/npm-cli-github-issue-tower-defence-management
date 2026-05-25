@@ -33,9 +33,9 @@ Options for startDaemon:
   --defaultAgentName <name>                        Default agent name
   --defaultLlmModelName <name>                     Default LLM model name
   --defaultLlmAgentName <name>                     Default LLM agent name
-  --maximumPreparingIssuesCount <count>            Maximum number of issues in preparation status (default: 6)
+  --maximumPreparingIssuesCount <count>            Maximum number of issues in preparation status (default: 6 per available Claude OAuth token, otherwise 6)
   --allowIssueCacheMinutes <minutes>               Allow cache for issues in minutes (default: 10)
-  --utilizationPercentageThreshold <percent>       Claude utilization percentage threshold (default: 90)
+  --utilizationPercentageThreshold <percent>       Legacy Claude utilization threshold setting; token process slots decay from 80% utilization to 0 at 95% (default: 90)
   --allowedIssueAuthors <authors>                  Comma-separated list of allowed issue authors
   --preparationProcessCheckCommand <template>      Shell command template with {URL} placeholder to check if a preparation process is alive
 
@@ -96,8 +96,8 @@ startPreparation?: # Optional: Enable automatic issue preparation workflow
   configFilePath: string # Path to config file passed to the aw command
   defaultLlmModelName?: string | null # Optional: Default LLM model name (overridable via llm-model: label)
   defaultLlmAgentName?: string | null # Optional: Default LLM agent name (overridable via llm-agent: label)
-  maximumPreparingIssuesCount: number | null # Max concurrent preparing issues (null = unlimited)
-  utilizationPercentageThreshold?: number # Optional: Per-token Claude 5h utilization % threshold; tokens at or above it are excluded from rotation, and preparation is skipped when no token remains (default: 90)
+  maximumPreparingIssuesCount: number | null # Max concurrent preparing issues. When token rotation is active, effective concurrency is also capped at 6 per available token. When null, the default is 6 per available token, or 6 without token rotation
+  utilizationPercentageThreshold?: number # Optional: Legacy Claude utilization threshold setting. Token process slots now use a fixed exponential decay: 6 slots through 80% 5h utilization, fewer slots above 80%, and 0 slots at 95%
   allowedIssueAuthors?: string[] | null # Optional: Only start preparation for issues from these authors (null = all authors)
   preparationProcessCheckCommand?: string # Optional: Shell command template with {URL} placeholder to check if a preparation process is alive. When set, orphaned Preparation issues (process exits non-zero, or stale aw log) are evaluated for completion: if work is done they advance to Awaiting Quality Check; otherwise they fall back to Awaiting Workspace
   awaitingQualityCheckStatus?: string | null # Optional: Project status name for issues awaiting quality check. When set with preparationProcessCheckCommand, orphaned issues with no rejections advance to this status instead of awaitingWorkspaceStatus
@@ -157,9 +157,9 @@ projectName: string # Project name (used for cache directory path)
 defaultAgentName: string # Default agent name for issue preparation
 defaultLlmModelName?: string # Optional: Default LLM model name
 defaultLlmAgentName?: string # Optional: Default LLM agent name
-maximumPreparingIssuesCount?: number # Optional: Max concurrent preparing issues (omitted = 6)
+maximumPreparingIssuesCount?: number # Optional: Max concurrent preparing issues. When token rotation is active, effective concurrency is also capped at 6 per available token. Omitted defaults to 6 per available token, or 6 without token rotation
 allowIssueCacheMinutes?: number # Optional: Allow cache for issues in minutes (default: 10)
-utilizationPercentageThreshold?: number # Optional: Claude usage % threshold (default: 90)
+utilizationPercentageThreshold?: number # Optional: Legacy Claude utilization threshold setting. Token process slots now use a fixed exponential decay from 80% to 95% 5h utilization
 allowedIssueAuthors?: string # Optional: Comma-separated list of allowed issue authors
 thresholdForAutoReject?: number # Optional: Consecutive rejections before escalation (default: 3)
 workflowBlockerResolvedWebhookUrl?: string # Optional: Webhook URL. Supports {URL} and {MESSAGE} placeholders
@@ -213,7 +213,7 @@ When `claudeCodeOauthTokenListJsonPath` is set, `startDaemon` distributes prepar
 
 2. Local reverse proxy (`127.0.0.1:8787`): on each `startDaemon` run, the daemon TCP-probes the port. If nothing responds, it spawns a detached child running `bin/adapter/proxy/proxyEntry.js`. The proxy forwards every request to `api.anthropic.com`, observes the `anthropic-ratelimit-unified-*` response headers, and writes them to a per-token cache file at `${XDG_CACHE_HOME:-~/.cache}/tdpm/ratelimit/<sha256-of-token>.json`. The cache file stores the latest 5-hour and 7-day utilization, reset epochs, and the unified, 5-hour, and 7-day statuses (used to detect `blocked` and `rejected` state per window). In addition to the unified headers, the proxy inspects the streamed response body for `rate_limit` events (objects carrying `rateLimitType`, `status`, and `resetsAt`) and records the model-specific weekly limits — at minimum `seven_day_sonnet` and `seven_day` — per token. These model-specific weekly limits are exposed only in the response body, never in the unified headers, so a token can appear healthy on `anthropic-ratelimit-unified-7d-*` while its Sonnet weekly limit is exhausted.
 
-3. Selection: before spawning each `aw` job, the daemon reads every token's cache file. A cached observation is treated as expired once its reset epoch has passed: when the current time is past the 5-hour reset, that token's 5-hour utilization is treated as `0` and any 5-hour-window rejection is cleared; a 7-day-window rejection is cleared once the 7-day reset has passed; a model-specific weekly limit rejection is cleared once that limit's `resetsAt` has passed. This stale-reset expiry prevents a token that has actually recovered from being locked out of rotation forever (an excluded token receives no new requests, so the proxy never re-observes it). After expiry normalization, tokens whose status is `blocked`, whose remaining (non-expired) rejection is still active, whose weekly limit for the model that will be used is rejected (the model name maps to a limit type: a model name containing `sonnet` maps to `seven_day_sonnet`, one containing `opus` maps to `seven_day_opus`, otherwise `seven_day`; the generic `seven_day` rejection also excludes regardless of model), or whose 5-hour utilization is at or above `utilizationPercentageThreshold` are excluded; the remainder are sorted by 5-hour utilization ascending. The first token (lowest utilization) is selected for the next spawn, then the next, round-robin, for the duration of the run. When a token list is configured but no token survives the filter, preparation is skipped for that run. The selected token and the proxy URL (`http://127.0.0.1:8787`) are passed to the child `aw` process as `CLAUDE_CODE_OAUTH_TOKEN` and `ANTHROPIC_BASE_URL` environment variables. The child inherits the parent process's environment, so no further wiring is required inside `aw`.
+3. Selection: before spawning each `aw` job, the daemon reads every token's cache file. A cached observation is treated as expired once its reset epoch has passed: when the current time is past the 5-hour reset, that token's 5-hour utilization is treated as `0` and any 5-hour-window rejection is cleared; a 7-day-window rejection is cleared once the 7-day reset has passed; a model-specific weekly limit rejection is cleared once that limit's `resetsAt` has passed. This stale-reset expiry prevents a token that has actually recovered from being locked out of rotation forever (an excluded token receives no new requests, so the proxy never re-observes it). After expiry normalization, tokens whose status is `blocked`, whose remaining (non-expired) rejection is still active, or whose weekly limit for the model that will be used is rejected are excluded. The model name maps to a limit type: a model name containing `sonnet` maps to `seven_day_sonnet`, one containing `opus` maps to `seven_day_opus`, otherwise `seven_day`; the generic `seven_day` rejection also excludes regardless of model. The remaining tokens are sorted by 5-hour utilization ascending. Each available token receives up to six concurrent preparation slots through 80% 5-hour utilization; above 80%, its slot count decays exponentially; at 95% or higher, its slot count is 0. The first token (lowest utilization) is selected for the next spawn, then the next, weighted round-robin by remaining slots, for the duration of the run. The effective preparation limit is the sum of available token slots; a lower explicit `maximumPreparingIssuesCount` remains honored. When a token list is configured but no token has remaining slots, preparation is skipped for that run. The selected token and the proxy URL (`http://127.0.0.1:8787`) are passed to the child `aw` process as `CLAUDE_CODE_OAUTH_TOKEN` and `ANTHROPIC_BASE_URL` environment variables. The child inherits the parent process's environment, so no further wiring is required inside `aw`.
 
 When `claudeCodeOauthTokenListJsonPath` is unset, no proxy is started and `aw` runs with whatever `CLAUDE_CODE_OAUTH_TOKEN` and `ANTHROPIC_BASE_URL` are already in the environment.
 
@@ -281,7 +281,7 @@ This file is written atomically (written to a `.tmp` file then renamed) so exter
 
 - `capturedAt`: ISO 8601 timestamp when the snapshot was captured.
 - `config.maximumPreparingIssuesCount`: Resolved maximum number of issues allowed in preparation status (`null` if unconfigured).
-- `config.utilizationPercentageThreshold`: Resolved Claude utilization threshold percentage.
+- `config.utilizationPercentageThreshold`: Resolved legacy Claude utilization threshold setting. Token process slots now use fixed exponential decay from 80% to 95% 5-hour utilization.
 - `config.allowIssueCacheMinutes`: Resolved issue cache duration in minutes.
 - `config.thresholdForAutoReject`: Resolved consecutive rejection count before auto-escalation.
 - `status.awaitingQualityCheckImmediatelyActionable`: Count of issues in the awaiting quality check status with no dependency URL, next action date, or next action hour set.
