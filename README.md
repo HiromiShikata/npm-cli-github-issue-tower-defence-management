@@ -170,7 +170,7 @@ awLogDirectoryPath?: string # Optional: Directory path where aw log files named 
 awLogStaleThresholdMinutes?: number # Optional: Minutes since last aw log mtime after which a Preparation issue is considered orphaned even when pgrep still returns 0. Requires awLogDirectoryPath
 ```
 
-Workflow status names (`Unread`, `Awaiting Task Breakdown`, `Awaiting Workspace`, `Preparation`, `Failed Preparation`, `Awaiting Quality Check`, `Todo by human`, `In Tmux by human`, `Done`, `Icebox`) are matched case-insensitively, so projects that use different capitalisation (e.g. `awaiting workspace` instead of `Awaiting Workspace`) are handled automatically. To ensure the required statuses exist on the target project, run the `schedule` command — it invokes `SetupTowerDefenceProjectUseCase` automatically. Projects with the legacy `Todo` and `In Tmux` status names are automatically migrated; `PC Todo` is removed on the next setup run.
+Workflow status names (`Unread`, `Awaiting Task Breakdown`, `Awaiting Workspace`, `Preparation`, `Failed Preparation`, `Awaiting Quality Check`, `Todo by human`, `In Tmux by human`, `Done`, `Icebox`) are hardcoded constants and are not accepted via this config, the CLI, or the project README. Status updates for those names are skipped gracefully when the target project does not have the matching status configured; the tool continues to evaluate issues and post comments regardless. To ensure the required statuses exist on the target project, run the `schedule` command — it invokes `SetupTowerDefenceProjectUseCase` automatically. Projects with the legacy `Todo` and `In Tmux` status names are automatically migrated; `PC Todo` is removed on the next setup run.
 
 Example:
 
