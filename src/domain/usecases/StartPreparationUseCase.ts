@@ -153,9 +153,8 @@ export class StartPreparationUseCase {
       )
       .filter(
         (usage) =>
-          this.maximumPreparingProcessCountForToken(
-            usage.fiveHourUtilization,
-          ) > 0,
+          this.maximumPreparingProcessCountForToken(usage.fiveHourUtilization) >
+          0,
       )
       .sort((a, b) => a.fiveHourUtilization - b.fiveHourUtilization);
     const selectedTokenValues = new Set(selectedTokens.map((u) => u.token));
