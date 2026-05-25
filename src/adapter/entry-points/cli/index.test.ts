@@ -521,9 +521,11 @@ codexHomeCandidates:
           },
         ],
       };
-      jest.spyOn(global, 'fetch').mockResolvedValue(
-        new Response(JSON.stringify(responseBody), { status: 200 }),
-      );
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValue(
+          new Response(JSON.stringify(responseBody), { status: 200 }),
+        );
 
       const readme = await fetchProjectReadme(
         'https://github.com/users/test-user/projects/1',
