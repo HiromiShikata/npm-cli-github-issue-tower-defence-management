@@ -50,6 +50,7 @@
   "devDependencies": {
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/commit-analyzer": "^13.0.0",
+    "@types/better-sqlite3": "7.6.13",
     "@types/cookie": "^1.0.0",
     "@types/jest": "^29.5.12",
     "@typescript-eslint/eslint-plugin": "^7.2.0",
@@ -72,6 +73,7 @@
     "typescript": "^6.0.0"
   },
   "dependencies": {
+    "better-sqlite3": "12.10.0",
     "cheerio": "^1.0.0",
     "commander": "^14.0.0",
     "cookie": "^1.0.1",

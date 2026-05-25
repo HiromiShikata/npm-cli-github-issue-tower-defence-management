@@ -2,10 +2,14 @@ import * as http from 'http';
 import * as https from 'https';
 import {
   PROXY_PORT,
+  hashToken,
   parseModelRateLimitsFromBody,
   writeModelRateLimit,
   writeRateLimit,
 } from './RateLimitCache';
+import { ClaudeMessageResponseRepository } from '../../domain/usecases/adapter-interfaces/ClaudeMessageResponseRepository';
+import { parseClaudeMessageResponse } from './ClaudeMessageResponseParser';
+import { SqliteClaudeMessageResponseRepository } from '../repositories/SqliteClaudeMessageResponseRepository';
 
 const UPSTREAM_HOST = 'api.anthropic.com';
 
@@ -25,7 +29,10 @@ const extractToken = (
   return token.length > 0 ? token : null;
 };
 
-const startProxy = (port: number): void => {
+const startProxy = (
+  port: number,
+  claudeMessageResponseRepository: ClaudeMessageResponseRepository | null = null,
+): void => {
   const server = http.createServer((clientRequest, clientResponse) => {
     const token = extractToken(clientRequest.headers['authorization']);
     const upstreamHeaders: Record<string, string | string[] | undefined> = {
@@ -55,12 +62,28 @@ const startProxy = (port: number): void => {
             inspectedBytes += chunk.length;
           });
           upstreamResponse.on('end', () => {
+            const body = Buffer.concat(inspectedChunks).toString('utf8');
             try {
-              const body = Buffer.concat(inspectedChunks).toString('utf8');
               const limits = parseModelRateLimitsFromBody(body);
               writeModelRateLimit(token, limits);
             } catch (error) {
               console.error('Failed to write model rate limit cache:', error);
+            }
+            if (claudeMessageResponseRepository !== null) {
+              try {
+                const response = parseClaudeMessageResponse(
+                  hashToken(token),
+                  upstreamResponse.statusCode ?? 0,
+                  upstreamResponse.headers,
+                  body,
+                );
+                claudeMessageResponseRepository.append(response);
+              } catch (error) {
+                console.error(
+                  'Failed to record Claude message response:',
+                  error,
+                );
+              }
             }
           });
         }
@@ -86,7 +109,9 @@ const startProxy = (port: number): void => {
 };
 
 if (require.main === module) {
-  startProxy(PROXY_PORT);
+  const dbPath = './db/claude_message_response.db';
+  const repository = new SqliteClaudeMessageResponseRepository(dbPath);
+  startProxy(PROXY_PORT, repository);
 }
 
 export { startProxy, extractToken };

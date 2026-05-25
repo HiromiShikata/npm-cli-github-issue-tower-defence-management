@@ -23,6 +23,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build native modules
+        working-directory: node_modules/better-sqlite3
+        run: node ../prebuild-install/bin.js || npm exec --yes -- node-gyp rebuild --release
+
       - name: Prepare
         run: npm run prepare
 
