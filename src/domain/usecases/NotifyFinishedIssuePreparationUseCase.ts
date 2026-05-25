@@ -313,6 +313,12 @@ export class NotifyFinishedIssuePreparationUseCase {
     issueUrl: string,
     project: Parameters<IssueRepository['get']>[1],
   ): Promise<void> => {
+    if (!project.dependedIssueUrlSeparatedByComma) {
+      console.warn(
+        `dependedIssueUrlSeparatedByComma field not configured in project, skipping depended issue URL update for issue ${issueUrl}`,
+      );
+      return;
+    }
     const openPRs = issue.isPr
       ? await this.resolveOpenPrsForPrItem(issue.url)
       : await this.issueRepository.findRelatedOpenPRs(issue.url);
