@@ -183,6 +183,9 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         this.createNewIssue = async (org, repo, title, body, assignees, labels) => {
             return await this.restIssueRepository.createNewIssue(org, repo, title, body, assignees, labels);
         };
+        this.searchIssue = async (query) => {
+            return await this.apiV3IssueRepository.searchIssue(query);
+        };
         this.updateIssue = async (issue) => {
             await this.restIssueRepository.updateIssue(issue);
         };

@@ -20,6 +20,19 @@ export interface IssueRepository {
     }>;
     getIssueByUrl: (url: string) => Promise<Issue | null>;
     createNewIssue: (org: string, repo: string, title: string, body: string, assignees: Member['name'][], labels: Label[]) => Promise<number>;
+    searchIssue: (query: {
+        owner: string;
+        repositoryName: string;
+        type?: 'issue' | 'pr';
+        state?: 'open' | 'closed' | 'all';
+        title?: string;
+        createdFrom?: string;
+        assignee?: string;
+    }) => Promise<{
+        url: string;
+        title: string;
+        number: string;
+    }[]>;
     updateIssue: (issue: Issue) => Promise<void>;
     updateNextActionDate: (issueUrl: string, project: Project, date: Date) => Promise<void>;
     updateNextActionHour: (project: Project & {

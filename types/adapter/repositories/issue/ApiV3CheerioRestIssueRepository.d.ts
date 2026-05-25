@@ -26,6 +26,19 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     }>;
     getAllIssuesFromGitHub: (projectId: Project["id"]) => Promise<Issue[]>;
     createNewIssue: (org: string, repo: string, title: string, body: string, assignees: string[], labels: string[]) => Promise<number>;
+    searchIssue: (query: {
+        owner: string;
+        repositoryName: string;
+        type?: "issue" | "pr";
+        state?: "open" | "closed" | "all";
+        title?: string;
+        createdFrom?: string;
+        assignee?: string;
+    }) => Promise<{
+        url: string;
+        title: string;
+        number: string;
+    }[]>;
     updateIssue: (issue: Issue) => Promise<void>;
     getIssueByUrl: (url: string) => Promise<Issue | null>;
     addIssueToProject: (project: Project, issueUrl: string) => Promise<void>;
