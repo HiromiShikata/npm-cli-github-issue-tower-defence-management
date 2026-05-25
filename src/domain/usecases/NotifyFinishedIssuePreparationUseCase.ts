@@ -72,7 +72,8 @@ export class NotifyFinishedIssuePreparationUseCase {
     const project = await this.projectRepository.getByUrl(params.projectUrl);
 
     const awaitingWorkspaceStatusOption = project.status.statuses.find(
-      (s) => s.name === AWAITING_WORKSPACE_STATUS_NAME,
+      (s) =>
+        s.name.toLowerCase() === AWAITING_WORKSPACE_STATUS_NAME.toLowerCase(),
     );
     if (!awaitingWorkspaceStatusOption) {
       console.error(
@@ -81,7 +82,9 @@ export class NotifyFinishedIssuePreparationUseCase {
       return;
     }
     const awaitingQualityCheckStatusOption = project.status.statuses.find(
-      (s) => s.name === AWAITING_QUALITY_CHECK_STATUS_NAME,
+      (s) =>
+        s.name.toLowerCase() ===
+        AWAITING_QUALITY_CHECK_STATUS_NAME.toLowerCase(),
     );
     if (!awaitingQualityCheckStatusOption) {
       console.error(
@@ -103,7 +106,9 @@ export class NotifyFinishedIssuePreparationUseCase {
 
     if (!issue) {
       throw new IssueNotFoundError(params.issueUrl);
-    } else if (issue.status !== PREPARATION_STATUS_NAME) {
+    } else if (
+      issue.status?.toLowerCase() !== PREPARATION_STATUS_NAME.toLowerCase()
+    ) {
       throw new IllegalIssueStatusError(
         params.issueUrl,
         issue.status,
@@ -135,7 +140,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     }
 
     if (issue.dependedIssueUrls.length > 0) {
-      issue.status = AWAITING_WORKSPACE_STATUS_NAME;
+      issue.status = awaitingWorkspaceStatusOption.name;
       await this.issueRepository.update(issue, project);
       await this.issueRepository.updateStatus(
         project,
@@ -150,7 +155,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     }
 
     if (issue.nextActionDate !== null || issue.nextActionHour !== null) {
-      issue.status = AWAITING_WORKSPACE_STATUS_NAME;
+      issue.status = awaitingWorkspaceStatusOption.name;
       await this.issueRepository.update(issue, project);
       await this.issueRepository.updateStatus(
         project,
@@ -216,7 +221,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     }
 
     if (rejections.length <= 0) {
-      issue.status = AWAITING_QUALITY_CHECK_STATUS_NAME;
+      issue.status = awaitingQualityCheckStatusOption.name;
       await this.issueRepository.update(issue, project);
       await this.issueRepository.updateStatus(
         project,
@@ -236,7 +241,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       return;
     }
 
-    issue.status = AWAITING_WORKSPACE_STATUS_NAME;
+    issue.status = awaitingWorkspaceStatusOption.name;
     await this.issueRepository.update(issue, project);
     await this.issueRepository.updateStatus(
       project,

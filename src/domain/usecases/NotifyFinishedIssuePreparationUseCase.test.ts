@@ -2339,4 +2339,79 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockProject,
     );
   });
+
+  it('should match status names case-insensitively when project uses different casing', async () => {
+    const projectWithLowercaseStatuses = createMockProject({
+      status: {
+        name: 'Status',
+        fieldId: 'field-1',
+        statuses: [
+          {
+            id: 'preparation-id',
+            name: 'preparation',
+            color: 'YELLOW',
+            description: '',
+          },
+          {
+            id: 'awaiting-workspace-id',
+            name: 'awaiting workspace',
+            color: 'GRAY',
+            description: '',
+          },
+          {
+            id: 'failed-preparation-id',
+            name: 'Failed Preparation',
+            color: 'RED',
+            description: '',
+          },
+          {
+            id: 'awaiting-quality-check-id',
+            name: 'awaiting quality check',
+            color: 'BLUE',
+            description: '',
+          },
+        ],
+      },
+    });
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'preparation',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(
+      projectWithLowercaseStatuses,
+    );
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({ content: 'From: Test report' }),
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      {
+        url: 'https://github.com/user/repo/pull/1',
+        isConflicted: false,
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+    });
+
+    expect(mockIssueRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'awaiting quality check' }),
+      projectWithLowercaseStatuses,
+    );
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      projectWithLowercaseStatuses,
+      expect.objectContaining({ status: 'awaiting quality check' }),
+      'awaiting-quality-check-id',
+    );
+  });
 });
