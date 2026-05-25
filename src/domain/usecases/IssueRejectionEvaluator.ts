@@ -6,6 +6,7 @@ import {
 export type PrRejectedReasonType =
   | 'PULL_REQUEST_NOT_FOUND'
   | 'MULTIPLE_PULL_REQUESTS_FOUND'
+  | 'PULL_REQUEST_IS_DRAFT'
   | 'PULL_REQUEST_CONFLICTED'
   | 'ANY_CI_JOB_FAILED_OR_IN_PROGRESS'
   | 'REQUIRED_CI_JOB_NEVER_STARTED'
@@ -59,6 +60,12 @@ export class IssueRejectionEvaluator {
         });
       } else {
         const pr = prsToCheck[0];
+        if (pr.isDraft) {
+          rejections.push({
+            type: 'PULL_REQUEST_IS_DRAFT',
+            detail: `PULL_REQUEST_IS_DRAFT: ${pr.url}`,
+          });
+        }
         if (pr.isConflicted) {
           rejections.push({
             type: 'PULL_REQUEST_CONFLICTED',
@@ -90,6 +97,7 @@ export class IssueRejectionEvaluator {
           });
         }
         if (
+          !pr.isDraft &&
           !pr.isConflicted &&
           pr.isPassedAllCiJob &&
           pr.isResolvedAllReviewComments

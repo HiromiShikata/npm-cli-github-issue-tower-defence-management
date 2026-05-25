@@ -304,6 +304,38 @@ describe('RevertNotReadyAwaitingQualityCheckUseCase', () => {
     );
   });
 
+  it('should revert issue when linked PR is in draft state', async () => {
+    const issue = createMockIssue({
+      status: 'Awaiting Quality Check',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [issue],
+      cacheUsed: false,
+    });
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      { ...createReadyPr(), isDraft: true },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      allowIssueCacheMinutes: 10,
+    });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      mockProject,
+      issue,
+      'awaiting-workspace-id',
+    );
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      issue,
+      expect.stringContaining('Auto Status Check: REJECTED'),
+    );
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      issue,
+      expect.stringContaining('PULL_REQUEST_IS_DRAFT'),
+    );
+  });
+
   it('should revert issue when multiple linked open PRs are found', async () => {
     const issue = createMockIssue({
       status: 'Awaiting Quality Check',
