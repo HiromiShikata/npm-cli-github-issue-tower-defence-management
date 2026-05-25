@@ -26,8 +26,17 @@ class NotifyFinishedIssuePreparationUseCase {
         this.run = async (params) => {
             const project = await this.projectRepository.getByUrl(params.projectUrl);
             const awaitingWorkspaceStatusOption = project.status.statuses.find((s) => s.name === WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME) ?? null;
+            if (!awaitingWorkspaceStatusOption) {
+                console.warn(`Status option '${WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME}' not found in project; status updates to this state will be skipped.`);
+            }
             const awaitingQualityCheckStatusOption = project.status.statuses.find((s) => s.name === WorkflowStatus_1.AWAITING_QUALITY_CHECK_STATUS_NAME) ?? null;
+            if (!awaitingQualityCheckStatusOption) {
+                console.warn(`Status option '${WorkflowStatus_1.AWAITING_QUALITY_CHECK_STATUS_NAME}' not found in project; status updates to this state will be skipped.`);
+            }
             const failedPreparationStatusOption = project.status.statuses.find((s) => s.name === WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME) ?? null;
+            if (!failedPreparationStatusOption) {
+                console.warn(`Status option '${WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME}' not found in project; status updates to this state will be skipped.`);
+            }
             const issue = await this.issueRepository.get(params.issueUrl, project);
             if (!issue) {
                 throw new IssueNotFoundError(params.issueUrl);

@@ -2340,7 +2340,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should post comment and evaluate PRs even when workflow status options are absent from project', async () => {
+  it('should skip status updates but still evaluate PRs when workflow status options are absent from project', async () => {
     const projectWithoutWorkflowStatuses = createMockProject({
       status: {
         name: 'Status',
