@@ -499,6 +499,41 @@ codexHomeCandidates:
 
       consoleWarnSpy.mockRestore();
     });
+
+    it('should reflect maximumPreparingIssuesCount from user-owned project README in merged config', async () => {
+      const readmeWithConfig = [
+        '# User Project',
+        '<details>',
+        '<summary>config</summary>',
+        'maximumPreparingIssuesCount: 7',
+        '</details>',
+      ].join('\n');
+      const responseBody = {
+        data: {
+          organization: null,
+          user: { projectV2: { readme: readmeWithConfig } },
+        },
+        errors: [
+          {
+            type: 'NOT_FOUND',
+            message:
+              "Could not resolve to an Organization with the login of 'test-user'.",
+          },
+        ],
+      };
+      jest.spyOn(global, 'fetch').mockResolvedValue(
+        new Response(JSON.stringify(responseBody), { status: 200 }),
+      );
+
+      const readme = await fetchProjectReadme(
+        'https://github.com/users/test-user/projects/1',
+        'test-token',
+      );
+      const readmeOverrides = parseProjectReadmeConfig(readme ?? '');
+      const merged = mergeConfigs({}, {}, readmeOverrides);
+
+      expect(merged.maximumPreparingIssuesCount).toBe(7);
+    });
   });
 
   describe('startDaemon', () => {
