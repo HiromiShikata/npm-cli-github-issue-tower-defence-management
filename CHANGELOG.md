@@ -1,3 +1,10 @@
+# [1.60.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.59.0...v1.60.0) (2026-05-25)
+
+
+### Features
+
+* **core:** introduce ClaudeMessageResponse entity and SQLite persistence in proxy ([41b4452](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/41b44523f3d56d6207dfe3cfc03a56cb107de000)), closes [#651](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/651) [#651](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/651)
+
 # [1.59.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.58.3...v1.59.0) (2026-05-24)
 
 
