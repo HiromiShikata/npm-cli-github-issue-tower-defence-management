@@ -353,7 +353,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
       ]);
     });
 
-    it('should throw error when story:* label has no matching regular / ... option', async () => {
+    it('should skip issue and create one notification issue when story:* label has no matching regular / ... option', async () => {
       const issue: Issue = {
         ...mock<Issue>(),
         labels: ['story:routine-management'],
@@ -362,24 +362,88 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionDate: null,
         nextActionHour: null,
         isPr: false,
+        org: 'xcare-medical',
+        repo: 'xcare-platform',
+        url: 'https://github.com/xcare-medical/xcare-platform/issues/1445',
       };
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
 
-      await expect(
-        useCase.run({
-          targetDates: [targetDate],
-          project: basicProject,
-          issues: [issue],
-          cacheUsed: false,
-        }),
-      ).rejects.toThrow(
-        'No matching story found for label: story:routine-management',
-      );
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+      await promise;
 
       expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
       expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+      expect(mockIssueRepository.searchIssue.mock.calls).toEqual([
+        [
+          {
+            owner: 'xcare-medical',
+            repositoryName: 'xcare-platform',
+            type: 'issue',
+            state: 'open',
+            title:
+              'TDPM: story label "story:routine-management" has no matching "regular / routine-management" Story option',
+          },
+        ],
+      ]);
+      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledTimes(1);
+      const createCall = mockIssueRepository.createNewIssue.mock.calls[0];
+      expect(createCall[0]).toEqual('xcare-medical');
+      expect(createCall[1]).toEqual('xcare-platform');
+      expect(createCall[2]).toEqual(
+        'TDPM: story label "story:routine-management" has no matching "regular / routine-management" Story option',
+      );
+      expect(createCall[3]).toContain(
+        'https://github.com/xcare-medical/xcare-platform/issues/1445',
+      );
+      expect(createCall[3]).toContain('story:routine-management');
+      expect(createCall[4]).toEqual(['xcare-medical']);
+      expect(createCall[5]).toEqual([]);
     });
 
-    it('should not match story option that does not start with regular / ', async () => {
+    it('should not create a duplicate notification issue when an open one already exists', async () => {
+      const issue: Issue = {
+        ...mock<Issue>(),
+        labels: ['story:routine-management'],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        isPr: false,
+        org: 'xcare-medical',
+        repo: 'xcare-platform',
+        url: 'https://github.com/xcare-medical/xcare-platform/issues/1445',
+      };
+      mockIssueRepository.searchIssue.mockResolvedValue([
+        {
+          url: 'https://github.com/xcare-medical/xcare-platform/issues/9999',
+          title:
+            'TDPM: story label "story:routine-management" has no matching "regular / routine-management" Story option',
+          number: '9999',
+        },
+      ]);
+
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+      await promise;
+
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+      expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+      expect(mockIssueRepository.searchIssue).toHaveBeenCalledTimes(1);
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+    });
+
+    it('should skip issue and notify when story option does not start with regular / ', async () => {
       const issue: Issue = {
         ...mock<Issue>(),
         labels: ['story:workflow-board'],
@@ -388,18 +452,73 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionDate: null,
         nextActionHour: null,
         isPr: false,
+        org: 'xcare-medical',
+        repo: 'xcare-platform',
+        url: 'https://github.com/xcare-medical/xcare-platform/issues/1500',
       };
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
 
-      await expect(
-        useCase.run({
-          targetDates: [targetDate],
-          project: basicProject,
-          issues: [issue],
-          cacheUsed: false,
-        }),
-      ).rejects.toThrow(
-        'No matching story found for label: story:workflow-board',
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+      await promise;
+
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+      expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledTimes(1);
+      expect(mockIssueRepository.createNewIssue.mock.calls[0][2]).toEqual(
+        'TDPM: story label "story:workflow-board" has no matching "regular / workflow-board" Story option',
       );
+    });
+
+    it('should continue processing remaining issues after an unmatched label', async () => {
+      const unmatchedIssue: Issue = {
+        ...mock<Issue>(),
+        labels: ['story:routine-management'],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        isPr: false,
+        org: 'xcare-medical',
+        repo: 'xcare-platform',
+        url: 'https://github.com/xcare-medical/xcare-platform/issues/1445',
+      };
+      const matchedIssue: Issue = {
+        ...mock<Issue>(),
+        labels: ['story:high-priority'],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        isPr: false,
+      };
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [unmatchedIssue, matchedIssue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+      await promise;
+
+      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledTimes(1);
+      expect(mockIssueRepository.updateStory.mock.calls).toEqual([
+        [
+          { ...basicProject, story: basicProject.story },
+          matchedIssue,
+          'highPriorityId',
+        ],
+      ]);
+      expect(mockIssueRepository.removeLabel.mock.calls).toEqual([
+        [matchedIssue, 'story:high-priority'],
+      ]);
     });
 
     it('should skip issue that already has a story assigned', async () => {

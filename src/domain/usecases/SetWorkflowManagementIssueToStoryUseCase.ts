@@ -6,7 +6,7 @@ export class SetWorkflowManagementIssueToStoryUseCase {
   constructor(
     readonly issueRepository: Pick<
       IssueRepository,
-      'updateStory' | 'removeLabel'
+      'updateStory' | 'removeLabel' | 'searchIssue' | 'createNewIssue'
     >,
   ) {}
 
@@ -103,7 +103,8 @@ export class SetWorkflowManagementIssueToStoryUseCase {
       });
 
       if (!matchingStory) {
-        throw new Error(`No matching story found for label: ${storyLabel}`);
+        await this.notifyUnmatchedStoryLabel(issue, storyLabel, labelSuffix);
+        continue;
       }
 
       await this.issueRepository.updateStory(
@@ -114,6 +115,65 @@ export class SetWorkflowManagementIssueToStoryUseCase {
       await this.issueRepository.removeLabel(issue, storyLabel);
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }
+  };
+
+  static buildUnmatchedStoryLabelTitle = (
+    storyLabel: string,
+    labelSuffix: string,
+  ): string =>
+    `TDPM: story label "${storyLabel}" has no matching "${SetWorkflowManagementIssueToStoryUseCase.REGULAR_STORY_PREFIX}${labelSuffix}" Story option`;
+
+  private notifyUnmatchedStoryLabel = async (
+    issue: Issue,
+    storyLabel: string,
+    labelSuffix: string,
+  ): Promise<void> => {
+    const title =
+      SetWorkflowManagementIssueToStoryUseCase.buildUnmatchedStoryLabelTitle(
+        storyLabel,
+        labelSuffix,
+      );
+    const existingOpenIssues = await this.issueRepository.searchIssue({
+      owner: issue.org,
+      repositoryName: issue.repo,
+      type: 'issue',
+      state: 'open',
+      title,
+    });
+    const alreadyNotified = existingOpenIssues.some(
+      (existing) => existing.title === title,
+    );
+    if (alreadyNotified) {
+      return;
+    }
+    const body = this.buildUnmatchedStoryLabelBody(issue, storyLabel);
+    await this.issueRepository.createNewIssue(
+      issue.org,
+      issue.repo,
+      title,
+      body,
+      [issue.org],
+      [],
+    );
+  };
+
+  private buildUnmatchedStoryLabelBody = (
+    issue: Issue,
+    storyLabel: string,
+  ): string => {
+    const labelSuffix = storyLabel.slice(
+      SetWorkflowManagementIssueToStoryUseCase.STORY_LABEL_PREFIX.length,
+    );
+    return [
+      'From: :robot: SetWorkflowManagementIssueToStoryUseCase',
+      '',
+      `The issue below carries the label \`${storyLabel}\`, but the project has no matching \`${SetWorkflowManagementIssueToStoryUseCase.REGULAR_STORY_PREFIX}${labelSuffix}\` Story option.`,
+      '',
+      issue.url,
+      '',
+      `Because no matching \`${SetWorkflowManagementIssueToStoryUseCase.REGULAR_STORY_PREFIX}${labelSuffix}\` Story option exists, the label cannot be auto-converted to a Story.`,
+      'Add the missing Story option to the project, or correct the label on the issue above, to resolve this.',
+    ].join('\n');
   };
 
   private isEligibleIssue = (issue: Issue, targetDates: Date[]): boolean => {

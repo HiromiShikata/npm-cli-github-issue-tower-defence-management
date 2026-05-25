@@ -29,6 +29,21 @@ export interface IssueRepository {
     assignees: Member['name'][],
     labels: Label[],
   ) => Promise<number>;
+  searchIssue: (query: {
+    owner: string;
+    repositoryName: string;
+    type?: 'issue' | 'pr';
+    state?: 'open' | 'closed' | 'all';
+    title?: string;
+    createdFrom?: string;
+    assignee?: string;
+  }) => Promise<
+    {
+      url: string;
+      title: string;
+      number: string;
+    }[]
+  >;
   updateIssue: (issue: Issue) => Promise<void>;
   updateNextActionDate: (
     issueUrl: string,
