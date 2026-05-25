@@ -86,4 +86,9 @@ export interface IssueRepository {
     allowCacheMinutes: number,
   ) => Promise<StoryObjectMap>;
   addIssueToProject: (project: Project, issueUrl: string) => Promise<void>;
+  setDependedIssueUrl: (
+    prUrl: string,
+    project: Project,
+    issueUrl: string,
+  ) => Promise<void>;
 }
