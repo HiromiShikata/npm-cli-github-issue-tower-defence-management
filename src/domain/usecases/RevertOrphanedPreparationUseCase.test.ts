@@ -194,7 +194,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       {
         author: 'bot',
-        content: 'From: agent report',
+        content: 'From: :robot: agent report',
         createdAt: new Date(),
       },
     ]);
@@ -229,7 +229,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       {
         author: 'bot',
-        content: 'From: agent report',
+        content: 'From: :robot: agent report',
         createdAt: new Date(),
       },
     ]);
@@ -267,7 +267,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       {
         author: 'bot',
-        content: 'From: agent report',
+        content: 'From: :robot: agent report',
         createdAt: new Date(),
       },
     ]);
@@ -301,7 +301,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       {
         author: 'bot',
-        content: 'From: agent report',
+        content: 'From: :robot: agent report',
         createdAt: new Date(),
       },
     ]);
@@ -335,7 +335,40 @@ describe('RevertOrphanedPreparationUseCase', () => {
       {
         author: 'bot',
         content:
-          'From: agent report\n```json\n{"nextStep": "do something"}\n```',
+          'From: :robot: agent report\n```json\n{"nextStep": "do something"}\n```',
+        createdAt: new Date(),
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      allowIssueCacheMinutes: 60,
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+  });
+
+  it('should revert orphaned issue to Awaiting Workspace when last comment is a cross-issue notification starting with From: :warning:', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'bot',
+        content:
+          'From: :warning: This message is from https://github.com/user/repo/tree/i999 AI HS Implement AI Agent (claude-sonnet-4-6)',
         createdAt: new Date(),
       },
     ]);

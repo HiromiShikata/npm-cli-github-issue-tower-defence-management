@@ -77,7 +77,7 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
 
 const createMockComment = (overrides: Partial<Comment> = {}): Comment => ({
   author: 'test-user',
-  content: 'From: Test comment',
+  content: 'From: :robot: Test comment',
   createdAt: new Date(),
   ...overrides,
 });
@@ -150,7 +150,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'From: Test report' }),
+      createMockComment({ content: 'From: :robot: Test report' }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
       {
@@ -205,7 +205,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'From: Agent report' }),
+      createMockComment({ content: 'From: :robot: Agent report' }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
       {
@@ -511,6 +511,53 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
+  it('should reject with NO_REPORT_FROM_AGENT_BOT when last comment is a cross-issue notification starting with From: :warning:', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content:
+          'From: :warning: This message is from https://github.com/user/repo/tree/i999 AI HS Implement AI Agent (claude-sonnet-4-6)',
+      }),
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      {
+        url: 'https://github.com/user/repo/pull/1',
+        isConflicted: false,
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+    });
+
+    expect(mockIssueRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'Awaiting Workspace',
+      }),
+      mockProject,
+    );
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: 'https://github.com/user/repo/issues/1',
+      }),
+      expect.stringContaining('NO_REPORT_FROM_AGENT_BOT'),
+    );
+  });
+
   it('should reject and set status to Awaiting Workspace when no comments exist', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
@@ -559,7 +606,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({
         content:
-          'From: Agent report\n```json\n{"nextStep": "Fix the tests"}\n```',
+          'From: :robot: Agent report\n```json\n{"nextStep": "Fix the tests"}\n```',
       }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -601,7 +648,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({
-        content: 'From: Agent report\n```json\n{"nextStep": null}\n```',
+        content: 'From: :robot: Agent report\n```json\n{"nextStep": null}\n```',
       }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -691,7 +738,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       createMockComment({ content: 'Auto Status Check: REJECTED - first' }),
       createMockComment({ content: 'Auto Status Check: REJECTED - second' }),
       createMockComment({ content: 'Auto Status Check: REJECTED - third' }),
-      createMockComment({ content: 'From: Agent final report' }),
+      createMockComment({ content: 'From: :robot: Agent final report' }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
       {
@@ -915,7 +962,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'From: Test report' }),
+      createMockComment({ content: 'From: :robot: Test report' }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
 
@@ -949,7 +996,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'From: Test report' }),
+      createMockComment({ content: 'From: :robot: Test report' }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
       {
@@ -1002,7 +1049,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'From: Test report' }),
+      createMockComment({ content: 'From: :robot: Test report' }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
       {
@@ -1046,7 +1093,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'From: Test report' }),
+      createMockComment({ content: 'From: :robot: Test report' }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
       {
@@ -1090,7 +1137,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'From: Test report' }),
+      createMockComment({ content: 'From: :robot: Test report' }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
       {
@@ -1140,7 +1187,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'From: Test report' }),
+      createMockComment({ content: 'From: :robot: Test report' }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
       {
@@ -1190,7 +1237,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'From: Test report' }),
+      createMockComment({ content: 'From: :robot: Test report' }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
       {
@@ -1228,7 +1275,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'From: Test report' }),
+      createMockComment({ content: 'From: :robot: Test report' }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
       {
@@ -1318,7 +1365,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'From: Test report' }),
+      createMockComment({ content: 'From: :robot: Test report' }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
 
@@ -1347,7 +1394,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'From: Test report' }),
+      createMockComment({ content: 'From: :robot: Test report' }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
       {
@@ -1424,7 +1471,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'From: Test report' }),
+      createMockComment({ content: 'From: :robot: Test report' }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
 
@@ -1451,7 +1498,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'From: Test report' }),
+      createMockComment({ content: 'From: :robot: Test report' }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
 
@@ -1511,7 +1558,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(prIssue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'From: Agent report' }),
+      createMockComment({ content: 'From: :robot: Agent report' }),
     ]);
     mockIssueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/user/repo/pull/10',
@@ -1758,7 +1805,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({ content: 'From: Test report' }),
+        createMockComment({ content: 'From: :robot: Test report' }),
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
         {
@@ -1839,7 +1886,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({ content: 'From: Test report' }),
+        createMockComment({ content: 'From: :robot: Test report' }),
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
         {
@@ -1876,7 +1923,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({ content: 'From: Test report' }),
+        createMockComment({ content: 'From: :robot: Test report' }),
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
         {
@@ -1909,7 +1956,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({ content: 'From: Test report' }),
+        createMockComment({ content: 'From: :robot: Test report' }),
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
         {
@@ -1964,7 +2011,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({ content: 'From: Test report' }),
+        createMockComment({ content: 'From: :robot: Test report' }),
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
         {
@@ -2019,7 +2066,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       new Error('Story map unavailable'),
     );
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'From: Test report' }),
+      createMockComment({ content: 'From: :robot: Test report' }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
       {
@@ -2064,7 +2111,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(prIssue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'From: Agent report' }),
+      createMockComment({ content: 'From: :robot: Agent report' }),
     ]);
     mockIssueRepository.getOpenPullRequest.mockResolvedValue(null);
 
@@ -2098,7 +2145,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({
-        content: 'From: Agent report\n```json\n{invalid json}\n```',
+        content: 'From: :robot: Agent report\n```json\n{invalid json}\n```',
       }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -2136,7 +2183,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({
-        content: 'From: Agent report\n```json\nnull\n```',
+        content: 'From: :robot: Agent report\n```json\nnull\n```',
       }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -2175,7 +2222,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({
         content:
-          'From: Agent report\n```json\n{"status": "done", "result": "success"}\n```',
+          'From: :robot: Agent report\n```json\n{"status": "done", "result": "success"}\n```',
       }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -2213,7 +2260,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({
-        content: 'From: Agent report\n```json\n"just a string"\n```',
+        content: 'From: :robot: Agent report\n```json\n"just a string"\n```',
       }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([

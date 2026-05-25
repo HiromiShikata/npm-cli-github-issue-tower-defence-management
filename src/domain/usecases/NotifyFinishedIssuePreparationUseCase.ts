@@ -266,7 +266,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     const rejections: { type: RejectedReasonType; detail: string }[] = [];
 
     const lastComment = comments[comments.length - 1];
-    if (!lastComment || !lastComment.content.startsWith('From:')) {
+    if (!lastComment || !lastComment.content.startsWith('From: :robot:')) {
       rejections.push({
         type: 'NO_REPORT_FROM_AGENT_BOT',
         detail: 'NO_REPORT_FROM_AGENT_BOT',
