@@ -93,7 +93,8 @@ export class NotifyFinishedIssuePreparationUseCase {
       return;
     }
     const failedPreparationStatusOption = project.status.statuses.find(
-      (s) => s.name === FAILED_PREPARATION_STATUS_NAME,
+      (s) =>
+        s.name.toLowerCase() === FAILED_PREPARATION_STATUS_NAME.toLowerCase(),
     );
     if (!failedPreparationStatusOption) {
       console.error(
@@ -192,7 +193,7 @@ export class NotifyFinishedIssuePreparationUseCase {
           .includes('failed to pass the check automatically'),
       )
     ) {
-      issue.status = FAILED_PREPARATION_STATUS_NAME;
+      issue.status = failedPreparationStatusOption.name;
       await this.issueRepository.update(issue, project);
       await this.issueRepository.updateStatus(
         project,

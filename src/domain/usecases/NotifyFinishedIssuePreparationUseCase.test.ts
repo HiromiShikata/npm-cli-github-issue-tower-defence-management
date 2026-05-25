@@ -2414,4 +2414,71 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       'awaiting-quality-check-id',
     );
   });
+
+  it('should match failedPreparationStatus case-insensitively and use project status name when escalating', async () => {
+    const projectWithLowercaseFailedStatus = createMockProject({
+      status: {
+        name: 'Status',
+        fieldId: 'field-1',
+        statuses: [
+          {
+            id: 'preparation-id',
+            name: 'Preparation',
+            color: 'YELLOW',
+            description: '',
+          },
+          {
+            id: 'awaiting-workspace-id',
+            name: 'Awaiting Workspace',
+            color: 'GRAY',
+            description: '',
+          },
+          {
+            id: 'failed-preparation-id',
+            name: 'failed preparation',
+            color: 'RED',
+            description: '',
+          },
+          {
+            id: 'awaiting-quality-check-id',
+            name: 'Awaiting Quality Check',
+            color: 'BLUE',
+            description: '',
+          },
+        ],
+      },
+    });
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(
+      projectWithLowercaseFailedStatus,
+    );
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({ content: 'Auto Status Check: REJECTED - first' }),
+      createMockComment({ content: 'Auto Status Check: REJECTED - second' }),
+      createMockComment({ content: 'Auto Status Check: REJECTED - third' }),
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+    });
+
+    expect(mockIssueRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'failed preparation' }),
+      projectWithLowercaseFailedStatus,
+    );
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      projectWithLowercaseFailedStatus,
+      expect.objectContaining({ status: 'failed preparation' }),
+      'failed-preparation-id',
+    );
+  });
 });

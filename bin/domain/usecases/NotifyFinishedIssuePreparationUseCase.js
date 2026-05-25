@@ -36,7 +36,7 @@ class NotifyFinishedIssuePreparationUseCase {
                 console.error(`Awaiting quality check status option '${WorkflowStatus_1.AWAITING_QUALITY_CHECK_STATUS_NAME}' not found in project.`);
                 return;
             }
-            const failedPreparationStatusOption = project.status.statuses.find((s) => s.name === WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME);
+            const failedPreparationStatusOption = project.status.statuses.find((s) => s.name.toLowerCase() === WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME.toLowerCase());
             if (!failedPreparationStatusOption) {
                 console.error(`Failed preparation status option '${WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME}' not found in project.`);
                 return;
@@ -87,7 +87,7 @@ class NotifyFinishedIssuePreparationUseCase {
                 !lastTargetComments.some((comment) => comment.content
                     .toLowerCase()
                     .includes('failed to pass the check automatically'))) {
-                issue.status = WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME;
+                issue.status = failedPreparationStatusOption.name;
                 await this.issueRepository.update(issue, project);
                 await this.issueRepository.updateStatus(project, issue, failedPreparationStatusOption.id);
                 const escalationStatusLine = rejections.length > 0
