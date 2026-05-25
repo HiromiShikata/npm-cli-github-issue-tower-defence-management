@@ -209,7 +209,7 @@ When `claudeCodeOauthTokenListJsonPath` is set, `startDaemon` distributes prepar
    ]
    ```
 
-   Only the `token` field is consumed; `name` is for human reference. Entries without a string `token` are skipped. Missing files or malformed JSON yield no tokens and disable rotation for that run (the daemon then falls back to whatever `CLAUDE_CODE_OAUTH_TOKEN` is already in the environment).
+   The `name` field is optional; when absent, TDPM assigns a positional name (`token-1`, `token-2`, …) based on the entry's index in the array. Entries without a string `token` are skipped. Missing files or malformed JSON yield no tokens and disable rotation for that run (the daemon then falls back to whatever `CLAUDE_CODE_OAUTH_TOKEN` is already in the environment).
 
 2. Local reverse proxy (`127.0.0.1:8787`): on each `startDaemon` run, the daemon TCP-probes the port. If nothing responds, it spawns a detached child running `bin/adapter/proxy/proxyEntry.js`. The proxy forwards every request to `api.anthropic.com`, observes the `anthropic-ratelimit-unified-*` response headers, and writes them to a per-token cache file at `${XDG_CACHE_HOME:-~/.cache}/tdpm/ratelimit/<sha256-of-token>.json`. The cache file stores the latest 5-hour and 7-day utilization, reset epochs, and the unified, 5-hour, and 7-day statuses (used to detect `blocked` and `rejected` state per window). In addition to the unified headers, the proxy inspects the streamed response body for `rate_limit` events (objects carrying `rateLimitType`, `status`, and `resetsAt`) and records the model-specific weekly limits — at minimum `seven_day_sonnet` and `seven_day` — per token. These model-specific weekly limits are exposed only in the response body, never in the unified headers, so a token can appear healthy on `anthropic-ratelimit-unified-7d-*` while its Sonnet weekly limit is exhausted.
 
@@ -257,7 +257,8 @@ This file is written atomically (written to a `.tmp` file then renamed) so exter
     "awaitingQualityCheckImmediatelyActionable": 2,
     "preparation": 4,
     "awaitingWorkspaceImmediatelyActionable": 3,
-    "awaitingWorkspaceBlockedByDependency": 1
+    "awaitingWorkspaceBlockedByDependency": 1,
+    "failedPreparation": 2
   },
   "processes": {
     "runningPreparation": 4
@@ -288,6 +289,7 @@ This file is written atomically (written to a `.tmp` file then renamed) so exter
 - `status.preparation`: Count of issues currently in preparation status.
 - `status.awaitingWorkspaceImmediatelyActionable`: Count of issues in awaiting workspace status with no dependency URL, next action date, or next action hour set.
 - `status.awaitingWorkspaceBlockedByDependency`: Count of issues in awaiting workspace status that have a dependency URL set.
+- `status.failedPreparation`: Count of issues currently in failed preparation status.
 - `processes.runningPreparation`: Count of spawned preparation processes confirmed running via `preparationProcessCheckCommand`. `null` if `preparationProcessCheckCommand` is not configured.
 - `system.memory.usedPercent`: Host memory usage as a percentage (MemTotal - MemAvailable / MemTotal × 100).
 - `system.memory.usedGib` / `system.memory.totalGib`: Used and total host memory in GiB.
@@ -295,6 +297,47 @@ This file is written atomically (written to a `.tmp` file then renamed) so exter
 - `system.swap.usedGib` / `system.swap.totalGib`: Used and total host swap in GiB.
 
 System metrics are read from `/proc/meminfo` at snapshot write time.
+
+## Token Rotation Order File
+
+After each schedule cycle where Claude OAuth token rotation is active, TDPM writes the computed rotation order to:
+
+```
+${XDG_CACHE_HOME:-~/.cache}/tdpm/rotation-order.json
+```
+
+This file is written atomically (written to a `.tmp` file then renamed) so external readers never see a partial write.
+
+### JSON Shape
+
+```json
+[
+  {
+    "name": "personal-1",
+    "fiveHourUtilization": 0.12,
+    "blocked": false,
+    "rejected": false,
+    "thresholdExcluded": false
+  },
+  {
+    "name": "personal-2",
+    "fiveHourUtilization": 0.95,
+    "blocked": false,
+    "rejected": false,
+    "thresholdExcluded": true
+  }
+]
+```
+
+The array is ordered with selected (eligible) tokens first, sorted by ascending `fiveHourUtilization`, followed by excluded tokens. Raw token values are never written to this file; each entry uses the `name` field from the token list JSON as its identifier.
+
+### Field Descriptions
+
+- `name`: Non-secret identifier for the token entry, taken from the `name` field in the token list JSON.
+- `fiveHourUtilization`: Current 5-hour utilization ratio (0.0–1.0) for this token.
+- `blocked`: `true` if the token is marked as blocked.
+- `rejected`: `true` if the token is marked as rejected by the API.
+- `thresholdExcluded`: `true` if the token is eligible (not blocked or rejected) but excluded because its 5-hour utilization is at or above 95% (the fixed slot-zero boundary), giving it zero available preparation slots.
 
 ## Cadence and Cache Contract
 

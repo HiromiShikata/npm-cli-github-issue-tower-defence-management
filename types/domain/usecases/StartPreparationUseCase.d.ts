@@ -2,6 +2,14 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsageRepository';
+import { ClaudeTokenUsage } from '../entities/ClaudeTokenUsage';
+export type RotationOrderEntry = {
+    name: string;
+    fiveHourUtilization: number;
+    blocked: boolean;
+    rejected: boolean;
+    thresholdExcluded: boolean;
+};
 export declare class StartPreparationUseCase {
     private readonly projectRepository;
     private readonly issueRepository;
@@ -14,6 +22,7 @@ export declare class StartPreparationUseCase {
     private selectRotationTokens;
     private createRotationTokenSlots;
     private resolveMaximumPreparingIssuesCount;
+    buildRotationOrder: (tokenUsages: ClaudeTokenUsage[], utilizationPercentageThreshold: number, modelName: string | null) => RotationOrderEntry[];
     run: (params: {
         projectUrl: string;
         defaultAgentName: string;
@@ -25,6 +34,8 @@ export declare class StartPreparationUseCase {
         allowedIssueAuthors: string[] | null;
         codexHomeCandidates: string[] | null;
         allowIssueCacheMinutes: number;
-    }) => Promise<void>;
+    }) => Promise<{
+        rotationOrder: RotationOrderEntry[] | null;
+    }>;
 }
 //# sourceMappingURL=StartPreparationUseCase.d.ts.map

@@ -18,6 +18,14 @@ type RotationToken = {
   maximumPreparingProcessCount: number;
 };
 
+export type RotationOrderEntry = {
+  name: string;
+  fiveHourUtilization: number;
+  blocked: boolean;
+  rejected: boolean;
+  thresholdExcluded: boolean;
+};
+
 export class StartPreparationUseCase {
   constructor(
     private readonly projectRepository: Pick<ProjectRepository, 'getByUrl'>,
@@ -131,6 +139,52 @@ export class StartPreparationUseCase {
     );
   };
 
+  buildRotationOrder = (
+    tokenUsages: ClaudeTokenUsage[],
+    utilizationPercentageThreshold: number,
+    modelName: string | null,
+  ): RotationOrderEntry[] => {
+    const weeklyLimitType = this.weeklyLimitTypeForModel(modelName);
+    const selectedTokens = tokenUsages
+      .filter((usage) => !usage.blocked)
+      .filter((usage) => !usage.rejected)
+      .filter(
+        (usage) => !this.isModelWeeklyLimitRejected(usage, weeklyLimitType),
+      )
+      .filter(
+        (usage) =>
+          this.maximumPreparingProcessCountForToken(usage.fiveHourUtilization) >
+          0,
+      )
+      .sort((a, b) => a.fiveHourUtilization - b.fiveHourUtilization);
+    const selectedTokenValues = new Set(selectedTokens.map((u) => u.token));
+    const excluded: RotationOrderEntry[] = tokenUsages
+      .filter((usage) => !selectedTokenValues.has(usage.token))
+      .map((usage) => ({
+        name: usage.name ?? '',
+        fiveHourUtilization: usage.fiveHourUtilization,
+        blocked: usage.blocked,
+        rejected: usage.rejected,
+        thresholdExcluded:
+          !usage.blocked &&
+          !usage.rejected &&
+          !this.isModelWeeklyLimitRejected(usage, weeklyLimitType) &&
+          this.maximumPreparingProcessCountForToken(
+            usage.fiveHourUtilization,
+          ) === 0,
+      }));
+    const selectedEntries: RotationOrderEntry[] = selectedTokens.map(
+      (usage) => ({
+        name: usage.name ?? '',
+        fiveHourUtilization: usage.fiveHourUtilization,
+        blocked: false,
+        rejected: false,
+        thresholdExcluded: false,
+      }),
+    );
+    return [...selectedEntries, ...excluded];
+  };
+
   run = async (params: {
     projectUrl: string;
     defaultAgentName: string;
@@ -142,11 +196,19 @@ export class StartPreparationUseCase {
     allowedIssueAuthors: string[] | null;
     codexHomeCandidates: string[] | null;
     allowIssueCacheMinutes: number;
-  }): Promise<void> => {
+  }): Promise<{ rotationOrder: RotationOrderEntry[] | null }> => {
     const tokenUsages =
       await this.claudeTokenUsageRepository.getAvailableTokenUsages();
     let rotationTokenSlots: string[] | null = null;
     let proxyBaseUrl: string | null = null;
+    const rotationOrder: RotationOrderEntry[] | null =
+      tokenUsages.length > 0
+        ? this.buildRotationOrder(
+            tokenUsages,
+            params.utilizationPercentageThreshold,
+            params.defaultLlmModelName,
+          )
+        : null;
     if (tokenUsages.length > 0) {
       const ranked = this.selectRotationTokens(
         tokenUsages,
@@ -156,7 +218,7 @@ export class StartPreparationUseCase {
         console.warn(
           `All ${tokenUsages.length} configured Claude OAuth token(s) are unavailable (blocked, rejected, weekly limit for ${this.weeklyLimitTypeForModel(params.defaultLlmModelName)} exhausted, or 5h utilization >= 95%). Skipping starting preparation.`,
         );
-        return;
+        return { rotationOrder };
       }
       await this.claudeTokenUsageRepository.ensureObservable();
       rotationTokenSlots = this.createRotationTokenSlots(ranked);
@@ -183,7 +245,7 @@ export class StartPreparationUseCase {
       console.error(
         `Preparation status option '${PREPARATION_STATUS_NAME}' not found in project.`,
       );
-      return;
+      return { rotationOrder };
     }
 
     const awaitingWorkspaceIssues = allOpenedIssues
@@ -374,5 +436,6 @@ export class StartPreparationUseCase {
       startedInThisRunCount++;
       updatedCurrentPreparationIssueCount++;
     }
+    return { rotationOrder };
   };
 }

@@ -8,6 +8,7 @@ export type SituationFileParams = {
         awaitingQualityCheckStatus: string | null;
         preparationStatus: string | null;
         awaitingWorkspaceStatus: string | null;
+        failedPreparationStatus: string | null;
     };
     config: {
         maximumPreparingIssuesCount: number | null;

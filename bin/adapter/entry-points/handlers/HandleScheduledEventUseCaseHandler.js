@@ -42,6 +42,7 @@ const yaml_1 = __importDefault(require("yaml"));
 const typia_1 = __importDefault(require("typia"));
 const fs_1 = __importDefault(require("fs"));
 const situationFileWriter_1 = require("./situationFileWriter");
+const rotationOrderFileWriter_1 = require("./rotationOrderFileWriter");
 const projectConfig_1 = require("../cli/projectConfig");
 const SystemDateRepository_1 = require("../../repositories/SystemDateRepository");
 const LocalStorageRepository_1 = require("../../repositories/LocalStorageRepository");
@@ -402,6 +403,9 @@ class HandleScheduledEventUseCaseHandler {
             const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(setupTowerDefenceProjectUseCase, actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabel, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, revertNotReadyAwaitingQualityCheckUseCase, updateRateLimitCacheUseCase, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
             const result = await handleScheduledEventUseCase.run(mergedInput);
             if (result) {
+                if (result.rotationOrder !== null) {
+                    (0, rotationOrderFileWriter_1.writeRotationOrderFile)(result.rotationOrder);
+                }
                 await (0, situationFileWriter_1.writeSituationFile)({
                     cachePath,
                     projectId: result.project.id,
@@ -410,6 +414,7 @@ class HandleScheduledEventUseCaseHandler {
                         awaitingQualityCheckStatus: WorkflowStatus_1.AWAITING_QUALITY_CHECK_STATUS_NAME,
                         preparationStatus: WorkflowStatus_1.PREPARATION_STATUS_NAME,
                         awaitingWorkspaceStatus: WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME,
+                        failedPreparationStatus: WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME,
                     },
                     config: {
                         maximumPreparingIssuesCount: mergedInput.startPreparation?.maximumPreparingIssuesCount ?? null,

@@ -10,6 +10,7 @@ export type SituationFileParams = {
     awaitingQualityCheckStatus: string | null;
     preparationStatus: string | null;
     awaitingWorkspaceStatus: string | null;
+    failedPreparationStatus: string | null;
   };
   config: {
     maximumPreparingIssuesCount: number | null;
@@ -104,6 +105,12 @@ export const writeSituationFile = async (
       ? issues.filter((i) => i.status === statusNames.awaitingWorkspaceStatus)
       : [];
 
+  const failedPreparation =
+    statusNames.failedPreparationStatus !== null
+      ? issues.filter((i) => i.status === statusNames.failedPreparationStatus)
+          .length
+      : 0;
+
   const awaitingWorkspaceImmediatelyActionable = awaitingWorkspaceIssues.filter(
     isImmediatelyActionable,
   ).length;
@@ -142,6 +149,7 @@ export const writeSituationFile = async (
       preparation: preparationIssues.length,
       awaitingWorkspaceImmediatelyActionable,
       awaitingWorkspaceBlockedByDependency,
+      failedPreparation,
     },
     processes: {
       runningPreparation,

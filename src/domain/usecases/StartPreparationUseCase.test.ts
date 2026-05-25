@@ -1218,6 +1218,7 @@ describe('StartPreparationUseCase', () => {
     });
     mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
       {
+        name: 'token-a',
         token: 'token-a',
         fiveHourUtilization: 0,
         blocked: false,
@@ -1225,6 +1226,7 @@ describe('StartPreparationUseCase', () => {
         modelWeeklyLimits: {},
       },
       {
+        name: 'token-b',
         token: 'token-b',
         fiveHourUtilization: 0,
         blocked: false,
@@ -1279,6 +1281,7 @@ describe('StartPreparationUseCase', () => {
     });
     mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
       {
+        name: 'token-a',
         token: 'token-a',
         fiveHourUtilization: 0,
         blocked: false,
@@ -1286,6 +1289,7 @@ describe('StartPreparationUseCase', () => {
         modelWeeklyLimits: {},
       },
       {
+        name: 'token-b',
         token: 'token-b',
         fiveHourUtilization: 0,
         blocked: false,
@@ -2271,6 +2275,7 @@ describe('StartPreparationUseCase', () => {
     });
     mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
       {
+        name: 'token-a',
         token: 'token-a',
         fiveHourUtilization: 0,
         blocked: false,
@@ -2345,6 +2350,7 @@ describe('StartPreparationUseCase', () => {
     });
     mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
       {
+        name: 'token-a',
         token: 'token-a',
         fiveHourUtilization: 0,
         blocked: false,
@@ -2352,6 +2358,7 @@ describe('StartPreparationUseCase', () => {
         modelWeeklyLimits: {},
       },
       {
+        name: 'token-b',
         token: 'token-b',
         fiveHourUtilization: 0,
         blocked: false,
@@ -2456,6 +2463,7 @@ describe('StartPreparationUseCase', () => {
     });
     mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
       {
+        name: 'token-high',
         token: 'token-high',
         fiveHourUtilization: 0.8,
         blocked: false,
@@ -2463,6 +2471,7 @@ describe('StartPreparationUseCase', () => {
         modelWeeklyLimits: {},
       },
       {
+        name: 'token-low',
         token: 'token-low',
         fiveHourUtilization: 0.1,
         blocked: false,
@@ -2513,6 +2522,7 @@ describe('StartPreparationUseCase', () => {
     });
     mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
       {
+        name: 'token-blocked',
         token: 'token-blocked',
         fiveHourUtilization: 0.05,
         blocked: true,
@@ -2520,6 +2530,7 @@ describe('StartPreparationUseCase', () => {
         modelWeeklyLimits: {},
       },
       {
+        name: 'token-ok',
         token: 'token-ok',
         fiveHourUtilization: 0.5,
         blocked: false,
@@ -2570,6 +2581,7 @@ describe('StartPreparationUseCase', () => {
     });
     mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
       {
+        name: 'token-a',
         token: 'token-a',
         fiveHourUtilization: 0.05,
         blocked: true,
@@ -2577,6 +2589,7 @@ describe('StartPreparationUseCase', () => {
         modelWeeklyLimits: {},
       },
       {
+        name: 'token-b',
         token: 'token-b',
         fiveHourUtilization: 0.08,
         blocked: true,
@@ -2633,6 +2646,7 @@ describe('StartPreparationUseCase', () => {
     });
     mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
       {
+        name: 'token-a',
         token: 'token-a',
         fiveHourUtilization: 0.95,
         blocked: false,
@@ -2640,6 +2654,7 @@ describe('StartPreparationUseCase', () => {
         modelWeeklyLimits: {},
       },
       {
+        name: 'token-b',
         token: 'token-b',
         fiveHourUtilization: 0.97,
         blocked: false,
@@ -2714,6 +2729,7 @@ describe('StartPreparationUseCase', () => {
     });
     mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
       {
+        name: 'token-mid',
         token: 'token-mid',
         fiveHourUtilization: 0.5,
         blocked: false,
@@ -2721,6 +2737,7 @@ describe('StartPreparationUseCase', () => {
         modelWeeklyLimits: {},
       },
       {
+        name: 'token-low',
         token: 'token-low',
         fiveHourUtilization: 0.1,
         blocked: false,
@@ -2728,6 +2745,7 @@ describe('StartPreparationUseCase', () => {
         modelWeeklyLimits: {},
       },
       {
+        name: 'token-high',
         token: 'token-high',
         fiveHourUtilization: 0.8,
         blocked: false,
@@ -2783,6 +2801,7 @@ describe('StartPreparationUseCase', () => {
     });
     mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
       {
+        name: 'token-full-capacity',
         token: 'token-full-capacity',
         fiveHourUtilization: 0.8,
         blocked: false,
@@ -2790,6 +2809,7 @@ describe('StartPreparationUseCase', () => {
         modelWeeklyLimits: {},
       },
       {
+        name: 'token-two-slots',
         token: 'token-two-slots',
         fiveHourUtilization: 0.85,
         blocked: false,
@@ -2797,6 +2817,7 @@ describe('StartPreparationUseCase', () => {
         modelWeeklyLimits: {},
       },
       {
+        name: 'token-one-slot',
         token: 'token-one-slot',
         fiveHourUtilization: 0.9,
         blocked: false,
@@ -2804,6 +2825,7 @@ describe('StartPreparationUseCase', () => {
         modelWeeklyLimits: {},
       },
       {
+        name: 'token-zero-slots',
         token: 'token-zero-slots',
         fiveHourUtilization: 0.95,
         blocked: false,
@@ -2861,6 +2883,7 @@ describe('StartPreparationUseCase', () => {
     });
     mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
       {
+        name: 'token-rejected',
         token: 'token-rejected',
         fiveHourUtilization: 0.1,
         blocked: false,
@@ -2868,6 +2891,7 @@ describe('StartPreparationUseCase', () => {
         modelWeeklyLimits: {},
       },
       {
+        name: 'token-ok',
         token: 'token-ok',
         fiveHourUtilization: 0.5,
         blocked: false,
@@ -2918,6 +2942,7 @@ describe('StartPreparationUseCase', () => {
     });
     mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
       {
+        name: 'token-reset',
         token: 'token-reset',
         fiveHourUtilization: 0,
         blocked: false,
@@ -2925,6 +2950,7 @@ describe('StartPreparationUseCase', () => {
         modelWeeklyLimits: {},
       },
       {
+        name: 'token-busy',
         token: 'token-busy',
         fiveHourUtilization: 0.5,
         blocked: false,
@@ -2975,6 +3001,7 @@ describe('StartPreparationUseCase', () => {
     });
     mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
       {
+        name: 'token-saturated',
         token: 'token-saturated',
         fiveHourUtilization: 0.95,
         blocked: false,
@@ -2982,6 +3009,7 @@ describe('StartPreparationUseCase', () => {
         modelWeeklyLimits: {},
       },
       {
+        name: 'token-ok',
         token: 'token-ok',
         fiveHourUtilization: 0.2,
         blocked: false,
@@ -3032,6 +3060,7 @@ describe('StartPreparationUseCase', () => {
     });
     mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
       {
+        name: 'token-a',
         token: 'token-a',
         fiveHourUtilization: 0.1,
         blocked: false,
@@ -3039,6 +3068,7 @@ describe('StartPreparationUseCase', () => {
         modelWeeklyLimits: {},
       },
       {
+        name: 'token-b',
         token: 'token-b',
         fiveHourUtilization: 0.2,
         blocked: false,
@@ -3139,6 +3169,7 @@ describe('StartPreparationUseCase', () => {
     const futureReset = Math.floor(Date.now() / 1000) + 3600;
     mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
       {
+        name: 'token-sonnet-exhausted',
         token: 'token-sonnet-exhausted',
         fiveHourUtilization: 0.1,
         blocked: false,
@@ -3148,6 +3179,7 @@ describe('StartPreparationUseCase', () => {
         },
       },
       {
+        name: 'token-ok',
         token: 'token-ok',
         fiveHourUtilization: 0.5,
         blocked: false,
@@ -3199,6 +3231,7 @@ describe('StartPreparationUseCase', () => {
     const pastReset = Math.floor(Date.now() / 1000) - 3600;
     mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
       {
+        name: 'token-recovered',
         token: 'token-recovered',
         fiveHourUtilization: 0.1,
         blocked: false,
@@ -3208,6 +3241,7 @@ describe('StartPreparationUseCase', () => {
         },
       },
       {
+        name: 'token-busy',
         token: 'token-busy',
         fiveHourUtilization: 0.5,
         blocked: false,
@@ -3259,6 +3293,7 @@ describe('StartPreparationUseCase', () => {
     const futureReset = Math.floor(Date.now() / 1000) + 3600;
     mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
       {
+        name: 'token-sonnet-exhausted',
         token: 'token-sonnet-exhausted',
         fiveHourUtilization: 0.1,
         blocked: false,
@@ -3268,6 +3303,7 @@ describe('StartPreparationUseCase', () => {
         },
       },
       {
+        name: 'token-higher-util',
         token: 'token-higher-util',
         fiveHourUtilization: 0.5,
         blocked: false,
@@ -3319,6 +3355,7 @@ describe('StartPreparationUseCase', () => {
     const futureReset = Math.floor(Date.now() / 1000) + 3600;
     mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
       {
+        name: 'token-weekly-exhausted',
         token: 'token-weekly-exhausted',
         fiveHourUtilization: 0.1,
         blocked: false,
@@ -3328,6 +3365,7 @@ describe('StartPreparationUseCase', () => {
         },
       },
       {
+        name: 'token-ok',
         token: 'token-ok',
         fiveHourUtilization: 0.5,
         blocked: false,
@@ -3356,5 +3394,142 @@ describe('StartPreparationUseCase', () => {
         ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
       },
     });
+  });
+});
+
+describe('StartPreparationUseCase.buildRotationOrder', () => {
+  const mockProjectRepositoryForRotation: Mocked<
+    Pick<ProjectRepository, 'getByUrl'>
+  > = {
+    getByUrl: jest.fn(),
+  };
+  const mockIssueRepositoryForRotation: Mocked<
+    Pick<
+      IssueRepository,
+      | 'getStoryObjectMap'
+      | 'updateStatus'
+      | 'findRelatedOpenPRs'
+      | 'getOpenPullRequest'
+      | 'closePullRequest'
+      | 'deletePullRequestBranch'
+      | 'createCommentByUrl'
+    >
+  > = {
+    getStoryObjectMap: jest.fn(),
+    updateStatus: jest.fn(),
+    findRelatedOpenPRs: jest.fn(),
+    getOpenPullRequest: jest.fn(),
+    closePullRequest: jest.fn(),
+    deletePullRequestBranch: jest.fn(),
+    createCommentByUrl: jest.fn(),
+  };
+  const mockLocalCommandRunnerForRotation: Mocked<LocalCommandRunner> = {
+    runCommand: jest.fn(),
+  };
+  const mockClaudeTokenUsageRepositoryForRotation: Mocked<ClaudeTokenUsageRepository> =
+    {
+      ensureObservable: jest.fn(),
+      getAvailableTokenUsages: jest.fn(),
+      proxyBaseUrl: jest.fn(),
+    };
+
+  const useCase = new StartPreparationUseCase(
+    mockProjectRepositoryForRotation,
+    mockIssueRepositoryForRotation,
+    mockLocalCommandRunnerForRotation,
+    mockClaudeTokenUsageRepositoryForRotation,
+  );
+
+  it('lists selected tokens first in ascending utilization order then excluded tokens', () => {
+    const tokenUsages = [
+      {
+        name: 'high-util',
+        token: 'sk-ant-high',
+        fiveHourUtilization: 0.8,
+        blocked: false,
+        rejected: false,
+        modelWeeklyLimits: {},
+      },
+      {
+        name: 'low-util',
+        token: 'sk-ant-low',
+        fiveHourUtilization: 0.1,
+        blocked: false,
+        rejected: false,
+        modelWeeklyLimits: {},
+      },
+      {
+        name: 'blocked-token',
+        token: 'sk-ant-blocked',
+        fiveHourUtilization: 0.0,
+        blocked: true,
+        rejected: false,
+        modelWeeklyLimits: {},
+      },
+    ];
+    const result = useCase.buildRotationOrder(tokenUsages, 90, null);
+
+    expect(result[0].name).toBe('low-util');
+    expect(result[1].name).toBe('high-util');
+    expect(result[2].name).toBe('blocked-token');
+    expect(result[2].blocked).toBe(true);
+    expect(result[2].thresholdExcluded).toBe(false);
+  });
+
+  it('does not include raw token strings in output entries', () => {
+    const tokenUsages = [
+      {
+        name: 'my-token',
+        token: 'sk-ant-secret-value',
+        fiveHourUtilization: 0.1,
+        blocked: false,
+        rejected: false,
+        modelWeeklyLimits: {},
+      },
+    ];
+    const result = useCase.buildRotationOrder(tokenUsages, 90, null);
+    const serialized = JSON.stringify(result);
+
+    expect(serialized).not.toContain('sk-ant-secret-value');
+    expect(result[0].name).toBe('my-token');
+  });
+
+  it('marks thresholdExcluded true when token is at or above 95 percent utilization', () => {
+    const tokenUsages = [
+      {
+        name: 'over-threshold',
+        token: 'sk-ant-over',
+        fiveHourUtilization: 0.95,
+        blocked: false,
+        rejected: false,
+        modelWeeklyLimits: {},
+      },
+    ];
+    const result = useCase.buildRotationOrder(tokenUsages, 90, null);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].thresholdExcluded).toBe(true);
+    expect(result[0].blocked).toBe(false);
+    expect(result[0].rejected).toBe(false);
+  });
+
+  it('does not mark thresholdExcluded for tokens in the 90 to 94 percent utilization range because selectRotationTokens still assigns them slots', () => {
+    const tokenUsages = [
+      {
+        name: 'mid-util',
+        token: 'sk-ant-mid',
+        fiveHourUtilization: 0.92,
+        blocked: false,
+        rejected: false,
+        modelWeeklyLimits: {},
+      },
+    ];
+    const result = useCase.buildRotationOrder(tokenUsages, 90, null);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].thresholdExcluded).toBe(false);
+    expect(result[0].blocked).toBe(false);
+    expect(result[0].rejected).toBe(false);
+    expect(result[0].fiveHourUtilization).toBe(0.92);
   });
 });

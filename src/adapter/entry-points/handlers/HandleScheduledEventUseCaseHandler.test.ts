@@ -23,6 +23,7 @@ const mockRun = jest.fn().mockImplementation((...args: Parameters<RunFn>) => {
     issues: [],
     cacheUsed: false,
     targetDateTimes: [],
+    rotationOrder: null,
   });
 });
 
@@ -113,6 +114,9 @@ jest.mock('../../repositories/GitHubIssueCommentRepository', () => ({
 }));
 jest.mock('./situationFileWriter', () => ({
   writeSituationFile: jest.fn().mockResolvedValue(undefined),
+}));
+jest.mock('./rotationOrderFileWriter', () => ({
+  writeRotationOrderFile: jest.fn(),
 }));
 
 import { HandleScheduledEventUseCaseHandler } from './HandleScheduledEventUseCaseHandler';

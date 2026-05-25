@@ -3,6 +3,7 @@ export type ClaudeModelWeeklyLimit = {
     resetsAt: number;
 };
 export type ClaudeTokenUsage = {
+    name?: string;
     token: string;
     fiveHourUtilization: number;
     blocked: boolean;

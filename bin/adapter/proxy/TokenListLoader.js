@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.loadTokens = void 0;
+exports.loadTokens = exports.loadTokenEntries = void 0;
 const fs = __importStar(require("fs"));
 const os = __importStar(require("os"));
 const path = __importStar(require("path"));
@@ -47,7 +47,7 @@ const expandHome = (filePath) => {
     return filePath;
 };
 const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
-const loadTokens = (jsonPath) => {
+const loadTokenEntries = (jsonPath) => {
     const resolved = expandHome(jsonPath);
     if (!fs.existsSync(resolved))
         return null;
@@ -56,17 +56,32 @@ const loadTokens = (jsonPath) => {
         const parsed = JSON.parse(raw);
         if (!Array.isArray(parsed))
             return null;
-        const tokens = [];
+        const entries = [];
         for (const entry of parsed) {
-            if (isRecord(entry) && typeof entry.token === 'string') {
-                tokens.push(entry.token);
+            if (isRecord(entry) &&
+                typeof entry.token === 'string' &&
+                typeof entry.name === 'string') {
+                entries.push({ name: entry.name, token: entry.token });
+            }
+            else if (isRecord(entry) && typeof entry.token === 'string') {
+                entries.push({
+                    name: `token-${entries.length + 1}`,
+                    token: entry.token,
+                });
             }
         }
-        return tokens.length > 0 ? tokens : null;
+        return entries.length > 0 ? entries : null;
     }
     catch {
         return null;
     }
+};
+exports.loadTokenEntries = loadTokenEntries;
+const loadTokens = (jsonPath) => {
+    const entries = (0, exports.loadTokenEntries)(jsonPath);
+    if (entries === null)
+        return null;
+    return entries.map((e) => e.token);
 };
 exports.loadTokens = loadTokens;
 //# sourceMappingURL=TokenListLoader.js.map

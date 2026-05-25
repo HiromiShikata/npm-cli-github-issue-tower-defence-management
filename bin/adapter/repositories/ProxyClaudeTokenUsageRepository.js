@@ -15,15 +15,16 @@ class ProxyClaudeTokenUsageRepository {
             if (this.tokenListJsonPath === null) {
                 return [];
             }
-            const tokens = (0, TokenListLoader_1.loadTokens)(this.tokenListJsonPath);
-            if (tokens === null) {
+            const entries = (0, TokenListLoader_1.loadTokenEntries)(this.tokenListJsonPath);
+            if (entries === null) {
                 return [];
             }
             const nowEpochSeconds = Date.now() / 1000;
-            return tokens.map((token) => {
+            return entries.map(({ name, token }) => {
                 const snapshot = (0, RateLimitCache_1.readRateLimit)(token);
                 if (snapshot === null) {
                     return {
+                        name,
                         token,
                         fiveHourUtilization: 0,
                         blocked: false,
@@ -51,6 +52,7 @@ class ProxyClaudeTokenUsageRepository {
                     };
                 }
                 return {
+                    name,
                     token,
                     fiveHourUtilization,
                     blocked: snapshot.blocked,
