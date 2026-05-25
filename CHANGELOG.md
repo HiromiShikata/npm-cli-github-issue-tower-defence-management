@@ -1,3 +1,10 @@
+## [1.60.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.60.0...v1.60.1) (2026-05-25)
+
+
+### Bug Fixes
+
+* **core:** set dependedIssueUrl for all open PRs in NotifyFinishedIssuePreparationUseCase ([d151a59](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d151a59bfd071ab30215c19f8ee08052ad70eed2)), closes [#641](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/641)
+
 # [1.60.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.59.0...v1.60.0) (2026-05-25)
 
 

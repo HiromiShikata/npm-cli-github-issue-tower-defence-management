@@ -45,5 +45,6 @@ export interface IssueRepository {
     getAllOpened: (project: Project) => Promise<Issue[]>;
     getStoryObjectMap: (project: Project, allowCacheMinutes: number) => Promise<StoryObjectMap>;
     addIssueToProject: (project: Project, issueUrl: string) => Promise<void>;
+    setDependedIssueUrl: (prUrl: string, project: Project, issueUrl: string) => Promise<void>;
 }
 //# sourceMappingURL=IssueRepository.d.ts.map

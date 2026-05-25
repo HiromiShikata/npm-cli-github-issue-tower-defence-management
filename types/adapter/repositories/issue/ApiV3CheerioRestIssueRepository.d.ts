@@ -33,6 +33,7 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     updateIssue: (issue: Issue) => Promise<void>;
     getIssueByUrl: (url: string) => Promise<Issue | null>;
     addIssueToProject: (project: Project, issueUrl: string) => Promise<void>;
+    setDependedIssueUrl: (prUrl: string, project: Project, issueUrl: string) => Promise<void>;
     updateNextActionDate: (issueUrl: string, project: Project, date: Date) => Promise<void>;
     updateNextActionHour: (project: Project & {
         nextActionHour: NonNullable<Project["nextActionHour"]>;
