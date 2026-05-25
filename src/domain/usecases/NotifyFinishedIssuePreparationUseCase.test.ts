@@ -108,7 +108,12 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockProject = createMockProject();
+    mockProject = createMockProject({
+      dependedIssueUrlSeparatedByComma: {
+        name: 'Depended Issue URL',
+        fieldId: 'depended-field-id',
+      },
+    });
 
     mockProjectRepository = {
       getByUrl: jest.fn(),
@@ -1664,6 +1669,53 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         mockProject,
         'https://github.com/user/repo/issues/1',
       );
+    });
+
+    it('should log a warning and skip setDependedIssueUrl when dependedIssueUrlSeparatedByComma is not configured in project', async () => {
+      const projectWithoutDependedField = createMockProject({
+        dependedIssueUrlSeparatedByComma: null,
+      });
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(
+        projectWithoutDependedField,
+      );
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({ content: 'From: Agent report' }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          url: 'https://github.com/user/repo/pull/10',
+          isConflicted: false,
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        },
+      ]);
+
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+      });
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('dependedIssueUrlSeparatedByComma'),
+      );
+      expect(mockIssueRepository.setDependedIssueUrl).not.toHaveBeenCalled();
+
+      consoleWarnSpy.mockRestore();
     });
   });
 
