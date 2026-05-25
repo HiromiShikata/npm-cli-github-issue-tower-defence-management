@@ -25,18 +25,6 @@ class NotifyFinishedIssuePreparationUseCase {
         this.webhookRepository = webhookRepository;
         this.run = async (params) => {
             const project = await this.projectRepository.getByUrl(params.projectUrl);
-            const awaitingWorkspaceStatusOption = project.status.statuses.find((s) => s.name === WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME) ?? null;
-            if (!awaitingWorkspaceStatusOption) {
-                console.warn(`Status option '${WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME}' not found in project; status updates to this state will be skipped.`);
-            }
-            const awaitingQualityCheckStatusOption = project.status.statuses.find((s) => s.name === WorkflowStatus_1.AWAITING_QUALITY_CHECK_STATUS_NAME) ?? null;
-            if (!awaitingQualityCheckStatusOption) {
-                console.warn(`Status option '${WorkflowStatus_1.AWAITING_QUALITY_CHECK_STATUS_NAME}' not found in project; status updates to this state will be skipped.`);
-            }
-            const failedPreparationStatusOption = project.status.statuses.find((s) => s.name === WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME) ?? null;
-            if (!failedPreparationStatusOption) {
-                console.warn(`Status option '${WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME}' not found in project; status updates to this state will be skipped.`);
-            }
             const issue = await this.issueRepository.get(params.issueUrl, project);
             if (!issue) {
                 throw new IssueNotFoundError(params.issueUrl);
@@ -60,20 +48,10 @@ class NotifyFinishedIssuePreparationUseCase {
                 }
             }
             if (issue.dependedIssueUrls.length > 0) {
-                if (awaitingWorkspaceStatusOption) {
-                    issue.status = awaitingWorkspaceStatusOption.name;
-                    await this.issueRepository.update(issue, project);
-                    await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
-                }
                 await this.issueCommentRepository.createComment(issue, `Issue has dependent issue URLs: ${issue.dependedIssueUrls.join(', ')}`);
                 return;
             }
             if (issue.nextActionDate !== null || issue.nextActionHour !== null) {
-                if (awaitingWorkspaceStatusOption) {
-                    issue.status = awaitingWorkspaceStatusOption.name;
-                    await this.issueRepository.update(issue, project);
-                    await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
-                }
                 await this.issueCommentRepository.createComment(issue, `Issue has next action date or hour set: nextActionDate=${issue.nextActionDate?.toISOString() ?? 'null'}, nextActionHour=${issue.nextActionHour ?? 'null'}`);
                 return;
             }
@@ -87,11 +65,6 @@ class NotifyFinishedIssuePreparationUseCase {
                 !lastTargetComments.some((comment) => comment.content
                     .toLowerCase()
                     .includes('failed to pass the check automatically'))) {
-                if (failedPreparationStatusOption) {
-                    issue.status = failedPreparationStatusOption.name;
-                    await this.issueRepository.update(issue, project);
-                    await this.issueRepository.updateStatus(project, issue, failedPreparationStatusOption.id);
-                }
                 const escalationStatusLine = rejections.length > 0
                     ? rejectionStatusMessage
                     : 'Auto Status Check: APPROVED (escalated due to prior failures)';
@@ -101,19 +74,9 @@ class NotifyFinishedIssuePreparationUseCase {
                 return;
             }
             if (rejections.length <= 0) {
-                if (awaitingQualityCheckStatusOption) {
-                    issue.status = awaitingQualityCheckStatusOption.name;
-                    await this.issueRepository.update(issue, project);
-                    await this.issueRepository.updateStatus(project, issue, awaitingQualityCheckStatusOption.id);
-                }
                 await this.setDependedIssueUrlForAllOpenPRs(issue, params.issueUrl, project);
                 await this.sendWorkflowBlockerNotification(params.issueUrl, params.workflowBlockerResolvedWebhookUrl, project);
                 return;
-            }
-            if (awaitingWorkspaceStatusOption) {
-                issue.status = awaitingWorkspaceStatusOption.name;
-                await this.issueRepository.update(issue, project);
-                await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
             }
             await this.setDependedIssueUrlForAllOpenPRs(issue, params.issueUrl, project);
             await this.issueCommentRepository.createComment(issue, rejectionStatusMessage);
@@ -121,7 +84,7 @@ class NotifyFinishedIssuePreparationUseCase {
         this.collectRejections = async (issue, comments) => {
             const rejections = [];
             const lastComment = comments[comments.length - 1];
-            if (!lastComment || !lastComment.content.startsWith('From:')) {
+            if (!lastComment || !lastComment.content.startsWith('From: :robot:')) {
                 rejections.push({
                     type: 'NO_REPORT_FROM_AGENT_BOT',
                     detail: 'NO_REPORT_FROM_AGENT_BOT',
@@ -159,6 +122,10 @@ class NotifyFinishedIssuePreparationUseCase {
             return nextStepValue !== null && nextStepValue !== undefined;
         };
         this.setDependedIssueUrlForAllOpenPRs = async (issue, issueUrl, project) => {
+            if (!project.dependedIssueUrlSeparatedByComma) {
+                console.warn(`dependedIssueUrlSeparatedByComma field not configured in project, skipping depended issue URL update for issue ${issueUrl}`);
+                return;
+            }
             const openPRs = issue.isPr
                 ? await this.resolveOpenPrsForPrItem(issue.url)
                 : await this.issueRepository.findRelatedOpenPRs(issue.url);

@@ -89,8 +89,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   };
   let mockIssueRepository: {
     get: jest.Mock;
-    update: jest.Mock;
-    updateStatus: jest.Mock;
     findRelatedOpenPRs: jest.Mock;
     getStoryObjectMap: jest.Mock;
     getOpenPullRequest: jest.Mock;
@@ -122,8 +120,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockIssueRepository = {
       getStoryObjectMap: jest.fn().mockResolvedValue(new Map()),
       get: jest.fn(),
-      update: jest.fn(),
-      updateStatus: jest.fn(),
       findRelatedOpenPRs: jest.fn(),
       getOpenPullRequest: jest.fn(),
       setDependedIssueUrl: jest.fn(),
@@ -146,7 +142,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should update issue status from Preparation to Awaiting Quality Check when last comment starts with From:', async () => {
+  it('should set depended issue URL and skip status update when last comment starts with From:', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -176,23 +172,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       workflowBlockerResolvedWebhookUrl: null,
     });
 
-    expect(mockIssueRepository.update).toHaveBeenCalledTimes(1);
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        url: 'https://github.com/user/repo/issues/1',
-        status: 'Awaiting Quality Check',
-      }),
-      mockProject,
-    );
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledTimes(1);
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-      mockProject,
-      expect.objectContaining({
-        url: 'https://github.com/user/repo/issues/1',
-        status: 'Awaiting Quality Check',
-      }),
-      'awaiting-quality-check-id',
-    );
     expect(mockIssueRepository.setDependedIssueUrl).toHaveBeenCalledWith(
       'https://github.com/user/repo/pull/1',
       mockProject,
@@ -275,7 +254,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should set status to Awaiting Workspace when issue has dependent issue URLs', async () => {
+  it('should post comment when issue has dependent issue URLs', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -295,15 +274,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       workflowBlockerResolvedWebhookUrl: null,
     });
 
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Workspace' }),
-      mockProject,
-    );
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-      mockProject,
-      expect.objectContaining({ status: 'Awaiting Workspace' }),
-      'awaiting-workspace-id',
-    );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
       expect.stringContaining(
@@ -347,17 +317,13 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       workflowBlockerResolvedWebhookUrl: null,
     });
 
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Workspace' }),
-      mockProject,
-    );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
       expect.stringContaining('Issue has dependent issue URLs:'),
     );
   });
 
-  it('should set status to Awaiting Workspace when issue has nextActionDate set', async () => {
+  it('should post comment when issue has nextActionDate set', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -374,22 +340,13 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       workflowBlockerResolvedWebhookUrl: null,
     });
 
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Workspace' }),
-      mockProject,
-    );
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-      mockProject,
-      expect.objectContaining({ status: 'Awaiting Workspace' }),
-      'awaiting-workspace-id',
-    );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
       expect.stringContaining('Issue has next action date or hour set:'),
     );
   });
 
-  it('should set status to Awaiting Workspace when issue has nextActionHour set', async () => {
+  it('should post comment when issue has nextActionHour set', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -406,22 +363,13 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       workflowBlockerResolvedWebhookUrl: null,
     });
 
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Workspace' }),
-      mockProject,
-    );
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-      mockProject,
-      expect.objectContaining({ status: 'Awaiting Workspace' }),
-      'awaiting-workspace-id',
-    );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
       expect.stringContaining('nextActionHour=9'),
     );
   });
 
-  it('should reject and set status to Awaiting Workspace when last comment starts with Auto Status Check:', async () => {
+  it('should reject and post rejection comment when last comment starts with Auto Status Check:', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -453,17 +401,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       workflowBlockerResolvedWebhookUrl: null,
     });
 
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'Awaiting Workspace',
-      }),
-      mockProject,
-    );
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-      mockProject,
-      expect.objectContaining({ status: 'Awaiting Workspace' }),
-      'awaiting-workspace-id',
-    );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({
         url: 'https://github.com/user/repo/issues/1',
@@ -502,12 +439,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       workflowBlockerResolvedWebhookUrl: null,
     });
 
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'Awaiting Workspace',
-      }),
-      mockProject,
-    );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({
         url: 'https://github.com/user/repo/issues/1',
@@ -549,12 +480,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       workflowBlockerResolvedWebhookUrl: null,
     });
 
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'Awaiting Workspace',
-      }),
-      mockProject,
-    );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({
         url: 'https://github.com/user/repo/issues/1',
@@ -563,7 +488,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should reject and set status to Awaiting Workspace when no comments exist', async () => {
+  it('should reject when no comments exist', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -591,12 +516,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       workflowBlockerResolvedWebhookUrl: null,
     });
 
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'Awaiting Workspace',
-      }),
-      mockProject,
-    );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalled();
   });
 
@@ -633,10 +552,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       workflowBlockerResolvedWebhookUrl: null,
     });
 
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Workspace' }),
-      mockProject,
-    );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
       expect.stringContaining('REPORT_HAS_NEXT_STEP'),
@@ -674,11 +589,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
-
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
-      mockProject,
-    );
   });
 
   it('should auto-escalate to Failed Preparation after threshold rejections', async () => {
@@ -703,17 +613,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       workflowBlockerResolvedWebhookUrl: null,
     });
 
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'Failed Preparation',
-      }),
-      mockProject,
-    );
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-      mockProject,
-      expect.objectContaining({ status: 'Failed Preparation' }),
-      'failed-preparation-id',
-    );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({
         url: 'https://github.com/user/repo/issues/1',
@@ -764,10 +663,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       workflowBlockerResolvedWebhookUrl: null,
     });
 
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Failed Preparation' }),
-      mockProject,
-    );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
       expect.stringContaining(
@@ -817,13 +712,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
-
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'Awaiting Workspace',
-      }),
-      mockProject,
-    );
   });
 
   it('should not auto-escalate when failed-to-pass-check comment exists even if threshold met', async () => {
@@ -861,13 +749,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
-
-    expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'Awaiting Quality Check',
-      }),
-      mockProject,
-    );
   });
 
   it('should handle case-insensitive failed-to-pass-check comment', async () => {
@@ -907,13 +788,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
-
-    expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'Awaiting Quality Check',
-      }),
-      mockProject,
-    );
   });
 
   it('should not auto-escalate when new-format escalation comment with Auto Status Check prefix exists', async () => {
@@ -951,11 +825,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
-
-    expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
-      mockProject,
-    );
   });
 
   it('should reject when PR is not found', async () => {
@@ -978,12 +847,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       workflowBlockerResolvedWebhookUrl: null,
     });
 
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'Awaiting Workspace',
-      }),
-      mockProject,
-    );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({
         url: 'https://github.com/user/repo/issues/1',
@@ -1031,12 +894,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       workflowBlockerResolvedWebhookUrl: null,
     });
 
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'Awaiting Workspace',
-      }),
-      mockProject,
-    );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({
         url: 'https://github.com/user/repo/issues/1',
@@ -1075,12 +932,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       workflowBlockerResolvedWebhookUrl: null,
     });
 
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'Awaiting Workspace',
-      }),
-      mockProject,
-    );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({
         url: 'https://github.com/user/repo/issues/1',
@@ -1119,12 +970,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       workflowBlockerResolvedWebhookUrl: null,
     });
 
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'Awaiting Workspace',
-      }),
-      mockProject,
-    );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({
         url: 'https://github.com/user/repo/issues/1',
@@ -1163,12 +1008,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       workflowBlockerResolvedWebhookUrl: null,
     });
 
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'Awaiting Workspace',
-      }),
-      mockProject,
-    );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({
         url: 'https://github.com/user/repo/issues/1',
@@ -1213,12 +1052,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       workflowBlockerResolvedWebhookUrl: null,
     });
 
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'Awaiting Workspace',
-      }),
-      mockProject,
-    );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({
         url: 'https://github.com/user/repo/issues/1',
@@ -1301,12 +1134,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       workflowBlockerResolvedWebhookUrl: null,
     });
 
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'Awaiting Workspace',
-      }),
-      mockProject,
-    );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({
         url: 'https://github.com/user/repo/issues/1',
@@ -1346,12 +1173,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       workflowBlockerResolvedWebhookUrl: null,
     });
 
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'Awaiting Workspace',
-      }),
-      mockProject,
-    );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({
         url: 'https://github.com/user/repo/issues/1',
@@ -1360,7 +1181,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should skip PR checks and update to Awaiting Quality Check when issue has category label', async () => {
+  it('should skip PR checks and post approval comment when issue has category label', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -1380,13 +1201,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
-
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'Awaiting Quality Check',
-      }),
-      mockProject,
-    );
   });
 
   it('should check PRs when issue has category:e2e label', async () => {
@@ -1421,12 +1235,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'Awaiting Quality Check',
-      }),
-      mockProject,
-    );
   });
 
   it('should still check for report comment even when issue has category label', async () => {
@@ -1452,12 +1260,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       workflowBlockerResolvedWebhookUrl: null,
     });
 
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'Awaiting Workspace',
-      }),
-      mockProject,
-    );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({
         url: 'https://github.com/user/repo/issues/1',
@@ -1466,7 +1268,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should skip PR checks and update to Awaiting Quality Check when issue has llm-agent label', async () => {
+  it('should skip PR checks and post approval comment when issue has llm-agent label', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -1486,11 +1288,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
-
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
-      mockProject,
-    );
   });
 
   it('should skip PR checks when issue has llm-agent: prefixed label', async () => {
@@ -1513,11 +1310,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
-
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
-      mockProject,
-    );
   });
 
   it('should still check for report comment even when issue has llm-agent:research label', async () => {
@@ -1543,10 +1335,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       workflowBlockerResolvedWebhookUrl: null,
     });
 
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Workspace' }),
-      mockProject,
-    );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
       expect.stringContaining('NO_REPORT_FROM_AGENT_BOT'),
@@ -1586,10 +1374,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       'https://github.com/user/repo/pull/10',
     );
     expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
-      mockProject,
-    );
   });
 
   describe('setDependedIssueUrl for open PRs', () => {
@@ -2044,12 +1828,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         'Failed to send workflow blocker notification:',
         expect.any(Error),
       );
-      expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          status: 'Awaiting Quality Check',
-        }),
-        mockProject,
-      );
 
       consoleWarnSpy.mockRestore();
     });
@@ -2145,10 +1923,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       'Failed to enrich dependedIssueUrls from story object map:',
       expect.any(Error),
     );
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
-      mockProject,
-    );
 
     consoleWarnSpy.mockRestore();
   });
@@ -2176,10 +1950,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledWith(
       'https://github.com/user/repo/pull/10',
-    );
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Workspace' }),
-      mockProject,
     );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({ url: 'https://github.com/user/repo/pull/10' }),
@@ -2218,11 +1988,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
-
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
-      mockProject,
-    );
   });
 
   it('should not reject REPORT_HAS_NEXT_STEP when report JSON is null', async () => {
@@ -2256,11 +2021,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
-
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
-      mockProject,
-    );
   });
 
   it('should not reject REPORT_HAS_NEXT_STEP when report JSON has no nextStep property', async () => {
@@ -2295,11 +2055,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
-
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
-      mockProject,
-    );
   });
 
   it('should not reject REPORT_HAS_NEXT_STEP when report JSON is a non-object value', async () => {
@@ -2333,14 +2088,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
     });
-
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
-      mockProject,
-    );
   });
 
-  it('should skip status updates but still evaluate PRs when workflow status options are absent from project', async () => {
+  it('should evaluate PRs without creating a comment when checks pass and project has no workflow statuses', async () => {
     const projectWithoutWorkflowStatuses = createMockProject({
       status: {
         name: 'Status',
@@ -2371,7 +2121,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'From: Test report' }),
+      createMockComment({ content: 'From: :robot: Test report' }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
       {
@@ -2392,12 +2142,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       workflowBlockerResolvedWebhookUrl: null,
     });
 
-    expect(mockIssueRepository.update).not.toHaveBeenCalled();
-    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
     expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
   });
 
-  it('should skip status update but still post rejection comment when awaiting workspace status is absent', async () => {
+  it('should post rejection comment when awaiting workspace status is absent from project', async () => {
     const projectWithoutAwaitingWorkspace = createMockProject({
       status: {
         name: 'Status',
@@ -2443,7 +2191,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       workflowBlockerResolvedWebhookUrl: null,
     });
 
-    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.anything(),
       expect.stringContaining('Auto Status Check: REJECTED'),
