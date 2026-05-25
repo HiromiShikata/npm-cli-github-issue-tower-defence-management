@@ -42,6 +42,28 @@ export class StartPreparationUseCase {
     return general !== undefined && general.rejected;
   };
 
+  private readonly maxProcessesPerToken = 6;
+  private readonly softDecayStartUtilization = 0.8;
+
+  private computeAvailableSlots = (
+    fiveHourUtilization: number,
+    utilizationPercentageThreshold: number,
+  ): number => {
+    if (fiveHourUtilization * 100 >= utilizationPercentageThreshold) {
+      return 0;
+    }
+    if (fiveHourUtilization < this.softDecayStartUtilization) {
+      return this.maxProcessesPerToken;
+    }
+    const hardLimitUtilization = utilizationPercentageThreshold / 100;
+    const decayRange = hardLimitUtilization - this.softDecayStartUtilization;
+    const decayPosition = fiveHourUtilization - this.softDecayStartUtilization;
+    const decayFactor = Math.exp(
+      -Math.log(this.maxProcessesPerToken) * (decayPosition / decayRange),
+    );
+    return Math.floor(this.maxProcessesPerToken * decayFactor);
+  };
+
   private selectRotationTokens = (
     tokenUsages: ClaudeTokenUsage[],
     utilizationPercentageThreshold: number,
@@ -54,19 +76,26 @@ export class StartPreparationUseCase {
       .filter(
         (usage) => !this.isModelWeeklyLimitRejected(usage, weeklyLimitType),
       )
-      .filter(
-        (usage) =>
-          usage.fiveHourUtilization * 100 < utilizationPercentageThreshold,
-      )
+      .map((usage) => ({
+        usage,
+        availableSlots: this.computeAvailableSlots(
+          usage.fiveHourUtilization,
+          utilizationPercentageThreshold,
+        ),
+      }))
+      .filter(({ availableSlots }) => availableSlots > 0)
       .sort((a, b) => {
-        const sevenDayResetA = a.sevenDayReset ?? Infinity;
-        const sevenDayResetB = b.sevenDayReset ?? Infinity;
+        if (a.availableSlots !== b.availableSlots) {
+          return b.availableSlots - a.availableSlots;
+        }
+        const sevenDayResetA = a.usage.sevenDayReset ?? Infinity;
+        const sevenDayResetB = b.usage.sevenDayReset ?? Infinity;
         if (sevenDayResetA !== sevenDayResetB) {
           return sevenDayResetA - sevenDayResetB;
         }
-        return a.fiveHourUtilization - b.fiveHourUtilization;
+        return a.usage.fiveHourUtilization - b.usage.fiveHourUtilization;
       })
-      .map((usage) => usage.token);
+      .map(({ usage }) => usage.token);
   };
 
   run = async (params: {
