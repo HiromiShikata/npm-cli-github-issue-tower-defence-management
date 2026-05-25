@@ -10,11 +10,11 @@ class CreateNewStoryByLabelUseCase {
             if (!projectStory) {
                 return;
             }
-            const newStoryIssues = this.findNewStoryIssues(input.storyObjectMap);
+            const newStoryIssues = this.findNewStoryIssues(input.storyObjectMap, input.issues);
             if (newStoryIssues.length === 0) {
                 return;
             }
-            const newStoryList = this.createNewStoryList(projectStory, input.storyObjectMap);
+            const newStoryList = this.createNewStoryList(projectStory, input.storyObjectMap, input.issues);
             const savedNewStoryList = await this.projectRepository.updateStoryList(input.project, newStoryList);
             for (const issue of newStoryIssues) {
                 const linkedStory = savedNewStoryList.find((s) => s.name === issue.title);
@@ -25,15 +25,25 @@ class CreateNewStoryByLabelUseCase {
                 await this.issueRepository.updateLabels(issue, issue.labels.filter((label) => label.toLowerCase().replace('-', '') !== 'newstory'));
             }
         };
-        this.findNewStoryIssues = (storyObjectMap) => {
-            return Array.from(storyObjectMap.values())
+        this.hasNewStoryLabel = (issue) => issue.labels?.some((label) => label.toLowerCase().replace('-', '') === 'newstory') ?? false;
+        this.findNewStoryIssues = (storyObjectMap, issues) => {
+            const issuesInMap = Array.from(storyObjectMap.values())
                 .flatMap((storyObject) => storyObject.issues)
-                .filter((issue) => issue.labels?.some((label) => label.toLowerCase().replace('-', '') === 'newstory'));
+                .filter(this.hasNewStoryLabel);
+            const unassignedIssuesWithLabel = issues
+                .filter((issue) => issue.story === null)
+                .filter(this.hasNewStoryLabel);
+            const seen = new Set();
+            return [...issuesInMap, ...unassignedIssuesWithLabel].filter((issue) => {
+                if (seen.has(issue.url)) {
+                    return false;
+                }
+                seen.add(issue.url);
+                return true;
+            });
         };
-        this.createNewStoryList = (projectStory, storyObjectMap) => {
-            const newStoryIssues = Array.from(storyObjectMap.values())
-                .flatMap((storyObject) => storyObject.issues)
-                .filter((issue) => issue.labels?.some((label) => label.toLowerCase().replace('-', '') === 'newstory'));
+        this.createNewStoryList = (projectStory, storyObjectMap, issues) => {
+            const newStoryIssues = this.findNewStoryIssues(storyObjectMap, issues);
             const newStoryList = [];
             if (projectStory.stories.length > 0) {
                 newStoryList.push(projectStory.stories[0]);

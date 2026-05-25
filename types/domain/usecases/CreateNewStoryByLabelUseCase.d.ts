@@ -13,9 +13,11 @@ export declare class CreateNewStoryByLabelUseCase {
         org: string;
         repo: string;
         storyObjectMap: StoryObjectMap;
+        issues: Issue[];
     }) => Promise<void>;
-    findNewStoryIssues: (storyObjectMap: StoryObjectMap) => Issue[];
-    createNewStoryList: (projectStory: NonNullable<Project["story"]>, storyObjectMap: StoryObjectMap) => (Omit<FieldOption, "id"> & {
+    hasNewStoryLabel: (issue: Issue) => boolean;
+    findNewStoryIssues: (storyObjectMap: StoryObjectMap, issues: Issue[]) => Issue[];
+    createNewStoryList: (projectStory: NonNullable<Project["story"]>, storyObjectMap: StoryObjectMap, issues: Issue[]) => (Omit<FieldOption, "id"> & {
         id: FieldOption["id"] | null;
     })[];
 }

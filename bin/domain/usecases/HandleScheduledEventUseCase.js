@@ -239,6 +239,7 @@ ${JSON.stringify(e)}
                 org: input.org,
                 repo: input.workingReport.repo,
                 storyObjectMap: storyObjectMap,
+                issues: issues,
             });
             await this.assignNoAssigneeIssueToManagerUseCase.run({
                 issues,

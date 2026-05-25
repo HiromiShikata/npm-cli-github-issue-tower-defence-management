@@ -1,3 +1,10 @@
+## [1.60.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.60.1...v1.60.2) (2026-05-25)
+
+
+### Bug Fixes
+
+* **core:** include unassigned issues in new story creation by label ([cd106de](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cd106decee95301089859b472337f74b0a2ba366)), closes [#610](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/610)
+
 ## [1.60.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.60.0...v1.60.1) (2026-05-25)
 
 
