@@ -114,7 +114,7 @@ class NotifyFinishedIssuePreparationUseCase {
         this.collectRejections = async (issue, comments) => {
             const rejections = [];
             const lastComment = comments[comments.length - 1];
-            if (!lastComment || !lastComment.content.startsWith('From:')) {
+            if (!lastComment || !lastComment.content.startsWith('From: :robot:')) {
                 rejections.push({
                     type: 'NO_REPORT_FROM_AGENT_BOT',
                     detail: 'NO_REPORT_FROM_AGENT_BOT',
@@ -152,6 +152,10 @@ class NotifyFinishedIssuePreparationUseCase {
             return nextStepValue !== null && nextStepValue !== undefined;
         };
         this.setDependedIssueUrlForAllOpenPRs = async (issue, issueUrl, project) => {
+            if (!project.dependedIssueUrlSeparatedByComma) {
+                console.warn(`dependedIssueUrlSeparatedByComma field not configured in project, skipping depended issue URL update for issue ${issueUrl}`);
+                return;
+            }
             const openPRs = issue.isPr
                 ? await this.resolveOpenPrsForPrItem(issue.url)
                 : await this.issueRepository.findRelatedOpenPRs(issue.url);

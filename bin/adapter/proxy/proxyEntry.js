@@ -118,6 +118,7 @@ const startProxy = (port, claudeMessageResponseRepository = null) => {
     server.listen(port, '127.0.0.1', () => {
         console.log(`tdpm proxy listening on 127.0.0.1:${port}`);
     });
+    return server;
 };
 exports.startProxy = startProxy;
 if (require.main === module) {

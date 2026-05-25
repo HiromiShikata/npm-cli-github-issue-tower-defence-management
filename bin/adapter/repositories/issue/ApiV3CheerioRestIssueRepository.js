@@ -342,6 +342,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 url: prUrl,
                 branchName: headRefName ?? null,
                 createdAt: new Date(0),
+                isDraft: data.isDraft === true,
                 isConflicted,
                 isPassedAllCiJob,
                 isCiStateSuccess,
@@ -375,6 +376,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                       number
                       state
                       createdAt
+                      isDraft
                       mergeable
                       headRefName
                       baseRefName
@@ -536,6 +538,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
           pullRequest(number: $prNumber) {
             url
             state
+            isDraft
             headRefName
             baseRefName
             mergeable

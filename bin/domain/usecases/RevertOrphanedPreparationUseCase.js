@@ -44,7 +44,7 @@ class RevertOrphanedPreparationUseCase {
             }
             const comments = await this.issueCommentRepository.getCommentsFromIssue(issue);
             const lastComment = comments[comments.length - 1];
-            if (!lastComment || !lastComment.content.startsWith('From:')) {
+            if (!lastComment || !lastComment.content.startsWith('From: :robot:')) {
                 return true;
             }
             if (this.reportBodyHasNextStep(lastComment.content)) {
