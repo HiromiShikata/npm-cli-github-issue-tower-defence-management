@@ -3148,7 +3148,7 @@ describe('StartPreparationUseCase', () => {
     expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toBeUndefined();
   });
 
-  it('should exclude a token whose seven_day_sonnet weekly limit is rejected when the model is sonnet', async () => {
+  it('should keep a token in rotation with opus model when seven_day_sonnet is rejected and seven_day_opus is available', async () => {
     const awaitingIssue = createMockIssue({
       url: 'url1',
       title: 'Issue 1',
@@ -3204,10 +3204,13 @@ describe('StartPreparationUseCase', () => {
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
       env: {
-        CLAUDE_CODE_OAUTH_TOKEN: 'token-ok',
+        CLAUDE_CODE_OAUTH_TOKEN: 'token-sonnet-exhausted',
         ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
       },
     });
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][2]).toBe(
+      'claude-opus-4-6',
+    );
   });
 
   it('should re-admit a token whose seven_day_sonnet rejection has been cleared by stale-reset expiry', async () => {
@@ -3394,6 +3397,211 @@ describe('StartPreparationUseCase', () => {
         ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
       },
     });
+  });
+
+  it('should include a token in rotation with opus model when seven_day_sonnet is rejected but seven_day_opus is available', async () => {
+    const awaitingIssue = createMockIssue({
+      url: 'url1',
+      title: 'Issue 1',
+      labels: ['category:impl'],
+      status: 'Awaiting Workspace',
+      number: 1,
+      itemId: 'item-1',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([awaitingIssue]),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    const futureReset = Math.floor(Date.now() / 1000) + 3600;
+    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+      {
+        token: 'token-sonnet-exhausted',
+        fiveHourUtilization: 0.1,
+        blocked: false,
+        rejected: false,
+        modelWeeklyLimits: {
+          seven_day_sonnet: { rejected: true, resetsAt: futureReset },
+        },
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-sonnet-4-6',
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: null,
+      codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
+    });
+
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][2]).toBe(
+      'claude-opus-4-6',
+    );
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
+      env: {
+        CLAUDE_CODE_OAUTH_TOKEN: 'token-sonnet-exhausted',
+        ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
+      },
+    });
+  });
+
+  it('should exclude a token from rotation when both seven_day_sonnet and seven_day_opus weekly limits are rejected', async () => {
+    const awaitingIssue = createMockIssue({
+      url: 'url1',
+      title: 'Issue 1',
+      labels: ['category:impl'],
+      status: 'Awaiting Workspace',
+      number: 1,
+      itemId: 'item-1',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([awaitingIssue]),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    const futureReset = Math.floor(Date.now() / 1000) + 3600;
+    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+      {
+        token: 'token-all-exhausted',
+        fiveHourUtilization: 0.1,
+        blocked: false,
+        rejected: false,
+        modelWeeklyLimits: {
+          seven_day_sonnet: { rejected: true, resetsAt: futureReset },
+          seven_day_opus: { rejected: true, resetsAt: futureReset },
+        },
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-sonnet-4-6',
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: null,
+      codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
+    });
+
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+  });
+
+  it('should use default model for a token with no modelWeeklyLimits entries', async () => {
+    const awaitingIssue = createMockIssue({
+      url: 'url1',
+      title: 'Issue 1',
+      labels: ['category:impl'],
+      status: 'Awaiting Workspace',
+      number: 1,
+      itemId: 'item-1',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([awaitingIssue]),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+      {
+        token: 'token-no-limits',
+        fiveHourUtilization: 0.1,
+        blocked: false,
+        rejected: false,
+        modelWeeklyLimits: {},
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-sonnet-4-6',
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: null,
+      codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
+    });
+
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][2]).toBe(
+      'claude-sonnet-4-6',
+    );
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
+      env: {
+        CLAUDE_CODE_OAUTH_TOKEN: 'token-no-limits',
+        ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
+      },
+    });
+  });
+
+  it('should exclude a token when seven_day general limit is rejected even if per-model limits are available', async () => {
+    const awaitingIssue = createMockIssue({
+      url: 'url1',
+      title: 'Issue 1',
+      labels: ['category:impl'],
+      status: 'Awaiting Workspace',
+      number: 1,
+      itemId: 'item-1',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([awaitingIssue]),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    const futureReset = Math.floor(Date.now() / 1000) + 3600;
+    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+      {
+        token: 'token-general-limit-rejected',
+        fiveHourUtilization: 0.1,
+        blocked: false,
+        rejected: false,
+        modelWeeklyLimits: {
+          seven_day: { rejected: true, resetsAt: futureReset },
+          seven_day_sonnet: { rejected: false, resetsAt: futureReset },
+        },
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-sonnet-4-6',
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: null,
+      codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
+    });
+
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
   });
 });
 
