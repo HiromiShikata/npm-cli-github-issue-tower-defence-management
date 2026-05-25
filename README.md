@@ -35,7 +35,7 @@ Options for startDaemon:
   --defaultLlmAgentName <name>                     Default LLM agent name
   --maximumPreparingIssuesCount <count>            Maximum number of issues in preparation status (default: 6 per available Claude OAuth token, otherwise 6)
   --allowIssueCacheMinutes <minutes>               Allow cache for issues in minutes (default: 10)
-  --utilizationPercentageThreshold <percent>       Legacy Claude utilization threshold setting; token process slots decay from 80% utilization to 0 at 95% (default: 90)
+  --utilizationPercentageThreshold <percent>       5-hour utilization hard threshold; tokens at or above this percentage are excluded from rotation (default: 90)
   --allowedIssueAuthors <authors>                  Comma-separated list of allowed issue authors
   --preparationProcessCheckCommand <template>      Shell command template with {URL} placeholder to check if a preparation process is alive
 
@@ -97,7 +97,7 @@ startPreparation?: # Optional: Enable automatic issue preparation workflow
   defaultLlmModelName?: string | null # Optional: Default LLM model name (overridable via llm-model: label)
   defaultLlmAgentName?: string | null # Optional: Default LLM agent name (overridable via llm-agent: label)
   maximumPreparingIssuesCount: number | null # Max concurrent preparing issues. When token rotation is active, effective concurrency is also capped at 6 per available token. When null, the default is 6 per available token, or 6 without token rotation
-  utilizationPercentageThreshold?: number # Optional: Legacy Claude utilization threshold setting. Token process slots now use a fixed exponential decay: 6 slots through 80% 5h utilization, fewer slots above 80%, and 0 slots at 95%
+  utilizationPercentageThreshold?: number # Optional: 5-hour utilization hard threshold (percentage, default 90). Tokens at or above this value are excluded from rotation
   allowedIssueAuthors?: string[] | null # Optional: Only start preparation for issues from these authors (null = all authors)
   preparationProcessCheckCommand?: string # Optional: Shell command template with {URL} placeholder to check if a preparation process is alive. When set, orphaned Preparation issues (process exits non-zero, or stale aw log) are evaluated for completion: if work is done they advance to Awaiting Quality Check; otherwise they fall back to Awaiting Workspace
   awaitingQualityCheckStatus?: string | null # Optional: Project status name for issues awaiting quality check. When set with preparationProcessCheckCommand, orphaned issues with no rejections advance to this status instead of awaitingWorkspaceStatus
@@ -159,7 +159,7 @@ defaultLlmModelName?: string # Optional: Default LLM model name
 defaultLlmAgentName?: string # Optional: Default LLM agent name
 maximumPreparingIssuesCount?: number # Optional: Max concurrent preparing issues. When token rotation is active, effective concurrency is also capped at 6 per available token. Omitted defaults to 6 per available token, or 6 without token rotation
 allowIssueCacheMinutes?: number # Optional: Allow cache for issues in minutes (default: 10)
-utilizationPercentageThreshold?: number # Optional: Legacy Claude utilization threshold setting. Token process slots now use a fixed exponential decay from 80% to 95% 5h utilization
+utilizationPercentageThreshold?: number # Optional: 5-hour utilization hard threshold (percentage, default 90). Tokens at or above this value are excluded from rotation
 allowedIssueAuthors?: string # Optional: Comma-separated list of allowed issue authors
 thresholdForAutoReject?: number # Optional: Consecutive rejections before escalation (default: 3)
 workflowBlockerResolvedWebhookUrl?: string # Optional: Webhook URL. Supports {URL} and {MESSAGE} placeholders
@@ -282,7 +282,7 @@ This file is written atomically (written to a `.tmp` file then renamed) so exter
 
 - `capturedAt`: ISO 8601 timestamp when the snapshot was captured.
 - `config.maximumPreparingIssuesCount`: Resolved maximum number of issues allowed in preparation status (`null` if unconfigured).
-- `config.utilizationPercentageThreshold`: Resolved legacy Claude utilization threshold setting. Token process slots now use fixed exponential decay from 80% to 95% 5-hour utilization.
+- `config.utilizationPercentageThreshold`: Resolved 5-hour utilization hard threshold (percentage). Tokens at or above this value are excluded from rotation.
 - `config.allowIssueCacheMinutes`: Resolved issue cache duration in minutes.
 - `config.thresholdForAutoReject`: Resolved consecutive rejection count before auto-escalation.
 - `status.awaitingQualityCheckImmediatelyActionable`: Count of issues in the awaiting quality check status with no dependency URL, next action date, or next action hour set.
