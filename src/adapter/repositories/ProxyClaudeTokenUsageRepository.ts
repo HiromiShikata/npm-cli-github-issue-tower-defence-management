@@ -30,6 +30,7 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
           name,
           token,
           fiveHourUtilization: 0,
+          sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
           modelWeeklyLimits: {},
@@ -40,6 +41,9 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
       const fiveHourUtilization = fiveHourExpired
         ? 0
         : snapshot.fiveHourUtilization;
+      const sevenDayUtilization = sevenDayExpired
+        ? 0
+        : snapshot.sevenDayUtilization;
       const fiveHourRejectionActive =
         snapshot.fiveHourRejected && !fiveHourExpired;
       const sevenDayRejectionActive =
@@ -67,6 +71,7 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
         name,
         token,
         fiveHourUtilization,
+        sevenDayUtilization,
         blocked: snapshot.blocked,
         rejected,
         modelWeeklyLimits,
