@@ -1,5 +1,5 @@
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
-export type PrRejectedReasonType = 'PULL_REQUEST_NOT_FOUND' | 'MULTIPLE_PULL_REQUESTS_FOUND' | 'PULL_REQUEST_CONFLICTED' | 'ANY_CI_JOB_FAILED_OR_IN_PROGRESS' | 'REQUIRED_CI_JOB_NEVER_STARTED' | 'ANY_REVIEW_COMMENT_NOT_RESOLVED';
+export type PrRejectedReasonType = 'PULL_REQUEST_NOT_FOUND' | 'MULTIPLE_PULL_REQUESTS_FOUND' | 'PULL_REQUEST_IS_DRAFT' | 'PULL_REQUEST_CONFLICTED' | 'ANY_CI_JOB_FAILED_OR_IN_PROGRESS' | 'REQUIRED_CI_JOB_NEVER_STARTED' | 'ANY_REVIEW_COMMENT_NOT_RESOLVED';
 export type PrRejectionResult = {
     rejections: {
         type: PrRejectedReasonType;

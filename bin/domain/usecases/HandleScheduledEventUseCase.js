@@ -118,7 +118,14 @@ ${JSON.stringify(e)}
 `, [input.manager], ['error']);
                 throw e;
             }
-            return { project, issues, cacheUsed, targetDateTimes, storyIssues, rotationOrder };
+            return {
+                project,
+                issues,
+                cacheUsed,
+                targetDateTimes,
+                storyIssues,
+                rotationOrder,
+            };
         };
         this.runEachUseCases = async (input, project, issues, cacheUsed, targetDateTimes, storyObjectMap, runSlowSweep) => {
             if (runSlowSweep) {

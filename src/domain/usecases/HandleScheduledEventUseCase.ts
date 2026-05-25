@@ -244,7 +244,14 @@ ${JSON.stringify(e)}
       throw e;
     }
 
-    return { project, issues, cacheUsed, targetDateTimes, storyIssues, rotationOrder };
+    return {
+      project,
+      issues,
+      cacheUsed,
+      targetDateTimes,
+      storyIssues,
+      rotationOrder,
+    };
   };
   runEachUseCases = async (
     input: Parameters<HandleScheduledEventUseCase['run']>[0],

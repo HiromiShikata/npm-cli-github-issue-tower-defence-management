@@ -28,6 +28,12 @@ class IssueRejectionEvaluator {
                 }
                 else {
                     const pr = prsToCheck[0];
+                    if (pr.isDraft) {
+                        rejections.push({
+                            type: 'PULL_REQUEST_IS_DRAFT',
+                            detail: `PULL_REQUEST_IS_DRAFT: ${pr.url}`,
+                        });
+                    }
                     if (pr.isConflicted) {
                         rejections.push({
                             type: 'PULL_REQUEST_CONFLICTED',
@@ -58,7 +64,8 @@ class IssueRejectionEvaluator {
                             detail: `ANY_REVIEW_COMMENT_NOT_RESOLVED: ${pr.url}`,
                         });
                     }
-                    if (!pr.isConflicted &&
+                    if (!pr.isDraft &&
+                        !pr.isConflicted &&
                         pr.isPassedAllCiJob &&
                         pr.isResolvedAllReviewComments) {
                         approvedPrUrl = pr.url;

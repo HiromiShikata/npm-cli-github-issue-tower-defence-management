@@ -76,15 +76,48 @@ class StartPreparationUseCase {
             }
             return Math.min(configuredMaximumPreparingIssuesCount ?? rotationTokenSlots.length, rotationTokenSlots.length);
         };
+        this.buildRotationOrder = (tokenUsages, utilizationPercentageThreshold, modelName) => {
+            const weeklyLimitType = this.weeklyLimitTypeForModel(modelName);
+            const selectedTokens = tokenUsages
+                .filter((usage) => !usage.blocked)
+                .filter((usage) => !usage.rejected)
+                .filter((usage) => !this.isModelWeeklyLimitRejected(usage, weeklyLimitType))
+                .filter((usage) => usage.fiveHourUtilization * 100 < utilizationPercentageThreshold)
+                .sort((a, b) => a.fiveHourUtilization - b.fiveHourUtilization);
+            const selectedNames = new Set(selectedTokens.map((u) => u.name));
+            const excluded = tokenUsages
+                .filter((usage) => !selectedNames.has(usage.name))
+                .map((usage) => ({
+                name: usage.name,
+                fiveHourUtilization: usage.fiveHourUtilization,
+                blocked: usage.blocked,
+                rejected: usage.rejected,
+                thresholdExcluded: !usage.blocked &&
+                    !usage.rejected &&
+                    !this.isModelWeeklyLimitRejected(usage, weeklyLimitType) &&
+                    usage.fiveHourUtilization * 100 >= utilizationPercentageThreshold,
+            }));
+            const selectedEntries = selectedTokens.map((usage) => ({
+                name: usage.name,
+                fiveHourUtilization: usage.fiveHourUtilization,
+                blocked: false,
+                rejected: false,
+                thresholdExcluded: false,
+            }));
+            return [...selectedEntries, ...excluded];
+        };
         this.run = async (params) => {
             const tokenUsages = await this.claudeTokenUsageRepository.getAvailableTokenUsages();
             let rotationTokenSlots = null;
             let proxyBaseUrl = null;
+            const rotationOrder = tokenUsages.length > 0
+                ? this.buildRotationOrder(tokenUsages, params.utilizationPercentageThreshold, params.defaultLlmModelName)
+                : null;
             if (tokenUsages.length > 0) {
                 const ranked = this.selectRotationTokens(tokenUsages, params.defaultLlmModelName);
                 if (ranked.length === 0) {
                     console.warn(`All ${tokenUsages.length} configured Claude OAuth token(s) are unavailable (blocked, rejected, weekly limit for ${this.weeklyLimitTypeForModel(params.defaultLlmModelName)} exhausted, or 5h utilization >= 95%). Skipping starting preparation.`);
-                    return;
+                    return { rotationOrder };
                 }
                 await this.claudeTokenUsageRepository.ensureObservable();
                 rotationTokenSlots = this.createRotationTokenSlots(ranked);
@@ -97,7 +130,7 @@ class StartPreparationUseCase {
             const preparationStatusOption = project.status.statuses.find((s) => s.name === WorkflowStatus_1.PREPARATION_STATUS_NAME);
             if (!preparationStatusOption) {
                 console.error(`Preparation status option '${WorkflowStatus_1.PREPARATION_STATUS_NAME}' not found in project.`);
-                return;
+                return { rotationOrder };
             }
             const awaitingWorkspaceIssues = allOpenedIssues
                 .filter((issue) => issue.status === WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME && !issue.isClosed)
@@ -223,6 +256,7 @@ class StartPreparationUseCase {
                 startedInThisRunCount++;
                 updatedCurrentPreparationIssueCount++;
             }
+            return { rotationOrder };
         };
     }
 }

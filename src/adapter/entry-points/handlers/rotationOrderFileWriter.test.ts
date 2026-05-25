@@ -50,7 +50,12 @@ describe('writeRotationOrderFile', () => {
     delete process.env.XDG_CACHE_HOME;
 
     const home = os.homedir();
-    const expectedPath = path.join(home, '.cache', 'tdpm', 'rotation-order.json');
+    const expectedPath = path.join(
+      home,
+      '.cache',
+      'tdpm',
+      'rotation-order.json',
+    );
 
     writeRotationOrderFile([]);
 

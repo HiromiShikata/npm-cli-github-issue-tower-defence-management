@@ -3398,7 +3398,9 @@ describe('StartPreparationUseCase', () => {
 });
 
 describe('StartPreparationUseCase.buildRotationOrder', () => {
-  const mockProjectRepositoryForRotation: Mocked<Pick<ProjectRepository, 'getByUrl'>> = {
+  const mockProjectRepositoryForRotation: Mocked<
+    Pick<ProjectRepository, 'getByUrl'>
+  > = {
     getByUrl: jest.fn(),
   };
   const mockIssueRepositoryForRotation: Mocked<
@@ -3424,11 +3426,12 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
   const mockLocalCommandRunnerForRotation: Mocked<LocalCommandRunner> = {
     runCommand: jest.fn(),
   };
-  const mockClaudeTokenUsageRepositoryForRotation: Mocked<ClaudeTokenUsageRepository> = {
-    ensureObservable: jest.fn(),
-    getAvailableTokenUsages: jest.fn(),
-    proxyBaseUrl: jest.fn(),
-  };
+  const mockClaudeTokenUsageRepositoryForRotation: Mocked<ClaudeTokenUsageRepository> =
+    {
+      ensureObservable: jest.fn(),
+      getAvailableTokenUsages: jest.fn(),
+      proxyBaseUrl: jest.fn(),
+    };
 
   const useCase = new StartPreparationUseCase(
     mockProjectRepositoryForRotation,

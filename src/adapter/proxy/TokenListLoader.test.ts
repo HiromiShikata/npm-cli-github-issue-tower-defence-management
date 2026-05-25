@@ -31,11 +31,10 @@ describe('loadTokenEntries', () => {
 
   it('should return empty name string when name is absent from entry', () => {
     const filePath = path.join(tempDir, 'tokens.json');
-    fs.writeFileSync(
-      filePath,
-      JSON.stringify([{ token: 'token-a' }]),
-    );
-    expect(loadTokenEntries(filePath)).toEqual([{ name: '', token: 'token-a' }]);
+    fs.writeFileSync(filePath, JSON.stringify([{ token: 'token-a' }]));
+    expect(loadTokenEntries(filePath)).toEqual([
+      { name: '', token: 'token-a' },
+    ]);
   });
 
   it('should return null when file does not exist', () => {

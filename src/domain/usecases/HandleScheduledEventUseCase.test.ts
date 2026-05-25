@@ -159,7 +159,9 @@ describe('HandleScheduledEventUseCase', () => {
         ['LastExecutionDateTime'],
         ['2024-01-01T00:00:00Z'],
       ]);
-      mockStartPreparationUseCase.run.mockResolvedValue({ rotationOrder: null });
+      mockStartPreparationUseCase.run.mockResolvedValue({
+        rotationOrder: null,
+      });
     });
 
     it('should call AnalyzeProblemByIssueUseCase with correct parameters', async () => {
