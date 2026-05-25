@@ -28,7 +28,10 @@ describe('GraphqlProjectRepository.fetchProjectId', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     mockPost.mockReset();
-    repository = new GraphqlProjectRepository(localStorageRepository, '');
+    repository = new GraphqlProjectRepository(
+      localStorageRepository,
+      'dummy-token',
+    );
   });
 
   afterEach(() => {

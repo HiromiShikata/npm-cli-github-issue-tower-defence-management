@@ -1,35 +1,13 @@
 import { LocalStorageRepository } from './LocalStorageRepository';
-interface Cookie {
-    name: string;
-    value: string;
-    domain?: string;
-    path?: string;
-    expires?: number;
-    httpOnly?: boolean;
-    secure?: boolean;
-    sameSite?: 'lax' | 'strict' | 'none';
-}
 export declare class BaseGitHubRepository {
     readonly localStorageRepository: LocalStorageRepository;
-    readonly jsonFilePath: string;
     readonly ghToken: string;
-    readonly ghUserName: string | undefined;
-    readonly ghUserPassword: string | undefined;
-    readonly ghAuthenticatorKey: string | undefined;
-    cookie: string | null;
-    constructor(localStorageRepository: LocalStorageRepository, jsonFilePath?: string, ghToken?: string, ghUserName?: string | undefined, ghUserPassword?: string | undefined, ghAuthenticatorKey?: string | undefined);
+    constructor(localStorageRepository: LocalStorageRepository, ghToken?: string);
     protected extractIssueFromUrl: (issueUrl: string) => {
         owner: string;
         repo: string;
         issueNumber: number;
         isIssue: boolean;
     };
-    getCookie: () => Promise<string>;
-    createHeader: () => Promise<Record<string, string>>;
-    protected createCookieStringFromFile: () => Promise<string>;
-    protected isCookie: (cookie: object) => cookie is Cookie;
-    protected generateCookieHeaderFromJson: (cookieData: unknown) => Promise<string>;
-    refreshCookie: () => Promise<void>;
 }
-export {};
 //# sourceMappingURL=BaseGitHubRepository.d.ts.map

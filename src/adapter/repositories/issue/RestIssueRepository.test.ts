@@ -6,7 +6,6 @@ describe('RestIssueRepository', () => {
   const localStorageRepository = new LocalStorageRepository();
   const restIssueRepository: RestIssueRepository = new RestIssueRepository(
     localStorageRepository,
-    '',
     process.env.GH_TOKEN || 'dummy',
   );
 

@@ -7,7 +7,6 @@ describe('ApiV3IssueRepository', () => {
   const localStorageRepository = new LocalStorageRepository();
   const repository = new ApiV3IssueRepository(
     localStorageRepository,
-    '',
     process.env.GH_TOKEN || 'dummy',
   );
   test('searchIssue', async () => {

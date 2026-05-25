@@ -185,29 +185,9 @@ describe('HandleScheduledEventUseCaseHandler', () => {
     mockFetchReturningReadme(null);
   });
 
-  it('should pass bot credentials to repository constructors when provided', async () => {
-    const configWithCredentials = {
-      ...validConfig,
-      credentials: {
-        ...validConfig.credentials,
-        bot: {
-          github: {
-            token: 'test-token',
-            name: 'bot-user',
-            password: 'bot-pass',
-            authenticatorKey: 'bot-auth-key',
-          },
-        },
-      },
-    };
-    jest
-      .mocked(fs.readFileSync)
-      .mockReturnValue(YAML.stringify(configWithCredentials));
-
+  it('should pass bot token to repository constructors', async () => {
     const handler = new HandleScheduledEventUseCaseHandler();
     await handler.handle('config.yml', false);
-
-    const expectedCookiePath = `./tmp/cache/${validConfig.projectName}/github.com.cookies.json`;
 
     for (const MockedClass of [
       MockedGraphqlProjectRepository,
@@ -215,14 +195,7 @@ describe('HandleScheduledEventUseCaseHandler', () => {
       MockedRestIssueRepository,
       MockedGraphqlProjectItemRepository,
     ]) {
-      expect(MockedClass).toHaveBeenCalledWith(
-        expect.anything(),
-        expectedCookiePath,
-        'test-token',
-        'bot-user',
-        'bot-pass',
-        'bot-auth-key',
-      );
+      expect(MockedClass).toHaveBeenCalledWith(expect.anything(), 'test-token');
     }
 
     expect(MockedApiV3CheerioRestIssueRepository).toHaveBeenCalledWith(
@@ -231,35 +204,8 @@ describe('HandleScheduledEventUseCaseHandler', () => {
       expect.anything(),
       expect.anything(),
       expect.anything(),
-      expectedCookiePath,
       'test-token',
-      'bot-user',
-      'bot-pass',
-      'bot-auth-key',
     );
-  });
-
-  it('should pass undefined credentials when not provided in config', async () => {
-    const handler = new HandleScheduledEventUseCaseHandler();
-    await handler.handle('config.yml', false);
-
-    const expectedCookiePath = `./tmp/cache/${validConfig.projectName}/github.com.cookies.json`;
-
-    for (const MockedClass of [
-      MockedGraphqlProjectRepository,
-      MockedApiV3IssueRepository,
-      MockedRestIssueRepository,
-      MockedGraphqlProjectItemRepository,
-    ]) {
-      expect(MockedClass).toHaveBeenCalledWith(
-        expect.anything(),
-        expectedCookiePath,
-        'test-token',
-        undefined,
-        undefined,
-        undefined,
-      );
-    }
   });
 
   it('should write situation file after successful run with resolved config values', async () => {

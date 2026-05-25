@@ -28,7 +28,6 @@ describe('GraphqlProjectRepository error handling', () => {
     mockPost.mockClear();
     repository = new GraphqlProjectRepository(
       new LocalStorageRepository(),
-      '',
       'dummy-token',
     );
   });
