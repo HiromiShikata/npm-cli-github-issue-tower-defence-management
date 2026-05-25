@@ -1,3 +1,10 @@
+## [1.63.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.63.0...v1.63.1) (2026-05-25)
+
+
+### Bug Fixes
+
+* **ci:** allow sigstore endpoints in harden-runner allowlist for npm provenance signing ([651727d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/651727d06c2c6f8e649fe2e16bd17ff72d939391))
+
 ## [1.60.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.60.1...v1.60.2) (2026-05-25)
 
 
