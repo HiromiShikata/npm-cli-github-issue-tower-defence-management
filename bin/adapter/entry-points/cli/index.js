@@ -57,9 +57,9 @@ exports.program
     .option('--defaultAgentName <name>', 'Default agent name')
     .option('--defaultLlmModelName <name>', 'Default LLM model name')
     .option('--defaultLlmAgentName <name>', 'Default LLM agent name')
-    .option('--maximumPreparingIssuesCount <count>', 'Maximum number of issues in preparation status (default: 6)')
+    .option('--maximumPreparingIssuesCount <count>', 'Maximum number of issues in preparation status (default: 6 per available Claude OAuth token, otherwise 6)')
     .option('--allowIssueCacheMinutes <minutes>', 'Allow cache for issues in minutes (default: 10)')
-    .option('--utilizationPercentageThreshold <percent>', 'Claude utilization percentage threshold (default: 90)')
+    .option('--utilizationPercentageThreshold <percent>', 'Legacy Claude utilization threshold setting; token process slots decay from 80% utilization to 0 at 95% (default: 90)')
     .option('--allowedIssueAuthors <authors>', 'Comma-separated list of allowed issue authors')
     .option('--preparationProcessCheckCommand <template>', 'Shell command template with {URL} placeholder to check if a preparation process is alive')
     .action(async (options) => {
@@ -118,7 +118,7 @@ exports.program
         maximumPreparingIssuesCount = parsedCount;
     }
     const allowIssueCacheMinutes = config.allowIssueCacheMinutes ?? 10;
-    console.log(`maximumPreparingIssuesCount: ${maximumPreparingIssuesCount ?? 'null (default: 6)'}`);
+    console.log(`maximumPreparingIssuesCount: ${maximumPreparingIssuesCount ?? 'null (default: 6 per available Claude OAuth token, otherwise 6)'}`);
     const projectName = config.projectName ?? 'default';
     const localStorageRepository = new LocalStorageRepository_1.LocalStorageRepository();
     const cachePath = `./tmp/cache/${projectName}`;

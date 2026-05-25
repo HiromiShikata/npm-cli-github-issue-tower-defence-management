@@ -108,7 +108,7 @@ program
   .option('--defaultLlmAgentName <name>', 'Default LLM agent name')
   .option(
     '--maximumPreparingIssuesCount <count>',
-    'Maximum number of issues in preparation status (default: 6)',
+    'Maximum number of issues in preparation status (default: 6 per available Claude OAuth token, otherwise 6)',
   )
   .option(
     '--allowIssueCacheMinutes <minutes>',
@@ -116,7 +116,7 @@ program
   )
   .option(
     '--utilizationPercentageThreshold <percent>',
-    'Claude utilization percentage threshold (default: 90)',
+    'Legacy Claude utilization threshold setting; token process slots decay from 80% utilization to 0 at 95% (default: 90)',
   )
   .option(
     '--allowedIssueAuthors <authors>',
@@ -206,7 +206,7 @@ program
     const allowIssueCacheMinutes = config.allowIssueCacheMinutes ?? 10;
 
     console.log(
-      `maximumPreparingIssuesCount: ${maximumPreparingIssuesCount ?? 'null (default: 6)'}`,
+      `maximumPreparingIssuesCount: ${maximumPreparingIssuesCount ?? 'null (default: 6 per available Claude OAuth token, otherwise 6)'}`,
     );
 
     const projectName = config.projectName ?? 'default';

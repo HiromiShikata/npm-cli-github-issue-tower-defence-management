@@ -8,6 +8,16 @@ import {
   PREPARATION_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 
+const MAXIMUM_PREPARING_PROCESS_COUNT_PER_TOKEN = 6;
+const PROCESS_COUNT_DECAY_START_UTILIZATION = 0.8;
+const PROCESS_COUNT_ZERO_UTILIZATION = 0.95;
+const PROCESS_COUNT_DECAY_STEEPNESS = 2;
+
+type RotationToken = {
+  token: string;
+  maximumPreparingProcessCount: number;
+};
+
 export class StartPreparationUseCase {
   constructor(
     private readonly projectRepository: Pick<ProjectRepository, 'getByUrl'>,
@@ -42,11 +52,33 @@ export class StartPreparationUseCase {
     return general !== undefined && general.rejected;
   };
 
+  private maximumPreparingProcessCountForToken = (
+    fiveHourUtilization: number,
+  ): number => {
+    if (fiveHourUtilization <= PROCESS_COUNT_DECAY_START_UTILIZATION) {
+      return MAXIMUM_PREPARING_PROCESS_COUNT_PER_TOKEN;
+    }
+    if (fiveHourUtilization >= PROCESS_COUNT_ZERO_UTILIZATION) {
+      return 0;
+    }
+    const decayProgress =
+      (fiveHourUtilization - PROCESS_COUNT_DECAY_START_UTILIZATION) /
+      (PROCESS_COUNT_ZERO_UTILIZATION - PROCESS_COUNT_DECAY_START_UTILIZATION);
+    const minimumMultiplier = Math.exp(-PROCESS_COUNT_DECAY_STEEPNESS);
+    const remainingRatio =
+      (Math.exp(-PROCESS_COUNT_DECAY_STEEPNESS * decayProgress) -
+        minimumMultiplier) /
+      (1 - minimumMultiplier);
+    return Math.max(
+      1,
+      Math.floor(MAXIMUM_PREPARING_PROCESS_COUNT_PER_TOKEN * remainingRatio),
+    );
+  };
+
   private selectRotationTokens = (
     tokenUsages: ClaudeTokenUsage[],
-    utilizationPercentageThreshold: number,
     modelName: string | null,
-  ): string[] => {
+  ): RotationToken[] => {
     const weeklyLimitType = this.weeklyLimitTypeForModel(modelName);
     return tokenUsages
       .filter((usage) => !usage.blocked)
@@ -54,12 +86,49 @@ export class StartPreparationUseCase {
       .filter(
         (usage) => !this.isModelWeeklyLimitRejected(usage, weeklyLimitType),
       )
-      .filter(
-        (usage) =>
-          usage.fiveHourUtilization * 100 < utilizationPercentageThreshold,
-      )
+      .map((usage) => ({
+        token: usage.token,
+        fiveHourUtilization: usage.fiveHourUtilization,
+        maximumPreparingProcessCount: this.maximumPreparingProcessCountForToken(
+          usage.fiveHourUtilization,
+        ),
+      }))
+      .filter((usage) => usage.maximumPreparingProcessCount > 0)
       .sort((a, b) => a.fiveHourUtilization - b.fiveHourUtilization)
-      .map((usage) => usage.token);
+      .map((usage) => ({
+        token: usage.token,
+        maximumPreparingProcessCount: usage.maximumPreparingProcessCount,
+      }));
+  };
+
+  private createRotationTokenSlots = (
+    rotationTokens: RotationToken[],
+  ): string[] => {
+    const slotCount = Math.max(
+      ...rotationTokens.map((token) => token.maximumPreparingProcessCount),
+    );
+    const tokenSlots: string[] = [];
+    for (let i = 0; i < slotCount; i++) {
+      tokenSlots.push(
+        ...rotationTokens
+          .filter((token) => i < token.maximumPreparingProcessCount)
+          .map((token) => token.token),
+      );
+    }
+    return tokenSlots;
+  };
+
+  private resolveMaximumPreparingIssuesCount = (
+    configuredMaximumPreparingIssuesCount: number | null,
+    rotationTokenSlots: string[] | null,
+  ): number => {
+    if (rotationTokenSlots === null) {
+      return configuredMaximumPreparingIssuesCount ?? 6;
+    }
+    return Math.min(
+      configuredMaximumPreparingIssuesCount ?? rotationTokenSlots.length,
+      rotationTokenSlots.length,
+    );
   };
 
   run = async (params: {
@@ -74,28 +143,29 @@ export class StartPreparationUseCase {
     codexHomeCandidates: string[] | null;
     allowIssueCacheMinutes: number;
   }): Promise<void> => {
-    const maximumPreparingIssuesCount = params.maximumPreparingIssuesCount ?? 6;
-
     const tokenUsages =
       await this.claudeTokenUsageRepository.getAvailableTokenUsages();
-    let rotationTokens: string[] | null = null;
+    let rotationTokenSlots: string[] | null = null;
     let proxyBaseUrl: string | null = null;
     if (tokenUsages.length > 0) {
       const ranked = this.selectRotationTokens(
         tokenUsages,
-        params.utilizationPercentageThreshold,
         params.defaultLlmModelName,
       );
       if (ranked.length === 0) {
         console.warn(
-          `All ${tokenUsages.length} configured Claude OAuth token(s) are unavailable (blocked, rejected, weekly limit for ${this.weeklyLimitTypeForModel(params.defaultLlmModelName)} exhausted, or 5h utilization >= ${params.utilizationPercentageThreshold}%). Skipping starting preparation.`,
+          `All ${tokenUsages.length} configured Claude OAuth token(s) are unavailable (blocked, rejected, weekly limit for ${this.weeklyLimitTypeForModel(params.defaultLlmModelName)} exhausted, or 5h utilization >= 95%). Skipping starting preparation.`,
         );
         return;
       }
       await this.claudeTokenUsageRepository.ensureObservable();
-      rotationTokens = ranked;
+      rotationTokenSlots = this.createRotationTokenSlots(ranked);
       proxyBaseUrl = this.claudeTokenUsageRepository.proxyBaseUrl();
     }
+    const maximumPreparingIssuesCount = this.resolveMaximumPreparingIssuesCount(
+      params.maximumPreparingIssuesCount,
+      rotationTokenSlots,
+    );
 
     const project = await this.projectRepository.getByUrl(params.projectUrl);
     const storyObjectMap = await this.issueRepository.getStoryObjectMap(
@@ -285,9 +355,12 @@ export class StartPreparationUseCase {
         awArgs.push('--codexHome', codexHome);
       }
       let spawnEnv: Record<string, string> | undefined;
-      if (rotationTokens !== null && proxyBaseUrl !== null) {
+      if (rotationTokenSlots !== null && proxyBaseUrl !== null) {
         const selected =
-          rotationTokens[startedInThisRunCount % rotationTokens.length];
+          rotationTokenSlots[
+            (currentPreparationIssueCount + startedInThisRunCount) %
+              rotationTokenSlots.length
+          ];
         spawnEnv = {
           CLAUDE_CODE_OAUTH_TOKEN: selected,
           ANTHROPIC_BASE_URL: proxyBaseUrl,
