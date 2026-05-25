@@ -36,7 +36,10 @@ export const loadTokenEntries = (jsonPath: string): TokenEntry[] | null => {
       ) {
         entries.push({ name: entry.name, token: entry.token });
       } else if (isRecord(entry) && typeof entry.token === 'string') {
-        entries.push({ name: '', token: entry.token });
+        entries.push({
+          name: `token-${entries.length + 1}`,
+          token: entry.token,
+        });
       }
     }
     return entries.length > 0 ? entries : null;

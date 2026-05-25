@@ -29,11 +29,15 @@ describe('loadTokenEntries', () => {
     ]);
   });
 
-  it('should return empty name string when name is absent from entry', () => {
+  it('should assign a unique positional name when name is absent from entry', () => {
     const filePath = path.join(tempDir, 'tokens.json');
-    fs.writeFileSync(filePath, JSON.stringify([{ token: 'token-a' }]));
+    fs.writeFileSync(
+      filePath,
+      JSON.stringify([{ token: 'token-a' }, { token: 'token-b' }]),
+    );
     expect(loadTokenEntries(filePath)).toEqual([
-      { name: '', token: 'token-a' },
+      { name: 'token-1', token: 'token-a' },
+      { name: 'token-2', token: 'token-b' },
     ]);
   });
 

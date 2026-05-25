@@ -48,15 +48,8 @@ const writeRotationOrderFile = (rotationOrder) => {
     const filePath = rotationOrderFilePath();
     const dir = path.dirname(filePath);
     fs_1.default.mkdirSync(dir, { recursive: true });
-    const entries = rotationOrder.map((entry) => ({
-        name: entry.name,
-        fiveHourUtilization: entry.fiveHourUtilization,
-        blocked: entry.blocked,
-        rejected: entry.rejected,
-        thresholdExcluded: entry.thresholdExcluded,
-    }));
     const tmpPath = `${filePath}.tmp`;
-    fs_1.default.writeFileSync(tmpPath, JSON.stringify(entries));
+    fs_1.default.writeFileSync(tmpPath, JSON.stringify(rotationOrder));
     fs_1.default.renameSync(tmpPath, filePath);
 };
 exports.writeRotationOrderFile = writeRotationOrderFile;

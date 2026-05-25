@@ -8,28 +8,13 @@ const rotationOrderFilePath = (): string => {
   return path.join(base, 'tdpm', 'rotation-order.json');
 };
 
-export type RotationOrderFileEntry = {
-  name: string;
-  fiveHourUtilization: number;
-  blocked: boolean;
-  rejected: boolean;
-  thresholdExcluded: boolean;
-};
-
 export const writeRotationOrderFile = (
   rotationOrder: RotationOrderEntry[],
 ): void => {
   const filePath = rotationOrderFilePath();
   const dir = path.dirname(filePath);
   fs.mkdirSync(dir, { recursive: true });
-  const entries: RotationOrderFileEntry[] = rotationOrder.map((entry) => ({
-    name: entry.name,
-    fiveHourUtilization: entry.fiveHourUtilization,
-    blocked: entry.blocked,
-    rejected: entry.rejected,
-    thresholdExcluded: entry.thresholdExcluded,
-  }));
   const tmpPath = `${filePath}.tmp`;
-  fs.writeFileSync(tmpPath, JSON.stringify(entries));
+  fs.writeFileSync(tmpPath, JSON.stringify(rotationOrder));
   fs.renameSync(tmpPath, filePath);
 };

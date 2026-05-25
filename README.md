@@ -209,7 +209,7 @@ When `claudeCodeOauthTokenListJsonPath` is set, `startDaemon` distributes prepar
    ]
    ```
 
-   Only the `token` field is consumed; `name` is for human reference. Entries without a string `token` are skipped. Missing files or malformed JSON yield no tokens and disable rotation for that run (the daemon then falls back to whatever `CLAUDE_CODE_OAUTH_TOKEN` is already in the environment).
+   The `name` field is optional; when absent, TDPM assigns a positional name (`token-1`, `token-2`, …) based on the entry's index in the array. Entries without a string `token` are skipped. Missing files or malformed JSON yield no tokens and disable rotation for that run (the daemon then falls back to whatever `CLAUDE_CODE_OAUTH_TOKEN` is already in the environment).
 
 2. Local reverse proxy (`127.0.0.1:8787`): on each `startDaemon` run, the daemon TCP-probes the port. If nothing responds, it spawns a detached child running `bin/adapter/proxy/proxyEntry.js`. The proxy forwards every request to `api.anthropic.com`, observes the `anthropic-ratelimit-unified-*` response headers, and writes them to a per-token cache file at `${XDG_CACHE_HOME:-~/.cache}/tdpm/ratelimit/<sha256-of-token>.json`. The cache file stores the latest 5-hour and 7-day utilization, reset epochs, and the unified, 5-hour, and 7-day statuses (used to detect `blocked` and `rejected` state per window). In addition to the unified headers, the proxy inspects the streamed response body for `rate_limit` events (objects carrying `rateLimitType`, `status`, and `resetsAt`) and records the model-specific weekly limits — at minimum `seven_day_sonnet` and `seven_day` — per token. These model-specific weekly limits are exposed only in the response body, never in the unified headers, so a token can appear healthy on `anthropic-ratelimit-unified-7d-*` while its Sonnet weekly limit is exhausted.
 
@@ -337,7 +337,7 @@ The array is ordered with selected (eligible) tokens first, sorted by ascending 
 - `fiveHourUtilization`: Current 5-hour utilization ratio (0.0–1.0) for this token.
 - `blocked`: `true` if the token is marked as blocked.
 - `rejected`: `true` if the token is marked as rejected by the API.
-- `thresholdExcluded`: `true` if the token is eligible (not blocked or rejected) but excluded because its utilization exceeds the configured threshold.
+- `thresholdExcluded`: `true` if the token is eligible (not blocked or rejected) but excluded because its 5-hour utilization is at or above 95% (the fixed slot-zero boundary), giving it zero available preparation slots.
 
 ## Cadence and Cache Contract
 

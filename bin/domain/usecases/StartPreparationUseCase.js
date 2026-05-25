@@ -82,23 +82,23 @@ class StartPreparationUseCase {
                 .filter((usage) => !usage.blocked)
                 .filter((usage) => !usage.rejected)
                 .filter((usage) => !this.isModelWeeklyLimitRejected(usage, weeklyLimitType))
-                .filter((usage) => usage.fiveHourUtilization * 100 < utilizationPercentageThreshold)
+                .filter((usage) => this.maximumPreparingProcessCountForToken(usage.fiveHourUtilization) > 0)
                 .sort((a, b) => a.fiveHourUtilization - b.fiveHourUtilization);
-            const selectedNames = new Set(selectedTokens.map((u) => u.name));
+            const selectedTokenValues = new Set(selectedTokens.map((u) => u.token));
             const excluded = tokenUsages
-                .filter((usage) => !selectedNames.has(usage.name))
+                .filter((usage) => !selectedTokenValues.has(usage.token))
                 .map((usage) => ({
-                name: usage.name,
+                name: usage.name ?? '',
                 fiveHourUtilization: usage.fiveHourUtilization,
                 blocked: usage.blocked,
                 rejected: usage.rejected,
                 thresholdExcluded: !usage.blocked &&
                     !usage.rejected &&
                     !this.isModelWeeklyLimitRejected(usage, weeklyLimitType) &&
-                    usage.fiveHourUtilization * 100 >= utilizationPercentageThreshold,
+                    this.maximumPreparingProcessCountForToken(usage.fiveHourUtilization) === 0,
             }));
             const selectedEntries = selectedTokens.map((usage) => ({
-                name: usage.name,
+                name: usage.name ?? '',
                 fiveHourUtilization: usage.fiveHourUtilization,
                 blocked: false,
                 rejected: false,

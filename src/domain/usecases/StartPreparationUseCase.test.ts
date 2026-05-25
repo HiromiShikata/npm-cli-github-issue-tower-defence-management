@@ -3494,7 +3494,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
     expect(result[0].name).toBe('my-token');
   });
 
-  it('marks thresholdExcluded true when token exceeds utilization threshold', () => {
+  it('marks thresholdExcluded true when token is at or above 95 percent utilization', () => {
     const tokenUsages = [
       {
         name: 'over-threshold',
@@ -3511,5 +3511,25 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
     expect(result[0].thresholdExcluded).toBe(true);
     expect(result[0].blocked).toBe(false);
     expect(result[0].rejected).toBe(false);
+  });
+
+  it('does not mark thresholdExcluded for tokens in the 90 to 94 percent utilization range because selectRotationTokens still assigns them slots', () => {
+    const tokenUsages = [
+      {
+        name: 'mid-util',
+        token: 'sk-ant-mid',
+        fiveHourUtilization: 0.92,
+        blocked: false,
+        rejected: false,
+        modelWeeklyLimits: {},
+      },
+    ];
+    const result = useCase.buildRotationOrder(tokenUsages, 90, null);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].thresholdExcluded).toBe(false);
+    expect(result[0].blocked).toBe(false);
+    expect(result[0].rejected).toBe(false);
+    expect(result[0].fiveHourUtilization).toBe(0.92);
   });
 });
