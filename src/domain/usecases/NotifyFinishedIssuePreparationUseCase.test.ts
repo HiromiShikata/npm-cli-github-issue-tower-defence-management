@@ -2340,34 +2340,22 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should match status names case-insensitively when project uses different casing', async () => {
-    const projectWithLowercaseStatuses = createMockProject({
+  it('should post comment and evaluate PRs even when workflow status options are absent from project', async () => {
+    const projectWithoutWorkflowStatuses = createMockProject({
       status: {
         name: 'Status',
         fieldId: 'field-1',
         statuses: [
           {
             id: 'preparation-id',
-            name: 'preparation',
+            name: 'Preparation',
             color: 'YELLOW',
             description: '',
           },
           {
-            id: 'awaiting-workspace-id',
-            name: 'awaiting workspace',
-            color: 'GRAY',
-            description: '',
-          },
-          {
-            id: 'failed-preparation-id',
-            name: 'Failed Preparation',
-            color: 'RED',
-            description: '',
-          },
-          {
-            id: 'awaiting-quality-check-id',
-            name: 'awaiting quality check',
-            color: 'BLUE',
+            id: 'in-progress-id',
+            name: 'In Progress',
+            color: 'GREEN',
             description: '',
           },
         ],
@@ -2375,11 +2363,11 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
-      status: 'preparation',
+      status: 'Preparation',
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(
-      projectWithLowercaseStatuses,
+      projectWithoutWorkflowStatuses,
     );
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
@@ -2404,19 +2392,13 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       workflowBlockerResolvedWebhookUrl: null,
     });
 
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'awaiting quality check' }),
-      projectWithLowercaseStatuses,
-    );
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-      projectWithLowercaseStatuses,
-      expect.objectContaining({ status: 'awaiting quality check' }),
-      'awaiting-quality-check-id',
-    );
+    expect(mockIssueRepository.update).not.toHaveBeenCalled();
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
   });
 
-  it('should match failedPreparationStatus case-insensitively and use project status name when escalating', async () => {
-    const projectWithLowercaseFailedStatus = createMockProject({
+  it('should skip status update but still post rejection comment when awaiting workspace status is absent', async () => {
+    const projectWithoutAwaitingWorkspace = createMockProject({
       status: {
         name: 'Status',
         fieldId: 'field-1',
@@ -2428,14 +2410,8 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
             description: '',
           },
           {
-            id: 'awaiting-workspace-id',
-            name: 'Awaiting Workspace',
-            color: 'GRAY',
-            description: '',
-          },
-          {
             id: 'failed-preparation-id',
-            name: 'failed preparation',
+            name: 'Failed Preparation',
             color: 'RED',
             description: '',
           },
@@ -2454,14 +2430,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(
-      projectWithLowercaseFailedStatus,
+      projectWithoutAwaitingWorkspace,
     );
     mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'Auto Status Check: REJECTED - first' }),
-      createMockComment({ content: 'Auto Status Check: REJECTED - second' }),
-      createMockComment({ content: 'Auto Status Check: REJECTED - third' }),
-    ]);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
 
     await useCase.run({
@@ -2471,14 +2443,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       workflowBlockerResolvedWebhookUrl: null,
     });
 
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'failed preparation' }),
-      projectWithLowercaseFailedStatus,
-    );
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-      projectWithLowercaseFailedStatus,
-      expect.objectContaining({ status: 'failed preparation' }),
-      'failed-preparation-id',
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('Auto Status Check: REJECTED'),
     );
   });
 });

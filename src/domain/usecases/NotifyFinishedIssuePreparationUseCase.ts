@@ -71,45 +71,24 @@ export class NotifyFinishedIssuePreparationUseCase {
   }): Promise<void> => {
     const project = await this.projectRepository.getByUrl(params.projectUrl);
 
-    const awaitingWorkspaceStatusOption = project.status.statuses.find(
-      (s) =>
-        s.name.toLowerCase() === AWAITING_WORKSPACE_STATUS_NAME.toLowerCase(),
-    );
-    if (!awaitingWorkspaceStatusOption) {
-      console.error(
-        `Awaiting workspace status option '${AWAITING_WORKSPACE_STATUS_NAME}' not found in project.`,
-      );
-      return;
-    }
-    const awaitingQualityCheckStatusOption = project.status.statuses.find(
-      (s) =>
-        s.name.toLowerCase() ===
-        AWAITING_QUALITY_CHECK_STATUS_NAME.toLowerCase(),
-    );
-    if (!awaitingQualityCheckStatusOption) {
-      console.error(
-        `Awaiting quality check status option '${AWAITING_QUALITY_CHECK_STATUS_NAME}' not found in project.`,
-      );
-      return;
-    }
-    const failedPreparationStatusOption = project.status.statuses.find(
-      (s) =>
-        s.name.toLowerCase() === FAILED_PREPARATION_STATUS_NAME.toLowerCase(),
-    );
-    if (!failedPreparationStatusOption) {
-      console.error(
-        `Failed preparation status option '${FAILED_PREPARATION_STATUS_NAME}' not found in project.`,
-      );
-      return;
-    }
+    const awaitingWorkspaceStatusOption =
+      project.status.statuses.find(
+        (s) => s.name === AWAITING_WORKSPACE_STATUS_NAME,
+      ) ?? null;
+    const awaitingQualityCheckStatusOption =
+      project.status.statuses.find(
+        (s) => s.name === AWAITING_QUALITY_CHECK_STATUS_NAME,
+      ) ?? null;
+    const failedPreparationStatusOption =
+      project.status.statuses.find(
+        (s) => s.name === FAILED_PREPARATION_STATUS_NAME,
+      ) ?? null;
 
     const issue = await this.issueRepository.get(params.issueUrl, project);
 
     if (!issue) {
       throw new IssueNotFoundError(params.issueUrl);
-    } else if (
-      issue.status?.toLowerCase() !== PREPARATION_STATUS_NAME.toLowerCase()
-    ) {
+    } else if (issue.status !== PREPARATION_STATUS_NAME) {
       throw new IllegalIssueStatusError(
         params.issueUrl,
         issue.status,
@@ -141,13 +120,15 @@ export class NotifyFinishedIssuePreparationUseCase {
     }
 
     if (issue.dependedIssueUrls.length > 0) {
-      issue.status = awaitingWorkspaceStatusOption.name;
-      await this.issueRepository.update(issue, project);
-      await this.issueRepository.updateStatus(
-        project,
-        issue,
-        awaitingWorkspaceStatusOption.id,
-      );
+      if (awaitingWorkspaceStatusOption) {
+        issue.status = awaitingWorkspaceStatusOption.name;
+        await this.issueRepository.update(issue, project);
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          awaitingWorkspaceStatusOption.id,
+        );
+      }
       await this.issueCommentRepository.createComment(
         issue,
         `Issue has dependent issue URLs: ${issue.dependedIssueUrls.join(', ')}`,
@@ -156,13 +137,15 @@ export class NotifyFinishedIssuePreparationUseCase {
     }
 
     if (issue.nextActionDate !== null || issue.nextActionHour !== null) {
-      issue.status = awaitingWorkspaceStatusOption.name;
-      await this.issueRepository.update(issue, project);
-      await this.issueRepository.updateStatus(
-        project,
-        issue,
-        awaitingWorkspaceStatusOption.id,
-      );
+      if (awaitingWorkspaceStatusOption) {
+        issue.status = awaitingWorkspaceStatusOption.name;
+        await this.issueRepository.update(issue, project);
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          awaitingWorkspaceStatusOption.id,
+        );
+      }
       await this.issueCommentRepository.createComment(
         issue,
         `Issue has next action date or hour set: nextActionDate=${issue.nextActionDate?.toISOString() ?? 'null'}, nextActionHour=${issue.nextActionHour ?? 'null'}`,
@@ -193,13 +176,15 @@ export class NotifyFinishedIssuePreparationUseCase {
           .includes('failed to pass the check automatically'),
       )
     ) {
-      issue.status = failedPreparationStatusOption.name;
-      await this.issueRepository.update(issue, project);
-      await this.issueRepository.updateStatus(
-        project,
-        issue,
-        failedPreparationStatusOption.id,
-      );
+      if (failedPreparationStatusOption) {
+        issue.status = failedPreparationStatusOption.name;
+        await this.issueRepository.update(issue, project);
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          failedPreparationStatusOption.id,
+        );
+      }
       const escalationStatusLine =
         rejections.length > 0
           ? rejectionStatusMessage
@@ -222,13 +207,15 @@ export class NotifyFinishedIssuePreparationUseCase {
     }
 
     if (rejections.length <= 0) {
-      issue.status = awaitingQualityCheckStatusOption.name;
-      await this.issueRepository.update(issue, project);
-      await this.issueRepository.updateStatus(
-        project,
-        issue,
-        awaitingQualityCheckStatusOption.id,
-      );
+      if (awaitingQualityCheckStatusOption) {
+        issue.status = awaitingQualityCheckStatusOption.name;
+        await this.issueRepository.update(issue, project);
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          awaitingQualityCheckStatusOption.id,
+        );
+      }
       await this.setDependedIssueUrlForAllOpenPRs(
         issue,
         params.issueUrl,
@@ -242,13 +229,15 @@ export class NotifyFinishedIssuePreparationUseCase {
       return;
     }
 
-    issue.status = awaitingWorkspaceStatusOption.name;
-    await this.issueRepository.update(issue, project);
-    await this.issueRepository.updateStatus(
-      project,
-      issue,
-      awaitingWorkspaceStatusOption.id,
-    );
+    if (awaitingWorkspaceStatusOption) {
+      issue.status = awaitingWorkspaceStatusOption.name;
+      await this.issueRepository.update(issue, project);
+      await this.issueRepository.updateStatus(
+        project,
+        issue,
+        awaitingWorkspaceStatusOption.id,
+      );
+    }
 
     await this.setDependedIssueUrlForAllOpenPRs(
       issue,
