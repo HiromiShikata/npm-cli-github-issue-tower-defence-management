@@ -1,3 +1,10 @@
+# [1.65.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.64.0...v1.65.0) (2026-05-26)
+
+
+### Features
+
+* **core:** log skipped issues when allowedIssueAuthors filter is active ([8ab1a29](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8ab1a29b88b6d0f37fbac596ce4166c1f8d87b5a)), closes [#620](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/620)
+
 # [1.64.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.63.1...v1.64.0) (2026-05-26)
 
 
