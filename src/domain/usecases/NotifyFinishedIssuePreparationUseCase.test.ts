@@ -730,7 +730,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should use APPROVED escalation wording and call setDependedIssueUrl when current check passes but threshold is met', async () => {
+  it('should advance to Awaiting Quality Check and skip escalation when current check passes even if prior rejection threshold is met', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -765,16 +765,14 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      mockProject,
+    );
+    expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
       expect.objectContaining({ status: 'Failed Preparation' }),
       mockProject,
     );
-    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-      expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
-      expect.stringContaining(
-        'Auto Status Check: APPROVED (escalated due to prior failures)',
-      ),
-    );
-    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
       expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
       expect.stringContaining(
         'Failed to pass the check automatically for 3 times',
