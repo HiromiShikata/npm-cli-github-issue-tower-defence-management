@@ -16,14 +16,10 @@ export declare class StartPreparationUseCase {
     private readonly localCommandRunner;
     private readonly claudeTokenUsageRepository;
     constructor(projectRepository: Pick<ProjectRepository, 'getByUrl'>, issueRepository: Pick<IssueRepository, 'getStoryObjectMap' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'closePullRequest' | 'deletePullRequestBranch' | 'createCommentByUrl'>, localCommandRunner: LocalCommandRunner, claudeTokenUsageRepository: ClaudeTokenUsageRepository);
-    private readonly KNOWN_MODEL_SPECIFIC_LIMIT_TYPES;
     private weeklyLimitTypeForModel;
-    private deriveFallbackModelName;
-    private selectModelForToken;
-    private maximumPreparingProcessCountForToken;
+    private isModelWeeklyLimitRejected;
+    private getTokenConcurrentLimit;
     private selectRotationTokens;
-    private createRotationTokenSlots;
-    private resolveMaximumPreparingIssuesCount;
     buildRotationOrder: (tokenUsages: ClaudeTokenUsage[], utilizationPercentageThreshold: number, modelName: string | null) => RotationOrderEntry[];
     run: (params: {
         projectUrl: string;

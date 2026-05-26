@@ -27,6 +27,7 @@ class ProxyClaudeTokenUsageRepository {
                         name,
                         token,
                         fiveHourUtilization: 0,
+                        sevenDayUtilization: 0,
                         blocked: false,
                         rejected: false,
                         modelWeeklyLimits: {},
@@ -37,6 +38,9 @@ class ProxyClaudeTokenUsageRepository {
                 const fiveHourUtilization = fiveHourExpired
                     ? 0
                     : snapshot.fiveHourUtilization;
+                const sevenDayUtilization = sevenDayExpired
+                    ? 0
+                    : snapshot.sevenDayUtilization;
                 const fiveHourRejectionActive = snapshot.fiveHourRejected && !fiveHourExpired;
                 const sevenDayRejectionActive = snapshot.sevenDayRejected && !sevenDayExpired;
                 const unifiedRejectionActive = snapshot.unifiedRejected && !fiveHourExpired;
@@ -55,6 +59,7 @@ class ProxyClaudeTokenUsageRepository {
                     name,
                     token,
                     fiveHourUtilization,
+                    sevenDayUtilization,
                     blocked: snapshot.blocked,
                     rejected,
                     modelWeeklyLimits,
