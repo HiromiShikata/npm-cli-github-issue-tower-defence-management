@@ -99,7 +99,10 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
     const project = buildProject(buildCanonicalStatuses());
     mockProjectRepository.getByUrl.mockResolvedValue(project);
-    mockIssueRepository.getAllIssues.mockResolvedValue({ issues: [], cacheUsed: false });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [],
+      cacheUsed: false,
+    });
 
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
@@ -126,7 +129,10 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     ];
     const project = buildProject(statuses);
     mockProjectRepository.getByUrl.mockResolvedValue(project);
-    mockIssueRepository.getAllIssues.mockResolvedValue({ issues: [], cacheUsed: false });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [],
+      cacheUsed: false,
+    });
 
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
@@ -147,7 +153,10 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const project = buildProject(statuses);
     mockProjectRepository.getByUrl.mockResolvedValue(project);
     mockProjectRepository.updateStatusList.mockResolvedValue([]);
-    mockIssueRepository.getAllIssues.mockResolvedValue({ issues: [], cacheUsed: false });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [],
+      cacheUsed: false,
+    });
 
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
@@ -186,7 +195,10 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const project = buildProject(statuses);
     mockProjectRepository.getByUrl.mockResolvedValue(project);
     mockProjectRepository.updateStatusList.mockResolvedValue([]);
-    mockIssueRepository.getAllIssues.mockResolvedValue({ issues: [], cacheUsed: false });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [],
+      cacheUsed: false,
+    });
 
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
@@ -278,7 +290,10 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const project = buildProject(reversedStatuses);
     mockProjectRepository.getByUrl.mockResolvedValue(project);
     mockProjectRepository.updateStatusList.mockResolvedValue([]);
-    mockIssueRepository.getAllIssues.mockResolvedValue({ issues: [], cacheUsed: false });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [],
+      cacheUsed: false,
+    });
 
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
@@ -311,7 +326,10 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const project = buildProject(statuses);
     mockProjectRepository.getByUrl.mockResolvedValue(project);
     mockProjectRepository.updateStatusList.mockResolvedValue([]);
-    mockIssueRepository.getAllIssues.mockResolvedValue({ issues: [], cacheUsed: false });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [],
+      cacheUsed: false,
+    });
 
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
@@ -343,7 +361,10 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const project = buildProject(statuses);
     mockProjectRepository.getByUrl.mockResolvedValue(project);
     mockProjectRepository.updateStatusList.mockResolvedValue([]);
-    mockIssueRepository.getAllIssues.mockResolvedValue({ issues: [], cacheUsed: false });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [],
+      cacheUsed: false,
+    });
 
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
@@ -378,7 +399,10 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const project = buildProject(statuses);
     mockProjectRepository.getByUrl.mockResolvedValue(project);
     mockProjectRepository.updateStatusList.mockResolvedValue([]);
-    mockIssueRepository.getAllIssues.mockResolvedValue({ issues: [], cacheUsed: false });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [],
+      cacheUsed: false,
+    });
 
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
@@ -413,7 +437,10 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const project = buildProject(statuses);
     mockProjectRepository.getByUrl.mockResolvedValue(project);
     mockProjectRepository.updateStatusList.mockResolvedValue([]);
-    mockIssueRepository.getAllIssues.mockResolvedValue({ issues: [], cacheUsed: false });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [],
+      cacheUsed: false,
+    });
 
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
@@ -481,7 +508,10 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const project = buildProject(statuses);
     mockProjectRepository.getByUrl.mockResolvedValue(project);
     mockProjectRepository.updateStatusList.mockResolvedValue([]);
-    mockIssueRepository.getAllIssues.mockResolvedValue({ issues: [], cacheUsed: false });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [],
+      cacheUsed: false,
+    });
 
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
@@ -650,7 +680,10 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
     const project = buildProject(buildCanonicalStatuses());
     mockProjectRepository.getByUrl.mockResolvedValue(project);
-    mockIssueRepository.getAllIssues.mockResolvedValue({ issues: [], cacheUsed: false });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [],
+      cacheUsed: false,
+    });
 
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
@@ -679,7 +712,10 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const project = buildProject(statuses);
     mockProjectRepository.getByUrl.mockResolvedValue(project);
     mockProjectRepository.updateStatusList.mockResolvedValue([]);
-    mockIssueRepository.getAllIssues.mockResolvedValue({ issues: [], cacheUsed: false });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [],
+      cacheUsed: false,
+    });
     mockIssueRepository.updateStatus.mockResolvedValue(undefined);
 
     const useCase = new SetupTowerDefenceProjectUseCase(
@@ -758,7 +794,10 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const project = buildProject(statuses);
     mockProjectRepository.getByUrl.mockResolvedValue(project);
     mockProjectRepository.updateStatusList.mockResolvedValue([]);
-    mockIssueRepository.getAllIssues.mockResolvedValue({ issues: [], cacheUsed: false });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [],
+      cacheUsed: false,
+    });
     mockIssueRepository.updateStatus.mockResolvedValue(undefined);
 
     const useCase = new SetupTowerDefenceProjectUseCase(

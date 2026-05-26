@@ -43,8 +43,7 @@ export class SetupTowerDefenceProjectUseCase {
     const existing = project.status.statuses;
 
     const awaitingTaskBreakdownStatus = existing.find(
-      (s) =>
-        s.name === LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
+      (s) => s.name === LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
     );
     if (awaitingTaskBreakdownStatus) {
       const todoStatus = existing.find((s) => s.name === TODO_STATUS_NAME);
