@@ -1,7 +1,9 @@
 import { FieldOption } from '../entities/Project';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
+import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import {
   IN_TMUX_STATUS_NAME,
+  LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
   LEGACY_IN_TMUX_STATUS_NAME,
   LEGACY_TODO_STATUS_NAME,
   PC_TODO_STATUS_NAME,
@@ -16,6 +18,10 @@ export class SetupTowerDefenceProjectUseCase {
       ProjectRepository,
       'getByUrl' | 'updateStatusList'
     >,
+    private readonly issueRepository: Pick<
+      IssueRepository,
+      'getAllIssues' | 'updateStatus'
+    >,
   ) {}
 
   private static readonly LEGACY_STATUS_NAMES: Readonly<
@@ -29,11 +35,36 @@ export class SetupTowerDefenceProjectUseCase {
     LEGACY_TODO_STATUS_NAME,
     LEGACY_IN_TMUX_STATUS_NAME,
     PC_TODO_STATUS_NAME,
+    LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
   ]);
 
   run = async (params: { projectUrl: string }): Promise<void> => {
     const project = await this.projectRepository.getByUrl(params.projectUrl);
     const existing = project.status.statuses;
+
+    const awaitingTaskBreakdownStatus = existing.find(
+      (s) => s.name === LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
+    );
+    if (awaitingTaskBreakdownStatus) {
+      const todoStatus = existing.find((s) => s.name === TODO_STATUS_NAME);
+      if (todoStatus) {
+        const { issues } = await this.issueRepository.getAllIssues(
+          project.id,
+          0,
+        );
+        const awaitingTaskBreakdownIssues = issues.filter(
+          (issue) =>
+            issue.status === LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
+        );
+        for (const issue of awaitingTaskBreakdownIssues) {
+          await this.issueRepository.updateStatus(
+            project,
+            issue,
+            todoStatus.id,
+          );
+        }
+      }
+    }
 
     const hasMigratedFromName = existing.some((s) =>
       SetupTowerDefenceProjectUseCase.MIGRATED_FROM_NAMES.has(s.name),

@@ -1,7 +1,6 @@
 import { FieldOption } from './Project';
 
 export const DEFAULT_STATUS_NAME = 'Unread';
-export const AWAITING_TASK_BREAKDOWN_STATUS_NAME = 'Awaiting Task Breakdown';
 export const AWAITING_WORKSPACE_STATUS_NAME = 'Awaiting Workspace';
 export const PREPARATION_STATUS_NAME = 'Preparation';
 export const FAILED_PREPARATION_STATUS_NAME = 'Failed Preparation';
@@ -14,6 +13,8 @@ export const ICEBOX_STATUS_NAME = 'Icebox';
 
 export const LEGACY_TODO_STATUS_NAME = 'Todo';
 export const LEGACY_IN_TMUX_STATUS_NAME = 'In Tmux';
+export const LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME =
+  'Awaiting Task Breakdown';
 
 export type WorkflowStatusDefinition = {
   name: string;
@@ -23,10 +24,6 @@ export type WorkflowStatusDefinition = {
 export const REQUIRED_WORKFLOW_STATUSES: WorkflowStatusDefinition[] = [
   {
     name: DEFAULT_STATUS_NAME,
-    color: 'ORANGE',
-  },
-  {
-    name: AWAITING_TASK_BREAKDOWN_STATUS_NAME,
     color: 'ORANGE',
   },
   {

@@ -172,6 +172,7 @@ export class HandleScheduledEventUseCaseHandler {
     );
     const setupTowerDefenceProjectUseCase = new SetupTowerDefenceProjectUseCase(
       projectRepository,
+      issueRepository,
     );
     const actionAnnouncement = new ActionAnnouncementUseCase(issueRepository);
     const setWorkflowManagementIssueToStoryUseCase =
