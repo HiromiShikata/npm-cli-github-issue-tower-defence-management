@@ -280,6 +280,129 @@ describe('RateLimitCache', () => {
     });
   });
 
+  describe('writeRateLimit preserves previous values when response has no anthropic-ratelimit-* headers', () => {
+    it('should not write any file when no previous cache exists and headers contain no anthropic-ratelimit-*', () => {
+      const token = '429-no-headers-no-prior-token';
+      writeRateLimit(token, {
+        'content-type': 'application/json',
+      });
+      expect(fs.existsSync(cachePathForToken(token))).toBe(false);
+      expect(readRateLimit(token)).toBeNull();
+    });
+
+    it('should preserve the previous cache when a later response carries no anthropic-ratelimit-* headers (429 without headers)', () => {
+      const token = '429-no-headers-with-prior-token';
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': '1700000000',
+        'anthropic-ratelimit-unified-5h-utilization': '42',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '1700100000',
+        'anthropic-ratelimit-unified-7d-utilization': '17',
+      });
+      const beforeContent = fs.readFileSync(cachePathForToken(token), 'utf8');
+      writeRateLimit(token, {
+        'content-type': 'application/json',
+        'anthropic-organization-id': 'org-1',
+      });
+      const afterContent = fs.readFileSync(cachePathForToken(token), 'utf8');
+      expect(afterContent).toBe(beforeContent);
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.fiveHourUtilization).toBe(42);
+      expect(snapshot?.fiveHourReset).toBe(1700000000);
+      expect(snapshot?.sevenDayUtilization).toBe(17);
+      expect(snapshot?.sevenDayReset).toBe(1700100000);
+      expect(snapshot?.unifiedRejected).toBe(false);
+      expect(snapshot?.fiveHourRejected).toBe(false);
+      expect(snapshot?.sevenDayRejected).toBe(false);
+      expect(snapshot?.blocked).toBe(false);
+      expect(snapshot?.rejected).toBe(false);
+    });
+
+    it('should overwrite the previous cache when the response carries anthropic-ratelimit-* headers regardless of status code (429 with headers)', () => {
+      const token = '429-with-headers-token';
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': '1700000000',
+        'anthropic-ratelimit-unified-5h-utilization': '42',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '1700100000',
+        'anthropic-ratelimit-unified-7d-utilization': '17',
+      });
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-status': 'rejected',
+        'anthropic-ratelimit-unified-5h-status': 'rejected',
+        'anthropic-ratelimit-unified-5h-reset': '1700050000',
+        'anthropic-ratelimit-unified-5h-utilization': '100',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '1700100000',
+        'anthropic-ratelimit-unified-7d-utilization': '60',
+      });
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.unifiedRejected).toBe(true);
+      expect(snapshot?.fiveHourRejected).toBe(true);
+      expect(snapshot?.fiveHourUtilization).toBe(100);
+      expect(snapshot?.fiveHourReset).toBe(1700050000);
+      expect(snapshot?.sevenDayUtilization).toBe(60);
+    });
+
+    it('should overwrite the previous cache when a 200 response carries anthropic-ratelimit-* headers (200 with headers)', () => {
+      const token = '200-with-headers-token';
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-status': 'rejected',
+        'anthropic-ratelimit-unified-5h-status': 'rejected',
+        'anthropic-ratelimit-unified-5h-reset': '1700000000',
+        'anthropic-ratelimit-unified-5h-utilization': '100',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '1700100000',
+        'anthropic-ratelimit-unified-7d-utilization': '60',
+      });
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': '1700050000',
+        'anthropic-ratelimit-unified-5h-utilization': '30',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '1700100000',
+        'anthropic-ratelimit-unified-7d-utilization': '20',
+      });
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.unifiedRejected).toBe(false);
+      expect(snapshot?.fiveHourRejected).toBe(false);
+      expect(snapshot?.fiveHourUtilization).toBe(30);
+      expect(snapshot?.fiveHourReset).toBe(1700050000);
+      expect(snapshot?.sevenDayUtilization).toBe(20);
+      expect(snapshot?.rejected).toBe(false);
+    });
+
+    it('should not modify any header value based on response status code', () => {
+      const token = 'no-status-based-mutation-token';
+      const inputHeaders: Record<string, string> = {
+        'anthropic-ratelimit-unified-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': '1700000000',
+        'anthropic-ratelimit-unified-5h-utilization': '42',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '1700100000',
+        'anthropic-ratelimit-unified-7d-utilization': '17',
+      };
+      writeRateLimit(token, inputHeaders);
+      const raw: unknown = JSON.parse(
+        fs.readFileSync(cachePathForToken(token), 'utf8'),
+      );
+      const isRecord = (value: unknown): value is Record<string, unknown> =>
+        value !== null && typeof value === 'object' && !Array.isArray(value);
+      if (!isRecord(raw) || !isRecord(raw.headers)) {
+        throw new Error('expected stored cache to contain headers object');
+      }
+      for (const [key, expectedValue] of Object.entries(inputHeaders)) {
+        expect(raw.headers[key]).toBe(expectedValue);
+      }
+    });
+  });
+
   describe('parseModelRateLimitsFromBody', () => {
     it('should extract a rejected seven_day_sonnet limit from a rate_limit event body', () => {
       const body =
