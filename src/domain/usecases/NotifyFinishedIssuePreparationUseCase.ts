@@ -168,10 +168,13 @@ export class NotifyFinishedIssuePreparationUseCase {
     const comments =
       await this.issueCommentRepository.getCommentsFromIssue(issue);
 
+    const isTrustedAuthor = (author: string): boolean =>
+      this.isAuthorTrusted(author, params.allowedIssueAuthors);
+
     const { rejections } = await this.collectRejections(
       issue,
       comments,
-      params.allowedIssueAuthors,
+      isTrustedAuthor,
     );
 
     const rejectionStatusMessage =
@@ -182,9 +185,6 @@ export class NotifyFinishedIssuePreparationUseCase {
     const lastTargetComments = comments.slice(
       -params.thresholdForAutoReject * 2,
     );
-    const isTrustedAuthor = (author: string): boolean =>
-      params.allowedIssueAuthors === null ||
-      params.allowedIssueAuthors.includes(author);
     if (
       rejections.length > 0 &&
       lastTargetComments.filter(
@@ -265,10 +265,16 @@ export class NotifyFinishedIssuePreparationUseCase {
     );
   };
 
+  private isAuthorTrusted = (
+    author: string,
+    allowedIssueAuthors: string[] | null,
+  ): boolean =>
+    allowedIssueAuthors === null || allowedIssueAuthors.includes(author);
+
   private collectRejections = async (
     issue: { url: string; labels: string[]; isPr: boolean },
     comments: { author: string; content: string }[],
-    allowedIssueAuthors: string[] | null,
+    isTrustedAuthor: (author: string) => boolean,
   ): Promise<{
     rejections: { type: RejectedReasonType; detail: string }[];
     approvedPrUrl: string | null;
@@ -276,13 +282,9 @@ export class NotifyFinishedIssuePreparationUseCase {
     const rejections: { type: RejectedReasonType; detail: string }[] = [];
 
     const lastComment = comments[comments.length - 1];
-    const lastCommentAuthorIsTrusted =
-      lastComment !== undefined &&
-      (allowedIssueAuthors === null ||
-        allowedIssueAuthors.includes(lastComment.author));
     if (
       !lastComment ||
-      !lastCommentAuthorIsTrusted ||
+      !isTrustedAuthor(lastComment.author) ||
       !lastComment.content.startsWith('From: :robot:')
     ) {
       rejections.push({

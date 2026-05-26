@@ -77,13 +77,12 @@ class NotifyFinishedIssuePreparationUseCase {
                 return;
             }
             const comments = await this.issueCommentRepository.getCommentsFromIssue(issue);
-            const { rejections } = await this.collectRejections(issue, comments, params.allowedIssueAuthors);
+            const isTrustedAuthor = (author) => this.isAuthorTrusted(author, params.allowedIssueAuthors);
+            const { rejections } = await this.collectRejections(issue, comments, isTrustedAuthor);
             const rejectionStatusMessage = rejections.length > 0
                 ? `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`
                 : 'Auto Status Check: APPROVED';
             const lastTargetComments = comments.slice(-params.thresholdForAutoReject * 2);
-            const isTrustedAuthor = (author) => params.allowedIssueAuthors === null ||
-                params.allowedIssueAuthors.includes(author);
             if (lastTargetComments.filter((comment) => comment.content.startsWith('Auto Status Check: REJECTED') &&
                 isTrustedAuthor(comment.author)).length >= params.thresholdForAutoReject &&
                 !lastTargetComments.some((comment) => comment.content
@@ -115,14 +114,12 @@ class NotifyFinishedIssuePreparationUseCase {
             await this.setDependedIssueUrlForAllOpenPRs(issue, params.issueUrl, project);
             await this.issueCommentRepository.createComment(issue, rejectionStatusMessage);
         };
-        this.collectRejections = async (issue, comments, allowedIssueAuthors) => {
+        this.isAuthorTrusted = (author, allowedIssueAuthors) => allowedIssueAuthors === null || allowedIssueAuthors.includes(author);
+        this.collectRejections = async (issue, comments, isTrustedAuthor) => {
             const rejections = [];
             const lastComment = comments[comments.length - 1];
-            const lastCommentAuthorIsTrusted = lastComment !== undefined &&
-                (allowedIssueAuthors === null ||
-                    allowedIssueAuthors.includes(lastComment.author));
             if (!lastComment ||
-                !lastCommentAuthorIsTrusted ||
+                !isTrustedAuthor(lastComment.author) ||
                 !lastComment.content.startsWith('From: :robot:')) {
                 rejections.push({
                     type: 'NO_REPORT_FROM_AGENT_BOT',
