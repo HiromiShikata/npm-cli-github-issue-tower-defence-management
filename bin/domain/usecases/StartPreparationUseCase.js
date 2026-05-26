@@ -115,13 +115,14 @@ class StartPreparationUseCase {
         };
         this.buildRotationOrder = (tokenUsages, utilizationPercentageThreshold, modelName) => {
             const weeklyLimitType = this.weeklyLimitTypeForModel(modelName);
-            const isWeeklyLimitRejected = (usage) => (usage.modelWeeklyLimits[weeklyLimitType]?.rejected === true ||
-                usage.modelWeeklyLimits['seven_day']?.rejected === true);
+            const isWeeklyLimitRejected = (usage) => usage.modelWeeklyLimits[weeklyLimitType]?.rejected === true ||
+                usage.modelWeeklyLimits['seven_day']?.rejected === true;
             const selectedTokens = tokenUsages
                 .filter((usage) => !usage.blocked)
                 .filter((usage) => !usage.rejected)
                 .filter((usage) => !isWeeklyLimitRejected(usage))
-                .filter((usage) => this.maximumPreparingProcessCountForToken(usage.fiveHourUtilization) > 0)
+                .filter((usage) => this.maximumPreparingProcessCountForToken(usage.fiveHourUtilization) >
+                0)
                 .sort((a, b) => a.fiveHourUtilization - b.fiveHourUtilization);
             const selectedTokenValues = new Set(selectedTokens.map((u) => u.token));
             const excluded = tokenUsages

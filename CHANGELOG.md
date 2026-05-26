@@ -1,3 +1,10 @@
+# [1.64.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.63.1...v1.64.0) (2026-05-26)
+
+
+### Features
+
+* **core:** route spawn to a usable model per token using per-model 7d availability ([f3bdf07](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f3bdf07dea62cf01b62647942cc8175604d6d826)), closes [#672](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/672)
+
 ## [1.63.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.63.0...v1.63.1) (2026-05-25)
 
 
