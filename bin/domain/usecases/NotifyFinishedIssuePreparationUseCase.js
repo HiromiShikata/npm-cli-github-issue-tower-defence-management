@@ -77,21 +77,27 @@ class NotifyFinishedIssuePreparationUseCase {
                 return;
             }
             const comments = await this.issueCommentRepository.getCommentsFromIssue(issue);
-            const { rejections } = await this.collectRejections(issue, comments);
+            const { rejections } = await this.collectRejections(issue, comments, params.allowedIssueAuthors);
             const rejectionStatusMessage = rejections.length > 0
                 ? `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`
                 : 'Auto Status Check: APPROVED';
             const lastTargetComments = comments.slice(-params.thresholdForAutoReject * 2);
-            if (rejections.length > 0 &&
-                lastTargetComments.filter((comment) => comment.content.startsWith('Auto Status Check: REJECTED')).length >= params.thresholdForAutoReject &&
+            const isTrustedAuthor = (author) => params.allowedIssueAuthors === null ||
+                params.allowedIssueAuthors.includes(author);
+            if (lastTargetComments.filter((comment) => comment.content.startsWith('Auto Status Check: REJECTED') &&
+                isTrustedAuthor(comment.author)).length >= params.thresholdForAutoReject &&
                 !lastTargetComments.some((comment) => comment.content
                     .toLowerCase()
-                    .includes('failed to pass the check automatically'))) {
+                    .includes('failed to pass the check automatically') &&
+                    isTrustedAuthor(comment.author))) {
                 issue.status = WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME;
                 await this.issueRepository.update(issue, project);
                 await this.issueRepository.updateStatus(project, issue, failedPreparationStatusOption.id);
+                const escalationStatusLine = rejections.length > 0
+                    ? rejectionStatusMessage
+                    : 'Auto Status Check: APPROVED (escalated due to prior failures)';
                 await this.setDependedIssueUrlForAllOpenPRs(issue, params.issueUrl, project);
-                await this.issueCommentRepository.createComment(issue, `${rejectionStatusMessage}\n\nFailed to pass the check automatically for ${params.thresholdForAutoReject} times`);
+                await this.issueCommentRepository.createComment(issue, `${escalationStatusLine}\n\nFailed to pass the check automatically for ${params.thresholdForAutoReject} times`);
                 await this.sendWorkflowBlockerNotification(params.issueUrl, params.workflowBlockerResolvedWebhookUrl, project);
                 return;
             }
@@ -109,10 +115,15 @@ class NotifyFinishedIssuePreparationUseCase {
             await this.setDependedIssueUrlForAllOpenPRs(issue, params.issueUrl, project);
             await this.issueCommentRepository.createComment(issue, rejectionStatusMessage);
         };
-        this.collectRejections = async (issue, comments) => {
+        this.collectRejections = async (issue, comments, allowedIssueAuthors) => {
             const rejections = [];
             const lastComment = comments[comments.length - 1];
-            if (!lastComment || !lastComment.content.startsWith('From: :robot:')) {
+            const lastCommentAuthorIsTrusted = lastComment !== undefined &&
+                (allowedIssueAuthors === null ||
+                    allowedIssueAuthors.includes(lastComment.author));
+            if (!lastComment ||
+                !lastCommentAuthorIsTrusted ||
+                !lastComment.content.startsWith('From: :robot:')) {
                 rejections.push({
                     type: 'NO_REPORT_FROM_AGENT_BOT',
                     detail: 'NO_REPORT_FROM_AGENT_BOT',

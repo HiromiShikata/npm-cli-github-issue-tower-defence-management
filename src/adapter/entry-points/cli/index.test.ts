@@ -1083,6 +1083,7 @@ codexHomeCandidates:
         issueUrl: 'https://github.com/test/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
       });
     });
 
@@ -1116,6 +1117,7 @@ codexHomeCandidates:
         issueUrl: 'https://github.com/test/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
       });
     });
 

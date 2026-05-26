@@ -234,11 +234,19 @@ exports.program
     const issueCommentRepository = new GitHubIssueCommentRepository_1.GitHubIssueCommentRepository(token);
     const webhookRepository = new FetchWebhookRepository_1.FetchWebhookRepository();
     const useCase = new NotifyFinishedIssuePreparationUseCase_1.NotifyFinishedIssuePreparationUseCase(projectRepository, issueRepository, issueCommentRepository, webhookRepository);
+    const rawAllowedIssueAuthors = config.allowedIssueAuthors;
+    const allowedIssueAuthors = rawAllowedIssueAuthors
+        ? rawAllowedIssueAuthors
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : null;
     await useCase.run({
         projectUrl,
         issueUrl: options.issueUrl,
         thresholdForAutoReject,
         workflowBlockerResolvedWebhookUrl,
+        allowedIssueAuthors,
     });
 });
 /* istanbul ignore next */

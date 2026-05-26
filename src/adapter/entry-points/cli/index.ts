@@ -426,11 +426,20 @@ program
       webhookRepository,
     );
 
+    const rawAllowedIssueAuthors = config.allowedIssueAuthors;
+    const allowedIssueAuthors = rawAllowedIssueAuthors
+      ? rawAllowedIssueAuthors
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : null;
+
     await useCase.run({
       projectUrl,
       issueUrl: options.issueUrl,
       thresholdForAutoReject,
       workflowBlockerResolvedWebhookUrl,
+      allowedIssueAuthors,
     });
   });
 
