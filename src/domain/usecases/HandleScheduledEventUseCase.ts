@@ -202,11 +202,17 @@ export class HandleScheduledEventUseCase {
       await this.findTargetDateAndUpdateLastExecutionDateTime(
         input.workingReport.spreadsheetUrl,
         now,
+        input.org,
+        input.workingReport.repo,
+        input.manager,
       );
 
     const runSlowSweep = await this.shouldRunSlowSweep(
       input.workingReport.spreadsheetUrl,
       now,
+      input.org,
+      input.workingReport.repo,
+      input.manager,
     );
 
     let rotationOrder: RotationOrderEntry[] | null = null;
@@ -436,21 +442,76 @@ ${JSON.stringify(e)}
     }
     return targetDateTimes;
   };
+  runSpreadsheetOperation = async <T>(
+    operation: 'read' | 'write',
+    spreadsheetUrl: string,
+    org: string,
+    repo: string,
+    manager: Member['name'],
+    action: () => Promise<T>,
+  ): Promise<T> => {
+    try {
+      return await action();
+    } catch (e) {
+      if (!(e instanceof Error)) {
+        throw e;
+      }
+      await this.issueRepository.createNewIssue(
+        org,
+        repo,
+        `Error in HandleScheduledEvent / spreadsheet ${operation} failure`,
+        `Spreadsheet URL: ${spreadsheetUrl}
+Operation: ${operation}
+
+${e.message}
+\`\`\`
+${e.stack}
+\`\`\`
+\`\`\`
+${JSON.stringify(e)}
+\`\`\`
+
+`,
+        [manager],
+        ['error'],
+      );
+      throw e;
+    }
+  };
   findTargetDateAndUpdateLastExecutionDateTime = async (
     spreadsheetUrl: string,
     now: Date,
+    org: string,
+    repo: string,
+    manager: Member['name'],
   ): Promise<Date[]> => {
-    const sheetValues = await this.spreadsheetRepository.getSheet(
+    const sheetValues = await this.runSpreadsheetOperation(
+      'read',
       spreadsheetUrl,
-      'HandleScheduledEvent',
+      org,
+      repo,
+      manager,
+      () =>
+        this.spreadsheetRepository.getSheet(
+          spreadsheetUrl,
+          'HandleScheduledEvent',
+        ),
     );
     if (!sheetValues) {
-      await this.spreadsheetRepository.updateCell(
+      await this.runSpreadsheetOperation(
+        'write',
         spreadsheetUrl,
-        'HandleScheduledEvent',
-        1,
-        1,
-        'LastExecutionDateTime',
+        org,
+        repo,
+        manager,
+        () =>
+          this.spreadsheetRepository.updateCell(
+            spreadsheetUrl,
+            'HandleScheduledEvent',
+            1,
+            1,
+            'LastExecutionDateTime',
+          ),
       );
     }
     const lastExecutionDateTime =
@@ -463,22 +524,41 @@ ${JSON.stringify(e)}
         )
       : [now];
 
-    await this.spreadsheetRepository.updateCell(
+    await this.runSpreadsheetOperation(
+      'write',
       spreadsheetUrl,
-      'HandleScheduledEvent',
-      1,
-      2,
-      targetDateTimes[targetDateTimes.length - 1].toISOString(),
+      org,
+      repo,
+      manager,
+      () =>
+        this.spreadsheetRepository.updateCell(
+          spreadsheetUrl,
+          'HandleScheduledEvent',
+          1,
+          2,
+          targetDateTimes[targetDateTimes.length - 1].toISOString(),
+        ),
     );
     return targetDateTimes;
   };
   shouldRunSlowSweep = async (
     spreadsheetUrl: string,
     now: Date,
+    org: string,
+    repo: string,
+    manager: Member['name'],
   ): Promise<boolean> => {
-    const sheetValues = await this.spreadsheetRepository.getSheet(
+    const sheetValues = await this.runSpreadsheetOperation(
+      'read',
       spreadsheetUrl,
-      'HandleScheduledEvent',
+      org,
+      repo,
+      manager,
+      () =>
+        this.spreadsheetRepository.getSheet(
+          spreadsheetUrl,
+          'HandleScheduledEvent',
+        ),
     );
     const lastSlowSweepDateTime =
       sheetValues && sheetValues[1] && sheetValues[1][4]
@@ -490,19 +570,35 @@ ${JSON.stringify(e)}
     if (elapsedSeconds < SLOW_SWEEP_INTERVAL_SECONDS) {
       return false;
     }
-    await this.spreadsheetRepository.updateCell(
+    await this.runSpreadsheetOperation(
+      'write',
       spreadsheetUrl,
-      'HandleScheduledEvent',
-      1,
-      3,
-      'LastSlowSweepDateTime',
+      org,
+      repo,
+      manager,
+      () =>
+        this.spreadsheetRepository.updateCell(
+          spreadsheetUrl,
+          'HandleScheduledEvent',
+          1,
+          3,
+          'LastSlowSweepDateTime',
+        ),
     );
-    await this.spreadsheetRepository.updateCell(
+    await this.runSpreadsheetOperation(
+      'write',
       spreadsheetUrl,
-      'HandleScheduledEvent',
-      1,
-      4,
-      now.toISOString(),
+      org,
+      repo,
+      manager,
+      () =>
+        this.spreadsheetRepository.updateCell(
+          spreadsheetUrl,
+          'HandleScheduledEvent',
+          1,
+          4,
+          now.toISOString(),
+        ),
     );
     return true;
   };
