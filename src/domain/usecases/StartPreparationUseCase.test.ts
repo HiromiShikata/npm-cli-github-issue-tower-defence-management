@@ -1712,6 +1712,9 @@ describe('StartPreparationUseCase', () => {
       stderr: '',
       exitCode: 0,
     });
+    const consoleWarnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => {});
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
@@ -1732,6 +1735,10 @@ describe('StartPreparationUseCase', () => {
       status: 'Preparation',
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      `Skipping issue https://github.com/user/repo/issues/2: author 'user3' is not in the allowedIssueAuthors list.`,
+    );
+    consoleWarnSpy.mockRestore();
   });
 
   it('should process all issues when allowedIssueAuthors is null', async () => {
@@ -1804,6 +1811,9 @@ describe('StartPreparationUseCase', () => {
       stderr: '',
       exitCode: 0,
     });
+    const consoleWarnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => {});
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
@@ -1823,6 +1833,10 @@ describe('StartPreparationUseCase', () => {
       url: 'https://github.com/user/repo/issues/2',
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      'Skipping issue https://github.com/user/repo/issues/1: author is unknown (empty string); deny-by-default when allowedIssueAuthors is configured.',
+    );
+    consoleWarnSpy.mockRestore();
   });
 
   it('should skip issue with empty author when allowedIssueAuthors is set', async () => {
@@ -1843,6 +1857,9 @@ describe('StartPreparationUseCase', () => {
       stderr: '',
       exitCode: 0,
     });
+    const consoleWarnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => {});
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
@@ -1859,6 +1876,10 @@ describe('StartPreparationUseCase', () => {
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      'Skipping issue https://github.com/user/repo/issues/1: author is unknown (empty string); deny-by-default when allowedIssueAuthors is configured.',
+    );
+    consoleWarnSpy.mockRestore();
   });
 
   it('should not pass --codexHome when codexHomeCandidates is null', async () => {
