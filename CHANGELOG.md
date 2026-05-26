@@ -1,3 +1,10 @@
+# [1.66.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.65.0...v1.66.0) (2026-05-26)
+
+
+### Features
+
+* **core:** remove Awaiting Task Breakdown status and migrate items to Todo by human ([cc38380](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cc38380bf5ea322c347ed3c3731d4a91eda1fb69)), closes [#642](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/642)
+
 # [1.65.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.64.0...v1.65.0) (2026-05-26)
 
 
