@@ -302,8 +302,9 @@ export const fetchProjectReadme = async (
           : null;
 
     return readme;
-  } catch {
-    console.warn('Failed to fetch project README');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`Failed to fetch project README: ${message}`);
     return null;
   }
 };

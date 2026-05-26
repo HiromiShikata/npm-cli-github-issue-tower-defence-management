@@ -454,6 +454,34 @@ codexHomeCandidates:
       expect(result).toBe('# User Project README');
     });
 
+    it('should fetch README for user-owned project when organization is null in response', async () => {
+      const responseBody = {
+        data: {
+          organization: null,
+          user: { projectV2: { readme: '# User Owned Project README' } },
+        },
+        errors: [
+          {
+            type: 'NOT_FOUND',
+            message:
+              "Could not resolve to an Organization with the login of 'test-user'.",
+          },
+        ],
+      };
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValue(
+          new Response(JSON.stringify(responseBody), { status: 200 }),
+        );
+
+      const result = await fetchProjectReadme(
+        'https://github.com/users/test-user/projects/1',
+        'test-token',
+      );
+
+      expect(result).toBe('# User Owned Project README');
+    });
+
     it('should return null and warn on failure', async () => {
       jest.spyOn(global, 'fetch').mockRejectedValue(new Error('Network error'));
 
@@ -466,10 +494,47 @@ codexHomeCandidates:
 
       expect(result).toBeNull();
       expect(consoleWarnSpy).toHaveBeenCalledWith(
-        'Failed to fetch project README',
+        expect.stringContaining('Failed to fetch project README'),
       );
 
       consoleWarnSpy.mockRestore();
+    });
+
+    it('should reflect maximumPreparingIssuesCount from user-owned project README in merged config', async () => {
+      const readmeWithConfig = [
+        '# User Project',
+        '<details>',
+        '<summary>config</summary>',
+        'maximumPreparingIssuesCount: 7',
+        '</details>',
+      ].join('\n');
+      const responseBody = {
+        data: {
+          organization: null,
+          user: { projectV2: { readme: readmeWithConfig } },
+        },
+        errors: [
+          {
+            type: 'NOT_FOUND',
+            message:
+              "Could not resolve to an Organization with the login of 'test-user'.",
+          },
+        ],
+      };
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValue(
+          new Response(JSON.stringify(responseBody), { status: 200 }),
+        );
+
+      const readme = await fetchProjectReadme(
+        'https://github.com/users/test-user/projects/1',
+        'test-token',
+      );
+      const readmeOverrides = parseProjectReadmeConfig(readme ?? '');
+      const merged = mergeConfigs({}, {}, readmeOverrides);
+
+      expect(merged.maximumPreparingIssuesCount).toBe(7);
     });
   });
 
