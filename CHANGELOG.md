@@ -1,3 +1,10 @@
+## [1.67.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.67.0...v1.67.1) (2026-05-26)
+
+
+### Bug Fixes
+
+* **core:** include error details in Failed to fetch project README warning ([27150c0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/27150c0750ff5f00e2d192e39aa60b663b9bddcb))
+
 # [1.67.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.66.0...v1.67.0) (2026-05-26)
 
 
