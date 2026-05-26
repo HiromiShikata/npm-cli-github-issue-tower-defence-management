@@ -15,6 +15,7 @@ const PROCESS_COUNT_DECAY_STEEPNESS = 2;
 
 type RotationToken = {
   token: string;
+  model: string;
   maximumPreparingProcessCount: number;
 };
 
@@ -43,6 +44,11 @@ export class StartPreparationUseCase {
     private readonly claudeTokenUsageRepository: ClaudeTokenUsageRepository,
   ) {}
 
+  private readonly KNOWN_MODEL_SPECIFIC_LIMIT_TYPES = [
+    'seven_day_sonnet',
+    'seven_day_opus',
+  ];
+
   private weeklyLimitTypeForModel = (modelName: string | null): string => {
     const normalized = (modelName ?? '').toLowerCase();
     if (normalized.includes('sonnet')) return 'seven_day_sonnet';
@@ -50,14 +56,53 @@ export class StartPreparationUseCase {
     return 'seven_day';
   };
 
-  private isModelWeeklyLimitRejected = (
+  private deriveFallbackModelName = (
+    limitType: string,
+    defaultModelName: string,
+  ): string => {
+    if (limitType === this.weeklyLimitTypeForModel(defaultModelName)) {
+      return defaultModelName;
+    }
+    if (
+      limitType === 'seven_day_opus' &&
+      defaultModelName.toLowerCase().includes('sonnet')
+    ) {
+      return defaultModelName.replace(/sonnet/gi, 'opus');
+    }
+    if (
+      limitType === 'seven_day_sonnet' &&
+      defaultModelName.toLowerCase().includes('opus')
+    ) {
+      return defaultModelName.replace(/opus/gi, 'sonnet');
+    }
+    return defaultModelName;
+  };
+
+  private selectModelForToken = (
     usage: ClaudeTokenUsage,
-    weeklyLimitType: string,
-  ): boolean => {
-    const specific = usage.modelWeeklyLimits[weeklyLimitType];
-    if (specific !== undefined && specific.rejected) return true;
-    const general = usage.modelWeeklyLimits['seven_day'];
-    return general !== undefined && general.rejected;
+    defaultModelName: string | null,
+  ): string | null => {
+    const generalLimit = usage.modelWeeklyLimits['seven_day'];
+    if (generalLimit !== undefined && generalLimit.rejected) return null;
+
+    if (defaultModelName === null) return null;
+
+    const defaultLimitType = this.weeklyLimitTypeForModel(defaultModelName);
+    const candidateLimitTypes = [
+      defaultLimitType,
+      ...this.KNOWN_MODEL_SPECIFIC_LIMIT_TYPES.filter(
+        (t) => t !== defaultLimitType,
+      ),
+    ];
+
+    for (const limitType of candidateLimitTypes) {
+      const limit = usage.modelWeeklyLimits[limitType];
+      if (limit === undefined || !limit.rejected) {
+        return this.deriveFallbackModelName(limitType, defaultModelName);
+      }
+    }
+
+    return null;
   };
 
   private maximumPreparingProcessCountForToken = (
@@ -87,40 +132,45 @@ export class StartPreparationUseCase {
     tokenUsages: ClaudeTokenUsage[],
     modelName: string | null,
   ): RotationToken[] => {
-    const weeklyLimitType = this.weeklyLimitTypeForModel(modelName);
     return tokenUsages
       .filter((usage) => !usage.blocked)
       .filter((usage) => !usage.rejected)
-      .filter(
-        (usage) => !this.isModelWeeklyLimitRejected(usage, weeklyLimitType),
-      )
-      .map((usage) => ({
-        token: usage.token,
-        fiveHourUtilization: usage.fiveHourUtilization,
-        maximumPreparingProcessCount: this.maximumPreparingProcessCountForToken(
-          usage.fiveHourUtilization,
-        ),
-      }))
+      .flatMap((usage) => {
+        const selectedModel = this.selectModelForToken(usage, modelName);
+        if (selectedModel === null) return [];
+        return [
+          {
+            token: usage.token,
+            model: selectedModel,
+            fiveHourUtilization: usage.fiveHourUtilization,
+            maximumPreparingProcessCount:
+              this.maximumPreparingProcessCountForToken(
+                usage.fiveHourUtilization,
+              ),
+          },
+        ];
+      })
       .filter((usage) => usage.maximumPreparingProcessCount > 0)
       .sort((a, b) => a.fiveHourUtilization - b.fiveHourUtilization)
       .map((usage) => ({
         token: usage.token,
+        model: usage.model,
         maximumPreparingProcessCount: usage.maximumPreparingProcessCount,
       }));
   };
 
   private createRotationTokenSlots = (
     rotationTokens: RotationToken[],
-  ): string[] => {
+  ): Array<{ token: string; model: string }> => {
     const slotCount = Math.max(
       ...rotationTokens.map((token) => token.maximumPreparingProcessCount),
     );
-    const tokenSlots: string[] = [];
+    const tokenSlots: Array<{ token: string; model: string }> = [];
     for (let i = 0; i < slotCount; i++) {
       tokenSlots.push(
         ...rotationTokens
           .filter((token) => i < token.maximumPreparingProcessCount)
-          .map((token) => token.token),
+          .map((token) => ({ token: token.token, model: token.model })),
       );
     }
     return tokenSlots;
@@ -128,7 +178,7 @@ export class StartPreparationUseCase {
 
   private resolveMaximumPreparingIssuesCount = (
     configuredMaximumPreparingIssuesCount: number | null,
-    rotationTokenSlots: string[] | null,
+    rotationTokenSlots: Array<{ token: string; model: string }> | null,
   ): number => {
     if (rotationTokenSlots === null) {
       return configuredMaximumPreparingIssuesCount ?? 6;
@@ -145,12 +195,13 @@ export class StartPreparationUseCase {
     modelName: string | null,
   ): RotationOrderEntry[] => {
     const weeklyLimitType = this.weeklyLimitTypeForModel(modelName);
+    const isWeeklyLimitRejected = (usage: ClaudeTokenUsage): boolean =>
+      usage.modelWeeklyLimits[weeklyLimitType]?.rejected === true ||
+      usage.modelWeeklyLimits['seven_day']?.rejected === true;
     const selectedTokens = tokenUsages
       .filter((usage) => !usage.blocked)
       .filter((usage) => !usage.rejected)
-      .filter(
-        (usage) => !this.isModelWeeklyLimitRejected(usage, weeklyLimitType),
-      )
+      .filter((usage) => !isWeeklyLimitRejected(usage))
       .filter(
         (usage) =>
           this.maximumPreparingProcessCountForToken(usage.fiveHourUtilization) >
@@ -168,7 +219,7 @@ export class StartPreparationUseCase {
         thresholdExcluded:
           !usage.blocked &&
           !usage.rejected &&
-          !this.isModelWeeklyLimitRejected(usage, weeklyLimitType) &&
+          !isWeeklyLimitRejected(usage) &&
           this.maximumPreparingProcessCountForToken(
             usage.fiveHourUtilization,
           ) === 0,
@@ -199,7 +250,8 @@ export class StartPreparationUseCase {
   }): Promise<{ rotationOrder: RotationOrderEntry[] | null }> => {
     const tokenUsages =
       await this.claudeTokenUsageRepository.getAvailableTokenUsages();
-    let rotationTokenSlots: string[] | null = null;
+    let rotationTokenSlots: Array<{ token: string; model: string }> | null =
+      null;
     let proxyBaseUrl: string | null = null;
     const rotationOrder: RotationOrderEntry[] | null =
       tokenUsages.length > 0
@@ -216,7 +268,7 @@ export class StartPreparationUseCase {
       );
       if (ranked.length === 0) {
         console.warn(
-          `All ${tokenUsages.length} configured Claude OAuth token(s) are unavailable (blocked, rejected, weekly limit for ${this.weeklyLimitTypeForModel(params.defaultLlmModelName)} exhausted, or 5h utilization >= 95%). Skipping starting preparation.`,
+          `All ${tokenUsages.length} configured Claude OAuth token(s) are unavailable (blocked, rejected, all model weekly limits exhausted, or 5h utilization >= 95%). Skipping starting preparation.`,
         );
         return { rotationOrder };
       }
@@ -314,7 +366,7 @@ export class StartPreparationUseCase {
           .find((label: string) => label.startsWith('llm-model:'))
           ?.replace('llm-model:', '')
           .trim() || params.defaultLlmModelName;
-      if (!model) {
+      if (!model && rotationTokenSlots === null) {
         console.error(
           `No LLM model configured for issue ${issue.url}. Provide --defaultLlmModelName or add an llm-model: label.`,
         );
@@ -397,10 +449,25 @@ export class StartPreparationUseCase {
       );
       issue.status = PREPARATION_STATUS_NAME;
 
+      let spawnEnv: Record<string, string> | undefined;
+      let spawnModel = model ?? '';
+      if (rotationTokenSlots !== null && proxyBaseUrl !== null) {
+        const selected =
+          rotationTokenSlots[
+            (currentPreparationIssueCount + startedInThisRunCount) %
+              rotationTokenSlots.length
+          ];
+        spawnModel = selected.model;
+        spawnEnv = {
+          CLAUDE_CODE_OAUTH_TOKEN: selected.token,
+          ANTHROPIC_BASE_URL: proxyBaseUrl,
+        };
+      }
+
       const awArgs: string[] = [
         issue.url,
         agent,
-        model,
+        spawnModel,
         '--configFilePath',
         params.configFilePath,
         '--branch',
@@ -415,18 +482,6 @@ export class StartPreparationUseCase {
             startedInThisRunCount % params.codexHomeCandidates.length
           ];
         awArgs.push('--codexHome', codexHome);
-      }
-      let spawnEnv: Record<string, string> | undefined;
-      if (rotationTokenSlots !== null && proxyBaseUrl !== null) {
-        const selected =
-          rotationTokenSlots[
-            (currentPreparationIssueCount + startedInThisRunCount) %
-              rotationTokenSlots.length
-          ];
-        spawnEnv = {
-          CLAUDE_CODE_OAUTH_TOKEN: selected,
-          ANTHROPIC_BASE_URL: proxyBaseUrl,
-        };
       }
       await this.localCommandRunner.runCommand(
         'aw',
