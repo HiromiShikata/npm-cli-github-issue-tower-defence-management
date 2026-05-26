@@ -494,7 +494,7 @@ codexHomeCandidates:
 
       expect(result).toBeNull();
       expect(consoleWarnSpy).toHaveBeenCalledWith(
-        'Failed to fetch project README',
+        expect.stringContaining('Failed to fetch project README'),
       );
 
       consoleWarnSpy.mockRestore();
