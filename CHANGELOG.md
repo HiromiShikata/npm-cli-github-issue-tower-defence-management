@@ -1,3 +1,10 @@
+# [1.67.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.66.0...v1.67.0) (2026-05-26)
+
+
+### Features
+
+* replace 85% 7d hard cutoff with adaptive per-token concurrent limit ([e3aa2ff](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e3aa2ff63b76e2278ea4e1b8c0332a49b02c7000))
+
 # [1.66.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.65.0...v1.66.0) (2026-05-26)
 
 
