@@ -20,6 +20,21 @@ export type ProjectItem = {
   }[];
 };
 export const PAGINATION_DELAY_MS = 5000;
+export const FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE = 50;
+export const FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH = 4000;
+
+const stringifyGraphqlErrorsForLog = (
+  errors: { message: string }[],
+): string => {
+  const serialized = JSON.stringify(errors);
+  if (
+    serialized.length <= FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH
+  ) {
+    return serialized;
+  }
+  return `${serialized.slice(0, FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH)}...[truncated]`;
+};
+
 export class GraphqlProjectItemRepository extends BaseGitHubRepository {
   fetchItemId = async (
     projectId: string,
@@ -97,10 +112,10 @@ export class GraphqlProjectItemRepository extends BaseGitHubRepository {
   };
   fetchProjectItems = async (projectId: string): Promise<ProjectItem[]> => {
     const graphqlQueryString = `
-query GetProjectItems($projectId: ID!, $after: String) {
+query GetProjectItems($projectId: ID!, $after: String, $first: Int!) {
   node(id: $projectId) {
     ... on ProjectV2 {
-      items(first: 100, after: $after) {
+      items(first: $first, after: $after) {
         totalCount
         pageInfo {
           endCursor
@@ -210,6 +225,7 @@ query GetProjectItems($projectId: ID!, $after: String) {
     const callGraphql = async (
       projectId: string,
       after: string | null,
+      first: number,
     ): Promise<{
       node: {
         items: {
@@ -251,6 +267,7 @@ query GetProjectItems($projectId: ID!, $after: String) {
         variables: {
           projectId: projectId,
           after: after,
+          first: first,
         },
       };
       const response = await ky
@@ -301,7 +318,7 @@ query GetProjectItems($projectId: ID!, $after: String) {
         }>();
       if (response.errors && response.errors.length > 0) {
         throw new Error(
-          `GitHub GraphQL errors: ${response.errors.map((e) => e.message).join('; ')}`,
+          `GitHub GraphQL errors: ${stringifyGraphqlErrorsForLog(response.errors)}`,
         );
       }
       const rawData = response.data;
@@ -313,6 +330,65 @@ query GetProjectItems($projectId: ID!, $after: String) {
         throw new Error('No data returned from GitHub API');
       }
       return { node: rawNode };
+    };
+    const callGraphqlWithHalvingFallback = async (
+      after: string | null,
+    ): Promise<{
+      node: {
+        items: {
+          totalCount: number;
+          pageInfo: {
+            endCursor: string;
+            startCursor: string;
+            hasNextPage: boolean;
+          };
+          nodes: {
+            id: string;
+            fieldValues: {
+              nodes: {
+                text: string;
+                number: number;
+                date: string;
+                field: {
+                  name: string;
+                };
+              }[];
+            };
+            content: {
+              repository: { nameWithOwner: string };
+              number: number;
+              title: string;
+              state: string;
+              url: string;
+              createdAt: string;
+              author: { login: string } | null;
+              labels: { nodes: { name: string }[] };
+              assignees: { nodes: { login: string }[] };
+            };
+          }[];
+        };
+      };
+    }> => {
+      let attemptFirst = FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE;
+      let lastError: unknown = null;
+      while (attemptFirst >= 1) {
+        try {
+          return await callGraphql(projectId, after, attemptFirst);
+        } catch (error) {
+          lastError = error;
+          if (attemptFirst === 1) {
+            throw error;
+          }
+          const nextFirst = Math.max(1, Math.floor(attemptFirst / 2));
+          console.log(
+            `fetchProjectItems: page request with first=${attemptFirst} failed, halving to first=${nextFirst}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+          attemptFirst = nextFirst;
+        }
+      }
+      throw lastError instanceof Error
+        ? lastError
+        : new Error(String(lastError));
     };
     const issues: ProjectItem[] = [];
     let after: string | null = null;
@@ -327,7 +403,7 @@ query GetProjectItems($projectId: ID!, $after: String) {
           setTimeout(resolve, PAGINATION_DELAY_MS),
         );
       }
-      const data = await callGraphql(projectId, after);
+      const data = await callGraphqlWithHalvingFallback(after);
       const pageNodes = data.node.items.nodes;
       const pageInfo = data.node.items.pageInfo;
       totalCount = data.node.items.totalCount;
@@ -393,7 +469,7 @@ query GetProjectItems($projectId: ID!, $after: String) {
         });
       });
       if (
-        pageNodes.length === 100 &&
+        pageNodes.length > 0 &&
         !pageInfo.hasNextPage &&
         cumulativeRawNodes < totalCount
       ) {
