@@ -3,10 +3,19 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.GraphqlProjectItemRepository = exports.PAGINATION_DELAY_MS = void 0;
+exports.GraphqlProjectItemRepository = exports.FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH = exports.FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE = exports.PAGINATION_DELAY_MS = void 0;
 const ky_1 = __importDefault(require("ky"));
 const BaseGitHubRepository_1 = require("../BaseGitHubRepository");
 exports.PAGINATION_DELAY_MS = 5000;
+exports.FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE = 50;
+exports.FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH = 4000;
+const stringifyGraphqlErrorsForLog = (errors) => {
+    const serialized = JSON.stringify(errors);
+    if (serialized.length <= exports.FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH) {
+        return serialized;
+    }
+    return `${serialized.slice(0, exports.FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH)}...[truncated]`;
+};
 class GraphqlProjectItemRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
     constructor() {
         super(...arguments);
@@ -59,10 +68,10 @@ class GraphqlProjectItemRepository extends BaseGitHubRepository_1.BaseGitHubRepo
         };
         this.fetchProjectItems = async (projectId) => {
             const graphqlQueryString = `
-query GetProjectItems($projectId: ID!, $after: String) {
+query GetProjectItems($projectId: ID!, $after: String, $first: Int!) {
   node(id: $projectId) {
     ... on ProjectV2 {
-      items(first: 100, after: $after) {
+      items(first: $first, after: $after) {
         totalCount
         pageInfo {
           endCursor
@@ -169,12 +178,13 @@ query GetProjectItems($projectId: ID!, $after: String) {
   }
 }
 `;
-            const callGraphql = async (projectId, after) => {
+            const callGraphql = async (projectId, after, first) => {
                 const graphqlQuery = {
                     query: graphqlQueryString,
                     variables: {
                         projectId: projectId,
                         after: after,
+                        first: first,
                     },
                 };
                 const response = await ky_1.default
@@ -186,7 +196,7 @@ query GetProjectItems($projectId: ID!, $after: String) {
                 })
                     .json();
                 if (response.errors && response.errors.length > 0) {
-                    throw new Error(`GitHub GraphQL errors: ${response.errors.map((e) => e.message).join('; ')}`);
+                    throw new Error(`GitHub GraphQL errors: ${stringifyGraphqlErrorsForLog(response.errors)}`);
                 }
                 const rawData = response.data;
                 if (!rawData) {
@@ -198,6 +208,27 @@ query GetProjectItems($projectId: ID!, $after: String) {
                 }
                 return { node: rawNode };
             };
+            const callGraphqlWithHalvingFallback = async (after) => {
+                let attemptFirst = exports.FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE;
+                let lastError = null;
+                while (attemptFirst >= 1) {
+                    try {
+                        return await callGraphql(projectId, after, attemptFirst);
+                    }
+                    catch (error) {
+                        lastError = error;
+                        if (attemptFirst === 1) {
+                            throw error;
+                        }
+                        const nextFirst = Math.max(1, Math.floor(attemptFirst / 2));
+                        console.log(`fetchProjectItems: page request with first=${attemptFirst} failed, halving to first=${nextFirst}: ${error instanceof Error ? error.message : String(error)}`);
+                        attemptFirst = nextFirst;
+                    }
+                }
+                throw lastError instanceof Error
+                    ? lastError
+                    : new Error(String(lastError));
+            };
             const issues = [];
             let after = null;
             let hasNextPage = true;
@@ -208,7 +239,7 @@ query GetProjectItems($projectId: ID!, $after: String) {
                 if (after !== null) {
                     await new Promise((resolve) => setTimeout(resolve, exports.PAGINATION_DELAY_MS));
                 }
-                const data = await callGraphql(projectId, after);
+                const data = await callGraphqlWithHalvingFallback(after);
                 const pageNodes = data.node.items.nodes;
                 const pageInfo = data.node.items.pageInfo;
                 totalCount = data.node.items.totalCount;
@@ -246,7 +277,7 @@ query GetProjectItems($projectId: ID!, $after: String) {
                         }),
                     });
                 });
-                if (pageNodes.length === 100 &&
+                if (pageNodes.length > 0 &&
                     !pageInfo.hasNextPage &&
                     cumulativeRawNodes < totalCount) {
                     throw new Error(`fetchProjectItems: page ${pageIndex} has ${pageNodes.length} nodes with hasNextPage=false but only ${cumulativeRawNodes}/${totalCount} items accumulated`);

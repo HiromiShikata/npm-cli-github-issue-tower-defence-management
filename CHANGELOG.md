@@ -1,3 +1,10 @@
+## [1.67.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.67.1...v1.67.2) (2026-05-27)
+
+
+### Bug Fixes
+
+* **core:** surface full GraphQL error payload and add per-page halving fallback in fetchProjectItems ([729138e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/729138e8e4419f85b1a59ca3d2868322c9837c94))
+
 ## [1.67.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.67.0...v1.67.1) (2026-05-26)
 
 
