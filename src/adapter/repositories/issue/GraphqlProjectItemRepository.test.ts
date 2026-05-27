@@ -24,6 +24,38 @@ const mockJsonResponse = <T>(data: T) => ({
   json: jest.fn().mockResolvedValue(data),
 });
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const extractRequestedFirstFromMockCall = (
+  call: unknown,
+): number | undefined => {
+  if (!Array.isArray(call)) {
+    return undefined;
+  }
+  const second: unknown = call[1];
+  if (!isRecord(second)) {
+    return undefined;
+  }
+  const json: unknown = second.json;
+  if (!isRecord(json)) {
+    return undefined;
+  }
+  const variables: unknown = json.variables;
+  if (!isRecord(variables)) {
+    return undefined;
+  }
+  const first: unknown = variables.first;
+  return typeof first === 'number' ? first : undefined;
+};
+
+const extractErrorMessage = (value: unknown): string => {
+  if (value instanceof Error) {
+    return value.message;
+  }
+  return '';
+};
+
 describe('GraphqlProjectItemRepository', () => {
   const makePageResponse = (
     hasNextPage: boolean,
@@ -76,7 +108,7 @@ describe('GraphqlProjectItemRepository', () => {
 
     afterEach(() => {
       jest.useRealTimers();
-      mockPost.mockClear();
+      mockPost.mockReset();
     });
 
     it('should sleep between paginated requests to avoid 403', async () => {
@@ -111,7 +143,7 @@ describe('GraphqlProjectItemRepository', () => {
         'dummy-token',
       );
 
-      mockPost.mockReturnValueOnce(
+      mockPost.mockImplementation(() =>
         mockJsonResponse({
           data: {
             node: {
@@ -148,7 +180,7 @@ describe('GraphqlProjectItemRepository', () => {
 
       await expect(
         repository.fetchProjectItems('test-project-id'),
-      ).rejects.toThrow('GitHub GraphQL errors: RATE_LIMITED');
+      ).rejects.toThrow('GitHub GraphQL errors: [{"message":"RATE_LIMITED"}]');
     });
 
     it('should throw when data is null in response', async () => {
@@ -158,7 +190,7 @@ describe('GraphqlProjectItemRepository', () => {
         'dummy-token',
       );
 
-      mockPost.mockReturnValueOnce(
+      mockPost.mockImplementation(() =>
         mockJsonResponse({
           data: null,
         }),
@@ -176,7 +208,7 @@ describe('GraphqlProjectItemRepository', () => {
         'dummy-token',
       );
 
-      mockPost.mockReturnValueOnce(
+      mockPost.mockImplementation(() =>
         mockJsonResponse({
           data: { node: null },
         }),
@@ -187,7 +219,7 @@ describe('GraphqlProjectItemRepository', () => {
       ).rejects.toThrow('No data returned from GitHub API');
     });
 
-    it('should throw when accumulated nodes count does not match totalCount', async () => {
+    it('should throw when a returned page contains nodes, declares hasNextPage=false, yet totalCount still indicates more items remain', async () => {
       const localStorageRepository = new LocalStorageRepository();
       const repository = new GraphqlProjectItemRepository(
         localStorageRepository,
@@ -231,7 +263,7 @@ describe('GraphqlProjectItemRepository', () => {
       await expect(
         repository.fetchProjectItems('test-project-id'),
       ).rejects.toThrow(
-        'fetchProjectItems: expected 5 items but accumulated 1',
+        'fetchProjectItems: page 1 has 1 nodes with hasNextPage=false but only 1/5 items accumulated',
       );
     });
 
@@ -286,6 +318,103 @@ describe('GraphqlProjectItemRepository', () => {
         PAGINATION_DELAY_MS,
       );
       setTimeoutSpy.mockRestore();
+    });
+
+    it('should stringify full response errors payload including extensions when callGraphql throws', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockImplementation(() =>
+        mockJsonResponse({
+          errors: [
+            {
+              message: 'Something went wrong while executing your query.',
+              path: ['node', 'items', 'nodes', 7, 'id'],
+              locations: [{ line: 11, column: 11 }],
+              extensions: { code: 'INTERNAL' },
+            },
+          ],
+        }),
+      );
+
+      let capturedError: unknown = null;
+      await expect(
+        repository
+          .fetchProjectItems('test-project-id')
+          .catch((error: unknown) => {
+            capturedError = error;
+            throw error;
+          }),
+      ).rejects.toThrow(/^GitHub GraphQL errors: /);
+      expect(capturedError).toBeInstanceOf(Error);
+      const message = extractErrorMessage(capturedError);
+      expect(message).toContain('"extensions":{"code":"INTERNAL"}');
+      expect(message).toContain('"path":["node","items","nodes",7,"id"]');
+      expect(message).toContain('"locations":[{"line":11,"column":11}]');
+    });
+
+    it('should fall back to half the page size when first=50 fails and first=25 succeeds', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      const failingResponse = mockJsonResponse({
+        errors: [
+          { message: 'Something went wrong while executing your query.' },
+        ],
+      });
+      const successPageResponse = makePageResponse(false, 'cursor-1', 1);
+
+      mockPost
+        .mockReturnValueOnce(failingResponse)
+        .mockReturnValueOnce(successPageResponse);
+
+      const result = await repository.fetchProjectItems('test-project-id');
+
+      expect(mockPost).toHaveBeenCalledTimes(2);
+      expect(result).toHaveLength(1);
+      expect(extractRequestedFirstFromMockCall(mockPost.mock.calls[0])).toBe(
+        50,
+      );
+      expect(extractRequestedFirstFromMockCall(mockPost.mock.calls[1])).toBe(
+        25,
+      );
+    });
+
+    it('should exhaust halving down to first=1 and rethrow the stringified errors payload', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockImplementation(() =>
+        mockJsonResponse({
+          errors: [
+            {
+              message: 'Something went wrong while executing your query.',
+              extensions: { code: 'INTERNAL' },
+            },
+          ],
+        }),
+      );
+
+      await expect(
+        repository.fetchProjectItems('test-project-id'),
+      ).rejects.toThrow(
+        /GitHub GraphQL errors: .*"extensions":\{"code":"INTERNAL"\}.*/,
+      );
+
+      expect(mockPost).toHaveBeenCalledTimes(6);
+      const requestedFirstSeries = mockPost.mock.calls.map((call) =>
+        extractRequestedFirstFromMockCall(call),
+      );
+      expect(requestedFirstSeries).toEqual([50, 25, 12, 6, 3, 1]);
     });
   });
 
