@@ -42,6 +42,8 @@ import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/Rever
 import { RevertNotReadyAwaitingQualityCheckUseCase } from '../../../domain/usecases/RevertNotReadyAwaitingQualityCheckUseCase';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { SetupTowerDefenceProjectUseCase } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
+import { DailySecurityScanUseCase } from '../../../domain/usecases/DailySecurityScanUseCase';
+import { KyHttpRepository } from '../../repositories/KyHttpRepository';
 import {
   AWAITING_QUALITY_CHECK_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
@@ -295,6 +297,14 @@ export class HandleScheduledEventUseCaseHandler {
         issueCommentRepository,
       );
 
+    const dailySecurityScanUseCase = mergedInput.dailySecurityScan
+      ? new DailySecurityScanUseCase(
+          nodeLocalCommandRunner,
+          issueRepository,
+          new KyHttpRepository(),
+        )
+      : null;
+
     const handleScheduledEventUseCase = new HandleScheduledEventUseCase(
       setupTowerDefenceProjectUseCase,
       actionAnnouncement,
@@ -314,6 +324,7 @@ export class HandleScheduledEventUseCaseHandler {
       revertOrphanedPreparationUseCase,
       revertNotReadyAwaitingQualityCheckUseCase,
       updateRateLimitCacheUseCase,
+      dailySecurityScanUseCase,
       systemDateRepository,
       googleSpreadsheetRepository,
       projectRepository,
