@@ -19,7 +19,7 @@ export type ProjectItem = {
     }[];
 };
 export declare const PAGINATION_DELAY_MS = 5000;
-export declare const FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE = 50;
+export declare const FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE = 100;
 export declare const FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH = 4000;
 export declare class GraphqlProjectItemRepository extends BaseGitHubRepository {
     fetchItemId: (projectId: string, owner: string, repositoryName: string, issueNumber: number) => Promise<string | undefined>;

@@ -356,7 +356,7 @@ describe('GraphqlProjectItemRepository', () => {
       expect(message).toContain('"locations":[{"line":11,"column":11}]');
     });
 
-    it('should fall back to half the page size when first=50 fails and first=25 succeeds', async () => {
+    it('should fall back to half the page size when first=100 fails and first=50 succeeds', async () => {
       const localStorageRepository = new LocalStorageRepository();
       const repository = new GraphqlProjectItemRepository(
         localStorageRepository,
@@ -379,10 +379,10 @@ describe('GraphqlProjectItemRepository', () => {
       expect(mockPost).toHaveBeenCalledTimes(2);
       expect(result).toHaveLength(1);
       expect(extractRequestedFirstFromMockCall(mockPost.mock.calls[0])).toBe(
-        50,
+        100,
       );
       expect(extractRequestedFirstFromMockCall(mockPost.mock.calls[1])).toBe(
-        25,
+        50,
       );
     });
 
@@ -410,11 +410,11 @@ describe('GraphqlProjectItemRepository', () => {
         /GitHub GraphQL errors: .*"extensions":\{"code":"INTERNAL"\}.*/,
       );
 
-      expect(mockPost).toHaveBeenCalledTimes(6);
+      expect(mockPost).toHaveBeenCalledTimes(7);
       const requestedFirstSeries = mockPost.mock.calls.map((call) =>
         extractRequestedFirstFromMockCall(call),
       );
-      expect(requestedFirstSeries).toEqual([50, 25, 12, 6, 3, 1]);
+      expect(requestedFirstSeries).toEqual([100, 50, 25, 12, 6, 3, 1]);
     });
   });
 
