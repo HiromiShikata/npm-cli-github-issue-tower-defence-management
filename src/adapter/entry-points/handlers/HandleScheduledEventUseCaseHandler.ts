@@ -94,9 +94,7 @@ export class HandleScheduledEventUseCaseHandler {
 
     const managerToken = input.credentials.manager.github.token;
     const readme = await fetchProjectReadme(input.projectUrl, managerToken);
-    const readmeConfig = readme
-      ? parseProjectReadmeConfig(readme, input.projectUrl)
-      : {};
+    const readmeConfig = readme ? parseProjectReadmeConfig(readme) : {};
 
     const mergedInput = {
       ...input,

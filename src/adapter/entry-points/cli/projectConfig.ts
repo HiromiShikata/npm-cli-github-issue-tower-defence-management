@@ -109,27 +109,7 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
   }
 };
 
-export const knownProjectReadmeConfigKeys: readonly string[] = [
-  'defaultAgentName',
-  'defaultLlmModelName',
-  'defaultLlmAgentName',
-  'maximumPreparingIssuesCount',
-  'allowIssueCacheMinutes',
-  'utilizationPercentageThreshold',
-  'allowedIssueAuthors',
-  'thresholdForAutoReject',
-  'workflowBlockerResolvedWebhookUrl',
-  'preparationProcessCheckCommand',
-  'codexHomeCandidates',
-  'claudeCodeOauthTokenListJsonPath',
-  'awLogDirectoryPath',
-  'awLogStaleThresholdMinutes',
-];
-
-export const parseProjectReadmeConfig = (
-  readme: string,
-  projectUrl?: string,
-): ConfigFile => {
+export const parseProjectReadmeConfig = (readme: string): ConfigFile => {
   const detailsRegex =
     /<details>\s*<summary>config<\/summary>([\s\S]*?)<\/details>/i;
   const match = detailsRegex.exec(readme);
@@ -144,16 +124,6 @@ export const parseProjectReadmeConfig = (
     const parsed: unknown = YAML.parse(yamlContent);
     if (!isRecord(parsed)) {
       return {};
-    }
-    const knownKeySet = new Set<string>(knownProjectReadmeConfigKeys);
-    const unknownKeys = Object.keys(parsed).filter(
-      (key) => !knownKeySet.has(key),
-    );
-    const projectUrlSuffix = projectUrl ? ` (project: ${projectUrl})` : '';
-    for (const unknownKey of unknownKeys) {
-      console.warn(
-        `Unknown key "${unknownKey}" in project README config section${projectUrlSuffix}`,
-      );
     }
     return {
       defaultAgentName: getStringValue(parsed, 'defaultAgentName'),
