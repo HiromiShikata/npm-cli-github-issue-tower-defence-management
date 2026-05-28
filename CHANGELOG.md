@@ -1,3 +1,11 @@
+## [1.67.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.67.2...v1.67.3) (2026-05-28)
+
+
+### Bug Fixes
+
+* **core:** log effective config resolution in schedule codepath ([932cd1a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/932cd1a5e701a74bf8579bac0ea6fffaa8873ecf))
+* **core:** warn on unknown keys in project README config section ([94968dd](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/94968dd61677dfc3171b557ae6370329d31e170d)), closes [#646](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/646)
+
 ## [1.67.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.67.1...v1.67.2) (2026-05-27)
 
 
