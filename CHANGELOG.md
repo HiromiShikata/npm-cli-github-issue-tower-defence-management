@@ -1,3 +1,12 @@
+## [1.67.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.67.3...v1.67.4) (2026-05-28)
+
+
+### Reverts
+
+* Revert "Merge pull request [#681](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/681) from HiromiShikata/i645" ([d888023](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d8880234e2c250dbc1daa3218be0623f031a6aa1))
+* Revert "Merge pull request [#690](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/690) from HiromiShikata/i646" ([73dd015](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/73dd01574fd9f0b1bb3c2fd0b6c02f9f19938ce0))
+* Revert "Merge pull request [#693](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/693) from HiromiShikata/i692" ([2ffa2cd](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2ffa2cdc2c422956eef739f0c32cdbd1b3fd34fb))
+
 ## [1.67.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.67.2...v1.67.3) (2026-05-28)
 
 

@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetchProjectReadme = exports.mergeConfigs = exports.parseProjectReadmeConfig = exports.knownProjectReadmeConfigKeys = exports.loadConfigFile = exports.isRecord = void 0;
+exports.fetchProjectReadme = exports.mergeConfigs = exports.parseProjectReadmeConfig = exports.loadConfigFile = exports.isRecord = void 0;
 const yaml_1 = __importDefault(require("yaml"));
 const fs = __importStar(require("fs"));
 const getStringValue = (obj, key) => {
@@ -96,23 +96,7 @@ const loadConfigFile = (configFilePath) => {
     }
 };
 exports.loadConfigFile = loadConfigFile;
-exports.knownProjectReadmeConfigKeys = [
-    'defaultAgentName',
-    'defaultLlmModelName',
-    'defaultLlmAgentName',
-    'maximumPreparingIssuesCount',
-    'allowIssueCacheMinutes',
-    'utilizationPercentageThreshold',
-    'allowedIssueAuthors',
-    'thresholdForAutoReject',
-    'workflowBlockerResolvedWebhookUrl',
-    'preparationProcessCheckCommand',
-    'codexHomeCandidates',
-    'claudeCodeOauthTokenListJsonPath',
-    'awLogDirectoryPath',
-    'awLogStaleThresholdMinutes',
-];
-const parseProjectReadmeConfig = (readme, projectUrl) => {
+const parseProjectReadmeConfig = (readme) => {
     const detailsRegex = /<details>\s*<summary>config<\/summary>([\s\S]*?)<\/details>/i;
     const match = detailsRegex.exec(readme);
     if (!match) {
@@ -126,12 +110,6 @@ const parseProjectReadmeConfig = (readme, projectUrl) => {
         const parsed = yaml_1.default.parse(yamlContent);
         if (!(0, exports.isRecord)(parsed)) {
             return {};
-        }
-        const knownKeySet = new Set(exports.knownProjectReadmeConfigKeys);
-        const unknownKeys = Object.keys(parsed).filter((key) => !knownKeySet.has(key));
-        const projectUrlSuffix = projectUrl ? ` (project: ${projectUrl})` : '';
-        for (const unknownKey of unknownKeys) {
-            console.warn(`Unknown key "${unknownKey}" in project README config section${projectUrlSuffix}`);
         }
         return {
             defaultAgentName: getStringValue(parsed, 'defaultAgentName'),
