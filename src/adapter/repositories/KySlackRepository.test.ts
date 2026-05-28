@@ -1,98 +1,121 @@
-import dotenv from 'dotenv';
+const mockGet = jest.fn();
+const mockPost = jest.fn();
+
+jest.mock('ky', () => {
+  const client = { get: mockGet, post: mockPost };
+  return {
+    default: {
+      get: mockGet,
+      post: mockPost,
+      put: jest.fn(),
+      patch: jest.fn(),
+      delete: jest.fn(),
+      extend: jest.fn(() => client),
+      create: jest.fn(() => client),
+      stop: jest.fn(),
+    },
+    __esModule: true,
+  };
+});
+
 import { KySlackRepository } from './KySlackRepository';
-import fs from 'fs';
-import https from 'https';
-import path from 'path';
 
-dotenv.config();
-
-const SLACK_USER_TOKEN = process.env.SLACK_USER_TOKEN;
+const SLACK_USER_TOKEN = 'xoxp-dummy-token';
 const TEST_CHANNEL_NAME = 'test-integration';
 const TEST_USER_NAME = 'shikata.hiromi_test2';
-const TEST_IMAGE_URL = 'https://i.imgur.com/Zi3qToQ.jpeg';
-const TEST_IMAGE_PATH = './tmp/test/fixtures/test-image.png';
 
-if (!SLACK_USER_TOKEN) {
-  throw new Error('SLACK_USER_TOKEN is required');
-}
+const mockJsonResponse = <T>(data: T) => ({
+  json: jest.fn().mockResolvedValue(data),
+});
 
-describe('KySlackRepository Integration Tests', () => {
-  jest.setTimeout(60 * 1000);
-  jest.retryTimes(3, { logErrorsBeforeRetry: true });
+const channelsResponse = {
+  ok: true,
+  channels: [{ id: 'C123', name: TEST_CHANNEL_NAME }],
+};
+const usersResponse = {
+  ok: true,
+  members: [{ id: 'U123', name: TEST_USER_NAME }],
+};
+
+describe('KySlackRepository', () => {
   let slackRepository: KySlackRepository;
 
-  beforeAll(() => {
+  beforeEach(() => {
+    mockGet.mockReset();
+    mockPost.mockReset();
     slackRepository = new KySlackRepository(SLACK_USER_TOKEN);
-  });
-  beforeEach(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 2000));
   });
 
   describe('postMessageToChannel', () => {
     it('should post a message to a channel', async () => {
-      const message = `Test message ${new Date().toISOString()}`;
+      mockGet.mockReturnValue(mockJsonResponse(channelsResponse));
+      mockPost.mockReturnValue(mockJsonResponse({ ok: true, ts: '123.456' }));
 
-      await expect(
-        slackRepository.postMessageToChannel(message, TEST_CHANNEL_NAME),
-      ).resolves.not.toThrow();
+      const result = await slackRepository.postMessageToChannel(
+        'Test message',
+        TEST_CHANNEL_NAME,
+      );
+
+      expect(result).toEqual({ threadTs: '123.456' });
+      expect(mockGet).toHaveBeenCalledWith(
+        'https://slack.com/api/conversations.list',
+        { headers: { Authorization: `Bearer ${SLACK_USER_TOKEN}` } },
+      );
+      expect(mockPost).toHaveBeenCalledWith(
+        'https://slack.com/api/chat.postMessage',
+        {
+          json: { channel: 'C123', text: 'Test message' },
+          headers: { Authorization: `Bearer ${SLACK_USER_TOKEN}` },
+        },
+      );
     });
 
     it('should throw error for non-existent channel', async () => {
-      const message = 'Test message';
+      mockGet.mockReturnValue(mockJsonResponse(channelsResponse));
 
       await expect(
-        slackRepository.postMessageToChannel(message, 'non-existent-channel'),
+        slackRepository.postMessageToChannel(
+          'Test message',
+          'non-existent-channel',
+        ),
       ).rejects.toThrow('Channel non-existent-channel not found');
     });
   });
 
   describe('postMessageToChannelThread', () => {
     it('should post a message to a thread', async () => {
-      const message = `Test thread message ${new Date().toISOString()}`;
-      const { threadTs } = await slackRepository.postMessageToChannel(
-        `message for thread`,
-        TEST_CHANNEL_NAME,
-      );
+      mockGet.mockReturnValue(mockJsonResponse(channelsResponse));
+      mockPost.mockReturnValue(mockJsonResponse({ ok: true, ts: '123.456' }));
 
       await expect(
         slackRepository.postMessageToChannelThread(
-          message,
+          'Test thread message',
           TEST_CHANNEL_NAME,
-          threadTs,
+          '123.000',
         ),
       ).resolves.not.toThrow();
+
+      expect(mockPost).toHaveBeenCalledWith(
+        'https://slack.com/api/chat.postMessage',
+        {
+          json: {
+            channel: 'C123',
+            text: 'Test thread message',
+            thread_ts: '123.000',
+          },
+          headers: { Authorization: `Bearer ${SLACK_USER_TOKEN}` },
+        },
+      );
     });
   });
 
   describe('postMessageToChannelWithImage', () => {
-    it.skip('should post a message with image', async () => {
-      const message = `Test image message ${new Date().toISOString()}`;
-      if (!fs.existsSync(path.dirname(TEST_IMAGE_PATH))) {
-        fs.mkdirSync(path.dirname(TEST_IMAGE_PATH), { recursive: true });
-        const res = https.get(TEST_IMAGE_URL, (res) =>
-          res.pipe(fs.createWriteStream(TEST_IMAGE_PATH)),
-        );
-        await new Promise((resolve, reject) => {
-          res.on('end', resolve);
-          res.on('error', reject);
-        });
-      }
-
-      await expect(
-        slackRepository.postMessageToChannelWithImage(
-          message,
-          TEST_CHANNEL_NAME,
-          TEST_IMAGE_PATH,
-        ),
-      ).resolves.not.toThrow();
-    });
-
     it('should throw error for non-existent image', async () => {
-      const message = 'Test message';
+      mockGet.mockReturnValue(mockJsonResponse(channelsResponse));
 
       await expect(
         slackRepository.postMessageToChannelWithImage(
-          message,
+          'Test message',
           TEST_CHANNEL_NAME,
           'non-existent-image.png',
         ),
@@ -102,22 +125,42 @@ describe('KySlackRepository Integration Tests', () => {
 
   describe('postMessageToDirectMessage', () => {
     it('should post a direct message', async () => {
-      const message = `Test DM ${new Date().toISOString()}`;
+      mockGet.mockReturnValue(mockJsonResponse(usersResponse));
+      mockPost.mockReturnValue(mockJsonResponse({ ok: true, ts: '123.456' }));
 
       await expect(
-        slackRepository.postMessageToDirectMessage(message, TEST_USER_NAME),
+        slackRepository.postMessageToDirectMessage('Test DM', TEST_USER_NAME),
       ).resolves.not.toThrow();
+
+      expect(mockGet).toHaveBeenCalledWith('https://slack.com/api/users.list', {
+        headers: { Authorization: `Bearer ${SLACK_USER_TOKEN}` },
+      });
+      expect(mockPost).toHaveBeenCalledWith(
+        'https://slack.com/api/chat.postMessage',
+        {
+          json: { channel: 'U123', text: 'Test DM' },
+          headers: { Authorization: `Bearer ${SLACK_USER_TOKEN}` },
+        },
+      );
     });
 
     it('should throw error for non-existent user', async () => {
-      const message = 'Test message';
+      mockGet.mockReturnValue(mockJsonResponse(usersResponse));
 
       await expect(
         slackRepository.postMessageToDirectMessage(
-          message,
+          'Test message',
           'non-existent-user',
         ),
       ).rejects.toThrow('User non-existent-user not found');
+    });
+  });
+
+  describe('constructor', () => {
+    it('should throw error for invalid token prefix', () => {
+      expect(() => new KySlackRepository('invalid-token')).toThrow(
+        'Invalid user token. It should start with xoxp-',
+      );
     });
   });
 });
