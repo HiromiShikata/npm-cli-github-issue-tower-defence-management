@@ -298,6 +298,7 @@ program
       allowedIssueAuthors,
       codexHomeCandidates,
       allowIssueCacheMinutes,
+      labelToLlmAgent: config.labelToLlmAgent ?? null,
     });
     if (preparationResult.rotationOrder !== null) {
       writeRotationOrderFile(preparationResult.rotationOrder);

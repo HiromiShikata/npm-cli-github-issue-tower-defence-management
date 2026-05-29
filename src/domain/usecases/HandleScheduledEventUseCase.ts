@@ -89,6 +89,7 @@ export class HandleScheduledEventUseCase {
       awLogDirectoryPath?: string;
       awLogStaleThresholdMinutes?: number;
       awaitingQualityCheckStatus?: string | null;
+      labelToLlmAgent?: Record<string, string> | null;
     } | null;
     notifyFinishedPreparation?: {
       awaitingQualityCheckStatusName?: string | null;
@@ -316,6 +317,7 @@ ${JSON.stringify(e)}
         allowedIssueAuthors: input.startPreparation.allowedIssueAuthors ?? null,
         codexHomeCandidates: input.startPreparation.codexHomeCandidates ?? null,
         allowIssueCacheMinutes: input.allowIssueCacheMinutes,
+        labelToLlmAgent: input.startPreparation.labelToLlmAgent ?? null,
       });
       return { rotationOrder: preparationResult.rotationOrder };
     }
