@@ -1,3 +1,10 @@
+# [1.68.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.67.6...v1.68.0) (2026-05-29)
+
+
+### Features
+
+* **rotation:** prefer tokens with shortest remaining 7d window so weekly quota is not wasted at reset ([ae6dc73](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ae6dc73f457e2b79a0b2bc29832037379227512c)), closes [#710](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/710)
+
 ## [1.67.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.67.5...v1.67.6) (2026-05-29)
 
 
