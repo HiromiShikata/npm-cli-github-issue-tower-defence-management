@@ -83,8 +83,9 @@ class NotifyFinishedIssuePreparationUseCase {
                 ? `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`
                 : 'Auto Status Check: APPROVED';
             const lastTargetComments = comments.slice(-params.thresholdForAutoReject * 2);
-            if (lastTargetComments.filter((comment) => comment.content.startsWith('Auto Status Check: REJECTED') &&
-                isTrustedAuthor(comment.author)).length >= params.thresholdForAutoReject &&
+            if (rejections.length > 0 &&
+                lastTargetComments.filter((comment) => comment.content.startsWith('Auto Status Check: REJECTED') &&
+                    isTrustedAuthor(comment.author)).length >= params.thresholdForAutoReject &&
                 !lastTargetComments.some((comment) => comment.content
                     .toLowerCase()
                     .includes('failed to pass the check automatically') &&
@@ -92,11 +93,8 @@ class NotifyFinishedIssuePreparationUseCase {
                 issue.status = WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME;
                 await this.issueRepository.update(issue, project);
                 await this.issueRepository.updateStatus(project, issue, failedPreparationStatusOption.id);
-                const escalationStatusLine = rejections.length > 0
-                    ? rejectionStatusMessage
-                    : 'Auto Status Check: APPROVED (escalated due to prior failures)';
                 await this.setDependedIssueUrlForAllOpenPRs(issue, params.issueUrl, project);
-                await this.issueCommentRepository.createComment(issue, `${escalationStatusLine}\n\nFailed to pass the check automatically for ${params.thresholdForAutoReject} times`);
+                await this.issueCommentRepository.createComment(issue, `${rejectionStatusMessage}\n\nFailed to pass the check automatically for ${params.thresholdForAutoReject} times`);
                 await this.sendWorkflowBlockerNotification(params.issueUrl, params.workflowBlockerResolvedWebhookUrl, project);
                 return;
             }
