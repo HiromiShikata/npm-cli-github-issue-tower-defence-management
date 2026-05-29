@@ -153,7 +153,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
     expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(mockProject);
@@ -218,7 +218,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -275,7 +275,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -323,7 +323,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -372,7 +372,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -420,7 +420,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -486,7 +486,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
     expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
       newerPR.url,
@@ -575,7 +575,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
     expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
       newerPR.url,
@@ -638,7 +638,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -682,7 +682,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
     // Both awaiting issues should be updated (forward iteration: url1 first, then url2)
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
@@ -739,7 +739,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
     // Loop doesn't run because we're already at max (6 >= 6)
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -774,7 +774,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -819,7 +819,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -864,7 +864,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -909,7 +909,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -954,7 +954,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -999,7 +999,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -1047,7 +1047,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       'No LLM model configured for issue url1. Provide --defaultLlmModelName or add an llm-model: label.',
@@ -1095,7 +1095,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       'No LLM model configured for issue url1. Provide --defaultLlmModelName or add an llm-model: label.',
@@ -1145,7 +1145,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
     // No issues are in 'Awaiting Workspace' status, so no updates should happen
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -1180,7 +1180,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(3);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
@@ -1214,7 +1214,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(6);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(6);
@@ -1271,7 +1271,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(12);
@@ -1337,7 +1337,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(12);
@@ -1401,7 +1401,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
@@ -1449,7 +1449,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -1504,7 +1504,7 @@ describe('StartPreparationUseCase', () => {
         allowedIssueAuthors: null,
         codexHomeCandidates: null,
         allowIssueCacheMinutes: 0,
-        labelToLlmAgent: null,
+        labelsAsLlmAgentName: null,
       });
 
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -1562,7 +1562,7 @@ describe('StartPreparationUseCase', () => {
         allowedIssueAuthors: null,
         codexHomeCandidates: null,
         allowIssueCacheMinutes: 0,
-        labelToLlmAgent: null,
+        labelsAsLlmAgentName: null,
       });
 
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -1610,7 +1610,7 @@ describe('StartPreparationUseCase', () => {
         allowedIssueAuthors: null,
         codexHomeCandidates: null,
         allowIssueCacheMinutes: 0,
-        labelToLlmAgent: null,
+        labelsAsLlmAgentName: null,
       });
 
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -1658,7 +1658,7 @@ describe('StartPreparationUseCase', () => {
         allowedIssueAuthors: null,
         codexHomeCandidates: null,
         allowIssueCacheMinutes: 0,
-        labelToLlmAgent: null,
+        labelsAsLlmAgentName: null,
       });
 
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -1706,7 +1706,7 @@ describe('StartPreparationUseCase', () => {
         allowedIssueAuthors: null,
         codexHomeCandidates: null,
         allowIssueCacheMinutes: 0,
-        labelToLlmAgent: null,
+        labelsAsLlmAgentName: null,
       });
 
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -1760,7 +1760,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: ['user1', 'user2'],
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -1808,7 +1808,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
@@ -1854,7 +1854,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: ['user1', 'user2'],
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -1894,7 +1894,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: ['user1'],
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -1931,7 +1931,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -1979,7 +1979,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: [],
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -2027,7 +2027,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: ['.codex-dev1'],
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -2095,7 +2095,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: ['.codex-dev1', '.codex-dev2'],
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
@@ -2160,7 +2160,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -2219,7 +2219,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -2247,7 +2247,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 5,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockIssueRepository.getStoryObjectMap).toHaveBeenCalledWith(
@@ -2294,7 +2294,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -2344,7 +2344,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(
@@ -2430,7 +2430,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
@@ -2487,7 +2487,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -2558,7 +2558,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -2620,7 +2620,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -2685,7 +2685,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(
@@ -2753,7 +2753,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(
@@ -2861,7 +2861,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
@@ -2919,7 +2919,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
@@ -2981,7 +2981,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -3043,7 +3043,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -3105,7 +3105,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -3170,7 +3170,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(
@@ -3217,7 +3217,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(
@@ -3282,7 +3282,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -3347,7 +3347,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -3412,7 +3412,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -3477,7 +3477,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
-      labelToLlmAgent: null,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -3550,6 +3550,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -3622,6 +3623,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -3699,6 +3701,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
@@ -3766,6 +3769,7 @@ describe('StartPreparationUseCase', () => {
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
       allowIssueCacheMinutes: 0,
+      labelsAsLlmAgentName: null,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -3774,12 +3778,15 @@ describe('StartPreparationUseCase', () => {
         CLAUDE_CODE_OAUTH_TOKEN: 'token-idle-5h',
         ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
       },
+    });
+  });
+
   describe('agent selection precedence', () => {
     const runWithIssueLabels = async (params: {
       labels: string[];
       defaultAgentName: string;
       defaultLlmAgentName: string | null;
-      labelToLlmAgent: string[] | null;
+      labelsAsLlmAgentName: string[] | null;
     }): Promise<string> => {
       const awaitingIssues: Issue[] = [
         createMockIssue({
@@ -3809,99 +3816,99 @@ describe('StartPreparationUseCase', () => {
         allowedIssueAuthors: null,
         codexHomeCandidates: null,
         allowIssueCacheMinutes: 0,
-        labelToLlmAgent: params.labelToLlmAgent,
+        labelsAsLlmAgentName: params.labelsAsLlmAgentName,
       });
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
       const awArgs = mockLocalCommandRunner.runCommand.mock.calls[0][1];
       return awArgs[1];
     };
 
-    it('selects explicit llm-agent: label over labelToLlmAgent mapping', async () => {
+    it('selects explicit llm-agent: label over labelsAsLlmAgentName mapping', async () => {
       const selectedAgent = await runWithIssueLabels({
         labels: ['llm-agent:explicit-agent', 'story', 'category:impl'],
         defaultAgentName: 'default-agent',
         defaultLlmAgentName: 'default-llm-agent',
-        labelToLlmAgent: ['story'],
+        labelsAsLlmAgentName: ['story'],
       });
       expect(selectedAgent).toBe('explicit-agent');
     });
 
-    it('uses the label name as the agent name when an issue label is listed in labelToLlmAgent, over category: label', async () => {
+    it('uses the label name as the agent name when an issue label is listed in labelsAsLlmAgentName, over category: label', async () => {
       const selectedAgent = await runWithIssueLabels({
         labels: ['story', 'category:impl'],
         defaultAgentName: 'default-agent',
         defaultLlmAgentName: 'default-llm-agent',
-        labelToLlmAgent: ['story'],
+        labelsAsLlmAgentName: ['story'],
       });
       expect(selectedAgent).toBe('story');
     });
 
-    it('matches labelToLlmAgent entries exactly including colons in the label name', async () => {
+    it('matches labelsAsLlmAgentName entries exactly including colons in the label name', async () => {
       const selectedAgent = await runWithIssueLabels({
         labels: ['story:body-condition', 'category:impl'],
         defaultAgentName: 'default-agent',
         defaultLlmAgentName: 'default-llm-agent',
-        labelToLlmAgent: ['story', 'story:body-condition'],
+        labelsAsLlmAgentName: ['story', 'story:body-condition'],
       });
       expect(selectedAgent).toBe('story:body-condition');
     });
 
-    it('falls through to category: label when no llm-agent: label and no issue label is in labelToLlmAgent', async () => {
+    it('falls through to category: label when no llm-agent: label and no issue label is in labelsAsLlmAgentName', async () => {
       const selectedAgent = await runWithIssueLabels({
         labels: ['unrelated-label', 'category:impl'],
         defaultAgentName: 'default-agent',
         defaultLlmAgentName: 'default-llm-agent',
-        labelToLlmAgent: ['story'],
+        labelsAsLlmAgentName: ['story'],
       });
       expect(selectedAgent).toBe('impl');
     });
 
-    it('falls through to defaultLlmAgentName when no llm-agent:, no labelToLlmAgent match, and no category: label', async () => {
+    it('falls through to defaultLlmAgentName when no llm-agent:, no labelsAsLlmAgentName match, and no category: label', async () => {
       const selectedAgent = await runWithIssueLabels({
         labels: ['unrelated-label'],
         defaultAgentName: 'default-agent',
         defaultLlmAgentName: 'default-llm-agent',
-        labelToLlmAgent: ['story'],
+        labelsAsLlmAgentName: ['story'],
       });
       expect(selectedAgent).toBe('default-llm-agent');
     });
 
-    it('falls through to defaultAgentName when no llm-agent:, no labelToLlmAgent match, no category: label, and no defaultLlmAgentName', async () => {
+    it('falls through to defaultAgentName when no llm-agent:, no labelsAsLlmAgentName match, no category: label, and no defaultLlmAgentName', async () => {
       const selectedAgent = await runWithIssueLabels({
         labels: ['unrelated-label'],
         defaultAgentName: 'default-agent',
         defaultLlmAgentName: null,
-        labelToLlmAgent: ['story'],
+        labelsAsLlmAgentName: ['story'],
       });
       expect(selectedAgent).toBe('default-agent');
     });
 
-    it('ignores labels that are not listed in labelToLlmAgent', async () => {
+    it('ignores labels that are not listed in labelsAsLlmAgentName', async () => {
       const selectedAgent = await runWithIssueLabels({
         labels: ['untracked-label'],
         defaultAgentName: 'default-agent',
         defaultLlmAgentName: 'default-llm-agent',
-        labelToLlmAgent: ['story'],
+        labelsAsLlmAgentName: ['story'],
       });
       expect(selectedAgent).toBe('default-llm-agent');
     });
 
-    it('ignores labels that are not listed in labelToLlmAgent when other entries are present', async () => {
+    it('ignores labels that are not listed in labelsAsLlmAgentName when other entries are present', async () => {
       const selectedAgent = await runWithIssueLabels({
         labels: ['untracked-label', 'another-untracked-label'],
         defaultAgentName: 'default-agent',
         defaultLlmAgentName: 'default-llm-agent',
-        labelToLlmAgent: ['story', 'story:body-condition'],
+        labelsAsLlmAgentName: ['story', 'story:body-condition'],
       });
       expect(selectedAgent).toBe('default-llm-agent');
     });
 
-    it('does not affect selection when labelToLlmAgent is null and only category: label is present', async () => {
+    it('does not affect selection when labelsAsLlmAgentName is null and only category: label is present', async () => {
       const selectedAgent = await runWithIssueLabels({
         labels: ['category:impl'],
         defaultAgentName: 'default-agent',
         defaultLlmAgentName: 'default-llm-agent',
-        labelToLlmAgent: null,
+        labelsAsLlmAgentName: null,
       });
       expect(selectedAgent).toBe('impl');
     });
