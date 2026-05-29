@@ -71,17 +71,11 @@ export const writeRateLimit = (
   token: string,
   headers: Record<string, string | string[] | undefined>,
 ): void => {
-  const dir = cacheDir();
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
   const pick = (key: string): string | undefined => {
     const value = headers[key];
     if (Array.isArray(value)) return value[0];
     return value;
   };
-  const filePath = path.join(dir, `${hashToken(token)}.json`);
-  const existing = readPayload(filePath);
   const rateLimitHeaders: Record<string, string> = {};
   for (const key of Object.keys(headers)) {
     if (key.startsWith('anthropic-ratelimit-')) {
@@ -91,6 +85,15 @@ export const writeRateLimit = (
       }
     }
   }
+  if (Object.keys(rateLimitHeaders).length === 0) {
+    return;
+  }
+  const dir = cacheDir();
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  const filePath = path.join(dir, `${hashToken(token)}.json`);
+  const existing = readPayload(filePath);
   const payload = {
     ts: Date.now() / 1000,
     headers: rateLimitHeaders,
