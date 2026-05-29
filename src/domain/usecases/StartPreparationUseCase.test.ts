@@ -3779,7 +3779,7 @@ describe('StartPreparationUseCase', () => {
       labels: string[];
       defaultAgentName: string;
       defaultLlmAgentName: string | null;
-      labelToLlmAgent: Record<string, string> | null;
+      labelToLlmAgent: string[] | null;
     }): Promise<string> => {
       const awaitingIssues: Issue[] = [
         createMockIssue({
@@ -3821,40 +3821,37 @@ describe('StartPreparationUseCase', () => {
         labels: ['llm-agent:explicit-agent', 'story', 'category:impl'],
         defaultAgentName: 'default-agent',
         defaultLlmAgentName: 'default-llm-agent',
-        labelToLlmAgent: { story: 'story-agent' },
+        labelToLlmAgent: ['story'],
       });
       expect(selectedAgent).toBe('explicit-agent');
     });
 
-    it('selects labelToLlmAgent mapping when no llm-agent: label is present, over category: label', async () => {
+    it('uses the label name as the agent name when an issue label is listed in labelToLlmAgent, over category: label', async () => {
       const selectedAgent = await runWithIssueLabels({
         labels: ['story', 'category:impl'],
         defaultAgentName: 'default-agent',
         defaultLlmAgentName: 'default-llm-agent',
-        labelToLlmAgent: { story: 'story-agent' },
+        labelToLlmAgent: ['story'],
       });
-      expect(selectedAgent).toBe('story-agent');
+      expect(selectedAgent).toBe('story');
     });
 
-    it('matches labelToLlmAgent keys exactly including colons in the label key', async () => {
+    it('matches labelToLlmAgent entries exactly including colons in the label name', async () => {
       const selectedAgent = await runWithIssueLabels({
         labels: ['story:body-condition', 'category:impl'],
         defaultAgentName: 'default-agent',
         defaultLlmAgentName: 'default-llm-agent',
-        labelToLlmAgent: {
-          story: 'story-agent',
-          'story:body-condition': 'body-condition-agent',
-        },
+        labelToLlmAgent: ['story', 'story:body-condition'],
       });
-      expect(selectedAgent).toBe('body-condition-agent');
+      expect(selectedAgent).toBe('story:body-condition');
     });
 
-    it('falls through to category: label when no llm-agent: label and no label matches labelToLlmAgent', async () => {
+    it('falls through to category: label when no llm-agent: label and no issue label is in labelToLlmAgent', async () => {
       const selectedAgent = await runWithIssueLabels({
         labels: ['unrelated-label', 'category:impl'],
         defaultAgentName: 'default-agent',
         defaultLlmAgentName: 'default-llm-agent',
-        labelToLlmAgent: { story: 'story-agent' },
+        labelToLlmAgent: ['story'],
       });
       expect(selectedAgent).toBe('impl');
     });
@@ -3864,7 +3861,7 @@ describe('StartPreparationUseCase', () => {
         labels: ['unrelated-label'],
         defaultAgentName: 'default-agent',
         defaultLlmAgentName: 'default-llm-agent',
-        labelToLlmAgent: { story: 'story-agent' },
+        labelToLlmAgent: ['story'],
       });
       expect(selectedAgent).toBe('default-llm-agent');
     });
@@ -3874,17 +3871,27 @@ describe('StartPreparationUseCase', () => {
         labels: ['unrelated-label'],
         defaultAgentName: 'default-agent',
         defaultLlmAgentName: null,
-        labelToLlmAgent: { story: 'story-agent' },
+        labelToLlmAgent: ['story'],
       });
       expect(selectedAgent).toBe('default-agent');
     });
 
-    it('ignores labels that are not keys of labelToLlmAgent', async () => {
+    it('ignores labels that are not listed in labelToLlmAgent', async () => {
       const selectedAgent = await runWithIssueLabels({
         labels: ['untracked-label'],
         defaultAgentName: 'default-agent',
         defaultLlmAgentName: 'default-llm-agent',
-        labelToLlmAgent: { story: 'story-agent' },
+        labelToLlmAgent: ['story'],
+      });
+      expect(selectedAgent).toBe('default-llm-agent');
+    });
+
+    it('ignores labels that are not listed in labelToLlmAgent when other entries are present', async () => {
+      const selectedAgent = await runWithIssueLabels({
+        labels: ['untracked-label', 'another-untracked-label'],
+        defaultAgentName: 'default-agent',
+        defaultLlmAgentName: 'default-llm-agent',
+        labelToLlmAgent: ['story', 'story:body-condition'],
       });
       expect(selectedAgent).toBe('default-llm-agent');
     });

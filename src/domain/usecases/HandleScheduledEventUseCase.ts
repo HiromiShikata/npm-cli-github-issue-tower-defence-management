@@ -89,7 +89,7 @@ export class HandleScheduledEventUseCase {
       awLogDirectoryPath?: string;
       awLogStaleThresholdMinutes?: number;
       awaitingQualityCheckStatus?: string | null;
-      labelToLlmAgent?: Record<string, string> | null;
+      labelToLlmAgent?: string[] | null;
     } | null;
     notifyFinishedPreparation?: {
       awaitingQualityCheckStatusName?: string | null;

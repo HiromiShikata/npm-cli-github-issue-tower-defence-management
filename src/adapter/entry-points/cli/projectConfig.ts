@@ -18,7 +18,7 @@ export type ConfigFile = {
   claudeCodeOauthTokenListJsonPath?: string;
   awLogDirectoryPath?: string;
   awLogStaleThresholdMinutes?: number;
-  labelToLlmAgent?: Record<string, string>;
+  labelToLlmAgent?: string[];
 };
 
 const getStringValue = (
@@ -57,25 +57,6 @@ const getStringArrayValue = (
 
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const getStringRecordValue = (
-  obj: Record<string, unknown>,
-  key: string,
-): Record<string, string> | undefined => {
-  const value = obj[key];
-  if (!isRecord(value)) {
-    return undefined;
-  }
-  const entries = Object.entries(value);
-  const result: Record<string, string> = {};
-  for (const [entryKey, entryValue] of entries) {
-    if (typeof entryValue !== 'string') {
-      return undefined;
-    }
-    result[entryKey] = entryValue;
-  }
-  return result;
-};
 
 export const loadConfigFile = (configFilePath: string): ConfigFile => {
   try {
@@ -119,7 +100,7 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         parsed,
         'awLogStaleThresholdMinutes',
       ),
-      labelToLlmAgent: getStringRecordValue(parsed, 'labelToLlmAgent'),
+      labelToLlmAgent: getStringArrayValue(parsed, 'labelToLlmAgent'),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
