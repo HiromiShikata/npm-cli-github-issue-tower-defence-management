@@ -25,6 +25,25 @@ class StartPreparationUseCase {
             const general = usage.modelWeeklyLimits['seven_day'];
             return general !== undefined && general.rejected;
         };
+        this.secondsUntilSevenDayReset = (usage, weeklyLimitType, nowEpochSeconds) => {
+            const specific = usage.modelWeeklyLimits[weeklyLimitType];
+            if (specific !== undefined) {
+                return specific.resetsAt - nowEpochSeconds;
+            }
+            const general = usage.modelWeeklyLimits['seven_day'];
+            if (general !== undefined) {
+                return general.resetsAt - nowEpochSeconds;
+            }
+            return Number.POSITIVE_INFINITY;
+        };
+        this.compareBySevenDayDeadlineThenUtilization = (a, b, weeklyLimitType, nowEpochSeconds) => {
+            const aSecondsUntilReset = this.secondsUntilSevenDayReset(a, weeklyLimitType, nowEpochSeconds);
+            const bSecondsUntilReset = this.secondsUntilSevenDayReset(b, weeklyLimitType, nowEpochSeconds);
+            if (aSecondsUntilReset !== bSecondsUntilReset) {
+                return aSecondsUntilReset - bSecondsUntilReset;
+            }
+            return a.fiveHourUtilization - b.fiveHourUtilization;
+        };
         this.getTokenConcurrentLimit = (sevenDayUtilization) => {
             if (sevenDayUtilization < SEVEN_DAY_THROTTLE_START_THRESHOLD) {
                 return SEVEN_DAY_NORMAL_CONCURRENT_LIMIT;
@@ -34,12 +53,13 @@ class StartPreparationUseCase {
         };
         this.selectRotationTokens = (tokenUsages, utilizationPercentageThreshold, modelName, maxConcurrent) => {
             const weeklyLimitType = this.weeklyLimitTypeForModel(modelName);
+            const nowEpochSeconds = Date.now() / 1000;
             const eligibleTokens = tokenUsages
                 .filter((usage) => !usage.blocked)
                 .filter((usage) => !usage.rejected)
                 .filter((usage) => !this.isModelWeeklyLimitRejected(usage, weeklyLimitType))
                 .filter((usage) => usage.fiveHourUtilization * 100 < utilizationPercentageThreshold)
-                .sort((a, b) => a.sevenDayUtilization - b.sevenDayUtilization);
+                .sort((a, b) => this.compareBySevenDayDeadlineThenUtilization(a, b, weeklyLimitType, nowEpochSeconds));
             if (eligibleTokens.length === 0) {
                 return { tokens: [], effectiveCap: 0 };
             }
@@ -62,12 +82,13 @@ class StartPreparationUseCase {
         };
         this.buildRotationOrder = (tokenUsages, utilizationPercentageThreshold, modelName) => {
             const weeklyLimitType = this.weeklyLimitTypeForModel(modelName);
+            const nowEpochSeconds = Date.now() / 1000;
             const selectedTokens = tokenUsages
                 .filter((usage) => !usage.blocked)
                 .filter((usage) => !usage.rejected)
                 .filter((usage) => !this.isModelWeeklyLimitRejected(usage, weeklyLimitType))
                 .filter((usage) => usage.fiveHourUtilization * 100 < utilizationPercentageThreshold)
-                .sort((a, b) => a.sevenDayUtilization - b.sevenDayUtilization);
+                .sort((a, b) => this.compareBySevenDayDeadlineThenUtilization(a, b, weeklyLimitType, nowEpochSeconds));
             const selectedTokenValues = new Set(selectedTokens.map((u) => u.token));
             const excluded = tokenUsages
                 .filter((usage) => !selectedTokenValues.has(usage.token))
