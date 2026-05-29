@@ -1,3 +1,10 @@
+## [1.67.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.67.5...v1.67.6) (2026-05-29)
+
+
+### Bug Fixes
+
+* **core:** skip auto-escalation to Failed Preparation when current check is APPROVED ([3a2e926](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3a2e9268b8d91eed5a5a668151a4b29fb688d6c6)), closes [#676](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/676)
+
 ## [1.67.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.67.4...v1.67.5) (2026-05-29)
 
 
