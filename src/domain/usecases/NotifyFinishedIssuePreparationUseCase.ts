@@ -178,6 +178,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       -params.thresholdForAutoReject * 2,
     );
     if (
+      rejections.length > 0 &&
       lastTargetComments.filter((comment) =>
         comment.content.startsWith('Auto Status Check: REJECTED'),
       ).length >= params.thresholdForAutoReject &&
@@ -194,10 +195,6 @@ export class NotifyFinishedIssuePreparationUseCase {
         issue,
         failedPreparationStatusOption.id,
       );
-      const escalationStatusLine =
-        rejections.length > 0
-          ? rejectionStatusMessage
-          : 'Auto Status Check: APPROVED (escalated due to prior failures)';
       await this.setDependedIssueUrlForAllOpenPRs(
         issue,
         params.issueUrl,
@@ -205,7 +202,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       );
       await this.issueCommentRepository.createComment(
         issue,
-        `${escalationStatusLine}\n\nFailed to pass the check automatically for ${params.thresholdForAutoReject} times`,
+        `${rejectionStatusMessage}\n\nFailed to pass the check automatically for ${params.thresholdForAutoReject} times`,
       );
       await this.sendWorkflowBlockerNotification(
         params.issueUrl,
