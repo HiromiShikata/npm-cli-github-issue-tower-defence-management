@@ -4053,5 +4053,4 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
     expect(result[0].rejected).toBe(false);
     expect(result[0].fiveHourUtilization).toBe(0.9);
   });
-
 });

@@ -55,15 +55,18 @@ const getStringArrayValue = (
   return strings;
 };
 
+export const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
 const getStringRecordValue = (
   obj: Record<string, unknown>,
   key: string,
 ): Record<string, string> | undefined => {
   const value = obj[key];
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+  if (!isRecord(value)) {
     return undefined;
   }
-  const entries = Object.entries(value as Record<string, unknown>);
+  const entries = Object.entries(value);
   const result: Record<string, string> = {};
   for (const [entryKey, entryValue] of entries) {
     if (typeof entryValue !== 'string') {
@@ -73,9 +76,6 @@ const getStringRecordValue = (
   }
   return result;
 };
-
-export const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 export const loadConfigFile = (configFilePath: string): ConfigFile => {
   try {
