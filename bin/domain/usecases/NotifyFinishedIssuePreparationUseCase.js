@@ -77,7 +77,7 @@ class NotifyFinishedIssuePreparationUseCase {
                 return;
             }
             const comments = await this.issueCommentRepository.getCommentsFromIssue(issue);
-            const isTrustedAuthor = (author) => this.isAuthorTrusted(author, params.allowedIssueAuthors);
+            const isTrustedAuthor = (author) => this.isAuthorTrusted(author, params.allowedIssueAuthors ?? null);
             const { rejections } = await this.collectRejections(issue, comments, isTrustedAuthor);
             const rejectionStatusMessage = rejections.length > 0
                 ? `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`

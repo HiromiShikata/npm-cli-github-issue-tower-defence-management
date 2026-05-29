@@ -68,7 +68,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     issueUrl: string;
     thresholdForAutoReject: number;
     workflowBlockerResolvedWebhookUrl: string | null;
-    allowedIssueAuthors: string[] | null;
+    allowedIssueAuthors?: string[] | null;
   }): Promise<void> => {
     const project = await this.projectRepository.getByUrl(params.projectUrl);
 
@@ -169,7 +169,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       await this.issueCommentRepository.getCommentsFromIssue(issue);
 
     const isTrustedAuthor = (author: string): boolean =>
-      this.isAuthorTrusted(author, params.allowedIssueAuthors);
+      this.isAuthorTrusted(author, params.allowedIssueAuthors ?? null);
 
     const { rejections } = await this.collectRejections(
       issue,
