@@ -736,5 +736,70 @@ describe('HandleScheduledEventUseCase', () => {
         expect(slowSweepValueCall).toBeUndefined();
       });
     });
+
+    describe('spreadsheet access failure error issue creation', () => {
+      const failureInput = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        allowIssueCacheMinutes: 60,
+      };
+
+      it('should create an error issue and rethrow when spreadsheet read fails in findTargetDateAndUpdateLastExecutionDateTime', async () => {
+        const readError = new Error('boom on getSheet');
+        mockSpreadsheetRepository.getSheet.mockRejectedValueOnce(readError);
+
+        await expect(useCase.run(failureInput)).rejects.toThrow(
+          'boom on getSheet',
+        );
+
+        expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
+          failureInput.org,
+          failureInput.workingReport.repo,
+          'Error in HandleScheduledEvent / spreadsheet read failure',
+          expect.stringContaining(failureInput.workingReport.spreadsheetUrl),
+          [failureInput.manager],
+          ['error'],
+        );
+        const body = mockIssueRepository.createNewIssue.mock.calls[0][3];
+        expect(body).toContain('Operation: read');
+        expect(body).toContain('boom on getSheet');
+        expect(body).toContain(readError.stack ?? '');
+      });
+
+      it('should create an error issue and rethrow when spreadsheet write fails in findTargetDateAndUpdateLastExecutionDateTime', async () => {
+        const writeError = new Error('boom on updateCell');
+        mockSpreadsheetRepository.getSheet.mockResolvedValueOnce([
+          ['LastExecutionDateTime'],
+          ['2024-01-01T00:00:00Z'],
+        ]);
+        mockSpreadsheetRepository.updateCell.mockRejectedValueOnce(writeError);
+
+        await expect(useCase.run(failureInput)).rejects.toThrow(
+          'boom on updateCell',
+        );
+
+        expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
+          failureInput.org,
+          failureInput.workingReport.repo,
+          'Error in HandleScheduledEvent / spreadsheet write failure',
+          expect.stringContaining(failureInput.workingReport.spreadsheetUrl),
+          [failureInput.manager],
+          ['error'],
+        );
+        const body = mockIssueRepository.createNewIssue.mock.calls[0][3];
+        expect(body).toContain('Operation: write');
+        expect(body).toContain('boom on updateCell');
+        expect(body).toContain(writeError.stack ?? '');
+      });
+    });
   });
 });
