@@ -94,8 +94,9 @@ export declare class HandleScheduledEventUseCase {
     }>;
     runSlowSweepUseCases: (input: Parameters<HandleScheduledEventUseCase["run"]>[0], project: Project, issues: Issue[], cacheUsed: boolean, targetDateTimes: Date[], storyObjectMap: StoryObjectMap) => Promise<void>;
     static createTargetDateTimes: (from: Date, to: Date) => Date[];
-    findTargetDateAndUpdateLastExecutionDateTime: (spreadsheetUrl: string, now: Date) => Promise<Date[]>;
-    shouldRunSlowSweep: (spreadsheetUrl: string, now: Date) => Promise<boolean>;
+    runSpreadsheetOperation: <T>(operation: "read" | "write", spreadsheetUrl: string, org: string, repo: string, manager: Member["name"], action: () => Promise<T>) => Promise<T>;
+    findTargetDateAndUpdateLastExecutionDateTime: (spreadsheetUrl: string, now: Date, org: string, repo: string, manager: Member["name"]) => Promise<Date[]>;
+    shouldRunSlowSweep: (spreadsheetUrl: string, now: Date, org: string, repo: string, manager: Member["name"]) => Promise<boolean>;
     storyIssues: (input: {
         project: Project;
         issues: Issue[];

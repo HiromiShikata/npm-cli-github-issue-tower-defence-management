@@ -79,18 +79,12 @@ const readModelWeeklyLimits = (payload) => {
     return result;
 };
 const writeRateLimit = (token, headers) => {
-    const dir = (0, exports.cacheDir)();
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-    }
     const pick = (key) => {
         const value = headers[key];
         if (Array.isArray(value))
             return value[0];
         return value;
     };
-    const filePath = path.join(dir, `${(0, exports.hashToken)(token)}.json`);
-    const existing = readPayload(filePath);
     const rateLimitHeaders = {};
     for (const key of Object.keys(headers)) {
         if (key.startsWith('anthropic-ratelimit-')) {
@@ -100,6 +94,15 @@ const writeRateLimit = (token, headers) => {
             }
         }
     }
+    if (Object.keys(rateLimitHeaders).length === 0) {
+        return;
+    }
+    const dir = (0, exports.cacheDir)();
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
+    const filePath = path.join(dir, `${(0, exports.hashToken)(token)}.json`);
+    const existing = readPayload(filePath);
     const payload = {
         ts: Date.now() / 1000,
         headers: rateLimitHeaders,

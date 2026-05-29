@@ -1,3 +1,11 @@
+## [1.67.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.67.4...v1.67.5) (2026-05-29)
+
+
+### Bug Fixes
+
+* **proxy:** preserve rate-limit cache when response has no anthropic-ratelimit-* headers ([6c28386](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6c283868ea769d90b739058dd9b7908dc50c7a5b))
+* **scheduled-event:** create error issue on spreadsheet access failure ([fcc6777](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/fcc6777aefe8eff76369abf09b5e71178c4d923c)), closes [#644](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/644)
+
 ## [1.67.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.67.3...v1.67.4) (2026-05-28)
 
 
