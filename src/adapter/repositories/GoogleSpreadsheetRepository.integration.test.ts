@@ -1,32 +1,141 @@
-import dotenv from 'dotenv';
 import { GoogleSpreadsheetRepository } from './GoogleSpreadsheetRepository';
 import { LocalStorageRepository } from './LocalStorageRepository';
 
-dotenv.config();
+type SheetState = Map<string, string[][]>;
 
-const GOOGLE_SERVICE_ACCOUNT_KEY = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+const createInMemorySheetsClient = (initialState: SheetState) => {
+  const state: SheetState = new Map(
+    Array.from(initialState.entries()).map(([name, rows]) => [
+      name,
+      rows.map((row) => [...row]),
+    ]),
+  );
 
-if (!GOOGLE_SERVICE_ACCOUNT_KEY) {
-  throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY is required');
-}
+  const columnIndexFromLetter = (letter: string): number =>
+    letter.charCodeAt(0) - 65;
+
+  const parseRange = (
+    range: string,
+  ): { sheetName: string; startRow: number; startCol: number } => {
+    const [sheetName, cellPart] = range.split('!');
+    if (!cellPart) {
+      return { sheetName, startRow: 0, startCol: 0 };
+    }
+    const [startCell] = cellPart.split(':');
+    const match = startCell.match(/^([A-Z]+)([0-9]+)$/);
+    if (!match) {
+      return { sheetName, startRow: 0, startCol: 0 };
+    }
+    return {
+      sheetName,
+      startRow: Number(match[2]) - 1,
+      startCol: columnIndexFromLetter(match[1]),
+    };
+  };
+
+  return {
+    spreadsheets: {
+      get: async (_params: { spreadsheetId: string }) => ({
+        status: 200,
+        data: {
+          sheets: Array.from(state.keys()).map((title) => ({
+            properties: { title },
+          })),
+        },
+      }),
+      values: {
+        get: async (params: { spreadsheetId: string; range: string }) => {
+          const { sheetName } = parseRange(params.range);
+          const rows = state.get(sheetName);
+          if (!rows || rows.length === 0) {
+            return { status: 200, data: {} };
+          }
+          return { status: 200, data: { values: rows } };
+        },
+        update: async (params: {
+          spreadsheetId: string;
+          range: string;
+          valueInputOption: string;
+          requestBody: { values: string[][] };
+        }) => {
+          const { sheetName, startRow, startCol } = parseRange(params.range);
+          const rows = state.get(sheetName);
+          if (!rows) {
+            throw new Error(`Sheet ${sheetName} not found for update`);
+          }
+          params.requestBody.values.forEach((values, rowOffset) => {
+            const rowIndex = startRow + rowOffset;
+            while (rows.length <= rowIndex) {
+              rows.push([]);
+            }
+            values.forEach((cell, colOffset) => {
+              const colIndex = startCol + colOffset;
+              while (rows[rowIndex].length <= colIndex) {
+                rows[rowIndex].push('');
+              }
+              rows[rowIndex][colIndex] = cell;
+            });
+          });
+          return { status: 200, data: {} };
+        },
+        append: async (params: {
+          spreadsheetId: string;
+          range: string;
+          valueInputOption: string;
+          requestBody: { values: string[][] };
+        }) => {
+          const { sheetName } = parseRange(params.range);
+          const rows = state.get(sheetName);
+          if (!rows) {
+            throw new Error(`Sheet ${sheetName} not found for append`);
+          }
+          params.requestBody.values.forEach((row) => {
+            rows.push([...row]);
+          });
+          return { status: 200, data: {} };
+        },
+      },
+      batchUpdate: async (params: {
+        spreadsheetId: string;
+        requestBody: {
+          requests: Array<{ addSheet?: { properties?: { title?: string } } }>;
+        };
+      }) => {
+        params.requestBody.requests.forEach((request) => {
+          const title = request.addSheet?.properties?.title;
+          if (title && !state.has(title)) {
+            state.set(title, []);
+          }
+        });
+        return { status: 200, data: {} };
+      },
+    },
+  };
+};
 
 describe('GoogleSpreadsheetRepository integration tests', () => {
-  jest.setTimeout(60 * 1000);
-  jest.retryTimes(3, { logErrorsBeforeRetry: true });
-
   const localStorageRepository = new LocalStorageRepository();
   const spreadsheetUrl =
     'https://docs.google.com/spreadsheets/d/1N_3y0y46v5tHbra5YSm6PldflcsF1bkfeWDdQ3MRuXM/edit?gid=0#gid=0';
-  const repository = new GoogleSpreadsheetRepository(
-    localStorageRepository,
-    GOOGLE_SERVICE_ACCOUNT_KEY,
-  );
-
-  beforeEach(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-  });
 
   describe('getSheet', () => {
+    const initialState: SheetState = new Map<string, string[][]>([
+      ['SheetSingleCell', [['test']]],
+      [
+        'SheetMultipleRows',
+        [
+          ['1', '2'],
+          ['3', '4'],
+        ],
+      ],
+    ]);
+
+    const repository = new GoogleSpreadsheetRepository(
+      localStorageRepository,
+      'dummy-service-account-key',
+      () => createInMemorySheetsClient(initialState),
+    );
+
     const testCases: [string, string[][] | null][] = [
       ['SheetUndefined', null],
       ['SheetSingleCell', [['test']]],
@@ -57,6 +166,16 @@ describe('GoogleSpreadsheetRepository integration tests', () => {
   });
 
   describe('updateCell', () => {
+    const initialState: SheetState = new Map<string, string[][]>([
+      ['Sheet1', [['existing']]],
+    ]);
+
+    const repository = new GoogleSpreadsheetRepository(
+      localStorageRepository,
+      'dummy-service-account-key',
+      () => createInMemorySheetsClient(initialState),
+    );
+
     const testCases: [string, number, number, string][] = [
       ['Sheet1', 0, 0, 'First Value'],
       ['Sheet1', 0, 0, 'Updated Value'],
@@ -92,6 +211,11 @@ describe('GoogleSpreadsheetRepository integration tests', () => {
     test.each(testCases)(
       'appends values %j to sheet',
       async (values: string[][]) => {
+        const repository = new GoogleSpreadsheetRepository(
+          localStorageRepository,
+          'dummy-service-account-key',
+          () => createInMemorySheetsClient(new Map()),
+        );
         const sheetName = 'AppendTest';
         const initialSheet = await repository.getSheet(
           spreadsheetUrl,
