@@ -1,3 +1,11 @@
+## [1.69.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.0...v1.69.1) (2026-05-30)
+
+
+### Bug Fixes
+
+* **security:** make allowedIssueAuthors optional for backward compatibility ([f8785e7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f8785e76f7e944fca8de069b9624851240b71e04)), closes [#668](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/668)
+* **security:** verify comment author in NotifyFinishedIssuePreparation rejection checks ([4042bdf](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4042bdfe66c8b4f74897f0d8138809f925c82fc7)), closes [#668](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/668)
+
 # [1.69.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.68.0...v1.69.0) (2026-05-30)
 
 
