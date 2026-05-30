@@ -572,6 +572,7 @@ codexHomeCandidates:
         allowedIssueAuthors: null,
         codexHomeCandidates: null,
         allowIssueCacheMinutes: 10,
+        labelsAsLlmAgentName: null,
       });
     });
 
@@ -612,6 +613,7 @@ codexHomeCandidates:
         allowedIssueAuthors: null,
         codexHomeCandidates: null,
         allowIssueCacheMinutes: 10,
+        labelsAsLlmAgentName: null,
       });
     });
 

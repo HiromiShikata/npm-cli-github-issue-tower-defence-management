@@ -18,6 +18,7 @@ export type ConfigFile = {
   claudeCodeOauthTokenListJsonPath?: string;
   awLogDirectoryPath?: string;
   awLogStaleThresholdMinutes?: number;
+  labelsAsLlmAgentName?: string[];
 };
 
 const getStringValue = (
@@ -99,6 +100,7 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         parsed,
         'awLogStaleThresholdMinutes',
       ),
+      labelsAsLlmAgentName: getStringArrayValue(parsed, 'labelsAsLlmAgentName'),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -228,6 +230,10 @@ export const mergeConfigs = (
     readmeOverrides.awLogStaleThresholdMinutes ??
     cliOverrides.awLogStaleThresholdMinutes ??
     configFile.awLogStaleThresholdMinutes,
+  labelsAsLlmAgentName:
+    readmeOverrides.labelsAsLlmAgentName ??
+    cliOverrides.labelsAsLlmAgentName ??
+    configFile.labelsAsLlmAgentName,
 });
 
 type GraphqlProjectV2ReadmeResponse = {

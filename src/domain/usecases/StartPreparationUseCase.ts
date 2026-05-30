@@ -217,6 +217,7 @@ export class StartPreparationUseCase {
     allowedIssueAuthors: string[] | null;
     codexHomeCandidates: string[] | null;
     allowIssueCacheMinutes: number;
+    labelsAsLlmAgentName: string[] | null;
   }): Promise<{ rotationOrder: RotationOrderEntry[] | null }> => {
     const tokenUsages =
       await this.claudeTokenUsageRepository.getAvailableTokenUsages();
@@ -321,11 +322,20 @@ export class StartPreparationUseCase {
       ) {
         continue;
       }
+      const mappedAgentFromLabel =
+        params.labelsAsLlmAgentName !== null
+          ? issue.labels.find((label: string) =>
+              params.labelsAsLlmAgentName !== null
+                ? params.labelsAsLlmAgentName.includes(label)
+                : false,
+            )
+          : undefined;
       const agent =
         issue.labels
           .find((label: string) => label.startsWith('llm-agent:'))
           ?.replace('llm-agent:', '')
           .trim() ||
+        mappedAgentFromLabel ||
         issue.labels
           .find((label: string) => label.startsWith('category:'))
           ?.replace('category:', '')
