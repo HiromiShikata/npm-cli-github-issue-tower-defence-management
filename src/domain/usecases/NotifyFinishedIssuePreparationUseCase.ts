@@ -68,6 +68,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     issueUrl: string;
     thresholdForAutoReject: number;
     workflowBlockerResolvedWebhookUrl: string | null;
+    allowedIssueAuthors?: string[] | null;
   }): Promise<void> => {
     const project = await this.projectRepository.getByUrl(params.projectUrl);
 
@@ -167,7 +168,14 @@ export class NotifyFinishedIssuePreparationUseCase {
     const comments =
       await this.issueCommentRepository.getCommentsFromIssue(issue);
 
-    const { rejections } = await this.collectRejections(issue, comments);
+    const isTrustedAuthor = (author: string): boolean =>
+      this.isAuthorTrusted(author, params.allowedIssueAuthors ?? null);
+
+    const { rejections } = await this.collectRejections(
+      issue,
+      comments,
+      isTrustedAuthor,
+    );
 
     const rejectionStatusMessage =
       rejections.length > 0
@@ -179,13 +187,17 @@ export class NotifyFinishedIssuePreparationUseCase {
     );
     if (
       rejections.length > 0 &&
-      lastTargetComments.filter((comment) =>
-        comment.content.startsWith('Auto Status Check: REJECTED'),
+      lastTargetComments.filter(
+        (comment) =>
+          comment.content.startsWith('Auto Status Check: REJECTED') &&
+          isTrustedAuthor(comment.author),
       ).length >= params.thresholdForAutoReject &&
-      !lastTargetComments.some((comment) =>
-        comment.content
-          .toLowerCase()
-          .includes('failed to pass the check automatically'),
+      !lastTargetComments.some(
+        (comment) =>
+          comment.content
+            .toLowerCase()
+            .includes('failed to pass the check automatically') &&
+          isTrustedAuthor(comment.author),
       )
     ) {
       issue.status = FAILED_PREPARATION_STATUS_NAME;
@@ -253,9 +265,16 @@ export class NotifyFinishedIssuePreparationUseCase {
     );
   };
 
+  private isAuthorTrusted = (
+    author: string,
+    allowedIssueAuthors: string[] | null,
+  ): boolean =>
+    allowedIssueAuthors === null || allowedIssueAuthors.includes(author);
+
   private collectRejections = async (
     issue: { url: string; labels: string[]; isPr: boolean },
-    comments: { content: string }[],
+    comments: { author: string; content: string }[],
+    isTrustedAuthor: (author: string) => boolean,
   ): Promise<{
     rejections: { type: RejectedReasonType; detail: string }[];
     approvedPrUrl: string | null;
@@ -263,7 +282,11 @@ export class NotifyFinishedIssuePreparationUseCase {
     const rejections: { type: RejectedReasonType; detail: string }[] = [];
 
     const lastComment = comments[comments.length - 1];
-    if (!lastComment || !lastComment.content.startsWith('From: :robot:')) {
+    if (
+      !lastComment ||
+      !isTrustedAuthor(lastComment.author) ||
+      !lastComment.content.startsWith('From: :robot:')
+    ) {
       rejections.push({
         type: 'NO_REPORT_FROM_AGENT_BOT',
         detail: 'NO_REPORT_FROM_AGENT_BOT',

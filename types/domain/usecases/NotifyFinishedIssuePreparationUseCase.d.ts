@@ -20,7 +20,9 @@ export declare class NotifyFinishedIssuePreparationUseCase {
         issueUrl: string;
         thresholdForAutoReject: number;
         workflowBlockerResolvedWebhookUrl: string | null;
+        allowedIssueAuthors?: string[] | null;
     }) => Promise<void>;
+    private isAuthorTrusted;
     private collectRejections;
     private reportBodyHasNextStep;
     private setDependedIssueUrlForAllOpenPRs;
