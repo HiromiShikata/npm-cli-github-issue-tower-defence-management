@@ -34,6 +34,7 @@ export declare class StartPreparationUseCase {
         allowedIssueAuthors: string[] | null;
         codexHomeCandidates: string[] | null;
         allowIssueCacheMinutes: number;
+        labelsAsLlmAgentName: string[] | null;
     }) => Promise<{
         rotationOrder: RotationOrderEntry[] | null;
     }>;

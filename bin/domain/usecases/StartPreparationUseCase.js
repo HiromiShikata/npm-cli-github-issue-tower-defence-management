@@ -166,10 +166,16 @@ class StartPreparationUseCase {
                     !params.allowedIssueAuthors.includes(issue.author)) {
                     continue;
                 }
+                const mappedAgentFromLabel = params.labelsAsLlmAgentName !== null
+                    ? issue.labels.find((label) => params.labelsAsLlmAgentName !== null
+                        ? params.labelsAsLlmAgentName.includes(label)
+                        : false)
+                    : undefined;
                 const agent = issue.labels
                     .find((label) => label.startsWith('llm-agent:'))
                     ?.replace('llm-agent:', '')
                     .trim() ||
+                    mappedAgentFromLabel ||
                     issue.labels
                         .find((label) => label.startsWith('category:'))
                         ?.replace('category:', '')

@@ -1,3 +1,10 @@
+# [1.69.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.68.0...v1.69.0) (2026-05-30)
+
+
+### Features
+
+* **config:** add labelToLlmAgent mapping to per-project YAML ([d422213](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d422213a383d9d98443fd259a79b43787c556b49))
+
 # [1.68.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.67.6...v1.68.0) (2026-05-29)
 
 

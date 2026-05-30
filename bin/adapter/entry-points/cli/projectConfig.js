@@ -87,6 +87,7 @@ const loadConfigFile = (configFilePath) => {
             claudeCodeOauthTokenListJsonPath: getStringValue(parsed, 'claudeCodeOauthTokenListJsonPath'),
             awLogDirectoryPath: getStringValue(parsed, 'awLogDirectoryPath'),
             awLogStaleThresholdMinutes: getNumberValue(parsed, 'awLogStaleThresholdMinutes'),
+            labelsAsLlmAgentName: getStringArrayValue(parsed, 'labelsAsLlmAgentName'),
         };
     }
     catch (error) {
@@ -179,6 +180,9 @@ const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
     awLogStaleThresholdMinutes: readmeOverrides.awLogStaleThresholdMinutes ??
         cliOverrides.awLogStaleThresholdMinutes ??
         configFile.awLogStaleThresholdMinutes,
+    labelsAsLlmAgentName: readmeOverrides.labelsAsLlmAgentName ??
+        cliOverrides.labelsAsLlmAgentName ??
+        configFile.labelsAsLlmAgentName,
 });
 exports.mergeConfigs = mergeConfigs;
 const isGraphqlProjectV2ReadmeResponse = (value) => {

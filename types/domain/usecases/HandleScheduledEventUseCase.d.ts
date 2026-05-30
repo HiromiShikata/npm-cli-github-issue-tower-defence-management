@@ -77,6 +77,7 @@ export declare class HandleScheduledEventUseCase {
             awLogDirectoryPath?: string;
             awLogStaleThresholdMinutes?: number;
             awaitingQualityCheckStatus?: string | null;
+            labelsAsLlmAgentName?: string[] | null;
         } | null;
         notifyFinishedPreparation?: {
             awaitingQualityCheckStatusName?: string | null;

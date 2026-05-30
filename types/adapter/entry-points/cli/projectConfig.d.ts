@@ -15,6 +15,7 @@ export type ConfigFile = {
     claudeCodeOauthTokenListJsonPath?: string;
     awLogDirectoryPath?: string;
     awLogStaleThresholdMinutes?: number;
+    labelsAsLlmAgentName?: string[];
 };
 export declare const isRecord: (value: unknown) => value is Record<string, unknown>;
 export declare const loadConfigFile: (configFilePath: string) => ConfigFile;

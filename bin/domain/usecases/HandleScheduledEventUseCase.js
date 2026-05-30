@@ -164,6 +164,7 @@ ${JSON.stringify(e)}
                     allowedIssueAuthors: input.startPreparation.allowedIssueAuthors ?? null,
                     codexHomeCandidates: input.startPreparation.codexHomeCandidates ?? null,
                     allowIssueCacheMinutes: input.allowIssueCacheMinutes,
+                    labelsAsLlmAgentName: input.startPreparation.labelsAsLlmAgentName ?? null,
                 });
                 return { rotationOrder: preparationResult.rotationOrder };
             }
