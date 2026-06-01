@@ -24,7 +24,7 @@ export class StartPreparationUseCase {
     private readonly projectRepository: Pick<ProjectRepository, 'getByUrl'>,
     private readonly issueRepository: Pick<
       IssueRepository,
-      | 'getStoryObjectMap'
+      | 'getAllOpened'
       | 'updateStatus'
       | 'findRelatedOpenPRs'
       | 'getOpenPullRequest'
@@ -254,13 +254,9 @@ export class StartPreparationUseCase {
     }
 
     const project = await this.projectRepository.getByUrl(params.projectUrl);
-    const storyObjectMap = await this.issueRepository.getStoryObjectMap(
+    const allOpenedIssues = await this.issueRepository.getAllOpened(
       project,
       params.allowIssueCacheMinutes,
-    );
-
-    const allOpenedIssues = Array.from(storyObjectMap.values()).flatMap(
-      (storyObject) => storyObject.issues,
     );
     const preparationStatusOption = project.status.statuses.find(
       (s) => s.name === PREPARATION_STATUS_NAME,

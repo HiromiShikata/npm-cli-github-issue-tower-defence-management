@@ -503,8 +503,8 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             }
             return Array.from(relatedPRsMap.values());
         };
-        this.getAllOpened = async (project) => {
-            const { issues } = await this.getAllIssues(project.id, 0);
+        this.getAllOpened = async (project, allowCacheMinutes) => {
+            const { issues } = await this.getAllIssues(project.id, allowCacheMinutes);
             return issues.filter((issue) => !issue.isClosed);
         };
         this.getStoryObjectMap = async (project, allowCacheMinutes) => {

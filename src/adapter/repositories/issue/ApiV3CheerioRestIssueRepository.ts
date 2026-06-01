@@ -924,8 +924,11 @@ export class ApiV3CheerioRestIssueRepository
     return Array.from(relatedPRsMap.values());
   };
 
-  getAllOpened = async (project: Project): Promise<Issue[]> => {
-    const { issues } = await this.getAllIssues(project.id, 0);
+  getAllOpened = async (
+    project: Project,
+    allowCacheMinutes: number,
+  ): Promise<Issue[]> => {
+    const { issues } = await this.getAllIssues(project.id, allowCacheMinutes);
     return issues.filter((issue) => !issue.isClosed);
   };
 
