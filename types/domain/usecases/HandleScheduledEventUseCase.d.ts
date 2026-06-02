@@ -82,6 +82,7 @@ export declare class HandleScheduledEventUseCase {
         notifyFinishedPreparation?: {
             awaitingQualityCheckStatusName?: string | null;
         } | null;
+        thresholdForAutoReject?: number;
     }) => Promise<{
         project: Project;
         issues: Issue[];

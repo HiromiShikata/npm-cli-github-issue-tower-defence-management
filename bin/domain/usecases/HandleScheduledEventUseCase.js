@@ -148,6 +148,7 @@ ${JSON.stringify(e)}
                         projectUrl: input.projectUrl,
                         allowIssueCacheMinutes: input.allowIssueCacheMinutes,
                         preparationProcessCheckCommand: input.startPreparation.preparationProcessCheckCommand,
+                        thresholdForAutoReject: input.thresholdForAutoReject ?? 3,
                         awLogDirectoryPath: input.startPreparation.awLogDirectoryPath,
                         awLogStaleThresholdMinutes: input.startPreparation.awLogStaleThresholdMinutes,
                         awaitingQualityCheckStatus: input.startPreparation.awaitingQualityCheckStatus ?? undefined,

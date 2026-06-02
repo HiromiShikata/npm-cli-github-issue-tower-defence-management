@@ -5,13 +5,14 @@ import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 export declare class RevertOrphanedPreparationUseCase {
     readonly projectRepository: Pick<ProjectRepository, 'findProjectIdByUrl' | 'getProject'>;
     readonly issueRepository: Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest'>;
-    readonly issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue'>;
+    readonly issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>;
     readonly localCommandRunner: LocalCommandRunner;
-    constructor(projectRepository: Pick<ProjectRepository, 'findProjectIdByUrl' | 'getProject'>, issueRepository: Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest'>, issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue'>, localCommandRunner: LocalCommandRunner);
+    constructor(projectRepository: Pick<ProjectRepository, 'findProjectIdByUrl' | 'getProject'>, issueRepository: Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest'>, issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>, localCommandRunner: LocalCommandRunner);
     run: (params: {
         projectUrl: string;
         allowIssueCacheMinutes: number;
         preparationProcessCheckCommand: string;
+        thresholdForAutoReject: number;
         awLogDirectoryPath?: string;
         awLogStaleThresholdMinutes?: number;
         awaitingQualityCheckStatus?: string | null;

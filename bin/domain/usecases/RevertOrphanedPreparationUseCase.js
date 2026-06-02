@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RevertOrphanedPreparationUseCase = void 0;
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
+const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
 class RevertOrphanedPreparationUseCase {
     constructor(projectRepository, issueRepository, issueCommentRepository, localCommandRunner) {
         this.projectRepository = projectRepository;
@@ -25,45 +26,68 @@ class RevertOrphanedPreparationUseCase {
             }
             const resolvedQualityCheckStatusName = params.awaitingQualityCheckStatus ?? WorkflowStatus_1.AWAITING_QUALITY_CHECK_STATUS_NAME;
             const awaitingQualityCheckStatusOption = project.status.statuses.find((s) => s.name === resolvedQualityCheckStatusName);
+            const failedPreparationStatusOption = project.status.statuses.find((s) => s.name === WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME);
             for (const issue of preparationIssues) {
                 const isOrphaned = await this.isOrphanedIssue(issue, params);
-                if (isOrphaned) {
-                    const hasRejections = await this.evaluateHasRejections(issue);
-                    if (!hasRejections && awaitingQualityCheckStatusOption) {
+                if (!isOrphaned) {
+                    continue;
+                }
+                const { hasRejections, comments } = await this.evaluateHasRejections(issue);
+                if (!hasRejections) {
+                    if (awaitingQualityCheckStatusOption) {
                         await this.issueRepository.updateStatus(project, issue, awaitingQualityCheckStatusOption.id);
                     }
                     else {
                         await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
                     }
+                    continue;
                 }
+                const rejectionStatusMessage = `Auto Status Check: REJECTED\n- ${ORPHANED_PREPARATION_REJECTION_DETAIL}`;
+                const lastTargetComments = comments.slice(-params.thresholdForAutoReject * 2);
+                const rejectionCommentCount = lastTargetComments.filter((comment) => comment.content.startsWith('Auto Status Check: REJECTED')).length;
+                const alreadyEscalated = lastTargetComments.some((comment) => comment.content
+                    .toLowerCase()
+                    .includes('failed to pass the check automatically'));
+                if (failedPreparationStatusOption &&
+                    rejectionCommentCount + 1 >= params.thresholdForAutoReject &&
+                    !alreadyEscalated) {
+                    await this.issueRepository.updateStatus(project, issue, failedPreparationStatusOption.id);
+                    await this.issueCommentRepository.createComment(issue, `${rejectionStatusMessage}\n\nFailed to pass the check automatically for ${params.thresholdForAutoReject} times`);
+                    continue;
+                }
+                await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
+                await this.issueCommentRepository.createComment(issue, rejectionStatusMessage);
             }
         };
         this.evaluateHasRejections = async (issue) => {
             if (issue.isClosed) {
-                return false;
+                return { hasRejections: false, comments: [] };
             }
             const comments = await this.issueCommentRepository.getCommentsFromIssue(issue);
             const lastComment = comments[comments.length - 1];
             if (!lastComment || !lastComment.content.startsWith('From: :robot:')) {
-                return true;
+                return { hasRejections: true, comments };
             }
             if (this.reportBodyHasNextStep(lastComment.content)) {
-                return true;
+                return { hasRejections: true, comments };
             }
             const categoryLabels = issue.labels.filter((label) => label.startsWith('category:'));
             const hasLlmAgentLabel = issue.labels.some((l) => l === 'llm-agent' || l.startsWith('llm-agent:'));
             if (hasLlmAgentLabel ||
                 (categoryLabels.length > 0 && !categoryLabels.includes('category:e2e'))) {
-                return false;
+                return { hasRejections: false, comments };
             }
             const prsToCheck = issue.isPr
                 ? await this.resolveOpenPrsForPrItem(issue.url)
                 : await this.issueRepository.findRelatedOpenPRs(issue.url);
             if (prsToCheck.length !== 1) {
-                return true;
+                return { hasRejections: true, comments };
             }
             const pr = prsToCheck[0];
-            return (pr.isConflicted || !pr.isPassedAllCiJob || !pr.isResolvedAllReviewComments);
+            const hasRejections = pr.isConflicted ||
+                !pr.isPassedAllCiJob ||
+                !pr.isResolvedAllReviewComments;
+            return { hasRejections, comments };
         };
         this.resolveOpenPrsForPrItem = async (prUrl) => {
             const pr = await this.issueRepository.getOpenPullRequest(prUrl);

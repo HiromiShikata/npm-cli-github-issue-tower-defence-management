@@ -139,6 +139,7 @@ exports.program
             projectUrl,
             allowIssueCacheMinutes,
             preparationProcessCheckCommand,
+            thresholdForAutoReject: config.thresholdForAutoReject ?? 3,
             awLogDirectoryPath: config.awLogDirectoryPath,
             awLogStaleThresholdMinutes: config.awLogStaleThresholdMinutes,
         });

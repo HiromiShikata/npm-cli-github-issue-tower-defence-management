@@ -1,3 +1,10 @@
+## [1.69.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.3...v1.69.4) (2026-06-02)
+
+
+### Bug Fixes
+
+* **core:** route repeatedly orphaned Preparation issues to Failed Preparation ([ec781dc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ec781dcb116893559b4479984e4b55649e43ac9c)), closes [#683](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/683)
+
 ## [1.69.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.2...v1.69.3) (2026-06-02)
 
 
