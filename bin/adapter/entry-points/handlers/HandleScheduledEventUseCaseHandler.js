@@ -384,6 +384,19 @@ class HandleScheduledEventUseCaseHandler {
                     }
                     : input.startPreparation,
             };
+            const resolveConfigSource = (readmeValue, configFileValue) => {
+                if (readmeValue !== undefined && readmeValue !== null) {
+                    return 'readmeOverride';
+                }
+                if (configFileValue !== undefined && configFileValue !== null) {
+                    return 'configFile';
+                }
+                return 'unset (default)';
+            };
+            const formatEffectiveConfig = (value, readmeValue, configFileValue) => `${value ?? 'null'} (source: ${resolveConfigSource(readmeValue, configFileValue)})`;
+            console.log(`Effective maximumPreparingIssuesCount: ${formatEffectiveConfig(mergedInput.startPreparation?.maximumPreparingIssuesCount, readmeConfig.maximumPreparingIssuesCount, input.startPreparation?.maximumPreparingIssuesCount)}`);
+            console.log(`Effective defaultLlmModelName: ${formatEffectiveConfig(mergedInput.startPreparation?.defaultLlmModelName, readmeConfig.defaultLlmModelName, input.startPreparation?.defaultLlmModelName)}`);
+            console.log(`Effective defaultAgentName: ${formatEffectiveConfig(mergedInput.startPreparation?.defaultAgentName, readmeConfig.defaultAgentName, input.startPreparation?.defaultAgentName)}`);
             const systemDateRepository = new SystemDateRepository_1.SystemDateRepository();
             const localStorageRepository = new LocalStorageRepository_1.LocalStorageRepository();
             const googleSpreadsheetRepository = new GoogleSpreadsheetRepository_1.GoogleSpreadsheetRepository(localStorageRepository, input.credentials.manager.googleServiceAccount.serviceAccountKey);
