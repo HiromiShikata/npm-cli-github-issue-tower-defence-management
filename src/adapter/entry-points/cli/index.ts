@@ -161,7 +161,7 @@ program
     if (tempProjectUrl) {
       const readme = await fetchProjectReadme(tempProjectUrl, token);
       if (readme) {
-        readmeOverrides = parseProjectReadmeConfig(readme);
+        readmeOverrides = parseProjectReadmeConfig(readme, tempProjectUrl);
       }
     }
 
@@ -348,7 +348,7 @@ program
     if (tempProjectUrl) {
       const readme = await fetchProjectReadme(tempProjectUrl, token);
       if (readme) {
-        readmeOverrides = parseProjectReadmeConfig(readme);
+        readmeOverrides = parseProjectReadmeConfig(readme, tempProjectUrl);
       }
     }
 
