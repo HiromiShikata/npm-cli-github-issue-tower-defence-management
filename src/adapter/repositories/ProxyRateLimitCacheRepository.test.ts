@@ -37,8 +37,9 @@ describe('ProxyRateLimitCacheRepository', () => {
     });
 
     const futureReset = Math.floor(Date.now() / 1000) + 3600;
+    const recentEpoch = Math.floor(Date.now() / 1000) - 60;
 
-    it('should return fiveHourReset as unifiedReset for a token with a cached snapshot', () => {
+    it('should return fiveHourReset as unifiedReset and ts as lastProbeEpoch for a token with a cached snapshot', () => {
       mockLoadTokens.mockReturnValue(['token-a']);
       mockReadRateLimit.mockReturnValue({
         fiveHourUtilization: 42,
@@ -51,22 +52,31 @@ describe('ProxyRateLimitCacheRepository', () => {
         fiveHourRejected: false,
         sevenDayRejected: false,
         modelWeeklyLimits: {},
+        lastUpdatedEpoch: recentEpoch,
       });
       const repository = new ProxyRateLimitCacheRepository('/tokens.json');
 
       const result = repository.getTokenRateLimitCaches();
 
-      expect(result).toEqual([{ token: 'token-a', unifiedReset: futureReset }]);
+      expect(result).toEqual([
+        {
+          token: 'token-a',
+          unifiedReset: futureReset,
+          lastProbeEpoch: recentEpoch,
+        },
+      ]);
     });
 
-    it('should return unifiedReset of 0 when no snapshot exists for a token', () => {
+    it('should return unifiedReset of 0 and lastProbeEpoch of 0 when no snapshot exists for a token', () => {
       mockLoadTokens.mockReturnValue(['token-a']);
       mockReadRateLimit.mockReturnValue(null);
       const repository = new ProxyRateLimitCacheRepository('/tokens.json');
 
       const result = repository.getTokenRateLimitCaches();
 
-      expect(result).toEqual([{ token: 'token-a', unifiedReset: 0 }]);
+      expect(result).toEqual([
+        { token: 'token-a', unifiedReset: 0, lastProbeEpoch: 0 },
+      ]);
     });
 
     it('should return entries for all tokens in the list', () => {
@@ -84,6 +94,7 @@ describe('ProxyRateLimitCacheRepository', () => {
             fiveHourRejected: false,
             sevenDayRejected: false,
             modelWeeklyLimits: {},
+            lastUpdatedEpoch: recentEpoch,
           };
         }
         return null;
@@ -93,8 +104,12 @@ describe('ProxyRateLimitCacheRepository', () => {
       const result = repository.getTokenRateLimitCaches();
 
       expect(result).toEqual([
-        { token: 'token-a', unifiedReset: futureReset },
-        { token: 'token-b', unifiedReset: 0 },
+        {
+          token: 'token-a',
+          unifiedReset: futureReset,
+          lastProbeEpoch: recentEpoch,
+        },
+        { token: 'token-b', unifiedReset: 0, lastProbeEpoch: 0 },
       ]);
     });
   });

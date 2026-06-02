@@ -19,6 +19,7 @@ export interface RateLimitSnapshot {
   fiveHourRejected: boolean;
   sevenDayRejected: boolean;
   modelWeeklyLimits: Record<string, ModelWeeklyLimit>;
+  lastUpdatedEpoch: number;
 }
 
 export const PROXY_PORT = 8787;
@@ -183,6 +184,8 @@ export const readRateLimit = (token: string): RateLimitSnapshot | null => {
     const unifiedRejected = status === 'rejected';
     const fiveHourRejected = fiveHourStatus === 'rejected';
     const sevenDayRejected = sevenDayStatus === 'rejected';
+    const storedTs = parsed.ts;
+    const lastUpdatedEpoch = typeof storedTs === 'number' ? storedTs : 0;
     return {
       fiveHourUtilization: num('anthropic-ratelimit-unified-5h-utilization'),
       fiveHourReset: num('anthropic-ratelimit-unified-5h-reset'),
@@ -197,6 +200,7 @@ export const readRateLimit = (token: string): RateLimitSnapshot | null => {
       fiveHourRejected,
       sevenDayRejected,
       modelWeeklyLimits: readModelWeeklyLimits(parsed),
+      lastUpdatedEpoch,
     };
   } catch {
     return null;

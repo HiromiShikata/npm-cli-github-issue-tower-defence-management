@@ -58,7 +58,8 @@ class ProxyRateLimitCacheRepository {
             return tokens.map((token) => {
                 const snapshot = (0, RateLimitCache_1.readRateLimit)(token);
                 const unifiedReset = snapshot !== null ? snapshot.fiveHourReset : 0;
-                return { token, unifiedReset };
+                const lastProbeEpoch = snapshot !== null ? snapshot.lastUpdatedEpoch : 0;
+                return { token, unifiedReset, lastProbeEpoch };
             });
         };
         this.probeToken = async (token) => {

@@ -195,6 +195,8 @@ const readRateLimit = (token) => {
         const unifiedRejected = status === 'rejected';
         const fiveHourRejected = fiveHourStatus === 'rejected';
         const sevenDayRejected = sevenDayStatus === 'rejected';
+        const storedTs = parsed.ts;
+        const lastUpdatedEpoch = typeof storedTs === 'number' ? storedTs : 0;
         return {
             fiveHourUtilization: num('anthropic-ratelimit-unified-5h-utilization'),
             fiveHourReset: num('anthropic-ratelimit-unified-5h-reset'),
@@ -208,6 +210,7 @@ const readRateLimit = (token) => {
             fiveHourRejected,
             sevenDayRejected,
             modelWeeklyLimits: readModelWeeklyLimits(parsed),
+            lastUpdatedEpoch,
         };
     }
     catch {

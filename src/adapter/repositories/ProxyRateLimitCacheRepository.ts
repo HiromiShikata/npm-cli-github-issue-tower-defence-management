@@ -29,7 +29,8 @@ export class ProxyRateLimitCacheRepository implements RateLimitCacheRepository {
     return tokens.map((token) => {
       const snapshot = readRateLimit(token);
       const unifiedReset = snapshot !== null ? snapshot.fiveHourReset : 0;
-      return { token, unifiedReset };
+      const lastProbeEpoch = snapshot !== null ? snapshot.lastUpdatedEpoch : 0;
+      return { token, unifiedReset, lastProbeEpoch };
     });
   };
 
