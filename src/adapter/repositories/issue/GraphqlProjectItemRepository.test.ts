@@ -1,20 +1,32 @@
 const mockPost = jest.fn();
 
-jest.mock('ky', () => ({
-  default: {
-    post: mockPost,
-    get: jest.fn(),
-    put: jest.fn(),
-    patch: jest.fn(),
-    delete: jest.fn(),
-    extend: jest.fn(),
-    create: jest.fn(),
-    stop: jest.fn(),
-  },
-  __esModule: true,
-}));
+jest.mock('ky', () => {
+  class MockKyHttpError extends Error {
+    public readonly response: { status: number };
+    constructor(response: { status: number }) {
+      super(`HTTP ${response.status}`);
+      this.name = 'HTTPError';
+      this.response = response;
+    }
+  }
+  return {
+    default: {
+      post: mockPost,
+      get: jest.fn(),
+      put: jest.fn(),
+      patch: jest.fn(),
+      delete: jest.fn(),
+      extend: jest.fn(),
+      create: jest.fn(),
+      stop: jest.fn(),
+    },
+    HTTPError: MockKyHttpError,
+    __esModule: true,
+  };
+});
 
 import {
+  CALL_GRAPHQL_MAX_RETRY_COUNT,
   GraphqlProjectItemRepository,
   PAGINATION_DELAY_MS,
 } from './GraphqlProjectItemRepository';
@@ -331,7 +343,7 @@ describe('GraphqlProjectItemRepository', () => {
         mockJsonResponse({
           errors: [
             {
-              message: 'Something went wrong while executing your query.',
+              message: 'Query parse error: unexpected token.',
               path: ['node', 'items', 'nodes', 7, 'id'],
               locations: [{ line: 11, column: 11 }],
               extensions: { code: 'INTERNAL' },
@@ -341,14 +353,17 @@ describe('GraphqlProjectItemRepository', () => {
       );
 
       let capturedError: unknown = null;
-      await expect(
-        repository
-          .fetchProjectItems('test-project-id')
-          .catch((error: unknown) => {
-            capturedError = error;
-            throw error;
-          }),
-      ).rejects.toThrow(/^GitHub GraphQL errors: /);
+      const resultPromise = repository
+        .fetchProjectItems('test-project-id')
+        .catch((error: unknown) => {
+          capturedError = error;
+          throw error;
+        });
+      const assertion = expect(resultPromise).rejects.toThrow(
+        /^GitHub GraphQL errors: /,
+      );
+      await jest.runAllTimersAsync();
+      await assertion;
       expect(capturedError).toBeInstanceOf(Error);
       const message = extractErrorMessage(capturedError);
       expect(message).toContain('"extensions":{"code":"INTERNAL"}');
@@ -364,9 +379,7 @@ describe('GraphqlProjectItemRepository', () => {
       );
 
       const failingResponse = mockJsonResponse({
-        errors: [
-          { message: 'Something went wrong while executing your query.' },
-        ],
+        errors: [{ message: 'Query parse error: page size too large.' }],
       });
       const successPageResponse = makePageResponse(false, 'cursor-1', 1);
 
@@ -374,7 +387,9 @@ describe('GraphqlProjectItemRepository', () => {
         .mockReturnValueOnce(failingResponse)
         .mockReturnValueOnce(successPageResponse);
 
-      const result = await repository.fetchProjectItems('test-project-id');
+      const resultPromise = repository.fetchProjectItems('test-project-id');
+      await jest.runAllTimersAsync();
+      const result = await resultPromise;
 
       expect(mockPost).toHaveBeenCalledTimes(2);
       expect(result).toHaveLength(1);
@@ -397,24 +412,175 @@ describe('GraphqlProjectItemRepository', () => {
         mockJsonResponse({
           errors: [
             {
-              message: 'Something went wrong while executing your query.',
+              message: 'Query parse error: page size too large.',
               extensions: { code: 'INTERNAL' },
             },
           ],
         }),
       );
 
-      await expect(
-        repository.fetchProjectItems('test-project-id'),
-      ).rejects.toThrow(
+      const resultPromise = repository.fetchProjectItems('test-project-id');
+      const assertion = expect(resultPromise).rejects.toThrow(
         /GitHub GraphQL errors: .*"extensions":\{"code":"INTERNAL"\}.*/,
       );
+      await jest.runAllTimersAsync();
+      await assertion;
 
       expect(mockPost).toHaveBeenCalledTimes(7);
       const requestedFirstSeries = mockPost.mock.calls.map((call) =>
         extractRequestedFirstFromMockCall(call),
       );
       expect(requestedFirstSeries).toEqual([100, 50, 25, 12, 6, 3, 1]);
+    });
+
+    const makeTransientErrorResponse = (requestId: string) =>
+      mockJsonResponse({
+        data: null,
+        errors: [
+          {
+            message: `Something went wrong while executing your query on 2026-05-27T00:00:00Z. Please include \`${requestId}\` when reporting this issue.`,
+          },
+        ],
+      });
+
+    const expectedTransientErrorMessageFor = (requestId: string) =>
+      `Please include \`${requestId}\` when reporting this issue.`;
+
+    it('should retry on transient GitHub GraphQL error and succeed on the next attempt', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      const consoleLogSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+      mockPost
+        .mockReturnValueOnce(makeTransientErrorResponse('req-attempt-1'))
+        .mockReturnValueOnce(makePageResponse(false, 'cursor-after-retry', 1));
+
+      const resultPromise = repository.fetchProjectItems('test-project-id');
+      await jest.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(mockPost).toHaveBeenCalledTimes(2);
+      expect(result).toHaveLength(1);
+      const retryLogCalls = consoleLogSpy.mock.calls
+        .map((args) => String(args[0]))
+        .filter((line) => /^retry \d+\/\d+:/.test(line));
+      expect(retryLogCalls).toHaveLength(1);
+      expect(retryLogCalls[0]).toMatch(
+        new RegExp(`^retry 1/${CALL_GRAPHQL_MAX_RETRY_COUNT}: `),
+      );
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should retry transient GitHub GraphQL errors up to the configured retry count then rethrow the original error', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      const consoleLogSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+
+      const attemptsPerPageSize = CALL_GRAPHQL_MAX_RETRY_COUNT + 1;
+      const pageSizes = [100, 50, 25, 12, 6, 3, 1];
+      const totalAttempts = attemptsPerPageSize * pageSizes.length;
+      let attemptCounter = 0;
+      mockPost.mockImplementation(() => {
+        attemptCounter += 1;
+        return makeTransientErrorResponse(`req-attempt-${attemptCounter}`);
+      });
+
+      const resultPromise = repository.fetchProjectItems('test-project-id');
+      const assertion = expect(resultPromise).rejects.toThrow(
+        expectedTransientErrorMessageFor(`req-attempt-${totalAttempts}`),
+      );
+      await jest.runAllTimersAsync();
+      await assertion;
+
+      expect(mockPost).toHaveBeenCalledTimes(totalAttempts);
+      const retryLogCalls = consoleLogSpy.mock.calls
+        .map((args) => String(args[0]))
+        .filter((line) => /^retry \d+\/\d+:/.test(line));
+      expect(retryLogCalls).toHaveLength(
+        CALL_GRAPHQL_MAX_RETRY_COUNT * pageSizes.length,
+      );
+      for (let pageIndex = 0; pageIndex < pageSizes.length; pageIndex++) {
+        for (
+          let retryNumber = 1;
+          retryNumber <= CALL_GRAPHQL_MAX_RETRY_COUNT;
+          retryNumber++
+        ) {
+          const logIndex =
+            pageIndex * CALL_GRAPHQL_MAX_RETRY_COUNT + (retryNumber - 1);
+          expect(retryLogCalls[logIndex]).toMatch(
+            new RegExp(
+              `^retry ${retryNumber}/${CALL_GRAPHQL_MAX_RETRY_COUNT}: `,
+            ),
+          );
+        }
+      }
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should not retry a non-transient GitHub GraphQL error', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      const consoleLogSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+      mockPost.mockImplementation(() =>
+        mockJsonResponse({
+          data: null,
+          errors: [{ message: 'Bad credentials' }],
+        }),
+      );
+
+      const resultPromise = repository.fetchProjectItems('test-project-id');
+      const assertion = expect(resultPromise).rejects.toThrow(
+        /GitHub GraphQL errors: .*Bad credentials.*/,
+      );
+      await jest.runAllTimersAsync();
+      await assertion;
+
+      expect(mockPost).toHaveBeenCalledTimes(7);
+      const retryLogCalls = consoleLogSpy.mock.calls
+        .map((args) => String(args[0]))
+        .filter((line) => /^retry \d+\/\d+:/.test(line));
+      expect(retryLogCalls).toHaveLength(0);
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should not retry or log when the first attempt succeeds', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      const consoleLogSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+      mockPost.mockReturnValueOnce(makePageResponse(false, 'cursor-only', 1));
+
+      const result = await repository.fetchProjectItems('test-project-id');
+
+      expect(result).toHaveLength(1);
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      const retryLogCalls = consoleLogSpy.mock.calls
+        .map((args) => String(args[0]))
+        .filter((line) => /^retry \d+\/\d+:/.test(line));
+      expect(retryLogCalls).toHaveLength(0);
+      consoleLogSpy.mockRestore();
     });
   });
 

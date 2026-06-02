@@ -1,4 +1,4 @@
-import ky from 'ky';
+import ky, { HTTPError } from 'ky';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
@@ -22,6 +22,11 @@ export type ProjectItem = {
 export const PAGINATION_DELAY_MS = 5000;
 export const FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE = 100;
 export const FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH = 4000;
+export const CALL_GRAPHQL_MAX_RETRY_COUNT = 5;
+export const CALL_GRAPHQL_INITIAL_BACKOFF_MS = 1000;
+export const CALL_GRAPHQL_MAX_BACKOFF_MS = 30000;
+const TRANSIENT_GRAPHQL_ERROR_MESSAGE_SUBSTRING =
+  'something went wrong while executing your query';
 
 const stringifyGraphqlErrorsForLog = (
   errors: { message: string }[],
@@ -33,6 +38,37 @@ const stringifyGraphqlErrorsForLog = (
     return serialized;
   }
   return `${serialized.slice(0, FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH)}...[truncated]`;
+};
+
+const isTransientGitHubGraphqlError = (error: unknown): boolean => {
+  if (error instanceof HTTPError) {
+    if (error.response.status >= 500 && error.response.status <= 599) {
+      return true;
+    }
+  }
+  if (error instanceof Error) {
+    if (
+      error.message
+        .toLowerCase()
+        .includes(TRANSIENT_GRAPHQL_ERROR_MESSAGE_SUBSTRING)
+    ) {
+      return true;
+    }
+  }
+  return false;
+};
+
+const computeRetryDelayMs = (
+  attemptIndex: number,
+  initialBackoffMs: number,
+  maxBackoffMs: number,
+): number => {
+  const base = Math.min(
+    initialBackoffMs * Math.pow(2, attemptIndex),
+    maxBackoffMs,
+  );
+  const jitterFactor = 0.8 + Math.random() * 0.4;
+  return Math.round(base * jitterFactor);
 };
 
 export class GraphqlProjectItemRepository extends BaseGitHubRepository {
@@ -270,66 +306,98 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!) {
           first: first,
         },
       };
-      const response = await ky
-        .post('https://api.github.com/graphql', {
-          json: graphqlQuery,
-          headers: {
-            Authorization: `Bearer ${this.ghToken}`,
-          },
-        })
-        .json<{
-          data: {
-            node: {
-              items: {
-                totalCount: number;
-                pageInfo: {
-                  endCursor: string;
-                  startCursor: string;
-                  hasNextPage: boolean;
-                };
-                nodes: {
-                  id: string;
-                  fieldValues: {
-                    nodes: {
-                      text: string;
+      const performAttempt = async () => {
+        const response = await ky
+          .post('https://api.github.com/graphql', {
+            json: graphqlQuery,
+            headers: {
+              Authorization: `Bearer ${this.ghToken}`,
+            },
+          })
+          .json<{
+            data: {
+              node: {
+                items: {
+                  totalCount: number;
+                  pageInfo: {
+                    endCursor: string;
+                    startCursor: string;
+                    hasNextPage: boolean;
+                  };
+                  nodes: {
+                    id: string;
+                    fieldValues: {
+                      nodes: {
+                        text: string;
+                        number: number;
+                        date: string;
+                        field: {
+                          name: string;
+                        };
+                      }[];
+                    };
+                    content: {
+                      repository: { nameWithOwner: string };
                       number: number;
-                      date: string;
-                      field: {
-                        name: string;
-                      };
-                    }[];
-                  };
-                  content: {
-                    repository: { nameWithOwner: string };
-                    number: number;
-                    title: string;
-                    state: string;
-                    url: string;
-                    createdAt: string;
-                    author: { login: string } | null;
-                    labels: { nodes: { name: string }[] };
-                    assignees: { nodes: { login: string }[] };
-                  };
-                }[];
-              };
+                      title: string;
+                      state: string;
+                      url: string;
+                      createdAt: string;
+                      author: { login: string } | null;
+                      labels: { nodes: { name: string }[] };
+                      assignees: { nodes: { login: string }[] };
+                    };
+                  }[];
+                };
+              } | null;
             } | null;
-          } | null;
-          errors?: { message: string }[];
-        }>();
-      if (response.errors && response.errors.length > 0) {
-        throw new Error(
-          `GitHub GraphQL errors: ${stringifyGraphqlErrorsForLog(response.errors)}`,
-        );
+            errors?: { message: string }[];
+          }>();
+        if (response.errors && response.errors.length > 0) {
+          throw new Error(
+            `GitHub GraphQL errors: ${stringifyGraphqlErrorsForLog(response.errors)}`,
+          );
+        }
+        const rawData = response.data;
+        if (!rawData) {
+          throw new Error('No data returned from GitHub API');
+        }
+        const rawNode = rawData.node;
+        if (rawNode === null) {
+          throw new Error('No data returned from GitHub API');
+        }
+        return { node: rawNode };
+      };
+      let lastError: unknown = null;
+      for (
+        let retryIndex = 0;
+        retryIndex <= CALL_GRAPHQL_MAX_RETRY_COUNT;
+        retryIndex++
+      ) {
+        try {
+          return await performAttempt();
+        } catch (error) {
+          lastError = error;
+          if (retryIndex >= CALL_GRAPHQL_MAX_RETRY_COUNT) {
+            break;
+          }
+          if (!isTransientGitHubGraphqlError(error)) {
+            throw error;
+          }
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          const delayMs = computeRetryDelayMs(
+            retryIndex,
+            CALL_GRAPHQL_INITIAL_BACKOFF_MS,
+            CALL_GRAPHQL_MAX_BACKOFF_MS,
+          );
+          console.log(
+            `retry ${retryIndex + 1}/${CALL_GRAPHQL_MAX_RETRY_COUNT}: callGraphql transient GitHub GraphQL error, backing off ${delayMs}ms: ${errorMessage}`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
       }
-      const rawData = response.data;
-      if (!rawData) {
-        throw new Error('No data returned from GitHub API');
-      }
-      const rawNode = rawData.node;
-      if (rawNode === null) {
-        throw new Error('No data returned from GitHub API');
-      }
-      return { node: rawNode };
+      throw lastError;
     };
     const callGraphqlWithHalvingFallback = async (
       after: string | null,
