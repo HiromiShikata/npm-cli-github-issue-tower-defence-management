@@ -1,3 +1,10 @@
+## [1.69.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.2...v1.69.3) (2026-06-02)
+
+
+### Bug Fixes
+
+* **findRelatedOpenPRs:** include issue URL in error messages for timeline fetch failures ([4844bdc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4844bdc755b8c2a5574fd0a35599c58c5428b280))
+
 ## [1.69.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.1...v1.69.2) (2026-06-02)
 
 

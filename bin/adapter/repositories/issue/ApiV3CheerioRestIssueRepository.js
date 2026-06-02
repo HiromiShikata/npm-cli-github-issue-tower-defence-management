@@ -474,11 +474,11 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 }
                 const responseData = await response.json();
                 if (!isIssueTimelineResponse(responseData)) {
-                    throw new Error('Unexpected response shape when fetching issue timeline');
+                    throw new Error(`Unexpected response shape when fetching issue timeline: ${issueUrl}`);
                 }
                 const issueData = responseData.data?.repository?.issue;
                 if (!issueData) {
-                    throw new Error('Issue not found when fetching timeline from GitHub GraphQL API');
+                    throw new Error(`Issue not found when fetching timeline from GitHub GraphQL API: ${issueUrl}`);
                 }
                 for (const item of issueData.timelineItems.nodes) {
                     if (item.__typename !== 'CrossReferencedEvent')
