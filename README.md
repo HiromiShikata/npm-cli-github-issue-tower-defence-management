@@ -199,7 +199,7 @@ codexHomeCandidates:
 
 #### README-based Config Overrides
 
-For `startDaemon`, `schedule`, and `notifyFinishedIssuePreparation`, the GitHub project README can override config file values. Add a `<details><summary>config</summary>...</details>` section with YAML content to the project README. This takes highest priority over both the config file and CLI arguments.
+For `startDaemon`, `schedule`, and `notifyFinishedIssuePreparation`, the GitHub project README can override config file values. Add a `<details><summary>config</summary>...</details>` section with YAML content to the project README. This takes highest priority over both the config file and CLI arguments. Any top-level YAML key inside the `config` block that is not a recognized override (for example a typo such as `maximumPreparingIssueCount` missing the trailing `s`) is ignored and logged via `console.warn` together with the project URL, so misspelled keys do not silently disable an intended override.
 
 ### Claude OAuth Token Rotation
 

@@ -350,6 +350,108 @@ codexHomeCandidates:
         '.codex-main',
       ]);
     });
+
+    it('should not warn when only known top-level keys are present', () => {
+      const readme = `<details>
+<summary>config</summary>
+defaultAgentName: 'agent'
+maximumPreparingIssuesCount: 5
+</details>`;
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      const result = parseProjectReadmeConfig(
+        readme,
+        'https://github.com/orgs/example/projects/1',
+      );
+
+      expect(result.defaultAgentName).toBe('agent');
+      expect(result.maximumPreparingIssuesCount).toBe(5);
+      expect(consoleWarnSpy).not.toHaveBeenCalled();
+
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('should warn for each unknown top-level key with project URL', () => {
+      const readme = `<details>
+<summary>config</summary>
+unknownOne: 'value-one'
+unknownTwo: 42
+</details>`;
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      parseProjectReadmeConfig(
+        readme,
+        'https://github.com/orgs/example/projects/1',
+      );
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        'Unknown key "unknownOne" in project README config section (project URL: https://github.com/orgs/example/projects/1)',
+      );
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        'Unknown key "unknownTwo" in project README config section (project URL: https://github.com/orgs/example/projects/1)',
+      );
+      expect(consoleWarnSpy).toHaveBeenCalledTimes(2);
+
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('should warn only for unknown keys in a mixed config', () => {
+      const readme = `<details>
+<summary>config</summary>
+defaultAgentName: 'agent'
+unexpectedKey: 'oops'
+</details>`;
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      const result = parseProjectReadmeConfig(
+        readme,
+        'https://github.com/orgs/example/projects/2',
+      );
+
+      expect(result.defaultAgentName).toBe('agent');
+      expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        'Unknown key "unexpectedKey" in project README config section (project URL: https://github.com/orgs/example/projects/2)',
+      );
+
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('should warn for a typo of a known key (maximumPreparingIssueCount missing trailing s)', () => {
+      const readme = `<details>
+<summary>config</summary>
+maximumPreparingIssueCount: 9
+</details>`;
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      const result = parseProjectReadmeConfig(
+        readme,
+        'https://github.com/orgs/example/projects/3',
+      );
+
+      expect(result.maximumPreparingIssuesCount).toBeUndefined();
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        'Unknown key "maximumPreparingIssueCount" in project README config section (project URL: https://github.com/orgs/example/projects/3)',
+      );
+
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('should warn without project URL suffix when projectUrl is not provided', () => {
+      const readme = `<details>
+<summary>config</summary>
+mysteryKey: 'value'
+</details>`;
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      parseProjectReadmeConfig(readme);
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        'Unknown key "mysteryKey" in project README config section',
+      );
+
+      consoleWarnSpy.mockRestore();
+    });
   });
 
   describe('mergeConfigs', () => {
