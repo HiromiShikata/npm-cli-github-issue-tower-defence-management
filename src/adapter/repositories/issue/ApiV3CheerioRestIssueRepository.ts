@@ -884,14 +884,14 @@ export class ApiV3CheerioRestIssueRepository
       const responseData: unknown = await response.json();
       if (!isIssueTimelineResponse(responseData)) {
         throw new Error(
-          'Unexpected response shape when fetching issue timeline',
+          `Unexpected response shape when fetching issue timeline: ${issueUrl}`,
         );
       }
 
       const issueData = responseData.data?.repository?.issue;
       if (!issueData) {
         throw new Error(
-          'Issue not found when fetching timeline from GitHub GraphQL API',
+          `Issue not found when fetching timeline from GitHub GraphQL API: ${issueUrl}`,
         );
       }
 
