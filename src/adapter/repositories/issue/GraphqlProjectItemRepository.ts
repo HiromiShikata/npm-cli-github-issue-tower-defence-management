@@ -20,7 +20,7 @@ export type ProjectItem = {
   }[];
 };
 export const PAGINATION_DELAY_MS = 5000;
-export const FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE = 50;
+export const FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE = 100;
 export const FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH = 4000;
 
 const stringifyGraphqlErrorsForLog = (
