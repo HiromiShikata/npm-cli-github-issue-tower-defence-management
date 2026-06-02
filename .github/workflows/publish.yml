@@ -19,6 +19,9 @@ jobs:
       pull-requests: write
       id-token: write
     steps:
+      - uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
       - name: Harden Runner
         uses: step-security/harden-runner@v2
         with:

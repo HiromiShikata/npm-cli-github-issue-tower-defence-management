@@ -11,6 +11,9 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
       - uses: actions/checkout@v6
         with:
           token: ${{ secrets.GH_TOKEN || github.token }}
