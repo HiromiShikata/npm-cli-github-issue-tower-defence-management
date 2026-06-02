@@ -132,8 +132,7 @@ class StartPreparationUseCase {
                 proxyBaseUrl = this.claudeTokenUsageRepository.proxyBaseUrl();
             }
             const project = await this.projectRepository.getByUrl(params.projectUrl);
-            const storyObjectMap = await this.issueRepository.getStoryObjectMap(project, params.allowIssueCacheMinutes);
-            const allOpenedIssues = Array.from(storyObjectMap.values()).flatMap((storyObject) => storyObject.issues);
+            const allOpenedIssues = await this.issueRepository.getAllOpened(project, params.allowIssueCacheMinutes);
             const preparationStatusOption = project.status.statuses.find((s) => s.name === WorkflowStatus_1.PREPARATION_STATUS_NAME);
             if (!preparationStatusOption) {
                 console.error(`Preparation status option '${WorkflowStatus_1.PREPARATION_STATUS_NAME}' not found in project.`);

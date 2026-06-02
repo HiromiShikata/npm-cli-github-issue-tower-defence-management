@@ -9,23 +9,7 @@ import { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsag
 import { ClaudeTokenUsage } from '../entities/ClaudeTokenUsage';
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
-import { StoryObjectMap } from '../entities/StoryObjectMap';
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
-
-const createMockStoryObjectMap = (issues: Issue[]): StoryObjectMap => {
-  const map: StoryObjectMap = new Map();
-  map.set('Default Story', {
-    story: {
-      id: 'story-1',
-      name: 'Default Story',
-      color: 'GRAY',
-      description: '',
-    },
-    storyIssue: null,
-    issues: issues,
-  });
-  return map;
-};
 
 const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   nameWithOwner: 'user/repo',
@@ -82,7 +66,7 @@ describe('StartPreparationUseCase', () => {
   let mockIssueRepository: Mocked<
     Pick<
       IssueRepository,
-      | 'getStoryObjectMap'
+      | 'getAllOpened'
       | 'updateStatus'
       | 'findRelatedOpenPRs'
       | 'getOpenPullRequest'
@@ -101,7 +85,7 @@ describe('StartPreparationUseCase', () => {
       getByUrl: jest.fn(),
     };
     mockIssueRepository = {
-      getStoryObjectMap: jest.fn().mockResolvedValue(new Map()),
+      getAllOpened: jest.fn().mockResolvedValue([]),
       updateStatus: jest.fn(),
       findRelatedOpenPRs: jest.fn().mockResolvedValue([]),
       getOpenPullRequest: jest.fn().mockResolvedValue(null),
@@ -134,9 +118,7 @@ describe('StartPreparationUseCase', () => {
       }),
     ];
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -176,6 +158,56 @@ describe('StartPreparationUseCase', () => {
       ],
     ]);
   });
+  it('should move awaiting workspace issue with story=null to preparation', async () => {
+    const issueWithoutStory = createMockIssue({
+      url: 'https://github.com/user/repo/issues/55',
+      number: 55,
+      title: 'Issue without story',
+      labels: ['category:impl'],
+      status: 'Awaiting Workspace',
+      story: null,
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getAllOpened.mockResolvedValue([issueWithoutStory]);
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: null,
+      codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
+      labelsAsLlmAgentName: null,
+    });
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+      url: 'https://github.com/user/repo/issues/55',
+      story: null,
+      status: 'Preparation',
+    });
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('2');
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
+      'aw',
+      [
+        'https://github.com/user/repo/issues/55',
+        'impl',
+        'claude-opus',
+        '--configFilePath',
+        '/path/to/config.yml',
+        '--branch',
+        'i55',
+      ],
+    ]);
+  });
   it('should pass --branch to aw command when issue has an existing linked PR', async () => {
     const awaitingIssues: Issue[] = [
       createMockIssue({
@@ -198,9 +230,7 @@ describe('StartPreparationUseCase', () => {
       missingRequiredCheckNames: [],
     };
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([existingPR]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
@@ -244,9 +274,7 @@ describe('StartPreparationUseCase', () => {
       }),
     ];
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockIssueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/user/repo/pull/354',
       branchName: 'dependabot/npm_and_yarn/multi-cc382f683c',
@@ -305,9 +333,7 @@ describe('StartPreparationUseCase', () => {
       }),
     ];
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockIssueRepository.getOpenPullRequest.mockResolvedValue(null);
     const consoleWarnSpy = jest
       .spyOn(console, 'warn')
@@ -343,9 +369,7 @@ describe('StartPreparationUseCase', () => {
       }),
     ];
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockIssueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/user/repo/pull/999',
       branchName: null,
@@ -391,9 +415,7 @@ describe('StartPreparationUseCase', () => {
       }),
     ];
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockIssueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/user/repo/pull/999',
       branchName: 'evil$(rm -rf /)',
@@ -463,9 +485,7 @@ describe('StartPreparationUseCase', () => {
       missingRequiredCheckNames: [],
     };
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
       olderPR,
       newerPR,
@@ -554,9 +574,7 @@ describe('StartPreparationUseCase', () => {
       missingRequiredCheckNames: [],
     };
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
       olderPRNullBranch,
       newerPR,
@@ -618,9 +636,7 @@ describe('StartPreparationUseCase', () => {
       missingRequiredCheckNames: [],
     };
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
       prWithNullBranch,
     ]);
@@ -663,9 +679,7 @@ describe('StartPreparationUseCase', () => {
       }),
     ];
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -720,9 +734,10 @@ describe('StartPreparationUseCase', () => {
       }),
     ];
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([...preparationIssues, ...awaitingIssues]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([
+      ...preparationIssues,
+      ...awaitingIssues,
+    ]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -755,9 +770,7 @@ describe('StartPreparationUseCase', () => {
       }),
     ];
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -800,9 +813,7 @@ describe('StartPreparationUseCase', () => {
       }),
     ];
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -845,9 +856,7 @@ describe('StartPreparationUseCase', () => {
       }),
     ];
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -890,9 +899,7 @@ describe('StartPreparationUseCase', () => {
       }),
     ];
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -935,9 +942,7 @@ describe('StartPreparationUseCase', () => {
       }),
     ];
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -980,9 +985,7 @@ describe('StartPreparationUseCase', () => {
       }),
     ];
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1025,9 +1028,7 @@ describe('StartPreparationUseCase', () => {
       }),
     ];
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1073,9 +1074,7 @@ describe('StartPreparationUseCase', () => {
       }),
     ];
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1126,9 +1125,7 @@ describe('StartPreparationUseCase', () => {
       }),
     ];
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(preparationIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(preparationIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1161,9 +1158,7 @@ describe('StartPreparationUseCase', () => {
       }),
     );
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1195,9 +1190,7 @@ describe('StartPreparationUseCase', () => {
       }),
     );
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1231,9 +1224,7 @@ describe('StartPreparationUseCase', () => {
       }),
     );
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1297,9 +1288,7 @@ describe('StartPreparationUseCase', () => {
       }),
     );
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1360,30 +1349,11 @@ describe('StartPreparationUseCase', () => {
       state: 'OPEN',
     });
 
-    const workflowBlockerMap: StoryObjectMap = new Map();
-    workflowBlockerMap.set('Workflow blocker', {
-      story: {
-        id: 'story-blocker',
-        name: 'Workflow blocker',
-        color: 'RED',
-        description: '',
-      },
-      storyIssue: null,
-      issues: [blockerIssue],
-    });
-    workflowBlockerMap.set('Default Story', {
-      story: {
-        id: 'story-1',
-        name: 'Default Story',
-        color: 'GRAY',
-        description: '',
-      },
-      storyIssue: null,
-      issues: [issueInBlockedRepo],
-    });
-
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(workflowBlockerMap);
+    mockIssueRepository.getAllOpened.mockResolvedValue([
+      blockerIssue,
+      issueInBlockedRepo,
+    ]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1429,9 +1399,10 @@ describe('StartPreparationUseCase', () => {
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([issueWithDependency, issueWithoutDependency]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([
+      issueWithDependency,
+      issueWithoutDependency,
+    ]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1481,12 +1452,10 @@ describe('StartPreparationUseCase', () => {
       });
 
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([
-          issueWithFutureNextActionHour,
-          issueWithoutNextActionHour,
-        ]),
-      );
+      mockIssueRepository.getAllOpened.mockResolvedValue([
+        issueWithFutureNextActionHour,
+        issueWithoutNextActionHour,
+      ]);
       mockLocalCommandRunner.runCommand.mockResolvedValue({
         stdout: '',
         stderr: '',
@@ -1539,12 +1508,10 @@ describe('StartPreparationUseCase', () => {
       });
 
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([
-          issueWithFutureNextActionDate,
-          issueWithoutNextActionDate,
-        ]),
-      );
+      mockIssueRepository.getAllOpened.mockResolvedValue([
+        issueWithFutureNextActionDate,
+        issueWithoutNextActionDate,
+      ]);
       mockLocalCommandRunner.runCommand.mockResolvedValue({
         stdout: '',
         stderr: '',
@@ -1590,9 +1557,9 @@ describe('StartPreparationUseCase', () => {
       });
 
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([issueWithTodayNextActionDate]),
-      );
+      mockIssueRepository.getAllOpened.mockResolvedValue([
+        issueWithTodayNextActionDate,
+      ]);
       mockLocalCommandRunner.runCommand.mockResolvedValue({
         stdout: '',
         stderr: '',
@@ -1638,9 +1605,9 @@ describe('StartPreparationUseCase', () => {
       });
 
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([issueWithPastNextActionDate]),
-      );
+      mockIssueRepository.getAllOpened.mockResolvedValue([
+        issueWithPastNextActionDate,
+      ]);
       mockLocalCommandRunner.runCommand.mockResolvedValue({
         stdout: '',
         stderr: '',
@@ -1686,9 +1653,9 @@ describe('StartPreparationUseCase', () => {
       });
 
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([issueWithPastNextActionHour]),
-      );
+      mockIssueRepository.getAllOpened.mockResolvedValue([
+        issueWithPastNextActionHour,
+      ]);
       mockLocalCommandRunner.runCommand.mockResolvedValue({
         stdout: '',
         stderr: '',
@@ -1737,12 +1704,10 @@ describe('StartPreparationUseCase', () => {
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([
-        issueFromAllowedAuthor,
-        issueFromNonAllowedAuthor,
-      ]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([
+      issueFromAllowedAuthor,
+      issueFromNonAllowedAuthor,
+    ]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1788,9 +1753,7 @@ describe('StartPreparationUseCase', () => {
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([issue1, issue2]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([issue1, issue2]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1834,9 +1797,10 @@ describe('StartPreparationUseCase', () => {
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([issueWithEmptyAuthor, issueWithKnownAuthor]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([
+      issueWithEmptyAuthor,
+      issueWithKnownAuthor,
+    ]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1874,9 +1838,7 @@ describe('StartPreparationUseCase', () => {
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([issueWithEmptyAuthor]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([issueWithEmptyAuthor]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1911,9 +1873,7 @@ describe('StartPreparationUseCase', () => {
       }),
     ];
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1959,9 +1919,7 @@ describe('StartPreparationUseCase', () => {
       }),
     ];
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -2007,9 +1965,7 @@ describe('StartPreparationUseCase', () => {
       }),
     ];
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -2075,9 +2031,7 @@ describe('StartPreparationUseCase', () => {
       }),
     ];
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -2140,9 +2094,7 @@ describe('StartPreparationUseCase', () => {
       itemId: 'item-regression',
     });
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([awaitingIssue]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -2201,9 +2153,7 @@ describe('StartPreparationUseCase', () => {
       status: 'Awaiting Workspace',
     });
     mockProjectRepository.getByUrl.mockResolvedValue(projectWithoutPreparation);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([awaitingIssue]);
     const consoleErrorSpy = jest
       .spyOn(console, 'error')
       .mockImplementation(() => {});
@@ -2230,11 +2180,9 @@ describe('StartPreparationUseCase', () => {
     consoleErrorSpy.mockRestore();
   });
 
-  it('should pass allowIssueCacheMinutes to getStoryObjectMap', async () => {
+  it('should pass allowIssueCacheMinutes to getAllOpened', async () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([]);
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
@@ -2250,7 +2198,7 @@ describe('StartPreparationUseCase', () => {
       labelsAsLlmAgentName: null,
     });
 
-    expect(mockIssueRepository.getStoryObjectMap).toHaveBeenCalledWith(
+    expect(mockIssueRepository.getAllOpened).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'project-1' }),
       5,
     );
@@ -2274,9 +2222,10 @@ describe('StartPreparationUseCase', () => {
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([closedIssue, openIssue]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([
+      closedIssue,
+      openIssue,
+    ]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -2313,9 +2262,7 @@ describe('StartPreparationUseCase', () => {
       itemId: 'item-1',
     });
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([awaitingIssue]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -2390,9 +2337,7 @@ describe('StartPreparationUseCase', () => {
       }),
     ];
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -2464,9 +2409,7 @@ describe('StartPreparationUseCase', () => {
       itemId: 'item-1',
     });
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([awaitingIssue]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -2507,9 +2450,7 @@ describe('StartPreparationUseCase', () => {
       itemId: 'item-1',
     });
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([awaitingIssue]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -2580,9 +2521,7 @@ describe('StartPreparationUseCase', () => {
       itemId: 'item-1',
     });
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([awaitingIssue]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -2642,9 +2581,7 @@ describe('StartPreparationUseCase', () => {
       itemId: 'item-1',
     });
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([awaitingIssue]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -2710,9 +2647,7 @@ describe('StartPreparationUseCase', () => {
       itemId: 'item-1',
     });
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([awaitingIssue]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -2796,9 +2731,7 @@ describe('StartPreparationUseCase', () => {
       }),
     ];
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -2888,9 +2821,7 @@ describe('StartPreparationUseCase', () => {
       }),
     );
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -2941,9 +2872,7 @@ describe('StartPreparationUseCase', () => {
       itemId: 'item-1',
     });
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([awaitingIssue]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -3003,9 +2932,7 @@ describe('StartPreparationUseCase', () => {
       itemId: 'item-1',
     });
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([awaitingIssue]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -3065,9 +2992,7 @@ describe('StartPreparationUseCase', () => {
       itemId: 'item-1',
     });
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([awaitingIssue]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -3127,9 +3052,7 @@ describe('StartPreparationUseCase', () => {
       itemId: 'item-1',
     });
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([awaitingIssue]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -3194,9 +3117,7 @@ describe('StartPreparationUseCase', () => {
       itemId: 'item-1',
     });
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([awaitingIssue]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -3239,9 +3160,7 @@ describe('StartPreparationUseCase', () => {
       itemId: 'item-1',
     });
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([awaitingIssue]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -3304,9 +3223,7 @@ describe('StartPreparationUseCase', () => {
       itemId: 'item-1',
     });
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([awaitingIssue]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -3369,9 +3286,7 @@ describe('StartPreparationUseCase', () => {
       itemId: 'item-1',
     });
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([awaitingIssue]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -3434,9 +3349,7 @@ describe('StartPreparationUseCase', () => {
       itemId: 'item-1',
     });
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([awaitingIssue]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -3499,9 +3412,7 @@ describe('StartPreparationUseCase', () => {
       itemId: 'item-1',
     });
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([awaitingIssue]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -3572,9 +3483,7 @@ describe('StartPreparationUseCase', () => {
       itemId: 'item-1',
     });
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([awaitingIssue]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -3655,9 +3564,7 @@ describe('StartPreparationUseCase', () => {
       }),
     ];
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -3723,9 +3630,7 @@ describe('StartPreparationUseCase', () => {
       itemId: 'item-1',
     });
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([awaitingIssue]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -3797,9 +3702,7 @@ describe('StartPreparationUseCase', () => {
         }),
       ];
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap(awaitingIssues),
-      );
+      mockIssueRepository.getAllOpened.mockResolvedValue(awaitingIssues);
       mockLocalCommandRunner.runCommand.mockResolvedValue({
         stdout: '',
         stderr: '',
@@ -3924,7 +3827,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
   const mockIssueRepositoryForRotation: Mocked<
     Pick<
       IssueRepository,
-      | 'getStoryObjectMap'
+      | 'getAllOpened'
       | 'updateStatus'
       | 'findRelatedOpenPRs'
       | 'getOpenPullRequest'
@@ -3933,7 +3836,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
       | 'createCommentByUrl'
     >
   > = {
-    getStoryObjectMap: jest.fn(),
+    getAllOpened: jest.fn(),
     updateStatus: jest.fn(),
     findRelatedOpenPRs: jest.fn(),
     getOpenPullRequest: jest.fn(),
