@@ -349,7 +349,9 @@ class HandleScheduledEventUseCaseHandler {
             }
             const managerToken = input.credentials.manager.github.token;
             const readme = await (0, projectConfig_1.fetchProjectReadme)(input.projectUrl, managerToken);
-            const readmeConfig = readme ? (0, projectConfig_1.parseProjectReadmeConfig)(readme) : {};
+            const readmeConfig = readme
+                ? (0, projectConfig_1.parseProjectReadmeConfig)(readme, input.projectUrl)
+                : {};
             const mergedInput = {
                 ...input,
                 allowIssueCacheMinutes: readmeConfig.allowIssueCacheMinutes ?? input.allowIssueCacheMinutes,

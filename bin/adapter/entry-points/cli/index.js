@@ -92,7 +92,7 @@ exports.program
     if (tempProjectUrl) {
         const readme = await (0, projectConfig_2.fetchProjectReadme)(tempProjectUrl, token);
         if (readme) {
-            readmeOverrides = (0, projectConfig_2.parseProjectReadmeConfig)(readme);
+            readmeOverrides = (0, projectConfig_2.parseProjectReadmeConfig)(readme, tempProjectUrl);
         }
     }
     const config = (0, projectConfig_2.mergeConfigs)(configFileValues, cliOverrides, readmeOverrides);
@@ -200,7 +200,7 @@ exports.program
     if (tempProjectUrl) {
         const readme = await (0, projectConfig_2.fetchProjectReadme)(tempProjectUrl, token);
         if (readme) {
-            readmeOverrides = (0, projectConfig_2.parseProjectReadmeConfig)(readme);
+            readmeOverrides = (0, projectConfig_2.parseProjectReadmeConfig)(readme, tempProjectUrl);
         }
     }
     const config = (0, projectConfig_2.mergeConfigs)(configFileValues, cliOverrides, readmeOverrides);

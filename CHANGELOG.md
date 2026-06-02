@@ -1,3 +1,10 @@
+## [1.69.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.4...v1.69.5) (2026-06-02)
+
+
+### Bug Fixes
+
+* **core:** warn on unknown keys in project README config section ([9484814](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9484814b1b50c97a93a88b91a47bec4e47b84eaf)), closes [#646](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/646)
+
 ## [1.69.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.3...v1.69.4) (2026-06-02)
 
 

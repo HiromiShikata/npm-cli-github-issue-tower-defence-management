@@ -63,6 +63,22 @@ const getStringArrayValue = (obj, key) => {
 };
 const isRecord = (value) => typeof value === 'object' && value !== null && !Array.isArray(value);
 exports.isRecord = isRecord;
+const knownProjectReadmeConfigKeys = [
+    'defaultAgentName',
+    'defaultLlmModelName',
+    'defaultLlmAgentName',
+    'maximumPreparingIssuesCount',
+    'allowIssueCacheMinutes',
+    'utilizationPercentageThreshold',
+    'allowedIssueAuthors',
+    'thresholdForAutoReject',
+    'workflowBlockerResolvedWebhookUrl',
+    'preparationProcessCheckCommand',
+    'codexHomeCandidates',
+    'claudeCodeOauthTokenListJsonPath',
+    'awLogDirectoryPath',
+    'awLogStaleThresholdMinutes',
+];
 const loadConfigFile = (configFilePath) => {
     try {
         const content = fs.readFileSync(configFilePath, 'utf-8');
@@ -97,7 +113,7 @@ const loadConfigFile = (configFilePath) => {
     }
 };
 exports.loadConfigFile = loadConfigFile;
-const parseProjectReadmeConfig = (readme) => {
+const parseProjectReadmeConfig = (readme, projectUrl) => {
     const detailsRegex = /<details>\s*<summary>config<\/summary>([\s\S]*?)<\/details>/i;
     const match = detailsRegex.exec(readme);
     if (!match) {
@@ -111,6 +127,13 @@ const parseProjectReadmeConfig = (readme) => {
         const parsed = yaml_1.default.parse(yamlContent);
         if (!(0, exports.isRecord)(parsed)) {
             return {};
+        }
+        const knownKeySet = new Set(knownProjectReadmeConfigKeys);
+        const projectUrlSuffix = projectUrl ? ` (project URL: ${projectUrl})` : '';
+        for (const key of Object.keys(parsed)) {
+            if (!knownKeySet.has(key)) {
+                console.warn(`Unknown key "${key}" in project README config section${projectUrlSuffix}`);
+            }
         }
         return {
             defaultAgentName: getStringValue(parsed, 'defaultAgentName'),
