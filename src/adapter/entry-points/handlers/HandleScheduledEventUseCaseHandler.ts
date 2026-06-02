@@ -141,6 +141,50 @@ export class HandleScheduledEventUseCaseHandler {
         : input.startPreparation,
     };
 
+    type EffectiveConfigValue = string | number | null | undefined;
+
+    const resolveConfigSource = (
+      readmeValue: EffectiveConfigValue,
+      configFileValue: EffectiveConfigValue,
+    ): 'readmeOverride' | 'configFile' | 'unset (default)' => {
+      if (readmeValue !== undefined && readmeValue !== null) {
+        return 'readmeOverride';
+      }
+      if (configFileValue !== undefined && configFileValue !== null) {
+        return 'configFile';
+      }
+      return 'unset (default)';
+    };
+
+    const formatEffectiveConfig = (
+      value: EffectiveConfigValue,
+      readmeValue: EffectiveConfigValue,
+      configFileValue: EffectiveConfigValue,
+    ): string =>
+      `${value ?? 'null'} (source: ${resolveConfigSource(readmeValue, configFileValue)})`;
+
+    console.log(
+      `Effective maximumPreparingIssuesCount: ${formatEffectiveConfig(
+        mergedInput.startPreparation?.maximumPreparingIssuesCount,
+        readmeConfig.maximumPreparingIssuesCount,
+        input.startPreparation?.maximumPreparingIssuesCount,
+      )}`,
+    );
+    console.log(
+      `Effective defaultLlmModelName: ${formatEffectiveConfig(
+        mergedInput.startPreparation?.defaultLlmModelName,
+        readmeConfig.defaultLlmModelName,
+        input.startPreparation?.defaultLlmModelName,
+      )}`,
+    );
+    console.log(
+      `Effective defaultAgentName: ${formatEffectiveConfig(
+        mergedInput.startPreparation?.defaultAgentName,
+        readmeConfig.defaultAgentName,
+        input.startPreparation?.defaultAgentName,
+      )}`,
+    );
+
     const systemDateRepository = new SystemDateRepository();
     const localStorageRepository = new LocalStorageRepository();
     const googleSpreadsheetRepository = new GoogleSpreadsheetRepository(
