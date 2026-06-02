@@ -1,3 +1,11 @@
+## [1.69.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.1...v1.69.2) (2026-06-02)
+
+
+### Bug Fixes
+
+* **core:** include story=null issues in StartPreparationUseCase candidate set ([3df4786](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3df4786daa2e80afa6010f6b060b390921c3ba24)), closes [#679](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/679)
+* **core:** restore fetchProjectItems initial page size to 100 ([fa5cbd6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/fa5cbd6287f6f2b10419e015230b572e854edf21)), closes [#689](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/689) [#687](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/687)
+
 ## [1.69.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.0...v1.69.1) (2026-05-30)
 
 

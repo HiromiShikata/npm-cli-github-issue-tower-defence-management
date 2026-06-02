@@ -7,7 +7,7 @@ exports.GraphqlProjectItemRepository = exports.FETCH_PROJECT_ITEMS_GRAPHQL_ERROR
 const ky_1 = __importDefault(require("ky"));
 const BaseGitHubRepository_1 = require("../BaseGitHubRepository");
 exports.PAGINATION_DELAY_MS = 5000;
-exports.FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE = 50;
+exports.FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE = 100;
 exports.FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH = 4000;
 const stringifyGraphqlErrorsForLog = (errors) => {
     const serialized = JSON.stringify(errors);
