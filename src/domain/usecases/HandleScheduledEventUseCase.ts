@@ -94,6 +94,7 @@ export class HandleScheduledEventUseCase {
     notifyFinishedPreparation?: {
       awaitingQualityCheckStatusName?: string | null;
     } | null;
+    thresholdForAutoReject?: number;
   }): Promise<{
     project: Project;
     issues: Issue[];
@@ -297,6 +298,7 @@ ${JSON.stringify(e)}
           allowIssueCacheMinutes: input.allowIssueCacheMinutes,
           preparationProcessCheckCommand:
             input.startPreparation.preparationProcessCheckCommand,
+          thresholdForAutoReject: input.thresholdForAutoReject ?? 3,
           awLogDirectoryPath: input.startPreparation.awLogDirectoryPath,
           awLogStaleThresholdMinutes:
             input.startPreparation.awLogStaleThresholdMinutes,

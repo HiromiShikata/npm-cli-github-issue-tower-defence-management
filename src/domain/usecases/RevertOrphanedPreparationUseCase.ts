@@ -6,11 +6,15 @@ import { IssueCommentRepository } from './adapter-interfaces/IssueCommentReposit
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { Issue } from '../entities/Issue';
+import { Comment } from '../entities/Comment';
 import {
   AWAITING_QUALITY_CHECK_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
+  FAILED_PREPARATION_STATUS_NAME,
   PREPARATION_STATUS_NAME,
 } from '../entities/WorkflowStatus';
+
+const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
 
 export class RevertOrphanedPreparationUseCase {
   constructor(
@@ -27,7 +31,7 @@ export class RevertOrphanedPreparationUseCase {
     >,
     readonly issueCommentRepository: Pick<
       IssueCommentRepository,
-      'getCommentsFromIssue'
+      'getCommentsFromIssue' | 'createComment'
     >,
     readonly localCommandRunner: LocalCommandRunner,
   ) {}
@@ -36,6 +40,7 @@ export class RevertOrphanedPreparationUseCase {
     projectUrl: string;
     allowIssueCacheMinutes: number;
     preparationProcessCheckCommand: string;
+    thresholdForAutoReject: number;
     awLogDirectoryPath?: string;
     awLogStaleThresholdMinutes?: number;
     awaitingQualityCheckStatus?: string | null;
@@ -74,11 +79,19 @@ export class RevertOrphanedPreparationUseCase {
       (s) => s.name === resolvedQualityCheckStatusName,
     );
 
+    const failedPreparationStatusOption = project.status.statuses.find(
+      (s) => s.name === FAILED_PREPARATION_STATUS_NAME,
+    );
+
     for (const issue of preparationIssues) {
       const isOrphaned = await this.isOrphanedIssue(issue, params);
-      if (isOrphaned) {
-        const hasRejections = await this.evaluateHasRejections(issue);
-        if (!hasRejections && awaitingQualityCheckStatusOption) {
+      if (!isOrphaned) {
+        continue;
+      }
+      const { hasRejections, comments } =
+        await this.evaluateHasRejections(issue);
+      if (!hasRejections) {
+        if (awaitingQualityCheckStatusOption) {
           await this.issueRepository.updateStatus(
             project,
             issue,
@@ -91,22 +104,65 @@ export class RevertOrphanedPreparationUseCase {
             awaitingWorkspaceStatusOption.id,
           );
         }
+        continue;
       }
+
+      const rejectionStatusMessage = `Auto Status Check: REJECTED\n- ${ORPHANED_PREPARATION_REJECTION_DETAIL}`;
+      const lastTargetComments = comments.slice(
+        -params.thresholdForAutoReject * 2,
+      );
+      const rejectionCommentCount = lastTargetComments.filter((comment) =>
+        comment.content.startsWith('Auto Status Check: REJECTED'),
+      ).length;
+      const alreadyEscalated = lastTargetComments.some((comment) =>
+        comment.content
+          .toLowerCase()
+          .includes('failed to pass the check automatically'),
+      );
+
+      if (
+        failedPreparationStatusOption &&
+        rejectionCommentCount + 1 >= params.thresholdForAutoReject &&
+        !alreadyEscalated
+      ) {
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          failedPreparationStatusOption.id,
+        );
+        await this.issueCommentRepository.createComment(
+          issue,
+          `${rejectionStatusMessage}\n\nFailed to pass the check automatically for ${params.thresholdForAutoReject} times`,
+        );
+        continue;
+      }
+
+      await this.issueRepository.updateStatus(
+        project,
+        issue,
+        awaitingWorkspaceStatusOption.id,
+      );
+      await this.issueCommentRepository.createComment(
+        issue,
+        rejectionStatusMessage,
+      );
     }
   };
 
-  private evaluateHasRejections = async (issue: Issue): Promise<boolean> => {
+  private evaluateHasRejections = async (
+    issue: Issue,
+  ): Promise<{ hasRejections: boolean; comments: Comment[] }> => {
     if (issue.isClosed) {
-      return false;
+      return { hasRejections: false, comments: [] };
     }
     const comments =
       await this.issueCommentRepository.getCommentsFromIssue(issue);
     const lastComment = comments[comments.length - 1];
     if (!lastComment || !lastComment.content.startsWith('From: :robot:')) {
-      return true;
+      return { hasRejections: true, comments };
     }
     if (this.reportBodyHasNextStep(lastComment.content)) {
-      return true;
+      return { hasRejections: true, comments };
     }
 
     const categoryLabels = issue.labels.filter((label) =>
@@ -119,7 +175,7 @@ export class RevertOrphanedPreparationUseCase {
       hasLlmAgentLabel ||
       (categoryLabels.length > 0 && !categoryLabels.includes('category:e2e'))
     ) {
-      return false;
+      return { hasRejections: false, comments };
     }
 
     const prsToCheck = issue.isPr
@@ -127,13 +183,15 @@ export class RevertOrphanedPreparationUseCase {
       : await this.issueRepository.findRelatedOpenPRs(issue.url);
 
     if (prsToCheck.length !== 1) {
-      return true;
+      return { hasRejections: true, comments };
     }
 
     const pr = prsToCheck[0];
-    return (
-      pr.isConflicted || !pr.isPassedAllCiJob || !pr.isResolvedAllReviewComments
-    );
+    const hasRejections =
+      pr.isConflicted ||
+      !pr.isPassedAllCiJob ||
+      !pr.isResolvedAllReviewComments;
+    return { hasRejections, comments };
   };
 
   private resolveOpenPrsForPrItem = async (

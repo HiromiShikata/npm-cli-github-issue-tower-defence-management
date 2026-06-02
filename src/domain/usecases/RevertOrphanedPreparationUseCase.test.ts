@@ -53,6 +53,12 @@ const createMockProject = (): Project => ({
         color: 'BLUE',
         description: '',
       },
+      {
+        id: '5',
+        name: 'Failed Preparation',
+        color: 'RED',
+        description: '',
+      },
     ],
   },
   nextActionDate: null,
@@ -107,7 +113,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     >
   >;
   let mockIssueCommentRepository: Mocked<
-    Pick<IssueCommentRepository, 'getCommentsFromIssue'>
+    Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>
   >;
   let mockLocalCommandRunner: Mocked<LocalCommandRunner>;
   let mockProject: Project;
@@ -129,6 +135,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     };
     mockIssueCommentRepository = {
       getCommentsFromIssue: jest.fn().mockResolvedValue([]),
+      createComment: jest.fn().mockResolvedValue(undefined),
     };
     mockLocalCommandRunner = {
       runCommand: jest.fn(),
@@ -161,6 +168,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -206,6 +214,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -244,6 +253,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -277,6 +287,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -310,6 +321,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
     });
 
     expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(0);
@@ -344,6 +356,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -377,13 +390,14 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
   });
 
-  it('should never post a comment regardless of orphan outcome', async () => {
+  it('should post Auto Status Check: REJECTED comment when orphan path reverts to Awaiting Workspace', async () => {
     const stuckIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',
       status: 'Preparation',
@@ -403,9 +417,18 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
+    expect(mockIssueCommentRepository.createComment.mock.calls[0][0]).toBe(
+      stuckIssue,
+    );
+    expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
+      'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
+    );
   });
 
   it('should leave in-flight Preparation issue untouched when check command exits zero', async () => {
@@ -427,6 +450,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -459,6 +483,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'check {URL}',
+      thresholdForAutoReject: 3,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -498,6 +523,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'check {URL}',
+      thresholdForAutoReject: 3,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -512,6 +538,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         projectUrl: 'https://github.com/user/repo',
         allowIssueCacheMinutes: 0,
         preparationProcessCheckCommand: 'check {URL}',
+        thresholdForAutoReject: 3,
       }),
     ).rejects.toThrow('Project not found');
   });
@@ -525,6 +552,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         projectUrl: 'https://github.com/user/repo',
         allowIssueCacheMinutes: 0,
         preparationProcessCheckCommand: 'check {URL}',
+        thresholdForAutoReject: 3,
       }),
     ).rejects.toThrow('Project not found. projectId: project-1');
   });
@@ -560,6 +588,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       allowIssueCacheMinutes: 0,
       preparationProcessCheckCommand: 'check {URL}',
+      thresholdForAutoReject: 3,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -578,6 +607,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'check {URL}',
+      thresholdForAutoReject: 3,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
@@ -614,6 +644,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "Please handover {URL}"',
+      thresholdForAutoReject: 3,
       awLogDirectoryPath: '/home/user/logs-aw',
       awLogStaleThresholdMinutes: 15,
     });
@@ -676,6 +707,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "Please handover {URL}"',
+      thresholdForAutoReject: 3,
       awLogDirectoryPath: '/home/user/logs-aw',
       awLogStaleThresholdMinutes: 15,
     });
@@ -710,6 +742,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "Please handover {URL}"',
+      thresholdForAutoReject: 3,
       awLogDirectoryPath: '/home/user/logs-aw',
       awLogStaleThresholdMinutes: 15,
     });
@@ -740,6 +773,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -769,6 +803,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "Please handover {URL}"',
+      thresholdForAutoReject: 3,
       awLogDirectoryPath: '/home/user/logs-aw',
       awLogStaleThresholdMinutes: 15,
     });
@@ -796,6 +831,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       allowIssueCacheMinutes: 0,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -828,6 +864,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
     });
 
     expect(
@@ -836,5 +873,228 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(0);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+  });
+
+  it('should transition orphaned issue to Failed Preparation when rejection threshold is met', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'bot',
+        content: 'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
+        createdAt: new Date(),
+      },
+      {
+        author: 'bot',
+        content: 'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
+        createdAt: new Date(),
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      allowIssueCacheMinutes: 60,
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(mockProject);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toBe(stuckIssue);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('5');
+    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
+    expect(mockIssueCommentRepository.createComment.mock.calls[0][0]).toBe(
+      stuckIssue,
+    );
+    expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
+      'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION\n\nFailed to pass the check automatically for 3 times',
+    );
+  });
+
+  it('should revert orphaned issue to Awaiting Workspace when rejection threshold is not yet met', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'bot',
+        content: 'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
+        createdAt: new Date(),
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      allowIssueCacheMinutes: 60,
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
+    expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
+      'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
+    );
+  });
+
+  it('should not transition to Failed Preparation when an earlier escalation comment is already in the recent window', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'bot',
+        content:
+          'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION\n\nFailed to pass the check automatically for 3 times',
+        createdAt: new Date(),
+      },
+      {
+        author: 'bot',
+        content: 'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
+        createdAt: new Date(),
+      },
+      {
+        author: 'bot',
+        content: 'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
+        createdAt: new Date(),
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      allowIssueCacheMinutes: 60,
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
+    expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
+      'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
+    );
+  });
+
+  it('should not post a rejection comment when orphaned issue advances to Awaiting Quality Check', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'bot',
+        content: 'From: :robot: agent report',
+        createdAt: new Date(),
+      },
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      createPassingPr(),
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      allowIssueCacheMinutes: 60,
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(0);
+  });
+
+  it('should revert to Awaiting Workspace when Failed Preparation status option is not present even at threshold', async () => {
+    const projectWithoutFailedPreparation = {
+      ...mockProject,
+      status: {
+        ...mockProject.status,
+        statuses: mockProject.status.statuses.filter(
+          (s) => s.name !== 'Failed Preparation',
+        ),
+      },
+    };
+    mockProjectRepository.getProject.mockResolvedValue(
+      projectWithoutFailedPreparation,
+    );
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'bot',
+        content: 'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
+        createdAt: new Date(),
+      },
+      {
+        author: 'bot',
+        content: 'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
+        createdAt: new Date(),
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      allowIssueCacheMinutes: 60,
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
+    expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
+      'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
+    );
   });
 });
