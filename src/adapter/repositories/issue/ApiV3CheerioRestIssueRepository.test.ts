@@ -206,6 +206,253 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('getOpenPullRequest CI evaluation against stale check runs', () => {
+    const PR_URL = 'https://github.com/HiromiShikata/test-repository/pull/1477';
+    const buildResponse = (
+      contexts: ReadonlyArray<Record<string, unknown>>,
+      rollupState: string,
+      requiredCheckNames: ReadonlyArray<string> = [
+        'Check linked issues in pull requests',
+      ],
+    ): Response =>
+      new Response(
+        JSON.stringify({
+          data: {
+            repository: {
+              pullRequest: {
+                url: PR_URL,
+                state: 'OPEN',
+                isDraft: false,
+                headRefName: 'i1467',
+                baseRefName: 'main',
+                mergeable: 'MERGEABLE',
+                baseRepository: {
+                  branchProtectionRules: {
+                    nodes: [
+                      {
+                        pattern: 'main',
+                        requiredStatusCheckContexts: requiredCheckNames,
+                      },
+                    ],
+                  },
+                  defaultBranchRef: { name: 'main' },
+                  rulesets: { nodes: [] },
+                },
+                commits: {
+                  nodes: [
+                    {
+                      commit: {
+                        statusCheckRollup: {
+                          state: rollupState,
+                          contexts: { nodes: contexts },
+                        },
+                      },
+                    },
+                  ],
+                },
+                reviewThreads: { nodes: [] },
+              },
+            },
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('treats latest passing CheckRun as success even when statusCheckRollup.state is FAILURE due to stale failed runs', async () => {
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      jest.spyOn(global, 'fetch').mockResolvedValue(
+        buildResponse(
+          [
+            {
+              __typename: 'CheckRun',
+              name: 'Check linked issues in pull requests',
+              conclusion: 'FAILURE',
+              status: 'COMPLETED',
+              startedAt: '2026-05-30T08:39:16Z',
+              completedAt: '2026-05-30T08:39:24Z',
+            },
+            {
+              __typename: 'CheckRun',
+              name: 'Check linked issues in pull requests',
+              conclusion: 'SKIPPED',
+              status: 'COMPLETED',
+              startedAt: '2026-05-30T08:39:30Z',
+              completedAt: '2026-05-30T08:39:32Z',
+            },
+            {
+              __typename: 'CheckRun',
+              name: 'Check linked issues in pull requests',
+              conclusion: 'SUCCESS',
+              status: 'COMPLETED',
+              startedAt: '2026-05-30T08:39:44Z',
+              completedAt: '2026-05-30T08:39:52Z',
+            },
+          ],
+          'FAILURE',
+        ),
+      );
+
+      const result = await repository.getOpenPullRequest(PR_URL);
+
+      expect(result).not.toBeNull();
+      expect(result?.isPassedAllCiJob).toBe(true);
+      expect(result?.isCiStateSuccess).toBe(true);
+      expect(result?.missingRequiredCheckNames).toEqual([]);
+    });
+
+    it('treats latest failing CheckRun as failure even when an earlier run was SUCCESS', async () => {
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      jest.spyOn(global, 'fetch').mockResolvedValue(
+        buildResponse(
+          [
+            {
+              __typename: 'CheckRun',
+              name: 'Check linked issues in pull requests',
+              conclusion: 'SUCCESS',
+              status: 'COMPLETED',
+              startedAt: '2026-05-30T08:39:16Z',
+              completedAt: '2026-05-30T08:39:24Z',
+            },
+            {
+              __typename: 'CheckRun',
+              name: 'Check linked issues in pull requests',
+              conclusion: 'FAILURE',
+              status: 'COMPLETED',
+              startedAt: '2026-05-30T08:39:44Z',
+              completedAt: '2026-05-30T08:39:52Z',
+            },
+          ],
+          'SUCCESS',
+        ),
+      );
+
+      const result = await repository.getOpenPullRequest(PR_URL);
+
+      expect(result).not.toBeNull();
+      expect(result?.isPassedAllCiJob).toBe(false);
+      expect(result?.isCiStateSuccess).toBe(false);
+    });
+
+    it('treats an in-progress CheckRun (conclusion null) as not yet passing', async () => {
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      jest.spyOn(global, 'fetch').mockResolvedValue(
+        buildResponse(
+          [
+            {
+              __typename: 'CheckRun',
+              name: 'Check linked issues in pull requests',
+              conclusion: null,
+              status: 'IN_PROGRESS',
+              startedAt: '2026-05-30T08:39:16Z',
+              completedAt: null,
+            },
+          ],
+          'PENDING',
+        ),
+      );
+
+      const result = await repository.getOpenPullRequest(PR_URL);
+
+      expect(result).not.toBeNull();
+      expect(result?.isPassedAllCiJob).toBe(false);
+      expect(result?.isCiStateSuccess).toBe(false);
+    });
+
+    it('treats latest passing StatusContext as success even when an older entry was FAILURE', async () => {
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      jest.spyOn(global, 'fetch').mockResolvedValue(
+        buildResponse(
+          [
+            {
+              __typename: 'StatusContext',
+              context: 'Check linked issues in pull requests',
+              state: 'FAILURE',
+              createdAt: '2026-05-30T08:39:16Z',
+            },
+            {
+              __typename: 'StatusContext',
+              context: 'Check linked issues in pull requests',
+              state: 'SUCCESS',
+              createdAt: '2026-05-30T08:39:44Z',
+            },
+          ],
+          'FAILURE',
+        ),
+      );
+
+      const result = await repository.getOpenPullRequest(PR_URL);
+
+      expect(result).not.toBeNull();
+      expect(result?.isPassedAllCiJob).toBe(true);
+      expect(result?.isCiStateSuccess).toBe(true);
+    });
+
+    it('reports missingRequiredCheckNames when a required check has no run on the head commit', async () => {
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      jest.spyOn(global, 'fetch').mockResolvedValue(
+        buildResponse(
+          [
+            {
+              __typename: 'CheckRun',
+              name: 'test',
+              conclusion: 'SUCCESS',
+              status: 'COMPLETED',
+              startedAt: '2026-05-30T08:39:16Z',
+              completedAt: '2026-05-30T08:39:24Z',
+            },
+          ],
+          'SUCCESS',
+          ['test', 'never-ran'],
+        ),
+      );
+
+      const result = await repository.getOpenPullRequest(PR_URL);
+
+      expect(result).not.toBeNull();
+      expect(result?.isPassedAllCiJob).toBe(false);
+      expect(result?.isCiStateSuccess).toBe(true);
+      expect(result?.missingRequiredCheckNames).toEqual(['never-ran']);
+    });
+
+    it('returns null when PR is not OPEN', async () => {
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      jest.spyOn(global, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            data: {
+              repository: {
+                pullRequest: {
+                  url: PR_URL,
+                  state: 'CLOSED',
+                  isDraft: false,
+                  headRefName: 'i1467',
+                  baseRefName: 'main',
+                  mergeable: 'MERGEABLE',
+                  baseRepository: {
+                    branchProtectionRules: { nodes: [] },
+                    defaultBranchRef: { name: 'main' },
+                    rulesets: { nodes: [] },
+                  },
+                  commits: { nodes: [] },
+                  reviewThreads: { nodes: [] },
+                },
+              },
+            },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const result = await repository.getOpenPullRequest(PR_URL);
+
+      expect(result).toBeNull();
+    });
+  });
+
   describe('updateStatus', () => {
     it('should call graphqlProjectItemRepository.updateProjectField with correct parameters', async () => {
       const { repository, graphqlProjectItemRepository } =

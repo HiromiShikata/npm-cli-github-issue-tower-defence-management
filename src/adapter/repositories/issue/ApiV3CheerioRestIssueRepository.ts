@@ -77,11 +77,15 @@ type TimelineItem = {
                     __typename: 'CheckRun';
                     name: string;
                     conclusion: string | null;
+                    status: string | null;
+                    startedAt: string | null;
+                    completedAt: string | null;
                   }
                 | {
                     __typename: 'StatusContext';
                     context: string;
                     state: string;
+                    createdAt: string;
                   }
               >;
             };
@@ -166,11 +170,15 @@ type PrStatusComputationData = {
                   __typename: 'CheckRun';
                   name: string;
                   conclusion: string | null;
+                  status: string | null;
+                  startedAt: string | null;
+                  completedAt: string | null;
                 }
               | {
                   __typename: 'StatusContext';
                   context: string;
                   state: string;
+                  createdAt: string;
                 }
             >;
           };
@@ -222,6 +230,76 @@ function isPullRequestFilesResponse(
 ): value is PullRequestFilesResponseItem[] {
   return typia.is<PullRequestFilesResponseItem[]>(value);
 }
+
+type StatusCheckContext =
+  | {
+      __typename: 'CheckRun';
+      name: string;
+      conclusion: string | null;
+      status: string | null;
+      startedAt: string | null;
+      completedAt: string | null;
+    }
+  | {
+      __typename: 'StatusContext';
+      context: string;
+      state: string;
+      createdAt: string;
+    };
+
+const contextName = (ctx: StatusCheckContext): string => {
+  if (ctx.__typename === 'CheckRun') {
+    return ctx.name;
+  }
+  return ctx.context;
+};
+
+const contextTimestampMs = (ctx: StatusCheckContext): number => {
+  if (ctx.__typename === 'CheckRun') {
+    const raw = ctx.completedAt ?? ctx.startedAt;
+    if (raw === null) {
+      return Number.NEGATIVE_INFINITY;
+    }
+    const parsed = Date.parse(raw);
+    return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed;
+  }
+  const parsed = Date.parse(ctx.createdAt);
+  return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed;
+};
+
+const PASSING_CHECK_RUN_CONCLUSIONS = new Set([
+  'SUCCESS',
+  'NEUTRAL',
+  'SKIPPED',
+]);
+
+const isContextResultPassing = (ctx: StatusCheckContext): boolean => {
+  if (ctx.__typename === 'CheckRun') {
+    if (ctx.conclusion === null) {
+      return false;
+    }
+    return PASSING_CHECK_RUN_CONCLUSIONS.has(ctx.conclusion);
+  }
+  return ctx.state === 'SUCCESS';
+};
+
+const selectLatestContextByName = (
+  contexts: ReadonlyArray<StatusCheckContext>,
+): Map<string, StatusCheckContext> => {
+  const latestByName = new Map<string, StatusCheckContext>();
+  for (const ctx of contexts) {
+    const name = contextName(ctx);
+    const existing = latestByName.get(name);
+    if (existing === undefined) {
+      latestByName.set(name, ctx);
+      continue;
+    }
+    if (contextTimestampMs(ctx) >= contextTimestampMs(existing)) {
+      latestByName.set(name, ctx);
+    }
+  }
+  return latestByName;
+};
 
 const fnmatch = (pattern: string, str: string): boolean => {
   let regexStr = '^';
@@ -671,7 +749,6 @@ export class ApiV3CheerioRestIssueRepository
   ): RelatedPullRequest => {
     const isConflicted = data.mergeable === 'CONFLICTING';
     const lastCommit = data.commits?.nodes[0]?.commit;
-    const ciState = lastCommit?.statusCheckRollup?.state;
     const contexts = lastCommit?.statusCheckRollup?.contexts?.nodes || [];
 
     const branchProtectionRules =
@@ -733,22 +810,18 @@ export class ApiV3CheerioRestIssueRepository
     }
 
     const requiredCheckNames = Array.from(requiredCheckNamesSet);
-    const seenContextNames = new Set<string>();
-    for (const ctx of contexts) {
-      if ('name' in ctx) {
-        seenContextNames.add(ctx.name);
-      }
-      if ('context' in ctx) {
-        seenContextNames.add(ctx.context);
-      }
-    }
+    const latestContextByName = selectLatestContextByName(contexts);
+    const seenContextNames = new Set(latestContextByName.keys());
 
     const missingRequiredCheckNames = requiredCheckNames.filter(
       (name) => !seenContextNames.has(name),
     );
-    const allRequiredChecksPassed = missingRequiredCheckNames.length === 0;
-    const isCiStateSuccess = ciState === 'SUCCESS';
-    const isPassedAllCiJob = isCiStateSuccess && allRequiredChecksPassed;
+    const allObservedContextsPassed = Array.from(
+      latestContextByName.values(),
+    ).every((ctx) => isContextResultPassing(ctx));
+    const isCiStateSuccess = allObservedContextsPassed;
+    const isPassedAllCiJob =
+      isCiStateSuccess && missingRequiredCheckNames.length === 0;
 
     const reviewThreads = data.reviewThreads?.nodes || [];
     const isResolvedAllReviewComments =
@@ -849,10 +922,14 @@ export class ApiV3CheerioRestIssueRepository
                                   ... on CheckRun {
                                     name
                                     conclusion
+                                    status
+                                    startedAt
+                                    completedAt
                                   }
                                   ... on StatusContext {
                                     context
                                     state
+                                    createdAt
                                   }
                                 }
                               }
@@ -1041,10 +1118,14 @@ export class ApiV3CheerioRestIssueRepository
                         ... on CheckRun {
                           name
                           conclusion
+                          status
+                          startedAt
+                          completedAt
                         }
                         ... on StatusContext {
                           context
                           state
+                          createdAt
                         }
                       }
                     }

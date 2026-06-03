@@ -18,8 +18,55 @@ function isDirectPullRequestResponse(value) {
     return true;
 }
 function isPullRequestFilesResponse(value) {
-    return (() => { const _io0 = input => "string" === typeof input.filename; return input => Array.isArray(input) && input.every(elem => "object" === typeof elem && null !== elem && _io0(elem)); })()(value);
+    return typia_1.default.is(value);
 }
+const contextName = (ctx) => {
+    if (ctx.__typename === 'CheckRun') {
+        return ctx.name;
+    }
+    return ctx.context;
+};
+const contextTimestampMs = (ctx) => {
+    if (ctx.__typename === 'CheckRun') {
+        const raw = ctx.completedAt ?? ctx.startedAt;
+        if (raw === null) {
+            return Number.NEGATIVE_INFINITY;
+        }
+        const parsed = Date.parse(raw);
+        return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed;
+    }
+    const parsed = Date.parse(ctx.createdAt);
+    return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed;
+};
+const PASSING_CHECK_RUN_CONCLUSIONS = new Set([
+    'SUCCESS',
+    'NEUTRAL',
+    'SKIPPED',
+]);
+const isContextResultPassing = (ctx) => {
+    if (ctx.__typename === 'CheckRun') {
+        if (ctx.conclusion === null) {
+            return false;
+        }
+        return PASSING_CHECK_RUN_CONCLUSIONS.has(ctx.conclusion);
+    }
+    return ctx.state === 'SUCCESS';
+};
+const selectLatestContextByName = (contexts) => {
+    const latestByName = new Map();
+    for (const ctx of contexts) {
+        const name = contextName(ctx);
+        const existing = latestByName.get(name);
+        if (existing === undefined) {
+            latestByName.set(name, ctx);
+            continue;
+        }
+        if (contextTimestampMs(ctx) >= contextTimestampMs(existing)) {
+            latestByName.set(name, ctx);
+        }
+    }
+    return latestByName;
+};
 const fnmatch = (pattern, str) => {
     let regexStr = '^';
     let i = 0;
@@ -162,7 +209,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                             createdAt: createdAt,
                         };
                     });
-                    if ((() => { const _io0 = input => "string" === typeof input.nameWithOwner && "number" === typeof input.number && "string" === typeof input.title && ("OPEN" === input.state || "CLOSED" === input.state || "MERGED" === input.state) && (null === input.status || "string" === typeof input.status) && (null === input.story || "string" === typeof input.story) && (null === input.nextActionDate || input.nextActionDate instanceof Date) && (null === input.nextActionHour || "number" === typeof input.nextActionHour) && (null === input.estimationMinutes || "number" === typeof input.estimationMinutes) && (Array.isArray(input.dependedIssueUrls) && input.dependedIssueUrls.every(elem => "string" === typeof elem)) && (null === input.completionDate50PercentConfidence || input.completionDate50PercentConfidence instanceof Date) && "string" === typeof input.url && (Array.isArray(input.assignees) && input.assignees.every(elem => "string" === typeof elem)) && (Array.isArray(input.labels) && input.labels.every(elem => "string" === typeof elem)) && "string" === typeof input.org && "string" === typeof input.repo && "string" === typeof input.body && "string" === typeof input.itemId && "boolean" === typeof input.isPr && "boolean" === typeof input.isInProgress && "boolean" === typeof input.isClosed && input.createdAt instanceof Date && "string" === typeof input.author; return input => Array.isArray(input) && input.every(elem => "object" === typeof elem && null !== elem && _io0(elem)); })()(issues)) {
+                    if (typia_1.default.is(issues)) {
                         return issues;
                     }
                 }
@@ -272,7 +319,6 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         this.computePrStatus = (prUrl, headRefName, baseRefName, data) => {
             const isConflicted = data.mergeable === 'CONFLICTING';
             const lastCommit = data.commits?.nodes[0]?.commit;
-            const ciState = lastCommit?.statusCheckRollup?.state;
             const contexts = lastCommit?.statusCheckRollup?.contexts?.nodes || [];
             const branchProtectionRules = data.baseRepository?.branchProtectionRules?.nodes || [];
             const matchingRules = baseRefName
@@ -325,19 +371,12 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 }
             }
             const requiredCheckNames = Array.from(requiredCheckNamesSet);
-            const seenContextNames = new Set();
-            for (const ctx of contexts) {
-                if ('name' in ctx) {
-                    seenContextNames.add(ctx.name);
-                }
-                if ('context' in ctx) {
-                    seenContextNames.add(ctx.context);
-                }
-            }
+            const latestContextByName = selectLatestContextByName(contexts);
+            const seenContextNames = new Set(latestContextByName.keys());
             const missingRequiredCheckNames = requiredCheckNames.filter((name) => !seenContextNames.has(name));
-            const allRequiredChecksPassed = missingRequiredCheckNames.length === 0;
-            const isCiStateSuccess = ciState === 'SUCCESS';
-            const isPassedAllCiJob = isCiStateSuccess && allRequiredChecksPassed;
+            const allObservedContextsPassed = Array.from(latestContextByName.values()).every((ctx) => isContextResultPassing(ctx));
+            const isCiStateSuccess = allObservedContextsPassed;
+            const isPassedAllCiJob = isCiStateSuccess && missingRequiredCheckNames.length === 0;
             const reviewThreads = data.reviewThreads?.nodes || [];
             const isResolvedAllReviewComments = reviewThreads.length === 0 ||
                 reviewThreads.every((thread) => thread.isResolved);
@@ -429,10 +468,14 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                                   ... on CheckRun {
                                     name
                                     conclusion
+                                    status
+                                    startedAt
+                                    completedAt
                                   }
                                   ... on StatusContext {
                                     context
                                     state
+                                    createdAt
                                   }
                                 }
                               }
@@ -591,10 +634,14 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                         ... on CheckRun {
                           name
                           conclusion
+                          status
+                          startedAt
+                          completedAt
                         }
                         ... on StatusContext {
                           context
                           state
+                          createdAt
                         }
                       }
                     }
