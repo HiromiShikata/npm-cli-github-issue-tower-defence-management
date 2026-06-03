@@ -102,7 +102,9 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
-          modelWeeklyLimits: {},
+          modelWeeklyLimits: {
+            seven_day: { rejected: false, resetsAt: futureReset },
+          },
         },
         {
           name: 'bob',
@@ -144,7 +146,9 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 0,
           blocked: true,
           rejected: false,
-          modelWeeklyLimits: {},
+          modelWeeklyLimits: {
+            seven_day: { rejected: false, resetsAt: futureReset },
+          },
         },
       ]);
     });
@@ -177,7 +181,9 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: true,
-          modelWeeklyLimits: {},
+          modelWeeklyLimits: {
+            seven_day: { rejected: false, resetsAt: futureReset },
+          },
         },
       ]);
     });
@@ -210,7 +216,9 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 30,
           blocked: false,
           rejected: false,
-          modelWeeklyLimits: {},
+          modelWeeklyLimits: {
+            seven_day: { rejected: false, resetsAt: futureReset },
+          },
         },
       ]);
     });
@@ -243,7 +251,9 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
-          modelWeeklyLimits: {},
+          modelWeeklyLimits: {
+            seven_day: { rejected: false, resetsAt: futureReset },
+          },
         },
       ]);
     });
@@ -276,7 +286,9 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
-          modelWeeklyLimits: {},
+          modelWeeklyLimits: {
+            seven_day: { rejected: false, resetsAt: futureReset },
+          },
         },
       ]);
     });
@@ -342,7 +354,9 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: true,
-          modelWeeklyLimits: {},
+          modelWeeklyLimits: {
+            seven_day: { rejected: false, resetsAt: futureReset },
+          },
         },
       ]);
     });
@@ -375,7 +389,9 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 100,
           blocked: false,
           rejected: true,
-          modelWeeklyLimits: {},
+          modelWeeklyLimits: {
+            seven_day: { rejected: true, resetsAt: futureReset },
+          },
         },
       ]);
     });
@@ -408,7 +424,9 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
-          modelWeeklyLimits: {},
+          modelWeeklyLimits: {
+            seven_day: { rejected: false, resetsAt: futureReset },
+          },
         },
       ]);
     });
@@ -507,6 +525,186 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           },
         },
       ]);
+    });
+
+    it('should bridge sevenDayReset into a synthesized generic seven_day weekly limit when no model-specific weekly limit is present', async () => {
+      mockLoadTokenEntries.mockReturnValue([
+        { name: 'alice', token: 'token-a' },
+      ]);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 12,
+        fiveHourReset: futureReset,
+        sevenDayUtilization: 33,
+        sevenDayReset: futureReset,
+        blocked: false,
+        rejected: false,
+        unifiedRejected: false,
+        fiveHourRejected: false,
+        sevenDayRejected: false,
+        modelWeeklyLimits: {},
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result[0].modelWeeklyLimits).toEqual({
+        seven_day: { rejected: false, resetsAt: futureReset },
+      });
+    });
+
+    it('should bridge sevenDayReset with rejected=true when sevenDayRejected is active and 7d reset is in the future', async () => {
+      mockLoadTokenEntries.mockReturnValue([
+        { name: 'alice', token: 'token-a' },
+      ]);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 10,
+        fiveHourReset: futureReset,
+        sevenDayUtilization: 100,
+        sevenDayReset: futureReset,
+        blocked: false,
+        rejected: true,
+        unifiedRejected: false,
+        fiveHourRejected: false,
+        sevenDayRejected: true,
+        modelWeeklyLimits: {},
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result[0].modelWeeklyLimits).toEqual({
+        seven_day: { rejected: true, resetsAt: futureReset },
+      });
+    });
+
+    it('should not bridge sevenDayReset when a generic seven_day weekly limit is already present', async () => {
+      const existingResetsAt = futureReset + 1000;
+      mockLoadTokenEntries.mockReturnValue([
+        { name: 'alice', token: 'token-a' },
+      ]);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 10,
+        fiveHourReset: futureReset,
+        sevenDayUtilization: 50,
+        sevenDayReset: futureReset,
+        blocked: false,
+        rejected: false,
+        unifiedRejected: false,
+        fiveHourRejected: false,
+        sevenDayRejected: false,
+        modelWeeklyLimits: {
+          seven_day: { rejected: false, resetsAt: existingResetsAt },
+        },
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result[0].modelWeeklyLimits).toEqual({
+        seven_day: { rejected: false, resetsAt: existingResetsAt },
+      });
+    });
+
+    it('should not bridge sevenDayReset when a seven_day_opus weekly limit is already present', async () => {
+      const opusResetsAt = futureReset + 2000;
+      mockLoadTokenEntries.mockReturnValue([
+        { name: 'alice', token: 'token-a' },
+      ]);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 10,
+        fiveHourReset: futureReset,
+        sevenDayUtilization: 50,
+        sevenDayReset: futureReset,
+        blocked: false,
+        rejected: false,
+        unifiedRejected: false,
+        fiveHourRejected: false,
+        sevenDayRejected: false,
+        modelWeeklyLimits: {
+          seven_day_opus: { rejected: false, resetsAt: opusResetsAt },
+        },
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result[0].modelWeeklyLimits).toEqual({
+        seven_day_opus: { rejected: false, resetsAt: opusResetsAt },
+      });
+    });
+
+    it('should not bridge sevenDayReset when a seven_day_sonnet weekly limit is already present', async () => {
+      const sonnetResetsAt = futureReset + 3000;
+      mockLoadTokenEntries.mockReturnValue([
+        { name: 'alice', token: 'token-a' },
+      ]);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 10,
+        fiveHourReset: futureReset,
+        sevenDayUtilization: 50,
+        sevenDayReset: futureReset,
+        blocked: false,
+        rejected: false,
+        unifiedRejected: false,
+        fiveHourRejected: false,
+        sevenDayRejected: false,
+        modelWeeklyLimits: {
+          seven_day_sonnet: { rejected: false, resetsAt: sonnetResetsAt },
+        },
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result[0].modelWeeklyLimits).toEqual({
+        seven_day_sonnet: { rejected: false, resetsAt: sonnetResetsAt },
+      });
+    });
+
+    it('should not bridge sevenDayReset when the 7d reset has already passed', async () => {
+      mockLoadTokenEntries.mockReturnValue([
+        { name: 'alice', token: 'token-a' },
+      ]);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 10,
+        fiveHourReset: futureReset,
+        sevenDayUtilization: 0,
+        sevenDayReset: pastReset,
+        blocked: false,
+        rejected: false,
+        unifiedRejected: false,
+        fiveHourRejected: false,
+        sevenDayRejected: false,
+        modelWeeklyLimits: {},
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result[0].modelWeeklyLimits).toEqual({});
+    });
+
+    it('should not bridge sevenDayReset when sevenDayReset is 0', async () => {
+      mockLoadTokenEntries.mockReturnValue([
+        { name: 'alice', token: 'token-a' },
+      ]);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 10,
+        fiveHourReset: futureReset,
+        sevenDayUtilization: 0,
+        sevenDayReset: 0,
+        blocked: false,
+        rejected: false,
+        unifiedRejected: false,
+        fiveHourRejected: false,
+        sevenDayRejected: false,
+        modelWeeklyLimits: {},
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result[0].modelWeeklyLimits).toEqual({});
     });
   });
 
