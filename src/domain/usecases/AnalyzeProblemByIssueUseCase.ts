@@ -2,10 +2,15 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
 import { DateRepository } from './adapter-interfaces/DateRepository';
 import { StoryObject, StoryObjectMap } from '../entities/StoryObjectMap';
+import { Issue } from '../entities/Issue';
+import { Member } from '../entities/Member';
 
 export class AnalyzeProblemByIssueUseCase {
   constructor(
-    readonly issueRepository: Pick<IssueRepository, 'createComment'>,
+    readonly issueRepository: Pick<
+      IssueRepository,
+      'createComment' | 'createNewIssue'
+    >,
     readonly dateRepository: Pick<
       DateRepository,
       'formatDurationToHHMM' | 'formatDateWithDayOfWeek'
@@ -16,6 +21,10 @@ export class AnalyzeProblemByIssueUseCase {
     targetDates: Date[];
     project: Project;
     storyObjectMap: StoryObjectMap;
+    manager: Member['name'];
+    members: Member['name'][];
+    org: string;
+    repo: string;
   }): Promise<void> => {
     const story = input.project.story;
     if (
@@ -31,6 +40,14 @@ export class AnalyzeProblemByIssueUseCase {
     if (!targetDate) {
       return;
     }
+    await this.createWorkflowIssueAlert({
+      project: input.project,
+      storyObjectMap: input.storyObjectMap,
+      manager: input.manager,
+      members: input.members,
+      org: input.org,
+      repo: input.repo,
+    });
     for (const storyObject of input.storyObjectMap.values()) {
       const storyIssue = storyObject.storyIssue;
       if (!storyIssue) {
@@ -42,6 +59,57 @@ export class AnalyzeProblemByIssueUseCase {
       );
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }
+  };
+  createWorkflowIssueAlert = async (input: {
+    project: Project;
+    storyObjectMap: StoryObjectMap;
+    manager: Member['name'];
+    members: Member['name'][];
+    org: string;
+    repo: string;
+  }): Promise<void> => {
+    const workflowManagementStoryName =
+      input.project.story?.workflowManagementStory.name;
+    if (!workflowManagementStoryName) {
+      return;
+    }
+    const workflowStoryObject = input.storyObjectMap.get(
+      workflowManagementStoryName,
+    );
+    if (!workflowStoryObject) {
+      return;
+    }
+    const issuesByAssignee: [Member['name'], Issue[]][] = input.members
+      .map((member): [Member['name'], Issue[]] => {
+        const memberIssues = workflowStoryObject.issues.filter(
+          (issue) =>
+            issue.state === 'OPEN' &&
+            !issue.isPr &&
+            issue.assignees.includes(member),
+        );
+        return [member, memberIssues];
+      })
+      .filter(([, issues]) => issues.length > 1)
+      .sort(([, a], [, b]) => b.length - a.length);
+    if (issuesByAssignee.length === 0) {
+      return;
+    }
+    const body = issuesByAssignee
+      .map(
+        ([assignee, issues]) =>
+          `- @${assignee} ${issues.length}\n${issues
+            .map((issue) => `  - ${issue.url}`)
+            .join('\n')}`,
+      )
+      .join('\n');
+    await this.issueRepository.createNewIssue(
+      input.org,
+      input.repo,
+      'Workflow Issues Count Alert',
+      body,
+      [input.manager],
+      ['story:workflow-management'],
+    );
   };
   createSummaryCommentBody = (
     storyObject: StoryObject & {

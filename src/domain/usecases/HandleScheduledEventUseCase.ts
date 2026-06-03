@@ -350,6 +350,10 @@ ${JSON.stringify(e)}
       targetDates: targetDateTimes,
       project,
       storyObjectMap: storyObjectMap,
+      manager: input.manager,
+      members: input.workingReport.members,
+      org: input.org,
+      repo: input.workingReport.repo,
     });
     await this.actionAnnouncementUseCase.run({
       targetDates: targetDateTimes,
