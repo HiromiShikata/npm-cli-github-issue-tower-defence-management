@@ -54,7 +54,7 @@ describe('AnalyzeProblemByIssueUseCase', () => {
     it('does nothing when project has no story', async () => {
       const project: Project = { ...basicProject, story: null };
       await useCase.run({
-        targetDates: [new Date('2024-01-01T00:00:00Z')],
+        targetDates: [new Date(2024, 0, 1, 0, 0, 0)],
         project,
         storyObjectMap: new Map(),
         manager: 'manager',
@@ -67,7 +67,7 @@ describe('AnalyzeProblemByIssueUseCase', () => {
     });
     it('does nothing when no targetDate hits the top of the hour 0', async () => {
       await useCase.run({
-        targetDates: [new Date('2024-01-01T03:30:00Z')],
+        targetDates: [new Date(2024, 0, 1, 3, 30, 0)],
         project: basicProject,
         storyObjectMap: new Map(),
         manager: 'manager',
@@ -103,7 +103,7 @@ describe('AnalyzeProblemByIssueUseCase', () => {
         'createWorkflowIssueAlert',
       );
       await useCase.run({
-        targetDates: [new Date('2024-01-01T00:00:00Z')],
+        targetDates: [new Date(2024, 0, 1, 0, 0, 0)],
         project: basicProject,
         storyObjectMap,
         manager: 'manager',
