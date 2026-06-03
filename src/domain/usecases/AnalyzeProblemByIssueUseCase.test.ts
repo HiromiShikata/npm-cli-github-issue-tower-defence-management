@@ -78,6 +78,58 @@ describe('AnalyzeProblemByIssueUseCase', () => {
       expect(mockIssueRepository.createComment).not.toHaveBeenCalled();
       expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
     });
+    it('invokes createWorkflowIssueAlert at the top of hour 0 with the same inputs received by run', async () => {
+      const storyObjectMap: StoryObjectMap = new Map([
+        [
+          workflowManagementStoryName,
+          {
+            story: workflowStoryOption,
+            storyIssue: null,
+            issues: [
+              buildIssue({
+                url: 'https://github.com/o/r/issues/1',
+                assignees: ['alice'],
+              }),
+              buildIssue({
+                url: 'https://github.com/o/r/issues/2',
+                assignees: ['alice'],
+              }),
+            ],
+          },
+        ],
+      ]);
+      const createWorkflowIssueAlertSpy = jest.spyOn(
+        useCase,
+        'createWorkflowIssueAlert',
+      );
+      await useCase.run({
+        targetDates: [new Date('2024-01-01T00:00:00Z')],
+        project: basicProject,
+        storyObjectMap,
+        manager: 'manager',
+        members: ['alice', 'bob'],
+        org: 'org',
+        repo: 'repo',
+      });
+      expect(createWorkflowIssueAlertSpy).toHaveBeenCalledTimes(1);
+      expect(createWorkflowIssueAlertSpy).toHaveBeenCalledWith({
+        project: basicProject,
+        storyObjectMap,
+        manager: 'manager',
+        members: ['alice', 'bob'],
+        org: 'org',
+        repo: 'repo',
+      });
+      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledTimes(1);
+      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
+        'org',
+        'repo',
+        'Workflow Issues Count Alert',
+        `- @alice 2\n  - https://github.com/o/r/issues/1\n  - https://github.com/o/r/issues/2`,
+        ['manager'],
+        ['story:workflow-management'],
+      );
+    });
   });
 
   describe('createWorkflowIssueAlert', () => {
