@@ -3,6 +3,7 @@
 .prettierignore
 .gitattributes
 .gitkeep
+.gitleaks.toml
 
 
 .idea
