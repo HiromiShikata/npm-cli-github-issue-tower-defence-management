@@ -218,6 +218,49 @@ describe('RateLimitCache', () => {
       const snapshot = readRateLimit(token);
       expect(snapshot?.modelWeeklyLimits).toEqual({});
     });
+
+    it('should expose ts as lastUpdatedEpoch in the snapshot', () => {
+      const token = 'ts-snapshot-token';
+      const before = Date.now() / 1000;
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': '1700000000',
+        'anthropic-ratelimit-unified-5h-utilization': '10',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '1700100000',
+        'anthropic-ratelimit-unified-7d-utilization': '5',
+      });
+      const after = Date.now() / 1000;
+      const snapshot = readRateLimit(token);
+      expect(snapshot).not.toBeNull();
+      if (snapshot === null) return;
+      expect(snapshot.lastUpdatedEpoch).toBeGreaterThanOrEqual(before);
+      expect(snapshot.lastUpdatedEpoch).toBeLessThanOrEqual(after);
+    });
+
+    it('should default lastUpdatedEpoch to 0 when the stored payload has no ts field', () => {
+      const token = 'no-ts-token';
+      fs.mkdirSync(cacheDir(), { recursive: true });
+      fs.writeFileSync(
+        cachePathForToken(token),
+        JSON.stringify({
+          headers: {
+            'anthropic-ratelimit-unified-status': 'allowed',
+            'anthropic-ratelimit-unified-5h-status': 'allowed',
+            'anthropic-ratelimit-unified-5h-reset': '1700000000',
+            'anthropic-ratelimit-unified-5h-utilization': '10',
+            'anthropic-ratelimit-unified-7d-status': 'allowed',
+            'anthropic-ratelimit-unified-7d-reset': '1700100000',
+            'anthropic-ratelimit-unified-7d-utilization': '5',
+          },
+        }),
+      );
+      const snapshot = readRateLimit(token);
+      expect(snapshot).not.toBeNull();
+      if (snapshot === null) return;
+      expect(snapshot.lastUpdatedEpoch).toBe(0);
+    });
   });
 
   describe('writeRateLimit stores all anthropic-ratelimit-* headers', () => {

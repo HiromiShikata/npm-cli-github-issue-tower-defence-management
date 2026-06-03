@@ -13,6 +13,7 @@ export interface RateLimitSnapshot {
     fiveHourRejected: boolean;
     sevenDayRejected: boolean;
     modelWeeklyLimits: Record<string, ModelWeeklyLimit>;
+    lastUpdatedEpoch: number;
 }
 export declare const PROXY_PORT = 8787;
 export declare const cacheDir: () => string;
