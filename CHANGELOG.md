@@ -1,3 +1,10 @@
+## [1.69.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.5...v1.69.6) (2026-06-03)
+
+
+### Bug Fixes
+
+* **rate-limit:** probe tokens hourly to recover from model weekly limit deadlock ([ec82afa](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ec82afa379914caf49388075a21f611bd65b467a)), closes [#696](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/696)
+
 ## [1.69.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.4...v1.69.5) (2026-06-02)
 
 
