@@ -1,3 +1,10 @@
+## [1.69.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.7...v1.69.8) (2026-06-04)
+
+
+### Bug Fixes
+
+* **rotation:** bridge snapshot sevenDayReset into modelWeeklyLimits so 7d deadline sort works on proxy path ([b56e46d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b56e46ddd6b1ec61036ca42ea517a0bec55841b3)), closes [#733](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/733)
+
 ## [1.69.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.6...v1.69.7) (2026-06-04)
 
 

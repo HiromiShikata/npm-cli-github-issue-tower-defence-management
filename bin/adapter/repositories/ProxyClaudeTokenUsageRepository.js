@@ -55,6 +55,17 @@ class ProxyClaudeTokenUsageRepository {
                         resetsAt: limit.resetsAt,
                     };
                 }
+                const hasAnySevenDayWeeklyLimit = modelWeeklyLimits['seven_day'] !== undefined ||
+                    modelWeeklyLimits['seven_day_opus'] !== undefined ||
+                    modelWeeklyLimits['seven_day_sonnet'] !== undefined;
+                if (snapshot.sevenDayReset > 0 &&
+                    !sevenDayExpired &&
+                    !hasAnySevenDayWeeklyLimit) {
+                    modelWeeklyLimits['seven_day'] = {
+                        rejected: sevenDayRejectionActive,
+                        resetsAt: snapshot.sevenDayReset,
+                    };
+                }
                 return {
                     name,
                     token,
