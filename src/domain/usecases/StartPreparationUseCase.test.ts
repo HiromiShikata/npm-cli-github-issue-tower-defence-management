@@ -2876,6 +2876,107 @@ describe('StartPreparationUseCase', () => {
     });
   });
 
+  it('should sort tokens by shortest 7-day deadline first then by ascending 5h utilization when only the generic seven_day entry is present and deadlines tie', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'url1',
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        number: 1,
+        itemId: 'item-1',
+      }),
+      createMockIssue({
+        url: 'url2',
+        title: 'Issue 2',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        number: 2,
+        itemId: 'item-2',
+      }),
+      createMockIssue({
+        url: 'url3',
+        title: 'Issue 3',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        number: 3,
+        itemId: 'item-3',
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    const nowEpochSeconds = Math.floor(Date.now() / 1000);
+    const soonReset = nowEpochSeconds + 10 * 3600;
+    const farReset = nowEpochSeconds + 150 * 3600;
+    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+      {
+        name: 'token-far-reset-low-5h',
+        token: 'token-far-reset-low-5h',
+        fiveHourUtilization: 0.05,
+        sevenDayUtilization: 0.2,
+        blocked: false,
+        rejected: false,
+        modelWeeklyLimits: {
+          seven_day: { rejected: false, resetsAt: farReset },
+        },
+      },
+      {
+        name: 'token-soon-reset-high-5h',
+        token: 'token-soon-reset-high-5h',
+        fiveHourUtilization: 0.6,
+        sevenDayUtilization: 0.5,
+        blocked: false,
+        rejected: false,
+        modelWeeklyLimits: {
+          seven_day: { rejected: false, resetsAt: soonReset },
+        },
+      },
+      {
+        name: 'token-soon-reset-low-5h',
+        token: 'token-soon-reset-low-5h',
+        fiveHourUtilization: 0.1,
+        sevenDayUtilization: 0.5,
+        blocked: false,
+        rejected: false,
+        modelWeeklyLimits: {
+          seven_day: { rejected: false, resetsAt: soonReset },
+        },
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: null,
+      codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toMatchObject({
+      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-soon-reset-low-5h' },
+    });
+    expect(mockLocalCommandRunner.runCommand.mock.calls[1][2]).toMatchObject({
+      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-soon-reset-high-5h' },
+    });
+    expect(mockLocalCommandRunner.runCommand.mock.calls[2][2]).toMatchObject({
+      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-far-reset-low-5h' },
+    });
+  });
+
   it('should cap total tasks to the sum of per-token 7-day adaptive concurrent limits', async () => {
     const awaitingIssues: Issue[] = Array.from({ length: 10 }, (_, i) =>
       createMockIssue({

@@ -67,6 +67,16 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
           resetsAt: limit.resetsAt,
         };
       }
+      const hasModelSpecificSevenDayEntry =
+        modelWeeklyLimits['seven_day_opus'] !== undefined ||
+        modelWeeklyLimits['seven_day_sonnet'] !== undefined ||
+        modelWeeklyLimits['seven_day'] !== undefined;
+      if (!hasModelSpecificSevenDayEntry && snapshot.sevenDayReset > 0) {
+        modelWeeklyLimits['seven_day'] = {
+          rejected: snapshot.sevenDayRejected && !sevenDayExpired,
+          resetsAt: snapshot.sevenDayReset,
+        };
+      }
       return {
         name,
         token,
