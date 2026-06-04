@@ -131,12 +131,10 @@ ${JSON.stringify(e)}
             if (runSlowSweep) {
                 await this.runSlowSweepUseCases(input, project, issues, cacheUsed, targetDateTimes, storyObjectMap);
             }
-            if (input.notifyFinishedPreparation) {
-                await this.revertNotReadyAwaitingQualityCheckUseCase.run({
-                    projectUrl: input.projectUrl,
-                    allowIssueCacheMinutes: input.allowIssueCacheMinutes,
-                });
-            }
+            await this.revertNotReadyAwaitingQualityCheckUseCase.run({
+                projectUrl: input.projectUrl,
+                allowIssueCacheMinutes: input.allowIssueCacheMinutes,
+            });
             if (input.startPreparation) {
                 if (this.updateRateLimitCacheUseCase !== null) {
                     await this.updateRateLimitCacheUseCase.run({
