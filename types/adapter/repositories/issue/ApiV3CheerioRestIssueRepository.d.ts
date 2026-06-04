@@ -65,6 +65,8 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     getStoryObjectMap: (project: Project, allowCacheMinutes: number) => Promise<StoryObjectMap>;
     getOpenPullRequest: (prUrl: string) => Promise<RelatedPullRequest | null>;
     closePullRequest: (prUrl: string) => Promise<void>;
+    getPullRequestChangedFilePaths: (prUrl: string) => Promise<string[]>;
+    approvePullRequest: (prUrl: string) => Promise<void>;
     deletePullRequestBranch: (prUrl: string, branchName: string) => Promise<void>;
     createCommentByUrl: (issueOrPrUrl: string, commentBody: string) => Promise<void>;
 }

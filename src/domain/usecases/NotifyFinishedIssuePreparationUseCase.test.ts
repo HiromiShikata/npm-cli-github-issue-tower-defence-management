@@ -94,6 +94,8 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     findRelatedOpenPRs: jest.Mock;
     getStoryObjectMap: jest.Mock;
     getOpenPullRequest: jest.Mock;
+    getPullRequestChangedFilePaths: jest.Mock;
+    approvePullRequest: jest.Mock;
     setDependedIssueUrl: jest.Mock;
   };
   let mockIssueCommentRepository: {
@@ -126,6 +128,8 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       updateStatus: jest.fn(),
       findRelatedOpenPRs: jest.fn(),
       getOpenPullRequest: jest.fn(),
+      getPullRequestChangedFilePaths: jest.fn().mockResolvedValue([]),
+      approvePullRequest: jest.fn().mockResolvedValue(undefined),
       setDependedIssueUrl: jest.fn(),
     };
 
@@ -2691,6 +2695,251 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
         expect.objectContaining({ status: 'Awaiting Quality Check' }),
         mockProject,
+      );
+    });
+  });
+
+  describe('change-target label auto-approve', () => {
+    const setupApprovedPrScenario = (issueOverrides: Partial<Issue> = {}) => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+        ...issueOverrides,
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({ content: 'From: :robot: Agent report' }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          url: 'https://github.com/user/repo/pull/1',
+          isConflicted: false,
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        },
+      ]);
+    };
+
+    it('should not approve PR when issue has no change-target label', async () => {
+      setupApprovedPrScenario();
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(
+        mockIssueRepository.getPullRequestChangedFilePaths,
+      ).not.toHaveBeenCalled();
+      expect(mockIssueRepository.approvePullRequest).not.toHaveBeenCalled();
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Quality Check' }),
+        mockProject,
+      );
+    });
+
+    it('should approve PR when issue has change-target label and all files are confined', async () => {
+      setupApprovedPrScenario({ labels: ['change-target:src/domain'] });
+      mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+        'src/domain/entities/Foo.ts',
+        'src/domain/usecases/Bar.ts',
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(
+        mockIssueRepository.getPullRequestChangedFilePaths,
+      ).toHaveBeenCalledWith('https://github.com/user/repo/pull/1');
+      expect(mockIssueRepository.approvePullRequest).toHaveBeenCalledWith(
+        'https://github.com/user/repo/pull/1',
+      );
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Quality Check' }),
+        mockProject,
+      );
+    });
+
+    it('should not approve PR when any changed file is outside the labeled path', async () => {
+      setupApprovedPrScenario({ labels: ['change-target:src/domain'] });
+      mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+        'src/domain/entities/Foo.ts',
+        'src/adapter/repositories/Outside.ts',
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(
+        mockIssueRepository.getPullRequestChangedFilePaths,
+      ).toHaveBeenCalledWith('https://github.com/user/repo/pull/1');
+      expect(mockIssueRepository.approvePullRequest).not.toHaveBeenCalled();
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Quality Check' }),
+        mockProject,
+      );
+    });
+
+    it('should approve when files are confined under any of multiple change-target labels', async () => {
+      setupApprovedPrScenario({
+        labels: ['change-target:src/domain', 'change-target:docs'],
+      });
+      mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+        'src/domain/entities/Foo.ts',
+        'docs/intro.md',
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(mockIssueRepository.approvePullRequest).toHaveBeenCalledWith(
+        'https://github.com/user/repo/pull/1',
+      );
+    });
+
+    it('should not approve when PR has more than 100 changed files and one file beyond entry 100 is outside the labeled path', async () => {
+      setupApprovedPrScenario({ labels: ['change-target:src/domain'] });
+      const filePaths: string[] = [];
+      for (let i = 0; i < 150; i += 1) {
+        filePaths.push(`src/domain/file${i}.ts`);
+      }
+      filePaths.push('src/adapter/Outside.ts');
+      mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue(
+        filePaths,
+      );
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(mockIssueRepository.approvePullRequest).not.toHaveBeenCalled();
+    });
+
+    it('should match boundary-safely (change-target:foo matches foo/bar.ts but not foobar/baz.ts)', async () => {
+      setupApprovedPrScenario({ labels: ['change-target:foo'] });
+      mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+        'foo/bar.ts',
+        'foobar/baz.ts',
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(mockIssueRepository.approvePullRequest).not.toHaveBeenCalled();
+    });
+
+    it('should approve when changed files match exact path or subpath of the labeled path', async () => {
+      setupApprovedPrScenario({ labels: ['change-target:foo'] });
+      mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+        'foo/bar.ts',
+        'foo/nested/baz.ts',
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(mockIssueRepository.approvePullRequest).toHaveBeenCalledWith(
+        'https://github.com/user/repo/pull/1',
+      );
+    });
+
+    it('should not approve when PR has zero changed files', async () => {
+      setupApprovedPrScenario({ labels: ['change-target:src/domain'] });
+      mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(
+        mockIssueRepository.getPullRequestChangedFilePaths,
+      ).toHaveBeenCalledWith('https://github.com/user/repo/pull/1');
+      expect(mockIssueRepository.approvePullRequest).not.toHaveBeenCalled();
+    });
+
+    it('should not approve when there is no approved PR even if change-target label is present', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+        labels: ['change-target:src/domain'],
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({ content: 'From: :robot: Agent report' }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(
+        mockIssueRepository.getPullRequestChangedFilePaths,
+      ).not.toHaveBeenCalled();
+      expect(mockIssueRepository.approvePullRequest).not.toHaveBeenCalled();
+    });
+
+    it('should normalize trailing slashes in change-target label paths', async () => {
+      setupApprovedPrScenario({ labels: ['change-target:src/domain/'] });
+      mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+        'src/domain/entities/Foo.ts',
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(mockIssueRepository.approvePullRequest).toHaveBeenCalledWith(
+        'https://github.com/user/repo/pull/1',
       );
     });
   });

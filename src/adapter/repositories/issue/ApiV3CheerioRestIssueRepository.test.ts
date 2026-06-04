@@ -267,6 +267,145 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('getPullRequestChangedFilePaths', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should fetch a single page of changed files and return their paths', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify([
+              { filename: 'src/domain/Foo.ts' },
+              { filename: 'src/domain/Bar.ts' },
+            ]),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getPullRequestChangedFilePaths(
+        'https://github.com/HiromiShikata/test-repository/pull/42',
+      );
+
+      expect(result).toEqual(['src/domain/Foo.ts', 'src/domain/Bar.ts']);
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'https://api.github.com/repos/HiromiShikata/test-repository/pulls/42/files?per_page=100&page=1',
+        expect.objectContaining({ method: 'GET' }),
+      );
+    });
+
+    it('should paginate when a page returns exactly 100 entries and stop when fewer are returned', async () => {
+      const firstPage: { filename: string }[] = [];
+      for (let i = 0; i < 100; i += 1) {
+        firstPage.push({ filename: `src/domain/file${i}.ts` });
+      }
+      const secondPage = [
+        { filename: 'src/domain/extra-a.ts' },
+        { filename: 'src/domain/extra-b.ts' },
+      ];
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(firstPage), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(secondPage), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getPullRequestChangedFilePaths(
+        'https://github.com/HiromiShikata/test-repository/pull/42',
+      );
+
+      expect(result).toHaveLength(102);
+      expect(result[0]).toBe('src/domain/file0.ts');
+      expect(result[99]).toBe('src/domain/file99.ts');
+      expect(result[100]).toBe('src/domain/extra-a.ts');
+      expect(result[101]).toBe('src/domain/extra-b.ts');
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(fetchSpy).toHaveBeenNthCalledWith(
+        1,
+        'https://api.github.com/repos/HiromiShikata/test-repository/pulls/42/files?per_page=100&page=1',
+        expect.objectContaining({ method: 'GET' }),
+      );
+      expect(fetchSpy).toHaveBeenNthCalledWith(
+        2,
+        'https://api.github.com/repos/HiromiShikata/test-repository/pulls/42/files?per_page=100&page=2',
+        expect.objectContaining({ method: 'GET' }),
+      );
+    });
+
+    it('should throw when the API responds with a non-2xx status', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response('Not Found', {
+          status: 404,
+          statusText: 'Not Found',
+        }),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.getPullRequestChangedFilePaths(
+          'https://github.com/HiromiShikata/test-repository/pull/42',
+        ),
+      ).rejects.toThrow('404');
+    });
+  });
+
+  describe('approvePullRequest', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should POST an APPROVE review to the GitHub API for the PR', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: 1, state: 'APPROVED' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await repository.approvePullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/42',
+      );
+
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'https://api.github.com/repos/HiromiShikata/test-repository/pulls/42/reviews',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ event: 'APPROVE' }),
+        }),
+      );
+    });
+
+    it('should throw when the API responds with a non-2xx status', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response('Unprocessable Entity', {
+          status: 422,
+          statusText: 'Unprocessable Entity',
+        }),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.approvePullRequest(
+          'https://github.com/HiromiShikata/test-repository/pull/42',
+        ),
+      ).rejects.toThrow('422');
+    });
+  });
+
   const createApiV3CheerioRestIssueRepository = () => {
     const apiV3IssueRepository = mock<ApiV3IssueRepository>();
     const restIssueRepository = mock<RestIssueRepository>();

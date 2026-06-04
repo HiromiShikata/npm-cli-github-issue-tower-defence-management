@@ -17,6 +17,9 @@ function isDirectPullRequestResponse(value) {
         return false;
     return true;
 }
+function isPullRequestFilesResponse(value) {
+    return (() => { const _io0 = input => "string" === typeof input.filename; return input => Array.isArray(input) && input.every(elem => "object" === typeof elem && null !== elem && _io0(elem)); })()(value);
+}
 const fnmatch = (pattern, str) => {
     let regexStr = '^';
     let i = 0;
@@ -647,6 +650,54 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             });
             if (!response.ok) {
                 throw new Error(`Failed to close PR ${prUrl}: HTTP ${response.status}`);
+            }
+        };
+        this.getPullRequestChangedFilePaths = async (prUrl) => {
+            const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
+            const perPage = 100;
+            const collectedPaths = [];
+            let page = 1;
+            let hasMore = true;
+            while (hasMore) {
+                const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=${perPage}&page=${page}`, {
+                    method: 'GET',
+                    headers: {
+                        Authorization: `Bearer ${this.ghToken}`,
+                        Accept: 'application/vnd.github+json',
+                    },
+                });
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch changed files for PR ${prUrl}: HTTP ${response.status}`);
+                }
+                const body = await response.json();
+                if (!isPullRequestFilesResponse(body)) {
+                    throw new Error(`Unexpected response shape when fetching changed files for PR ${prUrl}`);
+                }
+                for (const file of body) {
+                    collectedPaths.push(file.filename);
+                }
+                if (body.length < perPage) {
+                    hasMore = false;
+                }
+                else {
+                    page += 1;
+                }
+            }
+            return collectedPaths;
+        };
+        this.approvePullRequest = async (prUrl) => {
+            const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
+            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${this.ghToken}`,
+                    'Content-Type': 'application/json',
+                    Accept: 'application/vnd.github+json',
+                },
+                body: JSON.stringify({ event: 'APPROVE' }),
+            });
+            if (!response.ok) {
+                throw new Error(`Failed to approve PR ${prUrl}: HTTP ${response.status}`);
             }
         };
         this.deletePullRequestBranch = async (prUrl, branchName) => {

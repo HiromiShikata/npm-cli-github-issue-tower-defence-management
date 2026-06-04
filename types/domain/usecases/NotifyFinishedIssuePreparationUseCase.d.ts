@@ -14,7 +14,7 @@ export declare class NotifyFinishedIssuePreparationUseCase {
     private readonly issueCommentRepository;
     private readonly webhookRepository;
     private readonly issueRejectionEvaluator;
-    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl'>, issueRepository: Pick<IssueRepository, 'get' | 'update' | 'updateStatus' | 'findRelatedOpenPRs' | 'getStoryObjectMap' | 'getOpenPullRequest' | 'setDependedIssueUrl'>, issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>, webhookRepository: Pick<WebhookRepository, 'sendGetRequest'>);
+    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl'>, issueRepository: Pick<IssueRepository, 'get' | 'update' | 'updateStatus' | 'findRelatedOpenPRs' | 'getStoryObjectMap' | 'getOpenPullRequest' | 'getPullRequestChangedFilePaths' | 'approvePullRequest' | 'setDependedIssueUrl'>, issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>, webhookRepository: Pick<WebhookRepository, 'sendGetRequest'>);
     run: (params: {
         projectUrl: string;
         issueUrl: string;
@@ -23,6 +23,9 @@ export declare class NotifyFinishedIssuePreparationUseCase {
         allowedIssueAuthors?: string[] | null;
     }) => Promise<void>;
     private isAuthorTrusted;
+    private extractChangeTargetPaths;
+    private isFilePathConfinedToAllowedPaths;
+    private maybeAutoApprovePrByChangeTarget;
     private collectRejections;
     private reportBodyHasNextStep;
     private setDependedIssueUrlForAllOpenPRs;
