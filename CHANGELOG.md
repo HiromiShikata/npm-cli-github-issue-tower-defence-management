@@ -1,3 +1,10 @@
+## [1.69.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.6...v1.69.7) (2026-06-04)
+
+
+### Bug Fixes
+
+* **core:** restore story-priority ordering in StartPreparationUseCase candidate set ([3547f47](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3547f478bd6b7ef083f282b4105d2e4f37599ddc)), closes [#739](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/739)
+
 ## [1.69.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.5...v1.69.6) (2026-06-03)
 
 
