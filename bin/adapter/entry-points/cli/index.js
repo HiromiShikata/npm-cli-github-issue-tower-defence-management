@@ -60,7 +60,7 @@ exports.program
     .option('--defaultLlmAgentName <name>', 'Default LLM agent name')
     .option('--maximumPreparingIssuesCount <count>', 'Maximum number of issues in preparation status (default: 6 per available Claude OAuth token, otherwise 6)')
     .option('--allowIssueCacheMinutes <minutes>', 'Allow cache for issues in minutes (default: 10)')
-    .option('--utilizationPercentageThreshold <percent>', 'Legacy Claude utilization threshold setting; token process slots decay from 80% utilization to 0 at 95% (default: 90)')
+    .option('--utilizationPercentageThreshold <percent>', 'Per-token Claude 5h utilization % threshold; tokens at or above it are excluded from rotation. Per-token concurrency also tapers from 6 slots down to 1 as either the 5h or 7d utilization rises from 80% toward 100%, taking the more restrictive of the two (default: 90)')
     .option('--allowedIssueAuthors <authors>', 'Comma-separated list of allowed issue authors')
     .option('--preparationProcessCheckCommand <template>', 'Shell command template with {URL} placeholder to check if a preparation process is alive')
     .action(async (options) => {

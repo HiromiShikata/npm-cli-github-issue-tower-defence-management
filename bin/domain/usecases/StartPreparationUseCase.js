@@ -2,8 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StartPreparationUseCase = void 0;
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
-const SEVEN_DAY_NORMAL_CONCURRENT_LIMIT = 6;
+const NORMAL_CONCURRENT_LIMIT = 6;
 const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
+const FIVE_HOUR_THROTTLE_START_THRESHOLD = 0.8;
 class StartPreparationUseCase {
     constructor(projectRepository, issueRepository, localCommandRunner, claudeTokenUsageRepository) {
         this.projectRepository = projectRepository;
@@ -44,12 +45,17 @@ class StartPreparationUseCase {
             }
             return a.fiveHourUtilization - b.fiveHourUtilization;
         };
-        this.getTokenConcurrentLimit = (sevenDayUtilization) => {
-            if (sevenDayUtilization < SEVEN_DAY_THROTTLE_START_THRESHOLD) {
-                return SEVEN_DAY_NORMAL_CONCURRENT_LIMIT;
+        this.taperedConcurrentLimit = (utilization, throttleStartThreshold) => {
+            if (utilization < throttleStartThreshold) {
+                return NORMAL_CONCURRENT_LIMIT;
             }
-            const remaining = (1 - sevenDayUtilization) / (1 - SEVEN_DAY_THROTTLE_START_THRESHOLD);
-            return Math.max(1, Math.ceil(SEVEN_DAY_NORMAL_CONCURRENT_LIMIT * remaining));
+            const remaining = (1 - utilization) / (1 - throttleStartThreshold);
+            return Math.max(1, Math.ceil(NORMAL_CONCURRENT_LIMIT * remaining));
+        };
+        this.getTokenConcurrentLimit = (fiveHourUtilization, sevenDayUtilization) => {
+            const sevenDayLimit = this.taperedConcurrentLimit(sevenDayUtilization, SEVEN_DAY_THROTTLE_START_THRESHOLD);
+            const fiveHourLimit = this.taperedConcurrentLimit(fiveHourUtilization, FIVE_HOUR_THROTTLE_START_THRESHOLD);
+            return Math.min(sevenDayLimit, fiveHourLimit);
         };
         this.selectRotationTokens = (tokenUsages, utilizationPercentageThreshold, modelName, maxConcurrent) => {
             const weeklyLimitType = this.weeklyLimitTypeForModel(modelName);
@@ -65,7 +71,7 @@ class StartPreparationUseCase {
             }
             const tokensWithLimits = eligibleTokens.map((usage) => ({
                 token: usage.token,
-                limit: this.getTokenConcurrentLimit(usage.sevenDayUtilization),
+                limit: this.getTokenConcurrentLimit(usage.fiveHourUtilization, usage.sevenDayUtilization),
             }));
             const totalCapacity = tokensWithLimits.reduce((sum, t) => sum + t.limit, 0);
             const effectiveCap = Math.min(maxConcurrent, totalCapacity);
@@ -118,7 +124,7 @@ class StartPreparationUseCase {
             const rotationOrder = tokenUsages.length > 0
                 ? this.buildRotationOrder(tokenUsages, params.utilizationPercentageThreshold, params.defaultLlmModelName)
                 : null;
-            const maximumPreparingIssuesCount = params.maximumPreparingIssuesCount ?? SEVEN_DAY_NORMAL_CONCURRENT_LIMIT;
+            const maximumPreparingIssuesCount = params.maximumPreparingIssuesCount ?? NORMAL_CONCURRENT_LIMIT;
             let effectiveMaxPreparingIssuesCount = maximumPreparingIssuesCount;
             if (tokenUsages.length > 0) {
                 const { tokens: ranked, effectiveCap } = this.selectRotationTokens(tokenUsages, params.utilizationPercentageThreshold, params.defaultLlmModelName, maximumPreparingIssuesCount);

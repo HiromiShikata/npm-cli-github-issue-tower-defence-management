@@ -1,3 +1,10 @@
+## [1.69.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.10...v1.69.11) (2026-06-05)
+
+
+### Bug Fixes
+
+* **start-preparation:** taper per-token concurrency on 5h and 7d utilization ([498851e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/498851eee4bb91efe3041dc0399dc0a94c5af6dc)), closes [#754](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/754)
+
 ## [1.69.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.9...v1.69.10) (2026-06-05)
 
 

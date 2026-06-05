@@ -20,7 +20,8 @@ export declare class StartPreparationUseCase {
     private isModelWeeklyLimitRejected;
     private secondsUntilSevenDayReset;
     private compareBySevenDayDeadlineThenUtilization;
-    private getTokenConcurrentLimit;
+    private taperedConcurrentLimit;
+    getTokenConcurrentLimit: (fiveHourUtilization: number, sevenDayUtilization: number) => number;
     private selectRotationTokens;
     buildRotationOrder: (tokenUsages: ClaudeTokenUsage[], utilizationPercentageThreshold: number, modelName: string | null) => RotationOrderEntry[];
     run: (params: {
