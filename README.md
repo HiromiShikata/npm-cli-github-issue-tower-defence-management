@@ -19,6 +19,7 @@ Commands:
   schedule [options]                    Handle scheduled events (trigger: issue or schedule) (default)
   startDaemon [options]                 Start daemon to prepare GitHub issues
   notifyFinishedIssuePreparation [options]  Notify that issue preparation is finished
+  checkIssueReviewReadiness [options]   Check whether an issue is review-ready (read-only; does not change Status or post any comment)
   help [command]                        display help for command
 
 Options for schedule:
@@ -45,7 +46,14 @@ Options for notifyFinishedIssuePreparation:
   --projectUrl <url>                               GitHub project URL
   --thresholdForAutoReject <count>                 Threshold for auto-escalation after consecutive rejections (default: 3)
   --workflowBlockerResolvedWebhookUrl <url>        Webhook URL to notify when a workflow blocker issue status changes
+
+Options for checkIssueReviewReadiness:
+  --configFilePath <path>                          Path to config file for tower defence management (required)
+  --issueUrl <url>                                 GitHub issue URL (required)
+  --projectUrl <url>                               GitHub project URL
 ```
+
+The `checkIssueReviewReadiness` sub-command lets an agent self-check whether an issue is currently review-ready by reusing the same `IssueRejectionEvaluator` logic that `notifyFinishedIssuePreparation` consults. It does NOT change the issue Status field and does NOT post any comment. It writes a single JSON line to stdout of the shape `{ "reviewReady": boolean, "rejections": [{ "type": string, "detail": string }] }` and exits 0 on a successful evaluation regardless of readiness; a non-zero exit indicates an operational error (auth failure, network error, issue not found).
 
 ## Example 📖
 
@@ -65,6 +73,10 @@ npx github-issue-tower-defence-management startDaemon --configFilePath ./prepara
 
 ```
 npx github-issue-tower-defence-management notifyFinishedIssuePreparation --configFilePath ./preparator-config.yml --issueUrl https://github.com/HiromiShikata/test-repository/issues/1
+```
+
+```
+npx github-issue-tower-defence-management checkIssueReviewReadiness --configFilePath ./preparator-config.yml --issueUrl https://github.com/HiromiShikata/test-repository/issues/1
 ```
 
 ## Config

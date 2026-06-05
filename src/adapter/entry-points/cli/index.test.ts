@@ -10,9 +10,11 @@ import {
 } from './index';
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
+import { CheckIssueReviewReadinessUseCase } from '../../../domain/usecases/CheckIssueReviewReadinessUseCase';
 
 jest.mock('../../../domain/usecases/StartPreparationUseCase');
 jest.mock('../../../domain/usecases/NotifyFinishedIssuePreparationUseCase');
+jest.mock('../../../domain/usecases/CheckIssueReviewReadinessUseCase');
 jest.mock('../../repositories/LocalStorageRepository', () => ({
   LocalStorageRepository: jest.fn().mockImplementation(() => ({})),
 }));
@@ -1459,6 +1461,193 @@ mysteryKey: 'value'
           thresholdForAutoReject: 9,
         }),
       );
+    });
+  });
+
+  describe('checkIssueReviewReadiness', () => {
+    it('should appear in the CLI help output', () => {
+      const helpText = program.helpInformation();
+      expect(helpText).toContain('checkIssueReviewReadiness');
+    });
+
+    it('should write reviewReady=true JSON to stdout when the use case reports zero rejections', async () => {
+      const mockRun = jest
+        .fn()
+        .mockResolvedValue({ reviewReady: true, rejections: [] });
+      const MockedCheckUseCase = jest.mocked(CheckIssueReviewReadinessUseCase);
+
+      MockedCheckUseCase.mockImplementation(function (
+        this: CheckIssueReviewReadinessUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      const stdoutSpy = jest
+        .spyOn(process.stdout, 'write')
+        .mockImplementation(() => true);
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'checkIssueReviewReadiness',
+        '--configFilePath',
+        configFilePath,
+        '--issueUrl',
+        'https://github.com/test/repo/issues/1',
+      ]);
+
+      expect(mockRun).toHaveBeenCalledTimes(1);
+      expect(mockRun).toHaveBeenCalledWith({
+        projectUrl: 'https://github.com/orgs/test/projects/1',
+        issueUrl: 'https://github.com/test/repo/issues/1',
+      });
+      expect(stdoutSpy).toHaveBeenCalledWith(
+        `${JSON.stringify({ reviewReady: true, rejections: [] })}\n`,
+      );
+
+      stdoutSpy.mockRestore();
+    });
+
+    it('should write reviewReady=false JSON with rejections to stdout when the use case reports rejections', async () => {
+      const rejections = [
+        {
+          type: 'ANY_CI_JOB_FAILED_OR_IN_PROGRESS',
+          detail:
+            'ANY_CI_JOB_FAILED_OR_IN_PROGRESS: https://github.com/test/repo/pull/1',
+        },
+      ];
+      const mockRun = jest
+        .fn()
+        .mockResolvedValue({ reviewReady: false, rejections });
+      const MockedCheckUseCase = jest.mocked(CheckIssueReviewReadinessUseCase);
+
+      MockedCheckUseCase.mockImplementation(function (
+        this: CheckIssueReviewReadinessUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      const stdoutSpy = jest
+        .spyOn(process.stdout, 'write')
+        .mockImplementation(() => true);
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'checkIssueReviewReadiness',
+        '--configFilePath',
+        configFilePath,
+        '--issueUrl',
+        'https://github.com/test/repo/issues/1',
+      ]);
+
+      expect(mockRun).toHaveBeenCalledTimes(1);
+      expect(stdoutSpy).toHaveBeenCalledWith(
+        `${JSON.stringify({ reviewReady: false, rejections })}\n`,
+      );
+
+      stdoutSpy.mockRestore();
+    });
+
+    it('should allow CLI args to override projectUrl from config file', async () => {
+      const mockRun = jest
+        .fn()
+        .mockResolvedValue({ reviewReady: true, rejections: [] });
+      const MockedCheckUseCase = jest.mocked(CheckIssueReviewReadinessUseCase);
+
+      MockedCheckUseCase.mockImplementation(function (
+        this: CheckIssueReviewReadinessUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      const stdoutSpy = jest
+        .spyOn(process.stdout, 'write')
+        .mockImplementation(() => true);
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'checkIssueReviewReadiness',
+        '--configFilePath',
+        configFilePath,
+        '--issueUrl',
+        'https://github.com/test/repo/issues/1',
+        '--projectUrl',
+        'https://github.com/orgs/override/projects/2',
+      ]);
+
+      expect(mockRun).toHaveBeenCalledWith({
+        projectUrl: 'https://github.com/orgs/override/projects/2',
+        issueUrl: 'https://github.com/test/repo/issues/1',
+      });
+
+      stdoutSpy.mockRestore();
+    });
+
+    it('should exit with error when GH_TOKEN is missing', async () => {
+      delete process.env.GH_TOKEN;
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
+
+      await expect(
+        program.parseAsync([
+          'node',
+          'test',
+          'checkIssueReviewReadiness',
+          '--configFilePath',
+          configFilePath,
+          '--issueUrl',
+          'https://github.com/test/repo/issues/1',
+        ]),
+      ).rejects.toThrow('process.exit called');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'GH_TOKEN environment variable is required',
+      );
+      expect(processExitSpy).toHaveBeenCalledWith(1);
+
+      consoleErrorSpy.mockRestore();
+      processExitSpy.mockRestore();
+    });
+
+    it('should exit with error when projectUrl is missing', async () => {
+      const configMissing = {};
+      writeConfig(configMissing);
+
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
+
+      await expect(
+        program.parseAsync([
+          'node',
+          'test',
+          'checkIssueReviewReadiness',
+          '--configFilePath',
+          configFilePath,
+          '--issueUrl',
+          'https://github.com/test/repo/issues/1',
+        ]),
+      ).rejects.toThrow('process.exit called');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'projectUrl is required. Provide via --projectUrl, config file, or project README.',
+      );
+      expect(processExitSpy).toHaveBeenCalledWith(1);
+
+      consoleErrorSpy.mockRestore();
+      processExitSpy.mockRestore();
     });
   });
 });

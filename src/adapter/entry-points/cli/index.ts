@@ -19,6 +19,7 @@ import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparati
 import { writeRotationOrderFile } from '../handlers/rotationOrderFileWriter';
 import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
+import { CheckIssueReviewReadinessUseCase } from '../../../domain/usecases/CheckIssueReviewReadinessUseCase';
 import { LocalStorageRepository } from '../../repositories/LocalStorageRepository';
 import { GraphqlProjectRepository } from '../../repositories/GraphqlProjectRepository';
 import { ApiV3IssueRepository } from '../../repositories/issue/ApiV3IssueRepository';
@@ -50,6 +51,12 @@ type NotifyFinishedOptions = {
   projectUrl?: string;
   thresholdForAutoReject?: string;
   workflowBlockerResolvedWebhookUrl?: string;
+  configFilePath: string;
+};
+
+type CheckIssueReviewReadinessOptions = {
+  issueUrl: string;
+  projectUrl?: string;
   configFilePath: string;
 };
 
@@ -442,6 +449,100 @@ program
       workflowBlockerResolvedWebhookUrl,
       allowedIssueAuthors,
     });
+  });
+
+program
+  .command('checkIssueReviewReadiness')
+  .description(
+    'Check whether an issue is in a review-ready state without mutating any field or posting any comment',
+  )
+  .requiredOption(
+    '--configFilePath <path>',
+    'Path to config file for tower defence management',
+  )
+  .requiredOption('--issueUrl <url>', 'GitHub issue URL')
+  .option('--projectUrl <url>', 'GitHub project URL')
+  .action(async (options: CheckIssueReviewReadinessOptions) => {
+    const token = process.env.GH_TOKEN;
+    if (!token) {
+      console.error('GH_TOKEN environment variable is required');
+      process.exit(1);
+    }
+
+    const configFileValues = loadConfigFile(options.configFilePath);
+
+    const cliOverrides: ConfigFile = {
+      projectUrl: options.projectUrl,
+    };
+
+    const tempProjectUrl =
+      cliOverrides.projectUrl ?? configFileValues.projectUrl;
+
+    let readmeOverrides: ConfigFile = {};
+    if (tempProjectUrl) {
+      const readme = await fetchProjectReadme(tempProjectUrl, token);
+      if (readme) {
+        readmeOverrides = parseProjectReadmeConfig(readme, tempProjectUrl);
+      }
+    }
+
+    const config = mergeConfigs(
+      configFileValues,
+      cliOverrides,
+      readmeOverrides,
+    );
+
+    const projectUrl = config.projectUrl;
+
+    if (!projectUrl) {
+      console.error(
+        'projectUrl is required. Provide via --projectUrl, config file, or project README.',
+      );
+      process.exit(1);
+    }
+
+    const projectName = config.projectName ?? 'default';
+    const localStorageRepository = new LocalStorageRepository();
+    const cachePath = `./tmp/cache/${projectName}`;
+    const localStorageCacheRepository = new LocalStorageCacheRepository(
+      localStorageRepository,
+      cachePath,
+    );
+    const githubRepositoryParams = buildGithubRepositoryParams(
+      localStorageRepository,
+      token,
+    );
+    const projectRepository = new GraphqlProjectRepository(
+      ...githubRepositoryParams,
+    );
+    const apiV3IssueRepository = new ApiV3IssueRepository(
+      ...githubRepositoryParams,
+    );
+    const restIssueRepository = new RestIssueRepository(
+      ...githubRepositoryParams,
+    );
+    const graphqlProjectItemRepository = new GraphqlProjectItemRepository(
+      ...githubRepositoryParams,
+    );
+    const issueRepository = new ApiV3CheerioRestIssueRepository(
+      apiV3IssueRepository,
+      restIssueRepository,
+      graphqlProjectItemRepository,
+      localStorageCacheRepository,
+      ...githubRepositoryParams,
+    );
+
+    const useCase = new CheckIssueReviewReadinessUseCase(
+      projectRepository,
+      issueRepository,
+    );
+
+    const result = await useCase.run({
+      projectUrl,
+      issueUrl: options.issueUrl,
+    });
+
+    process.stdout.write(`${JSON.stringify(result)}\n`);
   });
 
 /* istanbul ignore next */
