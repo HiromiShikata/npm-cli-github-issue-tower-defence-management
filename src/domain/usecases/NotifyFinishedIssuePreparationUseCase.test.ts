@@ -257,6 +257,34 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
+  it('should skip without throwing when issueUrl is a pull-request URL with no backing project item', async () => {
+    const consoleWarnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => {});
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(null);
+
+    await expect(
+      useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/pull/42',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(mockIssueRepository.update).not.toHaveBeenCalled();
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('https://github.com/user/repo/pull/42'),
+    );
+
+    consoleWarnSpy.mockRestore();
+  });
+
   it('should throw IllegalIssueStatusError when issue status is not Preparation', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',

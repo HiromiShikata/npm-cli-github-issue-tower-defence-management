@@ -103,6 +103,12 @@ export class NotifyFinishedIssuePreparationUseCase {
     const issue = await this.issueRepository.get(params.issueUrl, project);
 
     if (!issue) {
+      if (params.issueUrl.includes('/pull/')) {
+        console.warn(
+          `Skipping notifyFinishedIssuePreparation for pull-request URL with no backing project item: ${params.issueUrl}`,
+        );
+        return;
+      }
       throw new IssueNotFoundError(params.issueUrl);
     } else if (issue.status !== PREPARATION_STATUS_NAME) {
       throw new IllegalIssueStatusError(
