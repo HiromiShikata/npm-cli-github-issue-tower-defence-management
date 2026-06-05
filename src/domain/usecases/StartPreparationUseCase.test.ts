@@ -4327,3 +4327,52 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
     expect(result[0].fiveHourUtilization).toBe(0.9);
   });
 });
+
+describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
+  let useCase: StartPreparationUseCase;
+  beforeEach(() => {
+    useCase = new StartPreparationUseCase(
+      { getByUrl: jest.fn() },
+      {
+        getStoryObjectMap: jest.fn(),
+        updateStatus: jest.fn(),
+        findRelatedOpenPRs: jest.fn(),
+        getOpenPullRequest: jest.fn(),
+        closePullRequest: jest.fn(),
+        deletePullRequestBranch: jest.fn(),
+        createCommentByUrl: jest.fn(),
+      },
+      { runCommand: jest.fn() },
+      {
+        ensureObservable: jest.fn(),
+        getAvailableTokenUsages: jest.fn(),
+        proxyBaseUrl: jest.fn(),
+      },
+    );
+  });
+
+  it('returns the full limit when both 5-hour and 7-day utilization are low', () => {
+    expect(useCase.getTokenConcurrentLimit(0.1, 0.1)).toBe(6);
+  });
+
+  it('tapers down on high 5-hour utilization even when 7-day utilization is low', () => {
+    const limit = useCase.getTokenConcurrentLimit(0.94, 0.1);
+    expect(limit).toBeLessThan(6);
+    expect(limit).toBe(2);
+  });
+
+  it('preserves the existing 7-day taper when 5-hour utilization is low', () => {
+    expect(useCase.getTokenConcurrentLimit(0.1, 0.9)).toBe(3);
+  });
+
+  it('takes the more restrictive window and floors at 1 when both are high', () => {
+    expect(useCase.getTokenConcurrentLimit(0.99, 0.95)).toBe(1);
+  });
+
+  it('takes the minimum of the two windows when both taper', () => {
+    const fiveHourDominant = useCase.getTokenConcurrentLimit(0.94, 0.85);
+    expect(fiveHourDominant).toBe(2);
+    const sevenDayDominant = useCase.getTokenConcurrentLimit(0.85, 0.94);
+    expect(sevenDayDominant).toBe(2);
+  });
+});
