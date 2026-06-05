@@ -1,3 +1,10 @@
+## [1.69.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.11...v1.69.12) (2026-06-05)
+
+
+### Bug Fixes
+
+* **scheduler:** run RevertNotReadyAwaitingQualityCheckUseCase on every scheduled cycle ([9ac12f7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9ac12f7305f3ec4c5c62b0df50ae5a62689e0073)), closes [#732](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/732)
+
 ## [1.69.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.10...v1.69.11) (2026-06-05)
 
 
