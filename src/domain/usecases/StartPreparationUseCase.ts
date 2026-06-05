@@ -8,8 +8,9 @@ import {
   PREPARATION_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 
-const SEVEN_DAY_NORMAL_CONCURRENT_LIMIT = 6;
+const NORMAL_CONCURRENT_LIMIT = 6;
 const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
+const FIVE_HOUR_THROTTLE_START_THRESHOLD = 0.8;
 
 export type RotationOrderEntry = {
   name: string;
@@ -91,16 +92,30 @@ export class StartPreparationUseCase {
     return a.fiveHourUtilization - b.fiveHourUtilization;
   };
 
-  private getTokenConcurrentLimit = (sevenDayUtilization: number): number => {
-    if (sevenDayUtilization < SEVEN_DAY_THROTTLE_START_THRESHOLD) {
-      return SEVEN_DAY_NORMAL_CONCURRENT_LIMIT;
+  private taperedConcurrentLimit = (
+    utilization: number,
+    throttleStartThreshold: number,
+  ): number => {
+    if (utilization < throttleStartThreshold) {
+      return NORMAL_CONCURRENT_LIMIT;
     }
-    const remaining =
-      (1 - sevenDayUtilization) / (1 - SEVEN_DAY_THROTTLE_START_THRESHOLD);
-    return Math.max(
-      1,
-      Math.ceil(SEVEN_DAY_NORMAL_CONCURRENT_LIMIT * remaining),
+    const remaining = (1 - utilization) / (1 - throttleStartThreshold);
+    return Math.max(1, Math.ceil(NORMAL_CONCURRENT_LIMIT * remaining));
+  };
+
+  getTokenConcurrentLimit = (
+    fiveHourUtilization: number,
+    sevenDayUtilization: number,
+  ): number => {
+    const sevenDayLimit = this.taperedConcurrentLimit(
+      sevenDayUtilization,
+      SEVEN_DAY_THROTTLE_START_THRESHOLD,
     );
+    const fiveHourLimit = this.taperedConcurrentLimit(
+      fiveHourUtilization,
+      FIVE_HOUR_THROTTLE_START_THRESHOLD,
+    );
+    return Math.min(sevenDayLimit, fiveHourLimit);
   };
 
   private selectRotationTokens = (
@@ -136,7 +151,10 @@ export class StartPreparationUseCase {
 
     const tokensWithLimits = eligibleTokens.map((usage) => ({
       token: usage.token,
-      limit: this.getTokenConcurrentLimit(usage.sevenDayUtilization),
+      limit: this.getTokenConcurrentLimit(
+        usage.fiveHourUtilization,
+        usage.sevenDayUtilization,
+      ),
     }));
 
     const totalCapacity = tokensWithLimits.reduce((sum, t) => sum + t.limit, 0);
@@ -232,7 +250,7 @@ export class StartPreparationUseCase {
           )
         : null;
     const maximumPreparingIssuesCount =
-      params.maximumPreparingIssuesCount ?? SEVEN_DAY_NORMAL_CONCURRENT_LIMIT;
+      params.maximumPreparingIssuesCount ?? NORMAL_CONCURRENT_LIMIT;
     let effectiveMaxPreparingIssuesCount = maximumPreparingIssuesCount;
     if (tokenUsages.length > 0) {
       const { tokens: ranked, effectiveCap } = this.selectRotationTokens(
