@@ -26,6 +26,7 @@ import { Project } from '../../../domain/entities/Project';
 import { BaseGitHubRepository } from '../../repositories/BaseGitHubRepository';
 import { AnalyzeStoriesUseCase } from '../../../domain/usecases/AnalyzeStoriesUseCase';
 import { ClearDependedIssueURLUseCase } from '../../../domain/usecases/ClearDependedIssueURLUseCase';
+import { SetDependedIssueUrlForOpenTaskPRsUseCase } from '../../../domain/usecases/SetDependedIssueUrlForOpenTaskPRsUseCase';
 import { CreateEstimationIssueUseCase } from '../../../domain/usecases/CreateEstimationIssueUseCase';
 import { ConvertCheckboxToIssueInStoryIssueUseCase } from '../../../domain/usecases/ConvertCheckboxToIssueInStoryIssueUseCase';
 import { ChangeStatusByStoryColorUseCase } from '../../../domain/usecases/ChangeStatusByStoryColorUseCase';
@@ -239,6 +240,8 @@ export class HandleScheduledEventUseCaseHandler {
     const clearDependedIssueURLUseCase = new ClearDependedIssueURLUseCase(
       issueRepository,
     );
+    const setDependedIssueUrlForOpenTaskPRsUseCase =
+      new SetDependedIssueUrlForOpenTaskPRsUseCase(issueRepository);
     const createEstimationIssueUseCase = new CreateEstimationIssueUseCase(
       issueRepository,
       systemDateRepository,
@@ -303,6 +306,7 @@ export class HandleScheduledEventUseCaseHandler {
       analyzeProblemByIssueUseCase,
       analyzeStoriesUseCase,
       clearDependedIssueURLUseCase,
+      setDependedIssueUrlForOpenTaskPRsUseCase,
       createEstimationIssueUseCase,
       convertCheckboxToIssueInStoryIssueUseCase,
       changeStatusByStoryColorUseCase,

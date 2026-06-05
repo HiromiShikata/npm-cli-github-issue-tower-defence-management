@@ -12,6 +12,7 @@ import { ClearPastNextActionDateHourUseCase } from './ClearPastNextActionDateHou
 import { AnalyzeProblemByIssueUseCase } from './AnalyzeProblemByIssueUseCase';
 import { AnalyzeStoriesUseCase } from './AnalyzeStoriesUseCase';
 import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
+import { SetDependedIssueUrlForOpenTaskPRsUseCase } from './SetDependedIssueUrlForOpenTaskPRsUseCase';
 import { CreateEstimationIssueUseCase } from './CreateEstimationIssueUseCase';
 import { ConvertCheckboxToIssueInStoryIssueUseCase } from './ConvertCheckboxToIssueInStoryIssueUseCase';
 import { ChangeStatusByStoryColorUseCase } from './ChangeStatusByStoryColorUseCase';
@@ -46,6 +47,7 @@ export class HandleScheduledEventUseCase {
     readonly analyzeProblemByIssueUseCase: AnalyzeProblemByIssueUseCase,
     readonly analyzeStoriesUseCase: AnalyzeStoriesUseCase,
     readonly clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase,
+    readonly setDependedIssueUrlForOpenTaskPRsUseCase: SetDependedIssueUrlForOpenTaskPRsUseCase,
     readonly createEstimationIssueUseCase: CreateEstimationIssueUseCase,
     readonly convertCheckboxToIssueInStoryIssueUseCase: ConvertCheckboxToIssueInStoryIssueUseCase,
     readonly changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase,
@@ -376,6 +378,10 @@ ${JSON.stringify(e)}
       project,
       issues,
       cacheUsed,
+    });
+    await this.setDependedIssueUrlForOpenTaskPRsUseCase.run({
+      project,
+      issues,
     });
     await this.createEstimationIssueUseCase.run({
       targetDates: targetDateTimes,
