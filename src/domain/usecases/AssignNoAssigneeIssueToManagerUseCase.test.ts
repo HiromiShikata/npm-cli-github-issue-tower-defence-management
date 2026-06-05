@@ -145,24 +145,57 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
       });
     });
 
-    it('should include issue url in error message when updateAssigneeList fails', async () => {
-      const issueWithUrl = {
+    it('should log error and continue to next issue when updateAssigneeList fails', async () => {
+      const failingIssue = {
         ...basicIssue,
         url: 'https://github.com/testOrg/testRepo/issues/42',
+      };
+      const subsequentIssue = {
+        ...basicIssue,
+        url: 'https://github.com/testOrg/testRepo/issues/43',
       };
       mockIssueRepository.updateAssigneeList.mockRejectedValueOnce(
         new Error('Request failed with status code 403 Forbidden'),
       );
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
 
       await expect(
         useCase.run({
-          issues: [issueWithUrl],
+          issues: [failingIssue, subsequentIssue],
           manager: 'manager1',
           cacheUsed: false,
         }),
-      ).rejects.toThrow(
+      ).resolves.toBeUndefined();
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Failed to update assignee for issue https://github.com/testOrg/testRepo/issues/42: Request failed with status code 403 Forbidden',
       );
+      expect(mockIssueRepository.updateAssigneeList.mock.calls).toEqual([
+        [failingIssue, ['manager1']],
+        [subsequentIssue, ['manager1']],
+      ]);
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should rethrow non-Error thrown values without logging', async () => {
+      const failingIssue = {
+        ...basicIssue,
+        url: 'https://github.com/testOrg/testRepo/issues/44',
+      };
+      mockIssueRepository.updateAssigneeList.mockImplementationOnce(() => {
+        throw 'string-failure';
+      });
+
+      await expect(
+        useCase.run({
+          issues: [failingIssue],
+          manager: 'manager1',
+          cacheUsed: false,
+        }),
+      ).rejects.toBe('string-failure');
     });
   });
 });
