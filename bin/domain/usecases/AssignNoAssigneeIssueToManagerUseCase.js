@@ -19,7 +19,8 @@ class AssignNoAssigneeIssueToManagerUseCase {
                     if (!(e instanceof Error)) {
                         throw e;
                     }
-                    throw new Error(`Failed to update assignee for issue ${issue.url}: ${e.message}`);
+                    console.error(`Failed to update assignee for issue ${issue.url}: ${e.message}`);
+                    continue;
                 }
                 await new Promise((resolve) => setTimeout(resolve, 1000));
             }

@@ -1,3 +1,10 @@
+## [1.69.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.9...v1.69.10) (2026-06-05)
+
+
+### Bug Fixes
+
+* **scheduler:** log per-item assignee update failures instead of aborting the slow sweep cycle ([be7a236](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/be7a23677c02365cb78f47f3b90fffae561c0665))
+
 ## [1.69.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.8...v1.69.9) (2026-06-05)
 
 
