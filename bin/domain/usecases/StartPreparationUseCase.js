@@ -258,8 +258,7 @@ class StartPreparationUseCase {
                 }
                 let spawnEnv;
                 if (rotationTokens !== null && proxyBaseUrl !== null) {
-                    const selected = rotationTokens[(currentPreparationIssueCount + startedInThisRunCount) %
-                        rotationTokens.length];
+                    const selected = rotationTokens[startedInThisRunCount % rotationTokens.length];
                     spawnEnv = {
                         CLAUDE_CODE_OAUTH_TOKEN: selected,
                         ANTHROPIC_BASE_URL: proxyBaseUrl,

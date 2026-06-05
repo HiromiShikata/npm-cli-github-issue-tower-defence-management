@@ -1,3 +1,10 @@
+## [1.69.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.8...v1.69.9) (2026-06-05)
+
+
+### Bug Fixes
+
+* **rotation:** drop currentPreparationIssueCount offset so soonest-7d-reset token is always selected first ([98a7ad4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/98a7ad450fcaa84bd0adce2946a2ad1e5bbcdc3f)), closes [#748](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/748)
+
 ## [1.69.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.7...v1.69.8) (2026-06-04)
 
 
