@@ -79,9 +79,6 @@ export declare class HandleScheduledEventUseCase {
             awaitingQualityCheckStatus?: string | null;
             labelsAsLlmAgentName?: string[] | null;
         } | null;
-        notifyFinishedPreparation?: {
-            awaitingQualityCheckStatusName?: string | null;
-        } | null;
         thresholdForAutoReject?: number;
     }) => Promise<{
         project: Project;

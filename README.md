@@ -352,9 +352,9 @@ The `schedule` command runs two distinct processing loops within a single invoca
 
 The following use cases execute on every `schedule` trigger (cadence is determined by the caller's cron/daemon, typically ~3 minutes):
 
+- `RevertNotReadyAwaitingQualityCheckUseCase` — reverts awaiting-quality-check issues whose linked PR is conflicting, draft, missing, multiplied, has failing or never-started CI checks, or has unresolved review comments, back to awaiting-workspace
 - `RevertOrphanedPreparationUseCase` — reverts orphaned preparation issues back to awaiting-workspace
 - `StartPreparationUseCase` — starts preparation for issues ready to be worked on
-- `NotifyFinishedIssuePreparationUseCase` — checks preparation-status issues and advances them
 
 ### Slow path (runs at most once per 600 seconds)
 

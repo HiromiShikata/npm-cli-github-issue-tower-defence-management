@@ -91,9 +91,6 @@ export class HandleScheduledEventUseCase {
       awaitingQualityCheckStatus?: string | null;
       labelsAsLlmAgentName?: string[] | null;
     } | null;
-    notifyFinishedPreparation?: {
-      awaitingQualityCheckStatusName?: string | null;
-    } | null;
     thresholdForAutoReject?: number;
   }): Promise<{
     project: Project;
@@ -280,12 +277,10 @@ ${JSON.stringify(e)}
         storyObjectMap,
       );
     }
-    if (input.notifyFinishedPreparation) {
-      await this.revertNotReadyAwaitingQualityCheckUseCase.run({
-        projectUrl: input.projectUrl,
-        allowIssueCacheMinutes: input.allowIssueCacheMinutes,
-      });
-    }
+    await this.revertNotReadyAwaitingQualityCheckUseCase.run({
+      projectUrl: input.projectUrl,
+      allowIssueCacheMinutes: input.allowIssueCacheMinutes,
+    });
     if (input.startPreparation) {
       if (this.updateRateLimitCacheUseCase !== null) {
         await this.updateRateLimitCacheUseCase.run({

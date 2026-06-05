@@ -319,7 +319,7 @@ describe('HandleScheduledEventUseCase', () => {
       );
     });
 
-    it('should invoke revertNotReadyAwaitingQualityCheckUseCase when notifyFinishedPreparation is configured', async () => {
+    it('should invoke revertNotReadyAwaitingQualityCheckUseCase on every scheduled run', async () => {
       const input = {
         projectName: 'test-project',
         org: 'test-org',
@@ -333,7 +333,6 @@ describe('HandleScheduledEventUseCase', () => {
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
         disabled: false,
         allowIssueCacheMinutes: 60,
-        notifyFinishedPreparation: {},
       };
 
       mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
@@ -349,7 +348,7 @@ describe('HandleScheduledEventUseCase', () => {
       );
     });
 
-    it('should not invoke revertNotReadyAwaitingQualityCheckUseCase when notifyFinishedPreparation is absent', async () => {
+    it('should invoke revertNotReadyAwaitingQualityCheckUseCase even when startPreparation is absent', async () => {
       const input = {
         projectName: 'test-project',
         org: 'test-org',
@@ -370,7 +369,7 @@ describe('HandleScheduledEventUseCase', () => {
 
       expect(
         mockRevertNotReadyAwaitingQualityCheckUseCase.run,
-      ).not.toHaveBeenCalled();
+      ).toHaveBeenCalledTimes(1);
     });
 
     it('should invoke UpdateRateLimitCacheUseCase before StartPreparationUseCase when startPreparation is configured', async () => {
