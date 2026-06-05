@@ -27,6 +27,7 @@ import {
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
 import { RevertNotReadyAwaitingQualityCheckUseCase } from './RevertNotReadyAwaitingQualityCheckUseCase';
 import { resolveLabelsAsLlmAgentName } from './resolveLabelsAsLlmAgentName';
+import { RevertNotReadyUnreadPullRequestUseCase } from './RevertNotReadyUnreadPullRequestUseCase';
 import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
 import { UpdateRateLimitCacheUseCase } from './UpdateRateLimitCacheUseCase';
 import {
@@ -63,6 +64,7 @@ export class HandleScheduledEventUseCase {
     readonly startPreparationUseCase: StartPreparationUseCase,
     readonly revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase,
     readonly revertNotReadyAwaitingQualityCheckUseCase: RevertNotReadyAwaitingQualityCheckUseCase,
+    readonly revertNotReadyUnreadPullRequestUseCase: RevertNotReadyUnreadPullRequestUseCase,
     readonly updateRateLimitCacheUseCase: UpdateRateLimitCacheUseCase | null,
     readonly dailySecurityScanUseCase: DailySecurityScanUseCase | null,
     readonly dateRepository: DateRepository,
@@ -305,6 +307,10 @@ ${JSON.stringify(e)}
         dailySecurityScan: input.dailySecurityScan,
       });
     }
+    await this.revertNotReadyUnreadPullRequestUseCase.run({
+      projectUrl: input.projectUrl,
+      allowIssueCacheMinutes: input.allowIssueCacheMinutes,
+    });
     if (input.startPreparation) {
       if (this.updateRateLimitCacheUseCase !== null) {
         await this.updateRateLimitCacheUseCase.run({

@@ -41,6 +41,7 @@ import { ProxyRateLimitCacheRepository } from '../../repositories/ProxyRateLimit
 import { UpdateRateLimitCacheUseCase } from '../../../domain/usecases/UpdateRateLimitCacheUseCase';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import { RevertNotReadyAwaitingQualityCheckUseCase } from '../../../domain/usecases/RevertNotReadyAwaitingQualityCheckUseCase';
+import { RevertNotReadyUnreadPullRequestUseCase } from '../../../domain/usecases/RevertNotReadyUnreadPullRequestUseCase';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { SetupTowerDefenceProjectUseCase } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
 import { DailySecurityScanUseCase } from '../../../domain/usecases/DailySecurityScanUseCase';
@@ -302,6 +303,12 @@ export class HandleScheduledEventUseCaseHandler {
         issueRepository,
         issueCommentRepository,
       );
+    const revertNotReadyUnreadPullRequestUseCase =
+      new RevertNotReadyUnreadPullRequestUseCase(
+        projectRepository,
+        issueRepository,
+        issueCommentRepository,
+      );
 
     const dailySecurityScanUseCase = mergedInput.dailySecurityScan
       ? new DailySecurityScanUseCase(
@@ -330,6 +337,7 @@ export class HandleScheduledEventUseCaseHandler {
       startPreparationUseCase,
       revertOrphanedPreparationUseCase,
       revertNotReadyAwaitingQualityCheckUseCase,
+      revertNotReadyUnreadPullRequestUseCase,
       updateRateLimitCacheUseCase,
       dailySecurityScanUseCase,
       systemDateRepository,
