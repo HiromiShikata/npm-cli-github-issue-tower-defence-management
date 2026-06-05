@@ -452,10 +452,7 @@ export class StartPreparationUseCase {
       let spawnEnv: Record<string, string> | undefined;
       if (rotationTokens !== null && proxyBaseUrl !== null) {
         const selected =
-          rotationTokens[
-            (currentPreparationIssueCount + startedInThisRunCount) %
-              rotationTokens.length
-          ];
+          rotationTokens[startedInThisRunCount % rotationTokens.length];
         spawnEnv = {
           CLAUDE_CODE_OAUTH_TOKEN: selected,
           ANTHROPIC_BASE_URL: proxyBaseUrl,
