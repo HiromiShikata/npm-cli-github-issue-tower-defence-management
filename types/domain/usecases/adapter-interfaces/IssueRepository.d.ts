@@ -20,6 +20,7 @@ export interface IssueRepository {
         cacheUsed: boolean;
     }>;
     getIssueByUrl: (url: string) => Promise<Issue | null>;
+    getIssueOrPrStateByUrl: (url: string) => Promise<'OPEN' | 'CLOSED' | 'MERGED' | null>;
     createNewIssue: (org: string, repo: string, title: string, body: string, assignees: Member['name'][], labels: Label[]) => Promise<number>;
     searchIssue: (query: {
         owner: string;

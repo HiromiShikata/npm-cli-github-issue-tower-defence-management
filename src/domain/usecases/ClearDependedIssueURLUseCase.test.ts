@@ -8,6 +8,7 @@ describe('ClearDependedIssueURLUseCase', () => {
   jest.setTimeout(30 * 1000);
   const mockIssueRepository = mock<IssueRepository>();
   describe('run', () => {
+    type ExternalUrlState = 'OPEN' | 'CLOSED' | 'MERGED' | null;
     const basicProject = {
       ...mock<Project>(),
       dependedIssueUrlSeparatedByComma: {
@@ -40,6 +41,7 @@ describe('ClearDependedIssueURLUseCase', () => {
         issues: Issue[];
         cacheUsed: boolean;
       };
+      externalUrlStates?: Record<string, ExternalUrlState>;
       expectedIssueRepositoryClearProjectFieldCalls: [Project, string, Issue][];
       expectedIssueRepositoryUpdateTextFieldCalls: [
         Project,
@@ -397,6 +399,227 @@ describe('ClearDependedIssueURLUseCase', () => {
         ],
       },
       {
+        name: 'should keep cross-project URL when external dependedIssue is OPEN',
+        input: {
+          project: basicProject,
+          issues: [
+            basicIssueOne,
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/X-Mile/e-learning-saas/issues/10126',
+              ],
+            },
+          ],
+          cacheUsed: false,
+        },
+        externalUrlStates: {
+          'https://github.com/X-Mile/e-learning-saas/issues/10126': 'OPEN',
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [],
+      },
+      {
+        name: 'should keep cross-project PR URL when external dependedPr is OPEN',
+        input: {
+          project: basicProject,
+          issues: [
+            basicIssueOne,
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/X-Mile/e-learning-saas/pull/10131',
+              ],
+            },
+          ],
+          cacheUsed: false,
+        },
+        externalUrlStates: {
+          'https://github.com/X-Mile/e-learning-saas/pull/10131': 'OPEN',
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [],
+      },
+      {
+        name: 'should remove cross-project URL as closed when external dependedIssue is CLOSED',
+        input: {
+          project: basicProject,
+          issues: [
+            basicIssueOne,
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/X-Mile/e-learning-saas/issues/10126',
+              ],
+            },
+          ],
+          cacheUsed: false,
+        },
+        externalUrlStates: {
+          'https://github.com/X-Mile/e-learning-saas/issues/10126': 'CLOSED',
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [
+          [
+            basicProject,
+            'fieldId',
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/X-Mile/e-learning-saas/issues/10126',
+              ],
+            },
+          ],
+        ],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/X-Mile/e-learning-saas/issues/10126',
+              ],
+            },
+            'All depended issues are already closed, dependency field cleared:\n- https://github.com/X-Mile/e-learning-saas/issues/10126',
+          ],
+        ],
+      },
+      {
+        name: 'should remove cross-project PR URL as closed when external dependedPr is MERGED',
+        input: {
+          project: basicProject,
+          issues: [
+            basicIssueOne,
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/X-Mile/e-learning-saas/pull/10131',
+              ],
+            },
+          ],
+          cacheUsed: false,
+        },
+        externalUrlStates: {
+          'https://github.com/X-Mile/e-learning-saas/pull/10131': 'MERGED',
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [
+          [
+            basicProject,
+            'fieldId',
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/X-Mile/e-learning-saas/pull/10131',
+              ],
+            },
+          ],
+        ],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/X-Mile/e-learning-saas/pull/10131',
+              ],
+            },
+            'All depended issues are already closed, dependency field cleared:\n- https://github.com/X-Mile/e-learning-saas/pull/10131',
+          ],
+        ],
+      },
+      {
+        name: 'should keep open cross-project URL and remove closed cross-project URL via updateProjectTextField',
+        input: {
+          project: basicProject,
+          issues: [
+            basicIssueOne,
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/X-Mile/e-learning-saas/issues/10126',
+                'https://github.com/X-Mile/e-learning-saas/pull/10131',
+              ],
+            },
+          ],
+          cacheUsed: false,
+        },
+        externalUrlStates: {
+          'https://github.com/X-Mile/e-learning-saas/issues/10126': 'OPEN',
+          'https://github.com/X-Mile/e-learning-saas/pull/10131': 'MERGED',
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [],
+        expectedIssueRepositoryUpdateTextFieldCalls: [
+          [
+            basicProject,
+            'fieldId',
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/X-Mile/e-learning-saas/issues/10126',
+                'https://github.com/X-Mile/e-learning-saas/pull/10131',
+              ],
+            },
+            'https://github.com/X-Mile/e-learning-saas/issues/10126',
+          ],
+        ],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/X-Mile/e-learning-saas/issues/10126',
+                'https://github.com/X-Mile/e-learning-saas/pull/10131',
+              ],
+            },
+            'Some depended issues are already closed, removed from dependency field:\n- https://github.com/X-Mile/e-learning-saas/pull/10131',
+          ],
+        ],
+      },
+      {
+        name: 'should remove URL with Dependency removed message when external lookup returns null (truly not found)',
+        input: {
+          project: basicProject,
+          issues: [
+            basicIssueOne,
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/X-Mile/e-learning-saas/issues/9999999',
+              ],
+            },
+          ],
+          cacheUsed: false,
+        },
+        externalUrlStates: {
+          'https://github.com/X-Mile/e-learning-saas/issues/9999999': null,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [
+          [
+            basicProject,
+            'fieldId',
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/X-Mile/e-learning-saas/issues/9999999',
+              ],
+            },
+          ],
+        ],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/X-Mile/e-learning-saas/issues/9999999',
+              ],
+            },
+            'Dependency removed:\n- https://github.com/X-Mile/e-learning-saas/issues/9999999',
+          ],
+        ],
+      },
+      {
         name: 'should call clearProjectField and createComment when issue depends circular',
         input: {
           project: basicProject,
@@ -440,15 +663,24 @@ describe('ClearDependedIssueURLUseCase', () => {
       ({
         name,
         input,
+        externalUrlStates,
         expectedIssueRepositoryClearProjectFieldCalls,
+        expectedIssueRepositoryUpdateTextFieldCalls,
         expectedIssueRepositoryCreateCommentCalls,
       }) => {
         it(name, async () => {
           jest.clearAllMocks();
+          mockIssueRepository.getIssueOrPrStateByUrl.mockImplementation(
+            async (url: string) =>
+              externalUrlStates ? (externalUrlStates[url] ?? null) : null,
+          );
           const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
           await useCase.run(input);
           expect(mockIssueRepository.clearProjectField.mock.calls).toEqual(
             expectedIssueRepositoryClearProjectFieldCalls,
+          );
+          expect(mockIssueRepository.updateProjectTextField.mock.calls).toEqual(
+            expectedIssueRepositoryUpdateTextFieldCalls,
           );
           expect(mockIssueRepository.createComment.mock.calls).toEqual(
             expectedIssueRepositoryCreateCommentCalls,

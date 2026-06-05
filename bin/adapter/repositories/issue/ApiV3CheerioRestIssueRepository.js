@@ -17,6 +17,11 @@ function isDirectPullRequestResponse(value) {
         return false;
     return true;
 }
+function isIssueOrPrStateResponse(value) {
+    if (typeof value !== 'object' || value === null)
+        return false;
+    return true;
+}
 const fnmatch = (pattern, str) => {
     let regexStr = '^';
     let i = 0;
@@ -195,6 +200,54 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 return null;
             }
             return this.convertProjectItemToIssue(projectItem);
+        };
+        this.getIssueOrPrStateByUrl = async (url) => {
+            let parsedUrl;
+            try {
+                parsedUrl = this.parseIssueUrl(url);
+            }
+            catch {
+                return null;
+            }
+            const { owner, repo, issueNumber } = parsedUrl;
+            const query = `
+      query($owner: String!, $repo: String!, $number: Int!) {
+        repository(owner: $owner, name: $repo) {
+          issueOrPullRequest(number: $number) {
+            __typename
+            ... on Issue {
+              state
+            }
+            ... on PullRequest {
+              state
+            }
+          }
+        }
+      }
+    `;
+            const response = await fetch('https://api.github.com/graphql', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${this.ghToken}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    query,
+                    variables: { owner, repo, number: issueNumber },
+                }),
+            });
+            if (!response.ok) {
+                return null;
+            }
+            const responseData = await response.json();
+            if (!isIssueOrPrStateResponse(responseData)) {
+                return null;
+            }
+            const state = responseData.data?.repository?.issueOrPullRequest?.state;
+            if (state === 'OPEN' || state === 'CLOSED' || state === 'MERGED') {
+                return state;
+            }
+            return null;
         };
         this.addIssueToProject = async (project, issueUrl) => {
             await this.graphqlProjectItemRepository.addIssueToProject(project.id, issueUrl);

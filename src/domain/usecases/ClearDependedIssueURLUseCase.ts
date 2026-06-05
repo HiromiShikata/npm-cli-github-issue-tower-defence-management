@@ -6,7 +6,10 @@ export class ClearDependedIssueURLUseCase {
   constructor(
     readonly issueRepository: Pick<
       IssueRepository,
-      'clearProjectField' | 'createComment' | 'updateProjectTextField'
+      | 'clearProjectField'
+      | 'createComment'
+      | 'updateProjectTextField'
+      | 'getIssueOrPrStateByUrl'
     >,
   ) {}
 
@@ -26,7 +29,6 @@ export class ClearDependedIssueURLUseCase {
       }
       const circularDependedIssueUrls = issue.dependedIssueUrls.filter(
         (dependedIssueUrl) => {
-          // get all depended issues circularly
           const circularDependedIssues = new Set<string>();
           const stack = [dependedIssueUrl];
           while (stack.length > 0) {
@@ -62,23 +64,43 @@ ${circularDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
         );
         continue;
       }
-      const notFoundDependedIssueUrls = issue.dependedIssueUrls.filter(
+      const urlsMissingFromInput = issue.dependedIssueUrls.filter(
         (dependedIssueUrl) =>
           !input.issues.some((depIssue) => depIssue.url === dependedIssueUrl),
+      );
+      const externalUrlStates = new Map<
+        string,
+        'OPEN' | 'CLOSED' | 'MERGED' | null
+      >();
+      for (const url of urlsMissingFromInput) {
+        const state = await this.issueRepository.getIssueOrPrStateByUrl(url);
+        externalUrlStates.set(url, state);
+      }
+      const notFoundDependedIssueUrls = urlsMissingFromInput.filter(
+        (url) => externalUrlStates.get(url) === null,
+      );
+      const externalOpenDependedIssueUrls = urlsMissingFromInput.filter(
+        (url) => externalUrlStates.get(url) === 'OPEN',
+      );
+      const externalClosedDependedIssueUrls = urlsMissingFromInput.filter(
+        (url) => {
+          const state = externalUrlStates.get(url);
+          return state === 'CLOSED' || state === 'MERGED';
+        },
       );
       const remainingDependedIssueUrls = issue.dependedIssueUrls.filter(
         (dependedIssueUrl) =>
           input.issues.some(
             (depIssue) =>
               depIssue.url === dependedIssueUrl && !depIssue.isClosed,
-          ),
+          ) || externalOpenDependedIssueUrls.includes(dependedIssueUrl),
       );
       const closedDependedIssueUrls = issue.dependedIssueUrls.filter(
         (dependedIssueUrl) =>
           input.issues.some(
             (depIssue) =>
               depIssue.url === dependedIssueUrl && depIssue.isClosed,
-          ),
+          ) || externalClosedDependedIssueUrls.includes(dependedIssueUrl),
       );
       if (
         notFoundDependedIssueUrls.length === 0 &&

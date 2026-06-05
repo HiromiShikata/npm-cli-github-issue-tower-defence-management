@@ -22,6 +22,9 @@ export interface IssueRepository {
     allowCacheMinutes: number,
   ) => Promise<{ issues: Issue[]; cacheUsed: boolean }>;
   getIssueByUrl: (url: string) => Promise<Issue | null>;
+  getIssueOrPrStateByUrl: (
+    url: string,
+  ) => Promise<'OPEN' | 'CLOSED' | 'MERGED' | null>;
   createNewIssue: (
     org: string,
     repo: string,

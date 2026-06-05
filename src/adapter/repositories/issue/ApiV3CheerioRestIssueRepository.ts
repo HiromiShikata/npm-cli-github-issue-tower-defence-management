@@ -199,6 +199,17 @@ type DirectPullRequestResponse = {
   errors?: Array<{ message: string }>;
 };
 
+type IssueOrPrStateResponse = {
+  data?: {
+    repository?: {
+      issueOrPullRequest?: {
+        state?: string;
+      } | null;
+    } | null;
+  };
+  errors?: Array<{ message: string }>;
+};
+
 function isIssueTimelineResponse(
   value: unknown,
 ): value is IssueTimelineResponse {
@@ -209,6 +220,13 @@ function isIssueTimelineResponse(
 function isDirectPullRequestResponse(
   value: unknown,
 ): value is DirectPullRequestResponse {
+  if (typeof value !== 'object' || value === null) return false;
+  return true;
+}
+
+function isIssueOrPrStateResponse(
+  value: unknown,
+): value is IssueOrPrStateResponse {
   if (typeof value !== 'object' || value === null) return false;
   return true;
 }
@@ -491,6 +509,55 @@ export class ApiV3CheerioRestIssueRepository
       return null;
     }
     return this.convertProjectItemToIssue(projectItem);
+  };
+  getIssueOrPrStateByUrl = async (
+    url: string,
+  ): Promise<'OPEN' | 'CLOSED' | 'MERGED' | null> => {
+    let parsedUrl: ReturnType<typeof this.parseIssueUrl>;
+    try {
+      parsedUrl = this.parseIssueUrl(url);
+    } catch {
+      return null;
+    }
+    const { owner, repo, issueNumber } = parsedUrl;
+    const query = `
+      query($owner: String!, $repo: String!, $number: Int!) {
+        repository(owner: $owner, name: $repo) {
+          issueOrPullRequest(number: $number) {
+            __typename
+            ... on Issue {
+              state
+            }
+            ... on PullRequest {
+              state
+            }
+          }
+        }
+      }
+    `;
+    const response = await fetch('https://api.github.com/graphql', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.ghToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query,
+        variables: { owner, repo, number: issueNumber },
+      }),
+    });
+    if (!response.ok) {
+      return null;
+    }
+    const responseData: unknown = await response.json();
+    if (!isIssueOrPrStateResponse(responseData)) {
+      return null;
+    }
+    const state = responseData.data?.repository?.issueOrPullRequest?.state;
+    if (state === 'OPEN' || state === 'CLOSED' || state === 'MERGED') {
+      return state;
+    }
+    return null;
   };
   addIssueToProject = async (
     project: Project,

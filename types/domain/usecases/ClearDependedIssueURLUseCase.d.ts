@@ -2,8 +2,8 @@ import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
 export declare class ClearDependedIssueURLUseCase {
-    readonly issueRepository: Pick<IssueRepository, 'clearProjectField' | 'createComment' | 'updateProjectTextField'>;
-    constructor(issueRepository: Pick<IssueRepository, 'clearProjectField' | 'createComment' | 'updateProjectTextField'>);
+    readonly issueRepository: Pick<IssueRepository, 'clearProjectField' | 'createComment' | 'updateProjectTextField' | 'getIssueOrPrStateByUrl'>;
+    constructor(issueRepository: Pick<IssueRepository, 'clearProjectField' | 'createComment' | 'updateProjectTextField' | 'getIssueOrPrStateByUrl'>);
     run: (input: {
         project: Project;
         issues: Issue[];
