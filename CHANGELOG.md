@@ -1,3 +1,10 @@
+# [1.72.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.71.1...v1.72.0) (2026-06-06)
+
+
+### Features
+
+* **core:** auto-approve PR when issue has change-target labels and changed files are confined ([a8fb98f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a8fb98f0a05875776fdbe5a393417b6793943901)), closes [#736](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/736)
+
 ## [1.71.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.71.0...v1.71.1) (2026-06-06)
 
 
