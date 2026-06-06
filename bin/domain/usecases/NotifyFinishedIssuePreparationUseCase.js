@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.NotifyFinishedIssuePreparationUseCase = exports.IllegalIssueStatusError = exports.IssueNotFoundError = void 0;
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 const IssueRejectionEvaluator_1 = require("./IssueRejectionEvaluator");
+const ChangeTargetPullRequestApprover_1 = require("./ChangeTargetPullRequestApprover");
 class IssueNotFoundError extends Error {
     constructor(issueUrl) {
         super(`Issue not found: ${issueUrl}`);
@@ -99,7 +100,7 @@ class NotifyFinishedIssuePreparationUseCase {
                 return;
             }
             if (rejections.length <= 0) {
-                await this.maybeAutoApprovePrByChangeTarget(issue, approvedPrUrl);
+                await this.changeTargetPullRequestApprover.approveIfConfined(issue.labels, approvedPrUrl);
                 issue.status = WorkflowStatus_1.AWAITING_QUALITY_CHECK_STATUS_NAME;
                 await this.issueRepository.update(issue, project);
                 await this.issueRepository.updateStatus(project, issue, awaitingQualityCheckStatusOption.id);
@@ -114,41 +115,6 @@ class NotifyFinishedIssuePreparationUseCase {
             await this.issueCommentRepository.createComment(issue, rejectionStatusMessage);
         };
         this.isAuthorTrusted = (author, allowedIssueAuthors) => allowedIssueAuthors === null || allowedIssueAuthors.includes(author);
-        this.extractChangeTargetPaths = (labels) => {
-            const prefix = 'change-target:';
-            const paths = [];
-            for (const label of labels) {
-                if (!label.startsWith(prefix))
-                    continue;
-                const raw = label.slice(prefix.length).trim();
-                if (raw.length === 0)
-                    continue;
-                const normalized = raw.replace(/\/+$/, '');
-                if (normalized.length === 0)
-                    continue;
-                paths.push(normalized);
-            }
-            return paths;
-        };
-        this.isFilePathConfinedToAllowedPaths = (filePath, allowedPaths) => allowedPaths.some((allowedPath) => filePath === allowedPath || filePath.startsWith(`${allowedPath}/`));
-        this.maybeAutoApprovePrByChangeTarget = async (issue, approvedPrUrl) => {
-            if (approvedPrUrl === null) {
-                return;
-            }
-            const changeTargetPaths = this.extractChangeTargetPaths(issue.labels);
-            if (changeTargetPaths.length === 0) {
-                return;
-            }
-            const changedFilePaths = await this.issueRepository.getPullRequestChangedFilePaths(approvedPrUrl);
-            if (changedFilePaths.length === 0) {
-                return;
-            }
-            const allConfined = changedFilePaths.every((filePath) => this.isFilePathConfinedToAllowedPaths(filePath, changeTargetPaths));
-            if (!allConfined) {
-                return;
-            }
-            await this.issueRepository.approvePullRequest(approvedPrUrl);
-        };
         this.collectRejections = async (issue, comments, isTrustedAuthor) => {
             const rejections = [];
             const lastComment = comments[comments.length - 1];
@@ -232,6 +198,7 @@ class NotifyFinishedIssuePreparationUseCase {
             }
         };
         this.issueRejectionEvaluator = new IssueRejectionEvaluator_1.IssueRejectionEvaluator(issueRepository);
+        this.changeTargetPullRequestApprover = new ChangeTargetPullRequestApprover_1.ChangeTargetPullRequestApprover(issueRepository);
     }
 }
 exports.NotifyFinishedIssuePreparationUseCase = NotifyFinishedIssuePreparationUseCase;

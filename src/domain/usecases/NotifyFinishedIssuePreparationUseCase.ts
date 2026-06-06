@@ -12,6 +12,7 @@ import {
   IssueRejectionEvaluator,
   PrRejectedReasonType,
 } from './IssueRejectionEvaluator';
+import { ChangeTargetPullRequestApprover } from './ChangeTargetPullRequestApprover';
 
 export class IssueNotFoundError extends Error {
   constructor(issueUrl: string) {
@@ -38,6 +39,7 @@ type RejectedReasonType =
 
 export class NotifyFinishedIssuePreparationUseCase {
   private readonly issueRejectionEvaluator: IssueRejectionEvaluator;
+  private readonly changeTargetPullRequestApprover: ChangeTargetPullRequestApprover;
 
   constructor(
     private readonly projectRepository: Pick<ProjectRepository, 'getByUrl'>,
@@ -63,6 +65,9 @@ export class NotifyFinishedIssuePreparationUseCase {
     >,
   ) {
     this.issueRejectionEvaluator = new IssueRejectionEvaluator(issueRepository);
+    this.changeTargetPullRequestApprover = new ChangeTargetPullRequestApprover(
+      issueRepository,
+    );
   }
 
   run = async (params: {
@@ -227,7 +232,10 @@ export class NotifyFinishedIssuePreparationUseCase {
     }
 
     if (rejections.length <= 0) {
-      await this.maybeAutoApprovePrByChangeTarget(issue, approvedPrUrl);
+      await this.changeTargetPullRequestApprover.approveIfConfined(
+        issue.labels,
+        approvedPrUrl,
+      );
       issue.status = AWAITING_QUALITY_CHECK_STATUS_NAME;
       await this.issueRepository.update(issue, project);
       await this.issueRepository.updateStatus(
@@ -273,54 +281,6 @@ export class NotifyFinishedIssuePreparationUseCase {
     allowedIssueAuthors: string[] | null,
   ): boolean =>
     allowedIssueAuthors === null || allowedIssueAuthors.includes(author);
-
-  private extractChangeTargetPaths = (labels: string[]): string[] => {
-    const prefix = 'change-target:';
-    const paths: string[] = [];
-    for (const label of labels) {
-      if (!label.startsWith(prefix)) continue;
-      const raw = label.slice(prefix.length).trim();
-      if (raw.length === 0) continue;
-      const normalized = raw.replace(/\/+$/, '');
-      if (normalized.length === 0) continue;
-      paths.push(normalized);
-    }
-    return paths;
-  };
-
-  private isFilePathConfinedToAllowedPaths = (
-    filePath: string,
-    allowedPaths: string[],
-  ): boolean =>
-    allowedPaths.some(
-      (allowedPath) =>
-        filePath === allowedPath || filePath.startsWith(`${allowedPath}/`),
-    );
-
-  private maybeAutoApprovePrByChangeTarget = async (
-    issue: { labels: string[] },
-    approvedPrUrl: string | null,
-  ): Promise<void> => {
-    if (approvedPrUrl === null) {
-      return;
-    }
-    const changeTargetPaths = this.extractChangeTargetPaths(issue.labels);
-    if (changeTargetPaths.length === 0) {
-      return;
-    }
-    const changedFilePaths =
-      await this.issueRepository.getPullRequestChangedFilePaths(approvedPrUrl);
-    if (changedFilePaths.length === 0) {
-      return;
-    }
-    const allConfined = changedFilePaths.every((filePath) =>
-      this.isFilePathConfinedToAllowedPaths(filePath, changeTargetPaths),
-    );
-    if (!allConfined) {
-      return;
-    }
-    await this.issueRepository.approvePullRequest(approvedPrUrl);
-  };
 
   private collectRejections = async (
     issue: { url: string; labels: string[]; isPr: boolean },

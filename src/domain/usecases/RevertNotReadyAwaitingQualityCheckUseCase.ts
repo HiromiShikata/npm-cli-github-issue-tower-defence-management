@@ -2,6 +2,7 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import { IssueRejectionEvaluator } from './IssueRejectionEvaluator';
+import { ChangeTargetPullRequestApprover } from './ChangeTargetPullRequestApprover';
 import {
   AWAITING_QUALITY_CHECK_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
@@ -9,6 +10,7 @@ import {
 
 export class RevertNotReadyAwaitingQualityCheckUseCase {
   private readonly issueRejectionEvaluator: IssueRejectionEvaluator;
+  private readonly changeTargetPullRequestApprover: ChangeTargetPullRequestApprover;
 
   constructor(
     private readonly projectRepository: Pick<
@@ -21,6 +23,8 @@ export class RevertNotReadyAwaitingQualityCheckUseCase {
       | 'updateStatus'
       | 'findRelatedOpenPRs'
       | 'getOpenPullRequest'
+      | 'getPullRequestChangedFilePaths'
+      | 'approvePullRequest'
     >,
     private readonly issueCommentRepository: Pick<
       IssueCommentRepository,
@@ -28,6 +32,9 @@ export class RevertNotReadyAwaitingQualityCheckUseCase {
     >,
   ) {
     this.issueRejectionEvaluator = new IssueRejectionEvaluator(issueRepository);
+    this.changeTargetPullRequestApprover = new ChangeTargetPullRequestApprover(
+      issueRepository,
+    );
   }
 
   run = async (params: {
@@ -71,7 +78,8 @@ export class RevertNotReadyAwaitingQualityCheckUseCase {
         continue;
       }
 
-      const { rejections } = await this.issueRejectionEvaluator.evaluate(issue);
+      const { rejections, approvedPrUrl } =
+        await this.issueRejectionEvaluator.evaluate(issue);
       if (rejections.length > 0) {
         await this.issueRepository.updateStatus(
           project,
@@ -82,7 +90,13 @@ export class RevertNotReadyAwaitingQualityCheckUseCase {
           issue,
           `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`,
         );
+        continue;
       }
+
+      await this.changeTargetPullRequestApprover.approveIfConfined(
+        issue.labels,
+        approvedPrUrl,
+      );
     }
   };
 }

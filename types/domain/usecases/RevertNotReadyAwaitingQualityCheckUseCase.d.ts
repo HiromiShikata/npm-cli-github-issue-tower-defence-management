@@ -6,7 +6,8 @@ export declare class RevertNotReadyAwaitingQualityCheckUseCase {
     private readonly issueRepository;
     private readonly issueCommentRepository;
     private readonly issueRejectionEvaluator;
-    constructor(projectRepository: Pick<ProjectRepository, 'findProjectIdByUrl' | 'getProject'>, issueRepository: Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest'>, issueCommentRepository: Pick<IssueCommentRepository, 'createComment'>);
+    private readonly changeTargetPullRequestApprover;
+    constructor(projectRepository: Pick<ProjectRepository, 'findProjectIdByUrl' | 'getProject'>, issueRepository: Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'getPullRequestChangedFilePaths' | 'approvePullRequest'>, issueCommentRepository: Pick<IssueCommentRepository, 'createComment'>);
     run: (params: {
         projectUrl: string;
         allowIssueCacheMinutes: number;
