@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RevertNotReadyAwaitingQualityCheckUseCase = void 0;
 const IssueRejectionEvaluator_1 = require("./IssueRejectionEvaluator");
+const ChangeTargetPullRequestApprover_1 = require("./ChangeTargetPullRequestApprover");
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 class RevertNotReadyAwaitingQualityCheckUseCase {
     constructor(projectRepository, issueRepository, issueCommentRepository) {
@@ -28,14 +29,17 @@ class RevertNotReadyAwaitingQualityCheckUseCase {
                 if (hasLlmAgentLabel) {
                     continue;
                 }
-                const { rejections } = await this.issueRejectionEvaluator.evaluate(issue);
+                const { rejections, approvedPrUrl } = await this.issueRejectionEvaluator.evaluate(issue);
                 if (rejections.length > 0) {
                     await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
                     await this.issueCommentRepository.createComment(issue, `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`);
+                    continue;
                 }
+                await this.changeTargetPullRequestApprover.approveIfConfined(issue.labels, approvedPrUrl);
             }
         };
         this.issueRejectionEvaluator = new IssueRejectionEvaluator_1.IssueRejectionEvaluator(issueRepository);
+        this.changeTargetPullRequestApprover = new ChangeTargetPullRequestApprover_1.ChangeTargetPullRequestApprover(issueRepository);
     }
 }
 exports.RevertNotReadyAwaitingQualityCheckUseCase = RevertNotReadyAwaitingQualityCheckUseCase;
