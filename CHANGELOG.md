@@ -1,3 +1,10 @@
+# [1.73.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.72.0...v1.73.0) (2026-06-06)
+
+
+### Features
+
+* **core:** run change-target auto-approve check in periodic awaiting quality check cycle ([bf7f5b3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bf7f5b307c2d6af2f0377cab6d26e93b4e014e47)), closes [#770](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/770)
+
 # [1.72.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.71.1...v1.72.0) (2026-06-06)
 
 
