@@ -5,7 +5,7 @@ const encodeForURI = (url) => {
     if (!url) {
         return '';
     }
-    return encodeURI(url).replace('#', '%23').replace('&', '%26');
+    return encodeURI(url).replace(/#/g, '%23').replace(/&/g, '%26');
 };
 exports.encodeForURI = encodeForURI;
 //# sourceMappingURL=utils.js.map

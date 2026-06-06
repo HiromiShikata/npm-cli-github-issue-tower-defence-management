@@ -1,3 +1,10 @@
+## [1.73.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.73.0...v1.73.1) (2026-06-06)
+
+
+### Bug Fixes
+
+* **security:** use global regex replace to fully sanitize URI characters and quote characters ([e06dbd6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e06dbd69a124101761e1357405e4c72668a37241)), closes [#720](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/720)
+
 # [1.73.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.72.0...v1.73.0) (2026-06-06)
 
 

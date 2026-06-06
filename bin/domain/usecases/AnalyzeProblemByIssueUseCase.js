@@ -29,7 +29,7 @@ class AnalyzeProblemByIssueUseCase {
                 return url.split('/').slice(-3).join('/');
             };
             const issueTitleForFlowchart = (title) => {
-                return title.replace('"', "'");
+                return title.replace(/"/g, "'");
             };
             const flowChart = `
 \`\`\`mermaid
