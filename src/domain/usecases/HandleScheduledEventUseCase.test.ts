@@ -800,5 +800,61 @@ describe('HandleScheduledEventUseCase', () => {
         expect(body).toContain(writeError.stack ?? '');
       });
     });
+
+    describe('empty targetDateTimes handling', () => {
+      const emptyTargetInput = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        allowIssueCacheMinutes: 60,
+      };
+
+      it('should not crash and should skip the LastExecutionDateTime write when lastExecutionDateTime is within 60 seconds of now', async () => {
+        const lastExecution = '2024-01-01T00:00:00Z';
+        const now = new Date('2024-01-01T00:00:30Z');
+        mockSpreadsheetRepository.getSheet.mockResolvedValue([
+          ['LastExecutionDateTime'],
+          ['', '', lastExecution],
+        ]);
+        mockDateRepository.now.mockResolvedValue(now);
+
+        const result = await useCase.run(emptyTargetInput);
+
+        expect(result).not.toBeNull();
+        expect(result?.targetDateTimes).toEqual([]);
+        const updateCellCalls = mockSpreadsheetRepository.updateCell.mock.calls;
+        const lastExecutionWrite = updateCellCalls.find(
+          (call) => call[2] === 1 && call[3] === 2,
+        );
+        expect(lastExecutionWrite).toBeUndefined();
+      });
+
+      it('should not crash and should skip the LastExecutionDateTime write when lastExecutionDateTime equals now', async () => {
+        const sameTime = '2024-01-01T00:00:00Z';
+        mockSpreadsheetRepository.getSheet.mockResolvedValue([
+          ['LastExecutionDateTime'],
+          ['', '', sameTime],
+        ]);
+        mockDateRepository.now.mockResolvedValue(new Date(sameTime));
+
+        const result = await useCase.run(emptyTargetInput);
+
+        expect(result).not.toBeNull();
+        expect(result?.targetDateTimes).toEqual([]);
+        const updateCellCalls = mockSpreadsheetRepository.updateCell.mock.calls;
+        const lastExecutionWrite = updateCellCalls.find(
+          (call) => call[2] === 1 && call[3] === 2,
+        );
+        expect(lastExecutionWrite).toBeUndefined();
+      });
+    });
   });
 });

@@ -524,6 +524,10 @@ ${JSON.stringify(e)}
         )
       : [now];
 
+    if (targetDateTimes.length === 0) {
+      return targetDateTimes;
+    }
+
     await this.runSpreadsheetOperation(
       'write',
       spreadsheetUrl,
