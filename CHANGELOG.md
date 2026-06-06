@@ -1,3 +1,10 @@
+# [1.70.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.13...v1.70.0) (2026-06-06)
+
+
+### Features
+
+* **core:** add scheduled use case to set PR Depended Issue URL to linked open task ([8d083d5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8d083d5c3bb5305c0162508dd69feb30c6285769)), closes [#756](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/756)
+
 ## [1.69.13](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.12...v1.69.13) (2026-06-06)
 
 
