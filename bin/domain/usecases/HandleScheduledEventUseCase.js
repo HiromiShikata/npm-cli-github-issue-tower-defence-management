@@ -294,6 +294,9 @@ ${JSON.stringify(e)}
             const targetDateTimes = lastExecutionDateTime
                 ? HandleScheduledEventUseCase.createTargetDateTimes(lastExecutionDateTime, now)
                 : [now];
+            if (targetDateTimes.length === 0) {
+                return targetDateTimes;
+            }
             await this.runSpreadsheetOperation('write', spreadsheetUrl, org, repo, manager, () => this.spreadsheetRepository.updateCell(spreadsheetUrl, 'HandleScheduledEvent', 1, 2, targetDateTimes[targetDateTimes.length - 1].toISOString()));
             return targetDateTimes;
         };

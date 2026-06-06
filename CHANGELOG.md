@@ -1,3 +1,10 @@
+## [1.69.13](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.12...v1.69.13) (2026-06-06)
+
+
+### Bug Fixes
+
+* **handle-scheduled-event:** skip LastExecutionDateTime write when targetDateTimes is empty ([d104b8e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d104b8e75ab7f075cdbd33999e0b596269484902))
+
 ## [1.69.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.11...v1.69.12) (2026-06-05)
 
 
