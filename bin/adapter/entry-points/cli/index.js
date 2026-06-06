@@ -14,6 +14,7 @@ const StartPreparationUseCase_1 = require("../../../domain/usecases/StartPrepara
 const rotationOrderFileWriter_1 = require("../handlers/rotationOrderFileWriter");
 const ProxyClaudeTokenUsageRepository_1 = require("../../repositories/ProxyClaudeTokenUsageRepository");
 const NotifyFinishedIssuePreparationUseCase_1 = require("../../../domain/usecases/NotifyFinishedIssuePreparationUseCase");
+const CheckIssueReviewReadinessUseCase_1 = require("../../../domain/usecases/CheckIssueReviewReadinessUseCase");
 const LocalStorageRepository_1 = require("../../repositories/LocalStorageRepository");
 const GraphqlProjectRepository_1 = require("../../repositories/GraphqlProjectRepository");
 const ApiV3IssueRepository_1 = require("../../repositories/issue/ApiV3IssueRepository");
@@ -249,6 +250,53 @@ exports.program
         workflowBlockerResolvedWebhookUrl,
         allowedIssueAuthors,
     });
+});
+exports.program
+    .command('checkIssueReviewReadiness')
+    .description('Check whether an issue is in a review-ready state without mutating any field or posting any comment')
+    .requiredOption('--configFilePath <path>', 'Path to config file for tower defence management')
+    .requiredOption('--issueUrl <url>', 'GitHub issue URL')
+    .option('--projectUrl <url>', 'GitHub project URL')
+    .action(async (options) => {
+    const token = process.env.GH_TOKEN;
+    if (!token) {
+        console.error('GH_TOKEN environment variable is required');
+        process.exit(1);
+    }
+    const configFileValues = (0, projectConfig_2.loadConfigFile)(options.configFilePath);
+    const cliOverrides = {
+        projectUrl: options.projectUrl,
+    };
+    const tempProjectUrl = cliOverrides.projectUrl ?? configFileValues.projectUrl;
+    let readmeOverrides = {};
+    if (tempProjectUrl) {
+        const readme = await (0, projectConfig_2.fetchProjectReadme)(tempProjectUrl, token);
+        if (readme) {
+            readmeOverrides = (0, projectConfig_2.parseProjectReadmeConfig)(readme, tempProjectUrl);
+        }
+    }
+    const config = (0, projectConfig_2.mergeConfigs)(configFileValues, cliOverrides, readmeOverrides);
+    const projectUrl = config.projectUrl;
+    if (!projectUrl) {
+        console.error('projectUrl is required. Provide via --projectUrl, config file, or project README.');
+        process.exit(1);
+    }
+    const projectName = config.projectName ?? 'default';
+    const localStorageRepository = new LocalStorageRepository_1.LocalStorageRepository();
+    const cachePath = `./tmp/cache/${projectName}`;
+    const localStorageCacheRepository = new LocalStorageCacheRepository_1.LocalStorageCacheRepository(localStorageRepository, cachePath);
+    const githubRepositoryParams = buildGithubRepositoryParams(localStorageRepository, token);
+    const projectRepository = new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams);
+    const apiV3IssueRepository = new ApiV3IssueRepository_1.ApiV3IssueRepository(...githubRepositoryParams);
+    const restIssueRepository = new RestIssueRepository_1.RestIssueRepository(...githubRepositoryParams);
+    const graphqlProjectItemRepository = new GraphqlProjectItemRepository_1.GraphqlProjectItemRepository(...githubRepositoryParams);
+    const issueRepository = new ApiV3CheerioRestIssueRepository_1.ApiV3CheerioRestIssueRepository(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, ...githubRepositoryParams);
+    const useCase = new CheckIssueReviewReadinessUseCase_1.CheckIssueReviewReadinessUseCase(projectRepository, issueRepository);
+    const result = await useCase.run({
+        projectUrl,
+        issueUrl: options.issueUrl,
+    });
+    process.stdout.write(`${JSON.stringify(result)}\n`);
 });
 /* istanbul ignore next */
 if (process.argv && require.main === module) {

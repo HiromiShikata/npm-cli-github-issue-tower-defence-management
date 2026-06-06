@@ -1,3 +1,10 @@
+# [1.71.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.70.0...v1.71.0) (2026-06-06)
+
+
+### Features
+
+* **cli:** add checkIssueReviewReadiness sub-command for read-only review-readiness check ([502ccf7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/502ccf747d65d498bbaac18f8e3a3099d937e55c)), closes [#743](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/743)
+
 # [1.70.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.69.13...v1.70.0) (2026-06-06)
 
 
