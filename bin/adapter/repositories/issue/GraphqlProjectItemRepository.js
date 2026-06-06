@@ -402,9 +402,83 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
         };
         this.fetchProjectItemByUrl = async (issueUrl) => {
             const { owner, repo, issueNumber } = this.extractIssueFromUrl(issueUrl);
-            const graphql = `query GetIssue($owner: String!, $repo: String!, $number: Int!) {
+            const graphql = `query GetIssueOrPullRequest($owner: String!, $repo: String!, $number: Int!) {
   repository(owner: $owner, name: $repo) {
     issue(number: $number) {
+      number
+      title
+      state
+      url
+      body
+      createdAt
+      author {
+        login
+      }
+      labels(first: 100) {
+        nodes {
+          name
+        }
+      }
+      assignees(first: 20) {
+        nodes {
+          login
+        }
+      }
+      repository {
+        nameWithOwner
+      }
+      projectItems(first: 10) {
+        nodes {
+          id
+          fieldValues(first: 10) {
+            nodes {
+              ... on ProjectV2ItemFieldTextValue {
+                text
+                field {
+                  ... on ProjectV2Field {
+                    name
+                  }
+                }
+              }
+              ... on ProjectV2ItemFieldNumberValue {
+                number
+                id
+                field {
+                  ... on ProjectV2Field {
+                    name
+                  }
+                }
+              }
+              ... on ProjectV2ItemFieldDateValue {
+                date
+                field {
+                  ... on ProjectV2Field {
+                    name
+                  }
+                }
+              }
+              ... on ProjectV2ItemFieldSingleSelectValue {
+                name
+                field {
+                  ... on ProjectV2SingleSelectField {
+                    name
+                  }
+                }
+              }
+              ... on ProjectV2ItemFieldIterationValue {
+                title
+                field {
+                  ... on ProjectV2Field {
+                    name
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    pullRequest(number: $number) {
       number
       title
       state
@@ -503,26 +577,27 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
                 throw new Error(`GitHub GraphQL API returned no data for fetchProjectItemByUrl: ${errorMessages}`);
             }
             const data = response.data;
-            if (!data.repository.issue) {
+            const content = data.repository.issue ?? data.repository.pullRequest;
+            if (!content) {
                 return null;
             }
-            const projectItems = data.repository.issue.projectItems.nodes;
+            const projectItems = content.projectItems.nodes;
             const item = projectItems[0];
             if (!item) {
                 throw new Error(`No project item found for issue ${issueUrl}`);
             }
             return {
                 id: item.id,
-                nameWithOwner: data.repository.issue.repository.nameWithOwner,
-                number: data.repository.issue.number,
-                title: data.repository.issue.title,
-                state: this.convertStrToState(data.repository.issue.state),
-                url: data.repository.issue.url,
-                body: data.repository.issue.body,
-                labels: data.repository.issue.labels?.nodes?.map((l) => l.name) || [],
-                assignees: data.repository.issue.assignees?.nodes?.map((a) => a.login) || [],
-                createdAt: data.repository.issue.createdAt || new Date().toISOString(),
-                author: data.repository.issue.author?.login || '',
+                nameWithOwner: content.repository.nameWithOwner,
+                number: content.number,
+                title: content.title,
+                state: this.convertStrToState(content.state),
+                url: content.url,
+                body: content.body,
+                labels: content.labels?.nodes?.map((l) => l.name) || [],
+                assignees: content.assignees?.nodes?.map((a) => a.login) || [],
+                createdAt: content.createdAt || new Date().toISOString(),
+                author: content.author?.login || '',
                 customFields: item.fieldValues.nodes
                     .filter((field) => !!field.field)
                     .map((field) => {
