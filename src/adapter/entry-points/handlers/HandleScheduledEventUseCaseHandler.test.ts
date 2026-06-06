@@ -60,6 +60,14 @@ jest.mock('../../../domain/usecases/AnalyzeStoriesUseCase', () => ({
 jest.mock('../../../domain/usecases/ClearDependedIssueURLUseCase', () => ({
   ClearDependedIssueURLUseCase: jest.fn().mockImplementation(() => ({})),
 }));
+jest.mock(
+  '../../../domain/usecases/SetDependedIssueUrlForOpenTaskPRsUseCase',
+  () => ({
+    SetDependedIssueUrlForOpenTaskPRsUseCase: jest
+      .fn()
+      .mockImplementation(() => ({})),
+  }),
+);
 jest.mock('../../../domain/usecases/CreateEstimationIssueUseCase', () => ({
   CreateEstimationIssueUseCase: jest.fn().mockImplementation(() => ({})),
 }));

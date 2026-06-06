@@ -10,7 +10,7 @@ class ProjectNotFoundError extends Error {
 exports.ProjectNotFoundError = ProjectNotFoundError;
 const SLOW_SWEEP_INTERVAL_SECONDS = 600;
 class HandleScheduledEventUseCase {
-    constructor(setupTowerDefenceProjectUseCase, actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, revertNotReadyAwaitingQualityCheckUseCase, updateRateLimitCacheUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
+    constructor(setupTowerDefenceProjectUseCase, actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, revertNotReadyAwaitingQualityCheckUseCase, updateRateLimitCacheUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
         this.setupTowerDefenceProjectUseCase = setupTowerDefenceProjectUseCase;
         this.actionAnnouncementUseCase = actionAnnouncementUseCase;
         this.setWorkflowManagementIssueToStoryUseCase = setWorkflowManagementIssueToStoryUseCase;
@@ -18,6 +18,7 @@ class HandleScheduledEventUseCase {
         this.analyzeProblemByIssueUseCase = analyzeProblemByIssueUseCase;
         this.analyzeStoriesUseCase = analyzeStoriesUseCase;
         this.clearDependedIssueURLUseCase = clearDependedIssueURLUseCase;
+        this.setDependedIssueUrlForOpenTaskPRsUseCase = setDependedIssueUrlForOpenTaskPRsUseCase;
         this.createEstimationIssueUseCase = createEstimationIssueUseCase;
         this.convertCheckboxToIssueInStoryIssueUseCase = convertCheckboxToIssueInStoryIssueUseCase;
         this.changeStatusByStoryColorUseCase = changeStatusByStoryColorUseCase;
@@ -217,6 +218,10 @@ ${JSON.stringify(e)}
                 project,
                 issues,
                 cacheUsed,
+            });
+            await this.setDependedIssueUrlForOpenTaskPRsUseCase.run({
+                project,
+                issues,
             });
             await this.createEstimationIssueUseCase.run({
                 targetDates: targetDateTimes,
