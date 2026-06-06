@@ -367,6 +367,7 @@ The following use cases execute on every `schedule` trigger (cadence is determin
 - `RevertNotReadyAwaitingQualityCheckUseCase` — reverts awaiting-quality-check issues whose linked PR is conflicting, draft, missing, multiplied, has failing or never-started CI checks, or has unresolved review comments, back to awaiting-workspace
 - `RevertOrphanedPreparationUseCase` — reverts orphaned preparation issues back to awaiting-workspace
 - `StartPreparationUseCase` — starts preparation for issues ready to be worked on
+- `NotifyFinishedIssuePreparationUseCase` — checks preparation-status issues and advances them. When the issue carries one or more `change-target:<path>` labels and all auto status checks pass, the related pull request's full file list is fetched (paginated, no 100-file truncation) and the PR is auto-approved before transitioning to Awaiting Quality Check if every changed file is under at least one of the labeled paths. Matching is boundary-safe (`change-target:foo` matches `foo/bar.ts` but not `foobar/baz.ts`); multiple `change-target:` labels are OR-combined. When no `change-target:` label is present, behavior is unchanged.
 
 ### Slow path (runs at most once per 600 seconds)
 

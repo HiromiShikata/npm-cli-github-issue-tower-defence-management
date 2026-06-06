@@ -53,6 +53,8 @@ export interface IssueRepository {
     update: (issue: Issue, project: Project) => Promise<void>;
     findRelatedOpenPRs: (issueUrl: string) => Promise<RelatedPullRequest[]>;
     getOpenPullRequest: (prUrl: string) => Promise<RelatedPullRequest | null>;
+    getPullRequestChangedFilePaths: (prUrl: string) => Promise<string[]>;
+    approvePullRequest: (prUrl: string) => Promise<void>;
     closePullRequest: (prUrl: string) => Promise<void>;
     deletePullRequestBranch: (prUrl: string, branchName: string) => Promise<void>;
     createCommentByUrl: (issueOrPrUrl: string, commentBody: string) => Promise<void>;

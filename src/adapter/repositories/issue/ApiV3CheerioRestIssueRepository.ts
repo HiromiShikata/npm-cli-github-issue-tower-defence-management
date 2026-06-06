@@ -213,6 +213,16 @@ function isDirectPullRequestResponse(
   return true;
 }
 
+type PullRequestFilesResponseItem = {
+  filename: string;
+};
+
+function isPullRequestFilesResponse(
+  value: unknown,
+): value is PullRequestFilesResponseItem[] {
+  return typia.is<PullRequestFilesResponseItem[]>(value);
+}
+
 const fnmatch = (pattern: string, str: string): boolean => {
   let regexStr = '^';
   let i = 0;
@@ -1092,6 +1102,65 @@ export class ApiV3CheerioRestIssueRepository
     );
     if (!response.ok) {
       throw new Error(`Failed to close PR ${prUrl}: HTTP ${response.status}`);
+    }
+  };
+
+  getPullRequestChangedFilePaths = async (prUrl: string): Promise<string[]> => {
+    const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
+    const perPage = 100;
+    const collectedPaths: string[] = [];
+    let page = 1;
+    let hasMore = true;
+    while (hasMore) {
+      const response = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=${perPage}&page=${page}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            Accept: 'application/vnd.github+json',
+          },
+        },
+      );
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch changed files for PR ${prUrl}: HTTP ${response.status}`,
+        );
+      }
+      const body: unknown = await response.json();
+      if (!isPullRequestFilesResponse(body)) {
+        throw new Error(
+          `Unexpected response shape when fetching changed files for PR ${prUrl}`,
+        );
+      }
+      for (const file of body) {
+        collectedPaths.push(file.filename);
+      }
+      if (body.length < perPage) {
+        hasMore = false;
+      } else {
+        page += 1;
+      }
+    }
+    return collectedPaths;
+  };
+
+  approvePullRequest = async (prUrl: string): Promise<void> => {
+    const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.ghToken}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/vnd.github+json',
+        },
+        body: JSON.stringify({ event: 'APPROVE' }),
+      },
+    );
+    if (!response.ok) {
+      throw new Error(`Failed to approve PR ${prUrl}: HTTP ${response.status}`);
     }
   };
 
