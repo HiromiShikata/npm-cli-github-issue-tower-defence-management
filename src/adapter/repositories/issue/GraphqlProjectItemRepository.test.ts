@@ -49,6 +49,24 @@ const extractRequestedFirstFromMockCall = (
   return typeof first === 'number' ? first : undefined;
 };
 
+const extractRequestedQueryFromMockCall = (
+  call: unknown,
+): string | undefined => {
+  if (!Array.isArray(call)) {
+    return undefined;
+  }
+  const second: unknown = call[1];
+  if (!isRecord(second)) {
+    return undefined;
+  }
+  const json: unknown = second.json;
+  if (!isRecord(json)) {
+    return undefined;
+  }
+  const query: unknown = json.query;
+  return typeof query === 'string' ? query : undefined;
+};
+
 const extractErrorMessage = (value: unknown): string => {
   if (value instanceof Error) {
     return value.message;
@@ -475,6 +493,172 @@ describe('GraphqlProjectItemRepository', () => {
           fieldValue: 'In Progress',
         },
       ]);
+    });
+  });
+
+  describe('fetchProjectItemByUrl', () => {
+    afterEach(() => {
+      mockPost.mockClear();
+    });
+
+    const makeContentNode = (url: string, number: number, title: string) => ({
+      number,
+      title,
+      state: 'OPEN',
+      url,
+      body: 'body text',
+      createdAt: '2024-01-01T00:00:00Z',
+      author: { login: 'octocat' },
+      labels: { nodes: [{ name: 'bug' }] },
+      assignees: { nodes: [{ login: 'octocat' }] },
+      repository: { nameWithOwner: 'owner/repo' },
+      projectItems: {
+        nodes: [
+          {
+            id: `item-${number}`,
+            fieldValues: {
+              nodes: [
+                {
+                  __typename: 'ProjectV2ItemFieldSingleSelectValue',
+                  name: 'Preparation',
+                  field: { name: 'Status' },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    });
+
+    it('should return project item for an issue URL', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            repository: {
+              issue: makeContentNode(
+                'https://github.com/owner/repo/issues/7',
+                7,
+                'Issue Title',
+              ),
+              pullRequest: null,
+            },
+          },
+        }),
+      );
+
+      const result = await repository.fetchProjectItemByUrl(
+        'https://github.com/owner/repo/issues/7',
+      );
+
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      expect(result).not.toBeNull();
+      expect(result?.url).toBe('https://github.com/owner/repo/issues/7');
+      expect(result?.title).toBe('Issue Title');
+      expect(result?.id).toBe('item-7');
+      expect(result?.customFields).toEqual([
+        { name: 'Status', value: 'Preparation' },
+      ]);
+    });
+
+    it('should return project item for a pull request URL when repository.issue is null', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            repository: {
+              issue: null,
+              pullRequest: makeContentNode(
+                'https://github.com/owner/repo/pull/9',
+                9,
+                'PR Title',
+              ),
+            },
+          },
+        }),
+      );
+
+      const result = await repository.fetchProjectItemByUrl(
+        'https://github.com/owner/repo/pull/9',
+      );
+
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      expect(result).not.toBeNull();
+      expect(result?.url).toBe('https://github.com/owner/repo/pull/9');
+      expect(result?.title).toBe('PR Title');
+      expect(result?.id).toBe('item-9');
+      expect(result?.customFields).toEqual([
+        { name: 'Status', value: 'Preparation' },
+      ]);
+    });
+
+    it('should query both issue and pullRequest fields in a single request', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            repository: {
+              issue: null,
+              pullRequest: makeContentNode(
+                'https://github.com/owner/repo/pull/3',
+                3,
+                'PR Title',
+              ),
+            },
+          },
+        }),
+      );
+
+      await repository.fetchProjectItemByUrl(
+        'https://github.com/owner/repo/pull/3',
+      );
+
+      const sentQuery = extractRequestedQueryFromMockCall(
+        mockPost.mock.calls[0],
+      );
+      expect(typeof sentQuery).toBe('string');
+      expect(sentQuery).toContain('issue(number: $number)');
+      expect(sentQuery).toContain('pullRequest(number: $number)');
+    });
+
+    it('should return null when neither issue nor pullRequest exists', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            repository: {
+              issue: null,
+              pullRequest: null,
+            },
+          },
+        }),
+      );
+
+      const result = await repository.fetchProjectItemByUrl(
+        'https://github.com/owner/repo/issues/123',
+      );
+
+      expect(result).toBeNull();
     });
   });
 });

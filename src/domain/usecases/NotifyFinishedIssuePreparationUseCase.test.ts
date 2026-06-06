@@ -257,6 +257,75 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
+  it('should throw IssueNotFoundError when a pull request URL has no backing project item (no silent skip)', async () => {
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(null);
+
+    await expect(
+      useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/pull/999',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      }),
+    ).rejects.toThrow('Issue not found: https://github.com/user/repo/pull/999');
+    expect(mockIssueRepository.update).not.toHaveBeenCalled();
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+  });
+
+  it('should process a pull request URL the same as an issue URL when the project item resolves', async () => {
+    const prIssue = createMockIssue({
+      url: 'https://github.com/user/repo/pull/77',
+      number: 77,
+      status: 'Preparation',
+      isPr: true,
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(prIssue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({ content: 'From: :robot: Agent report' }),
+    ]);
+    mockIssueRepository.getOpenPullRequest.mockResolvedValue({
+      url: 'https://github.com/user/repo/pull/77',
+      isConflicted: false,
+      isPassedAllCiJob: true,
+      isCiStateSuccess: true,
+      isResolvedAllReviewComments: true,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/pull/77',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: null,
+    });
+
+    expect(mockIssueRepository.get).toHaveBeenCalledWith(
+      'https://github.com/user/repo/pull/77',
+      mockProject,
+    );
+    expect(mockIssueRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: 'https://github.com/user/repo/pull/77',
+        status: 'Awaiting Quality Check',
+      }),
+      mockProject,
+    );
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      mockProject,
+      expect.objectContaining({
+        url: 'https://github.com/user/repo/pull/77',
+        status: 'Awaiting Quality Check',
+      }),
+      'awaiting-quality-check-id',
+    );
+  });
+
   it('should throw IllegalIssueStatusError when issue status is not Preparation', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
