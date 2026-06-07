@@ -32,7 +32,7 @@ export declare class GraphqlProjectItemRepository extends BaseGitHubRepository {
         fieldName: string;
         fieldValue: string;
     }[]>;
-    fetchProjectItemByUrl: (issueUrl: string) => Promise<ProjectItem | null>;
+    fetchProjectItemByUrl: (issueUrl: string, projectId?: string) => Promise<ProjectItem | null>;
     convertStrToState: (state: string) => "OPEN" | "CLOSED" | "MERGED";
     updateProjectField: (projectId: string, fieldId: string, itemId: string, value: {
         text: string;
@@ -47,6 +47,6 @@ export declare class GraphqlProjectItemRepository extends BaseGitHubRepository {
     updateProjectTextField: (project: Project["id"], fieldId: string, issue: Issue["itemId"], text: string) => Promise<void>;
     removeItemFromProject: (projectId: string, itemId: string) => Promise<void>;
     removeItemFromProjectByIssueUrl: (issueUrl: string, projectId: string) => Promise<void>;
-    addIssueToProject: (projectId: string, issueUrl: string) => Promise<void>;
+    addIssueToProject: (projectId: string, issueUrl: string) => Promise<string>;
 }
 //# sourceMappingURL=GraphqlProjectItemRepository.d.ts.map

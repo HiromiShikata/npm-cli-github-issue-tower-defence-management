@@ -203,24 +203,24 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             await this.graphqlProjectItemRepository.addIssueToProject(project.id, issueUrl);
         };
         this.setDependedIssueUrl = async (prUrl, project, issueUrl) => {
-            if (!project.dependedIssueUrlSeparatedByComma) {
+            const dependedIssueUrlField = project.dependedIssueUrlSeparatedByComma;
+            if (!dependedIssueUrlField) {
                 return;
             }
-            const projectItem = await this.graphqlProjectItemRepository.fetchProjectItemByUrl(prUrl);
-            if (!projectItem) {
-                return;
-            }
-            const existingValue = projectItem.customFields.find((field) => field.name === project.dependedIssueUrlSeparatedByComma?.name)?.value;
+            const existingProjectItem = await this.graphqlProjectItemRepository.fetchProjectItemByUrl(prUrl, project.id);
+            const existingValue = existingProjectItem?.customFields.find((field) => field.name === dependedIssueUrlField.name)?.value;
             if (existingValue) {
                 return;
             }
-            await this.graphqlProjectItemRepository.updateProjectTextField(project.id, project.dependedIssueUrlSeparatedByComma.fieldId, projectItem.id, issueUrl);
+            const projectItemId = existingProjectItem?.id ??
+                (await this.graphqlProjectItemRepository.addIssueToProject(project.id, prUrl));
+            await this.graphqlProjectItemRepository.updateProjectTextField(project.id, dependedIssueUrlField.fieldId, projectItemId, issueUrl);
         };
         this.updateNextActionDate = async (issueUrl, project, date) => {
             if (!project.nextActionDate) {
                 return;
             }
-            const projectItem = await this.graphqlProjectItemRepository.fetchProjectItemByUrl(issueUrl);
+            const projectItem = await this.graphqlProjectItemRepository.fetchProjectItemByUrl(issueUrl, project.id);
             if (!projectItem) {
                 return;
             }

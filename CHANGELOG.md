@@ -1,3 +1,10 @@
+## [1.73.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.73.2...v1.73.3) (2026-06-07)
+
+
+### Bug Fixes
+
+* **slow-sweep:** add open task PR to current project before setting depended issue url ([6b12f5f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6b12f5fc163c4b225c19f73eb0d976e2401e8612))
+
 ## [1.73.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.73.1...v1.73.2) (2026-06-07)
 
 
