@@ -25,11 +25,17 @@ export class SetDependedIssueUrlForOpenTaskPRsUseCase {
         issue.url,
       );
       for (const pr of relatedOpenPRs) {
-        await this.issueRepository.setDependedIssueUrl(
-          pr.url,
-          input.project,
-          issue.url,
-        );
+        try {
+          await this.issueRepository.setDependedIssueUrl(
+            pr.url,
+            input.project,
+            issue.url,
+          );
+        } catch (error) {
+          console.warn(
+            `Failed to set depended issue URL for PR ${pr.url}, skipping and continuing with remaining PRs: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
       }
     }
   };

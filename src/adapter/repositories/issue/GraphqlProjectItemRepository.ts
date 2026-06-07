@@ -663,6 +663,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
   };
   fetchProjectItemByUrl = async (
     issueUrl: string,
+    projectId?: string,
   ): Promise<ProjectItem | null> => {
     const { owner, repo, issueNumber } = this.extractIssueFromUrl(issueUrl);
     const graphql = `query GetIssueOrPullRequest($owner: String!, $repo: String!, $number: Int!) {
@@ -693,6 +694,9 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       projectItems(first: 10) {
         nodes {
           id
+          project {
+            id
+          }
           fieldValues(first: 10) {
             nodes {
               ... on ProjectV2ItemFieldTextValue {
@@ -767,6 +771,9 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       projectItems(first: 10) {
         nodes {
           id
+          project {
+            id
+          }
           fieldValues(first: 10) {
             nodes {
               ... on ProjectV2ItemFieldTextValue {
@@ -839,6 +846,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       projectItems: {
         nodes: {
           id: string;
+          project: { id: string } | null;
           fieldValues: {
             nodes: {
               text: string;
@@ -883,9 +891,16 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       return null;
     }
     const projectItems = content.projectItems.nodes;
-    const item = projectItems[0];
+    const item = projectId
+      ? projectItems.find((node) => node.project?.id === projectId)
+      : projectItems[0];
     if (!item) {
-      throw new Error(`No project item found for issue ${issueUrl}`);
+      console.warn(
+        projectId
+          ? `No project item found for issue ${issueUrl} on project ${projectId}`
+          : `No project item found for issue ${issueUrl}`,
+      );
+      return null;
     }
     return {
       id: item.id,
@@ -1066,13 +1081,18 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
   addIssueToProject = async (
     projectId: string,
     issueUrl: string,
-  ): Promise<void> => {
+  ): Promise<string> => {
     const { owner, repo, issueNumber } = this.extractIssueFromUrl(issueUrl);
     const nodeIdQuery = {
-      query: `query GetIssueNodeId($owner: String!, $repo: String!, $number: Int!) {
+      query: `query GetContentNodeId($owner: String!, $repo: String!, $number: Int!) {
         repository(owner: $owner, name: $repo) {
-          issue(number: $number) {
-            id
+          issueOrPullRequest(number: $number) {
+            ... on Issue {
+              id
+            }
+            ... on PullRequest {
+              id
+            }
           }
         }
       }`,
@@ -1088,9 +1108,9 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       .json<{
         data: {
           repository: {
-            issue: {
+            issueOrPullRequest: {
               id: string;
-            };
+            } | null;
           };
         };
         errors?: { message: string }[];
@@ -1098,7 +1118,10 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
     if (nodeIdRes.errors) {
       throw new Error(nodeIdRes.errors.map((e) => e.message).join('\n'));
     }
-    const contentId = nodeIdRes.data.repository.issue.id;
+    const contentId = nodeIdRes.data.repository.issueOrPullRequest?.id;
+    if (!contentId) {
+      throw new Error(`Content not found for url ${issueUrl}`);
+    }
 
     const addQuery = {
       query: `mutation AddIssueToProject($projectId: ID!, $contentId: ID!) {
@@ -1126,5 +1149,6 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
     if (addRes.errors) {
       throw new Error(addRes.errors.map((e) => e.message).join('\n'));
     }
+    return addRes.data.addProjectV2ItemById.item.id;
   };
 }

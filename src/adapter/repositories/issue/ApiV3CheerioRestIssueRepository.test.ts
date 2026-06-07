@@ -2,9 +2,13 @@ import { mock } from 'jest-mock-extended';
 import { ApiV3CheerioRestIssueRepository } from './ApiV3CheerioRestIssueRepository';
 import { ApiV3IssueRepository } from './ApiV3IssueRepository';
 import { RestIssueRepository } from './RestIssueRepository';
-import { GraphqlProjectItemRepository } from './GraphqlProjectItemRepository';
+import {
+  GraphqlProjectItemRepository,
+  ProjectItem,
+} from './GraphqlProjectItemRepository';
 import { LocalStorageCacheRepository } from '../LocalStorageCacheRepository';
 import { LocalStorageRepository } from '../LocalStorageRepository';
+import { Project } from '../../../domain/entities/Project';
 
 describe('ApiV3CheerioRestIssueRepository', () => {
   describe('convertProjectItemToIssue', () => {
@@ -264,6 +268,115 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           singleSelectOptionId: 'new-status-id',
         },
       );
+    });
+  });
+
+  describe('setDependedIssueUrl', () => {
+    const projectWithDependedIssueUrlField = {
+      ...mock<Project>(),
+      id: 'test-project-id',
+      dependedIssueUrlSeparatedByComma: {
+        name: 'Depended Issue URL separated by comma',
+        fieldId: 'depended-field-id',
+      },
+    };
+    const prUrl = 'https://github.com/owner/repo/pull/100';
+    const taskIssueUrl = 'https://github.com/owner/repo/issues/1';
+
+    const makeProjectItem = (
+      id: string,
+      customFields: { name: string; value: string | null }[],
+    ): ProjectItem => ({
+      ...mock<ProjectItem>(),
+      id,
+      url: prUrl,
+      customFields,
+    });
+
+    it('should add the PR to the current project and set the field when the PR has no project item on the current project', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+        null,
+      );
+      graphqlProjectItemRepository.addIssueToProject.mockResolvedValue(
+        'new-project-item-id',
+      );
+      graphqlProjectItemRepository.updateProjectTextField.mockResolvedValue();
+
+      await repository.setDependedIssueUrl(
+        prUrl,
+        projectWithDependedIssueUrlField,
+        taskIssueUrl,
+      );
+
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemByUrl,
+      ).toHaveBeenCalledWith(prUrl, 'test-project-id');
+      expect(
+        graphqlProjectItemRepository.addIssueToProject,
+      ).toHaveBeenCalledWith('test-project-id', prUrl);
+      expect(
+        graphqlProjectItemRepository.updateProjectTextField,
+      ).toHaveBeenCalledWith(
+        'test-project-id',
+        'depended-field-id',
+        'new-project-item-id',
+        taskIssueUrl,
+      );
+    });
+
+    it('should set the field on the existing project item without adding the PR when it already belongs to the current project', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+        makeProjectItem('existing-project-item-id', []),
+      );
+      graphqlProjectItemRepository.updateProjectTextField.mockResolvedValue();
+
+      await repository.setDependedIssueUrl(
+        prUrl,
+        projectWithDependedIssueUrlField,
+        taskIssueUrl,
+      );
+
+      expect(
+        graphqlProjectItemRepository.addIssueToProject,
+      ).not.toHaveBeenCalled();
+      expect(
+        graphqlProjectItemRepository.updateProjectTextField,
+      ).toHaveBeenCalledWith(
+        'test-project-id',
+        'depended-field-id',
+        'existing-project-item-id',
+        taskIssueUrl,
+      );
+    });
+
+    it('should do nothing when the depended-issue-url field value is already set on the existing project item', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+        makeProjectItem('existing-project-item-id', [
+          {
+            name: 'Depended Issue URL separated by comma',
+            value: taskIssueUrl,
+          },
+        ]),
+      );
+
+      await repository.setDependedIssueUrl(
+        prUrl,
+        projectWithDependedIssueUrlField,
+        taskIssueUrl,
+      );
+
+      expect(
+        graphqlProjectItemRepository.addIssueToProject,
+      ).not.toHaveBeenCalled();
+      expect(
+        graphqlProjectItemRepository.updateProjectTextField,
+      ).not.toHaveBeenCalled();
     });
   });
 

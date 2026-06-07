@@ -516,24 +516,31 @@ export class ApiV3CheerioRestIssueRepository
     project: Project,
     issueUrl: string,
   ): Promise<void> => {
-    if (!project.dependedIssueUrlSeparatedByComma) {
+    const dependedIssueUrlField = project.dependedIssueUrlSeparatedByComma;
+    if (!dependedIssueUrlField) {
       return;
     }
-    const projectItem =
-      await this.graphqlProjectItemRepository.fetchProjectItemByUrl(prUrl);
-    if (!projectItem) {
-      return;
-    }
-    const existingValue = projectItem.customFields.find(
-      (field) => field.name === project.dependedIssueUrlSeparatedByComma?.name,
+    const existingProjectItem =
+      await this.graphqlProjectItemRepository.fetchProjectItemByUrl(
+        prUrl,
+        project.id,
+      );
+    const existingValue = existingProjectItem?.customFields.find(
+      (field) => field.name === dependedIssueUrlField.name,
     )?.value;
     if (existingValue) {
       return;
     }
+    const projectItemId =
+      existingProjectItem?.id ??
+      (await this.graphqlProjectItemRepository.addIssueToProject(
+        project.id,
+        prUrl,
+      ));
     await this.graphqlProjectItemRepository.updateProjectTextField(
       project.id,
-      project.dependedIssueUrlSeparatedByComma.fieldId,
-      projectItem.id,
+      dependedIssueUrlField.fieldId,
+      projectItemId,
       issueUrl,
     );
   };
@@ -547,7 +554,10 @@ export class ApiV3CheerioRestIssueRepository
       return;
     }
     const projectItem =
-      await this.graphqlProjectItemRepository.fetchProjectItemByUrl(issueUrl);
+      await this.graphqlProjectItemRepository.fetchProjectItemByUrl(
+        issueUrl,
+        project.id,
+      );
     if (!projectItem) {
       return;
     }

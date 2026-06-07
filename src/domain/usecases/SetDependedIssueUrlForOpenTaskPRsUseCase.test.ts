@@ -211,4 +211,61 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
       secondOpenTaskIssue.url,
     );
   });
+
+  it('should isolate a single PR failure, log it, and still process the remaining PRs without aborting the cycle', async () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const failingPrUrl = 'https://github.com/owner/repo/pull/100';
+    const succeedingPrUrl = 'https://github.com/owner/repo/pull/200';
+
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      {
+        url: failingPrUrl,
+        branchName: null,
+        createdAt: new Date(0),
+        isDraft: false,
+        isConflicted: false,
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+      },
+      {
+        url: succeedingPrUrl,
+        branchName: null,
+        createdAt: new Date(0),
+        isDraft: false,
+        isConflicted: false,
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+      },
+    ]);
+    mockIssueRepository.setDependedIssueUrl.mockImplementation(
+      async (prUrl) => {
+        if (prUrl === failingPrUrl) {
+          throw new Error('boom');
+        }
+      },
+    );
+
+    await expect(
+      useCase.run({
+        project: projectWithField,
+        issues: [openTaskIssue],
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(mockIssueRepository.setDependedIssueUrl).toHaveBeenCalledTimes(2);
+    expect(mockIssueRepository.setDependedIssueUrl).toHaveBeenCalledWith(
+      succeedingPrUrl,
+      projectWithField,
+      openTaskIssue.url,
+    );
+    expect(warnSpy).toHaveBeenCalled();
+
+    warnSpy.mockRestore();
+  });
 });
