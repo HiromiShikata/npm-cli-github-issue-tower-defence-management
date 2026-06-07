@@ -1,3 +1,10 @@
+## [1.73.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.73.1...v1.73.2) (2026-06-07)
+
+
+### Bug Fixes
+
+* **core:** skip PR-existence check for issues designated by labelsAsLlmAgentName label ([653f717](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/653f717fe0072d38ab2f748769ae81ee75880b92))
+
 ## [1.73.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.73.0...v1.73.1) (2026-06-06)
 
 
