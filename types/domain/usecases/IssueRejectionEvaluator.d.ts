@@ -14,7 +14,7 @@ export declare class IssueRejectionEvaluator {
         url: string;
         labels: string[];
         isPr: boolean;
-    }) => Promise<PrRejectionResult>;
+    }, labelsAsLlmAgentName?: string[]) => Promise<PrRejectionResult>;
     private resolveOpenPrsForPrItem;
 }
 //# sourceMappingURL=IssueRejectionEvaluator.d.ts.map

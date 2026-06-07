@@ -32,7 +32,7 @@ class RevertOrphanedPreparationUseCase {
                 if (!isOrphaned) {
                     continue;
                 }
-                const { hasRejections, comments } = await this.evaluateHasRejections(issue);
+                const { hasRejections, comments } = await this.evaluateHasRejections(issue, params.labelsAsLlmAgentName ?? []);
                 if (!hasRejections) {
                     if (awaitingQualityCheckStatusOption) {
                         await this.issueRepository.updateStatus(project, issue, awaitingQualityCheckStatusOption.id);
@@ -59,7 +59,7 @@ class RevertOrphanedPreparationUseCase {
                 await this.issueCommentRepository.createComment(issue, rejectionStatusMessage);
             }
         };
-        this.evaluateHasRejections = async (issue) => {
+        this.evaluateHasRejections = async (issue, labelsAsLlmAgentName) => {
             if (issue.isClosed) {
                 return { hasRejections: false, comments: [] };
             }
@@ -73,7 +73,9 @@ class RevertOrphanedPreparationUseCase {
             }
             const categoryLabels = issue.labels.filter((label) => label.startsWith('category:'));
             const hasLlmAgentLabel = issue.labels.some((l) => l === 'llm-agent' || l.startsWith('llm-agent:'));
+            const hasLabelAsLlmAgentName = issue.labels.some((label) => labelsAsLlmAgentName.includes(label));
             if (hasLlmAgentLabel ||
+                hasLabelAsLlmAgentName ||
                 (categoryLabels.length > 0 && !categoryLabels.includes('category:e2e'))) {
                 return { hasRejections: false, comments };
             }

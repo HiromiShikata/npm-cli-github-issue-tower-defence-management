@@ -16,6 +16,7 @@ export declare class CheckIssueReviewReadinessUseCase {
     run: (params: {
         projectUrl: string;
         issueUrl: string;
+        labelsAsLlmAgentName?: string[] | null;
     }) => Promise<IssueReviewReadinessResult>;
 }
 //# sourceMappingURL=CheckIssueReviewReadinessUseCase.d.ts.map

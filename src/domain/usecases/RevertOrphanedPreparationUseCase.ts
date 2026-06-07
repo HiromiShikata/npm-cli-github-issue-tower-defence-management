@@ -44,6 +44,7 @@ export class RevertOrphanedPreparationUseCase {
     awLogDirectoryPath?: string;
     awLogStaleThresholdMinutes?: number;
     awaitingQualityCheckStatus?: string | null;
+    labelsAsLlmAgentName?: string[] | null;
   }): Promise<void> => {
     const projectId = await this.projectRepository.findProjectIdByUrl(
       params.projectUrl,
@@ -88,8 +89,10 @@ export class RevertOrphanedPreparationUseCase {
       if (!isOrphaned) {
         continue;
       }
-      const { hasRejections, comments } =
-        await this.evaluateHasRejections(issue);
+      const { hasRejections, comments } = await this.evaluateHasRejections(
+        issue,
+        params.labelsAsLlmAgentName ?? [],
+      );
       if (!hasRejections) {
         if (awaitingQualityCheckStatusOption) {
           await this.issueRepository.updateStatus(
@@ -151,6 +154,7 @@ export class RevertOrphanedPreparationUseCase {
 
   private evaluateHasRejections = async (
     issue: Issue,
+    labelsAsLlmAgentName: string[],
   ): Promise<{ hasRejections: boolean; comments: Comment[] }> => {
     if (issue.isClosed) {
       return { hasRejections: false, comments: [] };
@@ -171,8 +175,12 @@ export class RevertOrphanedPreparationUseCase {
     const hasLlmAgentLabel = issue.labels.some(
       (l) => l === 'llm-agent' || l.startsWith('llm-agent:'),
     );
+    const hasLabelAsLlmAgentName = issue.labels.some((label) =>
+      labelsAsLlmAgentName.includes(label),
+    );
     if (
       hasLlmAgentLabel ||
+      hasLabelAsLlmAgentName ||
       (categoryLabels.length > 0 && !categoryLabels.includes('category:e2e'))
     ) {
       return { hasRejections: false, comments };

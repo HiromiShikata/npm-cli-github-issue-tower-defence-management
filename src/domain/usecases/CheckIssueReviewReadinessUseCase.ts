@@ -27,6 +27,7 @@ export class CheckIssueReviewReadinessUseCase {
   run = async (params: {
     projectUrl: string;
     issueUrl: string;
+    labelsAsLlmAgentName?: string[] | null;
   }): Promise<IssueReviewReadinessResult> => {
     const project = await this.projectRepository.getByUrl(params.projectUrl);
     const issue = await this.issueRepository.get(params.issueUrl, project);
@@ -35,7 +36,10 @@ export class CheckIssueReviewReadinessUseCase {
       throw new IssueNotFoundError(params.issueUrl);
     }
 
-    const { rejections } = await this.issueRejectionEvaluator.evaluate(issue);
+    const { rejections } = await this.issueRejectionEvaluator.evaluate(
+      issue,
+      params.labelsAsLlmAgentName ?? [],
+    );
 
     return {
       reviewReady: rejections.length === 0,

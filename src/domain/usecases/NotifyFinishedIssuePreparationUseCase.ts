@@ -76,6 +76,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     thresholdForAutoReject: number;
     workflowBlockerResolvedWebhookUrl: string | null;
     allowedIssueAuthors?: string[] | null;
+    labelsAsLlmAgentName?: string[] | null;
   }): Promise<void> => {
     const project = await this.projectRepository.getByUrl(params.projectUrl);
 
@@ -182,6 +183,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       issue,
       comments,
       isTrustedAuthor,
+      params.labelsAsLlmAgentName ?? [],
     );
 
     const rejectionStatusMessage =
@@ -286,6 +288,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     issue: { url: string; labels: string[]; isPr: boolean },
     comments: { author: string; content: string }[],
     isTrustedAuthor: (author: string) => boolean,
+    labelsAsLlmAgentName: string[],
   ): Promise<{
     rejections: { type: RejectedReasonType; detail: string }[];
     approvedPrUrl: string | null;
@@ -310,7 +313,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     }
 
     const { rejections: prRejections, approvedPrUrl } =
-      await this.issueRejectionEvaluator.evaluate(issue);
+      await this.issueRejectionEvaluator.evaluate(issue, labelsAsLlmAgentName);
     return { rejections: [...rejections, ...prRejections], approvedPrUrl };
   };
 

@@ -4,12 +4,14 @@ exports.IssueRejectionEvaluator = void 0;
 class IssueRejectionEvaluator {
     constructor(issueRepository) {
         this.issueRepository = issueRepository;
-        this.evaluate = async (issue) => {
+        this.evaluate = async (issue, labelsAsLlmAgentName = []) => {
             const rejections = [];
             let approvedPrUrl = null;
             const categoryLabels = issue.labels.filter((label) => label.startsWith('category:'));
             const hasLlmAgentLabel = issue.labels.some((l) => l === 'llm-agent' || l.startsWith('llm-agent:'));
+            const hasLabelAsLlmAgentName = issue.labels.some((label) => labelsAsLlmAgentName.includes(label));
             if (!hasLlmAgentLabel &&
+                !hasLabelAsLlmAgentName &&
                 (categoryLabels.length <= 0 || categoryLabels.includes('category:e2e'))) {
                 const prsToCheck = issue.isPr
                     ? await this.resolveOpenPrsForPrItem(issue.url)

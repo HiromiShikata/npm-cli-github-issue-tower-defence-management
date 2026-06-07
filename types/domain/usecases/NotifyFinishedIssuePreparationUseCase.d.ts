@@ -22,6 +22,7 @@ export declare class NotifyFinishedIssuePreparationUseCase {
         thresholdForAutoReject: number;
         workflowBlockerResolvedWebhookUrl: string | null;
         allowedIssueAuthors?: string[] | null;
+        labelsAsLlmAgentName?: string[] | null;
     }) => Promise<void>;
     private isAuthorTrusted;
     private collectRejections;

@@ -16,6 +16,7 @@ export declare class RevertOrphanedPreparationUseCase {
         awLogDirectoryPath?: string;
         awLogStaleThresholdMinutes?: number;
         awaitingQualityCheckStatus?: string | null;
+        labelsAsLlmAgentName?: string[] | null;
     }) => Promise<void>;
     private evaluateHasRejections;
     private resolveOpenPrsForPrItem;

@@ -25,11 +25,14 @@ export class IssueRejectionEvaluator {
     >,
   ) {}
 
-  evaluate = async (issue: {
-    url: string;
-    labels: string[];
-    isPr: boolean;
-  }): Promise<PrRejectionResult> => {
+  evaluate = async (
+    issue: {
+      url: string;
+      labels: string[];
+      isPr: boolean;
+    },
+    labelsAsLlmAgentName: string[] = [],
+  ): Promise<PrRejectionResult> => {
     const rejections: { type: PrRejectedReasonType; detail: string }[] = [];
     let approvedPrUrl: string | null = null;
 
@@ -39,9 +42,13 @@ export class IssueRejectionEvaluator {
     const hasLlmAgentLabel = issue.labels.some(
       (l) => l === 'llm-agent' || l.startsWith('llm-agent:'),
     );
+    const hasLabelAsLlmAgentName = issue.labels.some((label) =>
+      labelsAsLlmAgentName.includes(label),
+    );
 
     if (
       !hasLlmAgentLabel &&
+      !hasLabelAsLlmAgentName &&
       (categoryLabels.length <= 0 || categoryLabels.includes('category:e2e'))
     ) {
       const prsToCheck = issue.isPr

@@ -301,6 +301,8 @@ ${JSON.stringify(e)}
             input.startPreparation.awLogStaleThresholdMinutes,
           awaitingQualityCheckStatus:
             input.startPreparation.awaitingQualityCheckStatus ?? undefined,
+          labelsAsLlmAgentName:
+            input.startPreparation.labelsAsLlmAgentName ?? null,
         });
       }
       const preparationResult = await this.startPreparationUseCase.run({
