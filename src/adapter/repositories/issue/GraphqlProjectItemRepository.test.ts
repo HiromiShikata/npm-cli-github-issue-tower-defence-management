@@ -660,5 +660,108 @@ describe('GraphqlProjectItemRepository', () => {
 
       expect(result).toBeNull();
     });
+
+    const makeMultiProjectPrNode = (
+      url: string,
+      number: number,
+      nodes: {
+        id: string;
+        projectId: string;
+      }[],
+    ) => ({
+      number,
+      title: 'PR Title',
+      state: 'OPEN',
+      url,
+      body: 'body text',
+      createdAt: '2024-01-01T00:00:00Z',
+      author: { login: 'octocat' },
+      labels: { nodes: [] },
+      assignees: { nodes: [] },
+      repository: { nameWithOwner: 'owner/repo' },
+      projectItems: {
+        nodes: nodes.map((node) => ({
+          id: node.id,
+          project: { id: node.projectId },
+          fieldValues: {
+            nodes: [
+              {
+                __typename: 'ProjectV2ItemFieldSingleSelectValue',
+                name: 'Preparation',
+                field: { name: 'Status' },
+              },
+            ],
+          },
+        })),
+      },
+    });
+
+    it('should select the project item belonging to the given project id when the PR is on multiple projects', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            repository: {
+              issue: null,
+              pullRequest: makeMultiProjectPrNode(
+                'https://github.com/owner/repo/pull/11',
+                11,
+                [
+                  { id: 'item-other-project', projectId: 'project-other' },
+                  { id: 'item-current-project', projectId: 'project-current' },
+                ],
+              ),
+            },
+          },
+        }),
+      );
+
+      const result = await repository.fetchProjectItemByUrl(
+        'https://github.com/owner/repo/pull/11',
+        'project-current',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.id).toBe('item-current-project');
+    });
+
+    it('should return null and warn instead of throwing when the PR has no project item on the given project', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            repository: {
+              issue: null,
+              pullRequest: makeMultiProjectPrNode(
+                'https://github.com/owner/repo/pull/12',
+                12,
+                [{ id: 'item-other-project', projectId: 'project-other' }],
+              ),
+            },
+          },
+        }),
+      );
+
+      const result = await repository.fetchProjectItemByUrl(
+        'https://github.com/owner/repo/pull/12',
+        'project-current',
+      );
+
+      expect(result).toBeNull();
+      expect(warnSpy).toHaveBeenCalled();
+
+      warnSpy.mockRestore();
+    });
   });
 });
