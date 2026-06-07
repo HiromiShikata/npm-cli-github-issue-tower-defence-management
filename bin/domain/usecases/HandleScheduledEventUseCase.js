@@ -151,6 +151,7 @@ ${JSON.stringify(e)}
                         awLogDirectoryPath: input.startPreparation.awLogDirectoryPath,
                         awLogStaleThresholdMinutes: input.startPreparation.awLogStaleThresholdMinutes,
                         awaitingQualityCheckStatus: input.startPreparation.awaitingQualityCheckStatus ?? undefined,
+                        labelsAsLlmAgentName: input.startPreparation.labelsAsLlmAgentName ?? null,
                     });
                 }
                 const preparationResult = await this.startPreparationUseCase.run({

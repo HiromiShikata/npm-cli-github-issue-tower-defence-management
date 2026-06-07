@@ -149,5 +149,56 @@ describe('IssueRejectionEvaluator', () => {
       expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
       expect(result.rejections).toHaveLength(0);
     });
+
+    it('should reject with PULL_REQUEST_NOT_FOUND when a normal issue has no related PR', async () => {
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      const result = await evaluator.evaluate({
+        url: 'https://github.com/user/repo/issues/1',
+        labels: [],
+        isPr: false,
+      });
+
+      expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalledWith(
+        'https://github.com/user/repo/issues/1',
+      );
+      expect(result.rejections).toHaveLength(1);
+      expect(result.rejections[0].type).toBe('PULL_REQUEST_NOT_FOUND');
+      expect(result.approvedPrUrl).toBeNull();
+    });
+
+    it('should not reject with PULL_REQUEST_NOT_FOUND when issue has a label listed in labelsAsLlmAgentName', async () => {
+      const result = await evaluator.evaluate(
+        {
+          url: 'https://github.com/user/repo/issues/1',
+          labels: ['story'],
+          isPr: false,
+        },
+        ['story'],
+      );
+
+      expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+      expect(result.rejections).toHaveLength(0);
+      expect(result.approvedPrUrl).toBeNull();
+    });
+
+    it('should still reject with PULL_REQUEST_NOT_FOUND when issue label is not in labelsAsLlmAgentName', async () => {
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      const result = await evaluator.evaluate(
+        {
+          url: 'https://github.com/user/repo/issues/1',
+          labels: ['story'],
+          isPr: false,
+        },
+        ['bug'],
+      );
+
+      expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalledWith(
+        'https://github.com/user/repo/issues/1',
+      );
+      expect(result.rejections).toHaveLength(1);
+      expect(result.rejections[0].type).toBe('PULL_REQUEST_NOT_FOUND');
+    });
   });
 });

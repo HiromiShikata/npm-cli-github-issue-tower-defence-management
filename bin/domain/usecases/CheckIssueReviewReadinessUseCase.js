@@ -13,7 +13,7 @@ class CheckIssueReviewReadinessUseCase {
             if (!issue) {
                 throw new NotifyFinishedIssuePreparationUseCase_1.IssueNotFoundError(params.issueUrl);
             }
-            const { rejections } = await this.issueRejectionEvaluator.evaluate(issue);
+            const { rejections } = await this.issueRejectionEvaluator.evaluate(issue, params.labelsAsLlmAgentName ?? []);
             return {
                 reviewReady: rejections.length === 0,
                 rejections,

@@ -143,6 +143,7 @@ exports.program
             thresholdForAutoReject: config.thresholdForAutoReject ?? 3,
             awLogDirectoryPath: config.awLogDirectoryPath,
             awLogStaleThresholdMinutes: config.awLogStaleThresholdMinutes,
+            labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
         });
     }
     const claudeTokenUsageRepository = new ProxyClaudeTokenUsageRepository_1.ProxyClaudeTokenUsageRepository(config.claudeCodeOauthTokenListJsonPath ?? null);
@@ -249,6 +250,7 @@ exports.program
         thresholdForAutoReject,
         workflowBlockerResolvedWebhookUrl,
         allowedIssueAuthors,
+        labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
     });
 });
 exports.program
@@ -295,6 +297,7 @@ exports.program
     const result = await useCase.run({
         projectUrl,
         issueUrl: options.issueUrl,
+        labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
     });
     process.stdout.write(`${JSON.stringify(result)}\n`);
 });

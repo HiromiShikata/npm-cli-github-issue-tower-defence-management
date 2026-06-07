@@ -1188,6 +1188,7 @@ mysteryKey: 'value'
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: null,
+        labelsAsLlmAgentName: null,
       });
     });
 
@@ -1222,6 +1223,7 @@ mysteryKey: 'value'
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: null,
+        labelsAsLlmAgentName: null,
       });
     });
 
@@ -1501,6 +1503,7 @@ mysteryKey: 'value'
       expect(mockRun).toHaveBeenCalledWith({
         projectUrl: 'https://github.com/orgs/test/projects/1',
         issueUrl: 'https://github.com/test/repo/issues/1',
+        labelsAsLlmAgentName: null,
       });
       expect(stdoutSpy).toHaveBeenCalledWith(
         `${JSON.stringify({ reviewReady: true, rejections: [] })}\n`,
@@ -1583,6 +1586,7 @@ mysteryKey: 'value'
       expect(mockRun).toHaveBeenCalledWith({
         projectUrl: 'https://github.com/orgs/override/projects/2',
         issueUrl: 'https://github.com/test/repo/issues/1',
+        labelsAsLlmAgentName: null,
       });
 
       stdoutSpy.mockRestore();

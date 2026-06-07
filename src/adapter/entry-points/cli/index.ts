@@ -268,6 +268,7 @@ program
         thresholdForAutoReject: config.thresholdForAutoReject ?? 3,
         awLogDirectoryPath: config.awLogDirectoryPath,
         awLogStaleThresholdMinutes: config.awLogStaleThresholdMinutes,
+        labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
       });
     }
 
@@ -448,6 +449,7 @@ program
       thresholdForAutoReject,
       workflowBlockerResolvedWebhookUrl,
       allowedIssueAuthors,
+      labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
     });
   });
 
@@ -540,6 +542,7 @@ program
     const result = await useCase.run({
       projectUrl,
       issueUrl: options.issueUrl,
+      labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
     });
 
     process.stdout.write(`${JSON.stringify(result)}\n`);
