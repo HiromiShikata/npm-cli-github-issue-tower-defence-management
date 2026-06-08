@@ -33,6 +33,7 @@ Options for startDaemon:
   --projectUrl <url>                               GitHub project URL
   --defaultAgentName <name>                        Default agent name
   --defaultLlmModelName <name>                     Default LLM model name
+  --fallbackLlmModelName <name>                    LLM model to fall back to when the default Sonnet model is selected but its 7-day weekly limit is exhausted across all tokens (default: claude-opus-4-8)
   --defaultLlmAgentName <name>                     Default LLM agent name
   --maximumPreparingIssuesCount <count>            Maximum number of issues in preparation status (default: 6 per available Claude OAuth token, otherwise 6)
   --allowIssueCacheMinutes <minutes>               Allow cache for issues in minutes (default: 10)
@@ -107,6 +108,7 @@ startPreparation?: # Optional: Enable automatic issue preparation workflow
   defaultAgentName: string # Default agent name to assign for preparation
   configFilePath: string # Path to config file passed to the aw command
   defaultLlmModelName?: string | null # Optional: Default LLM model name (overridable via llm-model: label)
+  fallbackLlmModelName?: string | null # Optional: LLM model to fall back to when defaultLlmModelName is a Sonnet model and its 7-day weekly limit is exhausted across all tokens while the fallback model still has capacity (default: claude-opus-4-8). Per-issue llm-model: labels remain authoritative and are never overridden by the fallback
   defaultLlmAgentName?: string | null # Optional: Default LLM agent name (overridable via llm-agent: label)
   maximumPreparingIssuesCount: number | null # Max concurrent preparing issues. When token rotation is active, effective concurrency is also capped at 6 per available token. When null, the default is 6 per available token, or 6 without token rotation
   utilizationPercentageThreshold?: number # Optional: 5-hour utilization hard threshold (percentage, default 90). Tokens at or above this value are excluded from rotation
@@ -172,6 +174,7 @@ projectUrl: string # URL of the GitHub project
 projectName: string # Project name (used for cache directory path)
 defaultAgentName: string # Default agent name for issue preparation
 defaultLlmModelName?: string # Optional: Default LLM model name
+fallbackLlmModelName?: string # Optional: LLM model to fall back to when defaultLlmModelName is a Sonnet model and its 7-day weekly limit is exhausted across all tokens while the fallback model still has capacity (default: claude-opus-4-8). Per-issue llm-model: labels remain authoritative
 defaultLlmAgentName?: string # Optional: Default LLM agent name
 maximumPreparingIssuesCount?: number # Optional: Max concurrent preparing issues. When token rotation is active, effective concurrency is also capped at 6 per available token. Omitted defaults to 6 per available token, or 6 without token rotation
 allowIssueCacheMinutes?: number # Optional: Allow cache for issues in minutes (default: 10)

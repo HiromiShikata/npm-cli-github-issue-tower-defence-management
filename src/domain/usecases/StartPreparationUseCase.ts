@@ -11,6 +11,7 @@ import {
 const NORMAL_CONCURRENT_LIMIT = 6;
 const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
 const FIVE_HOUR_THROTTLE_START_THRESHOLD = 0.8;
+export const DEFAULT_FALLBACK_LLM_MODEL_NAME = 'claude-opus-4-8';
 
 export type RotationOrderEntry = {
   name: string;
@@ -228,6 +229,7 @@ export class StartPreparationUseCase {
     projectUrl: string;
     defaultAgentName: string;
     defaultLlmModelName: string | null;
+    fallbackLlmModelName: string | null;
     defaultLlmAgentName: string | null;
     configFilePath: string;
     maximumPreparingIssuesCount: number | null;
@@ -252,6 +254,7 @@ export class StartPreparationUseCase {
     const maximumPreparingIssuesCount =
       params.maximumPreparingIssuesCount ?? NORMAL_CONCURRENT_LIMIT;
     let effectiveMaxPreparingIssuesCount = maximumPreparingIssuesCount;
+    let effectiveDefaultLlmModelName = params.defaultLlmModelName;
     if (tokenUsages.length > 0) {
       const { tokens: ranked, effectiveCap } = this.selectRotationTokens(
         tokenUsages,
@@ -259,15 +262,40 @@ export class StartPreparationUseCase {
         params.defaultLlmModelName,
         maximumPreparingIssuesCount,
       );
-      if (ranked.length === 0) {
+      let selectedTokens = ranked;
+      let selectedCap = effectiveCap;
+      if (
+        selectedTokens.length === 0 &&
+        this.weeklyLimitTypeForModel(params.defaultLlmModelName) ===
+          'seven_day_sonnet'
+      ) {
+        const fallbackModelName =
+          params.fallbackLlmModelName ?? DEFAULT_FALLBACK_LLM_MODEL_NAME;
+        const { tokens: fallbackRanked, effectiveCap: fallbackCap } =
+          this.selectRotationTokens(
+            tokenUsages,
+            params.utilizationPercentageThreshold,
+            fallbackModelName,
+            maximumPreparingIssuesCount,
+          );
+        if (fallbackRanked.length > 0) {
+          console.warn(
+            `Sonnet 7-day weekly limit (${this.weeklyLimitTypeForModel(params.defaultLlmModelName)}) is exhausted across all configured Claude OAuth token(s). Falling back to ${fallbackModelName}.`,
+          );
+          selectedTokens = fallbackRanked;
+          selectedCap = fallbackCap;
+          effectiveDefaultLlmModelName = fallbackModelName;
+        }
+      }
+      if (selectedTokens.length === 0) {
         console.warn(
           `All ${tokenUsages.length} configured Claude OAuth token(s) are unavailable (blocked, rejected, weekly limit for ${this.weeklyLimitTypeForModel(params.defaultLlmModelName)} exhausted, or 5h utilization >= ${params.utilizationPercentageThreshold}%). Skipping starting preparation.`,
         );
         return { rotationOrder };
       }
       await this.claudeTokenUsageRepository.ensureObservable();
-      rotationTokens = ranked;
-      effectiveMaxPreparingIssuesCount = effectiveCap;
+      rotationTokens = selectedTokens;
+      effectiveMaxPreparingIssuesCount = selectedCap;
       proxyBaseUrl = this.claudeTokenUsageRepository.proxyBaseUrl();
     }
 
@@ -364,7 +392,7 @@ export class StartPreparationUseCase {
         issue.labels
           .find((label: string) => label.startsWith('llm-model:'))
           ?.replace('llm-model:', '')
-          .trim() || params.defaultLlmModelName;
+          .trim() || effectiveDefaultLlmModelName;
       if (!model) {
         console.error(
           `No LLM model configured for issue ${issue.url}. Provide --defaultLlmModelName or add an llm-model: label.`,
