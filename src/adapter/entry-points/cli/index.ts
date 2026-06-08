@@ -116,7 +116,7 @@ program
   .option('--defaultLlmModelName <name>', 'Default LLM model name')
   .option(
     '--fallbackLlmModelName <name>',
-    'LLM model to fall back to when the default Sonnet model is selected but its 7-day weekly limit is exhausted across all tokens (default: claude-opus-4-5)',
+    'LLM model to fall back to when the default Sonnet model is selected but its 7-day weekly limit is exhausted across all tokens (default: claude-opus-4-8)',
   )
   .option('--defaultLlmAgentName <name>', 'Default LLM agent name')
   .option(

@@ -11,7 +11,7 @@ import {
 const NORMAL_CONCURRENT_LIMIT = 6;
 const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
 const FIVE_HOUR_THROTTLE_START_THRESHOLD = 0.8;
-export const DEFAULT_FALLBACK_LLM_MODEL_NAME = 'claude-opus-4-5';
+export const DEFAULT_FALLBACK_LLM_MODEL_NAME = 'claude-opus-4-8';
 
 export type RotationOrderEntry = {
   name: string;

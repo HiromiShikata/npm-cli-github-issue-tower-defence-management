@@ -4296,7 +4296,7 @@ describe('StartPreparationUseCase', () => {
       expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toEqual([
         'url1',
         'impl',
-        'claude-opus-4-5',
+        'claude-opus-4-8',
         '--configFilePath',
         '/path/to/config.yml',
         '--branch',
