@@ -146,6 +146,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -211,6 +212,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -268,6 +270,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -316,6 +319,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -365,6 +369,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -413,6 +418,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -479,6 +485,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -568,6 +575,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -631,6 +639,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -675,6 +684,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -732,6 +742,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: null,
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -767,6 +778,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -812,6 +824,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -857,6 +870,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: 'default-llm-agent',
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -902,6 +916,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: 'default-llm-agent',
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -947,6 +962,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: 'default-llm-agent',
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -992,6 +1008,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -1040,6 +1057,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: null,
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -1088,6 +1106,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: null,
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -1138,6 +1157,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: null,
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -1173,6 +1193,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: 3,
@@ -1207,6 +1228,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -1264,6 +1286,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: 12,
@@ -1330,6 +1353,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: 20,
@@ -1394,6 +1418,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -1442,6 +1467,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -1497,6 +1523,7 @@ describe('StartPreparationUseCase', () => {
         projectUrl: 'https://github.com/user/repo',
         defaultAgentName: 'agent1',
         defaultLlmModelName: 'claude-sonnet-4-6',
+        fallbackLlmModelName: null,
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
@@ -1555,6 +1582,7 @@ describe('StartPreparationUseCase', () => {
         projectUrl: 'https://github.com/user/repo',
         defaultAgentName: 'agent1',
         defaultLlmModelName: 'claude-sonnet-4-6',
+        fallbackLlmModelName: null,
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
@@ -1603,6 +1631,7 @@ describe('StartPreparationUseCase', () => {
         projectUrl: 'https://github.com/user/repo',
         defaultAgentName: 'agent1',
         defaultLlmModelName: 'claude-sonnet-4-6',
+        fallbackLlmModelName: null,
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
@@ -1651,6 +1680,7 @@ describe('StartPreparationUseCase', () => {
         projectUrl: 'https://github.com/user/repo',
         defaultAgentName: 'agent1',
         defaultLlmModelName: 'claude-sonnet-4-6',
+        fallbackLlmModelName: null,
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
@@ -1699,6 +1729,7 @@ describe('StartPreparationUseCase', () => {
         projectUrl: 'https://github.com/user/repo',
         defaultAgentName: 'agent1',
         defaultLlmModelName: 'claude-sonnet-4-6',
+        fallbackLlmModelName: null,
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
@@ -1753,6 +1784,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -1801,6 +1833,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -1847,6 +1880,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -1887,6 +1921,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -1924,6 +1959,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -1972,6 +2008,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -2020,6 +2057,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -2088,6 +2126,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -2153,6 +2192,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -2212,6 +2252,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -2240,6 +2281,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: null,
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -2287,6 +2329,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -2337,6 +2380,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -2423,6 +2467,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -2480,6 +2525,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -2551,6 +2597,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -2634,6 +2681,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -2696,6 +2744,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -2761,6 +2810,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -2829,6 +2879,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -2937,6 +2988,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -2995,6 +3047,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -3057,6 +3110,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -3119,6 +3173,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -3181,6 +3236,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -3246,6 +3302,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -3293,6 +3350,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -3358,6 +3416,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -3423,6 +3482,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-sonnet-4-6',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -3488,6 +3548,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -3553,6 +3614,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -3626,6 +3688,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -3699,6 +3762,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -3777,6 +3841,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -3882,6 +3947,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -3953,6 +4019,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -4021,6 +4088,7 @@ describe('StartPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
@@ -4068,6 +4136,7 @@ describe('StartPreparationUseCase', () => {
         projectUrl: 'https://github.com/user/repo',
         defaultAgentName: params.defaultAgentName,
         defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
         defaultLlmAgentName: params.defaultLlmAgentName,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
@@ -4170,6 +4239,346 @@ describe('StartPreparationUseCase', () => {
         labelsAsLlmAgentName: null,
       });
       expect(selectedAgent).toBe('impl');
+    });
+  });
+
+  describe('Sonnet-to-Opus weekly limit fallback', () => {
+    const futureReset = Math.floor(Date.now() / 1000) + 3600;
+
+    it('spawns preparations with the Opus fallback model when the sonnet default is selected and every token has its seven_day_sonnet weekly limit exhausted while opus capacity remains', async () => {
+      const awaitingIssue = createMockIssue({
+        url: 'url1',
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        number: 1,
+        itemId: 'item-1',
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([awaitingIssue]),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+        {
+          name: 'token-sonnet-exhausted',
+          token: 'token-sonnet-exhausted',
+          fiveHourUtilization: 0.1,
+          sevenDayUtilization: 0,
+          blocked: false,
+          rejected: false,
+          modelWeeklyLimits: {
+            seven_day_sonnet: { rejected: true, resetsAt: futureReset },
+          },
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-sonnet-4-6',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: null,
+        codexHomeCandidates: null,
+        allowIssueCacheMinutes: 0,
+        labelsAsLlmAgentName: null,
+      });
+
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toEqual([
+        'url1',
+        'impl',
+        'claude-opus-4-5',
+        '--configFilePath',
+        '/path/to/config.yml',
+        '--branch',
+        'i1',
+      ]);
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
+        env: {
+          CLAUDE_CODE_OAUTH_TOKEN: 'token-sonnet-exhausted',
+          ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
+        },
+      });
+    });
+
+    it('uses the configured fallbackLlmModelName instead of the default when falling back to opus', async () => {
+      const awaitingIssue = createMockIssue({
+        url: 'url1',
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        number: 1,
+        itemId: 'item-1',
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([awaitingIssue]),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+        {
+          name: 'token-sonnet-exhausted',
+          token: 'token-sonnet-exhausted',
+          fiveHourUtilization: 0.1,
+          sevenDayUtilization: 0,
+          blocked: false,
+          rejected: false,
+          modelWeeklyLimits: {
+            seven_day_sonnet: { rejected: true, resetsAt: futureReset },
+          },
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-sonnet-4-6',
+        fallbackLlmModelName: 'claude-opus-4-8',
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: null,
+        codexHomeCandidates: null,
+        allowIssueCacheMinutes: 0,
+        labelsAsLlmAgentName: null,
+      });
+
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][2]).toBe(
+        'claude-opus-4-8',
+      );
+    });
+
+    it('skips preparation when the sonnet default is exhausted and the opus fallback is also exhausted via the generic seven_day weekly limit', async () => {
+      const awaitingIssue = createMockIssue({
+        url: 'url1',
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        number: 1,
+        itemId: 'item-1',
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([awaitingIssue]),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+        {
+          name: 'token-fully-exhausted',
+          token: 'token-fully-exhausted',
+          fiveHourUtilization: 0.1,
+          sevenDayUtilization: 0,
+          blocked: false,
+          rejected: false,
+          modelWeeklyLimits: {
+            seven_day_sonnet: { rejected: true, resetsAt: futureReset },
+            seven_day: { rejected: true, resetsAt: futureReset },
+          },
+        },
+      ]);
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-sonnet-4-6',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: null,
+        codexHomeCandidates: null,
+        allowIssueCacheMinutes: 0,
+        labelsAsLlmAgentName: null,
+      });
+
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Skipping starting preparation'),
+      );
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('uses the sonnet default with no fallback when sonnet tokens are available', async () => {
+      const awaitingIssue = createMockIssue({
+        url: 'url1',
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        number: 1,
+        itemId: 'item-1',
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([awaitingIssue]),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+        {
+          name: 'token-ok',
+          token: 'token-ok',
+          fiveHourUtilization: 0.1,
+          sevenDayUtilization: 0,
+          blocked: false,
+          rejected: false,
+          modelWeeklyLimits: {},
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-sonnet-4-6',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: null,
+        codexHomeCandidates: null,
+        allowIssueCacheMinutes: 0,
+        labelsAsLlmAgentName: null,
+      });
+
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][2]).toBe(
+        'claude-sonnet-4-6',
+      );
+    });
+
+    it('does not fall back to opus for an issue whose llm-model label explicitly set the model even when the sonnet weekly limit is exhausted', async () => {
+      const awaitingIssue = createMockIssue({
+        url: 'url1',
+        title: 'Issue 1',
+        labels: ['category:impl', 'llm-model:claude-sonnet-4-6'],
+        status: 'Awaiting Workspace',
+        number: 1,
+        itemId: 'item-1',
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([awaitingIssue]),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+        {
+          name: 'token-sonnet-exhausted',
+          token: 'token-sonnet-exhausted',
+          fiveHourUtilization: 0.1,
+          sevenDayUtilization: 0,
+          blocked: false,
+          rejected: false,
+          modelWeeklyLimits: {
+            seven_day_sonnet: { rejected: true, resetsAt: futureReset },
+          },
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-sonnet-4-6',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: null,
+        codexHomeCandidates: null,
+        allowIssueCacheMinutes: 0,
+        labelsAsLlmAgentName: null,
+      });
+
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][2]).toBe(
+        'claude-sonnet-4-6',
+      );
+    });
+
+    it('does not fall back to opus when sonnet tokens are merely throttled by 5-hour utilization rather than the weekly limit', async () => {
+      const awaitingIssue = createMockIssue({
+        url: 'url1',
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        number: 1,
+        itemId: 'item-1',
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([awaitingIssue]),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+        {
+          name: 'token-throttled',
+          token: 'token-throttled',
+          fiveHourUtilization: 0.95,
+          sevenDayUtilization: 0,
+          blocked: false,
+          rejected: false,
+          modelWeeklyLimits: {},
+        },
+      ]);
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-sonnet-4-6',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: null,
+        codexHomeCandidates: null,
+        allowIssueCacheMinutes: 0,
+        labelsAsLlmAgentName: null,
+      });
+
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Skipping starting preparation'),
+      );
+      consoleWarnSpy.mockRestore();
     });
   });
 });

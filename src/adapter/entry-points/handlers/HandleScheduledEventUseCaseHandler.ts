@@ -117,6 +117,9 @@ export class HandleScheduledEventUseCaseHandler {
             defaultLlmModelName:
               readmeConfig.defaultLlmModelName ??
               input.startPreparation.defaultLlmModelName,
+            fallbackLlmModelName:
+              readmeConfig.fallbackLlmModelName ??
+              input.startPreparation.fallbackLlmModelName,
             defaultLlmAgentName:
               readmeConfig.defaultLlmAgentName ??
               input.startPreparation.defaultLlmAgentName,

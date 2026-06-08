@@ -81,6 +81,7 @@ export class HandleScheduledEventUseCase {
     startPreparation?: {
       defaultAgentName: string;
       defaultLlmModelName?: string | null;
+      fallbackLlmModelName?: string | null;
       defaultLlmAgentName?: string | null;
       configFilePath: string;
       maximumPreparingIssuesCount: number | null;
@@ -309,6 +310,8 @@ ${JSON.stringify(e)}
         projectUrl: input.projectUrl,
         defaultAgentName: input.startPreparation.defaultAgentName,
         defaultLlmModelName: input.startPreparation.defaultLlmModelName ?? null,
+        fallbackLlmModelName:
+          input.startPreparation.fallbackLlmModelName ?? null,
         defaultLlmAgentName: input.startPreparation.defaultLlmAgentName ?? null,
         configFilePath: input.startPreparation.configFilePath,
         maximumPreparingIssuesCount:
