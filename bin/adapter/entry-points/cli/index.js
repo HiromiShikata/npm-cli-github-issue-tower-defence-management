@@ -58,6 +58,7 @@ exports.program
     .option('--projectUrl <url>', 'GitHub project URL')
     .option('--defaultAgentName <name>', 'Default agent name')
     .option('--defaultLlmModelName <name>', 'Default LLM model name')
+    .option('--fallbackLlmModelName <name>', 'LLM model to fall back to when the default Sonnet model is selected but its 7-day weekly limit is exhausted across all tokens (default: claude-opus-4-8)')
     .option('--defaultLlmAgentName <name>', 'Default LLM agent name')
     .option('--maximumPreparingIssuesCount <count>', 'Maximum number of issues in preparation status (default: 6 per available Claude OAuth token, otherwise 6)')
     .option('--allowIssueCacheMinutes <minutes>', 'Allow cache for issues in minutes (default: 10)')
@@ -75,6 +76,7 @@ exports.program
         projectUrl: options.projectUrl,
         defaultAgentName: options.defaultAgentName,
         defaultLlmModelName: options.defaultLlmModelName,
+        fallbackLlmModelName: options.fallbackLlmModelName,
         defaultLlmAgentName: options.defaultLlmAgentName,
         maximumPreparingIssuesCount: options.maximumPreparingIssuesCount
             ? Number(options.maximumPreparingIssuesCount)
@@ -162,6 +164,7 @@ exports.program
         projectUrl,
         defaultAgentName,
         defaultLlmModelName: config.defaultLlmModelName ?? null,
+        fallbackLlmModelName: config.fallbackLlmModelName ?? null,
         defaultLlmAgentName: config.defaultLlmAgentName ?? null,
         configFilePath: options.configFilePath,
         maximumPreparingIssuesCount,

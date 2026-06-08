@@ -66,6 +66,7 @@ exports.isRecord = isRecord;
 const knownProjectReadmeConfigKeys = [
     'defaultAgentName',
     'defaultLlmModelName',
+    'fallbackLlmModelName',
     'defaultLlmAgentName',
     'maximumPreparingIssuesCount',
     'allowIssueCacheMinutes',
@@ -90,6 +91,7 @@ const loadConfigFile = (configFilePath) => {
             projectUrl: getStringValue(parsed, 'projectUrl'),
             defaultAgentName: getStringValue(parsed, 'defaultAgentName'),
             defaultLlmModelName: getStringValue(parsed, 'defaultLlmModelName'),
+            fallbackLlmModelName: getStringValue(parsed, 'fallbackLlmModelName'),
             defaultLlmAgentName: getStringValue(parsed, 'defaultLlmAgentName'),
             maximumPreparingIssuesCount: getNumberValue(parsed, 'maximumPreparingIssuesCount'),
             allowIssueCacheMinutes: getNumberValue(parsed, 'allowIssueCacheMinutes'),
@@ -138,6 +140,7 @@ const parseProjectReadmeConfig = (readme, projectUrl) => {
         return {
             defaultAgentName: getStringValue(parsed, 'defaultAgentName'),
             defaultLlmModelName: getStringValue(parsed, 'defaultLlmModelName'),
+            fallbackLlmModelName: getStringValue(parsed, 'fallbackLlmModelName'),
             defaultLlmAgentName: getStringValue(parsed, 'defaultLlmAgentName'),
             maximumPreparingIssuesCount: getNumberValue(parsed, 'maximumPreparingIssuesCount'),
             allowIssueCacheMinutes: getNumberValue(parsed, 'allowIssueCacheMinutes'),
@@ -166,6 +169,9 @@ const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
     defaultLlmModelName: readmeOverrides.defaultLlmModelName ??
         cliOverrides.defaultLlmModelName ??
         configFile.defaultLlmModelName,
+    fallbackLlmModelName: readmeOverrides.fallbackLlmModelName ??
+        cliOverrides.fallbackLlmModelName ??
+        configFile.fallbackLlmModelName,
     defaultLlmAgentName: readmeOverrides.defaultLlmAgentName ??
         cliOverrides.defaultLlmAgentName ??
         configFile.defaultLlmAgentName,

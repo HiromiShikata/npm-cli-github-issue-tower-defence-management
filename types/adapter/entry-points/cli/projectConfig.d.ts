@@ -2,6 +2,7 @@ export type ConfigFile = {
     projectUrl?: string;
     defaultAgentName?: string;
     defaultLlmModelName?: string;
+    fallbackLlmModelName?: string;
     defaultLlmAgentName?: string;
     maximumPreparingIssuesCount?: number;
     allowIssueCacheMinutes?: number;

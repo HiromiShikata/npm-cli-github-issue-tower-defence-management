@@ -69,6 +69,7 @@ export declare class HandleScheduledEventUseCase {
         startPreparation?: {
             defaultAgentName: string;
             defaultLlmModelName?: string | null;
+            fallbackLlmModelName?: string | null;
             defaultLlmAgentName?: string | null;
             configFilePath: string;
             maximumPreparingIssuesCount: number | null;

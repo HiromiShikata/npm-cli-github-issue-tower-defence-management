@@ -3,6 +3,7 @@ import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsageRepository';
 import { ClaudeTokenUsage } from '../entities/ClaudeTokenUsage';
+export declare const DEFAULT_FALLBACK_LLM_MODEL_NAME = "claude-opus-4-8";
 export type RotationOrderEntry = {
     name: string;
     fiveHourUtilization: number;
@@ -28,6 +29,7 @@ export declare class StartPreparationUseCase {
         projectUrl: string;
         defaultAgentName: string;
         defaultLlmModelName: string | null;
+        fallbackLlmModelName: string | null;
         defaultLlmAgentName: string | null;
         configFilePath: string;
         maximumPreparingIssuesCount: number | null;

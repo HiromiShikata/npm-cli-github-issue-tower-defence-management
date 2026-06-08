@@ -1,3 +1,10 @@
+# [1.74.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.73.3...v1.74.0) (2026-06-08)
+
+
+### Features
+
+* **core:** fall back to Opus when Sonnet 7-day weekly limit is exhausted ([5dfb409](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5dfb4095733f2615e42fab8fc013cf4c975996c4))
+
 ## [1.73.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.73.2...v1.73.3) (2026-06-07)
 
 
