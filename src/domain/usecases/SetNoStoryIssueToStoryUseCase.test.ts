@@ -93,26 +93,29 @@ describe('SetNoStoryIssueToStoryUseCase', () => {
       expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
     });
 
-    it('should do nothing when no target date has minutes === 0', async () => {
+    it('should assign story when no target date has minutes === 0', async () => {
       const nonHourDate = new Date('2000-01-01T01:30:00Z');
+      const issue: Issue = {
+        ...mock<Issue>(),
+        labels: [],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+      };
 
-      await useCase.run({
+      const promise = useCase.run({
         targetDates: [nonHourDate],
         project: basicProject,
-        issues: [
-          {
-            ...mock<Issue>(),
-            labels: [],
-            story: null,
-            state: 'OPEN',
-            nextActionDate: null,
-            nextActionHour: null,
-          },
-        ],
+        issues: [issue],
         cacheUsed: false,
       });
+      await jest.runAllTimersAsync();
+      await promise;
 
-      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+      expect(mockIssueRepository.updateStory.mock.calls).toEqual([
+        [{ ...basicProject, story: basicProject.story }, issue, 'noStoryId'],
+      ]);
     });
 
     it('should do nothing when project story has no stories', async () => {

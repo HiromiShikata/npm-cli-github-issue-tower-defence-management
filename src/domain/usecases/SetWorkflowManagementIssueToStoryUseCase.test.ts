@@ -145,28 +145,37 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
       expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
     });
 
-    it('should do nothing when no target date has minutes === 0', async () => {
+    it('should assign story when no target date has minutes === 0', async () => {
       const nonHourDate = new Date('2000-01-01T01:30:00Z');
+      const issue: Issue = {
+        ...mock<Issue>(),
+        labels: ['story:high-priority'],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        isPr: false,
+      };
 
-      await useCase.run({
+      const promise = useCase.run({
         targetDates: [nonHourDate],
         project: basicProject,
-        issues: [
-          {
-            ...mock<Issue>(),
-            labels: ['story:high-priority'],
-            story: null,
-            state: 'OPEN',
-            nextActionDate: null,
-            nextActionHour: null,
-            isPr: false,
-          },
-        ],
+        issues: [issue],
         cacheUsed: false,
       });
+      await jest.runAllTimersAsync();
+      await promise;
 
-      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
-      expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+      expect(mockIssueRepository.updateStory.mock.calls).toEqual([
+        [
+          { ...basicProject, story: basicProject.story },
+          issue,
+          'highPriorityId',
+        ],
+      ]);
+      expect(mockIssueRepository.removeLabel.mock.calls).toEqual([
+        [issue, 'story:high-priority'],
+      ]);
     });
 
     it('should map story:workflow-management label to workflow management story and remove label', async () => {
