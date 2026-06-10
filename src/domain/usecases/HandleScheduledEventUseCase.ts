@@ -29,6 +29,10 @@ import { RevertNotReadyAwaitingQualityCheckUseCase } from './RevertNotReadyAwait
 import { resolveLabelsAsLlmAgentName } from './resolveLabelsAsLlmAgentName';
 import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
 import { UpdateRateLimitCacheUseCase } from './UpdateRateLimitCacheUseCase';
+import {
+  DailySecurityScanConfig,
+  DailySecurityScanUseCase,
+} from './DailySecurityScanUseCase';
 
 export class ProjectNotFoundError extends Error {
   constructor(message: string) {
@@ -60,6 +64,7 @@ export class HandleScheduledEventUseCase {
     readonly revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase,
     readonly revertNotReadyAwaitingQualityCheckUseCase: RevertNotReadyAwaitingQualityCheckUseCase,
     readonly updateRateLimitCacheUseCase: UpdateRateLimitCacheUseCase | null,
+    readonly dailySecurityScanUseCase: DailySecurityScanUseCase | null,
     readonly dateRepository: DateRepository,
     readonly spreadsheetRepository: SpreadsheetRepository,
     readonly projectRepository: ProjectRepository,
@@ -97,6 +102,7 @@ export class HandleScheduledEventUseCase {
       labelsAsLlmAgentName?: string[] | null;
     } | null;
     thresholdForAutoReject?: number;
+    dailySecurityScan?: DailySecurityScanConfig | null;
   }): Promise<{
     project: Project;
     issues: Issue[];
@@ -291,6 +297,14 @@ ${JSON.stringify(e)}
       allowIssueCacheMinutes: input.allowIssueCacheMinutes,
       labelsAsLlmAgentName,
     });
+    if (this.dailySecurityScanUseCase !== null && input.dailySecurityScan) {
+      await this.dailySecurityScanUseCase.run({
+        targetDates: targetDateTimes,
+        org: input.org,
+        manager: input.manager,
+        dailySecurityScan: input.dailySecurityScan,
+      });
+    }
     if (input.startPreparation) {
       if (this.updateRateLimitCacheUseCase !== null) {
         await this.updateRateLimitCacheUseCase.run({

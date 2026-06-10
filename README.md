@@ -120,6 +120,11 @@ startPreparation?: # Optional: Enable automatic issue preparation workflow
   awLogStaleThresholdMinutes?: number # Optional: Minutes since last aw log mtime after which a Preparation issue is considered orphaned even when pgrep still returns 0 (outer wrapper alive but inner claude dead). Requires awLogDirectoryPath
   labelsAsLlmAgentName?: string[] | null # Optional: List of issue labels that are themselves agent names. When an issue carries any label that is included in this list, that label name is used as the agent name. Selection precedence is: (1) explicit `llm-agent:` label, (2) labelsAsLlmAgentName entry match, (3) `category:` label, (4) defaultLlmAgentName, (5) defaultAgentName
 claudeCodeOauthTokenListJsonPath?: string # Optional: Path to a JSON file listing long-term Claude Code OAuth tokens to rotate across (see "Claude OAuth Token Rotation" below). Declared at the top level (sibling of startPreparation), not inside it.
+dailySecurityScan?: # Optional: Run a daily OSV-Scanner security scan across locally cloned repositories of the org. Declared at the top level (sibling of startPreparation).
+  scanBaseDirectory: string # Base directory searched (4 levels deep) for cloned repositories to scan
+  targetHourUtc: number # UTC hour (0-23) at which the scan runs once per day; the scan runs only when a target date matches this hour at minute zero
+  enableKevNvdReport?: boolean # Optional: When true, also report CISA KEV catalog additions since the previous day
+  kevReportRepo?: string # Optional: Repository name (within org) where the CISA KEV additions issue is created. Required for KEV reporting
 ```
 
 Example:
@@ -163,6 +168,11 @@ startPreparation:
   labelsAsLlmAgentName:
     - story
     - story:body-condition
+dailySecurityScan:
+  scanBaseDirectory: '/home/user/repos'
+  targetHourUtc: 0
+  enableKevNvdReport: true
+  kevReportRepo: 'security-reports'
 ```
 
 ### startDaemon and notifyFinishedIssuePreparation Commands Config

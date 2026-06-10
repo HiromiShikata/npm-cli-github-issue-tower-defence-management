@@ -25,6 +25,7 @@ import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUse
 import { RevertNotReadyAwaitingQualityCheckUseCase } from './RevertNotReadyAwaitingQualityCheckUseCase';
 import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
 import { UpdateRateLimitCacheUseCase } from './UpdateRateLimitCacheUseCase';
+import { DailySecurityScanUseCase } from './DailySecurityScanUseCase';
 
 describe('HandleScheduledEventUseCase', () => {
   describe('createTargetDateTimes', () => {
@@ -117,6 +118,7 @@ describe('HandleScheduledEventUseCase', () => {
     const mockRevertNotReadyAwaitingQualityCheckUseCase =
       mock<RevertNotReadyAwaitingQualityCheckUseCase>();
     const mockUpdateRateLimitCacheUseCase = mock<UpdateRateLimitCacheUseCase>();
+    const mockDailySecurityScanUseCase = mock<DailySecurityScanUseCase>();
     const mockDateRepository = mock<DateRepository>();
     const mockSpreadsheetRepository = mock<SpreadsheetRepository>();
     const mockProjectRepository = mock<ProjectRepository>();
@@ -142,6 +144,7 @@ describe('HandleScheduledEventUseCase', () => {
       mockRevertOrphanedPreparationUseCase,
       mockRevertNotReadyAwaitingQualityCheckUseCase,
       mockUpdateRateLimitCacheUseCase,
+      mockDailySecurityScanUseCase,
       mockDateRepository,
       mockSpreadsheetRepository,
       mockProjectRepository,
