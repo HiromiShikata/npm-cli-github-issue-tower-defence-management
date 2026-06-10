@@ -1,3 +1,10 @@
+## [1.74.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.74.0...v1.74.1) (2026-06-10)
+
+
+### Bug Fixes
+
+* **tdpm:** exempt labelsAsLlmAgentName issues from auto status check rejection ([9879678](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/98796788f3bdc2fdd244febd10179f64ea1c78ee)), closes [#784](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/784)
+
 # [1.74.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.73.3...v1.74.0) (2026-06-08)
 
 

@@ -29,7 +29,7 @@ class RevertNotReadyAwaitingQualityCheckUseCase {
                 if (hasLlmAgentLabel) {
                     continue;
                 }
-                const { rejections, approvedPrUrl } = await this.issueRejectionEvaluator.evaluate(issue);
+                const { rejections, approvedPrUrl } = await this.issueRejectionEvaluator.evaluate(issue, params.labelsAsLlmAgentName ?? []);
                 if (rejections.length > 0) {
                     await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
                     await this.issueCommentRepository.createComment(issue, `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`);

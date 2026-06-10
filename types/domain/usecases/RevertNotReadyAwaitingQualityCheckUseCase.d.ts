@@ -11,6 +11,7 @@ export declare class RevertNotReadyAwaitingQualityCheckUseCase {
     run: (params: {
         projectUrl: string;
         allowIssueCacheMinutes: number;
+        labelsAsLlmAgentName?: string[] | null;
     }) => Promise<void>;
 }
 //# sourceMappingURL=RevertNotReadyAwaitingQualityCheckUseCase.d.ts.map

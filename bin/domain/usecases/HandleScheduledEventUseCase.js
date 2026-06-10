@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HandleScheduledEventUseCase = exports.ProjectNotFoundError = void 0;
+const resolveLabelsAsLlmAgentName_1 = require("./resolveLabelsAsLlmAgentName");
 class ProjectNotFoundError extends Error {
     constructor(message) {
         super(message);
@@ -132,9 +133,14 @@ ${JSON.stringify(e)}
             if (runSlowSweep) {
                 await this.runSlowSweepUseCases(input, project, issues, cacheUsed, targetDateTimes, storyObjectMap);
             }
+            const labelsAsLlmAgentName = (0, resolveLabelsAsLlmAgentName_1.resolveLabelsAsLlmAgentName)({
+                topLevel: input.labelsAsLlmAgentName,
+                startPreparation: input.startPreparation?.labelsAsLlmAgentName,
+            });
             await this.revertNotReadyAwaitingQualityCheckUseCase.run({
                 projectUrl: input.projectUrl,
                 allowIssueCacheMinutes: input.allowIssueCacheMinutes,
+                labelsAsLlmAgentName,
             });
             if (input.startPreparation) {
                 if (this.updateRateLimitCacheUseCase !== null) {
@@ -151,7 +157,7 @@ ${JSON.stringify(e)}
                         awLogDirectoryPath: input.startPreparation.awLogDirectoryPath,
                         awLogStaleThresholdMinutes: input.startPreparation.awLogStaleThresholdMinutes,
                         awaitingQualityCheckStatus: input.startPreparation.awaitingQualityCheckStatus ?? undefined,
-                        labelsAsLlmAgentName: input.startPreparation.labelsAsLlmAgentName ?? null,
+                        labelsAsLlmAgentName,
                     });
                 }
                 const preparationResult = await this.startPreparationUseCase.run({
@@ -166,7 +172,7 @@ ${JSON.stringify(e)}
                     allowedIssueAuthors: input.startPreparation.allowedIssueAuthors ?? null,
                     codexHomeCandidates: input.startPreparation.codexHomeCandidates ?? null,
                     allowIssueCacheMinutes: input.allowIssueCacheMinutes,
-                    labelsAsLlmAgentName: input.startPreparation.labelsAsLlmAgentName ?? null,
+                    labelsAsLlmAgentName,
                 });
                 return { rotationOrder: preparationResult.rotationOrder };
             }

@@ -66,6 +66,7 @@ export declare class HandleScheduledEventUseCase {
         urlOfStoryView: string;
         disabled: boolean;
         allowIssueCacheMinutes: number;
+        labelsAsLlmAgentName?: string[] | null;
         startPreparation?: {
             defaultAgentName: string;
             defaultLlmModelName?: string | null;
