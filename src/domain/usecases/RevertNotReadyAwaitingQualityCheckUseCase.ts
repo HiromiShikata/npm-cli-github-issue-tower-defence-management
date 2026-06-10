@@ -40,6 +40,7 @@ export class RevertNotReadyAwaitingQualityCheckUseCase {
   run = async (params: {
     projectUrl: string;
     allowIssueCacheMinutes: number;
+    labelsAsLlmAgentName?: string[] | null;
   }): Promise<void> => {
     const projectId = await this.projectRepository.findProjectIdByUrl(
       params.projectUrl,
@@ -79,7 +80,10 @@ export class RevertNotReadyAwaitingQualityCheckUseCase {
       }
 
       const { rejections, approvedPrUrl } =
-        await this.issueRejectionEvaluator.evaluate(issue);
+        await this.issueRejectionEvaluator.evaluate(
+          issue,
+          params.labelsAsLlmAgentName ?? [],
+        );
       if (rejections.length > 0) {
         await this.issueRepository.updateStatus(
           project,
