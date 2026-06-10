@@ -18,7 +18,12 @@ export class CheckIssueReviewReadinessUseCase {
     private readonly projectRepository: Pick<ProjectRepository, 'getByUrl'>,
     private readonly issueRepository: Pick<
       IssueRepository,
-      'get' | 'findRelatedOpenPRs' | 'getOpenPullRequest'
+      | 'get'
+      | 'findRelatedOpenPRs'
+      | 'getOpenPullRequest'
+      | 'getPullRequestChangedFilePaths'
+      | 'requestChangesWithInlineComment'
+      | 'createCommentByUrl'
     >,
   ) {
     this.issueRejectionEvaluator = new IssueRejectionEvaluator(issueRepository);

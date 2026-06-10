@@ -22,6 +22,9 @@ describe('IssueRejectionEvaluator', () => {
   let mockIssueRepository: {
     findRelatedOpenPRs: jest.Mock;
     getOpenPullRequest: jest.Mock;
+    getPullRequestChangedFilePaths: jest.Mock;
+    requestChangesWithInlineComment: jest.Mock;
+    createCommentByUrl: jest.Mock;
   };
   let evaluator: IssueRejectionEvaluator;
 
@@ -31,6 +34,9 @@ describe('IssueRejectionEvaluator', () => {
     mockIssueRepository = {
       findRelatedOpenPRs: jest.fn(),
       getOpenPullRequest: jest.fn(),
+      getPullRequestChangedFilePaths: jest.fn().mockResolvedValue([]),
+      requestChangesWithInlineComment: jest.fn().mockResolvedValue(undefined),
+      createCommentByUrl: jest.fn().mockResolvedValue(undefined),
     };
 
     evaluator = new IssueRejectionEvaluator(mockIssueRepository);
@@ -199,6 +205,143 @@ describe('IssueRejectionEvaluator', () => {
       );
       expect(result.rejections).toHaveLength(1);
       expect(result.rejections[0].type).toBe('PULL_REQUEST_NOT_FOUND');
+    });
+
+    describe('change-target-must: label behavior', () => {
+      const prUrl = 'https://github.com/user/repo/pull/1';
+
+      it('should not reject when required path contains at least one changed file', async () => {
+        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+          createReadyPr(prUrl),
+        ]);
+        mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+          'src/domain/entities/Foo.ts',
+          'src/adapter/Bar.ts',
+        ]);
+
+        const result = await evaluator.evaluate({
+          url: 'https://github.com/user/repo/issues/1',
+          labels: ['change-target-must:src/domain'],
+          isPr: false,
+        });
+
+        expect(result.rejections).toHaveLength(0);
+        expect(result.approvedPrUrl).toBe(prUrl);
+        expect(
+          mockIssueRepository.requestChangesWithInlineComment,
+        ).not.toHaveBeenCalled();
+      });
+
+      it('should reject with CHANGE_TARGET_MUST_PATH_NOT_CHANGED and post inline comment when required path has no changed file', async () => {
+        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+          createReadyPr(prUrl),
+        ]);
+        mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+          'src/adapter/Bar.ts',
+        ]);
+
+        const result = await evaluator.evaluate({
+          url: 'https://github.com/user/repo/issues/1',
+          labels: ['change-target-must:src/domain'],
+          isPr: false,
+        });
+
+        expect(result.rejections).toHaveLength(1);
+        expect(result.rejections[0].type).toBe(
+          'CHANGE_TARGET_MUST_PATH_NOT_CHANGED',
+        );
+        expect(result.rejections[0].detail).toContain('src/domain');
+        expect(result.approvedPrUrl).toBeNull();
+        expect(
+          mockIssueRepository.requestChangesWithInlineComment,
+        ).toHaveBeenCalledWith(
+          prUrl,
+          'src/adapter/Bar.ts',
+          expect.stringContaining('src/domain'),
+        );
+      });
+
+      it('should post PR-level comment as fallback when PR has no changed files', async () => {
+        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+          createReadyPr(prUrl),
+        ]);
+        mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue(
+          [],
+        );
+
+        const result = await evaluator.evaluate({
+          url: 'https://github.com/user/repo/issues/1',
+          labels: ['change-target-must:src/domain'],
+          isPr: false,
+        });
+
+        expect(result.rejections).toHaveLength(1);
+        expect(result.rejections[0].type).toBe(
+          'CHANGE_TARGET_MUST_PATH_NOT_CHANGED',
+        );
+        expect(
+          mockIssueRepository.requestChangesWithInlineComment,
+        ).toHaveBeenCalledWith(prUrl, null, expect.any(String));
+      });
+
+      it('should match boundary-safely so that change-target-must:foo matches foo/bar.ts but not foobar/baz.ts', async () => {
+        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+          createReadyPr(prUrl),
+        ]);
+        mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+          'foobar/baz.ts',
+        ]);
+
+        const result = await evaluator.evaluate({
+          url: 'https://github.com/user/repo/issues/1',
+          labels: ['change-target-must:foo'],
+          isPr: false,
+        });
+
+        expect(result.rejections).toHaveLength(1);
+        expect(result.rejections[0].type).toBe(
+          'CHANGE_TARGET_MUST_PATH_NOT_CHANGED',
+        );
+        expect(
+          mockIssueRepository.requestChangesWithInlineComment,
+        ).toHaveBeenCalledWith(prUrl, 'foobar/baz.ts', expect.any(String));
+      });
+
+      it('should not reject when changed file is exactly the required path (boundary-safe exact match)', async () => {
+        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+          createReadyPr(prUrl),
+        ]);
+        mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+          'foo',
+        ]);
+
+        const result = await evaluator.evaluate({
+          url: 'https://github.com/user/repo/issues/1',
+          labels: ['change-target-must:foo'],
+          isPr: false,
+        });
+
+        expect(result.rejections).toHaveLength(0);
+        expect(result.approvedPrUrl).toBe(prUrl);
+      });
+
+      it('should reject when changed file is outside both change-target and change-target-must allowed paths', async () => {
+        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+          createReadyPr(prUrl),
+        ]);
+        mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+          'src/domain/entities/Foo.ts',
+        ]);
+
+        const result = await evaluator.evaluate({
+          url: 'https://github.com/user/repo/issues/1',
+          labels: ['change-target-must:src/domain'],
+          isPr: false,
+        });
+
+        expect(result.rejections).toHaveLength(0);
+        expect(result.approvedPrUrl).toBe(prUrl);
+      });
     });
   });
 });

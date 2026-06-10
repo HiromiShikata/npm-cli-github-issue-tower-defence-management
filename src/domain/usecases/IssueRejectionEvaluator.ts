@@ -10,7 +10,8 @@ export type PrRejectedReasonType =
   | 'PULL_REQUEST_CONFLICTED'
   | 'ANY_CI_JOB_FAILED_OR_IN_PROGRESS'
   | 'REQUIRED_CI_JOB_NEVER_STARTED'
-  | 'ANY_REVIEW_COMMENT_NOT_RESOLVED';
+  | 'ANY_REVIEW_COMMENT_NOT_RESOLVED'
+  | 'CHANGE_TARGET_MUST_PATH_NOT_CHANGED';
 
 export type PrRejectionResult = {
   rejections: { type: PrRejectedReasonType; detail: string }[];
@@ -21,7 +22,11 @@ export class IssueRejectionEvaluator {
   constructor(
     private readonly issueRepository: Pick<
       IssueRepository,
-      'findRelatedOpenPRs' | 'getOpenPullRequest'
+      | 'findRelatedOpenPRs'
+      | 'getOpenPullRequest'
+      | 'getPullRequestChangedFilePaths'
+      | 'requestChangesWithInlineComment'
+      | 'createCommentByUrl'
     >,
   ) {}
 
@@ -103,11 +108,40 @@ export class IssueRejectionEvaluator {
             detail: `ANY_REVIEW_COMMENT_NOT_RESOLVED: ${pr.url}`,
           });
         }
+
+        const mustPaths = this.extractChangeTargetMustPaths(issue.labels);
+        if (mustPaths.length > 0) {
+          const changedFilePaths =
+            await this.issueRepository.getPullRequestChangedFilePaths(pr.url);
+          for (const mustPath of mustPaths) {
+            const hasChange = changedFilePaths.some((filePath) =>
+              this.isFilePathUnderPath(filePath, mustPath),
+            );
+            if (!hasChange) {
+              rejections.push({
+                type: 'CHANGE_TARGET_MUST_PATH_NOT_CHANGED',
+                detail: `CHANGE_TARGET_MUST_PATH_NOT_CHANGED: ${mustPath}`,
+              });
+              const firstChangedFile =
+                changedFilePaths.length > 0 ? changedFilePaths[0] : null;
+              const commentBody = `The directory \`${mustPath}\` must contain at least one changed file in this pull request.`;
+              await this.issueRepository.requestChangesWithInlineComment(
+                pr.url,
+                firstChangedFile,
+                commentBody,
+              );
+            }
+          }
+        }
+
         if (
           !pr.isDraft &&
           !pr.isConflicted &&
           pr.isPassedAllCiJob &&
-          pr.isResolvedAllReviewComments
+          pr.isResolvedAllReviewComments &&
+          rejections.filter(
+            (r) => r.type === 'CHANGE_TARGET_MUST_PATH_NOT_CHANGED',
+          ).length === 0
         ) {
           approvedPrUrl = pr.url;
         }
@@ -126,4 +160,24 @@ export class IssueRejectionEvaluator {
     }
     return [pr];
   };
+
+  private extractChangeTargetMustPaths = (labels: string[]): string[] => {
+    const prefix = 'change-target-must:';
+    const paths: string[] = [];
+    for (const label of labels) {
+      if (!label.startsWith(prefix)) continue;
+      const raw = label.slice(prefix.length).trim();
+      if (raw.length === 0) continue;
+      const normalized = raw.replace(/\/+$/, '');
+      if (normalized.length === 0) continue;
+      paths.push(normalized);
+    }
+    return paths;
+  };
+
+  private isFilePathUnderPath = (
+    filePath: string,
+    targetPath: string,
+  ): boolean =>
+    filePath === targetPath || filePath.startsWith(`${targetPath}/`);
 }

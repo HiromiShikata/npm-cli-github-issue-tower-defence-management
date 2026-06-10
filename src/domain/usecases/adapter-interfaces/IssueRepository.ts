@@ -92,6 +92,11 @@ export interface IssueRepository {
   getOpenPullRequest: (prUrl: string) => Promise<RelatedPullRequest | null>;
   getPullRequestChangedFilePaths: (prUrl: string) => Promise<string[]>;
   approvePullRequest: (prUrl: string) => Promise<void>;
+  requestChangesWithInlineComment: (
+    prUrl: string,
+    changedFilePath: string | null,
+    commentBody: string,
+  ) => Promise<void>;
   closePullRequest: (prUrl: string) => Promise<void>;
   deletePullRequestBranch: (prUrl: string, branchName: string) => Promise<void>;
   createCommentByUrl: (

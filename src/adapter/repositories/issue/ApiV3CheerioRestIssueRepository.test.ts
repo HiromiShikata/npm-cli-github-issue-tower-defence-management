@@ -519,6 +519,80 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('requestChangesWithInlineComment', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should POST a REQUEST_CHANGES review with an inline comment on the given file path', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: 2, state: 'CHANGES_REQUESTED' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await repository.requestChangesWithInlineComment(
+        'https://github.com/HiromiShikata/test-repository/pull/42',
+        'src/domain/entities/Foo.ts',
+        'The directory `src/required` must contain at least one changed file in this pull request.',
+      );
+
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'https://api.github.com/repos/HiromiShikata/test-repository/pulls/42/reviews',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            event: 'REQUEST_CHANGES',
+            comments: [
+              {
+                path: 'src/domain/entities/Foo.ts',
+                position: 1,
+                body: 'The directory `src/required` must contain at least one changed file in this pull request.',
+              },
+            ],
+          }),
+        }),
+      );
+    });
+
+    it('should post a PR-level comment as fallback when changedFilePath is null', async () => {
+      const { repository, restIssueRepository } =
+        createApiV3CheerioRestIssueRepository();
+      restIssueRepository.createComment.mockResolvedValueOnce(undefined);
+
+      await repository.requestChangesWithInlineComment(
+        'https://github.com/HiromiShikata/test-repository/pull/42',
+        null,
+        'The directory `src/required` must contain at least one changed file in this pull request.',
+      );
+
+      expect(restIssueRepository.createComment).toHaveBeenCalledWith(
+        'https://github.com/HiromiShikata/test-repository/pull/42',
+        'The directory `src/required` must contain at least one changed file in this pull request.',
+      );
+    });
+
+    it('should throw when the API responds with a non-2xx status for inline comment', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response('Unprocessable Entity', {
+          status: 422,
+          statusText: 'Unprocessable Entity',
+        }),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.requestChangesWithInlineComment(
+          'https://github.com/HiromiShikata/test-repository/pull/42',
+          'src/domain/entities/Foo.ts',
+          'Some message',
+        ),
+      ).rejects.toThrow('422');
+    });
+  });
+
   const createApiV3CheerioRestIssueRepository = () => {
     const apiV3IssueRepository = mock<ApiV3IssueRepository>();
     const restIssueRepository = mock<RestIssueRepository>();

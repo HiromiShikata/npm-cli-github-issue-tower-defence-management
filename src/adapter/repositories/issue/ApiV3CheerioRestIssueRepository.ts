@@ -1174,6 +1174,45 @@ export class ApiV3CheerioRestIssueRepository
     }
   };
 
+  requestChangesWithInlineComment = async (
+    prUrl: string,
+    changedFilePath: string | null,
+    commentBody: string,
+  ): Promise<void> => {
+    const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
+    if (changedFilePath === null) {
+      await this.createCommentByUrl(prUrl, commentBody);
+      return;
+    }
+    const reviewBody: Record<string, unknown> = {
+      event: 'REQUEST_CHANGES',
+      comments: [
+        {
+          path: changedFilePath,
+          position: 1,
+          body: commentBody,
+        },
+      ],
+    };
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.ghToken}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/vnd.github+json',
+        },
+        body: JSON.stringify(reviewBody),
+      },
+    );
+    if (!response.ok) {
+      throw new Error(
+        `Failed to request changes on PR ${prUrl}: HTTP ${response.status}`,
+      );
+    }
+  };
+
   deletePullRequestBranch = async (
     prUrl: string,
     branchName: string,

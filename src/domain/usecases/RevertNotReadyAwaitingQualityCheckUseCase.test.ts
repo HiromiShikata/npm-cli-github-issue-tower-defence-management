@@ -83,6 +83,8 @@ describe('RevertNotReadyAwaitingQualityCheckUseCase', () => {
     getOpenPullRequest: jest.Mock;
     getPullRequestChangedFilePaths: jest.Mock;
     approvePullRequest: jest.Mock;
+    requestChangesWithInlineComment: jest.Mock;
+    createCommentByUrl: jest.Mock;
   };
   let mockIssueCommentRepository: {
     createComment: jest.Mock;
@@ -109,6 +111,8 @@ describe('RevertNotReadyAwaitingQualityCheckUseCase', () => {
       getOpenPullRequest: jest.fn().mockResolvedValue(null),
       getPullRequestChangedFilePaths: jest.fn().mockResolvedValue([]),
       approvePullRequest: jest.fn().mockResolvedValue(undefined),
+      requestChangesWithInlineComment: jest.fn().mockResolvedValue(undefined),
+      createCommentByUrl: jest.fn().mockResolvedValue(undefined),
     };
 
     mockIssueCommentRepository = {
