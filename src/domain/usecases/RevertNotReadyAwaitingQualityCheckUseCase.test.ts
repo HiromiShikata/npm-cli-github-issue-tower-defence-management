@@ -189,6 +189,99 @@ describe('RevertNotReadyAwaitingQualityCheckUseCase', () => {
     );
   });
 
+  it('should not revert a story-labeled issue with no linked PR when story is in labelsAsLlmAgentName', async () => {
+    const issue = createMockIssue({
+      status: 'Awaiting Quality Check',
+      labels: ['story'],
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [issue],
+      cacheUsed: false,
+    });
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      allowIssueCacheMinutes: 10,
+      labelsAsLlmAgentName: ['story', 'chore', 'accounting'],
+    });
+
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+  });
+
+  it('should not revert a chore-labeled issue with no linked PR when chore is in labelsAsLlmAgentName', async () => {
+    const issue = createMockIssue({
+      status: 'Awaiting Quality Check',
+      labels: ['chore'],
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [issue],
+      cacheUsed: false,
+    });
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      allowIssueCacheMinutes: 10,
+      labelsAsLlmAgentName: ['story', 'chore'],
+    });
+
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+  });
+
+  it('should still revert a story-labeled issue with no linked PR when labelsAsLlmAgentName is not provided', async () => {
+    const issue = createMockIssue({
+      status: 'Awaiting Quality Check',
+      labels: ['story'],
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [issue],
+      cacheUsed: false,
+    });
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      allowIssueCacheMinutes: 10,
+    });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      mockProject,
+      issue,
+      'awaiting-workspace-id',
+    );
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      issue,
+      expect.stringContaining('PULL_REQUEST_NOT_FOUND'),
+    );
+  });
+
+  it('should not revert a story-labeled issue with no linked PR when labelsAsLlmAgentName is null', async () => {
+    const issue = createMockIssue({
+      status: 'Awaiting Quality Check',
+      labels: ['story'],
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [issue],
+      cacheUsed: false,
+    });
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      allowIssueCacheMinutes: 10,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      mockProject,
+      issue,
+      'awaiting-workspace-id',
+    );
+  });
+
   it('should not revert issue when PR is ready', async () => {
     const issue = createMockIssue({
       status: 'Awaiting Quality Check',
