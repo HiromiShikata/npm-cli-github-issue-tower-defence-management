@@ -1,3 +1,10 @@
+# [1.75.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.74.1...v1.75.0) (2026-06-10)
+
+
+### Features
+
+* **core:** add DailySecurityScanUseCase for daily OSV-Scanner and CISA KEV monitoring ([ddaa341](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ddaa34158029bd8cf3116a9268b0f05bcc628d3c)), closes [#665](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/665)
+
 ## [1.74.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.74.0...v1.74.1) (2026-06-10)
 
 
