@@ -68,7 +68,7 @@ class StartPreparationUseCase {
                 .filter((usage) => usage.fiveHourUtilization * 100 < utilizationPercentageThreshold)
                 .sort((a, b) => this.compareBySevenDayDeadlineThenUtilization(a, b, weeklyLimitType, nowEpochSeconds));
             if (eligibleTokens.length === 0) {
-                return { tokens: [], effectiveCap: 0 };
+                return { tokens: [], effectiveCap: 0, tokensWithLimits: [] };
             }
             const tokensWithLimits = eligibleTokens.map((usage) => ({
                 token: usage.token,
@@ -85,7 +85,7 @@ class StartPreparationUseCase {
                     }
                 }
             }
-            return { tokens: rotationList, effectiveCap };
+            return { tokens: rotationList, effectiveCap, tokensWithLimits };
         };
         this.buildRotationOrder = (tokenUsages, utilizationPercentageThreshold, modelName) => {
             const weeklyLimitType = this.weeklyLimitTypeForModel(modelName);
@@ -122,6 +122,8 @@ class StartPreparationUseCase {
             const tokenUsages = await this.claudeTokenUsageRepository.getAvailableTokenUsages();
             let rotationTokens = null;
             let proxyBaseUrl = null;
+            let selectedTokensWithLimits = [];
+            let tokenInFlightCounts = {};
             const rotationOrder = tokenUsages.length > 0
                 ? this.buildRotationOrder(tokenUsages, params.utilizationPercentageThreshold, params.defaultLlmModelName)
                 : null;
@@ -129,18 +131,20 @@ class StartPreparationUseCase {
             let effectiveMaxPreparingIssuesCount = maximumPreparingIssuesCount;
             let effectiveDefaultLlmModelName = params.defaultLlmModelName;
             if (tokenUsages.length > 0) {
-                const { tokens: ranked, effectiveCap } = this.selectRotationTokens(tokenUsages, params.utilizationPercentageThreshold, params.defaultLlmModelName, maximumPreparingIssuesCount);
+                const { tokens: ranked, effectiveCap, tokensWithLimits: rankedTokensWithLimits, } = this.selectRotationTokens(tokenUsages, params.utilizationPercentageThreshold, params.defaultLlmModelName, maximumPreparingIssuesCount);
                 let selectedTokens = ranked;
                 let selectedCap = effectiveCap;
+                let selectedTokensWithLimitsLocal = rankedTokensWithLimits;
                 if (selectedTokens.length === 0 &&
                     this.weeklyLimitTypeForModel(params.defaultLlmModelName) ===
                         'seven_day_sonnet') {
                     const fallbackModelName = params.fallbackLlmModelName ?? exports.DEFAULT_FALLBACK_LLM_MODEL_NAME;
-                    const { tokens: fallbackRanked, effectiveCap: fallbackCap } = this.selectRotationTokens(tokenUsages, params.utilizationPercentageThreshold, fallbackModelName, maximumPreparingIssuesCount);
+                    const { tokens: fallbackRanked, effectiveCap: fallbackCap, tokensWithLimits: fallbackTokensWithLimits, } = this.selectRotationTokens(tokenUsages, params.utilizationPercentageThreshold, fallbackModelName, maximumPreparingIssuesCount);
                     if (fallbackRanked.length > 0) {
                         console.warn(`Sonnet 7-day weekly limit (${this.weeklyLimitTypeForModel(params.defaultLlmModelName)}) is exhausted across all configured Claude OAuth token(s). Falling back to ${fallbackModelName}.`);
                         selectedTokens = fallbackRanked;
                         selectedCap = fallbackCap;
+                        selectedTokensWithLimitsLocal = fallbackTokensWithLimits;
                         effectiveDefaultLlmModelName = fallbackModelName;
                     }
                 }
@@ -149,7 +153,10 @@ class StartPreparationUseCase {
                     return { rotationOrder };
                 }
                 await this.claudeTokenUsageRepository.ensureObservable();
+                tokenInFlightCounts =
+                    await this.claudeTokenUsageRepository.getTokenInFlightCounts();
                 rotationTokens = selectedTokens;
+                selectedTokensWithLimits = selectedTokensWithLimitsLocal;
                 effectiveMaxPreparingIssuesCount = selectedCap;
                 proxyBaseUrl = this.claudeTokenUsageRepository.proxyBaseUrl();
             }
@@ -167,6 +174,7 @@ class StartPreparationUseCase {
             const currentPreparationIssueCount = allOpenedIssues.filter((issue) => issue.status === WorkflowStatus_1.PREPARATION_STATUS_NAME).length;
             let updatedCurrentPreparationIssueCount = currentPreparationIssueCount;
             let startedInThisRunCount = 0;
+            const spawnedInThisRunByToken = {};
             const now = new Date();
             const currentHour = now.getHours();
             const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -280,7 +288,21 @@ class StartPreparationUseCase {
                 }
                 let spawnEnv;
                 if (rotationTokens !== null && proxyBaseUrl !== null) {
-                    const selected = rotationTokens[startedInThisRunCount % rotationTokens.length];
+                    const tokenWithMostRemainingCapacity = selectedTokensWithLimits
+                        .map((t) => ({
+                        token: t.token,
+                        remaining: t.limit -
+                            (tokenInFlightCounts[t.token] ?? 0) -
+                            (spawnedInThisRunByToken[t.token] ?? 0),
+                    }))
+                        .filter((t) => t.remaining > 0)
+                        .sort((a, b) => b.remaining - a.remaining)[0];
+                    if (tokenWithMostRemainingCapacity === undefined) {
+                        break;
+                    }
+                    const selected = tokenWithMostRemainingCapacity.token;
+                    spawnedInThisRunByToken[selected] =
+                        (spawnedInThisRunByToken[selected] ?? 0) + 1;
                     spawnEnv = {
                         CLAUDE_CODE_OAUTH_TOKEN: selected,
                         ANTHROPIC_BASE_URL: proxyBaseUrl,

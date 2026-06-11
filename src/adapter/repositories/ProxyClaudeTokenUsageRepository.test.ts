@@ -15,6 +15,13 @@ jest.mock('../proxy/TokenListLoader', () => ({
   loadTokenEntries: mockLoadTokenEntries,
 }));
 
+const mockFsReaddirSync = jest.fn();
+const mockFsReadFileSync = jest.fn();
+jest.mock('fs', () => ({
+  readdirSync: mockFsReaddirSync,
+  readFileSync: mockFsReadFileSync,
+}));
+
 import { ProxyClaudeTokenUsageRepository } from './ProxyClaudeTokenUsageRepository';
 
 describe('ProxyClaudeTokenUsageRepository', () => {
@@ -722,6 +729,125 @@ describe('ProxyClaudeTokenUsageRepository', () => {
       );
 
       expect(repository.proxyBaseUrl()).toBe('http://127.0.0.1:9999');
+    });
+  });
+
+  describe('getTokenInFlightCounts', () => {
+    it('should return empty object when proc directory cannot be read', async () => {
+      mockFsReaddirSync.mockImplementation(() => {
+        throw new Error('ENOENT');
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getTokenInFlightCounts();
+
+      expect(result).toEqual({});
+    });
+
+    it('should return empty object when no process has CLAUDE_CODE_OAUTH_TOKEN', async () => {
+      mockFsReaddirSync.mockReturnValue(['1234', '5678', 'self']);
+      mockFsReadFileSync.mockReturnValue('HOME=/home/user\0PATH=/usr/bin\0');
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getTokenInFlightCounts();
+
+      expect(result).toEqual({});
+    });
+
+    it('should count one process when one pid has CLAUDE_CODE_OAUTH_TOKEN', async () => {
+      mockFsReaddirSync.mockReturnValue(['1234', 'self']);
+      mockFsReadFileSync.mockImplementation((filePath: string) => {
+        if (filePath === '/proc/1234/environ') {
+          return 'HOME=/home/user\0CLAUDE_CODE_OAUTH_TOKEN=sk-ant-abc\0PATH=/usr/bin\0';
+        }
+        throw new Error('EACCES');
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getTokenInFlightCounts();
+
+      expect(result).toEqual({ 'sk-ant-abc': 1 });
+    });
+
+    it('should count multiple processes using the same token', async () => {
+      mockFsReaddirSync.mockReturnValue(['1234', '5678', '9999']);
+      mockFsReadFileSync.mockImplementation((filePath: string) => {
+        if (
+          filePath === '/proc/1234/environ' ||
+          filePath === '/proc/5678/environ'
+        ) {
+          return 'CLAUDE_CODE_OAUTH_TOKEN=sk-ant-abc\0OTHER=val\0';
+        }
+        if (filePath === '/proc/9999/environ') {
+          return 'HOME=/home/user\0PATH=/usr/bin\0';
+        }
+        throw new Error('ENOENT');
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getTokenInFlightCounts();
+
+      expect(result).toEqual({ 'sk-ant-abc': 2 });
+    });
+
+    it('should count processes separately when they use different tokens', async () => {
+      mockFsReaddirSync.mockReturnValue(['1234', '5678']);
+      mockFsReadFileSync.mockImplementation((filePath: string) => {
+        if (filePath === '/proc/1234/environ') {
+          return 'CLAUDE_CODE_OAUTH_TOKEN=sk-ant-abc\0';
+        }
+        if (filePath === '/proc/5678/environ') {
+          return 'CLAUDE_CODE_OAUTH_TOKEN=sk-ant-xyz\0';
+        }
+        throw new Error('ENOENT');
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getTokenInFlightCounts();
+
+      expect(result).toEqual({ 'sk-ant-abc': 1, 'sk-ant-xyz': 1 });
+    });
+
+    it('should skip non-numeric proc entries', async () => {
+      mockFsReaddirSync.mockReturnValue(['1234', 'self', 'net', 'sys']);
+      mockFsReadFileSync.mockImplementation((filePath: string) => {
+        if (filePath === '/proc/1234/environ') {
+          return 'CLAUDE_CODE_OAUTH_TOKEN=sk-ant-abc\0';
+        }
+        throw new Error('ENOENT');
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getTokenInFlightCounts();
+
+      expect(result).toEqual({ 'sk-ant-abc': 1 });
+    });
+
+    it('should skip processes whose environ file cannot be read', async () => {
+      mockFsReaddirSync.mockReturnValue(['1234', '5678']);
+      mockFsReadFileSync.mockImplementation((filePath: string) => {
+        if (filePath === '/proc/1234/environ') {
+          return 'CLAUDE_CODE_OAUTH_TOKEN=sk-ant-abc\0';
+        }
+        throw new Error('EPERM');
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getTokenInFlightCounts();
+
+      expect(result).toEqual({ 'sk-ant-abc': 1 });
+    });
+
+    it('should skip entries where CLAUDE_CODE_OAUTH_TOKEN has an empty value', async () => {
+      mockFsReaddirSync.mockReturnValue(['1234']);
+      mockFsReadFileSync.mockReturnValue(
+        'CLAUDE_CODE_OAUTH_TOKEN=\0OTHER=val\0',
+      );
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getTokenInFlightCounts();
+
+      expect(result).toEqual({});
     });
   });
 });
