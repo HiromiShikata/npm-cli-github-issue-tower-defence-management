@@ -110,6 +110,9 @@ export class HandleScheduledEventUseCaseHandler {
         input.claudeCodeOauthTokenListJsonPath,
       thresholdForAutoReject:
         readmeConfig.thresholdForAutoReject ?? input.thresholdForAutoReject,
+      awaitingQualityCheckViewerOutputPath:
+        readmeConfig.awaitingQualityCheckViewerOutputPath ??
+        input.awaitingQualityCheckViewerOutputPath,
       startPreparation: input.startPreparation
         ? {
             ...input.startPreparation,

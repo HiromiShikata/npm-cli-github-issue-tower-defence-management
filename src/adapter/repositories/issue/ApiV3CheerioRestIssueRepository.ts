@@ -25,6 +25,10 @@ type TimelineItem = {
     __typename: string;
     url?: string;
     number?: number;
+    title?: string;
+    additions?: number;
+    deletions?: number;
+    changedFiles?: number;
     state?: string;
     createdAt?: string;
     isDraft?: boolean;
@@ -118,6 +122,11 @@ type IssueTimelineResponse = {
 };
 
 type PrStatusComputationData = {
+  number?: number;
+  title?: string;
+  additions?: number;
+  deletions?: number;
+  changedFiles?: number;
   isDraft?: boolean;
   mergeable?: string;
   baseRepository?: {
@@ -190,6 +199,8 @@ type DirectPullRequestResponse = {
     repository?: {
       pullRequest?: {
         url: string;
+        number?: number;
+        title?: string;
         state: string;
         headRefName?: string;
         baseRefName?: string;
@@ -671,6 +682,8 @@ export class ApiV3CheerioRestIssueRepository
     headRefName: string | undefined,
     baseRefName: string | undefined,
     data: PrStatusComputationData,
+    prNumber?: number,
+    prTitle?: string,
   ): RelatedPullRequest => {
     const isConflicted = data.mergeable === 'CONFLICTING';
     const lastCommit = data.commits?.nodes[0]?.commit;
@@ -760,6 +773,8 @@ export class ApiV3CheerioRestIssueRepository
 
     return {
       url: prUrl,
+      number: prNumber ?? data.number ?? null,
+      title: prTitle ?? data.title ?? null,
       branchName: headRefName ?? null,
       createdAt: new Date(0),
       isDraft: data.isDraft === true,
@@ -769,6 +784,9 @@ export class ApiV3CheerioRestIssueRepository
       isResolvedAllReviewComments,
       isBranchOutOfDate: false,
       missingRequiredCheckNames,
+      additions: data.additions ?? null,
+      deletions: data.deletions ?? null,
+      changedFiles: data.changedFiles ?? null,
     };
   };
 
@@ -800,6 +818,10 @@ export class ApiV3CheerioRestIssueRepository
                     ... on PullRequest {
                       url
                       number
+                      title
+                      additions
+                      deletions
+                      changedFiles
                       state
                       createdAt
                       isDraft
@@ -932,6 +954,8 @@ export class ApiV3CheerioRestIssueRepository
           pr.headRefName,
           baseRefName,
           pr,
+          pr.number,
+          pr.title,
         );
 
         relatedPRsMap.set(prUrl, {
@@ -993,6 +1017,11 @@ export class ApiV3CheerioRestIssueRepository
         repository(owner: $owner, name: $repo) {
           pullRequest(number: $prNumber) {
             url
+            number
+            title
+            additions
+            deletions
+            changedFiles
             state
             isDraft
             headRefName
@@ -1097,7 +1126,14 @@ export class ApiV3CheerioRestIssueRepository
       return null;
     }
 
-    return this.computePrStatus(pr.url, pr.headRefName, pr.baseRefName, pr);
+    return this.computePrStatus(
+      pr.url,
+      pr.headRefName,
+      pr.baseRefName,
+      pr,
+      pr.number,
+      pr.title,
+    );
   };
 
   closePullRequest = async (prUrl: string): Promise<void> => {

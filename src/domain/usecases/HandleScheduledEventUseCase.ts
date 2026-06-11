@@ -103,6 +103,7 @@ export class HandleScheduledEventUseCase {
     } | null;
     thresholdForAutoReject?: number;
     dailySecurityScan?: DailySecurityScanConfig | null;
+    awaitingQualityCheckViewerOutputPath?: string | null;
   }): Promise<{
     project: Project;
     issues: Issue[];
@@ -296,6 +297,8 @@ ${JSON.stringify(e)}
       projectUrl: input.projectUrl,
       allowIssueCacheMinutes: input.allowIssueCacheMinutes,
       labelsAsLlmAgentName,
+      awaitingQualityCheckViewerOutputPath:
+        input.awaitingQualityCheckViewerOutputPath ?? null,
     });
     if (this.dailySecurityScanUseCase !== null && input.dailySecurityScan) {
       await this.dailySecurityScanUseCase.run({

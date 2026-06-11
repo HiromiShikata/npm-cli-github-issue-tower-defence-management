@@ -87,6 +87,8 @@ const createMockProject = (): Project => ({
 
 const createPassingPr = () => ({
   url: 'https://github.com/user/repo/pull/5',
+  number: null,
+  title: null,
   branchName: 'i1',
   createdAt: new Date('2024-01-01T00:00:00Z'),
   isDraft: false,
@@ -96,6 +98,9 @@ const createPassingPr = () => ({
   isResolvedAllReviewComments: true,
   isBranchOutOfDate: false,
   missingRequiredCheckNames: [],
+  additions: null,
+  deletions: null,
+  changedFiles: null,
 });
 
 describe('RevertOrphanedPreparationUseCase', () => {

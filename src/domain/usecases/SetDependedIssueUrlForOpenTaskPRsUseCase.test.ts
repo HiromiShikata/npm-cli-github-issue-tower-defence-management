@@ -55,6 +55,8 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
           return [
             {
               url: 'https://github.com/owner/repo/pull/100',
+              number: null,
+              title: null,
               branchName: null,
               createdAt: new Date(0),
               isDraft: false,
@@ -64,6 +66,9 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
               isResolvedAllReviewComments: true,
               isBranchOutOfDate: false,
               missingRequiredCheckNames: [],
+              additions: null,
+              deletions: null,
+              changedFiles: null,
             },
           ];
         }
@@ -155,6 +160,8 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
           return [
             {
               url: 'https://github.com/owner/repo/pull/100',
+              number: null,
+              title: null,
               branchName: null,
               createdAt: new Date(0),
               isDraft: false,
@@ -164,6 +171,9 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
               isResolvedAllReviewComments: true,
               isBranchOutOfDate: false,
               missingRequiredCheckNames: [],
+              additions: null,
+              deletions: null,
+              changedFiles: null,
             },
           ];
         }
@@ -171,6 +181,8 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
           return [
             {
               url: 'https://github.com/owner/repo/pull/200',
+              number: null,
+              title: null,
               branchName: null,
               createdAt: new Date(0),
               isDraft: false,
@@ -180,6 +192,9 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
               isResolvedAllReviewComments: true,
               isBranchOutOfDate: false,
               missingRequiredCheckNames: [],
+              additions: null,
+              deletions: null,
+              changedFiles: null,
             },
           ];
         }
@@ -220,6 +235,8 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
       {
         url: failingPrUrl,
+        number: null,
+        title: null,
         branchName: null,
         createdAt: new Date(0),
         isDraft: false,
@@ -229,9 +246,14 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
         isResolvedAllReviewComments: true,
         isBranchOutOfDate: false,
         missingRequiredCheckNames: [],
+        additions: null,
+        deletions: null,
+        changedFiles: null,
       },
       {
         url: succeedingPrUrl,
+        number: null,
+        title: null,
         branchName: null,
         createdAt: new Date(0),
         isDraft: false,
@@ -241,6 +263,9 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
         isResolvedAllReviewComments: true,
         isBranchOutOfDate: false,
         missingRequiredCheckNames: [],
+        additions: null,
+        deletions: null,
+        changedFiles: null,
       },
     ]);
     mockIssueRepository.setDependedIssueUrl.mockImplementation(

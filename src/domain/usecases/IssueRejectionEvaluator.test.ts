@@ -6,6 +6,8 @@ const createReadyPr = (
   overrides: Partial<RelatedPullRequest> = {},
 ): RelatedPullRequest => ({
   url,
+  number: null,
+  title: null,
   branchName: 'feature-branch',
   createdAt: new Date('2000-01-01T00:00:00Z'),
   isDraft: false,
@@ -15,6 +17,9 @@ const createReadyPr = (
   isResolvedAllReviewComments: true,
   isBranchOutOfDate: false,
   missingRequiredCheckNames: [],
+  additions: null,
+  deletions: null,
+  changedFiles: null,
   ...overrides,
 });
 

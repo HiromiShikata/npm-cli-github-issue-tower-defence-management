@@ -189,6 +189,8 @@ describe('StartPreparationUseCase', () => {
     ];
     const existingPR: RelatedPullRequest = {
       url: 'https://github.com/user/repo/pull/42',
+      number: null,
+      title: null,
       branchName: 'i1',
       createdAt: new Date('2024-01-01'),
       isDraft: false,
@@ -198,6 +200,9 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      additions: null,
+      deletions: null,
+      changedFiles: null,
     };
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
@@ -252,6 +257,8 @@ describe('StartPreparationUseCase', () => {
     );
     mockIssueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/user/repo/pull/354',
+      number: null,
+      title: null,
       branchName: 'dependabot/npm_and_yarn/multi-cc382f683c',
       createdAt: new Date('2024-01-01'),
       isDraft: false,
@@ -261,6 +268,9 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      additions: null,
+      deletions: null,
+      changedFiles: null,
     });
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
@@ -353,6 +363,8 @@ describe('StartPreparationUseCase', () => {
     );
     mockIssueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/user/repo/pull/999',
+      number: null,
+      title: null,
       branchName: null,
       createdAt: new Date('2024-01-01'),
       isDraft: false,
@@ -362,6 +374,9 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      additions: null,
+      deletions: null,
+      changedFiles: null,
     });
     const consoleWarnSpy = jest
       .spyOn(console, 'warn')
@@ -402,6 +417,8 @@ describe('StartPreparationUseCase', () => {
     );
     mockIssueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/user/repo/pull/999',
+      number: null,
+      title: null,
       branchName: 'evil$(rm -rf /)',
       createdAt: new Date('2024-01-01'),
       isDraft: false,
@@ -411,6 +428,9 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      additions: null,
+      deletions: null,
+      changedFiles: null,
     });
     const consoleErrorSpy = jest
       .spyOn(console, 'error')
@@ -447,6 +467,8 @@ describe('StartPreparationUseCase', () => {
     ];
     const olderPR: RelatedPullRequest = {
       url: 'https://github.com/user/repo/pull/42',
+      number: null,
+      title: null,
       branchName: 'i1',
       createdAt: new Date('2024-01-01T00:00:00Z'),
       isDraft: false,
@@ -456,9 +478,14 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      additions: null,
+      deletions: null,
+      changedFiles: null,
     };
     const newerPR: RelatedPullRequest = {
       url: 'https://github.com/user/repo/pull/43',
+      number: null,
+      title: null,
       branchName: 'i1-fix',
       createdAt: new Date('2024-01-02T00:00:00Z'),
       isDraft: false,
@@ -468,6 +495,9 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      additions: null,
+      deletions: null,
+      changedFiles: null,
     };
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
@@ -539,6 +569,8 @@ describe('StartPreparationUseCase', () => {
     ];
     const olderPRNullBranch: RelatedPullRequest = {
       url: 'https://github.com/user/repo/pull/42',
+      number: null,
+      title: null,
       branchName: null,
       createdAt: new Date('2024-01-01T00:00:00Z'),
       isDraft: false,
@@ -548,9 +580,14 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      additions: null,
+      deletions: null,
+      changedFiles: null,
     };
     const newerPR: RelatedPullRequest = {
       url: 'https://github.com/user/repo/pull/43',
+      number: null,
+      title: null,
       branchName: 'i1-fix',
       createdAt: new Date('2024-01-02T00:00:00Z'),
       isDraft: false,
@@ -560,6 +597,9 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      additions: null,
+      deletions: null,
+      changedFiles: null,
     };
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
@@ -616,6 +656,8 @@ describe('StartPreparationUseCase', () => {
     ];
     const prWithNullBranch: RelatedPullRequest = {
       url: 'https://github.com/user/repo/pull/42',
+      number: null,
+      title: null,
       branchName: null,
       createdAt: new Date('2024-01-01'),
       isDraft: false,
@@ -625,6 +667,9 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      additions: null,
+      deletions: null,
+      changedFiles: null,
     };
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(

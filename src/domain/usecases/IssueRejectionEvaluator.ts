@@ -16,6 +16,7 @@ export type PrRejectedReasonType =
 export type PrRejectionResult = {
   rejections: { type: PrRejectedReasonType; detail: string }[];
   approvedPrUrl: string | null;
+  readyPr: RelatedPullRequest | null;
 };
 
 export class IssueRejectionEvaluator {
@@ -39,6 +40,7 @@ export class IssueRejectionEvaluator {
   ): Promise<PrRejectionResult> => {
     const rejections: { type: PrRejectedReasonType; detail: string }[] = [];
     let approvedPrUrl: string | null = null;
+    let readyPr: RelatedPullRequest | null = null;
 
     const categoryLabels = issue.labels.filter((label) =>
       label.startsWith('category:'),
@@ -143,11 +145,12 @@ export class IssueRejectionEvaluator {
           ).length === 0
         ) {
           approvedPrUrl = pr.url;
+          readyPr = pr;
         }
       }
     }
 
-    return { rejections, approvedPrUrl };
+    return { rejections, approvedPrUrl, readyPr };
   };
 
   private resolveOpenPrsForPrItem = async (

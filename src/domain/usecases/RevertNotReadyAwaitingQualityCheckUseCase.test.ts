@@ -1,6 +1,9 @@
+import fs from 'fs';
 import { RevertNotReadyAwaitingQualityCheckUseCase } from './RevertNotReadyAwaitingQualityCheckUseCase';
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
+
+jest.mock('fs');
 
 const createMockProject = (overrides: Partial<Project> = {}): Project => ({
   id: 'project-1',
@@ -63,12 +66,20 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
 
 const createReadyPr = (url = 'https://github.com/user/repo/pull/1') => ({
   url,
+  number: 1,
+  title: 'Test PR',
+  branchName: 'feature-branch',
+  createdAt: new Date('2000-01-01T00:00:00Z'),
+  isDraft: false,
   isConflicted: false,
   isPassedAllCiJob: true,
   isCiStateSuccess: true,
   isResolvedAllReviewComments: true,
   isBranchOutOfDate: false,
   missingRequiredCheckNames: [],
+  additions: 10,
+  deletions: 3,
+  changedFiles: 2,
 });
 
 describe('RevertNotReadyAwaitingQualityCheckUseCase', () => {
@@ -93,6 +104,9 @@ describe('RevertNotReadyAwaitingQualityCheckUseCase', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    jest.mocked(fs.mkdirSync).mockReturnValue(undefined);
+    jest.mocked(fs.writeFileSync).mockReturnValue(undefined);
+    jest.mocked(fs.renameSync).mockReturnValue(undefined);
 
     mockProject = createMockProject();
 
@@ -503,6 +517,233 @@ describe('RevertNotReadyAwaitingQualityCheckUseCase', () => {
       issue,
       expect.stringContaining('REQUIRED_CI_JOB_NEVER_STARTED'),
     );
+  });
+
+  describe('awaiting quality check viewer JSON output', () => {
+    const createProjectWithStory = (): Project =>
+      createMockProject({
+        story: {
+          name: 'Story',
+          fieldId: 'story-field-1',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'story-1',
+              name: 'Story One',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: {
+            id: 'wm-story-1',
+            name: 'WorkflowManagement',
+          },
+        },
+      });
+
+    it('should write viewer JSON when path is configured and issue qualifies', async () => {
+      const project = createProjectWithStory();
+      mockProjectRepository.getProject.mockResolvedValue(project);
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+        assignees: ['HiromiShikata'],
+        nextActionDate: null,
+        nextActionHour: null,
+        story: 'Story One',
+        itemId: 'PVTI_abc123',
+        author: 'author1',
+        number: 42,
+        title: 'My Issue',
+        url: 'https://github.com/user/repo/issues/42',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        createReadyPr('https://github.com/owner/repo/pull/10'),
+      ]);
+      mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+        'src/domain/entities/Foo.ts',
+        'src/domain/usecases/Bar.ts',
+        'src/adapter/repos/Baz.ts',
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowIssueCacheMinutes: 10,
+        awaitingQualityCheckViewerOutputPath: '/tmp/viewer.json',
+      });
+
+      expect(jest.mocked(fs.mkdirSync)).toHaveBeenCalledWith('/tmp', { recursive: true });
+      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+        '/tmp/viewer.json.tmp',
+        expect.stringContaining('"name": "Story One"'),
+      );
+      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+        '/tmp/viewer.json.tmp',
+        expect.stringContaining('"color": "#0075ca"'),
+      );
+      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+        '/tmp/viewer.json.tmp',
+        expect.stringContaining('"number": 42'),
+      );
+      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+        '/tmp/viewer.json.tmp',
+        expect.stringContaining('"title": "My Issue"'),
+      );
+      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+        '/tmp/viewer.json.tmp',
+        expect.stringContaining('"story": "Story One"'),
+      );
+      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+        '/tmp/viewer.json.tmp',
+        expect.stringContaining('"projectItemId": "PVTI_abc123"'),
+      );
+      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+        '/tmp/viewer.json.tmp',
+        expect.stringContaining('"repo": "owner/repo"'),
+      );
+      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+        '/tmp/viewer.json.tmp',
+        expect.stringContaining('"additions": 10'),
+      );
+      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+        '/tmp/viewer.json.tmp',
+        expect.stringContaining('"deletions": 3'),
+      );
+      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+        '/tmp/viewer.json.tmp',
+        expect.stringContaining('"changedFiles": 2'),
+      );
+      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+        '/tmp/viewer.json.tmp',
+        expect.stringContaining('"src/domain/entities"'),
+      );
+      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+        '/tmp/viewer.json.tmp',
+        expect.stringContaining('"src/domain/usecases"'),
+      );
+      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+        '/tmp/viewer.json.tmp',
+        expect.stringContaining('"src/adapter/repos"'),
+      );
+      expect(jest.mocked(fs.renameSync)).toHaveBeenCalledWith(
+        '/tmp/viewer.json.tmp',
+        '/tmp/viewer.json',
+      );
+    });
+
+    it('should not write viewer JSON when path is not configured', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+        assignees: ['HiromiShikata'],
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        createReadyPr(),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowIssueCacheMinutes: 10,
+      });
+
+      expect(jest.mocked(fs.writeFileSync)).not.toHaveBeenCalled();
+    });
+
+    it('should not include issue in viewer JSON when not assigned to HiromiShikata', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+        assignees: ['someone-else'],
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        createReadyPr(),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowIssueCacheMinutes: 10,
+        awaitingQualityCheckViewerOutputPath: '/tmp/viewer.json',
+      });
+
+      expect(jest.mocked(fs.writeFileSync)).not.toHaveBeenCalled();
+    });
+
+    it('should not include issue in viewer JSON when nextActionDate is set', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+        assignees: ['HiromiShikata'],
+        nextActionDate: new Date('2026-06-20'),
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        createReadyPr(),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowIssueCacheMinutes: 10,
+        awaitingQualityCheckViewerOutputPath: '/tmp/viewer.json',
+      });
+
+      expect(jest.mocked(fs.writeFileSync)).not.toHaveBeenCalled();
+    });
+
+    it('should not include issue in viewer JSON when nextActionHour is set', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+        assignees: ['HiromiShikata'],
+        nextActionHour: 14,
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        createReadyPr(),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowIssueCacheMinutes: 10,
+        awaitingQualityCheckViewerOutputPath: '/tmp/viewer.json',
+      });
+
+      expect(jest.mocked(fs.writeFileSync)).not.toHaveBeenCalled();
+    });
+
+    it('should not write viewer JSON when viewer items list is empty', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+        assignees: [],
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        createReadyPr(),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowIssueCacheMinutes: 10,
+        awaitingQualityCheckViewerOutputPath: '/tmp/viewer.json',
+      });
+
+      expect(jest.mocked(fs.writeFileSync)).not.toHaveBeenCalled();
+    });
   });
 
   describe('change-target label auto-approve', () => {

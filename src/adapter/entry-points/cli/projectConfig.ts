@@ -20,6 +20,7 @@ export type ConfigFile = {
   awLogDirectoryPath?: string;
   awLogStaleThresholdMinutes?: number;
   labelsAsLlmAgentName?: string[];
+  awaitingQualityCheckViewerOutputPath?: string;
 };
 
 const getStringValue = (
@@ -75,6 +76,7 @@ const knownProjectReadmeConfigKeys = [
   'claudeCodeOauthTokenListJsonPath',
   'awLogDirectoryPath',
   'awLogStaleThresholdMinutes',
+  'awaitingQualityCheckViewerOutputPath',
 ] as const;
 
 export const loadConfigFile = (configFilePath: string): ConfigFile => {
@@ -121,6 +123,10 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         'awLogStaleThresholdMinutes',
       ),
       labelsAsLlmAgentName: getStringArrayValue(parsed, 'labelsAsLlmAgentName'),
+      awaitingQualityCheckViewerOutputPath: getStringValue(
+        parsed,
+        'awaitingQualityCheckViewerOutputPath',
+      ),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -192,6 +198,10 @@ export const parseProjectReadmeConfig = (
       awLogStaleThresholdMinutes: getNumberValue(
         parsed,
         'awLogStaleThresholdMinutes',
+      ),
+      awaitingQualityCheckViewerOutputPath: getStringValue(
+        parsed,
+        'awaitingQualityCheckViewerOutputPath',
       ),
     };
   } catch {
@@ -271,6 +281,10 @@ export const mergeConfigs = (
     readmeOverrides.labelsAsLlmAgentName ??
     cliOverrides.labelsAsLlmAgentName ??
     configFile.labelsAsLlmAgentName,
+  awaitingQualityCheckViewerOutputPath:
+    readmeOverrides.awaitingQualityCheckViewerOutputPath ??
+    cliOverrides.awaitingQualityCheckViewerOutputPath ??
+    configFile.awaitingQualityCheckViewerOutputPath,
 });
 
 type GraphqlProjectV2ReadmeResponse = {
