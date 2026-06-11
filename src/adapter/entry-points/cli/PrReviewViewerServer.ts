@@ -190,7 +190,11 @@ const isGithubApiErrorResponse = (
   isJsonObject(data) &&
   ('message' in data ? typeof data['message'] === 'string' : true);
 
-const GITHUB_API_BASE = 'https://api.github.com';
+const buildGithubApiUrl = (apiPath: string): string => {
+  const segments = apiPath.split('/').filter((s) => s.length > 0);
+  const encodedPath = segments.map(encodeURIComponent).join('/');
+  return `https://api.github.com/${encodedPath}`;
+};
 
 const githubApiRequest = async (
   ghToken: string,
@@ -198,11 +202,7 @@ const githubApiRequest = async (
   apiPath: string,
   body: unknown,
 ): Promise<unknown> => {
-  const safeUrl = new URL(apiPath, GITHUB_API_BASE);
-  if (safeUrl.hostname !== 'api.github.com') {
-    throw new Error('Invalid GitHub API path');
-  }
-  const response = await fetch(safeUrl.toString(), {
+  const response = await fetch(buildGithubApiUrl(apiPath), {
     method,
     headers: {
       Authorization: `Bearer ${ghToken}`,
@@ -425,17 +425,20 @@ const serveStaticFile = (
   filePath: string,
 ): void => {
   const resolvedBase = path.resolve(staticDir);
-  const fullPath = path.resolve(staticDir, filePath.replace(/^\//, ''));
-  if (
-    !fullPath.startsWith(resolvedBase + path.sep) &&
-    fullPath !== resolvedBase
-  ) {
+  const normalized = path.normalize(filePath.replace(/^\//, ''));
+  if (normalized.startsWith('..') || normalized.includes(path.sep + '..')) {
     res.writeHead(400);
     res.end('Bad Request');
     return;
   }
-  if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isFile()) {
-    const indexPath = path.join(staticDir, 'index.html');
+  const safePath = path.join(resolvedBase, normalized);
+  if (!safePath.startsWith(resolvedBase + path.sep) && safePath !== resolvedBase) {
+    res.writeHead(400);
+    res.end('Bad Request');
+    return;
+  }
+  if (!fs.existsSync(safePath) || !fs.statSync(safePath).isFile()) {
+    const indexPath = path.join(resolvedBase, 'index.html');
     if (fs.existsSync(indexPath)) {
       const content = fs.readFileSync(indexPath);
       res.writeHead(200, {
@@ -449,14 +452,14 @@ const serveStaticFile = (
     }
     return;
   }
-  const ext = path.extname(fullPath);
+  const ext = path.extname(safePath);
   const mimeType = MIME_TYPES[ext] ?? 'application/octet-stream';
   const headers: Record<string, string> = { 'Content-Type': mimeType };
   if (filePath.endsWith('.html') || filePath === '/') {
     headers['Referrer-Policy'] = 'no-referrer';
   }
   res.writeHead(200, headers);
-  res.end(fs.readFileSync(fullPath));
+  res.end(fs.readFileSync(safePath));
 };
 
 export type PrReviewViewerServerOptions = {
@@ -511,19 +514,14 @@ export const createPrReviewViewerServer = (
         sendError(res, 400, 'Invalid URL');
         return;
       }
-      if (
-        safeImageUrl.protocol !== 'https:' ||
-        !GITHUB_HOSTS.has(safeImageUrl.hostname)
-      ) {
+      const allowedHost = [...GITHUB_HOSTS].find((h) => h === safeImageUrl.hostname);
+      if (safeImageUrl.protocol !== 'https:' || allowedHost === undefined) {
         sendError(res, 400, 'Only GitHub URLs are allowed');
         return;
       }
-      const reconstructedImageUrl = new URL(
-        safeImageUrl.pathname + safeImageUrl.search,
-        `https://${safeImageUrl.hostname}`,
-      );
+      const safeImageFetchUrl = new URL(safeImageUrl.pathname + safeImageUrl.search, `https://${allowedHost}`);
       try {
-        const imageResponse = await fetch(reconstructedImageUrl.toString(), {
+        const imageResponse = await fetch(safeImageFetchUrl.toString(), {
           headers: { Authorization: `Bearer ${ghToken}` },
         });
         res.writeHead(imageResponse.status, {
