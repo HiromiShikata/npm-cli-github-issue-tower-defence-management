@@ -24,7 +24,6 @@ describe('IssueRejectionEvaluator', () => {
     getOpenPullRequest: jest.Mock;
     getPullRequestChangedFilePaths: jest.Mock;
     requestChangesWithInlineComment: jest.Mock;
-    createCommentByUrl: jest.Mock;
   };
   let evaluator: IssueRejectionEvaluator;
 
@@ -36,7 +35,6 @@ describe('IssueRejectionEvaluator', () => {
       getOpenPullRequest: jest.fn(),
       getPullRequestChangedFilePaths: jest.fn().mockResolvedValue([]),
       requestChangesWithInlineComment: jest.fn().mockResolvedValue(undefined),
-      createCommentByUrl: jest.fn().mockResolvedValue(undefined),
     };
 
     evaluator = new IssueRejectionEvaluator(mockIssueRepository);

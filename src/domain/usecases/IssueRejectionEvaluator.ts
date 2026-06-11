@@ -26,7 +26,6 @@ export class IssueRejectionEvaluator {
       | 'getOpenPullRequest'
       | 'getPullRequestChangedFilePaths'
       | 'requestChangesWithInlineComment'
-      | 'createCommentByUrl'
     >,
   ) {}
 

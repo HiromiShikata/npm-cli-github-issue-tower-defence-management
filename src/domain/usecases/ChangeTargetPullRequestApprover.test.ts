@@ -153,4 +153,18 @@ describe('ChangeTargetPullRequestApprover', () => {
 
     expect(mockIssueRepository.approvePullRequest).not.toHaveBeenCalled();
   });
+
+  it('should not approve when a file is outside both change-target and change-target-must allowed paths', async () => {
+    mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+      'src/domain/Foo.ts',
+      'unrelated/Outside.ts',
+    ]);
+
+    await approver.approveIfConfined(
+      ['change-target:src/domain', 'change-target-must:docs'],
+      prUrl,
+    );
+
+    expect(mockIssueRepository.approvePullRequest).not.toHaveBeenCalled();
+  });
 });
