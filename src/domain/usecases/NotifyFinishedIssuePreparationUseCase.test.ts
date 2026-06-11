@@ -3013,5 +3013,66 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         'https://github.com/user/repo/pull/1',
       );
     });
+
+    it('should normalize leading slashes in change-target label paths', async () => {
+      setupApprovedPrScenario({ labels: ['change-target:/src/domain'] });
+      mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+        'src/domain/entities/Foo.ts',
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(mockIssueRepository.approvePullRequest).toHaveBeenCalledWith(
+        'https://github.com/user/repo/pull/1',
+      );
+    });
+
+    it('should expand changeTargetPathAliases when alias matches a change-target label', async () => {
+      setupApprovedPrScenario({ labels: ['change-target:adapters'] });
+      mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+        'src/domain/usecases/adapter-interfaces/IssueRepository.ts',
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+        changeTargetPathAliases: {
+          adapters: 'src/domain/usecases/adapter-interfaces',
+        },
+      });
+
+      expect(mockIssueRepository.approvePullRequest).toHaveBeenCalledWith(
+        'https://github.com/user/repo/pull/1',
+      );
+    });
+
+    it('should not approve when file is outside the alias-expanded path', async () => {
+      setupApprovedPrScenario({ labels: ['change-target:adapters'] });
+      mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+        'src/domain/usecases/SomeOtherUseCase.ts',
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+        changeTargetPathAliases: {
+          adapters: 'src/domain/usecases/adapter-interfaces',
+        },
+      });
+
+      expect(mockIssueRepository.approvePullRequest).not.toHaveBeenCalled();
+    });
   });
 });

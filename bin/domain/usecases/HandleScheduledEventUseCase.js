@@ -142,6 +142,7 @@ ${JSON.stringify(e)}
                 projectUrl: input.projectUrl,
                 allowIssueCacheMinutes: input.allowIssueCacheMinutes,
                 labelsAsLlmAgentName,
+                changeTargetPathAliases: input.changeTargetPathAliases,
             });
             if (this.dailySecurityScanUseCase !== null && input.dailySecurityScan) {
                 await this.dailySecurityScanUseCase.run({

@@ -1191,6 +1191,7 @@ mysteryKey: 'value'
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: null,
         labelsAsLlmAgentName: null,
+        changeTargetPathAliases: null,
       });
     });
 
@@ -1226,6 +1227,7 @@ mysteryKey: 'value'
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: null,
         labelsAsLlmAgentName: null,
+        changeTargetPathAliases: null,
       });
     });
 

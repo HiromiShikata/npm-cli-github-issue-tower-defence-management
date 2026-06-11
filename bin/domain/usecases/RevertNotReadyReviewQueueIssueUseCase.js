@@ -35,7 +35,7 @@ class RevertNotReadyReviewQueueIssueUseCase {
                     await this.issueCommentRepository.createComment(issue, `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`);
                     continue;
                 }
-                await this.changeTargetPullRequestApprover.approveIfConfined(issue.labels, approvedPrUrl);
+                await this.changeTargetPullRequestApprover.approveIfConfined(issue.labels, approvedPrUrl, params.changeTargetPathAliases);
             }
             const projectStory = project.story;
             const unreadPullRequests = issues.filter((issue) => issue.status === WorkflowStatus_1.DEFAULT_STATUS_NAME && issue.isPr);
