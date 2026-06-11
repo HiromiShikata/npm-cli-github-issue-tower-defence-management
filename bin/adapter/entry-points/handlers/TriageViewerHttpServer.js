@@ -102,11 +102,11 @@ class TriageViewerHttpServer {
 <html>
 <head>
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="refresh" content="0;url=${cleanUrl}">
+<meta http-equiv="refresh" content="0;url=${encodeURIComponent(cleanUrl)}">
 <script>
 (function(){
   localStorage.setItem('triage-access-key',${JSON.stringify(keyInQuery)});
-  window.location.replace('${cleanUrl}');
+  window.location.replace(${JSON.stringify(cleanUrl)});
 })();
 </script>
 </head>
@@ -126,7 +126,14 @@ class TriageViewerHttpServer {
             }
             const triageDataMatch = pathname.match(/^\/projects\/([^/]+)\/triage\/data$/);
             if (triageDataMatch && req.method === 'GET') {
-                const projectCode = decodeURIComponent(triageDataMatch[1]);
+                let projectCode;
+                try {
+                    projectCode = decodeURIComponent(triageDataMatch[1]);
+                }
+                catch {
+                    sendError(res, 400, 'Invalid project code encoding');
+                    return;
+                }
                 await this.handleGetTriageData(res, projectCode);
                 return;
             }
@@ -142,7 +149,14 @@ class TriageViewerHttpServer {
             }
             const triagePageMatch = pathname.match(/^\/projects\/([^/]+)\/triage$/);
             if (triagePageMatch) {
-                const projectCode = decodeURIComponent(triagePageMatch[1]);
+                let projectCode;
+                try {
+                    projectCode = decodeURIComponent(triagePageMatch[1]);
+                }
+                catch {
+                    sendError(res, 400, 'Invalid project code encoding');
+                    return;
+                }
                 await this.handleTriagePage(res, projectCode);
                 return;
             }
@@ -434,21 +448,45 @@ const buildTriagePageHtml = (projectCode) => {
 
   function renderMarkdown(text) {
     if (!text) return '';
-    var escaped = text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
-    escaped = escaped.replace(/\`\`\`([\\s\\S]*?)\`\`\`/g, function(_, code) {
-      return '<pre><code>' + code + '</code></pre>';
-    });
-    escaped = escaped.replace(/\`([^\`]+)\`/g, '<code>$1</code>');
-    escaped = escaped.replace(/\\*\\*([^*]+)\\*\\*/g, '<strong>$1</strong>');
-    escaped = escaped.replace(/\\*([^*]+)\\*/g, '<em>$1</em>');
-    escaped = escaped.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-    escaped = escaped.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-    escaped = escaped.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-    escaped = escaped.replace(/\\n/g, '<br>');
-    return escaped;
+    var BACKTICK = String.fromCharCode(96);
+    var tripleBacktick = BACKTICK + BACKTICK + BACKTICK;
+    var parts = [];
+    var remaining = text;
+    var tripleIdx = remaining.indexOf(tripleBacktick);
+    while (tripleIdx !== -1) {
+      parts.push({ type: 'text', content: remaining.slice(0, tripleIdx) });
+      var afterOpen = remaining.slice(tripleIdx + 3);
+      var closeIdx = afterOpen.indexOf(tripleBacktick);
+      if (closeIdx === -1) {
+        parts.push({ type: 'text', content: tripleBacktick + afterOpen });
+        remaining = '';
+        break;
+      }
+      parts.push({ type: 'code', content: afterOpen.slice(0, closeIdx) });
+      remaining = afterOpen.slice(closeIdx + 3);
+      tripleIdx = remaining.indexOf(tripleBacktick);
+    }
+    parts.push({ type: 'text', content: remaining });
+
+    return parts.map(function(part) {
+      if (part.type === 'code') {
+        var safeCode = part.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return '<pre><code>' + safeCode + '</code></pre>';
+      }
+      var singleBacktickRe = new RegExp(BACKTICK + '([^' + BACKTICK + ']+)' + BACKTICK, 'g');
+      var escaped = part.content
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      escaped = escaped.replace(singleBacktickRe, '<code>$1</code>');
+      escaped = escaped.replace(/[*][*]([^*]+)[*][*]/g, '<strong>$1</strong>');
+      escaped = escaped.replace(/[*]([^*]+)[*]/g, '<em>$1</em>');
+      escaped = escaped.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+      escaped = escaped.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+      escaped = escaped.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+      escaped = escaped.replace(/\n/g, '<br>');
+      return escaped;
+    }).join('');
   }
 
   function renderStoryChips(filter) {
