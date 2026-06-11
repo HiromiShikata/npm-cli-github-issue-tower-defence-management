@@ -75,6 +75,7 @@ const ProxyRateLimitCacheRepository_1 = require("../../repositories/ProxyRateLim
 const UpdateRateLimitCacheUseCase_1 = require("../../../domain/usecases/UpdateRateLimitCacheUseCase");
 const RevertOrphanedPreparationUseCase_1 = require("../../../domain/usecases/RevertOrphanedPreparationUseCase");
 const RevertNotReadyAwaitingQualityCheckUseCase_1 = require("../../../domain/usecases/RevertNotReadyAwaitingQualityCheckUseCase");
+const RevertNotReadyUnreadPullRequestUseCase_1 = require("../../../domain/usecases/RevertNotReadyUnreadPullRequestUseCase");
 const GitHubIssueCommentRepository_1 = require("../../repositories/GitHubIssueCommentRepository");
 const SetupTowerDefenceProjectUseCase_1 = require("../../../domain/usecases/SetupTowerDefenceProjectUseCase");
 const DailySecurityScanUseCase_1 = require("../../../domain/usecases/DailySecurityScanUseCase");
@@ -466,10 +467,11 @@ class HandleScheduledEventUseCaseHandler {
             const issueCommentRepository = new GitHubIssueCommentRepository_1.GitHubIssueCommentRepository(input.credentials.bot.github.token);
             const revertOrphanedPreparationUseCase = new RevertOrphanedPreparationUseCase_1.RevertOrphanedPreparationUseCase(projectRepository, issueRepository, issueCommentRepository, nodeLocalCommandRunner);
             const revertNotReadyAwaitingQualityCheckUseCase = new RevertNotReadyAwaitingQualityCheckUseCase_1.RevertNotReadyAwaitingQualityCheckUseCase(projectRepository, issueRepository, issueCommentRepository);
+            const revertNotReadyUnreadPullRequestUseCase = new RevertNotReadyUnreadPullRequestUseCase_1.RevertNotReadyUnreadPullRequestUseCase(projectRepository, issueRepository, issueCommentRepository);
             const dailySecurityScanUseCase = mergedInput.dailySecurityScan
                 ? new DailySecurityScanUseCase_1.DailySecurityScanUseCase(nodeLocalCommandRunner, issueRepository, new KyHttpRepository_1.KyHttpRepository())
                 : null;
-            const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(setupTowerDefenceProjectUseCase, actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabel, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, revertNotReadyAwaitingQualityCheckUseCase, updateRateLimitCacheUseCase, dailySecurityScanUseCase, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
+            const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(setupTowerDefenceProjectUseCase, actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabel, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, revertNotReadyAwaitingQualityCheckUseCase, revertNotReadyUnreadPullRequestUseCase, updateRateLimitCacheUseCase, dailySecurityScanUseCase, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
             const result = await handleScheduledEventUseCase.run(mergedInput);
             if (result) {
                 if (result.rotationOrder !== null) {

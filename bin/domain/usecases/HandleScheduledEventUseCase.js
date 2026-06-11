@@ -11,7 +11,7 @@ class ProjectNotFoundError extends Error {
 exports.ProjectNotFoundError = ProjectNotFoundError;
 const SLOW_SWEEP_INTERVAL_SECONDS = 600;
 class HandleScheduledEventUseCase {
-    constructor(setupTowerDefenceProjectUseCase, actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, revertNotReadyAwaitingQualityCheckUseCase, updateRateLimitCacheUseCase, dailySecurityScanUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
+    constructor(setupTowerDefenceProjectUseCase, actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, revertNotReadyAwaitingQualityCheckUseCase, revertNotReadyUnreadPullRequestUseCase, updateRateLimitCacheUseCase, dailySecurityScanUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
         this.setupTowerDefenceProjectUseCase = setupTowerDefenceProjectUseCase;
         this.actionAnnouncementUseCase = actionAnnouncementUseCase;
         this.setWorkflowManagementIssueToStoryUseCase = setWorkflowManagementIssueToStoryUseCase;
@@ -30,6 +30,7 @@ class HandleScheduledEventUseCase {
         this.startPreparationUseCase = startPreparationUseCase;
         this.revertOrphanedPreparationUseCase = revertOrphanedPreparationUseCase;
         this.revertNotReadyAwaitingQualityCheckUseCase = revertNotReadyAwaitingQualityCheckUseCase;
+        this.revertNotReadyUnreadPullRequestUseCase = revertNotReadyUnreadPullRequestUseCase;
         this.updateRateLimitCacheUseCase = updateRateLimitCacheUseCase;
         this.dailySecurityScanUseCase = dailySecurityScanUseCase;
         this.dateRepository = dateRepository;
@@ -151,6 +152,10 @@ ${JSON.stringify(e)}
                     dailySecurityScan: input.dailySecurityScan,
                 });
             }
+            await this.revertNotReadyUnreadPullRequestUseCase.run({
+                projectUrl: input.projectUrl,
+                allowIssueCacheMinutes: input.allowIssueCacheMinutes,
+            });
             if (input.startPreparation) {
                 if (this.updateRateLimitCacheUseCase !== null) {
                     await this.updateRateLimitCacheUseCase.run({
