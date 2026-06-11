@@ -919,7 +919,9 @@ export class ApiV3CheerioRestIssueRepository
         if (item.__typename !== 'CrossReferencedEvent') continue;
         if (!item.source || item.source.__typename !== 'PullRequest') continue;
         if (item.source.state !== 'OPEN') continue;
-        if (!item.willCloseTarget) continue;
+        const branchMatchesIssue =
+          item.source.headRefName?.toLowerCase() === `i${issueNumber}`;
+        if (!item.willCloseTarget && !branchMatchesIssue) continue;
 
         const pr = item.source;
         const prUrl = pr.url || '';

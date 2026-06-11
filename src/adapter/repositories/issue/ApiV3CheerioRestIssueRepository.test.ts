@@ -519,6 +519,147 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('findRelatedOpenPRs', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    const makeTimelineResponse = (
+      nodes: object[],
+      hasNextPage = false,
+    ) => ({
+      data: {
+        repository: {
+          issue: {
+            timelineItems: {
+              pageInfo: { endCursor: null, hasNextPage },
+              nodes,
+            },
+          },
+        },
+      },
+    });
+
+    const makeOpenPrNode = (
+      prNumber: number,
+      headRefName: string,
+      willCloseTarget: boolean,
+    ) => ({
+      __typename: 'CrossReferencedEvent',
+      willCloseTarget,
+      source: {
+        __typename: 'PullRequest',
+        url: `https://github.com/HiromiShikata/test-repository/pull/${prNumber}`,
+        number: prNumber,
+        state: 'OPEN',
+        createdAt: '2026-06-01T00:00:00Z',
+        isDraft: false,
+        mergeable: 'MERGEABLE',
+        headRefName,
+        baseRefName: 'main',
+        baseRepository: {
+          branchProtectionRules: { nodes: [] },
+          defaultBranchRef: { name: 'main' },
+          rulesets: { nodes: [] },
+        },
+        commits: {
+          nodes: [
+            {
+              commit: {
+                statusCheckRollup: { state: 'SUCCESS', contexts: { nodes: [] } },
+              },
+            },
+          ],
+        },
+        reviewThreads: { nodes: [] },
+        baseRef: { name: 'main' },
+      },
+    });
+
+    it('should include a PR when willCloseTarget is true', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify(
+            makeTimelineResponse([makeOpenPrNode(44, 'feature-branch', true)]),
+          ),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/test-repository/issues/13',
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].url).toBe(
+        'https://github.com/HiromiShikata/test-repository/pull/44',
+      );
+    });
+
+    it('should include a PR when willCloseTarget is false but headRefName matches i{issueNumber}', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify(
+            makeTimelineResponse([makeOpenPrNode(44, 'i13', false)]),
+          ),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/test-repository/issues/13',
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].url).toBe(
+        'https://github.com/HiromiShikata/test-repository/pull/44',
+      );
+    });
+
+    it('should exclude a PR when willCloseTarget is false and headRefName does not match i{issueNumber}', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify(
+            makeTimelineResponse([
+              makeOpenPrNode(44, 'feature-unrelated', false),
+            ]),
+          ),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/test-repository/issues/13',
+      );
+
+      expect(result).toHaveLength(0);
+    });
+
+    it('should include a PR when willCloseTarget is false and headRefName matches i{issueNumber} case-insensitively', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify(
+            makeTimelineResponse([makeOpenPrNode(44, 'I13', false)]),
+          ),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/test-repository/issues/13',
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].url).toBe(
+        'https://github.com/HiromiShikata/test-repository/pull/44',
+      );
+    });
+  });
+
   const createApiV3CheerioRestIssueRepository = () => {
     const apiV3IssueRepository = mock<ApiV3IssueRepository>();
     const restIssueRepository = mock<RestIssueRepository>();
