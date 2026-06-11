@@ -314,8 +314,17 @@ export class PrReviewViewerHttpServer {
         'REQUEST_CHANGES',
       ];
       if (actionsRequiringProjectFields.includes(action)) {
-        if (!projectItemId || !projectId || !statusFieldId || !awaitingWorkspaceStatusOptionId) {
-          sendError(res, 400, 'Missing required fields for this action: projectItemId, projectId, statusFieldId, awaitingWorkspaceStatusOptionId');
+        if (
+          !projectItemId ||
+          !projectId ||
+          !statusFieldId ||
+          !awaitingWorkspaceStatusOptionId
+        ) {
+          sendError(
+            res,
+            400,
+            'Missing required fields for this action: projectItemId, projectId, statusFieldId, awaitingWorkspaceStatusOptionId',
+          );
           return;
         }
       }
@@ -452,7 +461,10 @@ export class PrReviewViewerHttpServer {
       : normalizedPath;
     const resolvedBase = path.resolve(this.staticFilesDir);
     const resolvedFile = path.resolve(this.staticFilesDir, relativePath);
-    if (!resolvedFile.startsWith(resolvedBase + path.sep) && resolvedFile !== resolvedBase) {
+    if (
+      !resolvedFile.startsWith(resolvedBase + path.sep) &&
+      resolvedFile !== resolvedBase
+    ) {
       sendError(res, 400, 'Invalid path');
       return;
     }
