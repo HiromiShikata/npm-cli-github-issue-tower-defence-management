@@ -336,7 +336,16 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             }
             const missingRequiredCheckNames = requiredCheckNames.filter((name) => !seenContextNames.has(name));
             const allRequiredChecksPassed = missingRequiredCheckNames.length === 0;
-            const isCiStateSuccess = ciState === 'SUCCESS';
+            const activeContexts = contexts.filter((ctx) => !('conclusion' in ctx) || ctx.conclusion !== 'CANCELLED');
+            const hasActiveFailure = activeContexts.some((ctx) => 'conclusion' in ctx &&
+                ctx.conclusion !== null &&
+                ctx.conclusion !== 'SUCCESS' &&
+                ctx.conclusion !== 'SKIPPED' &&
+                ctx.conclusion !== 'NEUTRAL');
+            const hasInProgress = activeContexts.some((ctx) => 'conclusion' in ctx && ctx.conclusion === null);
+            const isCiStateSuccess = activeContexts.length > 0
+                ? !hasActiveFailure && !hasInProgress
+                : ciState === 'SUCCESS';
             const isPassedAllCiJob = isCiStateSuccess && allRequiredChecksPassed;
             const reviewThreads = data.reviewThreads?.nodes || [];
             const isResolvedAllReviewComments = reviewThreads.length === 0 ||
