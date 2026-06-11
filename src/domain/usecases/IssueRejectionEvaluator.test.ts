@@ -59,6 +59,8 @@ describe('IssueRejectionEvaluator', () => {
 
       expect(result.rejections).toHaveLength(0);
       expect(result.approvedPrUrl).toBe('https://github.com/user/repo/pull/1');
+      expect(result.readyPr).not.toBeNull();
+      expect(result.readyPr?.url).toBe('https://github.com/user/repo/pull/1');
     });
 
     it('should reject with PULL_REQUEST_IS_DRAFT when PR is in draft state', async () => {
@@ -79,6 +81,7 @@ describe('IssueRejectionEvaluator', () => {
         'https://github.com/user/repo/pull/1',
       );
       expect(result.approvedPrUrl).toBeNull();
+      expect(result.readyPr).toBeNull();
     });
 
     it('should not approve a draft PR even when all other checks pass', async () => {

@@ -657,7 +657,7 @@ describe('RevertNotReadyAwaitingQualityCheckUseCase', () => {
       expect(jest.mocked(fs.writeFileSync)).not.toHaveBeenCalled();
     });
 
-    it('should not include issue in viewer JSON when not assigned to HiromiShikata', async () => {
+    it('should write viewer JSON with empty items when no issue is assigned to HiromiShikata', async () => {
       const issue = createMockIssue({
         status: 'Awaiting Quality Check',
         assignees: ['someone-else'],
@@ -676,10 +676,13 @@ describe('RevertNotReadyAwaitingQualityCheckUseCase', () => {
         awaitingQualityCheckViewerOutputPath: '/tmp/viewer.json',
       });
 
-      expect(jest.mocked(fs.writeFileSync)).not.toHaveBeenCalled();
+      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+        '/tmp/viewer.json.tmp',
+        expect.stringContaining('"items": []'),
+      );
     });
 
-    it('should not include issue in viewer JSON when nextActionDate is set', async () => {
+    it('should write viewer JSON with empty items when nextActionDate is set', async () => {
       const issue = createMockIssue({
         status: 'Awaiting Quality Check',
         assignees: ['HiromiShikata'],
@@ -699,10 +702,13 @@ describe('RevertNotReadyAwaitingQualityCheckUseCase', () => {
         awaitingQualityCheckViewerOutputPath: '/tmp/viewer.json',
       });
 
-      expect(jest.mocked(fs.writeFileSync)).not.toHaveBeenCalled();
+      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+        '/tmp/viewer.json.tmp',
+        expect.stringContaining('"items": []'),
+      );
     });
 
-    it('should not include issue in viewer JSON when nextActionHour is set', async () => {
+    it('should write viewer JSON with empty items when nextActionHour is set', async () => {
       const issue = createMockIssue({
         status: 'Awaiting Quality Check',
         assignees: ['HiromiShikata'],
@@ -722,10 +728,13 @@ describe('RevertNotReadyAwaitingQualityCheckUseCase', () => {
         awaitingQualityCheckViewerOutputPath: '/tmp/viewer.json',
       });
 
-      expect(jest.mocked(fs.writeFileSync)).not.toHaveBeenCalled();
+      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+        '/tmp/viewer.json.tmp',
+        expect.stringContaining('"items": []'),
+      );
     });
 
-    it('should not write viewer JSON when viewer items list is empty', async () => {
+    it('should write viewer JSON with empty items list when no issue qualifies', async () => {
       const issue = createMockIssue({
         status: 'Awaiting Quality Check',
         assignees: [],
@@ -744,7 +753,14 @@ describe('RevertNotReadyAwaitingQualityCheckUseCase', () => {
         awaitingQualityCheckViewerOutputPath: '/tmp/viewer.json',
       });
 
-      expect(jest.mocked(fs.writeFileSync)).not.toHaveBeenCalled();
+      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+        '/tmp/viewer.json.tmp',
+        expect.stringContaining('"items": []'),
+      );
+      expect(jest.mocked(fs.renameSync)).toHaveBeenCalledWith(
+        '/tmp/viewer.json.tmp',
+        '/tmp/viewer.json',
+      );
     });
   });
 

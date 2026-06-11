@@ -201,7 +201,7 @@ export class RevertNotReadyAwaitingQualityCheckUseCase {
       }
     }
 
-    if (params.awaitingQualityCheckViewerOutputPath && viewerItems.length > 0) {
+    if (params.awaitingQualityCheckViewerOutputPath) {
       const stories =
         project.story?.stories.map((s, index) => ({
           name: s.name,
