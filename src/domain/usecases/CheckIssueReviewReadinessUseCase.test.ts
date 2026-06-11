@@ -224,7 +224,9 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       });
 
       expect(result.reviewReady).toBe(false);
-      expect(result.rejections[0].type).toBe('ANY_CI_JOB_FAILED_OR_IN_PROGRESS');
+      expect(result.rejections[0].type).toBe(
+        'ANY_CI_JOB_FAILED_OR_IN_PROGRESS',
+      );
     });
 
     it('should treat all authors as trusted when allowedIssueAuthors is null', async () => {
