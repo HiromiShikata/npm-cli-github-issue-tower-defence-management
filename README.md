@@ -20,6 +20,7 @@ Commands:
   startDaemon [options]                 Start daemon to prepare GitHub issues
   notifyFinishedIssuePreparation [options]  Notify that issue preparation is finished
   checkIssueReviewReadiness [options]   Check whether an issue is review-ready (read-only; does not change Status or post any comment)
+  serve-triage-viewer [options]         Start a local HTTP server for the triage viewer at /projects/{code}/triage
   help [command]                        display help for command
 
 Options for schedule:
@@ -52,6 +53,11 @@ Options for checkIssueReviewReadiness:
   --configFilePath <path>                          Path to config file for tower defence management (required)
   --issueUrl <url>                                 GitHub issue URL (required)
   --projectUrl <url>                               GitHub project URL
+
+Options for serve-triage-viewer:
+  --accessKey <key>   Access key for token validation (required)
+  --host <host>       Bind host (default: 127.0.0.1)
+  --port <port>       Bind port (default: 3001)
 ```
 
 The `checkIssueReviewReadiness` sub-command lets an agent self-check whether an issue is currently review-ready by reusing the same `IssueRejectionEvaluator` logic that `notifyFinishedIssuePreparation` consults. It does NOT change the issue Status field and does NOT post any comment. It writes a single JSON line to stdout of the shape `{ "reviewReady": boolean, "rejections": [{ "type": string, "detail": string }] }` and exits 0 on a successful evaluation regardless of readiness; a non-zero exit indicates an operational error (auth failure, network error, issue not found).
@@ -79,6 +85,12 @@ npx github-issue-tower-defence-management notifyFinishedIssuePreparation --confi
 ```
 npx github-issue-tower-defence-management checkIssueReviewReadiness --configFilePath ./preparator-config.yml --issueUrl https://github.com/HiromiShikata/test-repository/issues/1
 ```
+
+```
+npx github-issue-tower-defence-management serve-triage-viewer --accessKey my-secret-key --port 3001
+```
+
+The triage viewer is then accessible at `http://127.0.0.1:3001/projects/{encoded-project-url}/triage`. To open it with authentication, navigate to the URL with the access key in the query string: `http://127.0.0.1:3001/projects/{encoded-project-url}/triage?key=my-secret-key`. The key is stored in `localStorage` and subsequent requests are authenticated via a `Bearer` token header.
 
 ## Config
 

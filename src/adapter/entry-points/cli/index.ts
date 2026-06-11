@@ -32,6 +32,9 @@ import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunne
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
+import { TriageViewerServerStartUseCase } from '../../../domain/usecases/TriageViewerServerStartUseCase';
+import { GitHubTriageRepository } from '../../repositories/GitHubTriageRepository';
+import { TriageViewerHttpServer } from '../handlers/TriageViewerHttpServer';
 
 type StartDaemonOptions = {
   projectUrl?: string;
@@ -553,6 +556,54 @@ program
     });
 
     process.stdout.write(`${JSON.stringify(result)}\n`);
+  });
+
+type ServeTriageViewerOptions = {
+  accessKey: string;
+  host: string;
+  port: string;
+};
+
+program
+  .command('serve-triage-viewer')
+  .description(
+    'Start a local HTTP server for the triage viewer at /projects/{code}/triage',
+  )
+  .requiredOption('--accessKey <key>', 'Access key for token validation')
+  .option('--host <host>', 'Bind host', '127.0.0.1')
+  .option('--port <port>', 'Bind port', '3001')
+  .action(async (options: ServeTriageViewerOptions) => {
+    const token = process.env.GH_TOKEN;
+    if (!token) {
+      console.error('GH_TOKEN environment variable is required');
+      process.exit(1);
+      return;
+    }
+    const port = parseInt(options.port, 10);
+    if (isNaN(port) || port < 1 || port > 65535) {
+      console.error(`Invalid port: ${options.port}`);
+      process.exit(1);
+      return;
+    }
+    const localStorageRepository = new LocalStorageRepository();
+    const triageRepository = new GitHubTriageRepository(
+      localStorageRepository,
+      token,
+    );
+    const useCase = new TriageViewerServerStartUseCase(triageRepository);
+    const server = new TriageViewerHttpServer(useCase, options.accessKey);
+    const shutdown = (): void => {
+      server.stop().then(
+        () => process.exit(0),
+        () => process.exit(1),
+      );
+    };
+    process.on('SIGTERM', shutdown);
+    process.on('SIGINT', shutdown);
+    await server.start(options.host, port);
+    console.log(
+      `Triage viewer server started on http://${options.host}:${port}`,
+    );
   });
 
 /* istanbul ignore next */
