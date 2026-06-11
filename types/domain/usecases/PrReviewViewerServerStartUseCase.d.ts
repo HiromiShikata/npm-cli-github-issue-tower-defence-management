@@ -15,12 +15,12 @@ export type ReviewActionRequest = {
     projectId: string;
     statusFieldId: string;
     awaitingWorkspaceStatusOptionId: string;
-    body?: string;
-    comments?: {
+    body: string | null;
+    comments: {
         path: string;
         position: number;
         body: string;
-    }[];
+    }[] | null;
 };
 export type ReviewActionResult = {
     ok: true;

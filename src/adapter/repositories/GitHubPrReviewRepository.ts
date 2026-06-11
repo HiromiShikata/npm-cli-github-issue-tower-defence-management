@@ -1,6 +1,7 @@
 import { BaseGitHubRepository } from './BaseGitHubRepository';
 import { PrReviewRepository } from '../../domain/usecases/adapter-interfaces/PrReviewViewerRepository';
 import { IssueTitleInfo } from '../../domain/entities/PrReviewViewerItem';
+import { GitHubApiError } from '../../domain/entities/GitHubApiError';
 
 type ReviewComment = {
   path: string;
@@ -73,7 +74,7 @@ export class GitHubPrReviewRepository
     });
     if (!response.ok) {
       const message = await this.extractGitHubErrorMessage(response);
-      throw new Error(message);
+      throw new GitHubApiError(message);
     }
   };
 
@@ -100,7 +101,7 @@ export class GitHubPrReviewRepository
     });
     if (!response.ok) {
       const message = await this.extractGitHubErrorMessage(response);
-      throw new Error(message);
+      throw new GitHubApiError(message);
     }
   };
 
@@ -127,7 +128,7 @@ export class GitHubPrReviewRepository
     });
     if (!response.ok) {
       const message = await this.extractGitHubErrorMessage(response);
-      throw new Error(message);
+      throw new GitHubApiError(message);
     }
   };
 
@@ -149,7 +150,7 @@ export class GitHubPrReviewRepository
     });
     if (!response.ok) {
       const message = await this.extractGitHubErrorMessage(response);
-      throw new Error(message);
+      throw new GitHubApiError(message);
     }
   };
 
@@ -170,7 +171,7 @@ export class GitHubPrReviewRepository
     });
     if (!response.ok) {
       const message = await this.extractGitHubErrorMessage(response);
-      throw new Error(message);
+      throw new GitHubApiError(message);
     }
   };
 
@@ -192,7 +193,7 @@ export class GitHubPrReviewRepository
     });
     if (!response.ok) {
       const message = await this.extractGitHubErrorMessage(response);
-      throw new Error(message);
+      throw new GitHubApiError(message);
     }
   };
 
@@ -226,7 +227,7 @@ export class GitHubPrReviewRepository
     });
     if (!response.ok) {
       const message = await this.extractGitHubErrorMessage(response);
-      throw new Error(message);
+      throw new GitHubApiError(message);
     }
     const result: unknown = await response.json();
     if (
@@ -242,7 +243,7 @@ export class GitHubPrReviewRepository
             typeof e === 'object' && e !== null && 'message' in e,
         )
         .map((e) => e.message);
-      throw new Error(messages.join('\n'));
+      throw new GitHubApiError(messages.join('\n'));
     }
   };
 

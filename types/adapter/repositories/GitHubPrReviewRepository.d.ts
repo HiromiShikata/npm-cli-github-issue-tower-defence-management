@@ -8,9 +8,9 @@ type ReviewComment = {
 };
 export declare class GitHubPrReviewRepository extends BaseGitHubRepository implements PrReviewRepository {
     private extractGitHubErrorMessage;
-    approve: (owner: string, repo: string, prNumber: number, body?: string, comments?: ReviewComment[]) => Promise<void>;
-    requestChanges: (owner: string, repo: string, prNumber: number, body?: string, comments?: ReviewComment[]) => Promise<void>;
-    comment: (owner: string, repo: string, prNumber: number, body?: string, comments?: ReviewComment[]) => Promise<void>;
+    approve: (owner: string, repo: string, prNumber: number, body: string | null, comments: ReviewComment[] | null) => Promise<void>;
+    requestChanges: (owner: string, repo: string, prNumber: number, body: string | null, comments: ReviewComment[] | null) => Promise<void>;
+    comment: (owner: string, repo: string, prNumber: number, body: string | null, comments: ReviewComment[] | null) => Promise<void>;
     createComment: (owner: string, repo: string, issueNumber: number, body: string) => Promise<void>;
     closePullRequest: (owner: string, repo: string, prNumber: number) => Promise<void>;
     addLabel: (owner: string, repo: string, issueNumber: number, label: string) => Promise<void>;

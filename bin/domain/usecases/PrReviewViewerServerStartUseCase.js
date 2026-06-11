@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrReviewViewerServerStartUseCase = void 0;
+const GitHubApiError_1 = require("../entities/GitHubApiError");
 class PrReviewViewerServerStartUseCase {
     constructor(prReviewViewerListRepository, prReviewViewerDetailRepository, prReviewRepository, prReviewDoneRepository, issueTitleCacheRepository) {
         this.prReviewViewerListRepository = prReviewViewerListRepository;
@@ -68,8 +69,11 @@ class PrReviewViewerServerStartUseCase {
                 return { ok: true };
             }
             catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                return { ok: false, error: message };
+                if (error instanceof GitHubApiError_1.GitHubApiError) {
+                    return { ok: false, error: error.userMessage };
+                }
+                process.stderr.write(String(error) + '\n');
+                return { ok: false, error: 'Internal error' };
             }
         };
         this.getFileContent = async (owner, repo, filePath, ref, prHeadSha) => {

@@ -159,7 +159,7 @@ class PrReviewViewerHttpServer {
                 sendJson(res, 200, items);
             }
             catch (_error) {
-                void _error;
+                process.stderr.write(String(_error) + '\n');
                 sendError(res, 500, 'Internal server error');
             }
         };
@@ -173,7 +173,7 @@ class PrReviewViewerHttpServer {
                 sendJson(res, 200, detail);
             }
             catch (_error) {
-                void _error;
+                process.stderr.write(String(_error) + '\n');
                 sendError(res, 500, 'Internal server error');
             }
         };
@@ -217,7 +217,7 @@ class PrReviewViewerHttpServer {
                     : '';
                 const body = 'body' in parsed && typeof parsed['body'] === 'string'
                     ? parsed['body']
-                    : undefined;
+                    : null;
                 const isReviewComment = (c) => {
                     if (typeof c !== 'object' || c === null) {
                         return false;
@@ -281,8 +281,8 @@ class PrReviewViewerHttpServer {
                 }
             }
             catch (_error) {
-                void _error;
-                sendJson(res, 500, { ok: false, error: 'Internal server error' });
+                process.stderr.write(String(_error) + '\n');
+                sendJson(res, 400, { ok: false, error: 'Review action failed' });
             }
         };
         this.handleImageProxy = async (req, res, urlObj) => {
@@ -325,7 +325,7 @@ class PrReviewViewerHttpServer {
                 res.end(content);
             }
             catch (_error) {
-                void _error;
+                process.stderr.write(String(_error) + '\n');
                 sendError(res, 500, 'Internal server error');
             }
         };
@@ -339,7 +339,7 @@ class PrReviewViewerHttpServer {
                 res.end(content);
             }
             catch (_error) {
-                void _error;
+                process.stderr.write(String(_error) + '\n');
                 sendError(res, 500, 'Internal server error');
             }
         };
@@ -361,7 +361,7 @@ class PrReviewViewerHttpServer {
                 sendJson(res, 200, info);
             }
             catch (_error) {
-                void _error;
+                process.stderr.write(String(_error) + '\n');
                 sendError(res, 500, 'Internal server error');
             }
         };

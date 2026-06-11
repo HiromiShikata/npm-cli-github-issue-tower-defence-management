@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GitHubPrReviewRepository = void 0;
 const BaseGitHubRepository_1 = require("./BaseGitHubRepository");
+const GitHubApiError_1 = require("../../domain/entities/GitHubApiError");
 const ALLOWED_IMAGE_PROXY_HOSTNAMES = [
     'private-user-images.githubusercontent.com',
     'user-images.githubusercontent.com',
@@ -29,7 +30,7 @@ class GitHubPrReviewRepository extends BaseGitHubRepository_1.BaseGitHubReposito
                 }
             }
             catch (_error) {
-                void _error;
+                process.stderr.write(String(_error) + '\n');
             }
             return `HTTP ${response.status}`;
         };
@@ -50,7 +51,7 @@ class GitHubPrReviewRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             });
             if (!response.ok) {
                 const message = await this.extractGitHubErrorMessage(response);
-                throw new Error(message);
+                throw new GitHubApiError_1.GitHubApiError(message);
             }
         };
         this.requestChanges = async (owner, repo, prNumber, body, comments) => {
@@ -70,7 +71,7 @@ class GitHubPrReviewRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             });
             if (!response.ok) {
                 const message = await this.extractGitHubErrorMessage(response);
-                throw new Error(message);
+                throw new GitHubApiError_1.GitHubApiError(message);
             }
         };
         this.comment = async (owner, repo, prNumber, body, comments) => {
@@ -90,7 +91,7 @@ class GitHubPrReviewRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             });
             if (!response.ok) {
                 const message = await this.extractGitHubErrorMessage(response);
-                throw new Error(message);
+                throw new GitHubApiError_1.GitHubApiError(message);
             }
         };
         this.createComment = async (owner, repo, issueNumber, body) => {
@@ -106,7 +107,7 @@ class GitHubPrReviewRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             });
             if (!response.ok) {
                 const message = await this.extractGitHubErrorMessage(response);
-                throw new Error(message);
+                throw new GitHubApiError_1.GitHubApiError(message);
             }
         };
         this.closePullRequest = async (owner, repo, prNumber) => {
@@ -122,7 +123,7 @@ class GitHubPrReviewRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             });
             if (!response.ok) {
                 const message = await this.extractGitHubErrorMessage(response);
-                throw new Error(message);
+                throw new GitHubApiError_1.GitHubApiError(message);
             }
         };
         this.addLabel = async (owner, repo, issueNumber, label) => {
@@ -138,7 +139,7 @@ class GitHubPrReviewRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             });
             if (!response.ok) {
                 const message = await this.extractGitHubErrorMessage(response);
-                throw new Error(message);
+                throw new GitHubApiError_1.GitHubApiError(message);
             }
         };
         this.updateProjectItemStatus = async (projectId, fieldId, itemId, statusOptionId) => {
@@ -166,7 +167,7 @@ class GitHubPrReviewRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             });
             if (!response.ok) {
                 const message = await this.extractGitHubErrorMessage(response);
-                throw new Error(message);
+                throw new GitHubApiError_1.GitHubApiError(message);
             }
             const result = await response.json();
             if (typeof result === 'object' &&
@@ -177,7 +178,7 @@ class GitHubPrReviewRepository extends BaseGitHubRepository_1.BaseGitHubReposito
                 const messages = result['errors']
                     .filter((e) => typeof e === 'object' && e !== null && 'message' in e)
                     .map((e) => e.message);
-                throw new Error(messages.join('\n'));
+                throw new GitHubApiError_1.GitHubApiError(messages.join('\n'));
             }
         };
         this.getFileContent = async (owner, repo, filePath, ref, prHeadSha) => {

@@ -352,10 +352,7 @@ export class PrReviewViewerHttpServer {
       }
     } catch (_error) {
       process.stderr.write(String(_error) + '\n');
-      sendJson(res, 400, {
-        ok: false,
-        error: _error instanceof Error ? _error.message : String(_error),
-      });
+      sendJson(res, 400, { ok: false, error: 'Review action failed' });
     }
   };
 

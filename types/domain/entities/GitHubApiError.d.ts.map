@@ -1,0 +1,1 @@
+{"version":3,"file":"GitHubApiError.d.ts","sourceRoot":"","sources":["../../../src/domain/entities/GitHubApiError.ts"],"names":[],"mappings":"AAAA,qBAAa,cAAc;IACzB,QAAQ,CAAC,WAAW,EAAE,MAAM,CAAC;gBACjB,WAAW,EAAE,MAAM;CAGhC"}

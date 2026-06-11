@@ -6,9 +6,9 @@ export interface PrReviewViewerDetailRepository {
     getDetail: (projectCode: string, repo: string, prNumber: number) => Promise<object | null>;
 }
 export interface PrReviewRepository {
-    approve: (owner: string, repo: string, prNumber: number, body?: string, comments?: PrReviewRequest['comments']) => Promise<void>;
-    requestChanges: (owner: string, repo: string, prNumber: number, body?: string, comments?: PrReviewRequest['comments']) => Promise<void>;
-    comment: (owner: string, repo: string, prNumber: number, body?: string, comments?: PrReviewRequest['comments']) => Promise<void>;
+    approve: (owner: string, repo: string, prNumber: number, body: string | null, comments: PrReviewRequest['comments']) => Promise<void>;
+    requestChanges: (owner: string, repo: string, prNumber: number, body: string | null, comments: PrReviewRequest['comments']) => Promise<void>;
+    comment: (owner: string, repo: string, prNumber: number, body: string | null, comments: PrReviewRequest['comments']) => Promise<void>;
     createComment: (owner: string, repo: string, issueNumber: number, body: string) => Promise<void>;
     closePullRequest: (owner: string, repo: string, prNumber: number) => Promise<void>;
     addLabel: (owner: string, repo: string, issueNumber: number, label: string) => Promise<void>;

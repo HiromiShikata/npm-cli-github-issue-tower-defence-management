@@ -7,6 +7,7 @@ import {
   IssueTitleCacheRepository,
 } from './adapter-interfaces/PrReviewViewerRepository';
 import { PrReviewViewerItem } from '../entities/PrReviewViewerItem';
+import { GitHubApiError } from '../entities/GitHubApiError';
 
 const makeItem = (
   overrides: Partial<PrReviewViewerItem> = {},
@@ -193,7 +194,7 @@ describe('PrReviewViewerServerStartUseCase', () => {
     it('returns error when approve throws', async () => {
       const { useCase, reviewRepo } = makeUseCase();
       reviewRepo.approve.mockRejectedValue(
-        new Error('Can not approve your own pull request'),
+        new GitHubApiError('Can not approve your own pull request'),
       );
       const result = await useCase.executeReview('proj', {
         action: 'APPROVE',

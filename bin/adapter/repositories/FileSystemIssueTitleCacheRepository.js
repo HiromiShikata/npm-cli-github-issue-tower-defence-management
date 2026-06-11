@@ -42,7 +42,7 @@ class FileSystemIssueTitleCacheRepository {
                 }
             }
             catch (_error) {
-                void _error;
+                process.stderr.write(String(_error) + '\n');
             }
         };
         this.saveToDisk = () => {
@@ -60,7 +60,7 @@ class FileSystemIssueTitleCacheRepository {
                 fs_1.default.renameSync(tmpPath, this.filePath);
             }
             catch (_error) {
-                void _error;
+                process.stderr.write(String(_error) + '\n');
             }
         };
         this.get = async (owner, repo, number) => {

@@ -328,7 +328,7 @@ describe('PrReviewViewerHttpServer', () => {
         expect(json['ok']).toBe(false);
       }
       if (typeof json === 'object' && json !== null && 'error' in json) {
-        expect(json['error']).toBe('Unexpected failure');
+        expect(json['error']).toBe('Review action failed');
       }
     });
   });

@@ -6,6 +6,7 @@ import {
   IssueTitleCacheRepository,
 } from './adapter-interfaces/PrReviewViewerRepository';
 import { PrReviewAction } from '../entities/PrReviewViewerItem';
+import { GitHubApiError } from '../entities/GitHubApiError';
 
 export type PrReviewViewerServerConfig = {
   accessKey: string;
@@ -196,8 +197,11 @@ export class PrReviewViewerServerStartUseCase {
       }
       return { ok: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      return { ok: false, error: message };
+      if (error instanceof GitHubApiError) {
+        return { ok: false, error: error.userMessage };
+      }
+      process.stderr.write(String(error) + '\n');
+      return { ok: false, error: 'Internal error' };
     }
   };
 
