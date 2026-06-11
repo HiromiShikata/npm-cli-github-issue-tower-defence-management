@@ -37,12 +37,14 @@ export type PrReviewRequest = {
   projectId: string;
   statusFieldId: string;
   awaitingWorkspaceStatusOptionId: string;
-  body?: string;
-  comments?: {
-    path: string;
-    position: number;
-    body: string;
-  }[];
+  body: string | null;
+  comments:
+    | {
+        path: string;
+        position: number;
+        body: string;
+      }[]
+    | null;
 };
 
 export type IssueTitleInfo = {

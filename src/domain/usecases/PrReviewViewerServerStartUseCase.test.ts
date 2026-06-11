@@ -170,14 +170,16 @@ describe('PrReviewViewerServerStartUseCase', () => {
         projectId: 'PVT_proj1',
         statusFieldId: 'PVTF_field1',
         awaitingWorkspaceStatusOptionId: 'opt_aw',
+        body: null,
+        comments: null,
       });
       expect(result).toEqual({ ok: true });
       expect(reviewRepo.approve).toHaveBeenCalledWith(
         'owner',
         'repo',
         42,
-        undefined,
-        undefined,
+        null,
+        null,
       );
       expect(reviewRepo.updateProjectItemStatus).toHaveBeenCalledWith(
         'PVT_proj1',
@@ -201,6 +203,8 @@ describe('PrReviewViewerServerStartUseCase', () => {
         projectId: 'PVT_proj1',
         statusFieldId: 'PVTF_field1',
         awaitingWorkspaceStatusOptionId: 'opt_aw',
+        body: null,
+        comments: null,
       });
       expect(result).toEqual({
         ok: false,
@@ -221,6 +225,7 @@ describe('PrReviewViewerServerStartUseCase', () => {
         statusFieldId: 'PVTF_field1',
         awaitingWorkspaceStatusOptionId: 'opt_aw',
         body: 'Needs work',
+        comments: null,
       });
       expect(result).toEqual({ ok: true });
       expect(reviewRepo.requestChanges).toHaveBeenCalledWith(
@@ -228,7 +233,7 @@ describe('PrReviewViewerServerStartUseCase', () => {
         'repo',
         42,
         'Needs work',
-        undefined,
+        null,
       );
       expect(reviewRepo.updateProjectItemStatus).toHaveBeenCalled();
       expect(doneRepo.markDone).toHaveBeenCalledWith('owner', 'repo', 42);
@@ -247,6 +252,7 @@ describe('PrReviewViewerServerStartUseCase', () => {
         statusFieldId: 'PVTF_field1',
         awaitingWorkspaceStatusOptionId: 'opt_aw',
         body: 'LGTM',
+        comments: null,
       });
       expect(result).toEqual({ ok: true });
       expect(reviewRepo.comment).toHaveBeenCalledWith(
@@ -254,7 +260,7 @@ describe('PrReviewViewerServerStartUseCase', () => {
         'repo',
         42,
         'LGTM',
-        undefined,
+        null,
       );
       expect(reviewRepo.updateProjectItemStatus).not.toHaveBeenCalled();
       expect(doneRepo.markDone).not.toHaveBeenCalled();
@@ -272,6 +278,8 @@ describe('PrReviewViewerServerStartUseCase', () => {
         projectId: 'PVT_proj1',
         statusFieldId: 'PVTF_field1',
         awaitingWorkspaceStatusOptionId: 'opt_aw',
+        body: null,
+        comments: null,
       });
       expect(result).toEqual({ ok: true });
       expect(reviewRepo.createComment).toHaveBeenCalledWith(
@@ -321,6 +329,8 @@ describe('PrReviewViewerServerStartUseCase', () => {
         projectId: 'PVT_proj1',
         statusFieldId: 'PVTF_field1',
         awaitingWorkspaceStatusOptionId: 'opt_aw',
+        body: null,
+        comments: null,
       });
       expect(result).toEqual({ ok: true });
       expect(reviewRepo.createComment).toHaveBeenCalledWith(
@@ -355,6 +365,8 @@ describe('PrReviewViewerServerStartUseCase', () => {
         projectId: '',
         statusFieldId: '',
         awaitingWorkspaceStatusOptionId: '',
+        body: null,
+        comments: null,
       });
       expect(result.ok).toBe(false);
       if (result.ok === false) {
@@ -375,6 +387,8 @@ describe('PrReviewViewerServerStartUseCase', () => {
         projectId: 'PVT_proj1',
         statusFieldId: 'PVTF_field1',
         awaitingWorkspaceStatusOptionId: 'opt_aw',
+        body: null,
+        comments: null,
       });
       expect(result).toEqual({ ok: true });
     });

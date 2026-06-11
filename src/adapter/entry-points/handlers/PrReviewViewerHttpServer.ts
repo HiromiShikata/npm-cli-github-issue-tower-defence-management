@@ -199,7 +199,7 @@ export class PrReviewViewerHttpServer {
       const items = await this.useCase.getList(projectCode);
       sendJson(res, 200, items);
     } catch (_error) {
-      void _error;
+      process.stderr.write(String(_error) + '\n');
       sendError(res, 500, 'Internal server error');
     }
   };
@@ -218,7 +218,7 @@ export class PrReviewViewerHttpServer {
       }
       sendJson(res, 200, detail);
     } catch (_error) {
-      void _error;
+      process.stderr.write(String(_error) + '\n');
       sendError(res, 500, 'Internal server error');
     }
   };
@@ -273,7 +273,7 @@ export class PrReviewViewerHttpServer {
       const body =
         'body' in parsed && typeof parsed['body'] === 'string'
           ? parsed['body']
-          : undefined;
+          : null;
       const isReviewComment = (
         c: unknown,
       ): c is { path: string; position: number; body: string } => {
@@ -351,8 +351,11 @@ export class PrReviewViewerHttpServer {
         sendJson(res, 400, { ok: false, error: result.error });
       }
     } catch (_error) {
-      void _error;
-      sendJson(res, 500, { ok: false, error: 'Internal server error' });
+      process.stderr.write(String(_error) + '\n');
+      sendJson(res, 400, {
+        ok: false,
+        error: _error instanceof Error ? _error.message : String(_error),
+      });
     }
   };
 
@@ -398,7 +401,7 @@ export class PrReviewViewerHttpServer {
       });
       res.end(content);
     } catch (_error) {
-      void _error;
+      process.stderr.write(String(_error) + '\n');
       sendError(res, 500, 'Internal server error');
     }
   };
@@ -425,7 +428,7 @@ export class PrReviewViewerHttpServer {
       });
       res.end(content);
     } catch (_error) {
-      void _error;
+      process.stderr.write(String(_error) + '\n');
       sendError(res, 500, 'Internal server error');
     }
   };
@@ -451,7 +454,7 @@ export class PrReviewViewerHttpServer {
       const info = await this.useCase.getIssueTitleInfo(owner, repo, number);
       sendJson(res, 200, info);
     } catch (_error) {
-      void _error;
+      process.stderr.write(String(_error) + '\n');
       sendError(res, 500, 'Internal server error');
     }
   };

@@ -21,22 +21,22 @@ export interface PrReviewRepository {
     owner: string,
     repo: string,
     prNumber: number,
-    body?: string,
-    comments?: PrReviewRequest['comments'],
+    body: string | null,
+    comments: PrReviewRequest['comments'],
   ) => Promise<void>;
   requestChanges: (
     owner: string,
     repo: string,
     prNumber: number,
-    body?: string,
-    comments?: PrReviewRequest['comments'],
+    body: string | null,
+    comments: PrReviewRequest['comments'],
   ) => Promise<void>;
   comment: (
     owner: string,
     repo: string,
     prNumber: number,
-    body?: string,
-    comments?: PrReviewRequest['comments'],
+    body: string | null,
+    comments: PrReviewRequest['comments'],
   ) => Promise<void>;
   createComment: (
     owner: string,

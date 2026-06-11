@@ -45,7 +45,7 @@ export class GitHubPrReviewRepository
         return body['message'];
       }
     } catch (_error) {
-      void _error;
+      process.stderr.write(String(_error) + '\n');
     }
     return `HTTP ${response.status}`;
   };
@@ -54,8 +54,8 @@ export class GitHubPrReviewRepository
     owner: string,
     repo: string,
     prNumber: number,
-    body?: string,
-    comments?: ReviewComment[],
+    body: string | null,
+    comments: ReviewComment[] | null,
   ): Promise<void> => {
     const url = buildRepoApiUrl(owner, repo, 'pulls', prNumber, 'reviews');
     const response = await fetch(url, {
@@ -81,8 +81,8 @@ export class GitHubPrReviewRepository
     owner: string,
     repo: string,
     prNumber: number,
-    body?: string,
-    comments?: ReviewComment[],
+    body: string | null,
+    comments: ReviewComment[] | null,
   ): Promise<void> => {
     const url = buildRepoApiUrl(owner, repo, 'pulls', prNumber, 'reviews');
     const response = await fetch(url, {
@@ -108,8 +108,8 @@ export class GitHubPrReviewRepository
     owner: string,
     repo: string,
     prNumber: number,
-    body?: string,
-    comments?: ReviewComment[],
+    body: string | null,
+    comments: ReviewComment[] | null,
   ): Promise<void> => {
     const url = buildRepoApiUrl(owner, repo, 'pulls', prNumber, 'reviews');
     const response = await fetch(url, {

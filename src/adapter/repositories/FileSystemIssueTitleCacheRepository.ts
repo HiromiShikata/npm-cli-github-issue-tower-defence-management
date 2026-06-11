@@ -53,7 +53,7 @@ export class FileSystemIssueTitleCacheRepository implements IssueTitleCacheRepos
         }
       }
     } catch (_error) {
-      void _error;
+      process.stderr.write(String(_error) + '\n');
     }
   };
 
@@ -71,7 +71,7 @@ export class FileSystemIssueTitleCacheRepository implements IssueTitleCacheRepos
       fs.writeFileSync(tmpPath, JSON.stringify(store, null, 2), 'utf8');
       fs.renameSync(tmpPath, this.filePath);
     } catch (_error) {
-      void _error;
+      process.stderr.write(String(_error) + '\n');
     }
   };
 

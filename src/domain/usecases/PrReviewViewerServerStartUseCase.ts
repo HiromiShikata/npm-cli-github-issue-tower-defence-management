@@ -23,12 +23,14 @@ export type ReviewActionRequest = {
   projectId: string;
   statusFieldId: string;
   awaitingWorkspaceStatusOptionId: string;
-  body?: string;
-  comments?: {
-    path: string;
-    position: number;
-    body: string;
-  }[];
+  body: string | null;
+  comments:
+    | {
+        path: string;
+        position: number;
+        body: string;
+      }[]
+    | null;
 };
 
 export type ReviewActionResult = { ok: true } | { ok: false; error: string };

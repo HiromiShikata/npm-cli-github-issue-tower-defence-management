@@ -48,7 +48,7 @@ export class FileSystemPrReviewDoneRepository implements PrReviewDoneRepository 
       }
       return parsed.filter(this.isDoneRecord);
     } catch (_error) {
-      void _error;
+      process.stderr.write(String(_error) + '\n');
       return [];
     }
   };
