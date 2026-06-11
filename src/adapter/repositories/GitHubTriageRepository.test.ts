@@ -356,6 +356,28 @@ describe('GitHubTriageRepository', () => {
       expect(stateReason).toBe('completed');
     });
 
+    it('sends not_planned as state_reason when reason is duplicate', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValue(makeJsonResponse({ state: 'closed' }));
+
+      await repository.closeIssue('owner', 'repo', 42, 'duplicate');
+
+      const callInit = fetchSpy.mock.calls[0][1];
+      const callBodyStr =
+        callInit && typeof callInit === 'object' && 'body' in callInit
+          ? String(callInit.body)
+          : '';
+      const callBody: unknown = JSON.parse(callBodyStr);
+      const stateReason =
+        typeof callBody === 'object' &&
+        callBody !== null &&
+        'state_reason' in callBody
+          ? callBody['state_reason']
+          : undefined;
+      expect(stateReason).toBe('not_planned');
+    });
+
     it('throws for invalid owner name', async () => {
       await expect(
         repository.closeIssue('../evil', 'repo', 1, 'completed'),

@@ -57,11 +57,6 @@ const extractAccessKey = (req: http.IncomingMessage): string | null => {
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return authHeader.slice('Bearer '.length);
   }
-  const urlObj = new URL(req.url ?? '/', 'http://localhost');
-  const queryKey = urlObj.searchParams.get('key');
-  if (queryKey) {
-    return queryKey;
-  }
   return null;
 };
 
@@ -393,8 +388,24 @@ const escapeHtml = (text: string): string =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 
+const buildSafeProjectHref = (projectCode: string): string => {
+  try {
+    const parsed = new URL(projectCode);
+    if (
+      (parsed.protocol === 'https:' || parsed.protocol === 'http:') &&
+      parsed.hostname === 'github.com'
+    ) {
+      return escapeHtml(parsed.href);
+    }
+  } catch {
+    // not a valid URL
+  }
+  return '#';
+};
+
 const buildTriagePageHtml = (projectCode: string): string => {
   const escapedProjectCode = escapeHtml(projectCode);
+  const safeProjectHref = buildSafeProjectHref(projectCode);
   const jsonProjectCode = JSON.stringify(projectCode);
   return `<!DOCTYPE html>
 <html lang="en">
@@ -454,7 +465,7 @@ const buildTriagePageHtml = (projectCode: string): string => {
 </head>
 <body>
 <header>
-  <a href="${escapedProjectCode}">&larr; Project Issues</a>
+  <a href="${safeProjectHref}">&larr; Project Issues</a>
   <h1>Triage</h1>
 </header>
 <div class="container">

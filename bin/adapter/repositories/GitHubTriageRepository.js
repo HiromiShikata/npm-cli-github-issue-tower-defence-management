@@ -111,13 +111,13 @@ class GitHubTriageRepository extends BaseGitHubRepository_1.BaseGitHubRepository
         nodes {
           id
           content {
+            isPullRequest: __typename
             ... on Issue {
               number
               title
               body
               url
               state
-              isPullRequest: __typename
             }
           }
           fieldValues(first: 20) {
@@ -161,13 +161,13 @@ class GitHubTriageRepository extends BaseGitHubRepository_1.BaseGitHubRepository
         nodes {
           id
           content {
+            isPullRequest: __typename
             ... on Issue {
               number
               title
               body
               url
               state
-              isPullRequest: __typename
             }
           }
           fieldValues(first: 20) {
@@ -199,13 +199,13 @@ class GitHubTriageRepository extends BaseGitHubRepository_1.BaseGitHubRepository
         nodes {
           id
           content {
+            isPullRequest: __typename
             ... on Issue {
               number
               title
               body
               url
               state
-              isPullRequest: __typename
             }
           }
           fieldValues(first: 20) {
@@ -464,7 +464,7 @@ class GitHubTriageRepository extends BaseGitHubRepository_1.BaseGitHubRepository
                 },
                 body: JSON.stringify({
                     state: 'closed',
-                    state_reason: reason,
+                    state_reason: reason === 'duplicate' ? 'not_planned' : reason,
                 }),
             });
             if (!response.ok) {

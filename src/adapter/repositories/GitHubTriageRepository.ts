@@ -146,13 +146,13 @@ export class GitHubTriageRepository
         nodes {
           id
           content {
+            isPullRequest: __typename
             ... on Issue {
               number
               title
               body
               url
               state
-              isPullRequest: __typename
             }
           }
           fieldValues(first: 20) {
@@ -196,13 +196,13 @@ export class GitHubTriageRepository
         nodes {
           id
           content {
+            isPullRequest: __typename
             ... on Issue {
               number
               title
               body
               url
               state
-              isPullRequest: __typename
             }
           }
           fieldValues(first: 20) {
@@ -235,13 +235,13 @@ export class GitHubTriageRepository
         nodes {
           id
           content {
+            isPullRequest: __typename
             ... on Issue {
               number
               title
               body
               url
               state
-              isPullRequest: __typename
             }
           }
           fieldValues(first: 20) {
@@ -532,7 +532,7 @@ export class GitHubTriageRepository
       },
       body: JSON.stringify({
         state: 'closed',
-        state_reason: reason,
+        state_reason: reason === 'duplicate' ? 'not_planned' : reason,
       }),
     });
 
