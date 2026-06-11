@@ -12,6 +12,7 @@
     "lint-fix": "eslint src --fix",
     "fmt": "npm run prettier && npm run lint-fix",
     "build": "tsc -p ./tsconfig.build.json",
+    "build:viewer": "cd viewer && npm install && npm run build",
     "test": "jest",
     "prepare": "ts-patch install && typia patch"
   },

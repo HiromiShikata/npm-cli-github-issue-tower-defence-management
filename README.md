@@ -52,6 +52,14 @@ Options for checkIssueReviewReadiness:
   --configFilePath <path>                          Path to config file for tower defence management (required)
   --issueUrl <url>                                 GitHub issue URL (required)
   --projectUrl <url>                               GitHub project URL
+
+Options for serve-pr-review-viewer:
+  --accessKey <key>      Access key for authentication (required)
+  --staticDir <path>     Path to built viewer static files (required)
+  --dataDir <path>       Path to JSON data directory (required)
+  --host <host>          Host to bind to (default: 0.0.0.0)
+  --port <number>        Port to listen on (default: 3000)
+  --ghToken <token>      GitHub personal access token (falls back to GH_TOKEN env var)
 ```
 
 The `checkIssueReviewReadiness` sub-command lets an agent self-check whether an issue is currently review-ready by reusing the same `IssueRejectionEvaluator` logic that `notifyFinishedIssuePreparation` consults. It does NOT change the issue Status field and does NOT post any comment. It writes a single JSON line to stdout of the shape `{ "reviewReady": boolean, "rejections": [{ "type": string, "detail": string }] }` and exits 0 on a successful evaluation regardless of readiness; a non-zero exit indicates an operational error (auth failure, network error, issue not found).

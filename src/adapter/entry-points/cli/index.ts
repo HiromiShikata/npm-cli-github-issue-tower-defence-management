@@ -20,6 +20,7 @@ import { writeRotationOrderFile } from '../handlers/rotationOrderFileWriter';
 import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
 import { CheckIssueReviewReadinessUseCase } from '../../../domain/usecases/CheckIssueReviewReadinessUseCase';
+import { startPrReviewViewerServer } from './PrReviewViewerServer';
 import { LocalStorageRepository } from '../../repositories/LocalStorageRepository';
 import { GraphqlProjectRepository } from '../../repositories/GraphqlProjectRepository';
 import { ApiV3IssueRepository } from '../../repositories/issue/ApiV3IssueRepository';
@@ -553,6 +554,36 @@ program
     });
 
     process.stdout.write(`${JSON.stringify(result)}\n`);
+  });
+
+type ServePrReviewViewerOptions = {
+  accessKey: string;
+  staticDir: string;
+  dataDir: string;
+  host: string;
+  port: string;
+  ghToken?: string;
+};
+
+program
+  .command('serve-pr-review-viewer')
+  .description('Start HTTP server serving the PR review viewer static files')
+  .requiredOption('--accessKey <key>', 'Access key for authentication')
+  .requiredOption('--staticDir <path>', 'Path to built viewer static files')
+  .requiredOption('--dataDir <path>', 'Path to JSON data directory')
+  .option('--host <host>', 'Host to bind to', '0.0.0.0')
+  .option('--port <number>', 'Port to listen on', '3000')
+  .option('--ghToken <token>', 'GitHub personal access token')
+  .action(async (options: ServePrReviewViewerOptions) => {
+    const ghToken = options.ghToken ?? process.env.GH_TOKEN ?? '';
+    await startPrReviewViewerServer({
+      accessKey: options.accessKey,
+      staticDir: options.staticDir,
+      dataDir: options.dataDir,
+      host: options.host,
+      port: Number(options.port),
+      ghToken,
+    });
   });
 
 /* istanbul ignore next */
