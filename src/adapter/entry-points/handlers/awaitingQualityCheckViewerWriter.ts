@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import type { QualityCheckViewerOutput } from '../../../domain/usecases/RevertNotReadyAwaitingQualityCheckUseCase';
-import { isRecord } from '../cli/projectConfig';
+import { isRecord } from '../../typeGuards';
 
 const extractPrUrlFromEntry = (entry: unknown): string => {
   if (typeof entry === 'string') return entry;
@@ -35,5 +35,6 @@ export const writeAwaitingQualityCheckViewerFile = (
   const tmpPath = `${outputPath}.tmp`;
   fs.mkdirSync(outputDir, { recursive: true });
   fs.writeFileSync(tmpPath, JSON.stringify(output, null, 2));
+  fs.rmSync(outputPath, { force: true });
   fs.renameSync(tmpPath, outputPath);
 };

@@ -36,9 +36,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetchProjectReadme = exports.mergeConfigs = exports.parseProjectReadmeConfig = exports.loadConfigFile = exports.isRecord = void 0;
+exports.fetchProjectReadme = exports.mergeConfigs = exports.parseProjectReadmeConfig = exports.loadConfigFile = void 0;
 const yaml_1 = __importDefault(require("yaml"));
 const fs = __importStar(require("fs"));
+const typeGuards_1 = require("../../typeGuards");
 const getStringValue = (obj, key) => {
     const value = obj[key];
     return typeof value === 'string' ? value : undefined;
@@ -61,8 +62,6 @@ const getStringArrayValue = (obj, key) => {
     }
     return strings;
 };
-const isRecord = (value) => typeof value === 'object' && value !== null && !Array.isArray(value);
-exports.isRecord = isRecord;
 const knownProjectReadmeConfigKeys = [
     'defaultAgentName',
     'defaultLlmModelName',
@@ -79,12 +78,14 @@ const knownProjectReadmeConfigKeys = [
     'claudeCodeOauthTokenListJsonPath',
     'awLogDirectoryPath',
     'awLogStaleThresholdMinutes',
+    'awaitingQualityCheckViewerOutputPath',
+    'awaitingQualityCheckDoneStorePath',
 ];
 const loadConfigFile = (configFilePath) => {
     try {
         const content = fs.readFileSync(configFilePath, 'utf-8');
         const parsed = yaml_1.default.parse(content);
-        if (!(0, exports.isRecord)(parsed)) {
+        if (!(0, typeGuards_1.isRecord)(parsed)) {
             return {};
         }
         return {
@@ -106,6 +107,8 @@ const loadConfigFile = (configFilePath) => {
             awLogDirectoryPath: getStringValue(parsed, 'awLogDirectoryPath'),
             awLogStaleThresholdMinutes: getNumberValue(parsed, 'awLogStaleThresholdMinutes'),
             labelsAsLlmAgentName: getStringArrayValue(parsed, 'labelsAsLlmAgentName'),
+            awaitingQualityCheckViewerOutputPath: getStringValue(parsed, 'awaitingQualityCheckViewerOutputPath'),
+            awaitingQualityCheckDoneStorePath: getStringValue(parsed, 'awaitingQualityCheckDoneStorePath'),
         };
     }
     catch (error) {
@@ -127,7 +130,7 @@ const parseProjectReadmeConfig = (readme, projectUrl) => {
     }
     try {
         const parsed = yaml_1.default.parse(yamlContent);
-        if (!(0, exports.isRecord)(parsed)) {
+        if (!(0, typeGuards_1.isRecord)(parsed)) {
             return {};
         }
         const knownKeySet = new Set(knownProjectReadmeConfigKeys);
@@ -153,6 +156,8 @@ const parseProjectReadmeConfig = (readme, projectUrl) => {
             claudeCodeOauthTokenListJsonPath: getStringValue(parsed, 'claudeCodeOauthTokenListJsonPath'),
             awLogDirectoryPath: getStringValue(parsed, 'awLogDirectoryPath'),
             awLogStaleThresholdMinutes: getNumberValue(parsed, 'awLogStaleThresholdMinutes'),
+            awaitingQualityCheckViewerOutputPath: getStringValue(parsed, 'awaitingQualityCheckViewerOutputPath'),
+            awaitingQualityCheckDoneStorePath: getStringValue(parsed, 'awaitingQualityCheckDoneStorePath'),
         };
     }
     catch {
@@ -212,13 +217,19 @@ const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
     labelsAsLlmAgentName: readmeOverrides.labelsAsLlmAgentName ??
         cliOverrides.labelsAsLlmAgentName ??
         configFile.labelsAsLlmAgentName,
+    awaitingQualityCheckViewerOutputPath: readmeOverrides.awaitingQualityCheckViewerOutputPath ??
+        cliOverrides.awaitingQualityCheckViewerOutputPath ??
+        configFile.awaitingQualityCheckViewerOutputPath,
+    awaitingQualityCheckDoneStorePath: readmeOverrides.awaitingQualityCheckDoneStorePath ??
+        cliOverrides.awaitingQualityCheckDoneStorePath ??
+        configFile.awaitingQualityCheckDoneStorePath,
 });
 exports.mergeConfigs = mergeConfigs;
 const isGraphqlProjectV2ReadmeResponse = (value) => {
-    if (!(0, exports.isRecord)(value))
+    if (!(0, typeGuards_1.isRecord)(value))
         return false;
     const data = value['data'];
-    if (data !== undefined && !(0, exports.isRecord)(data))
+    if (data !== undefined && !(0, typeGuards_1.isRecord)(data))
         return false;
     return true;
 };

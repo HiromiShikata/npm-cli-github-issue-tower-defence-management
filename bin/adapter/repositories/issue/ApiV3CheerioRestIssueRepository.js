@@ -164,7 +164,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                             createdAt: createdAt,
                         };
                     });
-                    if ((() => { const _io0 = input => "string" === typeof input.nameWithOwner && "number" === typeof input.number && "string" === typeof input.title && ("OPEN" === input.state || "CLOSED" === input.state || "MERGED" === input.state) && (null === input.status || "string" === typeof input.status) && (null === input.story || "string" === typeof input.story) && (null === input.nextActionDate || input.nextActionDate instanceof Date) && (null === input.nextActionHour || "number" === typeof input.nextActionHour) && (null === input.estimationMinutes || "number" === typeof input.estimationMinutes) && (Array.isArray(input.dependedIssueUrls) && input.dependedIssueUrls.every(elem => "string" === typeof elem)) && (null === input.completionDate50PercentConfidence || input.completionDate50PercentConfidence instanceof Date) && "string" === typeof input.url && (Array.isArray(input.assignees) && input.assignees.every(elem => "string" === typeof elem)) && (Array.isArray(input.labels) && input.labels.every(elem => "string" === typeof elem)) && "string" === typeof input.org && "string" === typeof input.repo && "string" === typeof input.body && "string" === typeof input.itemId && "boolean" === typeof input.isPr && "boolean" === typeof input.isInProgress && "boolean" === typeof input.isClosed && input.createdAt instanceof Date && "string" === typeof input.author; return input => Array.isArray(input) && input.every(elem => "object" === typeof elem && null !== elem && _io0(elem)); })()(issues)) {
+                    if (typia_1.default.is(issues)) {
                         return issues;
                     }
                 }
@@ -271,7 +271,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 isPr: urlMatch[3] === 'pull',
             };
         };
-        this.computePrStatus = (prUrl, headRefName, baseRefName, data) => {
+        this.computePrStatus = (prUrl, headRefName, baseRefName, data, prNumber, prTitle) => {
             const isConflicted = data.mergeable === 'CONFLICTING';
             const lastCommit = data.commits?.nodes[0]?.commit;
             const ciState = lastCommit?.statusCheckRollup?.state;
@@ -345,6 +345,8 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 reviewThreads.every((thread) => thread.isResolved);
             return {
                 url: prUrl,
+                number: prNumber ?? data.number ?? null,
+                title: prTitle ?? data.title ?? null,
                 branchName: headRefName ?? null,
                 createdAt: new Date(0),
                 isDraft: data.isDraft === true,
@@ -354,6 +356,9 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 isResolvedAllReviewComments,
                 isBranchOutOfDate: false,
                 missingRequiredCheckNames,
+                additions: data.additions ?? null,
+                deletions: data.deletions ?? null,
+                changedFiles: data.changedFiles ?? null,
             };
         };
         this.findRelatedOpenPRs = async (issueUrl) => {
@@ -379,6 +384,10 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                     ... on PullRequest {
                       url
                       number
+                      title
+                      additions
+                      deletions
+                      changedFiles
                       state
                       createdAt
                       isDraft
@@ -497,7 +506,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                     const pr = item.source;
                     const prUrl = pr.url || '';
                     const baseRefName = pr.baseRefName ?? pr.baseRef?.name;
-                    const prStatus = this.computePrStatus(prUrl, pr.headRefName, baseRefName, pr);
+                    const prStatus = this.computePrStatus(prUrl, pr.headRefName, baseRefName, pr, pr.number, pr.title);
                     relatedPRsMap.set(prUrl, {
                         ...prStatus,
                         createdAt: pr.createdAt ? new Date(pr.createdAt) : new Date(0),
@@ -542,6 +551,11 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         repository(owner: $owner, name: $repo) {
           pullRequest(number: $prNumber) {
             url
+            number
+            title
+            additions
+            deletions
+            changedFiles
             state
             isDraft
             headRefName
@@ -638,7 +652,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             if (!pr || pr.state !== 'OPEN') {
                 return null;
             }
-            return this.computePrStatus(pr.url, pr.headRefName, pr.baseRefName, pr);
+            return this.computePrStatus(pr.url, pr.headRefName, pr.baseRefName, pr, pr.number, pr.title);
         };
         this.closePullRequest = async (prUrl) => {
             const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);

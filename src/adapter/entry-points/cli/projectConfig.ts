@@ -1,5 +1,6 @@
 import YAML from 'yaml';
 import * as fs from 'fs';
+import { isRecord } from '../../typeGuards';
 
 export type ConfigFile = {
   projectUrl?: string;
@@ -57,9 +58,6 @@ const getStringArrayValue = (
   }
   return strings;
 };
-
-export const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const knownProjectReadmeConfigKeys = [
   'defaultAgentName',

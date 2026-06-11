@@ -21,8 +21,11 @@ const STORY_COLOR_HEX_MAP: Record<FieldOption['color'], string> = {
 };
 
 const extractPrRepoFromUrl = (prUrl: string): string => {
-  const urlParts = prUrl.replace('https://github.com/', '').split('/');
-  return `${urlParts[0]}/${urlParts[1]}`;
+  const match = prUrl.match(/github\.com\/([^/]+)\/([^/]+)/);
+  if (!match) {
+    throw new Error(`Invalid GitHub PR URL: ${prUrl}`);
+  }
+  return `${match[1]}/${match[2]}`;
 };
 
 const extractDirectoryFromFilePath = (filePath: string): string => {
@@ -33,10 +36,7 @@ const extractDirectoryFromFilePath = (filePath: string): string => {
 const extractChangedDirectories = (filePaths: string[]): string[] => {
   const dirs = new Set<string>();
   for (const filePath of filePaths) {
-    const dir = extractDirectoryFromFilePath(filePath);
-    if (dir !== '.') {
-      dirs.add(dir);
-    }
+    dirs.add(extractDirectoryFromFilePath(filePath));
   }
   return Array.from(dirs);
 };

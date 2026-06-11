@@ -4,6 +4,8 @@ import { Member } from '../../entities/Member';
 import { StoryObjectMap } from '../../entities/StoryObjectMap';
 export type RelatedPullRequest = {
     url: string;
+    number: number | null;
+    title: string | null;
     branchName: string | null;
     createdAt: Date;
     isDraft: boolean;
@@ -13,6 +15,9 @@ export type RelatedPullRequest = {
     isResolvedAllReviewComments: boolean;
     isBranchOutOfDate: boolean;
     missingRequiredCheckNames: string[];
+    additions: number | null;
+    deletions: number | null;
+    changedFiles: number | null;
 };
 export interface IssueRepository {
     getAllIssues: (projectId: Project['id'], allowCacheMinutes: number) => Promise<{

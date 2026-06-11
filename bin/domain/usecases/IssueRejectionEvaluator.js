@@ -7,6 +7,7 @@ class IssueRejectionEvaluator {
         this.evaluate = async (issue, labelsAsLlmAgentName = []) => {
             const rejections = [];
             let approvedPrUrl = null;
+            let readyPr = null;
             const categoryLabels = issue.labels.filter((label) => label.startsWith('category:'));
             const hasLlmAgentLabel = issue.labels.some((l) => l === 'llm-agent' || l.startsWith('llm-agent:'));
             const hasLabelAsLlmAgentName = issue.labels.some((label) => labelsAsLlmAgentName.includes(label));
@@ -88,10 +89,11 @@ class IssueRejectionEvaluator {
                         pr.isResolvedAllReviewComments &&
                         rejections.filter((r) => r.type === 'CHANGE_TARGET_MUST_PATH_NOT_CHANGED').length === 0) {
                         approvedPrUrl = pr.url;
+                        readyPr = pr;
                     }
                 }
             }
-            return { rejections, approvedPrUrl };
+            return { rejections, approvedPrUrl, readyPr };
         };
         this.resolveOpenPrsForPrItem = async (prUrl) => {
             const pr = await this.issueRepository.getOpenPullRequest(prUrl);

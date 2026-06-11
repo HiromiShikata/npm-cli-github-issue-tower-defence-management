@@ -17,8 +17,9 @@ export type ConfigFile = {
     awLogDirectoryPath?: string;
     awLogStaleThresholdMinutes?: number;
     labelsAsLlmAgentName?: string[];
+    awaitingQualityCheckViewerOutputPath?: string;
+    awaitingQualityCheckDoneStorePath?: string;
 };
-export declare const isRecord: (value: unknown) => value is Record<string, unknown>;
 export declare const loadConfigFile: (configFilePath: string) => ConfigFile;
 export declare const parseProjectReadmeConfig: (readme: string, projectUrl?: string) => ConfigFile;
 export declare const mergeConfigs: (configFile: ConfigFile, cliOverrides: ConfigFile, readmeOverrides: ConfigFile) => ConfigFile;

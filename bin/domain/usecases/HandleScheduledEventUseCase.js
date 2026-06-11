@@ -102,9 +102,11 @@ class HandleScheduledEventUseCase {
             const targetDateTimes = await this.findTargetDateAndUpdateLastExecutionDateTime(input.workingReport.spreadsheetUrl, now, input.org, input.workingReport.repo, input.manager);
             const runSlowSweep = await this.shouldRunSlowSweep(input.workingReport.spreadsheetUrl, now, input.org, input.workingReport.repo, input.manager);
             let rotationOrder = null;
+            let viewerOutput = null;
             try {
                 const useCaseResult = await this.runEachUseCases(input, project, issues, cacheUsed, targetDateTimes, storyIssues, runSlowSweep);
                 rotationOrder = useCaseResult.rotationOrder;
+                viewerOutput = useCaseResult.viewerOutput;
             }
             catch (e) {
                 if (!(e instanceof Error)) {
@@ -127,6 +129,7 @@ ${JSON.stringify(e)}
                 cacheUsed,
                 targetDateTimes,
                 storyIssues,
+                viewerOutput,
                 rotationOrder,
             };
         };
@@ -138,10 +141,12 @@ ${JSON.stringify(e)}
                 topLevel: input.labelsAsLlmAgentName,
                 startPreparation: input.startPreparation?.labelsAsLlmAgentName,
             });
-            await this.revertNotReadyAwaitingQualityCheckUseCase.run({
+            const viewerOutput = await this.revertNotReadyAwaitingQualityCheckUseCase.run({
                 projectUrl: input.projectUrl,
                 allowIssueCacheMinutes: input.allowIssueCacheMinutes,
                 labelsAsLlmAgentName,
+                awaitingQualityCheckViewerOutputPath: input.awaitingQualityCheckViewerOutputPath ?? null,
+                donePrUrls: input.donePrUrls ?? null,
             });
             if (this.dailySecurityScanUseCase !== null && input.dailySecurityScan) {
                 await this.dailySecurityScanUseCase.run({
@@ -183,9 +188,9 @@ ${JSON.stringify(e)}
                     allowIssueCacheMinutes: input.allowIssueCacheMinutes,
                     labelsAsLlmAgentName,
                 });
-                return { rotationOrder: preparationResult.rotationOrder };
+                return { rotationOrder: preparationResult.rotationOrder, viewerOutput };
             }
-            return { rotationOrder: null };
+            return { rotationOrder: null, viewerOutput };
         };
         this.runSlowSweepUseCases = async (input, project, issues, cacheUsed, targetDateTimes, storyObjectMap) => {
             await this.setWorkflowManagementIssueToStoryUseCase.run({

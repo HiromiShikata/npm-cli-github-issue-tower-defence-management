@@ -22,7 +22,7 @@ import { AssignNoAssigneeIssueToManagerUseCase } from './AssignNoAssigneeIssueTo
 import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCase';
 import { RotationOrderEntry, StartPreparationUseCase } from './StartPreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
-import { RevertNotReadyAwaitingQualityCheckUseCase } from './RevertNotReadyAwaitingQualityCheckUseCase';
+import { QualityCheckViewerOutput, RevertNotReadyAwaitingQualityCheckUseCase } from './RevertNotReadyAwaitingQualityCheckUseCase';
 import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
 import { UpdateRateLimitCacheUseCase } from './UpdateRateLimitCacheUseCase';
 import { DailySecurityScanConfig, DailySecurityScanUseCase } from './DailySecurityScanUseCase';
@@ -87,6 +87,8 @@ export declare class HandleScheduledEventUseCase {
         } | null;
         thresholdForAutoReject?: number;
         dailySecurityScan?: DailySecurityScanConfig | null;
+        awaitingQualityCheckViewerOutputPath?: string | null;
+        donePrUrls?: Set<string> | null;
     }) => Promise<{
         project: Project;
         issues: Issue[];
@@ -94,9 +96,11 @@ export declare class HandleScheduledEventUseCase {
         targetDateTimes: Date[];
         storyIssues: StoryObjectMap;
         rotationOrder: RotationOrderEntry[] | null;
+        viewerOutput: QualityCheckViewerOutput | null;
     } | null>;
     runEachUseCases: (input: Parameters<HandleScheduledEventUseCase["run"]>[0], project: Project, issues: Issue[], cacheUsed: boolean, targetDateTimes: Date[], storyObjectMap: StoryObjectMap, runSlowSweep: boolean) => Promise<{
         rotationOrder: RotationOrderEntry[] | null;
+        viewerOutput: QualityCheckViewerOutput | null;
     }>;
     runSlowSweepUseCases: (input: Parameters<HandleScheduledEventUseCase["run"]>[0], project: Project, issues: Issue[], cacheUsed: boolean, targetDateTimes: Date[], storyObjectMap: StoryObjectMap) => Promise<void>;
     static createTargetDateTimes: (from: Date, to: Date) => Date[];
