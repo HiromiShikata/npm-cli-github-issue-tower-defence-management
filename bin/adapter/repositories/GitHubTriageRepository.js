@@ -312,12 +312,17 @@ class GitHubTriageRepository extends BaseGitHubRepository_1.BaseGitHubRepository
             return { issues, storyOptions, storyFieldId, projectId };
         };
         this.setStory = async (projectId, storyFieldId, itemId, storyOptionId) => {
-            const query = `mutation {
+            const query = `mutation UpdateProjectV2ItemFieldValue(
+      $projectId: ID!
+      $fieldId: ID!
+      $itemId: ID!
+      $optionId: String!
+    ) {
       updateProjectV2ItemFieldValue(input: {
-        projectId: "${projectId}"
-        fieldId: "${storyFieldId}"
-        itemId: "${itemId}"
-        value: { singleSelectOptionId: "${storyOptionId}" }
+        projectId: $projectId
+        fieldId: $fieldId
+        itemId: $itemId
+        value: { singleSelectOptionId: $optionId }
       }) {
         clientMutationId
       }
@@ -328,7 +333,15 @@ class GitHubTriageRepository extends BaseGitHubRepository_1.BaseGitHubRepository
                     Authorization: `Bearer ${this.ghToken}`,
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ query }),
+                body: JSON.stringify({
+                    query,
+                    variables: {
+                        projectId,
+                        fieldId: storyFieldId,
+                        itemId,
+                        optionId: storyOptionId,
+                    },
+                }),
             });
             if (!response.ok) {
                 const message = await this.extractGitHubErrorMessage(response);
@@ -341,9 +354,10 @@ class GitHubTriageRepository extends BaseGitHubRepository_1.BaseGitHubRepository
             }
         };
         this.closeIssue = async (owner, repo, issueNumber, reason) => {
-            const encodedOwner = encodeURIComponent(owner);
-            const encodedRepo = encodeURIComponent(repo);
-            const url = `https://api.github.com/repos/${encodedOwner}/${encodedRepo}/issues/${issueNumber}`;
+            if (!/^[a-zA-Z0-9_.-]+$/.test(owner) || !/^[a-zA-Z0-9_.-]+$/.test(repo)) {
+                throw new Error('Invalid owner or repo name');
+            }
+            const url = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`;
             const response = await fetch(url, {
                 method: 'PATCH',
                 headers: {

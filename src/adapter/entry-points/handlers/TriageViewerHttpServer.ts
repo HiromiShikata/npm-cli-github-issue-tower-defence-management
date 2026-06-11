@@ -134,7 +134,7 @@ export class TriageViewerHttpServer {
 <meta http-equiv="refresh" content="0;url=${cleanUrl}">
 <script>
 (function(){
-  localStorage.setItem('triage-access-key','${keyInQuery.replace(/'/g, "\\'")}');
+  localStorage.setItem('triage-access-key',${JSON.stringify(keyInQuery)});
   window.location.replace('${cleanUrl}');
 })();
 </script>
