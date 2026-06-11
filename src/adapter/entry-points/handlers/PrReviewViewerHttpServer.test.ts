@@ -302,7 +302,7 @@ describe('PrReviewViewerHttpServer', () => {
       });
     });
 
-    it('does not return 5xx - catches errors and returns 4xx', async () => {
+    it('returns 500 and generic error when executeReview throws unexpectedly', async () => {
       mockUseCase.executeReview.mockRejectedValue(
         new Error('Unexpected failure'),
       );
@@ -323,9 +323,12 @@ describe('PrReviewViewerHttpServer', () => {
           awaitingWorkspaceStatusOptionId: 'opt_aw',
         }),
       );
-      expect(status).toBeLessThan(500);
+      expect(status).toBe(500);
       if (typeof json === 'object' && json !== null && 'ok' in json) {
         expect(json['ok']).toBe(false);
+      }
+      if (typeof json === 'object' && json !== null && 'error' in json) {
+        expect(json['error']).toBe('Internal server error');
       }
     });
   });

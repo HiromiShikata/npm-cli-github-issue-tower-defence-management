@@ -198,9 +198,9 @@ export class PrReviewViewerHttpServer {
     try {
       const items = await this.useCase.getList(projectCode);
       sendJson(res, 200, items);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      sendError(res, 400, message);
+    } catch (_error) {
+      void _error;
+      sendError(res, 500, 'Internal server error');
     }
   };
 
@@ -217,9 +217,9 @@ export class PrReviewViewerHttpServer {
         return;
       }
       sendJson(res, 200, detail);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      sendError(res, 400, message);
+    } catch (_error) {
+      void _error;
+      sendError(res, 500, 'Internal server error');
     }
   };
 
@@ -331,9 +331,9 @@ export class PrReviewViewerHttpServer {
       } else {
         sendJson(res, 400, { ok: false, error: result.error });
       }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      sendJson(res, 400, { ok: false, error: message });
+    } catch (_error) {
+      void _error;
+      sendJson(res, 500, { ok: false, error: 'Internal server error' });
     }
   };
 
@@ -378,9 +378,9 @@ export class PrReviewViewerHttpServer {
         'Content-Length': content.length,
       });
       res.end(content);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      sendError(res, 400, message);
+    } catch (_error) {
+      void _error;
+      sendError(res, 500, 'Internal server error');
     }
   };
 
@@ -405,9 +405,9 @@ export class PrReviewViewerHttpServer {
         'Content-Length': content.length,
       });
       res.end(content);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      sendError(res, 400, message);
+    } catch (_error) {
+      void _error;
+      sendError(res, 500, 'Internal server error');
     }
   };
 
@@ -431,9 +431,9 @@ export class PrReviewViewerHttpServer {
       }
       const info = await this.useCase.getIssueTitleInfo(owner, repo, number);
       sendJson(res, 200, info);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      sendError(res, 400, message);
+    } catch (_error) {
+      void _error;
+      sendError(res, 500, 'Internal server error');
     }
   };
 

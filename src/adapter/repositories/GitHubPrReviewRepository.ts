@@ -14,6 +14,19 @@ const ALLOWED_IMAGE_PROXY_HOSTNAMES = [
   'github.com',
 ];
 
+const buildRepoApiUrl = (
+  owner: string,
+  repo: string,
+  ...segments: (string | number)[]
+): string => {
+  const encoded = [
+    encodeURIComponent(owner),
+    encodeURIComponent(repo),
+    ...segments.map((s) => encodeURIComponent(String(s))),
+  ];
+  return `https://api.github.com/repos/${encoded[0]}/${encoded[1]}/${encoded.slice(2).join('/')}`;
+};
+
 export class GitHubPrReviewRepository
   extends BaseGitHubRepository
   implements PrReviewRepository
@@ -44,22 +57,20 @@ export class GitHubPrReviewRepository
     body?: string,
     comments?: ReviewComment[],
   ): Promise<void> => {
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/vnd.github+json',
-        },
-        body: JSON.stringify({
-          event: 'APPROVE',
-          body: body ?? '',
-          comments: comments ?? [],
-        }),
+    const url = buildRepoApiUrl(owner, repo, 'pulls', prNumber, 'reviews');
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.ghToken}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/vnd.github+json',
       },
-    );
+      body: JSON.stringify({
+        event: 'APPROVE',
+        body: body ?? '',
+        comments: comments ?? [],
+      }),
+    });
     if (!response.ok) {
       const message = await this.extractGitHubErrorMessage(response);
       throw new Error(message);
@@ -73,22 +84,20 @@ export class GitHubPrReviewRepository
     body?: string,
     comments?: ReviewComment[],
   ): Promise<void> => {
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/vnd.github+json',
-        },
-        body: JSON.stringify({
-          event: 'REQUEST_CHANGES',
-          body: body ?? '',
-          comments: comments ?? [],
-        }),
+    const url = buildRepoApiUrl(owner, repo, 'pulls', prNumber, 'reviews');
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.ghToken}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/vnd.github+json',
       },
-    );
+      body: JSON.stringify({
+        event: 'REQUEST_CHANGES',
+        body: body ?? '',
+        comments: comments ?? [],
+      }),
+    });
     if (!response.ok) {
       const message = await this.extractGitHubErrorMessage(response);
       throw new Error(message);
@@ -102,22 +111,20 @@ export class GitHubPrReviewRepository
     body?: string,
     comments?: ReviewComment[],
   ): Promise<void> => {
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/vnd.github+json',
-        },
-        body: JSON.stringify({
-          event: 'COMMENT',
-          body: body ?? '',
-          comments: comments ?? [],
-        }),
+    const url = buildRepoApiUrl(owner, repo, 'pulls', prNumber, 'reviews');
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.ghToken}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/vnd.github+json',
       },
-    );
+      body: JSON.stringify({
+        event: 'COMMENT',
+        body: body ?? '',
+        comments: comments ?? [],
+      }),
+    });
     if (!response.ok) {
       const message = await this.extractGitHubErrorMessage(response);
       throw new Error(message);
@@ -130,18 +137,16 @@ export class GitHubPrReviewRepository
     issueNumber: number,
     body: string,
   ): Promise<void> => {
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/vnd.github+json',
-        },
-        body: JSON.stringify({ body }),
+    const url = buildRepoApiUrl(owner, repo, 'issues', issueNumber, 'comments');
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.ghToken}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/vnd.github+json',
       },
-    );
+      body: JSON.stringify({ body }),
+    });
     if (!response.ok) {
       const message = await this.extractGitHubErrorMessage(response);
       throw new Error(message);
@@ -153,18 +158,16 @@ export class GitHubPrReviewRepository
     repo: string,
     prNumber: number,
   ): Promise<void> => {
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
-      {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/vnd.github+json',
-        },
-        body: JSON.stringify({ state: 'closed' }),
+    const url = buildRepoApiUrl(owner, repo, 'pulls', prNumber);
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${this.ghToken}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/vnd.github+json',
       },
-    );
+      body: JSON.stringify({ state: 'closed' }),
+    });
     if (!response.ok) {
       const message = await this.extractGitHubErrorMessage(response);
       throw new Error(message);
@@ -177,18 +180,16 @@ export class GitHubPrReviewRepository
     issueNumber: number,
     label: string,
   ): Promise<void> => {
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/labels`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/vnd.github+json',
-        },
-        body: JSON.stringify({ labels: [label] }),
+    const url = buildRepoApiUrl(owner, repo, 'issues', issueNumber, 'labels');
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.ghToken}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/vnd.github+json',
       },
-    );
+      body: JSON.stringify({ labels: [label] }),
+    });
     if (!response.ok) {
       const message = await this.extractGitHubErrorMessage(response);
       throw new Error(message);
@@ -202,16 +203,17 @@ export class GitHubPrReviewRepository
     statusOptionId: string,
   ): Promise<void> => {
     const graphqlQuery = {
-      query: `mutation {
-      updateProjectV2ItemFieldValue(input: {
-        projectId: "${projectId}"
-        fieldId: "${fieldId}"
-        itemId: "${itemId}"
-        value: { singleSelectOptionId: "${statusOptionId}" },
-      }) {
-        clientMutationId
-      }
-    }`,
+      query: `mutation UpdateProjectItemFieldValue($projectId: ID!, $fieldId: ID!, $itemId: ID!, $statusOptionId: String!) {
+        updateProjectV2ItemFieldValue(input: {
+          projectId: $projectId
+          fieldId: $fieldId
+          itemId: $itemId
+          value: { singleSelectOptionId: $statusOptionId },
+        }) {
+          clientMutationId
+        }
+      }`,
+      variables: { projectId, fieldId, itemId, statusOptionId },
     };
     const response = await fetch('https://api.github.com/graphql', {
       method: 'POST',
@@ -252,19 +254,19 @@ export class GitHubPrReviewRepository
     prHeadSha: string,
   ): Promise<{ content: Buffer; contentType: string }> => {
     const tryFetch = async (resolvedRef: string): Promise<Response> => {
+      const encodedOwner = encodeURIComponent(owner);
+      const encodedRepo = encodeURIComponent(repo);
       const encodedPath = filePath
         .split('/')
         .map((segment) => encodeURIComponent(segment))
         .join('/');
-      return fetch(
-        `https://api.github.com/repos/${owner}/${repo}/contents/${encodedPath}?ref=${encodeURIComponent(resolvedRef)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${this.ghToken}`,
-            Accept: 'application/vnd.github.raw+json',
-          },
+      const url = `https://api.github.com/repos/${encodedOwner}/${encodedRepo}/contents/${encodedPath}?ref=${encodeURIComponent(resolvedRef)}`;
+      return fetch(url, {
+        headers: {
+          Authorization: `Bearer ${this.ghToken}`,
+          Accept: 'application/vnd.github.raw+json',
         },
-      );
+      });
     };
 
     let response = await tryFetch(ref);
@@ -294,7 +296,7 @@ export class GitHubPrReviewRepository
     if (!ALLOWED_IMAGE_PROXY_HOSTNAMES.includes(parsedUrl.hostname)) {
       throw new Error(`Hostname not allowed: ${parsedUrl.hostname}`);
     }
-    const response = await fetch(targetUrl, {
+    const response = await fetch(parsedUrl.href, {
       headers: {
         Authorization: `token ${this.ghToken}`,
       },
@@ -315,15 +317,13 @@ export class GitHubPrReviewRepository
     repo: string,
     number: number,
   ): Promise<IssueTitleInfo> => {
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/issues/${number}`,
-      {
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          Accept: 'application/vnd.github+json',
-        },
+    const url = buildRepoApiUrl(owner, repo, 'issues', number);
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${this.ghToken}`,
+        Accept: 'application/vnd.github+json',
       },
-    );
+    });
     if (!response.ok) {
       const message = await this.extractGitHubErrorMessage(response);
       throw new Error(message);
