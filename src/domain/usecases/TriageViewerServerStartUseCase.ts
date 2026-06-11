@@ -26,9 +26,7 @@ export interface TriageViewerUseCaseInterface {
   ) => Promise<{ content: Buffer; contentType: string }>;
 }
 
-export class TriageViewerServerStartUseCase
-  implements TriageViewerUseCaseInterface
-{
+export class TriageViewerServerStartUseCase implements TriageViewerUseCaseInterface {
   constructor(private readonly triageRepository: TriageRepository) {}
 
   getTriageData = async (projectUrl: string): Promise<TriageData> => {

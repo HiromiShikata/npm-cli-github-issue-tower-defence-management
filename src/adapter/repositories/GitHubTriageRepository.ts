@@ -250,7 +250,7 @@ export class GitHubTriageRepository
     const projectId = getStringProp(projectData, 'id') ?? '';
     const fieldsObj = projectData['fields'];
     const fieldNodes = isRecord(fieldsObj)
-      ? getArrayProp(fieldsObj, 'nodes') ?? []
+      ? (getArrayProp(fieldsObj, 'nodes') ?? [])
       : [];
 
     let storyFieldId: string | null = null;
@@ -293,7 +293,7 @@ export class GitHubTriageRepository
 
     const itemsObj = projectData['items'];
     const itemNodes = isRecord(itemsObj)
-      ? getArrayProp(itemsObj, 'nodes') ?? []
+      ? (getArrayProp(itemsObj, 'nodes') ?? [])
       : [];
 
     const issues: TriageIssue[] = [];
@@ -314,7 +314,7 @@ export class GitHubTriageRepository
 
       const fieldValuesObj = itemNode['fieldValues'];
       const fieldValueNodes = isRecord(fieldValuesObj)
-        ? getArrayProp(fieldValuesObj, 'nodes') ?? []
+        ? (getArrayProp(fieldValuesObj, 'nodes') ?? [])
         : [];
 
       let hasStoryAssigned = false;

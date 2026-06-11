@@ -63,9 +63,7 @@ describe('TriageViewerHttpServer', () => {
             itemId: 'item-1',
           },
         ],
-        storyOptions: [
-          { id: 'story-1', name: 'Story A', color: 'BLUE' },
-        ],
+        storyOptions: [{ id: 'story-1', name: 'Story A', color: 'BLUE' }],
         storyFieldId: 'field-1',
         projectId: 'project-1',
       }),
@@ -100,11 +98,9 @@ describe('TriageViewerHttpServer', () => {
     });
 
     it('returns 403 for wrong key', async () => {
-      const result = await makeRequest(
-        'GET',
-        '/projects/test/triage/data',
-        { Authorization: 'Bearer wrong-key' },
-      );
+      const result = await makeRequest('GET', '/projects/test/triage/data', {
+        Authorization: 'Bearer wrong-key',
+      });
       expect(result.status).toBe(403);
     });
 
@@ -200,7 +196,10 @@ describe('TriageViewerHttpServer', () => {
     });
 
     it('returns 400 when use case returns error', async () => {
-      mockUseCase.setStory.mockResolvedValue({ ok: false, error: 'GraphQL error' });
+      mockUseCase.setStory.mockResolvedValue({
+        ok: false,
+        error: 'GraphQL error',
+      });
       const result = await makeRequest(
         'POST',
         '/projects/test/triage/set-story',
@@ -302,7 +301,10 @@ describe('TriageViewerHttpServer', () => {
     });
 
     it('returns 400 when use case returns error', async () => {
-      mockUseCase.closeIssue.mockResolvedValue({ ok: false, error: 'REST error' });
+      mockUseCase.closeIssue.mockResolvedValue({
+        ok: false,
+        error: 'REST error',
+      });
       const result = await makeRequest(
         'POST',
         '/projects/test/triage/close-issue',
@@ -373,22 +375,14 @@ describe('TriageViewerHttpServer', () => {
 
   describe('path traversal prevention', () => {
     it('returns 400 for path with ..', async () => {
-      const result = await makeRequest(
-        'GET',
-        '/../../etc/passwd',
-        authHeader,
-      );
+      const result = await makeRequest('GET', '/../../etc/passwd', authHeader);
       expect(result.status).toBe(400);
     });
   });
 
   describe('unknown route', () => {
     it('returns 404 for unknown path', async () => {
-      const result = await makeRequest(
-        'GET',
-        '/unknown-path',
-        authHeader,
-      );
+      const result = await makeRequest('GET', '/unknown-path', authHeader);
       expect(result.status).toBe(404);
     });
   });
