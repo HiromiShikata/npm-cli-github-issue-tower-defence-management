@@ -426,7 +426,10 @@ const serveStaticFile = (
 ): void => {
   const resolvedBase = path.resolve(staticDir);
   const fullPath = path.resolve(staticDir, filePath.replace(/^\//, ''));
-  if (!fullPath.startsWith(resolvedBase + path.sep) && fullPath !== resolvedBase) {
+  if (
+    !fullPath.startsWith(resolvedBase + path.sep) &&
+    fullPath !== resolvedBase
+  ) {
     res.writeHead(400);
     res.end('Bad Request');
     return;
@@ -508,11 +511,17 @@ export const createPrReviewViewerServer = (
         sendError(res, 400, 'Invalid URL');
         return;
       }
-      if (safeImageUrl.protocol !== 'https:' || !GITHUB_HOSTS.has(safeImageUrl.hostname)) {
+      if (
+        safeImageUrl.protocol !== 'https:' ||
+        !GITHUB_HOSTS.has(safeImageUrl.hostname)
+      ) {
         sendError(res, 400, 'Only GitHub URLs are allowed');
         return;
       }
-      const reconstructedImageUrl = new URL(safeImageUrl.pathname + safeImageUrl.search, `https://${safeImageUrl.hostname}`);
+      const reconstructedImageUrl = new URL(
+        safeImageUrl.pathname + safeImageUrl.search,
+        `https://${safeImageUrl.hostname}`,
+      );
       try {
         const imageResponse = await fetch(reconstructedImageUrl.toString(), {
           headers: { Authorization: `Bearer ${ghToken}` },
@@ -633,8 +642,14 @@ export const createPrReviewViewerServer = (
         const encodedOwner = encodeURIComponent(owner);
         const encodedRepo = encodeURIComponent(repo);
         const encodedRef = encodeURIComponent(ref);
-        const encodedFilePath = safeFilePath.split('/').map(encodeURIComponent).join('/');
-        const rawUrl = new URL(`/${encodedOwner}/${encodedRepo}/${encodedRef}/${encodedFilePath}`, 'https://raw.githubusercontent.com');
+        const encodedFilePath = safeFilePath
+          .split('/')
+          .map(encodeURIComponent)
+          .join('/');
+        const rawUrl = new URL(
+          `/${encodedOwner}/${encodedRepo}/${encodedRef}/${encodedFilePath}`,
+          'https://raw.githubusercontent.com',
+        );
         const rawResponse = await fetch(rawUrl.toString(), {
           headers: { Authorization: `Bearer ${ghToken}` },
         });
@@ -854,7 +869,10 @@ export const createPrReviewViewerServer = (
 
   const server = http.createServer((req, res) => {
     handleRequest(req, res).catch((err: unknown) => {
-      console.error('Unhandled request error:', err instanceof Error ? err.message : String(err));
+      console.error(
+        'Unhandled request error:',
+        err instanceof Error ? err.message : String(err),
+      );
       sendError(res, 500, 'Internal server error');
     });
   });
