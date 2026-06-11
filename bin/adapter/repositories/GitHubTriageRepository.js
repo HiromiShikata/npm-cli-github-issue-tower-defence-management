@@ -212,7 +212,7 @@ class GitHubTriageRepository extends BaseGitHubRepository_1.BaseGitHubRepository
             const projectId = getStringProp(projectData, 'id') ?? '';
             const fieldsObj = projectData['fields'];
             const fieldNodes = isRecord(fieldsObj)
-                ? getArrayProp(fieldsObj, 'nodes') ?? []
+                ? (getArrayProp(fieldsObj, 'nodes') ?? [])
                 : [];
             let storyFieldId = null;
             let storyOptions = [];
@@ -252,7 +252,7 @@ class GitHubTriageRepository extends BaseGitHubRepository_1.BaseGitHubRepository
             }
             const itemsObj = projectData['items'];
             const itemNodes = isRecord(itemsObj)
-                ? getArrayProp(itemsObj, 'nodes') ?? []
+                ? (getArrayProp(itemsObj, 'nodes') ?? [])
                 : [];
             const issues = [];
             for (const itemNode of itemNodes) {
@@ -275,7 +275,7 @@ class GitHubTriageRepository extends BaseGitHubRepository_1.BaseGitHubRepository
                     continue;
                 const fieldValuesObj = itemNode['fieldValues'];
                 const fieldValueNodes = isRecord(fieldValuesObj)
-                    ? getArrayProp(fieldValuesObj, 'nodes') ?? []
+                    ? (getArrayProp(fieldValuesObj, 'nodes') ?? [])
                     : [];
                 let hasStoryAssigned = false;
                 for (const fvNode of fieldValueNodes) {
@@ -357,7 +357,16 @@ class GitHubTriageRepository extends BaseGitHubRepository_1.BaseGitHubRepository
             if (!/^[a-zA-Z0-9_.-]+$/.test(owner) || !/^[a-zA-Z0-9_.-]+$/.test(repo)) {
                 throw new Error('Invalid owner or repo name');
             }
-            const url = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`;
+            const baseUrl = new URL('https://api.github.com');
+            baseUrl.pathname = [
+                '',
+                'repos',
+                encodeURIComponent(owner),
+                encodeURIComponent(repo),
+                'issues',
+                String(issueNumber),
+            ].join('/');
+            const url = baseUrl.toString();
             const response = await fetch(url, {
                 method: 'PATCH',
                 headers: {

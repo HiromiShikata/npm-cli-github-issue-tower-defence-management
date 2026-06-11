@@ -412,7 +412,16 @@ export class GitHubTriageRepository
     if (!/^[a-zA-Z0-9_.-]+$/.test(owner) || !/^[a-zA-Z0-9_.-]+$/.test(repo)) {
       throw new Error('Invalid owner or repo name');
     }
-    const url = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`;
+    const baseUrl = new URL('https://api.github.com');
+    baseUrl.pathname = [
+      '',
+      'repos',
+      encodeURIComponent(owner),
+      encodeURIComponent(repo),
+      'issues',
+      String(issueNumber),
+    ].join('/');
+    const url = baseUrl.toString();
 
     const response = await fetch(url, {
       method: 'PATCH',
