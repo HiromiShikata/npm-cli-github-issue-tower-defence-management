@@ -61,10 +61,14 @@ const extractAccessKey = (req: http.IncomingMessage): string | null => {
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return authHeader.slice('Bearer '.length);
   }
-  const urlObj = new URL(req.url ?? '/', 'http://localhost');
-  const queryKey = urlObj.searchParams.get('key');
-  if (queryKey) {
-    return queryKey;
+  try {
+    const urlObj = new URL(req.url ?? '/', 'http://localhost');
+    const queryKey = urlObj.searchParams.get('key');
+    if (queryKey) {
+      return queryKey;
+    }
+  } catch {
+    return null;
   }
   return null;
 };
