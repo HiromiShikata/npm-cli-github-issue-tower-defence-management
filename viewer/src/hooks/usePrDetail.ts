@@ -10,7 +10,9 @@ type PrDetailState = {
 
 type PrDetailKey = { repo: string; prNumber: number };
 
-export const usePrDetail = (accessKey: string | null): {
+export const usePrDetail = (
+  accessKey: string | null,
+): {
   state: PrDetailState;
   load: (key: PrDetailKey) => void;
   currentKey: PrDetailKey | null;

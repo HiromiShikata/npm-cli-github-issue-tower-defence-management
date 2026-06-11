@@ -8,14 +8,17 @@ type ListViewProps = {
   onSelectPr: (item: PrListItem) => void;
 };
 
-const buildPrKey = (repo: string, prNumber: number): string => `${repo}/${prNumber}`;
+const buildPrKey = (repo: string, prNumber: number): string =>
+  `${repo}/${prNumber}`;
 
 const groupByStory = (
   items: PrListItem[],
   stories: StoryDefinition[],
   doneSet: Set<string>,
 ): { story: StoryDefinition; items: PrListItem[] }[] => {
-  const pending = items.filter((item) => !doneSet.has(buildPrKey(item.pr.repo, item.pr.number)));
+  const pending = items.filter(
+    (item) => !doneSet.has(buildPrKey(item.pr.repo, item.pr.number)),
+  );
   const storyOrder = stories.map((s) => s.name);
   const grouped = new Map<string, PrListItem[]>();
   for (const item of pending) {
@@ -36,7 +39,10 @@ const groupByStory = (
   }
   for (const [storyName, storyItems] of grouped.entries()) {
     if (!storyOrder.includes(storyName) && storyItems.length > 0) {
-      result.push({ story: { name: storyName, color: '#9ca3af', order: 999 }, items: storyItems });
+      result.push({
+        story: { name: storyName, color: '#9ca3af', order: 999 },
+        items: storyItems,
+      });
     }
   }
   return result;
@@ -63,7 +69,14 @@ const PrCard = ({ item, onSelect }: PrCardProps): React.JSX.Element => (
       marginBottom: '0.5rem',
     }}
   >
-    <div style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: '0.25rem', color: '#111827' }}>
+    <div
+      style={{
+        fontWeight: 600,
+        fontSize: '0.9375rem',
+        marginBottom: '0.25rem',
+        color: '#111827',
+      }}
+    >
       {item.issue.title}
     </div>
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
@@ -86,14 +99,30 @@ const PrCard = ({ item, onSelect }: PrCardProps): React.JSX.Element => (
   </button>
 );
 
-export const ListView = ({ stories, items, doneSet, onSelectPr }: ListViewProps): React.JSX.Element => {
-  const pending = items.filter((item) => !doneSet.has(buildPrKey(item.pr.repo, item.pr.number)));
+export const ListView = ({
+  stories,
+  items,
+  doneSet,
+  onSelectPr,
+}: ListViewProps): React.JSX.Element => {
+  const pending = items.filter(
+    (item) => !doneSet.has(buildPrKey(item.pr.repo, item.pr.number)),
+  );
   const grouped = groupByStory(items, stories, doneSet);
 
   return (
     <div style={{ maxWidth: '48rem', margin: '0 auto', padding: '1rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827' }}>PR Review</h1>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '1.5rem',
+        }}
+      >
+        <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827' }}>
+          PR Review
+        </h1>
         <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
           {pending.length} / {items.length}
         </span>
@@ -101,7 +130,14 @@ export const ListView = ({ stories, items, doneSet, onSelectPr }: ListViewProps)
 
       {grouped.map(({ story, items: storyItems }) => (
         <div key={story.name} style={{ marginBottom: '1.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              marginBottom: '0.5rem',
+            }}
+          >
             <span
               style={{
                 width: '0.625rem',
@@ -112,10 +148,22 @@ export const ListView = ({ stories, items, doneSet, onSelectPr }: ListViewProps)
                 display: 'inline-block',
               }}
             />
-            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>{story.name}</span>
+            <span
+              style={{
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                color: '#374151',
+              }}
+            >
+              {story.name}
+            </span>
           </div>
           {storyItems.map((item) => (
-            <PrCard key={`${item.pr.repo}-${item.pr.number}`} item={item} onSelect={onSelectPr} />
+            <PrCard
+              key={`${item.pr.repo}-${item.pr.number}`}
+              item={item}
+              onSelect={onSelectPr}
+            />
           ))}
         </div>
       ))}

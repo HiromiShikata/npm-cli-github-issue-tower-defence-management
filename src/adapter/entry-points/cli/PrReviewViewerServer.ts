@@ -71,7 +71,11 @@ const VALID_ACTIONS = new Set([
   'CLOSE_UNNEEDED',
 ]);
 
-const sendJson = (res: http.ServerResponse, status: number, data: unknown): void => {
+const sendJson = (
+  res: http.ServerResponse,
+  status: number,
+  data: unknown,
+): void => {
   res.writeHead(status, {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
@@ -79,11 +83,18 @@ const sendJson = (res: http.ServerResponse, status: number, data: unknown): void
   res.end(JSON.stringify(data));
 };
 
-const sendError = (res: http.ServerResponse, status: number, message: string): void => {
+const sendError = (
+  res: http.ServerResponse,
+  status: number,
+  message: string,
+): void => {
   sendJson(res, status, { ok: false, error: message });
 };
 
-const validateAccessKey = (req: http.IncomingMessage, expectedKey: string): boolean => {
+const validateAccessKey = (
+  req: http.IncomingMessage,
+  expectedKey: string,
+): boolean => {
   const headerKey = req.headers['x-access-key'];
   if (typeof headerKey === 'string' && headerKey === expectedKey) return true;
   const parsedUrl = url.parse(req.url ?? '', true);
@@ -116,7 +127,9 @@ const isReviewActionPayload = (body: unknown): body is ReviewActionPayload =>
 const parseDoneStore = (raw: unknown): DoneStore => {
   if (!isJsonObject(raw)) return { done: [] };
   const doneVal = raw['done'];
-  const done = Array.isArray(doneVal) ? doneVal.filter((v): v is string => typeof v === 'string') : [];
+  const done = Array.isArray(doneVal)
+    ? doneVal.filter((v): v is string => typeof v === 'string')
+    : [];
   return { done };
 };
 
@@ -140,13 +153,27 @@ const buildDoneFilePath = (dataDir: string, projectCode: string): string =>
 const buildListFilePath = (dataDir: string, projectCode: string): string =>
   path.join(dataDir, projectCode, 'list.json');
 
-const buildDetailFilePath = (dataDir: string, projectCode: string, repo: string, prNumber: number): string =>
-  path.join(dataDir, projectCode, 'details', repo.replace('/', '_'), `${prNumber}.json`);
+const buildDetailFilePath = (
+  dataDir: string,
+  projectCode: string,
+  repo: string,
+  prNumber: number,
+): string =>
+  path.join(
+    dataDir,
+    projectCode,
+    'details',
+    repo.replace('/', '_'),
+    `${prNumber}.json`,
+  );
 
 type GithubApiErrorResponse = { message?: string };
 
-const isGithubApiErrorResponse = (data: unknown): data is GithubApiErrorResponse =>
-  isJsonObject(data) && ('message' in data ? typeof data['message'] === 'string' : true);
+const isGithubApiErrorResponse = (
+  data: unknown,
+): data is GithubApiErrorResponse =>
+  isJsonObject(data) &&
+  ('message' in data ? typeof data['message'] === 'string' : true);
 
 const githubApiRequest = async (
   ghToken: string,
@@ -166,7 +193,9 @@ const githubApiRequest = async (
   const text = await response.text();
   const data: unknown = JSON.parse(text);
   if (!response.ok) {
-    const errorMessage = isGithubApiErrorResponse(data) ? (data.message ?? `GitHub API error ${response.status}`) : `GitHub API error ${response.status}`;
+    const errorMessage = isGithubApiErrorResponse(data)
+      ? (data.message ?? `GitHub API error ${response.status}`)
+      : `GitHub API error ${response.status}`;
     throw new Error(errorMessage);
   }
   return data;
@@ -174,10 +203,15 @@ const githubApiRequest = async (
 
 type GithubGraphqlResponse = { errors?: JsonValue[]; data?: JsonValue };
 
-const isGithubGraphqlResponse = (value: unknown): value is GithubGraphqlResponse =>
-  isJsonObject(value);
+const isGithubGraphqlResponse = (
+  value: unknown,
+): value is GithubGraphqlResponse => isJsonObject(value);
 
-const githubGraphql = async (ghToken: string, query: string, variables: Record<string, unknown>): Promise<unknown> => {
+const githubGraphql = async (
+  ghToken: string,
+  query: string,
+  variables: Record<string, unknown>,
+): Promise<unknown> => {
   const response = await fetch('https://api.github.com/graphql', {
     method: 'POST',
     headers: {
@@ -234,10 +268,23 @@ const executeApprove = async (
   const reviewBody: GithubPrReview = {
     event: 'APPROVE',
     body: '',
-    comments: inlineComments.map((c) => ({ path: c.filename, position: c.line, body: c.body })),
+    comments: inlineComments.map((c) => ({
+      path: c.filename,
+      position: c.line,
+      body: c.body,
+    })),
   };
-  await githubApiRequest(ghToken, 'POST', `/repos/${owner}/${repoName}/pulls/${prNumber}/reviews`, reviewBody);
-  await setProjectItemStatus(ghToken, projectItemId, 'awaiting-workspace').catch(() => undefined);
+  await githubApiRequest(
+    ghToken,
+    'POST',
+    `/repos/${owner}/${repoName}/pulls/${prNumber}/reviews`,
+    reviewBody,
+  );
+  await setProjectItemStatus(
+    ghToken,
+    projectItemId,
+    'awaiting-workspace',
+  ).catch(() => undefined);
 };
 
 const executeRequestChanges = async (
@@ -251,10 +298,23 @@ const executeRequestChanges = async (
   const reviewBody: GithubPrReview = {
     event: 'REQUEST_CHANGES',
     body: '',
-    comments: inlineComments.map((c) => ({ path: c.filename, position: c.line, body: c.body })),
+    comments: inlineComments.map((c) => ({
+      path: c.filename,
+      position: c.line,
+      body: c.body,
+    })),
   };
-  await githubApiRequest(ghToken, 'POST', `/repos/${owner}/${repoName}/pulls/${prNumber}/reviews`, reviewBody);
-  await setProjectItemStatus(ghToken, projectItemId, 'awaiting-workspace').catch(() => undefined);
+  await githubApiRequest(
+    ghToken,
+    'POST',
+    `/repos/${owner}/${repoName}/pulls/${prNumber}/reviews`,
+    reviewBody,
+  );
+  await setProjectItemStatus(
+    ghToken,
+    projectItemId,
+    'awaiting-workspace',
+  ).catch(() => undefined);
 };
 
 const executeComment = async (
@@ -267,19 +327,42 @@ const executeComment = async (
   const reviewBody: GithubPrReview = {
     event: 'COMMENT',
     body: '',
-    comments: inlineComments.map((c) => ({ path: c.filename, position: c.line, body: c.body })),
+    comments: inlineComments.map((c) => ({
+      path: c.filename,
+      position: c.line,
+      body: c.body,
+    })),
   };
-  await githubApiRequest(ghToken, 'POST', `/repos/${owner}/${repoName}/pulls/${prNumber}/reviews`, reviewBody);
+  await githubApiRequest(
+    ghToken,
+    'POST',
+    `/repos/${owner}/${repoName}/pulls/${prNumber}/reviews`,
+    reviewBody,
+  );
 };
 
-const executeCloseWrong = async (ghToken: string, repo: string, prNumber: number): Promise<void> => {
+const executeCloseWrong = async (
+  ghToken: string,
+  repo: string,
+  prNumber: number,
+): Promise<void> => {
   const [owner, repoName] = repo.split('/');
-  await githubApiRequest(ghToken, 'POST', `/repos/${owner}/${repoName}/issues/${prNumber}/comments`, {
-    body: 'totally wrong',
-  });
-  await githubApiRequest(ghToken, 'PATCH', `/repos/${owner}/${repoName}/pulls/${prNumber}`, {
-    state: 'closed',
-  });
+  await githubApiRequest(
+    ghToken,
+    'POST',
+    `/repos/${owner}/${repoName}/issues/${prNumber}/comments`,
+    {
+      body: 'totally wrong',
+    },
+  );
+  await githubApiRequest(
+    ghToken,
+    'PATCH',
+    `/repos/${owner}/${repoName}/pulls/${prNumber}`,
+    {
+      state: 'closed',
+    },
+  );
 };
 
 const executeCloseUnneeded = async (
@@ -289,18 +372,37 @@ const executeCloseUnneeded = async (
   linkedIssueNumber: number,
 ): Promise<void> => {
   const [owner, repoName] = repo.split('/');
-  await githubApiRequest(ghToken, 'POST', `/repos/${owner}/${repoName}/issues/${prNumber}/comments`, {
-    body: 'This pull request is unnecessary.',
-  });
-  await githubApiRequest(ghToken, 'POST', `/repos/${owner}/${repoName}/issues/${linkedIssueNumber}/labels`, {
-    labels: [CHORE_ROUTING_LABEL],
-  });
-  await githubApiRequest(ghToken, 'PATCH', `/repos/${owner}/${repoName}/pulls/${prNumber}`, {
-    state: 'closed',
-  });
+  await githubApiRequest(
+    ghToken,
+    'POST',
+    `/repos/${owner}/${repoName}/issues/${prNumber}/comments`,
+    {
+      body: 'This pull request is unnecessary.',
+    },
+  );
+  await githubApiRequest(
+    ghToken,
+    'POST',
+    `/repos/${owner}/${repoName}/issues/${linkedIssueNumber}/labels`,
+    {
+      labels: [CHORE_ROUTING_LABEL],
+    },
+  );
+  await githubApiRequest(
+    ghToken,
+    'PATCH',
+    `/repos/${owner}/${repoName}/pulls/${prNumber}`,
+    {
+      state: 'closed',
+    },
+  );
 };
 
-const serveStaticFile = (res: http.ServerResponse, staticDir: string, filePath: string): void => {
+const serveStaticFile = (
+  res: http.ServerResponse,
+  staticDir: string,
+  filePath: string,
+): void => {
   const fullPath = path.join(staticDir, filePath);
   if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isFile()) {
     const indexPath = path.join(staticDir, 'index.html');
@@ -336,11 +438,16 @@ export type PrReviewViewerServerOptions = {
   ghToken: string;
 };
 
-export const createPrReviewViewerServer = (options: PrReviewViewerServerOptions): http.Server => {
+export const createPrReviewViewerServer = (
+  options: PrReviewViewerServerOptions,
+): http.Server => {
   const { accessKey, staticDir, dataDir, ghToken } = options;
   const refCache: RefResolutionCache = new Map();
 
-  const handleRequest = async (req: http.IncomingMessage, res: http.ServerResponse): Promise<void> => {
+  const handleRequest = async (
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+  ): Promise<void> => {
     const parsedUrl = url.parse(req.url ?? '/', true);
     const pathname = parsedUrl.pathname ?? '/';
     const method = req.method ?? 'GET';
@@ -372,7 +479,8 @@ export const createPrReviewViewerServer = (options: PrReviewViewerServerOptions)
           headers: { Authorization: `Bearer ${ghToken}` },
         });
         res.writeHead(imageResponse.status, {
-          'Content-Type': imageResponse.headers.get('Content-Type') ?? 'image/jpeg',
+          'Content-Type':
+            imageResponse.headers.get('Content-Type') ?? 'image/jpeg',
         });
         const buffer = await imageResponse.arrayBuffer();
         res.end(Buffer.from(buffer));
@@ -391,7 +499,11 @@ export const createPrReviewViewerServer = (options: PrReviewViewerServerOptions)
       const owner = parsedUrl.query['owner'];
       const repo = parsedUrl.query['repo'];
       const numberStr = parsedUrl.query['number'];
-      if (typeof owner !== 'string' || typeof repo !== 'string' || typeof numberStr !== 'string') {
+      if (
+        typeof owner !== 'string' ||
+        typeof repo !== 'string' ||
+        typeof numberStr !== 'string'
+      ) {
         sendError(res, 400, 'Missing parameters');
         return;
       }
@@ -402,13 +514,24 @@ export const createPrReviewViewerServer = (options: PrReviewViewerServerOptions)
         return;
       }
       try {
-        const issueRaw = await githubApiRequest(ghToken, 'GET', `/repos/${owner}/${repo}/issues/${numberStr}`, undefined);
+        const issueRaw = await githubApiRequest(
+          ghToken,
+          'GET',
+          `/repos/${owner}/${repo}/issues/${numberStr}`,
+          undefined,
+        );
         const issueObj: JsonObject = isJsonObject(issueRaw) ? issueRaw : {};
         const resolution: RefResolution = {
           title: typeof issueObj['title'] === 'string' ? issueObj['title'] : '',
           state: typeof issueObj['state'] === 'string' ? issueObj['state'] : '',
-          isPR: 'pull_request' in issueObj && issueObj['pull_request'] !== null && issueObj['pull_request'] !== undefined,
-          url: typeof issueObj['html_url'] === 'string' ? issueObj['html_url'] : '',
+          isPR:
+            'pull_request' in issueObj &&
+            issueObj['pull_request'] !== null &&
+            issueObj['pull_request'] !== undefined,
+          url:
+            typeof issueObj['html_url'] === 'string'
+              ? issueObj['html_url']
+              : '',
         };
         refCache.set(cacheKey, resolution);
         sendJson(res, 200, resolution);
@@ -427,7 +550,9 @@ export const createPrReviewViewerServer = (options: PrReviewViewerServerOptions)
     const projectCode = projectMatch[1];
     const subPath = projectMatch[2] ?? '/';
 
-    const blobMatch = subPath.match(/^\/blob\/([^/]+)\/([^/]+)\/([^/]+)\/(.+)$/);
+    const blobMatch = subPath.match(
+      /^\/blob\/([^/]+)\/([^/]+)\/([^/]+)\/(.+)$/,
+    );
     if (blobMatch) {
       if (!validateAccessKey(req, accessKey)) {
         sendError(res, 403, 'Unauthorized');
@@ -444,7 +569,9 @@ export const createPrReviewViewerServer = (options: PrReviewViewerServerOptions)
           return;
         }
         res.writeHead(200, {
-          'Content-Type': rawResponse.headers.get('Content-Type') ?? 'application/octet-stream',
+          'Content-Type':
+            rawResponse.headers.get('Content-Type') ??
+            'application/octet-stream',
         });
         const buffer = await rawResponse.arrayBuffer();
         res.end(Buffer.from(buffer));
@@ -456,7 +583,11 @@ export const createPrReviewViewerServer = (options: PrReviewViewerServerOptions)
     }
 
     if (!validateAccessKey(req, accessKey)) {
-      if (subPath === '/' || subPath === '' || !subPath.startsWith('/data') && !subPath.startsWith('/review')) {
+      if (
+        subPath === '/' ||
+        subPath === '' ||
+        (!subPath.startsWith('/data') && !subPath.startsWith('/review'))
+      ) {
         const indexPath = path.join(staticDir, 'index.html');
         if (fs.existsSync(indexPath)) {
           const content = fs.readFileSync(indexPath);
@@ -480,10 +611,18 @@ export const createPrReviewViewerServer = (options: PrReviewViewerServerOptions)
         sendJson(res, 200, { stories: [], items: [] });
         return;
       }
-      const rawListParsed: unknown = JSON.parse(fs.readFileSync(listPath, 'utf8'));
-      const rawListObj: JsonObject = isJsonObject(rawListParsed) ? rawListParsed : {};
-      const rawItems: JsonValue[] = Array.isArray(rawListObj['items']) ? rawListObj['items'] : [];
-      const rawStories: JsonValue[] = Array.isArray(rawListObj['stories']) ? rawListObj['stories'] : [];
+      const rawListParsed: unknown = JSON.parse(
+        fs.readFileSync(listPath, 'utf8'),
+      );
+      const rawListObj: JsonObject = isJsonObject(rawListParsed)
+        ? rawListParsed
+        : {};
+      const rawItems: JsonValue[] = Array.isArray(rawListObj['items'])
+        ? rawListObj['items']
+        : [];
+      const rawStories: JsonValue[] = Array.isArray(rawListObj['stories'])
+        ? rawListObj['stories']
+        : [];
       const doneStore = loadDoneStore(buildDoneFilePath(dataDir, projectCode));
       const doneSet = new Set(doneStore.done);
       const filteredItems = rawItems.filter((item) => {
@@ -501,7 +640,12 @@ export const createPrReviewViewerServer = (options: PrReviewViewerServerOptions)
     if (detailMatch && method === 'GET') {
       const repo = detailMatch[1];
       const prNumber = Number(detailMatch[2]);
-      const detailPath = buildDetailFilePath(dataDir, projectCode, repo, prNumber);
+      const detailPath = buildDetailFilePath(
+        dataDir,
+        projectCode,
+        repo,
+        prNumber,
+      );
       if (!fs.existsSync(detailPath)) {
         sendError(res, 404, 'Detail not found');
         return;
@@ -534,30 +678,62 @@ export const createPrReviewViewerServer = (options: PrReviewViewerServerOptions)
       try {
         switch (body.action) {
           case 'APPROVE':
-            await executeApprove(ghToken, body.repo, body.prNumber, body.projectItemId, body.inlineComments);
+            await executeApprove(
+              ghToken,
+              body.repo,
+              body.prNumber,
+              body.projectItemId,
+              body.inlineComments,
+            );
             break;
           case 'REQUEST_CHANGES':
-            await executeRequestChanges(ghToken, body.repo, body.prNumber, body.projectItemId, body.inlineComments);
+            await executeRequestChanges(
+              ghToken,
+              body.repo,
+              body.prNumber,
+              body.projectItemId,
+              body.inlineComments,
+            );
             break;
           case 'COMMENT':
-            await executeComment(ghToken, body.repo, body.prNumber, body.inlineComments);
+            await executeComment(
+              ghToken,
+              body.repo,
+              body.prNumber,
+              body.inlineComments,
+            );
             break;
           case 'CLOSE_WRONG':
             await executeCloseWrong(ghToken, body.repo, body.prNumber);
             break;
           case 'CLOSE_UNNEEDED': {
-            const detailPath = buildDetailFilePath(dataDir, projectCode, body.repo, body.prNumber);
+            const detailPath = buildDetailFilePath(
+              dataDir,
+              projectCode,
+              body.repo,
+              body.prNumber,
+            );
             let linkedIssueNumber = 0;
             if (fs.existsSync(detailPath)) {
-              const detailParsed: unknown = JSON.parse(fs.readFileSync(detailPath, 'utf8'));
+              const detailParsed: unknown = JSON.parse(
+                fs.readFileSync(detailPath, 'utf8'),
+              );
               if (isJsonObject(detailParsed)) {
                 const issueField = detailParsed['issue'];
-                if (isJsonObject(issueField) && typeof issueField['number'] === 'number') {
+                if (
+                  isJsonObject(issueField) &&
+                  typeof issueField['number'] === 'number'
+                ) {
                   linkedIssueNumber = issueField['number'];
                 }
               }
             }
-            await executeCloseUnneeded(ghToken, body.repo, body.prNumber, linkedIssueNumber);
+            await executeCloseUnneeded(
+              ghToken,
+              body.repo,
+              body.prNumber,
+              linkedIssueNumber,
+            );
             break;
           }
           default:
@@ -565,7 +741,12 @@ export const createPrReviewViewerServer = (options: PrReviewViewerServerOptions)
             return;
         }
 
-        if (body.action === 'APPROVE' || body.action === 'REQUEST_CHANGES' || body.action === 'CLOSE_WRONG' || body.action === 'CLOSE_UNNEEDED') {
+        if (
+          body.action === 'APPROVE' ||
+          body.action === 'REQUEST_CHANGES' ||
+          body.action === 'CLOSE_WRONG' ||
+          body.action === 'CLOSE_UNNEEDED'
+        ) {
           const doneFilePath = buildDoneFilePath(dataDir, projectCode);
           const doneStore = loadDoneStore(doneFilePath);
           const key = `${body.repo}/${body.prNumber}`;
@@ -601,7 +782,9 @@ export const createPrReviewViewerServer = (options: PrReviewViewerServerOptions)
   return server;
 };
 
-export const startPrReviewViewerServer = (options: PrReviewViewerServerOptions): Promise<void> =>
+export const startPrReviewViewerServer = (
+  options: PrReviewViewerServerOptions,
+): Promise<void> =>
   new Promise((resolve) => {
     const server = createPrReviewViewerServer(options);
 
@@ -613,6 +796,8 @@ export const startPrReviewViewerServer = (options: PrReviewViewerServerOptions):
     process.once('SIGINT', shutdown);
 
     server.listen(options.port, options.host, () => {
-      console.log(`PR Review Viewer running at http://${options.host}:${options.port}`);
+      console.log(
+        `PR Review Viewer running at http://${options.host}:${options.port}`,
+      );
     });
   });

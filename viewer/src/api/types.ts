@@ -61,7 +61,12 @@ export type PrDetailResponse = {
   };
 };
 
-export type ReviewAction = 'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT' | 'CLOSE_WRONG' | 'CLOSE_UNNEEDED';
+export type ReviewAction =
+  | 'APPROVE'
+  | 'REQUEST_CHANGES'
+  | 'COMMENT'
+  | 'CLOSE_WRONG'
+  | 'CLOSE_UNNEEDED';
 
 export type DiffLineComment = {
   filename: string;

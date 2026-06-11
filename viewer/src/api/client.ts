@@ -1,4 +1,10 @@
-import type { PrListResponse, PrDetailResponse, ReviewAction, DiffLineComment, RefResolution } from './types';
+import type {
+  PrListResponse,
+  PrDetailResponse,
+  ReviewAction,
+  DiffLineComment,
+  RefResolution,
+} from './types';
 
 const getProjectCode = (): string => {
   const match = window.location.pathname.match(/\/projects\/([^/]+)\/prs/);
@@ -10,7 +16,9 @@ const buildHeaders = (accessKey: string): HeadersInit => ({
   'Content-Type': 'application/json',
 });
 
-export const fetchPrList = async (accessKey: string): Promise<PrListResponse> => {
+export const fetchPrList = async (
+  accessKey: string,
+): Promise<PrListResponse> => {
   const projectCode = getProjectCode();
   const response = await fetch(`/projects/${projectCode}/prs/data/list`, {
     headers: buildHeaders(accessKey),
@@ -49,10 +57,16 @@ export const submitReview = async (
   const response = await fetch(`/projects/${projectCode}/prs/review`, {
     method: 'POST',
     headers: buildHeaders(accessKey),
-    body: JSON.stringify({ action, repo, prNumber, projectItemId, inlineComments }),
+    body: JSON.stringify({
+      action,
+      repo,
+      prNumber,
+      projectItemId,
+      inlineComments,
+    }),
   });
   if (!response.ok) {
-    const body = await response.json() as { ok: boolean; error: string };
+    const body = (await response.json()) as { ok: boolean; error: string };
     throw new Error(body.error);
   }
 };
@@ -74,5 +88,11 @@ export const resolveRef = async (
 export const buildImageProxyUrl = (originalUrl: string): string =>
   `/image-proxy?url=${encodeURIComponent(originalUrl)}`;
 
-export const buildBlobUrl = (projectCode: string, owner: string, repo: string, ref: string, filePath: string): string =>
+export const buildBlobUrl = (
+  projectCode: string,
+  owner: string,
+  repo: string,
+  ref: string,
+  filePath: string,
+): string =>
   `/projects/${projectCode}/blob/${owner}/${repo}/${ref}/${filePath}`;

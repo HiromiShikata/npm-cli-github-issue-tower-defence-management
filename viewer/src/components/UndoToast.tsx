@@ -27,7 +27,12 @@ const ACTION_LABELS: Record<ReviewAction, string> = {
 
 const COUNTDOWN_SECONDS = 5;
 
-export const UndoToast = ({ action, prTitle, onUndo, onExpire }: UndoToastProps): React.JSX.Element => {
+export const UndoToast = ({
+  action,
+  prTitle,
+  onUndo,
+  onExpire,
+}: UndoToastProps): React.JSX.Element => {
   const [remaining, setRemaining] = useState(COUNTDOWN_SECONDS);
 
   useEffect(() => {

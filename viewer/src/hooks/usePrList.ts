@@ -9,7 +9,9 @@ type PrListState = {
   unauthorized: boolean;
 };
 
-export const usePrList = (accessKey: string | null): PrListState & { reload: () => void } => {
+export const usePrList = (
+  accessKey: string | null,
+): PrListState & { reload: () => void } => {
   const [state, setState] = useState<PrListState>({
     data: null,
     loading: false,
@@ -22,16 +24,31 @@ export const usePrList = (accessKey: string | null): PrListState & { reload: () 
       setState({ data: null, loading: false, error: null, unauthorized: true });
       return;
     }
-    setState((prev) => ({ ...prev, loading: true, error: null, unauthorized: false }));
+    setState((prev) => ({
+      ...prev,
+      loading: true,
+      error: null,
+      unauthorized: false,
+    }));
     try {
       const data = await fetchPrList(accessKey);
       setState({ data, loading: false, error: null, unauthorized: false });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       if (message.includes('403') || message.includes('HTTP 403')) {
-        setState({ data: null, loading: false, error: null, unauthorized: true });
+        setState({
+          data: null,
+          loading: false,
+          error: null,
+          unauthorized: true,
+        });
       } else {
-        setState({ data: null, loading: false, error: message, unauthorized: false });
+        setState({
+          data: null,
+          loading: false,
+          error: message,
+          unauthorized: false,
+        });
       }
     }
   }, [accessKey]);

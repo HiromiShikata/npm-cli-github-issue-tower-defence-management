@@ -24,12 +24,23 @@ type PendingReview = {
   inlineComments: DiffLineComment[];
 };
 
-const buildPrKey = (repo: string, prNumber: number): string => `${repo}/${prNumber}`;
+const buildPrKey = (repo: string, prNumber: number): string =>
+  `${repo}/${prNumber}`;
 
 export const App = (): React.JSX.Element => {
   const { accessKey, setAccessKey } = useAccessKey();
-  const { data: listData, loading: listLoading, error: listError, unauthorized, reload } = usePrList(accessKey);
-  const { state: detailState, load: loadDetail, currentKey: detailKey } = usePrDetail(accessKey);
+  const {
+    data: listData,
+    loading: listLoading,
+    error: listError,
+    unauthorized,
+    reload,
+  } = usePrList(accessKey);
+  const {
+    state: detailState,
+    load: loadDetail,
+    currentKey: detailKey,
+  } = usePrDetail(accessKey);
 
   const [selectedItem, setSelectedItem] = useState<PrListItem | null>(null);
   const [doneSet, setDoneSet] = useState<Set<string>>(new Set());
@@ -57,7 +68,9 @@ export const App = (): React.JSX.Element => {
 
       const allItems = listData?.items ?? [];
       const pendingItems = allItems.filter(
-        (item) => !doneSet.has(buildPrKey(item.pr.repo, item.pr.number)) && buildPrKey(item.pr.repo, item.pr.number) !== prKey,
+        (item) =>
+          !doneSet.has(buildPrKey(item.pr.repo, item.pr.number)) &&
+          buildPrKey(item.pr.repo, item.pr.number) !== prKey,
       );
 
       if (pendingItems.length > 0) {
@@ -70,7 +83,13 @@ export const App = (): React.JSX.Element => {
 
       setToast({ action, prTitle, prKey });
 
-      pendingReviewRef.current = { action, repo, prNumber, projectItemId, inlineComments };
+      pendingReviewRef.current = {
+        action,
+        repo,
+        prNumber,
+        projectItemId,
+        inlineComments,
+      };
 
       if (timerRef.current) {
         clearTimeout(timerRef.current);
@@ -80,7 +99,14 @@ export const App = (): React.JSX.Element => {
         const pending = pendingReviewRef.current;
         if (pending) {
           pendingReviewRef.current = null;
-          submitReview(accessKey, pending.action, pending.repo, pending.prNumber, pending.projectItemId, pending.inlineComments).catch(() => {
+          submitReview(
+            accessKey,
+            pending.action,
+            pending.repo,
+            pending.prNumber,
+            pending.projectItemId,
+            pending.inlineComments,
+          ).catch(() => {
             reload();
           });
         }
@@ -106,7 +132,10 @@ export const App = (): React.JSX.Element => {
       });
       const [repo, prNumberStr] = prKey.split('/');
       const prNumber = Number(prNumberStr);
-      const item = listData?.items.find((i) => i.pr.repo === repo && i.pr.number === prNumber) ?? null;
+      const item =
+        listData?.items.find(
+          (i) => i.pr.repo === repo && i.pr.number === prNumber,
+        ) ?? null;
       setSelectedItem(item);
       if (item) {
         loadDetail({ repo: item.pr.repo, prNumber: item.pr.number });
@@ -125,7 +154,15 @@ export const App = (): React.JSX.Element => {
 
   if (listLoading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', color: '#6b7280' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '100vh',
+          color: '#6b7280',
+        }}
+      >
         Loading...
       </div>
     );
@@ -133,16 +170,37 @@ export const App = (): React.JSX.Element => {
 
   if (listError) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', color: '#ef4444' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '100vh',
+          color: '#ef4444',
+        }}
+      >
         Error: {listError}
       </div>
     );
   }
 
-  if (selectedItem && detailKey && detailKey.repo === selectedItem.pr.repo && detailKey.prNumber === selectedItem.pr.number) {
+  if (
+    selectedItem &&
+    detailKey &&
+    detailKey.repo === selectedItem.pr.repo &&
+    detailKey.prNumber === selectedItem.pr.number
+  ) {
     if (detailState.loading) {
       return (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', color: '#6b7280' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            minHeight: '100vh',
+            color: '#6b7280',
+          }}
+        >
           Loading PR details...
         </div>
       );

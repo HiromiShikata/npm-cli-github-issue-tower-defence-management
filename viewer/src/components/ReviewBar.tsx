@@ -14,13 +14,31 @@ type ActionButton = {
 };
 
 const ACTION_BUTTONS: ActionButton[] = [
-  { action: 'CLOSE_UNNEEDED', label: 'Unnecessary', color: '#9ca3af', textColor: 'white' },
-  { action: 'CLOSE_WRONG', label: 'Totally wrong', color: '#ef4444', textColor: 'white' },
-  { action: 'REQUEST_CHANGES', label: 'Reject', color: '#f59e0b', textColor: 'white' },
+  {
+    action: 'CLOSE_UNNEEDED',
+    label: 'Unnecessary',
+    color: '#9ca3af',
+    textColor: 'white',
+  },
+  {
+    action: 'CLOSE_WRONG',
+    label: 'Totally wrong',
+    color: '#ef4444',
+    textColor: 'white',
+  },
+  {
+    action: 'REQUEST_CHANGES',
+    label: 'Reject',
+    color: '#f59e0b',
+    textColor: 'white',
+  },
   { action: 'APPROVE', label: 'Approve', color: '#22c55e', textColor: 'white' },
 ];
 
-export const ReviewBar = ({ onAction, disabled }: ReviewBarProps): React.JSX.Element => (
+export const ReviewBar = ({
+  onAction,
+  disabled,
+}: ReviewBarProps): React.JSX.Element => (
   <div
     style={{
       position: 'sticky',
