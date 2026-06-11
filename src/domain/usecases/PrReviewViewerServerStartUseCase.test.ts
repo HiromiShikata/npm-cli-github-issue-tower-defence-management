@@ -49,12 +49,10 @@ const makeReviewRepo = (): jest.Mocked<PrReviewRepository> => ({
   closePullRequest: jest.fn().mockResolvedValue(undefined),
   addLabel: jest.fn().mockResolvedValue(undefined),
   updateProjectItemStatus: jest.fn().mockResolvedValue(undefined),
-  getFileContent: jest
-    .fn()
-    .mockResolvedValue({
-      content: Buffer.from('data'),
-      contentType: 'image/png',
-    }),
+  getFileContent: jest.fn().mockResolvedValue({
+    content: Buffer.from('data'),
+    contentType: 'image/png',
+  }),
   getIssueOrPrTitle: jest.fn().mockResolvedValue({
     title: 'Some title',
     state: 'open',
