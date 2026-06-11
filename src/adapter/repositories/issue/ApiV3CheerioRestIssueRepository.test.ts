@@ -524,10 +524,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       jest.restoreAllMocks();
     });
 
-    const makeTimelineResponse = (
-      nodes: object[],
-      hasNextPage = false,
-    ) => ({
+    const makeTimelineResponse = (nodes: object[], hasNextPage = false) => ({
       data: {
         repository: {
           issue: {
@@ -566,7 +563,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           nodes: [
             {
               commit: {
-                statusCheckRollup: { state: 'SUCCESS', contexts: { nodes: [] } },
+                statusCheckRollup: {
+                  state: 'SUCCESS',
+                  contexts: { nodes: [] },
+                },
               },
             },
           ],
@@ -577,14 +577,18 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     it('should include a PR when willCloseTarget is true', async () => {
-      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-        new Response(
-          JSON.stringify(
-            makeTimelineResponse([makeOpenPrNode(44, 'feature-branch', true)]),
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify(
+              makeTimelineResponse([
+                makeOpenPrNode(44, 'feature-branch', true),
+              ]),
+            ),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
           ),
-          { status: 200, headers: { 'Content-Type': 'application/json' } },
-        ),
-      );
+        );
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = await repository.findRelatedOpenPRs(
@@ -598,14 +602,16 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     it('should include a PR when willCloseTarget is false but headRefName matches i{issueNumber}', async () => {
-      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-        new Response(
-          JSON.stringify(
-            makeTimelineResponse([makeOpenPrNode(44, 'i13', false)]),
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify(
+              makeTimelineResponse([makeOpenPrNode(44, 'i13', false)]),
+            ),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
           ),
-          { status: 200, headers: { 'Content-Type': 'application/json' } },
-        ),
-      );
+        );
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = await repository.findRelatedOpenPRs(
@@ -619,16 +625,18 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     it('should exclude a PR when willCloseTarget is false and headRefName does not match i{issueNumber}', async () => {
-      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-        new Response(
-          JSON.stringify(
-            makeTimelineResponse([
-              makeOpenPrNode(44, 'feature-unrelated', false),
-            ]),
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify(
+              makeTimelineResponse([
+                makeOpenPrNode(44, 'feature-unrelated', false),
+              ]),
+            ),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
           ),
-          { status: 200, headers: { 'Content-Type': 'application/json' } },
-        ),
-      );
+        );
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = await repository.findRelatedOpenPRs(
@@ -639,14 +647,16 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     it('should include a PR when willCloseTarget is false and headRefName matches i{issueNumber} case-insensitively', async () => {
-      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-        new Response(
-          JSON.stringify(
-            makeTimelineResponse([makeOpenPrNode(44, 'I13', false)]),
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify(
+              makeTimelineResponse([makeOpenPrNode(44, 'I13', false)]),
+            ),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
           ),
-          { status: 200, headers: { 'Content-Type': 'application/json' } },
-        ),
-      );
+        );
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = await repository.findRelatedOpenPRs(
