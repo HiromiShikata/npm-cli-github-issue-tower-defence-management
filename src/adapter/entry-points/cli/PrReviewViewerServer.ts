@@ -513,7 +513,10 @@ export const createPrReviewViewerServer = (
         const buffer = await imageResponse.arrayBuffer();
         res.end(Buffer.from(buffer));
       } catch (err) {
-        console.error('Internal server error:', err instanceof Error ? err.message : String(err));
+        console.error(
+          'Internal server error:',
+          err instanceof Error ? err.message : String(err),
+        );
         sendError(res, 500, 'Internal server error');
       }
       return;
@@ -535,7 +538,11 @@ export const createPrReviewViewerServer = (
         sendError(res, 400, 'Missing parameters');
         return;
       }
-      if (!isSafeGithubSegment(owner) || !isSafeGithubSegment(repo) || !/^\d+$/.test(numberStr)) {
+      if (
+        !isSafeGithubSegment(owner) ||
+        !isSafeGithubSegment(repo) ||
+        !/^\d+$/.test(numberStr)
+      ) {
         sendError(res, 400, 'Invalid parameters');
         return;
       }
@@ -568,7 +575,10 @@ export const createPrReviewViewerServer = (
         refCache.set(cacheKey, resolution);
         sendJson(res, 200, resolution);
       } catch (err) {
-        console.error('Internal server error:', err instanceof Error ? err.message : String(err));
+        console.error(
+          'Internal server error:',
+          err instanceof Error ? err.message : String(err),
+        );
         sendError(res, 500, 'Internal server error');
       }
       return;
@@ -591,11 +601,19 @@ export const createPrReviewViewerServer = (
         return;
       }
       const [, owner, repo, ref, filePath] = blobMatch;
-      if (!isSafeGithubSegment(owner) || !isSafeGithubSegment(repo) || !isSafeGithubSegment(ref)) {
+      if (
+        !isSafeGithubSegment(owner) ||
+        !isSafeGithubSegment(repo) ||
+        !isSafeGithubSegment(ref)
+      ) {
         sendError(res, 400, 'Invalid parameters');
         return;
       }
-      const safeFilePath = filePath.split('/').every((seg) => isSafeGithubSegment(seg) || seg === '') ? filePath : null;
+      const safeFilePath = filePath
+        .split('/')
+        .every((seg) => isSafeGithubSegment(seg) || seg === '')
+        ? filePath
+        : null;
       if (!safeFilePath) {
         sendError(res, 400, 'Invalid file path');
         return;
@@ -617,7 +635,10 @@ export const createPrReviewViewerServer = (
         const buffer = await rawResponse.arrayBuffer();
         res.end(Buffer.from(buffer));
       } catch (err) {
-        console.error('Internal server error:', err instanceof Error ? err.message : String(err));
+        console.error(
+          'Internal server error:',
+          err instanceof Error ? err.message : String(err),
+        );
         sendError(res, 500, 'Internal server error');
       }
       return;
@@ -799,7 +820,10 @@ export const createPrReviewViewerServer = (
 
         sendJson(res, 200, { ok: true });
       } catch (err) {
-        console.error('Review action error:', err instanceof Error ? err.message : String(err));
+        console.error(
+          'Review action error:',
+          err instanceof Error ? err.message : String(err),
+        );
         sendError(res, 422, 'Review action failed');
       }
       return;
