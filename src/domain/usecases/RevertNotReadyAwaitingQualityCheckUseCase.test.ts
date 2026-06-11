@@ -581,9 +581,15 @@ describe('RevertNotReadyAwaitingQualityCheckUseCase', () => {
       expect(result?.items[0]?.pr.additions).toBe(10);
       expect(result?.items[0]?.pr.deletions).toBe(3);
       expect(result?.items[0]?.pr.changedFiles).toBe(2);
-      expect(result?.items[0]?.changedDirectories).toContain('src/domain/entities');
-      expect(result?.items[0]?.changedDirectories).toContain('src/domain/usecases');
-      expect(result?.items[0]?.changedDirectories).toContain('src/adapter/repos');
+      expect(result?.items[0]?.changedDirectories).toContain(
+        'src/domain/entities',
+      );
+      expect(result?.items[0]?.changedDirectories).toContain(
+        'src/domain/usecases',
+      );
+      expect(result?.items[0]?.changedDirectories).toContain(
+        'src/adapter/repos',
+      );
     });
 
     it('should return null when path is not configured', async () => {
