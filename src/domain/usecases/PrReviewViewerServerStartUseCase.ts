@@ -189,6 +189,8 @@ export class PrReviewViewerServerStartUseCase {
           prNumber,
         );
         await this.safeMarkDone(owner, repoName, prNumber);
+      } else {
+        return { ok: false, error: 'Unsupported action' };
       }
       return { ok: true };
     } catch (error) {
@@ -238,8 +240,10 @@ export class PrReviewViewerServerStartUseCase {
   ): Promise<void> => {
     try {
       await this.prReviewDoneRepository.markDone(owner, repo, prNumber);
-    } catch (_error) {
-      void _error;
+    } catch (error) {
+      process.stderr.write(
+        `safeMarkDone failed for ${owner}/${repo}#${prNumber}: ${error instanceof Error ? error.message : String(error)}\n`,
+      );
     }
   };
 

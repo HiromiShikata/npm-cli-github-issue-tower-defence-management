@@ -393,17 +393,26 @@ describe('PrReviewViewerHttpServer', () => {
   });
 
   describe('static file serving', () => {
-    it('serves index.html for root path', async () => {
+    it('serves index.html for root path with valid access key', async () => {
+      const { status } = await makeRequest('GET', '/', {
+        Authorization: `Bearer ${TEST_ACCESS_KEY}`,
+      });
+      expect(status).toBe(200);
+    });
+
+    it('rejects static file request without access key', async () => {
       const { status } = await makeRequest('GET', '/');
+      expect(status).toBe(403);
+    });
+
+    it('returns fallback index.html for missing static file with valid access key', async () => {
+      const { status } = await makeRequest('GET', '/nonexistent-route', {
+        Authorization: `Bearer ${TEST_ACCESS_KEY}`,
+      });
       expect(status).toBe(200);
     });
 
-    it('returns 404 for missing static file with fallback to index.html', async () => {
-      const { status } = await makeRequest('GET', '/nonexistent-route');
-      expect(status).toBe(200);
-    });
-
-    it('rejects path traversal attempts', async () => {
+    it('rejects path traversal attempts before auth check', async () => {
       const { status } = await makeRequest('GET', '/../etc/passwd');
       expect(status).toBe(400);
     });

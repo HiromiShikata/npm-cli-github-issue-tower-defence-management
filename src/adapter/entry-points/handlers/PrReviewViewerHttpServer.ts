@@ -112,34 +112,28 @@ export class PrReviewViewerHttpServer {
     res: http.ServerResponse,
   ): Promise<void> => {
     const rawUrl = req.url ?? '/';
-    if (rawUrl.includes('..')) {
+    const rawPath = rawUrl.split('?')[0];
+    if (rawPath.split('/').some((seg) => seg === '..' || seg === '.')) {
       sendError(res, 400, 'Invalid path');
       return;
     }
     const urlObj = new URL(rawUrl, 'http://localhost');
     const pathname = urlObj.pathname;
 
+    if (pathname.split('/').some((seg) => seg === '..' || seg === '.')) {
+      sendError(res, 400, 'Invalid path');
+      return;
+    }
+
     if (pathname === '/health') {
       sendJson(res, 200, { ok: true });
       return;
     }
 
-    const apiPatterns = [
-      /^\/projects\/[^/]+\/prs\/data\/list$/,
-      /^\/projects\/[^/]+\/prs\/data\/.+\/\d+$/,
-      /^\/projects\/[^/]+\/prs\/review$/,
-      /^\/image-proxy$/,
-      /^\/blob\//,
-      /^\/issue-title$/,
-    ];
-    const isApiRequest = apiPatterns.some((p) => p.test(pathname));
-
-    if (isApiRequest) {
-      const key = extractAccessKey(req);
-      if (!key || key !== this.accessKey) {
-        sendError(res, 403, 'Unauthorized');
-        return;
-      }
+    const key = extractAccessKey(req);
+    if (!key || key !== this.accessKey) {
+      sendError(res, 403, 'Unauthorized');
+      return;
     }
 
     if (pathname === '/image-proxy') {
@@ -315,6 +309,16 @@ export class PrReviewViewerHttpServer {
         sendError(res, 400, `Invalid action: ${action}`);
         return;
       }
+      const actionsRequiringProjectFields: ValidAction[] = [
+        'APPROVE',
+        'REQUEST_CHANGES',
+      ];
+      if (actionsRequiringProjectFields.includes(action)) {
+        if (!projectItemId || !projectId || !statusFieldId || !awaitingWorkspaceStatusOptionId) {
+          sendError(res, 400, 'Missing required fields for this action: projectItemId, projectId, statusFieldId, awaitingWorkspaceStatusOptionId');
+          return;
+        }
+      }
       const result = await this.useCase.executeReview(projectCode, {
         action,
         repo,
@@ -442,14 +446,18 @@ export class PrReviewViewerHttpServer {
     res: http.ServerResponse,
     pathname: string,
   ): Promise<void> => {
-    if (pathname.includes('..')) {
+    const normalizedPath = pathname === '/' ? '/index.html' : pathname;
+    const relativePath = normalizedPath.startsWith('/')
+      ? normalizedPath.slice(1)
+      : normalizedPath;
+    const resolvedBase = path.resolve(this.staticFilesDir);
+    const resolvedFile = path.resolve(this.staticFilesDir, relativePath);
+    if (!resolvedFile.startsWith(resolvedBase + path.sep) && resolvedFile !== resolvedBase) {
       sendError(res, 400, 'Invalid path');
       return;
     }
-    const normalizedPath = pathname === '/' ? '/index.html' : pathname;
-    const filePath = path.join(this.staticFilesDir, normalizedPath);
-    if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
-      const indexPath = path.join(this.staticFilesDir, 'index.html');
+    if (!fs.existsSync(resolvedFile) || !fs.statSync(resolvedFile).isFile()) {
+      const indexPath = path.join(resolvedBase, 'index.html');
       if (fs.existsSync(indexPath)) {
         const content = fs.readFileSync(indexPath);
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
@@ -460,9 +468,9 @@ export class PrReviewViewerHttpServer {
       res.end('Not found');
       return;
     }
-    const ext = path.extname(filePath).toLowerCase();
+    const ext = path.extname(resolvedFile).toLowerCase();
     const contentType = MIME_TYPES[ext] ?? 'application/octet-stream';
-    const content = fs.readFileSync(filePath);
+    const content = fs.readFileSync(resolvedFile);
     res.writeHead(200, {
       'Content-Type': contentType,
       'Content-Length': content.length,

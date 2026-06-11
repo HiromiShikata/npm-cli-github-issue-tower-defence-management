@@ -626,12 +626,14 @@ program
       options.accessKey,
       options.staticFilesDir,
     );
-    const shutdown = async (): Promise<void> => {
-      await server.stop();
-      process.exit(0);
+    const shutdown = (): void => {
+      server.stop().then(
+        () => process.exit(0),
+        () => process.exit(1),
+      );
     };
-    process.on('SIGTERM', () => void shutdown());
-    process.on('SIGINT', () => void shutdown());
+    process.on('SIGTERM', shutdown);
+    process.on('SIGINT', shutdown);
     await server.start(options.host, port);
     console.log(
       `PR review viewer server started on http://${options.host}:${port}`,
