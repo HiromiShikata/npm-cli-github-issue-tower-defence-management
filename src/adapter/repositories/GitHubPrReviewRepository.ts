@@ -300,10 +300,19 @@ export class GitHubPrReviewRepository
       throw new Error('Hostname not allowed');
     }
     const safeHostname = ALLOWED_IMAGE_PROXY_HOSTNAMES[allowedIndex];
-    const reconstructedUrl = new URL(
-      `${parsedUrl.protocol}//${safeHostname}${parsedUrl.pathname}${parsedUrl.search}`,
-    );
-    const response = await fetch(reconstructedUrl.href, {
+    const encodedPathAndQuery =
+      parsedUrl.pathname.split('/').map(encodeURIComponent).join('/') +
+      (parsedUrl.search
+        ? '?' +
+          Array.from(parsedUrl.searchParams.entries())
+            .map(
+              ([k, v]) =>
+                `${encodeURIComponent(k)}=${encodeURIComponent(v)}`,
+            )
+            .join('&')
+        : '');
+    const safeUrl = `https://${safeHostname}${encodedPathAndQuery}`;
+    const response = await fetch(safeUrl, {
       headers: {
         Authorization: `token ${this.ghToken}`,
       },
