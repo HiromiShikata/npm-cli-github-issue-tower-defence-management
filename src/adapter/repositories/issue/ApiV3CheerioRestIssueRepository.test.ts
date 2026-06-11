@@ -602,6 +602,38 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     it('should include a PR when willCloseTarget is false but headRefName matches i{issueNumber}', async () => {
+      const directPrResponse = {
+        data: {
+          repository: {
+            pullRequest: {
+              url: 'https://github.com/HiromiShikata/test-repository/pull/44',
+              state: 'OPEN',
+              isDraft: false,
+              headRefName: 'i13',
+              baseRefName: 'main',
+              mergeable: 'MERGEABLE',
+              baseRepository: {
+                branchProtectionRules: { nodes: [] },
+                defaultBranchRef: { name: 'main' },
+                rulesets: { nodes: [] },
+              },
+              commits: {
+                nodes: [
+                  {
+                    commit: {
+                      statusCheckRollup: {
+                        state: 'SUCCESS',
+                        contexts: { nodes: [] },
+                      },
+                    },
+                  },
+                ],
+              },
+              reviewThreads: { nodes: [] },
+            },
+          },
+        },
+      };
       jest
         .spyOn(global, 'fetch')
         .mockResolvedValueOnce(
@@ -611,6 +643,12 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             ),
             { status: 200, headers: { 'Content-Type': 'application/json' } },
           ),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(directPrResponse), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
         );
 
       const { repository } = createApiV3CheerioRestIssueRepository();
@@ -622,6 +660,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result[0].url).toBe(
         'https://github.com/HiromiShikata/test-repository/pull/44',
       );
+      expect(result[0].isCiStateSuccess).toBe(true);
     });
 
     it('should exclude a PR when willCloseTarget is false and headRefName does not match i{issueNumber}', async () => {
@@ -647,6 +686,38 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     it('should include a PR when willCloseTarget is false and headRefName matches i{issueNumber} case-insensitively', async () => {
+      const directPrResponse = {
+        data: {
+          repository: {
+            pullRequest: {
+              url: 'https://github.com/HiromiShikata/test-repository/pull/44',
+              state: 'OPEN',
+              isDraft: false,
+              headRefName: 'I13',
+              baseRefName: 'main',
+              mergeable: 'MERGEABLE',
+              baseRepository: {
+                branchProtectionRules: { nodes: [] },
+                defaultBranchRef: { name: 'main' },
+                rulesets: { nodes: [] },
+              },
+              commits: {
+                nodes: [
+                  {
+                    commit: {
+                      statusCheckRollup: {
+                        state: 'SUCCESS',
+                        contexts: { nodes: [] },
+                      },
+                    },
+                  },
+                ],
+              },
+              reviewThreads: { nodes: [] },
+            },
+          },
+        },
+      };
       jest
         .spyOn(global, 'fetch')
         .mockResolvedValueOnce(
@@ -656,6 +727,12 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             ),
             { status: 200, headers: { 'Content-Type': 'application/json' } },
           ),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(directPrResponse), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
         );
 
       const { repository } = createApiV3CheerioRestIssueRepository();
@@ -667,6 +744,100 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result[0].url).toBe(
         'https://github.com/HiromiShikata/test-repository/pull/44',
       );
+    });
+
+    it('should use fresh PR data from direct query when branch-matched PR has stale FAILURE CI state in timeline', async () => {
+      const staleTimelineNode = {
+        __typename: 'CrossReferencedEvent',
+        willCloseTarget: false,
+        source: {
+          __typename: 'PullRequest',
+          url: 'https://github.com/HiromiShikata/test-repository/pull/44',
+          number: 44,
+          state: 'OPEN',
+          createdAt: '2026-06-01T00:00:00Z',
+          isDraft: false,
+          mergeable: 'MERGEABLE',
+          headRefName: 'i13',
+          baseRefName: 'main',
+          baseRepository: {
+            branchProtectionRules: { nodes: [] },
+            defaultBranchRef: { name: 'main' },
+            rulesets: { nodes: [] },
+          },
+          commits: {
+            nodes: [
+              {
+                commit: {
+                  statusCheckRollup: {
+                    state: 'FAILURE',
+                    contexts: { nodes: [] },
+                  },
+                },
+              },
+            ],
+          },
+          reviewThreads: { nodes: [] },
+          baseRef: { name: 'main' },
+        },
+      };
+      const freshDirectPrResponse = {
+        data: {
+          repository: {
+            pullRequest: {
+              url: 'https://github.com/HiromiShikata/test-repository/pull/44',
+              state: 'OPEN',
+              isDraft: false,
+              headRefName: 'i13',
+              baseRefName: 'main',
+              mergeable: 'MERGEABLE',
+              baseRepository: {
+                branchProtectionRules: { nodes: [] },
+                defaultBranchRef: { name: 'main' },
+                rulesets: { nodes: [] },
+              },
+              commits: {
+                nodes: [
+                  {
+                    commit: {
+                      statusCheckRollup: {
+                        state: 'SUCCESS',
+                        contexts: { nodes: [] },
+                      },
+                    },
+                  },
+                ],
+              },
+              reviewThreads: { nodes: [] },
+            },
+          },
+        },
+      };
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify(makeTimelineResponse([staleTimelineNode])),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(freshDirectPrResponse), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/test-repository/issues/13',
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].url).toBe(
+        'https://github.com/HiromiShikata/test-repository/pull/44',
+      );
+      expect(result[0].isCiStateSuccess).toBe(true);
     });
   });
 

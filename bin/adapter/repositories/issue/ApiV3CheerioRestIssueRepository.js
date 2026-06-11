@@ -495,6 +495,16 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                         continue;
                     const pr = item.source;
                     const prUrl = pr.url || '';
+                    if (!item.willCloseTarget && branchMatchesIssue) {
+                        const currentPr = await this.getOpenPullRequest(prUrl);
+                        if (currentPr !== null) {
+                            relatedPRsMap.set(currentPr.url, {
+                                ...currentPr,
+                                createdAt: pr.createdAt ? new Date(pr.createdAt) : new Date(0),
+                            });
+                        }
+                        continue;
+                    }
                     const baseRefName = pr.baseRefName ?? pr.baseRef?.name;
                     const prStatus = this.computePrStatus(prUrl, pr.headRefName, baseRefName, pr);
                     relatedPRsMap.set(prUrl, {
