@@ -1,22 +1,26 @@
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
-import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
+import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import { PrRejectedReasonType } from './IssueRejectionEvaluator';
+type RejectedReasonType = 'ISSUE_NOT_FOUND' | 'NO_REPORT_FROM_AGENT_BOT' | 'REPORT_HAS_NEXT_STEP' | PrRejectedReasonType;
 export type IssueReviewReadinessResult = {
     reviewReady: boolean;
     rejections: {
-        type: PrRejectedReasonType;
+        type: RejectedReasonType;
         detail: string;
     }[];
 };
 export declare class CheckIssueReviewReadinessUseCase {
-    private readonly projectRepository;
     private readonly issueRepository;
+    private readonly issueCommentRepository;
     private readonly issueRejectionEvaluator;
-    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl'>, issueRepository: Pick<IssueRepository, 'get' | 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'getPullRequestChangedFilePaths' | 'requestChangesWithInlineComment'>);
+    constructor(issueRepository: Pick<IssueRepository, 'getIssueByUrl' | 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'getPullRequestChangedFilePaths' | 'requestChangesWithInlineComment'>, issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue'>);
     run: (params: {
-        projectUrl: string;
         issueUrl: string;
+        allowedIssueAuthors?: string[] | null;
         labelsAsLlmAgentName?: string[] | null;
     }) => Promise<IssueReviewReadinessResult>;
+    private isAuthorTrusted;
+    private reportBodyHasNextStep;
 }
+export {};
 //# sourceMappingURL=CheckIssueReviewReadinessUseCase.d.ts.map

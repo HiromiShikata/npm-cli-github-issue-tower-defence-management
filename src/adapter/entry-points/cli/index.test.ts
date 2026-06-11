@@ -1503,8 +1503,8 @@ mysteryKey: 'value'
 
       expect(mockRun).toHaveBeenCalledTimes(1);
       expect(mockRun).toHaveBeenCalledWith({
-        projectUrl: 'https://github.com/orgs/test/projects/1',
         issueUrl: 'https://github.com/test/repo/issues/1',
+        allowedIssueAuthors: null,
         labelsAsLlmAgentName: null,
       });
       expect(stdoutSpy).toHaveBeenCalledWith(
@@ -1556,7 +1556,10 @@ mysteryKey: 'value'
       stdoutSpy.mockRestore();
     });
 
-    it('should allow CLI args to override projectUrl from config file', async () => {
+    it('should work without --projectUrl when config has no projectUrl', async () => {
+      const configMissing = {};
+      writeConfig(configMissing);
+
       const mockRun = jest
         .fn()
         .mockResolvedValue({ reviewReady: true, rejections: [] });
@@ -1581,13 +1584,12 @@ mysteryKey: 'value'
         configFilePath,
         '--issueUrl',
         'https://github.com/test/repo/issues/1',
-        '--projectUrl',
-        'https://github.com/orgs/override/projects/2',
       ]);
 
+      expect(mockRun).toHaveBeenCalledTimes(1);
       expect(mockRun).toHaveBeenCalledWith({
-        projectUrl: 'https://github.com/orgs/override/projects/2',
         issueUrl: 'https://github.com/test/repo/issues/1',
+        allowedIssueAuthors: null,
         labelsAsLlmAgentName: null,
       });
 
@@ -1617,38 +1619,6 @@ mysteryKey: 'value'
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'GH_TOKEN environment variable is required',
-      );
-      expect(processExitSpy).toHaveBeenCalledWith(1);
-
-      consoleErrorSpy.mockRestore();
-      processExitSpy.mockRestore();
-    });
-
-    it('should exit with error when projectUrl is missing', async () => {
-      const configMissing = {};
-      writeConfig(configMissing);
-
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-      const processExitSpy = jest
-        .spyOn(process, 'exit')
-        .mockImplementation(() => {
-          throw new Error('process.exit called');
-        });
-
-      await expect(
-        program.parseAsync([
-          'node',
-          'test',
-          'checkIssueReviewReadiness',
-          '--configFilePath',
-          configFilePath,
-          '--issueUrl',
-          'https://github.com/test/repo/issues/1',
-        ]),
-      ).rejects.toThrow('process.exit called');
-
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'projectUrl is required. Provide via --projectUrl, config file, or project README.',
       );
       expect(processExitSpy).toHaveBeenCalledWith(1);
 
