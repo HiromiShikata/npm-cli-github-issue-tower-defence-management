@@ -294,6 +294,9 @@ class GitHubTriageRepository extends BaseGitHubRepository_1.BaseGitHubRepository
             if (!storyFieldId) {
                 return { issues: [], storyOptions: [], storyFieldId: '', projectId };
             }
+            if (!noStoryOptionId) {
+                throw new Error(`Story field found but no 'No Story' option exists. Cannot determine untriaged issues.`);
+            }
             const extractItemsPage = (raw) => {
                 if (!isRecord(raw))
                     return { nodes: [], hasNextPage: false, endCursor: null };

@@ -402,7 +402,14 @@ const buildTriagePageHtml = (projectCode) => {
   var storyFieldId = '';
   var projectId = '';
   var currentIndex = 0;
-  var actedIssueNumbers = JSON.parse(localStorage.getItem('triage-acted-' + PROJECT_CODE) || '[]');
+  var actedIssueNumbers = (function() {
+    try {
+      var parsed = JSON.parse(localStorage.getItem('triage-acted-' + PROJECT_CODE) || '[]');
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_e) {
+      return [];
+    }
+  })();
   var undoTimer = null;
   var pendingUndo = null;
 
@@ -413,13 +420,15 @@ const buildTriagePageHtml = (projectCode) => {
   function markActed(number) {
     if (!actedIssueNumbers.includes(number)) {
       actedIssueNumbers.push(number);
-      localStorage.setItem('triage-acted-' + PROJECT_CODE, JSON.stringify(actedIssueNumbers));
     }
+  }
+
+  function commitActedToStorage() {
+    localStorage.setItem('triage-acted-' + PROJECT_CODE, JSON.stringify(actedIssueNumbers));
   }
 
   function unmarkActed(number) {
     actedIssueNumbers = actedIssueNumbers.filter(function(n) { return n !== number; });
-    localStorage.setItem('triage-acted-' + PROJECT_CODE, JSON.stringify(actedIssueNumbers));
   }
 
   function getRemainingIssues() {
@@ -500,7 +509,7 @@ const buildTriagePageHtml = (projectCode) => {
     });
   }
 
-  function showToast(message, type, onUndo) {
+  function showToast(message, type, onUndo, onCommit) {
     clearUndoTimer();
     var toast = document.getElementById('undo-toast');
     toast.className = 'toast ' + type;
@@ -520,6 +529,7 @@ const buildTriagePageHtml = (projectCode) => {
     undoTimer = setTimeout(function() {
       toast.classList.add('hidden');
       pendingUndo = null;
+      if (onCommit) onCommit();
     }, 5000);
   }
 
@@ -548,7 +558,7 @@ const buildTriagePageHtml = (projectCode) => {
     showToast('Assigned: ' + storyName, 'story', function() {
       unmarkActed(issue.number);
       showNext();
-    });
+    }, commitActedToStorage);
     fetch('/projects/' + encodeURIComponent(PROJECT_CODE) + '/triage/set-story', {
       method: 'POST',
       headers: getAuthHeaders(),
@@ -566,7 +576,7 @@ const buildTriagePageHtml = (projectCode) => {
     showToast(label, reason.replace('_', '-'), function() {
       unmarkActed(issue.number);
       showNext();
-    });
+    }, commitActedToStorage);
     fetch('/projects/' + encodeURIComponent(PROJECT_CODE) + '/triage/close-issue', {
       method: 'POST',
       headers: getAuthHeaders(),

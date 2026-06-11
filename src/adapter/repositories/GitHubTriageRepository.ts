@@ -340,6 +340,12 @@ export class GitHubTriageRepository
       return { issues: [], storyOptions: [], storyFieldId: '', projectId };
     }
 
+    if (!noStoryOptionId) {
+      throw new Error(
+        `Story field found but no 'No Story' option exists. Cannot determine untriaged issues.`,
+      );
+    }
+
     const extractItemsPage = (
       raw: unknown,
     ): { nodes: unknown[]; hasNextPage: boolean; endCursor: string | null } => {

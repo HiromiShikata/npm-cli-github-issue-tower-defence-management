@@ -53,7 +53,14 @@ describe('GitHubTriageRepository', () => {
                     state: 'OPEN',
                     isPullRequest: 'Issue',
                   },
-                  fieldValues: { nodes: [] },
+                  fieldValues: {
+                    nodes: [
+                      {
+                        field: { id: 'story-field-1', name: 'Story' },
+                        optionId: 'no-story-opt',
+                      },
+                    ],
+                  },
                 },
                 {
                   id: 'item-2',
@@ -124,6 +131,41 @@ describe('GitHubTriageRepository', () => {
       expect(result.projectId).toBe('project-id-1');
       expect(result.storyOptions).toHaveLength(2);
       expect(result.storyOptions[0].name).toBe('Feature A');
+    });
+
+    it('throws when Story field exists but no-story option is absent', async () => {
+      const responseWithoutNoStory = {
+        data: {
+          organization: null,
+          user: {
+            projectV2: {
+              id: 'project-id-1',
+              fields: {
+                nodes: [
+                  {
+                    id: 'story-field-1',
+                    name: 'Story',
+                    options: [
+                      { id: 'story-opt-1', name: 'Feature A', color: 'BLUE' },
+                    ],
+                  },
+                ],
+              },
+              items: {
+                pageInfo: { hasNextPage: false, endCursor: null },
+                nodes: [],
+              },
+            },
+          },
+        },
+      };
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValue(makeJsonResponse(responseWithoutNoStory));
+
+      await expect(
+        repository.getTriageData('https://github.com/users/owner/projects/1'),
+      ).rejects.toThrow("no 'No Story' option exists");
     });
 
     it('returns empty issues when no Story field found', async () => {
