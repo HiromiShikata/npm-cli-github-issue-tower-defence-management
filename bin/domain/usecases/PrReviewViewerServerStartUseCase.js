@@ -24,11 +24,11 @@ class PrReviewViewerServerStartUseCase {
         this.executeReview = async (projectCode, request) => {
             const repoStr = request.repo;
             const repoParts = repoStr.split('/');
-            if (repoParts.length < 2) {
+            if (repoParts.length !== 2) {
                 return { ok: false, error: `Invalid repo format: ${repoStr}` };
             }
             const owner = repoParts[0];
-            const repoName = repoParts.slice(1).join('/');
+            const repoName = repoParts[1];
             const { action, prNumber } = request;
             try {
                 if (action === 'APPROVE') {
@@ -54,13 +54,16 @@ class PrReviewViewerServerStartUseCase {
                     const list = await this.prReviewViewerListRepository.getList(projectCode);
                     const item = list.find((i) => i.pr.repo === repoStr && i.pr.number === prNumber);
                     if (item) {
-                        const { owner: issueOwner, repo: issueRepo, number: issueNumber } = this.parseIssueUrl(item.issue.url);
+                        const { owner: issueOwner, repo: issueRepo, number: issueNumber, } = this.parseIssueUrl(item.issue.url);
                         if (issueOwner && issueRepo && issueNumber) {
                             await this.prReviewRepository.addLabel(issueOwner, issueRepo, issueNumber, 'chore');
                         }
                     }
                     await this.prReviewRepository.closePullRequest(owner, repoName, prNumber);
                     await this.safeMarkDone(owner, repoName, prNumber);
+                }
+                else {
+                    return { ok: false, error: 'Unsupported action' };
                 }
                 return { ok: true };
             }
@@ -85,7 +88,8 @@ class PrReviewViewerServerStartUseCase {
             try {
                 await this.prReviewDoneRepository.markDone(owner, repo, prNumber);
             }
-            catch {
+            catch (error) {
+                process.stderr.write(`safeMarkDone failed for ${owner}/${repo}#${prNumber}: ${error instanceof Error ? error.message : String(error)}\n`);
             }
         };
         this.parseIssueUrl = (url) => {

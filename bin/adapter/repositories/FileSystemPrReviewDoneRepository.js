@@ -8,6 +8,21 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 class FileSystemPrReviewDoneRepository {
     constructor(dataDir) {
+        this.isDoneRecord = (value) => {
+            if (typeof value !== 'object' || value === null) {
+                return false;
+            }
+            if (!('owner' in value) ||
+                !('repo' in value) ||
+                !('prNumber' in value) ||
+                !('doneAt' in value)) {
+                return false;
+            }
+            return (typeof value['owner'] === 'string' &&
+                typeof value['repo'] === 'string' &&
+                typeof value['prNumber'] === 'number' &&
+                typeof value['doneAt'] === 'string');
+        };
         this.readRecords = () => {
             if (!fs_1.default.existsSync(this.filePath)) {
                 return [];
@@ -18,9 +33,10 @@ class FileSystemPrReviewDoneRepository {
                 if (!Array.isArray(parsed)) {
                     return [];
                 }
-                return parsed;
+                return parsed.filter(this.isDoneRecord);
             }
-            catch {
+            catch (_error) {
+                void _error;
                 return [];
             }
         };

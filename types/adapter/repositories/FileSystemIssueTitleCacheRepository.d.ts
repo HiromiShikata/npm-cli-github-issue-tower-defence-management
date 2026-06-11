@@ -5,6 +5,7 @@ export declare class FileSystemIssueTitleCacheRepository implements IssueTitleCa
     private readonly inMemoryCache;
     constructor(dataDir: string);
     private cacheKey;
+    private isIssueTitleInfo;
     private loadFromDisk;
     private saveToDisk;
     get: (owner: string, repo: string, number: number) => Promise<IssueTitleInfo | null>;

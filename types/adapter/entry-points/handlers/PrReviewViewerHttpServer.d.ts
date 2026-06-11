@@ -1,12 +1,17 @@
-import { PrReviewViewerServerStartUseCase } from '../../../domain/usecases/PrReviewViewerServerStartUseCase';
-import { GitHubPrReviewRepository } from '../../repositories/GitHubPrReviewRepository';
+import { PrReviewViewerUseCaseInterface } from '../../../domain/usecases/PrReviewViewerServerStartUseCase';
+export interface ImageProxyRepository {
+    fetchImageProxy: (targetUrl: string) => Promise<{
+        content: Buffer;
+        contentType: string;
+    }>;
+}
 export declare class PrReviewViewerHttpServer {
     private readonly useCase;
     private readonly gitHubPrReviewRepository;
     private readonly accessKey;
     private readonly staticFilesDir;
     private server;
-    constructor(useCase: PrReviewViewerServerStartUseCase, gitHubPrReviewRepository: GitHubPrReviewRepository, accessKey: string, staticFilesDir: string);
+    constructor(useCase: PrReviewViewerUseCaseInterface, gitHubPrReviewRepository: ImageProxyRepository, accessKey: string, staticFilesDir: string);
     start: (host: string, port: number) => Promise<void>;
     stop: () => Promise<void>;
     private handleRequest;

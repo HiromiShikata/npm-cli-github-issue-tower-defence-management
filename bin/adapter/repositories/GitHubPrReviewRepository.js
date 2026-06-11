@@ -7,22 +7,35 @@ const ALLOWED_IMAGE_PROXY_HOSTNAMES = [
     'user-images.githubusercontent.com',
     'github.com',
 ];
+const buildRepoApiUrl = (owner, repo, ...segments) => {
+    const encoded = [
+        encodeURIComponent(owner),
+        encodeURIComponent(repo),
+        ...segments.map((s) => encodeURIComponent(String(s))),
+    ];
+    return `https://api.github.com/repos/${encoded[0]}/${encoded[1]}/${encoded.slice(2).join('/')}`;
+};
 class GitHubPrReviewRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
     constructor() {
         super(...arguments);
         this.extractGitHubErrorMessage = async (response) => {
             try {
                 const body = await response.json();
-                if (typeof body['message'] === 'string') {
+                if (typeof body === 'object' &&
+                    body !== null &&
+                    'message' in body &&
+                    typeof body['message'] === 'string') {
                     return body['message'];
                 }
             }
-            catch {
+            catch (_error) {
+                void _error;
             }
             return `HTTP ${response.status}`;
         };
         this.approve = async (owner, repo, prNumber, body, comments) => {
-            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews`, {
+            const url = buildRepoApiUrl(owner, repo, 'pulls', prNumber, 'reviews');
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${this.ghToken}`,
@@ -41,7 +54,8 @@ class GitHubPrReviewRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             }
         };
         this.requestChanges = async (owner, repo, prNumber, body, comments) => {
-            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews`, {
+            const url = buildRepoApiUrl(owner, repo, 'pulls', prNumber, 'reviews');
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${this.ghToken}`,
@@ -60,7 +74,8 @@ class GitHubPrReviewRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             }
         };
         this.comment = async (owner, repo, prNumber, body, comments) => {
-            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews`, {
+            const url = buildRepoApiUrl(owner, repo, 'pulls', prNumber, 'reviews');
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${this.ghToken}`,
@@ -79,7 +94,8 @@ class GitHubPrReviewRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             }
         };
         this.createComment = async (owner, repo, issueNumber, body) => {
-            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`, {
+            const url = buildRepoApiUrl(owner, repo, 'issues', issueNumber, 'comments');
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${this.ghToken}`,
@@ -94,7 +110,8 @@ class GitHubPrReviewRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             }
         };
         this.closePullRequest = async (owner, repo, prNumber) => {
-            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`, {
+            const url = buildRepoApiUrl(owner, repo, 'pulls', prNumber);
+            const response = await fetch(url, {
                 method: 'PATCH',
                 headers: {
                     Authorization: `Bearer ${this.ghToken}`,
@@ -109,7 +126,8 @@ class GitHubPrReviewRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             }
         };
         this.addLabel = async (owner, repo, issueNumber, label) => {
-            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/labels`, {
+            const url = buildRepoApiUrl(owner, repo, 'issues', issueNumber, 'labels');
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${this.ghToken}`,
@@ -125,16 +143,17 @@ class GitHubPrReviewRepository extends BaseGitHubRepository_1.BaseGitHubReposito
         };
         this.updateProjectItemStatus = async (projectId, fieldId, itemId, statusOptionId) => {
             const graphqlQuery = {
-                query: `mutation {
-      updateProjectV2ItemFieldValue(input: {
-        projectId: "${projectId}"
-        fieldId: "${fieldId}"
-        itemId: "${itemId}"
-        value: { singleSelectOptionId: "${statusOptionId}" },
-      }) {
-        clientMutationId
-      }
-    }`,
+                query: `mutation UpdateProjectItemFieldValue($projectId: ID!, $fieldId: ID!, $itemId: ID!, $statusOptionId: String!) {
+        updateProjectV2ItemFieldValue(input: {
+          projectId: $projectId
+          fieldId: $fieldId
+          itemId: $itemId
+          value: { singleSelectOptionId: $statusOptionId },
+        }) {
+          clientMutationId
+        }
+      }`,
+                variables: { projectId, fieldId, itemId, statusOptionId },
             };
             const response = await fetch('https://api.github.com/graphql', {
                 method: 'POST',
@@ -150,17 +169,27 @@ class GitHubPrReviewRepository extends BaseGitHubRepository_1.BaseGitHubReposito
                 throw new Error(message);
             }
             const result = await response.json();
-            if (result.errors && result.errors.length > 0) {
-                throw new Error(result.errors.map((e) => e.message).join('\n'));
+            if (typeof result === 'object' &&
+                result !== null &&
+                'errors' in result &&
+                Array.isArray(result['errors']) &&
+                result['errors'].length > 0) {
+                const messages = result['errors']
+                    .filter((e) => typeof e === 'object' && e !== null && 'message' in e)
+                    .map((e) => e.message);
+                throw new Error(messages.join('\n'));
             }
         };
         this.getFileContent = async (owner, repo, filePath, ref, prHeadSha) => {
             const tryFetch = async (resolvedRef) => {
+                const encodedOwner = encodeURIComponent(owner);
+                const encodedRepo = encodeURIComponent(repo);
                 const encodedPath = filePath
                     .split('/')
                     .map((segment) => encodeURIComponent(segment))
                     .join('/');
-                return fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${encodedPath}?ref=${encodeURIComponent(resolvedRef)}`, {
+                const url = `https://api.github.com/repos/${encodedOwner}/${encodedRepo}/contents/${encodedPath}?ref=${encodeURIComponent(resolvedRef)}`;
+                return fetch(url, {
                     headers: {
                         Authorization: `Bearer ${this.ghToken}`,
                         Accept: 'application/vnd.github.raw+json',
@@ -186,12 +215,22 @@ class GitHubPrReviewRepository extends BaseGitHubRepository_1.BaseGitHubReposito
                 parsedUrl = new URL(targetUrl);
             }
             catch {
-                throw new Error(`Invalid URL: ${targetUrl}`);
+                throw new Error('Invalid URL');
             }
-            if (!ALLOWED_IMAGE_PROXY_HOSTNAMES.includes(parsedUrl.hostname)) {
-                throw new Error(`Hostname not allowed: ${parsedUrl.hostname}`);
+            const allowedIndex = ALLOWED_IMAGE_PROXY_HOSTNAMES.indexOf(parsedUrl.hostname);
+            if (allowedIndex === -1) {
+                throw new Error('Hostname not allowed');
             }
-            const response = await fetch(targetUrl, {
+            const safeHostname = ALLOWED_IMAGE_PROXY_HOSTNAMES[allowedIndex];
+            const encodedPathAndQuery = parsedUrl.pathname.split('/').map(encodeURIComponent).join('/') +
+                (parsedUrl.search
+                    ? '?' +
+                        Array.from(parsedUrl.searchParams.entries())
+                            .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+                            .join('&')
+                    : '');
+            const safeUrl = `https://${safeHostname}${encodedPathAndQuery}`;
+            const response = await fetch(safeUrl, {
                 headers: {
                     Authorization: `token ${this.ghToken}`,
                 },
@@ -206,7 +245,8 @@ class GitHubPrReviewRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             return { content, contentType };
         };
         this.getIssueOrPrTitle = async (owner, repo, number) => {
-            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues/${number}`, {
+            const url = buildRepoApiUrl(owner, repo, 'issues', number);
+            const response = await fetch(url, {
                 headers: {
                     Authorization: `Bearer ${this.ghToken}`,
                     Accept: 'application/vnd.github+json',
@@ -217,11 +257,18 @@ class GitHubPrReviewRepository extends BaseGitHubRepository_1.BaseGitHubReposito
                 throw new Error(message);
             }
             const data = await response.json();
+            if (typeof data !== 'object' ||
+                data === null ||
+                !('title' in data) ||
+                !('state' in data) ||
+                !('html_url' in data)) {
+                throw new Error('Unexpected GitHub API response format');
+            }
             return {
-                title: data.title,
-                state: data.state,
-                isPR: !!data.pull_request,
-                url: data.html_url,
+                title: String(data['title']),
+                state: String(data['state']),
+                isPR: 'pull_request' in data && data['pull_request'] !== null,
+                url: String(data['html_url']),
             };
         };
     }

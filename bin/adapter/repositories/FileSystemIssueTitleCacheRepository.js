@@ -10,6 +10,21 @@ class FileSystemIssueTitleCacheRepository {
     constructor(dataDir) {
         this.inMemoryCache = new Map();
         this.cacheKey = (owner, repo, number) => `${owner}/${repo}#${number}`;
+        this.isIssueTitleInfo = (value) => {
+            if (typeof value !== 'object' || value === null) {
+                return false;
+            }
+            if (!('title' in value) ||
+                !('state' in value) ||
+                !('isPR' in value) ||
+                !('url' in value)) {
+                return false;
+            }
+            return (typeof value['title'] === 'string' &&
+                typeof value['state'] === 'string' &&
+                typeof value['isPR'] === 'boolean' &&
+                typeof value['url'] === 'string');
+        };
         this.loadFromDisk = () => {
             if (!fs_1.default.existsSync(this.filePath)) {
                 return;
@@ -17,11 +32,17 @@ class FileSystemIssueTitleCacheRepository {
             try {
                 const content = fs_1.default.readFileSync(this.filePath, 'utf8');
                 const parsed = JSON.parse(content);
+                if (typeof parsed !== 'object' || parsed === null) {
+                    return;
+                }
                 for (const [key, value] of Object.entries(parsed)) {
-                    this.inMemoryCache.set(key, value);
+                    if (this.isIssueTitleInfo(value)) {
+                        this.inMemoryCache.set(key, value);
+                    }
                 }
             }
-            catch {
+            catch (_error) {
+                void _error;
             }
         };
         this.saveToDisk = () => {
@@ -38,7 +59,8 @@ class FileSystemIssueTitleCacheRepository {
                 fs_1.default.writeFileSync(tmpPath, JSON.stringify(store, null, 2), 'utf8');
                 fs_1.default.renameSync(tmpPath, this.filePath);
             }
-            catch {
+            catch (_error) {
+                void _error;
             }
         };
         this.get = async (owner, repo, number) => {

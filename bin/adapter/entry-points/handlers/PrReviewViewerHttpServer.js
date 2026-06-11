@@ -61,10 +61,12 @@ class PrReviewViewerHttpServer {
         this.staticFilesDir = staticFilesDir;
         this.server = null;
         this.start = (host, port) => new Promise((resolve, reject) => {
-            this.server = http_1.default.createServer(this.handleRequest);
+            this.server = http_1.default.createServer((req, res) => {
+                void this.handleRequest(req, res);
+            });
+            this.server.keepAliveTimeout = 0;
             this.server.on('error', reject);
             this.server.listen(port, host, () => {
-                console.log(`PR review viewer server listening on http://${host}:${port}`);
                 resolve();
             });
         });
@@ -73,6 +75,7 @@ class PrReviewViewerHttpServer {
                 resolve();
                 return;
             }
+            this.server.closeAllConnections();
             this.server.close((err) => {
                 if (err) {
                     reject(err);
@@ -83,27 +86,32 @@ class PrReviewViewerHttpServer {
         });
         this.handleRequest = async (req, res) => {
             const rawUrl = req.url ?? '/';
-            const urlObj = new URL(rawUrl, 'http://localhost');
+            const rawPath = rawUrl.split('?')[0];
+            if (rawPath.split('/').some((seg) => seg === '..' || seg === '.')) {
+                sendError(res, 400, 'Invalid path');
+                return;
+            }
+            let urlObj;
+            try {
+                urlObj = new URL(rawUrl, 'http://localhost');
+            }
+            catch {
+                sendError(res, 400, 'Invalid request URL');
+                return;
+            }
             const pathname = urlObj.pathname;
+            if (pathname.split('/').some((seg) => seg === '..' || seg === '.')) {
+                sendError(res, 400, 'Invalid path');
+                return;
+            }
             if (pathname === '/health') {
                 sendJson(res, 200, { ok: true });
                 return;
             }
-            const apiPatterns = [
-                /^\/projects\/[^/]+\/prs\/data\/list$/,
-                /^\/projects\/[^/]+\/prs\/data\/.+\/\d+$/,
-                /^\/projects\/[^/]+\/prs\/review$/,
-                /^\/image-proxy$/,
-                /^\/blob\//,
-                /^\/issue-title$/,
-            ];
-            const isApiRequest = apiPatterns.some((p) => p.test(pathname));
-            if (isApiRequest) {
-                const key = extractAccessKey(req);
-                if (!key || key !== this.accessKey) {
-                    sendError(res, 403, 'Unauthorized');
-                    return;
-                }
+            const key = extractAccessKey(req);
+            if (!key || key !== this.accessKey) {
+                sendError(res, 403, 'Unauthorized');
+                return;
             }
             if (pathname === '/image-proxy') {
                 await this.handleImageProxy(req, res, urlObj);
@@ -150,9 +158,9 @@ class PrReviewViewerHttpServer {
                 const items = await this.useCase.getList(projectCode);
                 sendJson(res, 200, items);
             }
-            catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                sendError(res, 400, message);
+            catch (_error) {
+                void _error;
+                sendError(res, 500, 'Internal server error');
             }
         };
         this.handleGetDetail = async (res, projectCode, repo, prNumber) => {
@@ -164,9 +172,9 @@ class PrReviewViewerHttpServer {
                 }
                 sendJson(res, 200, detail);
             }
-            catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                sendError(res, 400, message);
+            catch (_error) {
+                void _error;
+                sendError(res, 500, 'Internal server error');
             }
         };
         this.handleReview = async (req, res, projectCode) => {
@@ -184,11 +192,51 @@ class PrReviewViewerHttpServer {
                     parsed === null ||
                     !('action' in parsed) ||
                     !('repo' in parsed) ||
-                    !('prNumber' in parsed)) {
+                    !('prNumber' in parsed) ||
+                    typeof parsed['action'] !== 'string' ||
+                    typeof parsed['repo'] !== 'string' ||
+                    typeof parsed['prNumber'] !== 'number') {
                     sendError(res, 400, 'Missing required fields: action, repo, prNumber');
                     return;
                 }
-                const request = parsed;
+                const action = parsed['action'];
+                const repo = parsed['repo'];
+                const prNumber = parsed['prNumber'];
+                const projectItemId = 'projectItemId' in parsed && typeof parsed['projectItemId'] === 'string'
+                    ? parsed['projectItemId']
+                    : '';
+                const projectId = 'projectId' in parsed && typeof parsed['projectId'] === 'string'
+                    ? parsed['projectId']
+                    : '';
+                const statusFieldId = 'statusFieldId' in parsed && typeof parsed['statusFieldId'] === 'string'
+                    ? parsed['statusFieldId']
+                    : '';
+                const awaitingWorkspaceStatusOptionId = 'awaitingWorkspaceStatusOptionId' in parsed &&
+                    typeof parsed['awaitingWorkspaceStatusOptionId'] === 'string'
+                    ? parsed['awaitingWorkspaceStatusOptionId']
+                    : '';
+                const body = 'body' in parsed && typeof parsed['body'] === 'string'
+                    ? parsed['body']
+                    : undefined;
+                const isReviewComment = (c) => {
+                    if (typeof c !== 'object' || c === null) {
+                        return false;
+                    }
+                    if (!('path' in c) || typeof c['path'] !== 'string') {
+                        return false;
+                    }
+                    if (!('position' in c) || typeof c['position'] !== 'number') {
+                        return false;
+                    }
+                    if (!('body' in c) || typeof c['body'] !== 'string') {
+                        return false;
+                    }
+                    return true;
+                };
+                const rawComments = 'comments' in parsed && Array.isArray(parsed['comments'])
+                    ? parsed['comments']
+                    : [];
+                const comments = rawComments.filter(isReviewComment);
                 const validActions = [
                     'APPROVE',
                     'REQUEST_CHANGES',
@@ -196,20 +244,34 @@ class PrReviewViewerHttpServer {
                     'CLOSE_WRONG',
                     'CLOSE_UNNEEDED',
                 ];
-                if (!validActions.includes(request.action)) {
-                    sendError(res, 400, `Invalid action: ${request.action}`);
+                const isValidAction = (a) => validActions.includes(a);
+                if (!isValidAction(action)) {
+                    sendError(res, 400, `Invalid action: ${action}`);
                     return;
                 }
+                const actionsRequiringProjectFields = [
+                    'APPROVE',
+                    'REQUEST_CHANGES',
+                ];
+                if (actionsRequiringProjectFields.includes(action)) {
+                    if (!projectItemId ||
+                        !projectId ||
+                        !statusFieldId ||
+                        !awaitingWorkspaceStatusOptionId) {
+                        sendError(res, 400, 'Missing required fields for this action: projectItemId, projectId, statusFieldId, awaitingWorkspaceStatusOptionId');
+                        return;
+                    }
+                }
                 const result = await this.useCase.executeReview(projectCode, {
-                    action: request.action,
-                    repo: request.repo,
-                    prNumber: request.prNumber,
-                    projectItemId: request.projectItemId ?? '',
-                    projectId: request.projectId ?? '',
-                    statusFieldId: request.statusFieldId ?? '',
-                    awaitingWorkspaceStatusOptionId: request.awaitingWorkspaceStatusOptionId ?? '',
-                    body: request.body,
-                    comments: request.comments,
+                    action,
+                    repo,
+                    prNumber,
+                    projectItemId,
+                    projectId,
+                    statusFieldId,
+                    awaitingWorkspaceStatusOptionId,
+                    body,
+                    comments,
                 });
                 if (result.ok) {
                     sendJson(res, 200, { ok: true });
@@ -218,9 +280,9 @@ class PrReviewViewerHttpServer {
                     sendJson(res, 400, { ok: false, error: result.error });
                 }
             }
-            catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                sendJson(res, 400, { ok: false, error: message });
+            catch (_error) {
+                void _error;
+                sendJson(res, 500, { ok: false, error: 'Internal server error' });
             }
         };
         this.handleImageProxy = async (req, res, urlObj) => {
@@ -262,9 +324,9 @@ class PrReviewViewerHttpServer {
                 });
                 res.end(content);
             }
-            catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                sendError(res, 400, message);
+            catch (_error) {
+                void _error;
+                sendError(res, 500, 'Internal server error');
             }
         };
         this.handleBlob = async (res, owner, repo, filePath, ref, prHeadSha) => {
@@ -276,9 +338,9 @@ class PrReviewViewerHttpServer {
                 });
                 res.end(content);
             }
-            catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                sendError(res, 400, message);
+            catch (_error) {
+                void _error;
+                sendError(res, 500, 'Internal server error');
             }
         };
         this.handleIssueTitle = async (req, res, urlObj) => {
@@ -298,20 +360,25 @@ class PrReviewViewerHttpServer {
                 const info = await this.useCase.getIssueTitleInfo(owner, repo, number);
                 sendJson(res, 200, info);
             }
-            catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                sendError(res, 400, message);
+            catch (_error) {
+                void _error;
+                sendError(res, 500, 'Internal server error');
             }
         };
         this.serveStaticFile = async (req, res, pathname) => {
-            if (pathname.includes('..')) {
+            const normalizedPath = pathname === '/' ? '/index.html' : pathname;
+            const relativePath = normalizedPath.startsWith('/')
+                ? normalizedPath.slice(1)
+                : normalizedPath;
+            const resolvedBase = path_1.default.resolve(this.staticFilesDir);
+            const resolvedFile = path_1.default.resolve(this.staticFilesDir, relativePath);
+            if (!resolvedFile.startsWith(resolvedBase + path_1.default.sep) &&
+                resolvedFile !== resolvedBase) {
                 sendError(res, 400, 'Invalid path');
                 return;
             }
-            const normalizedPath = pathname === '/' ? '/index.html' : pathname;
-            const filePath = path_1.default.join(this.staticFilesDir, normalizedPath);
-            if (!fs_1.default.existsSync(filePath) || !fs_1.default.statSync(filePath).isFile()) {
-                const indexPath = path_1.default.join(this.staticFilesDir, 'index.html');
+            if (!fs_1.default.existsSync(resolvedFile) || !fs_1.default.statSync(resolvedFile).isFile()) {
+                const indexPath = path_1.default.join(resolvedBase, 'index.html');
                 if (fs_1.default.existsSync(indexPath)) {
                     const content = fs_1.default.readFileSync(indexPath);
                     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
@@ -322,9 +389,9 @@ class PrReviewViewerHttpServer {
                 res.end('Not found');
                 return;
             }
-            const ext = path_1.default.extname(filePath).toLowerCase();
+            const ext = path_1.default.extname(resolvedFile).toLowerCase();
             const contentType = MIME_TYPES[ext] ?? 'application/octet-stream';
-            const content = fs_1.default.readFileSync(filePath);
+            const content = fs_1.default.readFileSync(resolvedFile);
             res.writeHead(200, {
                 'Content-Type': contentType,
                 'Content-Length': content.length,

@@ -26,6 +26,13 @@ const NodeLocalCommandRunner_1 = require("../../repositories/NodeLocalCommandRun
 const GitHubIssueCommentRepository_1 = require("../../repositories/GitHubIssueCommentRepository");
 const FetchWebhookRepository_1 = require("../../repositories/FetchWebhookRepository");
 const RevertOrphanedPreparationUseCase_1 = require("../../../domain/usecases/RevertOrphanedPreparationUseCase");
+const PrReviewViewerServerStartUseCase_1 = require("../../../domain/usecases/PrReviewViewerServerStartUseCase");
+const FileSystemPrReviewViewerListRepository_1 = require("../../repositories/FileSystemPrReviewViewerListRepository");
+const FileSystemPrReviewViewerDetailRepository_1 = require("../../repositories/FileSystemPrReviewViewerDetailRepository");
+const GitHubPrReviewRepository_1 = require("../../repositories/GitHubPrReviewRepository");
+const FileSystemPrReviewDoneRepository_1 = require("../../repositories/FileSystemPrReviewDoneRepository");
+const FileSystemIssueTitleCacheRepository_1 = require("../../repositories/FileSystemIssueTitleCacheRepository");
+const PrReviewViewerHttpServer_1 = require("../handlers/PrReviewViewerHttpServer");
 const buildGithubRepositoryParams = (localStorageRepository, token) => [
     localStorageRepository,
     token,
@@ -303,6 +310,44 @@ exports.program
         labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
     });
     process.stdout.write(`${JSON.stringify(result)}\n`);
+});
+exports.program
+    .command('serve-pr-review-viewer')
+    .description('Start a local HTTP server for the PR review viewer')
+    .requiredOption('--accessKey <key>', 'Access key for token validation')
+    .option('--host <host>', 'Bind host', '127.0.0.1')
+    .option('--port <port>', 'Bind port', '3000')
+    .requiredOption('--staticFilesDir <path>', 'Directory containing viewer static files')
+    .requiredOption('--dataDir <path>', 'Directory containing PR viewer data files')
+    .action(async (options) => {
+    const token = process.env.GH_TOKEN;
+    if (!token) {
+        console.error('GH_TOKEN environment variable is required');
+        process.exit(1);
+        return;
+    }
+    const port = parseInt(options.port, 10);
+    if (isNaN(port) || port < 1 || port > 65535) {
+        console.error(`Invalid port: ${options.port}`);
+        process.exit(1);
+        return;
+    }
+    const localStorageRepository = new LocalStorageRepository_1.LocalStorageRepository();
+    const githubRepositoryParams = buildGithubRepositoryParams(localStorageRepository, token);
+    const listRepo = new FileSystemPrReviewViewerListRepository_1.FileSystemPrReviewViewerListRepository(options.dataDir);
+    const detailRepo = new FileSystemPrReviewViewerDetailRepository_1.FileSystemPrReviewViewerDetailRepository(options.dataDir);
+    const reviewRepo = new GitHubPrReviewRepository_1.GitHubPrReviewRepository(...githubRepositoryParams);
+    const doneRepo = new FileSystemPrReviewDoneRepository_1.FileSystemPrReviewDoneRepository(options.dataDir);
+    const titleCacheRepo = new FileSystemIssueTitleCacheRepository_1.FileSystemIssueTitleCacheRepository(options.dataDir);
+    const useCase = new PrReviewViewerServerStartUseCase_1.PrReviewViewerServerStartUseCase(listRepo, detailRepo, reviewRepo, doneRepo, titleCacheRepo);
+    const server = new PrReviewViewerHttpServer_1.PrReviewViewerHttpServer(useCase, reviewRepo, options.accessKey, options.staticFilesDir);
+    const shutdown = () => {
+        server.stop().then(() => process.exit(0), () => process.exit(1));
+    };
+    process.once('SIGTERM', shutdown);
+    process.once('SIGINT', shutdown);
+    await server.start(options.host, port);
+    console.log(`PR review viewer server started on http://${options.host}:${port}`);
 });
 /* istanbul ignore next */
 if (process.argv && require.main === module) {
