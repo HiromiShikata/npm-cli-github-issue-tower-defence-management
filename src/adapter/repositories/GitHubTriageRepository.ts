@@ -343,16 +343,21 @@ export class GitHubTriageRepository
     const extractItemsPage = (
       raw: unknown,
     ): { nodes: unknown[]; hasNextPage: boolean; endCursor: string | null } => {
-      if (!isRecord(raw)) return { nodes: [], hasNextPage: false, endCursor: null };
+      if (!isRecord(raw))
+        return { nodes: [], hasNextPage: false, endCursor: null };
       const dataField = raw['data'];
-      if (!isRecord(dataField)) return { nodes: [], hasNextPage: false, endCursor: null };
+      if (!isRecord(dataField))
+        return { nodes: [], hasNextPage: false, endCursor: null };
       const nodeField = dataField['node'];
-      if (!isRecord(nodeField)) return { nodes: [], hasNextPage: false, endCursor: null };
+      if (!isRecord(nodeField))
+        return { nodes: [], hasNextPage: false, endCursor: null };
       const itemsField = nodeField['items'];
-      if (!isRecord(itemsField)) return { nodes: [], hasNextPage: false, endCursor: null };
+      if (!isRecord(itemsField))
+        return { nodes: [], hasNextPage: false, endCursor: null };
       const nodes = getArrayProp(itemsField, 'nodes') ?? [];
       const pageInfoField = itemsField['pageInfo'];
-      if (!isRecord(pageInfoField)) return { nodes, hasNextPage: false, endCursor: null };
+      if (!isRecord(pageInfoField))
+        return { nodes, hasNextPage: false, endCursor: null };
       const hasNextPage = pageInfoField['hasNextPage'] === true;
       const endCursor = getStringProp(pageInfoField, 'endCursor') ?? null;
       return { nodes, hasNextPage, endCursor };
