@@ -490,7 +490,8 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                         continue;
                     if (item.source.state !== 'OPEN')
                         continue;
-                    if (!item.willCloseTarget)
+                    const branchMatchesIssue = item.source.headRefName?.toLowerCase() === `i${issueNumber}`;
+                    if (!item.willCloseTarget && !branchMatchesIssue)
                         continue;
                     const pr = item.source;
                     const prUrl = pr.url || '';
