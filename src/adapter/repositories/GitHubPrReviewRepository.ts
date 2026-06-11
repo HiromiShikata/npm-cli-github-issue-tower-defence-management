@@ -291,12 +291,19 @@ export class GitHubPrReviewRepository
     try {
       parsedUrl = new URL(targetUrl);
     } catch {
-      throw new Error(`Invalid URL: ${targetUrl}`);
+      throw new Error('Invalid URL');
     }
-    if (!ALLOWED_IMAGE_PROXY_HOSTNAMES.includes(parsedUrl.hostname)) {
-      throw new Error(`Hostname not allowed: ${parsedUrl.hostname}`);
+    const allowedIndex = ALLOWED_IMAGE_PROXY_HOSTNAMES.indexOf(
+      parsedUrl.hostname,
+    );
+    if (allowedIndex === -1) {
+      throw new Error('Hostname not allowed');
     }
-    const response = await fetch(parsedUrl.href, {
+    const safeHostname = ALLOWED_IMAGE_PROXY_HOSTNAMES[allowedIndex];
+    const reconstructedUrl = new URL(
+      `${parsedUrl.protocol}//${safeHostname}${parsedUrl.pathname}${parsedUrl.search}`,
+    );
+    const response = await fetch(reconstructedUrl.href, {
       headers: {
         Authorization: `token ${this.ghToken}`,
       },
