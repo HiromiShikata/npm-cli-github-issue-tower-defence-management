@@ -575,7 +575,9 @@ describe('RevertNotReadyAwaitingQualityCheckUseCase', () => {
         awaitingQualityCheckViewerOutputPath: '/tmp/viewer.json',
       });
 
-      expect(jest.mocked(fs.mkdirSync)).toHaveBeenCalledWith('/tmp', { recursive: true });
+      expect(jest.mocked(fs.mkdirSync)).toHaveBeenCalledWith('/tmp', {
+        recursive: true,
+      });
       expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
         '/tmp/viewer.json.tmp',
         expect.stringContaining('"name": "Story One"'),

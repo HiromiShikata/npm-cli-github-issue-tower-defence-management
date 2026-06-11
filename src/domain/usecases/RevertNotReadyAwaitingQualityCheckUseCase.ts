@@ -173,9 +173,10 @@ export class RevertNotReadyAwaitingQualityCheckUseCase {
         issue.nextActionDate === null &&
         issue.nextActionHour === null
       ) {
-        const filePaths = await this.issueRepository.getPullRequestChangedFilePaths(
-          readyPr.url,
-        );
+        const filePaths =
+          await this.issueRepository.getPullRequestChangedFilePaths(
+            readyPr.url,
+          );
         const changedDirectories = extractChangedDirectories(filePaths);
         viewerItems.push({
           issue: {
@@ -200,10 +201,7 @@ export class RevertNotReadyAwaitingQualityCheckUseCase {
       }
     }
 
-    if (
-      params.awaitingQualityCheckViewerOutputPath &&
-      viewerItems.length > 0
-    ) {
+    if (params.awaitingQualityCheckViewerOutputPath && viewerItems.length > 0) {
       const stories =
         project.story?.stories.map((s, index) => ({
           name: s.name,
