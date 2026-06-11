@@ -9,7 +9,7 @@ export type PrRejectionResult = {
 };
 export declare class IssueRejectionEvaluator {
     private readonly issueRepository;
-    constructor(issueRepository: Pick<IssueRepository, 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'getPullRequestChangedFilePaths' | 'requestChangesWithInlineComment' | 'createCommentByUrl'>);
+    constructor(issueRepository: Pick<IssueRepository, 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'getPullRequestChangedFilePaths' | 'requestChangesWithInlineComment'>);
     evaluate: (issue: {
         url: string;
         labels: string[];

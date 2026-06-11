@@ -54,7 +54,6 @@ export class NotifyFinishedIssuePreparationUseCase {
       | 'getPullRequestChangedFilePaths'
       | 'approvePullRequest'
       | 'requestChangesWithInlineComment'
-      | 'createCommentByUrl'
       | 'setDependedIssueUrl'
     >,
     private readonly issueCommentRepository: Pick<

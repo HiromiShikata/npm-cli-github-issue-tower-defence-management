@@ -12,7 +12,7 @@ export declare class CheckIssueReviewReadinessUseCase {
     private readonly projectRepository;
     private readonly issueRepository;
     private readonly issueRejectionEvaluator;
-    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl'>, issueRepository: Pick<IssueRepository, 'get' | 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'getPullRequestChangedFilePaths' | 'requestChangesWithInlineComment' | 'createCommentByUrl'>);
+    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl'>, issueRepository: Pick<IssueRepository, 'get' | 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'getPullRequestChangedFilePaths' | 'requestChangesWithInlineComment'>);
     run: (params: {
         projectUrl: string;
         issueUrl: string;

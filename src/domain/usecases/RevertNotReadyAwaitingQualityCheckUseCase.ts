@@ -26,7 +26,6 @@ export class RevertNotReadyAwaitingQualityCheckUseCase {
       | 'getPullRequestChangedFilePaths'
       | 'approvePullRequest'
       | 'requestChangesWithInlineComment'
-      | 'createCommentByUrl'
     >,
     private readonly issueCommentRepository: Pick<
       IssueCommentRepository,

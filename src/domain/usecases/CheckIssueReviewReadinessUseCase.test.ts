@@ -80,7 +80,6 @@ describe('CheckIssueReviewReadinessUseCase', () => {
     getOpenPullRequest: jest.Mock;
     getPullRequestChangedFilePaths: jest.Mock;
     requestChangesWithInlineComment: jest.Mock;
-    createCommentByUrl: jest.Mock;
   };
   let useCase: CheckIssueReviewReadinessUseCase;
   let mockProject: Project;
@@ -100,7 +99,6 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       getOpenPullRequest: jest.fn(),
       getPullRequestChangedFilePaths: jest.fn().mockResolvedValue([]),
       requestChangesWithInlineComment: jest.fn().mockResolvedValue(undefined),
-      createCommentByUrl: jest.fn().mockResolvedValue(undefined),
     };
 
     useCase = new CheckIssueReviewReadinessUseCase(

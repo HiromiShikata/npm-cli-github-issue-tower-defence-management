@@ -23,7 +23,6 @@ export class CheckIssueReviewReadinessUseCase {
       | 'getOpenPullRequest'
       | 'getPullRequestChangedFilePaths'
       | 'requestChangesWithInlineComment'
-      | 'createCommentByUrl'
     >,
   ) {
     this.issueRejectionEvaluator = new IssueRejectionEvaluator(issueRepository);

@@ -97,7 +97,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     getPullRequestChangedFilePaths: jest.Mock;
     approvePullRequest: jest.Mock;
     requestChangesWithInlineComment: jest.Mock;
-    createCommentByUrl: jest.Mock;
     setDependedIssueUrl: jest.Mock;
   };
   let mockIssueCommentRepository: {
@@ -133,7 +132,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       getPullRequestChangedFilePaths: jest.fn().mockResolvedValue([]),
       approvePullRequest: jest.fn().mockResolvedValue(undefined),
       requestChangesWithInlineComment: jest.fn().mockResolvedValue(undefined),
-      createCommentByUrl: jest.fn().mockResolvedValue(undefined),
       setDependedIssueUrl: jest.fn(),
     };
 
