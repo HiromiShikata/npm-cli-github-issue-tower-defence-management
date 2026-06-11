@@ -237,13 +237,11 @@ describe('GitHubTriageRepository', () => {
 
   describe('setStory', () => {
     it('sends correct GraphQL mutation with variables', async () => {
-      const fetchSpy = jest
-        .spyOn(global, 'fetch')
-        .mockResolvedValue(
-          makeJsonResponse({
-            data: { updateProjectV2ItemFieldValue: { clientMutationId: null } },
-          }),
-        );
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(
+        makeJsonResponse({
+          data: { updateProjectV2ItemFieldValue: { clientMutationId: null } },
+        }),
+      );
 
       await repository.setStory('project-1', 'field-1', 'item-1', 'option-1');
 
