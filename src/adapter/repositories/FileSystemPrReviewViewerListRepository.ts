@@ -73,7 +73,9 @@ export class FileSystemPrReviewViewerListRepository implements PrReviewViewerLis
         typeof pr['url'] === 'string'
       );
     };
-    const isPrReviewViewerItem = (item: unknown): item is PrReviewViewerItem => {
+    const isPrReviewViewerItem = (
+      item: unknown,
+    ): item is PrReviewViewerItem => {
       if (typeof item !== 'object' || item === null) {
         return false;
       }
