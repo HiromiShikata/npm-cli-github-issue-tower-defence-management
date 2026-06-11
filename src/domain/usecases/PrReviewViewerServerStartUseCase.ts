@@ -97,11 +97,11 @@ export class PrReviewViewerServerStartUseCase {
   ): Promise<ReviewActionResult> => {
     const repoStr = request.repo;
     const repoParts = repoStr.split('/');
-    if (repoParts.length < 2) {
+    if (repoParts.length !== 2) {
       return { ok: false, error: `Invalid repo format: ${repoStr}` };
     }
     const owner = repoParts[0];
-    const repoName = repoParts.slice(1).join('/');
+    const repoName = repoParts[1];
     const { action, prNumber } = request;
 
     try {

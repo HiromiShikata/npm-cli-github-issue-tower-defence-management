@@ -16,13 +16,25 @@ export class FileSystemPrReviewDoneRepository implements PrReviewDoneRepository 
     this.filePath = path.join(dataDir, 'done_prs.json');
   }
 
-  private isDoneRecord = (value: unknown): value is DoneRecord =>
-    typeof value === 'object' &&
-    value !== null &&
-    'owner' in value &&
-    'repo' in value &&
-    'prNumber' in value &&
-    'doneAt' in value;
+  private isDoneRecord = (value: unknown): value is DoneRecord => {
+    if (typeof value !== 'object' || value === null) {
+      return false;
+    }
+    if (
+      !('owner' in value) ||
+      !('repo' in value) ||
+      !('prNumber' in value) ||
+      !('doneAt' in value)
+    ) {
+      return false;
+    }
+    return (
+      typeof value['owner'] === 'string' &&
+      typeof value['repo'] === 'string' &&
+      typeof value['prNumber'] === 'number' &&
+      typeof value['doneAt'] === 'string'
+    );
+  };
 
   private readRecords = (): DoneRecord[] => {
     if (!fs.existsSync(this.filePath)) {

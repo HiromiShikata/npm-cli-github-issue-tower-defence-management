@@ -17,13 +17,25 @@ export class FileSystemIssueTitleCacheRepository implements IssueTitleCacheRepos
   private cacheKey = (owner: string, repo: string, number: number): string =>
     `${owner}/${repo}#${number}`;
 
-  private isIssueTitleInfo = (value: unknown): value is IssueTitleInfo =>
-    typeof value === 'object' &&
-    value !== null &&
-    'title' in value &&
-    'state' in value &&
-    'isPR' in value &&
-    'url' in value;
+  private isIssueTitleInfo = (value: unknown): value is IssueTitleInfo => {
+    if (typeof value !== 'object' || value === null) {
+      return false;
+    }
+    if (
+      !('title' in value) ||
+      !('state' in value) ||
+      !('isPR' in value) ||
+      !('url' in value)
+    ) {
+      return false;
+    }
+    return (
+      typeof value['title'] === 'string' &&
+      typeof value['state'] === 'string' &&
+      typeof value['isPR'] === 'boolean' &&
+      typeof value['url'] === 'string'
+    );
+  };
 
   private loadFromDisk = (): void => {
     if (!fs.existsSync(this.filePath)) {
