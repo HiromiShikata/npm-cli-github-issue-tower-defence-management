@@ -387,7 +387,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
       expect.stringContaining(
-        'Issue has dependent issue URLs: https://github.com/user/repo/issues/2, https://github.com/user/repo/issues/3',
+        'Issue has dependent issue URLs:\n- https://github.com/user/repo/issues/2\n- https://github.com/user/repo/issues/3',
       ),
     );
   });
