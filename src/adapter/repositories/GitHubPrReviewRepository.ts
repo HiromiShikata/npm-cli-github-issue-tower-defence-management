@@ -306,8 +306,7 @@ export class GitHubPrReviewRepository
         ? '?' +
           Array.from(parsedUrl.searchParams.entries())
             .map(
-              ([k, v]) =>
-                `${encodeURIComponent(k)}=${encodeURIComponent(v)}`,
+              ([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`,
             )
             .join('&')
         : '');
