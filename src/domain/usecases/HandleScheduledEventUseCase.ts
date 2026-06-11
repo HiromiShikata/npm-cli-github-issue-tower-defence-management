@@ -25,7 +25,10 @@ import {
   StartPreparationUseCase,
 } from './StartPreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
-import { RevertNotReadyAwaitingQualityCheckUseCase } from './RevertNotReadyAwaitingQualityCheckUseCase';
+import {
+  QualityCheckViewerOutput,
+  RevertNotReadyAwaitingQualityCheckUseCase,
+} from './RevertNotReadyAwaitingQualityCheckUseCase';
 import { resolveLabelsAsLlmAgentName } from './resolveLabelsAsLlmAgentName';
 import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
 import { UpdateRateLimitCacheUseCase } from './UpdateRateLimitCacheUseCase';
@@ -104,6 +107,7 @@ export class HandleScheduledEventUseCase {
     thresholdForAutoReject?: number;
     dailySecurityScan?: DailySecurityScanConfig | null;
     awaitingQualityCheckViewerOutputPath?: string | null;
+    donePrUrls?: Set<string> | null;
   }): Promise<{
     project: Project;
     issues: Issue[];
@@ -111,6 +115,7 @@ export class HandleScheduledEventUseCase {
     targetDateTimes: Date[];
     storyIssues: StoryObjectMap;
     rotationOrder: RotationOrderEntry[] | null;
+    viewerOutput: QualityCheckViewerOutput | null;
   } | null> => {
     if (input.disabled) {
       return null;
@@ -227,6 +232,7 @@ export class HandleScheduledEventUseCase {
     );
 
     let rotationOrder: RotationOrderEntry[] | null = null;
+    let viewerOutput: QualityCheckViewerOutput | null = null;
     try {
       const useCaseResult = await this.runEachUseCases(
         input,
@@ -238,6 +244,7 @@ export class HandleScheduledEventUseCase {
         runSlowSweep,
       );
       rotationOrder = useCaseResult.rotationOrder;
+      viewerOutput = useCaseResult.viewerOutput;
     } catch (e) {
       if (!(e instanceof Error)) {
         throw e;
@@ -267,6 +274,7 @@ ${JSON.stringify(e)}
       cacheUsed,
       targetDateTimes,
       storyIssues,
+      viewerOutput,
       rotationOrder,
     };
   };
@@ -278,7 +286,10 @@ ${JSON.stringify(e)}
     targetDateTimes: Date[],
     storyObjectMap: StoryObjectMap,
     runSlowSweep: boolean,
-  ): Promise<{ rotationOrder: RotationOrderEntry[] | null }> => {
+  ): Promise<{
+    rotationOrder: RotationOrderEntry[] | null;
+    viewerOutput: QualityCheckViewerOutput | null;
+  }> => {
     if (runSlowSweep) {
       await this.runSlowSweepUseCases(
         input,
@@ -293,13 +304,15 @@ ${JSON.stringify(e)}
       topLevel: input.labelsAsLlmAgentName,
       startPreparation: input.startPreparation?.labelsAsLlmAgentName,
     });
-    await this.revertNotReadyAwaitingQualityCheckUseCase.run({
-      projectUrl: input.projectUrl,
-      allowIssueCacheMinutes: input.allowIssueCacheMinutes,
-      labelsAsLlmAgentName,
-      awaitingQualityCheckViewerOutputPath:
-        input.awaitingQualityCheckViewerOutputPath ?? null,
-    });
+    const viewerOutput =
+      await this.revertNotReadyAwaitingQualityCheckUseCase.run({
+        projectUrl: input.projectUrl,
+        allowIssueCacheMinutes: input.allowIssueCacheMinutes,
+        labelsAsLlmAgentName,
+        awaitingQualityCheckViewerOutputPath:
+          input.awaitingQualityCheckViewerOutputPath ?? null,
+        donePrUrls: input.donePrUrls ?? null,
+      });
     if (this.dailySecurityScanUseCase !== null && input.dailySecurityScan) {
       await this.dailySecurityScanUseCase.run({
         targetDates: targetDateTimes,
@@ -346,9 +359,9 @@ ${JSON.stringify(e)}
         allowIssueCacheMinutes: input.allowIssueCacheMinutes,
         labelsAsLlmAgentName,
       });
-      return { rotationOrder: preparationResult.rotationOrder };
+      return { rotationOrder: preparationResult.rotationOrder, viewerOutput };
     }
-    return { rotationOrder: null };
+    return { rotationOrder: null, viewerOutput };
   };
   runSlowSweepUseCases = async (
     input: Parameters<HandleScheduledEventUseCase['run']>[0],

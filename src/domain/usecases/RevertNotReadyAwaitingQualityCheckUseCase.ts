@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
@@ -27,10 +25,15 @@ const extractPrRepoFromUrl = (prUrl: string): string => {
   return `${urlParts[0]}/${urlParts[1]}`;
 };
 
+const extractDirectoryFromFilePath = (filePath: string): string => {
+  const lastSlash = filePath.lastIndexOf('/');
+  return lastSlash > 0 ? filePath.slice(0, lastSlash) : '.';
+};
+
 const extractChangedDirectories = (filePaths: string[]): string[] => {
   const dirs = new Set<string>();
   for (const filePath of filePaths) {
-    const dir = path.dirname(filePath);
+    const dir = extractDirectoryFromFilePath(filePath);
     if (dir !== '.') {
       dirs.add(dir);
     }
@@ -59,7 +62,7 @@ type QualityCheckViewerItem = {
   changedDirectories: string[];
 };
 
-type QualityCheckViewerOutput = {
+export type QualityCheckViewerOutput = {
   stories: {
     name: string;
     color: string;
@@ -103,7 +106,8 @@ export class RevertNotReadyAwaitingQualityCheckUseCase {
     allowIssueCacheMinutes: number;
     labelsAsLlmAgentName?: string[] | null;
     awaitingQualityCheckViewerOutputPath?: string | null;
-  }): Promise<void> => {
+    donePrUrls?: Set<string> | null;
+  }): Promise<QualityCheckViewerOutput | null> => {
     const projectId = await this.projectRepository.findProjectIdByUrl(
       params.projectUrl,
     );
@@ -121,7 +125,7 @@ export class RevertNotReadyAwaitingQualityCheckUseCase {
       (s) => s.name === AWAITING_WORKSPACE_STATUS_NAME,
     );
     if (!awaitingWorkspaceStatusOption) {
-      return;
+      return null;
     }
 
     const { issues } = await this.issueRepository.getAllIssues(
@@ -171,7 +175,8 @@ export class RevertNotReadyAwaitingQualityCheckUseCase {
         readyPr &&
         issue.assignees.includes('HiromiShikata') &&
         issue.nextActionDate === null &&
-        issue.nextActionHour === null
+        issue.nextActionHour === null &&
+        !params.donePrUrls?.has(readyPr.url)
       ) {
         const filePaths =
           await this.issueRepository.getPullRequestChangedFilePaths(
@@ -201,25 +206,20 @@ export class RevertNotReadyAwaitingQualityCheckUseCase {
       }
     }
 
-    if (params.awaitingQualityCheckViewerOutputPath) {
-      const stories =
-        project.story?.stories.map((s, index) => ({
-          name: s.name,
-          color: STORY_COLOR_HEX_MAP[s.color],
-          order: index,
-        })) ?? [];
-
-      const output: QualityCheckViewerOutput = {
-        stories,
-        items: viewerItems,
-      };
-
-      const outputPath = params.awaitingQualityCheckViewerOutputPath;
-      const outputDir = path.dirname(outputPath);
-      const tmpPath = `${outputPath}.tmp`;
-      fs.mkdirSync(outputDir, { recursive: true });
-      fs.writeFileSync(tmpPath, JSON.stringify(output, null, 2));
-      fs.renameSync(tmpPath, outputPath);
+    if (!params.awaitingQualityCheckViewerOutputPath) {
+      return null;
     }
+
+    const stories =
+      project.story?.stories.map((s, index) => ({
+        name: s.name,
+        color: STORY_COLOR_HEX_MAP[s.color],
+        order: index,
+      })) ?? [];
+
+    return {
+      stories,
+      items: viewerItems,
+    };
   };
 }

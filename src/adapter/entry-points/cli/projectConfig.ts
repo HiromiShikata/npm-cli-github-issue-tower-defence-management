@@ -21,6 +21,7 @@ export type ConfigFile = {
   awLogStaleThresholdMinutes?: number;
   labelsAsLlmAgentName?: string[];
   awaitingQualityCheckViewerOutputPath?: string;
+  awaitingQualityCheckDoneStorePath?: string;
 };
 
 const getStringValue = (
@@ -77,6 +78,7 @@ const knownProjectReadmeConfigKeys = [
   'awLogDirectoryPath',
   'awLogStaleThresholdMinutes',
   'awaitingQualityCheckViewerOutputPath',
+  'awaitingQualityCheckDoneStorePath',
 ] as const;
 
 export const loadConfigFile = (configFilePath: string): ConfigFile => {
@@ -126,6 +128,10 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
       awaitingQualityCheckViewerOutputPath: getStringValue(
         parsed,
         'awaitingQualityCheckViewerOutputPath',
+      ),
+      awaitingQualityCheckDoneStorePath: getStringValue(
+        parsed,
+        'awaitingQualityCheckDoneStorePath',
       ),
     };
   } catch (error) {
@@ -202,6 +208,10 @@ export const parseProjectReadmeConfig = (
       awaitingQualityCheckViewerOutputPath: getStringValue(
         parsed,
         'awaitingQualityCheckViewerOutputPath',
+      ),
+      awaitingQualityCheckDoneStorePath: getStringValue(
+        parsed,
+        'awaitingQualityCheckDoneStorePath',
       ),
     };
   } catch {
@@ -285,6 +295,10 @@ export const mergeConfigs = (
     readmeOverrides.awaitingQualityCheckViewerOutputPath ??
     cliOverrides.awaitingQualityCheckViewerOutputPath ??
     configFile.awaitingQualityCheckViewerOutputPath,
+  awaitingQualityCheckDoneStorePath:
+    readmeOverrides.awaitingQualityCheckDoneStorePath ??
+    cliOverrides.awaitingQualityCheckDoneStorePath ??
+    configFile.awaitingQualityCheckDoneStorePath,
 });
 
 type GraphqlProjectV2ReadmeResponse = {

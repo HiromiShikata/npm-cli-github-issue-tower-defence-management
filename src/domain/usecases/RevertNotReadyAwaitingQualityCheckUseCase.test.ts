@@ -1,9 +1,6 @@
-import fs from 'fs';
 import { RevertNotReadyAwaitingQualityCheckUseCase } from './RevertNotReadyAwaitingQualityCheckUseCase';
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
-
-jest.mock('fs');
 
 const createMockProject = (overrides: Partial<Project> = {}): Project => ({
   id: 'project-1',
@@ -104,9 +101,6 @@ describe('RevertNotReadyAwaitingQualityCheckUseCase', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
-    jest.mocked(fs.mkdirSync).mockReturnValue(undefined);
-    jest.mocked(fs.writeFileSync).mockReturnValue(undefined);
-    jest.mocked(fs.renameSync).mockReturnValue(undefined);
 
     mockProject = createMockProject();
 
@@ -541,7 +535,7 @@ describe('RevertNotReadyAwaitingQualityCheckUseCase', () => {
         },
       });
 
-    it('should write viewer JSON when path is configured and issue qualifies', async () => {
+    it('should return viewer output when path is configured and issue qualifies', async () => {
       const project = createProjectWithStory();
       mockProjectRepository.getProject.mockResolvedValue(project);
       const issue = createMockIssue({
@@ -569,74 +563,30 @@ describe('RevertNotReadyAwaitingQualityCheckUseCase', () => {
         'src/adapter/repos/Baz.ts',
       ]);
 
-      await useCase.run({
+      const result = await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
         awaitingQualityCheckViewerOutputPath: '/tmp/viewer.json',
       });
 
-      expect(jest.mocked(fs.mkdirSync)).toHaveBeenCalledWith('/tmp', {
-        recursive: true,
-      });
-      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
-        '/tmp/viewer.json.tmp',
-        expect.stringContaining('"name": "Story One"'),
-      );
-      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
-        '/tmp/viewer.json.tmp',
-        expect.stringContaining('"color": "#0075ca"'),
-      );
-      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
-        '/tmp/viewer.json.tmp',
-        expect.stringContaining('"number": 42'),
-      );
-      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
-        '/tmp/viewer.json.tmp',
-        expect.stringContaining('"title": "My Issue"'),
-      );
-      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
-        '/tmp/viewer.json.tmp',
-        expect.stringContaining('"story": "Story One"'),
-      );
-      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
-        '/tmp/viewer.json.tmp',
-        expect.stringContaining('"projectItemId": "PVTI_abc123"'),
-      );
-      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
-        '/tmp/viewer.json.tmp',
-        expect.stringContaining('"repo": "owner/repo"'),
-      );
-      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
-        '/tmp/viewer.json.tmp',
-        expect.stringContaining('"additions": 10'),
-      );
-      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
-        '/tmp/viewer.json.tmp',
-        expect.stringContaining('"deletions": 3'),
-      );
-      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
-        '/tmp/viewer.json.tmp',
-        expect.stringContaining('"changedFiles": 2'),
-      );
-      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
-        '/tmp/viewer.json.tmp',
-        expect.stringContaining('"src/domain/entities"'),
-      );
-      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
-        '/tmp/viewer.json.tmp',
-        expect.stringContaining('"src/domain/usecases"'),
-      );
-      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
-        '/tmp/viewer.json.tmp',
-        expect.stringContaining('"src/adapter/repos"'),
-      );
-      expect(jest.mocked(fs.renameSync)).toHaveBeenCalledWith(
-        '/tmp/viewer.json.tmp',
-        '/tmp/viewer.json',
-      );
+      expect(result).not.toBeNull();
+      expect(result?.stories[0]?.name).toBe('Story One');
+      expect(result?.stories[0]?.color).toBe('#0075ca');
+      expect(result?.items).toHaveLength(1);
+      expect(result?.items[0]?.issue.number).toBe(42);
+      expect(result?.items[0]?.issue.title).toBe('My Issue');
+      expect(result?.items[0]?.issue.story).toBe('Story One');
+      expect(result?.items[0]?.issue.projectItemId).toBe('PVTI_abc123');
+      expect(result?.items[0]?.pr.repo).toBe('owner/repo');
+      expect(result?.items[0]?.pr.additions).toBe(10);
+      expect(result?.items[0]?.pr.deletions).toBe(3);
+      expect(result?.items[0]?.pr.changedFiles).toBe(2);
+      expect(result?.items[0]?.changedDirectories).toContain('src/domain/entities');
+      expect(result?.items[0]?.changedDirectories).toContain('src/domain/usecases');
+      expect(result?.items[0]?.changedDirectories).toContain('src/adapter/repos');
     });
 
-    it('should not write viewer JSON when path is not configured', async () => {
+    it('should return null when path is not configured', async () => {
       const issue = createMockIssue({
         status: 'Awaiting Quality Check',
         assignees: ['HiromiShikata'],
@@ -649,15 +599,15 @@ describe('RevertNotReadyAwaitingQualityCheckUseCase', () => {
         createReadyPr(),
       ]);
 
-      await useCase.run({
+      const result = await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
       });
 
-      expect(jest.mocked(fs.writeFileSync)).not.toHaveBeenCalled();
+      expect(result).toBeNull();
     });
 
-    it('should write viewer JSON with empty items when no issue is assigned to HiromiShikata', async () => {
+    it('should return viewer output with empty items when no issue is assigned to HiromiShikata', async () => {
       const issue = createMockIssue({
         status: 'Awaiting Quality Check',
         assignees: ['someone-else'],
@@ -670,19 +620,17 @@ describe('RevertNotReadyAwaitingQualityCheckUseCase', () => {
         createReadyPr(),
       ]);
 
-      await useCase.run({
+      const result = await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
         awaitingQualityCheckViewerOutputPath: '/tmp/viewer.json',
       });
 
-      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
-        '/tmp/viewer.json.tmp',
-        expect.stringContaining('"items": []'),
-      );
+      expect(result).not.toBeNull();
+      expect(result?.items).toHaveLength(0);
     });
 
-    it('should write viewer JSON with empty items when nextActionDate is set', async () => {
+    it('should return viewer output with empty items when nextActionDate is set', async () => {
       const issue = createMockIssue({
         status: 'Awaiting Quality Check',
         assignees: ['HiromiShikata'],
@@ -696,19 +644,17 @@ describe('RevertNotReadyAwaitingQualityCheckUseCase', () => {
         createReadyPr(),
       ]);
 
-      await useCase.run({
+      const result = await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
         awaitingQualityCheckViewerOutputPath: '/tmp/viewer.json',
       });
 
-      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
-        '/tmp/viewer.json.tmp',
-        expect.stringContaining('"items": []'),
-      );
+      expect(result).not.toBeNull();
+      expect(result?.items).toHaveLength(0);
     });
 
-    it('should write viewer JSON with empty items when nextActionHour is set', async () => {
+    it('should return viewer output with empty items when nextActionHour is set', async () => {
       const issue = createMockIssue({
         status: 'Awaiting Quality Check',
         assignees: ['HiromiShikata'],
@@ -722,19 +668,17 @@ describe('RevertNotReadyAwaitingQualityCheckUseCase', () => {
         createReadyPr(),
       ]);
 
-      await useCase.run({
+      const result = await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
         awaitingQualityCheckViewerOutputPath: '/tmp/viewer.json',
       });
 
-      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
-        '/tmp/viewer.json.tmp',
-        expect.stringContaining('"items": []'),
-      );
+      expect(result).not.toBeNull();
+      expect(result?.items).toHaveLength(0);
     });
 
-    it('should write viewer JSON with empty items list when no issue qualifies', async () => {
+    it('should return viewer output with empty items list when no issue qualifies', async () => {
       const issue = createMockIssue({
         status: 'Awaiting Quality Check',
         assignees: [],
@@ -747,20 +691,71 @@ describe('RevertNotReadyAwaitingQualityCheckUseCase', () => {
         createReadyPr(),
       ]);
 
-      await useCase.run({
+      const result = await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
         awaitingQualityCheckViewerOutputPath: '/tmp/viewer.json',
       });
 
-      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
-        '/tmp/viewer.json.tmp',
-        expect.stringContaining('"items": []'),
-      );
-      expect(jest.mocked(fs.renameSync)).toHaveBeenCalledWith(
-        '/tmp/viewer.json.tmp',
-        '/tmp/viewer.json',
-      );
+      expect(result).not.toBeNull();
+      expect(result?.items).toHaveLength(0);
+    });
+
+    it('should exclude PR from viewer output when its URL is in donePrUrls', async () => {
+      const prUrl = 'https://github.com/owner/repo/pull/10';
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+        assignees: ['HiromiShikata'],
+        nextActionDate: null,
+        nextActionHour: null,
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        createReadyPr(prUrl),
+      ]);
+      mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([]);
+
+      const result = await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowIssueCacheMinutes: 10,
+        awaitingQualityCheckViewerOutputPath: '/tmp/viewer.json',
+        donePrUrls: new Set([prUrl]),
+      });
+
+      expect(result).not.toBeNull();
+      expect(result?.items).toHaveLength(0);
+    });
+
+    it('should include PR in viewer output when its URL is not in donePrUrls', async () => {
+      const prUrl = 'https://github.com/owner/repo/pull/10';
+      const otherDonePrUrl = 'https://github.com/owner/repo/pull/99';
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+        assignees: ['HiromiShikata'],
+        nextActionDate: null,
+        nextActionHour: null,
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        createReadyPr(prUrl),
+      ]);
+      mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([]);
+
+      const result = await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowIssueCacheMinutes: 10,
+        awaitingQualityCheckViewerOutputPath: '/tmp/viewer.json',
+        donePrUrls: new Set([otherDonePrUrl]),
+      });
+
+      expect(result).not.toBeNull();
+      expect(result?.items).toHaveLength(1);
     });
   });
 

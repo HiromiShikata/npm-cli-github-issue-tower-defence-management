@@ -4,6 +4,10 @@ import fs from 'fs';
 import { writeSituationFile } from './situationFileWriter';
 import { writeRotationOrderFile } from './rotationOrderFileWriter';
 import {
+  readDoneStorePrUrls,
+  writeAwaitingQualityCheckViewerFile,
+} from './awaitingQualityCheckViewerWriter';
+import {
   fetchProjectReadme,
   parseProjectReadmeConfig,
 } from '../cli/projectConfig';
@@ -66,6 +70,7 @@ export class HandleScheduledEventUseCaseHandler {
     const input: unknown = YAML.parse(configFileContent);
     type inputType = Parameters<HandleScheduledEventUseCase['run']>[0] & {
       claudeCodeOauthTokenListJsonPath?: string;
+      awaitingQualityCheckDoneStorePath?: string;
       credentials: {
         manager: {
           github: {
@@ -113,6 +118,9 @@ export class HandleScheduledEventUseCaseHandler {
       awaitingQualityCheckViewerOutputPath:
         readmeConfig.awaitingQualityCheckViewerOutputPath ??
         input.awaitingQualityCheckViewerOutputPath,
+      awaitingQualityCheckDoneStorePath:
+        readmeConfig.awaitingQualityCheckDoneStorePath ??
+        input.awaitingQualityCheckDoneStorePath,
       startPreparation: input.startPreparation
         ? {
             ...input.startPreparation,
@@ -341,10 +349,26 @@ export class HandleScheduledEventUseCaseHandler {
       issueRepository,
     );
 
-    const result = await handleScheduledEventUseCase.run(mergedInput);
+    const donePrUrls = mergedInput.awaitingQualityCheckDoneStorePath
+      ? readDoneStorePrUrls(mergedInput.awaitingQualityCheckDoneStorePath)
+      : null;
+
+    const result = await handleScheduledEventUseCase.run({
+      ...mergedInput,
+      donePrUrls,
+    });
     if (result) {
       if (result.rotationOrder !== null) {
         writeRotationOrderFile(result.rotationOrder);
+      }
+      if (
+        result.viewerOutput !== null &&
+        mergedInput.awaitingQualityCheckViewerOutputPath
+      ) {
+        writeAwaitingQualityCheckViewerFile(
+          result.viewerOutput,
+          mergedInput.awaitingQualityCheckViewerOutputPath,
+        );
       }
       await writeSituationFile({
         cachePath,
