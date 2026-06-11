@@ -20,6 +20,7 @@ Commands:
   startDaemon [options]                 Start daemon to prepare GitHub issues
   notifyFinishedIssuePreparation [options]  Notify that issue preparation is finished
   checkIssueReviewReadiness [options]   Check whether an issue is review-ready (read-only; does not change Status or post any comment)
+  serve-pr-review-viewer [options]      Start an HTTP server for the PR Review Viewer UI
   help [command]                        display help for command
 
 Options for schedule:
@@ -52,9 +53,18 @@ Options for checkIssueReviewReadiness:
   --configFilePath <path>                          Path to config file for tower defence management (required)
   --issueUrl <url>                                 GitHub issue URL (required)
   --projectUrl <url>                               GitHub project URL
+
+Options for serve-pr-review-viewer:
+  --accessKey <key>                                Secret key required in Authorization: Bearer header or ?key= query parameter for API endpoints (required)
+  --host <host>                                    Host to listen on (default: 127.0.0.1)
+  --port <port>                                    Port to listen on, 1-65535 (default: 3000)
+  --staticFilesDir <path>                          Directory of static files to serve (required)
+  --dataDir <path>                                 Directory for PR review viewer data files (required)
 ```
 
 The `checkIssueReviewReadiness` sub-command lets an agent self-check whether an issue is currently review-ready by reusing the same `IssueRejectionEvaluator` logic that `notifyFinishedIssuePreparation` consults. It does NOT change the issue Status field and does NOT post any comment. It writes a single JSON line to stdout of the shape `{ "reviewReady": boolean, "rejections": [{ "type": string, "detail": string }] }` and exits 0 on a successful evaluation regardless of readiness; a non-zero exit indicates an operational error (auth failure, network error, issue not found).
+
+The `serve-pr-review-viewer` sub-command starts an HTTP server that serves a PR review viewer UI and exposes a JSON API for listing, viewing, and acting on pull requests. The server requires a `GH_TOKEN` environment variable with a valid GitHub personal access token. All API endpoints require the `--accessKey` value in an `Authorization: Bearer <key>` header or a `?key=<key>` query parameter. Static files from `--staticFilesDir` are served for all non-API paths, with fallback to `index.html` for SPA routing. The server binds to `--host` (default `127.0.0.1`) on `--port` (default `3000`) and shuts down gracefully on SIGTERM or SIGINT.
 
 ## Example 📖
 
@@ -78,6 +88,10 @@ npx github-issue-tower-defence-management notifyFinishedIssuePreparation --confi
 
 ```
 npx github-issue-tower-defence-management checkIssueReviewReadiness --configFilePath ./preparator-config.yml --issueUrl https://github.com/HiromiShikata/test-repository/issues/1
+```
+
+```
+npx github-issue-tower-defence-management serve-pr-review-viewer --accessKey my-secret-key --staticFilesDir ./viewer-ui/dist --dataDir ./tmp/pr-review-data
 ```
 
 ## Config

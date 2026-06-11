@@ -11,10 +11,33 @@ import {
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
 import { CheckIssueReviewReadinessUseCase } from '../../../domain/usecases/CheckIssueReviewReadinessUseCase';
+import { PrReviewViewerHttpServer } from '../handlers/PrReviewViewerHttpServer';
 
 jest.mock('../../../domain/usecases/StartPreparationUseCase');
 jest.mock('../../../domain/usecases/NotifyFinishedIssuePreparationUseCase');
 jest.mock('../../../domain/usecases/CheckIssueReviewReadinessUseCase');
+jest.mock('../../../domain/usecases/PrReviewViewerServerStartUseCase');
+jest.mock('../handlers/PrReviewViewerHttpServer', () => ({
+  PrReviewViewerHttpServer: jest.fn().mockImplementation(() => ({
+    start: jest.fn().mockResolvedValue(undefined),
+    stop: jest.fn().mockResolvedValue(undefined),
+  })),
+}));
+jest.mock('../../repositories/FileSystemPrReviewViewerListRepository', () => ({
+  FileSystemPrReviewViewerListRepository: jest.fn().mockImplementation(() => ({})),
+}));
+jest.mock('../../repositories/FileSystemPrReviewViewerDetailRepository', () => ({
+  FileSystemPrReviewViewerDetailRepository: jest.fn().mockImplementation(() => ({})),
+}));
+jest.mock('../../repositories/GitHubPrReviewRepository', () => ({
+  GitHubPrReviewRepository: jest.fn().mockImplementation(() => ({})),
+}));
+jest.mock('../../repositories/FileSystemPrReviewDoneRepository', () => ({
+  FileSystemPrReviewDoneRepository: jest.fn().mockImplementation(() => ({})),
+}));
+jest.mock('../../repositories/FileSystemIssueTitleCacheRepository', () => ({
+  FileSystemIssueTitleCacheRepository: jest.fn().mockImplementation(() => ({})),
+}));
 jest.mock('../../repositories/LocalStorageRepository', () => ({
   LocalStorageRepository: jest.fn().mockImplementation(() => ({})),
 }));
@@ -1654,6 +1677,111 @@ mysteryKey: 'value'
 
       consoleErrorSpy.mockRestore();
       processExitSpy.mockRestore();
+    });
+  });
+
+  describe('serve-pr-review-viewer', () => {
+    beforeEach(() => {
+      process.env = { ...originalEnv, GH_TOKEN: 'test-gh-token' };
+    });
+
+    afterEach(() => {
+      process.env = originalEnv;
+    });
+
+    it('should appear in the CLI help output', async () => {
+      const helpText = program.helpInformation();
+      expect(helpText).toContain('serve-pr-review-viewer');
+    });
+
+    it('should exit with error when GH_TOKEN is missing', async () => {
+      delete process.env.GH_TOKEN;
+
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
+
+      await expect(
+        program.parseAsync([
+          'node',
+          'test',
+          'serve-pr-review-viewer',
+          '--accessKey',
+          'my-secret',
+          '--staticFilesDir',
+          '/tmp/static',
+          '--dataDir',
+          '/tmp/data',
+        ]),
+      ).rejects.toThrow('process.exit called');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'GH_TOKEN environment variable is required',
+      );
+      expect(processExitSpy).toHaveBeenCalledWith(1);
+
+      consoleErrorSpy.mockRestore();
+      processExitSpy.mockRestore();
+    });
+
+    it('should exit with error for invalid port', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
+
+      await expect(
+        program.parseAsync([
+          'node',
+          'test',
+          'serve-pr-review-viewer',
+          '--accessKey',
+          'my-secret',
+          '--port',
+          'notaport',
+          '--staticFilesDir',
+          '/tmp/static',
+          '--dataDir',
+          '/tmp/data',
+        ]),
+      ).rejects.toThrow('process.exit called');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Invalid port: notaport');
+      expect(processExitSpy).toHaveBeenCalledWith(1);
+
+      consoleErrorSpy.mockRestore();
+      processExitSpy.mockRestore();
+    });
+
+    it('should start the server with correct parameters', async () => {
+      await program.parseAsync([
+        'node',
+        'test',
+        'serve-pr-review-viewer',
+        '--accessKey',
+        'my-secret',
+        '--host',
+        '0.0.0.0',
+        '--port',
+        '8080',
+        '--staticFilesDir',
+        '/tmp/static',
+        '--dataDir',
+        '/tmp/data',
+      ]);
+
+      const MockedServer = jest.mocked(PrReviewViewerHttpServer);
+      expect(MockedServer).toHaveBeenCalled();
+      const lastInstance = MockedServer.mock.results[MockedServer.mock.results.length - 1];
+      expect(lastInstance).toBeDefined();
+      if (lastInstance && lastInstance.type === 'return' && lastInstance.value) {
+        expect(lastInstance.value.start).toHaveBeenCalledWith('0.0.0.0', 8080);
+      }
     });
   });
 });

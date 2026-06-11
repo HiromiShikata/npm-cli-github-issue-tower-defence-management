@@ -32,6 +32,13 @@ import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunne
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
+import { PrReviewViewerServerStartUseCase } from '../../../domain/usecases/PrReviewViewerServerStartUseCase';
+import { FileSystemPrReviewViewerListRepository } from '../../repositories/FileSystemPrReviewViewerListRepository';
+import { FileSystemPrReviewViewerDetailRepository } from '../../repositories/FileSystemPrReviewViewerDetailRepository';
+import { GitHubPrReviewRepository } from '../../repositories/GitHubPrReviewRepository';
+import { FileSystemPrReviewDoneRepository } from '../../repositories/FileSystemPrReviewDoneRepository';
+import { FileSystemIssueTitleCacheRepository } from '../../repositories/FileSystemIssueTitleCacheRepository';
+import { PrReviewViewerHttpServer } from '../handlers/PrReviewViewerHttpServer';
 
 type StartDaemonOptions = {
   projectUrl?: string;
@@ -553,6 +560,77 @@ program
     });
 
     process.stdout.write(`${JSON.stringify(result)}\n`);
+  });
+
+type ServePrReviewViewerOptions = {
+  accessKey: string;
+  host: string;
+  port: string;
+  staticFilesDir: string;
+  dataDir: string;
+};
+
+program
+  .command('serve-pr-review-viewer')
+  .description('Start a local HTTP server for the PR review viewer')
+  .requiredOption('--accessKey <key>', 'Access key for token validation')
+  .option('--host <host>', 'Bind host', '127.0.0.1')
+  .option('--port <port>', 'Bind port', '3000')
+  .requiredOption(
+    '--staticFilesDir <path>',
+    'Directory containing viewer static files',
+  )
+  .requiredOption('--dataDir <path>', 'Directory containing PR viewer data files')
+  .action(async (options: ServePrReviewViewerOptions) => {
+    const token = process.env.GH_TOKEN;
+    if (!token) {
+      console.error('GH_TOKEN environment variable is required');
+      process.exit(1);
+      return;
+    }
+    const port = parseInt(options.port, 10);
+    if (isNaN(port) || port < 1 || port > 65535) {
+      console.error(`Invalid port: ${options.port}`);
+      process.exit(1);
+      return;
+    }
+    const localStorageRepository = new LocalStorageRepository();
+    const githubRepositoryParams = buildGithubRepositoryParams(
+      localStorageRepository,
+      token,
+    );
+    const listRepo = new FileSystemPrReviewViewerListRepository(options.dataDir);
+    const detailRepo = new FileSystemPrReviewViewerDetailRepository(
+      options.dataDir,
+    );
+    const reviewRepo = new GitHubPrReviewRepository(...githubRepositoryParams);
+    const doneRepo = new FileSystemPrReviewDoneRepository(options.dataDir);
+    const titleCacheRepo = new FileSystemIssueTitleCacheRepository(
+      options.dataDir,
+    );
+    const useCase = new PrReviewViewerServerStartUseCase(
+      listRepo,
+      detailRepo,
+      reviewRepo,
+      doneRepo,
+      titleCacheRepo,
+    );
+    const server = new PrReviewViewerHttpServer(
+      useCase,
+      reviewRepo,
+      options.accessKey,
+      options.staticFilesDir,
+    );
+    const shutdown = async (): Promise<void> => {
+      await server.stop();
+      process.exit(0);
+    };
+    process.on('SIGTERM', () => void shutdown());
+    process.on('SIGINT', () => void shutdown());
+    await server.start(options.host, port);
+    console.log(
+      `PR review viewer server started on http://${options.host}:${port}`,
+    );
   });
 
 /* istanbul ignore next */
