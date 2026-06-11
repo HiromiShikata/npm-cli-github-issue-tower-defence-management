@@ -524,12 +524,13 @@ export const createPrReviewViewerServer = (
         sendError(res, 400, 'Only GitHub URLs are allowed');
         return;
       }
-      const safeImageFetchUrl = new URL(
-        safeImageUrl.pathname + safeImageUrl.search,
-        `https://${allowedHost}`,
-      );
+      const encodedPathSegments = safeImageUrl.pathname
+        .split('/')
+        .map(encodeURIComponent)
+        .join('/');
+      const safeImageFetchUrl = `https://${allowedHost}${encodedPathSegments}${safeImageUrl.search}`;
       try {
-        const imageResponse = await fetch(safeImageFetchUrl.toString(), {
+        const imageResponse = await fetch(safeImageFetchUrl, {
           headers: { Authorization: `Bearer ${ghToken}` },
         });
         res.writeHead(imageResponse.status, {
