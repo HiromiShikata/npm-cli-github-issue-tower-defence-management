@@ -432,7 +432,10 @@ const serveStaticFile = (
     return;
   }
   const safePath = path.join(resolvedBase, normalized);
-  if (!safePath.startsWith(resolvedBase + path.sep) && safePath !== resolvedBase) {
+  if (
+    !safePath.startsWith(resolvedBase + path.sep) &&
+    safePath !== resolvedBase
+  ) {
     res.writeHead(400);
     res.end('Bad Request');
     return;
@@ -514,12 +517,17 @@ export const createPrReviewViewerServer = (
         sendError(res, 400, 'Invalid URL');
         return;
       }
-      const allowedHost = [...GITHUB_HOSTS].find((h) => h === safeImageUrl.hostname);
+      const allowedHost = [...GITHUB_HOSTS].find(
+        (h) => h === safeImageUrl.hostname,
+      );
       if (safeImageUrl.protocol !== 'https:' || allowedHost === undefined) {
         sendError(res, 400, 'Only GitHub URLs are allowed');
         return;
       }
-      const safeImageFetchUrl = new URL(safeImageUrl.pathname + safeImageUrl.search, `https://${allowedHost}`);
+      const safeImageFetchUrl = new URL(
+        safeImageUrl.pathname + safeImageUrl.search,
+        `https://${allowedHost}`,
+      );
       try {
         const imageResponse = await fetch(safeImageFetchUrl.toString(), {
           headers: { Authorization: `Bearer ${ghToken}` },
