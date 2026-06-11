@@ -111,7 +111,7 @@ export class GitHubTriageRepository
     const projectNumber = parseInt(path[4], 10);
     if (!owner || isNaN(projectNumber)) {
       throw new Error(
-        `Invalid project URL format: ${projectUrl}. Expected format: https://github.com/{org}/projects/{number}`,
+        `Invalid project URL format: ${projectUrl}. Expected format: https://github.com/orgs/{org}/projects/{number} or https://github.com/users/{user}/projects/{number}`,
       );
     }
     return { owner, projectNumber };

@@ -124,14 +124,16 @@ export class TriageViewerHttpServer {
       return;
     }
 
-    const keyInQuery = urlObj.searchParams.get('key');
-    if (keyInQuery && keyInQuery === this.accessKey) {
-      const cleanUrl = pathname;
-      const redirectHtml = `<!DOCTYPE html>
+    const triagePageMatch = pathname.match(/^\/projects\/([^/]+)\/triage$/);
+    if (triagePageMatch && req.method === 'GET') {
+      const keyInQuery = urlObj.searchParams.get('key');
+      if (keyInQuery && keyInQuery === this.accessKey) {
+        const cleanUrl = pathname;
+        const redirectHtml = `<!DOCTYPE html>
 <html>
 <head>
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="refresh" content="0;url=${encodeURIComponent(cleanUrl)}">
+<meta http-equiv="refresh" content="0;url=${cleanUrl.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}">
 <script>
 (function(){
   localStorage.setItem('triage-access-key',${JSON.stringify(keyInQuery)});
@@ -141,7 +143,17 @@ export class TriageViewerHttpServer {
 </head>
 <body></body>
 </html>`;
-      sendHtml(res, redirectHtml);
+        sendHtml(res, redirectHtml);
+        return;
+      }
+      let projectCode: string;
+      try {
+        projectCode = decodeURIComponent(triagePageMatch[1]);
+      } catch {
+        sendError(res, 400, 'Invalid project code encoding');
+        return;
+      }
+      await this.handleTriagePage(res, projectCode);
       return;
     }
 
@@ -184,19 +196,6 @@ export class TriageViewerHttpServer {
     );
     if (closeIssueMatch && req.method === 'POST') {
       await this.handleCloseIssue(req, res);
-      return;
-    }
-
-    const triagePageMatch = pathname.match(/^\/projects\/([^/]+)\/triage$/);
-    if (triagePageMatch) {
-      let projectCode: string;
-      try {
-        projectCode = decodeURIComponent(triagePageMatch[1]);
-      } catch {
-        sendError(res, 400, 'Invalid project code encoding');
-        return;
-      }
-      await this.handleTriagePage(res, projectCode);
       return;
     }
 
@@ -348,16 +347,9 @@ export class TriageViewerHttpServer {
         sendError(res, 400, 'Missing url parameter');
         return;
       }
-      let decodedUrl: string;
-      try {
-        decodedUrl = decodeURIComponent(targetUrl);
-      } catch {
-        sendError(res, 400, 'Invalid url encoding');
-        return;
-      }
       let parsedTarget: URL;
       try {
-        parsedTarget = new URL(decodedUrl);
+        parsedTarget = new URL(targetUrl);
       } catch {
         sendError(res, 400, 'Invalid target URL');
         return;
@@ -372,7 +364,7 @@ export class TriageViewerHttpServer {
         return;
       }
       const { content, contentType } =
-        await this.useCase.fetchImageProxy(decodedUrl);
+        await this.useCase.fetchImageProxy(targetUrl);
       res.writeHead(200, {
         'Content-Type': contentType,
         'Content-Length': content.length,
@@ -401,12 +393,9 @@ const escapeHtml = (text: string): string =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 
-const escapeJs = (text: string): string =>
-  text.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n');
-
 const buildTriagePageHtml = (projectCode: string): string => {
   const escapedProjectCode = escapeHtml(projectCode);
-  const escapedProjectCodeJs = escapeJs(projectCode);
+  const jsonProjectCode = JSON.stringify(projectCode);
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -465,7 +454,7 @@ const buildTriagePageHtml = (projectCode: string): string => {
 </head>
 <body>
 <header>
-  <a href="/">&larr; Project Issues</a>
+  <a href="${escapedProjectCode}">&larr; Project Issues</a>
   <h1>Triage</h1>
 </header>
 <div class="container">
@@ -491,7 +480,7 @@ const buildTriagePageHtml = (projectCode: string): string => {
 <div id="undo-toast" class="toast hidden"></div>
 <script>
 (function() {
-  var PROJECT_CODE = '${escapedProjectCodeJs}';
+  var PROJECT_CODE = ${jsonProjectCode};
   var accessKey = localStorage.getItem('triage-access-key') || '';
 
   var issues = [];

@@ -81,7 +81,7 @@ class GitHubTriageRepository extends BaseGitHubRepository_1.BaseGitHubRepository
             const owner = path[2];
             const projectNumber = parseInt(path[4], 10);
             if (!owner || isNaN(projectNumber)) {
-                throw new Error(`Invalid project URL format: ${projectUrl}. Expected format: https://github.com/{org}/projects/{number}`);
+                throw new Error(`Invalid project URL format: ${projectUrl}. Expected format: https://github.com/orgs/{org}/projects/{number} or https://github.com/users/{user}/projects/{number}`);
             }
             return { owner, projectNumber };
         };
