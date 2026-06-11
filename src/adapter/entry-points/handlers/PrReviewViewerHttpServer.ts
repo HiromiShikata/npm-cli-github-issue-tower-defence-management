@@ -117,7 +117,13 @@ export class PrReviewViewerHttpServer {
       sendError(res, 400, 'Invalid path');
       return;
     }
-    const urlObj = new URL(rawUrl, 'http://localhost');
+    let urlObj: URL;
+    try {
+      urlObj = new URL(rawUrl, 'http://localhost');
+    } catch {
+      sendError(res, 400, 'Invalid request URL');
+      return;
+    }
     const pathname = urlObj.pathname;
 
     if (pathname.split('/').some((seg) => seg === '..' || seg === '.')) {

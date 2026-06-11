@@ -632,8 +632,8 @@ program
         () => process.exit(1),
       );
     };
-    process.on('SIGTERM', shutdown);
-    process.on('SIGINT', shutdown);
+    process.once('SIGTERM', shutdown);
+    process.once('SIGINT', shutdown);
     await server.start(options.host, port);
     console.log(
       `PR review viewer server started on http://${options.host}:${port}`,
