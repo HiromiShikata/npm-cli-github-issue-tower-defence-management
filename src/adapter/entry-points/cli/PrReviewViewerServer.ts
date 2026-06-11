@@ -9,6 +9,30 @@ type JsonValue = string | number | boolean | null | JsonValue[] | JsonObject;
 const isJsonObject = (v: unknown): v is JsonObject =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
 
+const GITHUB_HOSTS = new Set([
+  'github.com',
+  'raw.githubusercontent.com',
+  'avatars.githubusercontent.com',
+  'camo.githubusercontent.com',
+  'user-images.githubusercontent.com',
+  'private-user-images.githubusercontent.com',
+  'objects.githubusercontent.com',
+]);
+
+const isGithubUrl = (rawUrl: string): boolean => {
+  try {
+    const parsed = new URL(rawUrl);
+    return parsed.protocol === 'https:' && GITHUB_HOSTS.has(parsed.hostname);
+  } catch {
+    return false;
+  }
+};
+
+const SAFE_GITHUB_SEGMENT = /^[a-zA-Z0-9._-]+$/;
+
+const isSafeGithubSegment = (segment: string): boolean =>
+  SAFE_GITHUB_SEGMENT.test(segment) && !segment.includes('..');
+
 type DoneStore = {
   done: string[];
 };
@@ -474,6 +498,10 @@ export const createPrReviewViewerServer = (
         sendError(res, 400, 'Missing url parameter');
         return;
       }
+      if (!isGithubUrl(imageUrl)) {
+        sendError(res, 400, 'Only GitHub URLs are allowed');
+        return;
+      }
       try {
         const imageResponse = await fetch(imageUrl, {
           headers: { Authorization: `Bearer ${ghToken}` },
@@ -485,8 +513,8 @@ export const createPrReviewViewerServer = (
         const buffer = await imageResponse.arrayBuffer();
         res.end(Buffer.from(buffer));
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        sendError(res, 500, message);
+        console.error('Internal server error:', err instanceof Error ? err.message : String(err));
+        sendError(res, 500, 'Internal server error');
       }
       return;
     }
@@ -505,6 +533,10 @@ export const createPrReviewViewerServer = (
         typeof numberStr !== 'string'
       ) {
         sendError(res, 400, 'Missing parameters');
+        return;
+      }
+      if (!isSafeGithubSegment(owner) || !isSafeGithubSegment(repo) || !/^\d+$/.test(numberStr)) {
+        sendError(res, 400, 'Invalid parameters');
         return;
       }
       const cacheKey = `${owner}/${repo}/${numberStr}`;
@@ -536,8 +568,8 @@ export const createPrReviewViewerServer = (
         refCache.set(cacheKey, resolution);
         sendJson(res, 200, resolution);
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        sendError(res, 500, message);
+        console.error('Internal server error:', err instanceof Error ? err.message : String(err));
+        sendError(res, 500, 'Internal server error');
       }
       return;
     }
@@ -559,8 +591,17 @@ export const createPrReviewViewerServer = (
         return;
       }
       const [, owner, repo, ref, filePath] = blobMatch;
+      if (!isSafeGithubSegment(owner) || !isSafeGithubSegment(repo) || !isSafeGithubSegment(ref)) {
+        sendError(res, 400, 'Invalid parameters');
+        return;
+      }
+      const safeFilePath = filePath.split('/').every((seg) => isSafeGithubSegment(seg) || seg === '') ? filePath : null;
+      if (!safeFilePath) {
+        sendError(res, 400, 'Invalid file path');
+        return;
+      }
       try {
-        const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${ref}/${filePath}`;
+        const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${ref}/${safeFilePath}`;
         const rawResponse = await fetch(rawUrl, {
           headers: { Authorization: `Bearer ${ghToken}` },
         });
@@ -576,8 +617,8 @@ export const createPrReviewViewerServer = (
         const buffer = await rawResponse.arrayBuffer();
         res.end(Buffer.from(buffer));
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        sendError(res, 500, message);
+        console.error('Internal server error:', err instanceof Error ? err.message : String(err));
+        sendError(res, 500, 'Internal server error');
       }
       return;
     }
@@ -758,8 +799,8 @@ export const createPrReviewViewerServer = (
 
         sendJson(res, 200, { ok: true });
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        sendError(res, 422, message);
+        console.error('Review action error:', err instanceof Error ? err.message : String(err));
+        sendError(res, 422, 'Review action failed');
       }
       return;
     }
