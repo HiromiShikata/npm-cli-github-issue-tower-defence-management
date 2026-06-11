@@ -220,7 +220,13 @@ type PullRequestFilesResponseItem = {
 function isPullRequestFilesResponse(
   value: unknown,
 ): value is PullRequestFilesResponseItem[] {
-  return typia.is<PullRequestFilesResponseItem[]>(value);
+  if (!Array.isArray(value)) return false;
+  return value.every(
+    (item) =>
+      typeof item === 'object' &&
+      item !== null &&
+      typeof (item as Record<string, unknown>)['filename'] === 'string',
+  );
 }
 
 const fnmatch = (pattern: string, str: string): boolean => {

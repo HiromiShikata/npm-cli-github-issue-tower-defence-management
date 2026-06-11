@@ -18,7 +18,11 @@ function isDirectPullRequestResponse(value) {
     return true;
 }
 function isPullRequestFilesResponse(value) {
-    return typia_1.default.is(value);
+    if (!Array.isArray(value))
+        return false;
+    return value.every((item) => typeof item === 'object' &&
+        item !== null &&
+        typeof item['filename'] === 'string');
 }
 const fnmatch = (pattern, str) => {
     let regexStr = '^';
