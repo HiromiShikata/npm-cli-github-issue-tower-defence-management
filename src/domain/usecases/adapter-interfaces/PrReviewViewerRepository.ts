@@ -77,15 +77,22 @@ export interface PrReviewRepository {
 
 export interface PrReviewDoneRepository {
   markDone: (owner: string, repo: string, prNumber: number) => Promise<void>;
-  isDone: (
-    owner: string,
-    repo: string,
-    prNumber: number,
-  ) => Promise<boolean>;
-  getAllDone: () => Promise<{ owner: string; repo: string; prNumber: number }[]>;
+  isDone: (owner: string, repo: string, prNumber: number) => Promise<boolean>;
+  getAllDone: () => Promise<
+    { owner: string; repo: string; prNumber: number }[]
+  >;
 }
 
 export interface IssueTitleCacheRepository {
-  get: (owner: string, repo: string, number: number) => Promise<IssueTitleInfo | null>;
-  set: (owner: string, repo: string, number: number, info: IssueTitleInfo) => Promise<void>;
+  get: (
+    owner: string,
+    repo: string,
+    number: number,
+  ) => Promise<IssueTitleInfo | null>;
+  set: (
+    owner: string,
+    repo: string,
+    number: number,
+    info: IssueTitleInfo,
+  ) => Promise<void>;
 }

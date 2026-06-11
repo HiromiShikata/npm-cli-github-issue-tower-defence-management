@@ -31,16 +31,33 @@ export type ReviewActionRequest = {
   }[];
 };
 
-export type ReviewActionResult =
-  | { ok: true }
-  | { ok: false; error: string };
+export type ReviewActionResult = { ok: true } | { ok: false; error: string };
 
 export interface PrReviewViewerUseCaseInterface {
-  getList: (projectCode: string) => Promise<import('../entities/PrReviewViewerItem').PrReviewViewerItem[]>;
-  getDetail: (projectCode: string, repo: string, prNumber: number) => Promise<object | null>;
-  executeReview: (projectCode: string, request: ReviewActionRequest) => Promise<ReviewActionResult>;
-  getFileContent: (owner: string, repo: string, filePath: string, ref: string, prHeadSha: string) => Promise<{ content: Buffer; contentType: string }>;
-  getIssueTitleInfo: (owner: string, repo: string, number: number) => Promise<import('../entities/PrReviewViewerItem').IssueTitleInfo>;
+  getList: (
+    projectCode: string,
+  ) => Promise<import('../entities/PrReviewViewerItem').PrReviewViewerItem[]>;
+  getDetail: (
+    projectCode: string,
+    repo: string,
+    prNumber: number,
+  ) => Promise<object | null>;
+  executeReview: (
+    projectCode: string,
+    request: ReviewActionRequest,
+  ) => Promise<ReviewActionResult>;
+  getFileContent: (
+    owner: string,
+    repo: string,
+    filePath: string,
+    ref: string,
+    prHeadSha: string,
+  ) => Promise<{ content: Buffer; contentType: string }>;
+  getIssueTitleInfo: (
+    owner: string,
+    repo: string,
+    number: number,
+  ) => Promise<import('../entities/PrReviewViewerItem').IssueTitleInfo>;
 }
 
 export class PrReviewViewerServerStartUseCase {
@@ -53,7 +70,8 @@ export class PrReviewViewerServerStartUseCase {
   ) {}
 
   getList = async (projectCode: string) => {
-    const allItems = await this.prReviewViewerListRepository.getList(projectCode);
+    const allItems =
+      await this.prReviewViewerListRepository.getList(projectCode);
     const doneItems = await this.prReviewDoneRepository.getAllDone();
     const doneSet = new Set(
       doneItems.map((d) => `${d.owner}/${d.repo}#${d.prNumber}`),
@@ -65,11 +83,7 @@ export class PrReviewViewerServerStartUseCase {
     });
   };
 
-  getDetail = async (
-    projectCode: string,
-    repo: string,
-    prNumber: number,
-  ) => {
+  getDetail = async (projectCode: string, repo: string, prNumber: number) => {
     return this.prReviewViewerDetailRepository.getDetail(
       projectCode,
       repo,
@@ -136,7 +150,11 @@ export class PrReviewViewerServerStartUseCase {
           prNumber,
           'totally wrong',
         );
-        await this.prReviewRepository.closePullRequest(owner, repoName, prNumber);
+        await this.prReviewRepository.closePullRequest(
+          owner,
+          repoName,
+          prNumber,
+        );
         await this.safeMarkDone(owner, repoName, prNumber);
       } else if (action === 'CLOSE_UNNEEDED') {
         await this.prReviewRepository.createComment(
@@ -145,13 +163,17 @@ export class PrReviewViewerServerStartUseCase {
           prNumber,
           'This pull request is unnecessary.',
         );
-        const list = await this.prReviewViewerListRepository.getList(projectCode);
+        const list =
+          await this.prReviewViewerListRepository.getList(projectCode);
         const item = list.find(
           (i) => i.pr.repo === repoStr && i.pr.number === prNumber,
         );
         if (item) {
-          const { owner: issueOwner, repo: issueRepo, number: issueNumber } =
-            this.parseIssueUrl(item.issue.url);
+          const {
+            owner: issueOwner,
+            repo: issueRepo,
+            number: issueNumber,
+          } = this.parseIssueUrl(item.issue.url);
           if (issueOwner && issueRepo && issueNumber) {
             await this.prReviewRepository.addLabel(
               issueOwner,
@@ -161,13 +183,16 @@ export class PrReviewViewerServerStartUseCase {
             );
           }
         }
-        await this.prReviewRepository.closePullRequest(owner, repoName, prNumber);
+        await this.prReviewRepository.closePullRequest(
+          owner,
+          repoName,
+          prNumber,
+        );
         await this.safeMarkDone(owner, repoName, prNumber);
       }
       return { ok: true };
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : String(error);
+      const message = error instanceof Error ? error.message : String(error);
       return { ok: false, error: message };
     }
   };
@@ -188,12 +213,12 @@ export class PrReviewViewerServerStartUseCase {
     );
   };
 
-  getIssueTitleInfo = async (
-    owner: string,
-    repo: string,
-    number: number,
-  ) => {
-    const cached = await this.issueTitleCacheRepository.get(owner, repo, number);
+  getIssueTitleInfo = async (owner: string, repo: string, number: number) => {
+    const cached = await this.issueTitleCacheRepository.get(
+      owner,
+      repo,
+      number,
+    );
     if (cached) {
       return cached;
     }

@@ -2,9 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { PrReviewViewerDetailRepository } from '../../domain/usecases/adapter-interfaces/PrReviewViewerRepository';
 
-export class FileSystemPrReviewViewerDetailRepository
-  implements PrReviewViewerDetailRepository
-{
+export class FileSystemPrReviewViewerDetailRepository implements PrReviewViewerDetailRepository {
   constructor(private readonly dataDir: string) {}
 
   getDetail = async (

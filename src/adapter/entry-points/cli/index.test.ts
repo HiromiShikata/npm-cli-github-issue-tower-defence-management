@@ -24,11 +24,18 @@ jest.mock('../handlers/PrReviewViewerHttpServer', () => ({
   })),
 }));
 jest.mock('../../repositories/FileSystemPrReviewViewerListRepository', () => ({
-  FileSystemPrReviewViewerListRepository: jest.fn().mockImplementation(() => ({})),
+  FileSystemPrReviewViewerListRepository: jest
+    .fn()
+    .mockImplementation(() => ({})),
 }));
-jest.mock('../../repositories/FileSystemPrReviewViewerDetailRepository', () => ({
-  FileSystemPrReviewViewerDetailRepository: jest.fn().mockImplementation(() => ({})),
-}));
+jest.mock(
+  '../../repositories/FileSystemPrReviewViewerDetailRepository',
+  () => ({
+    FileSystemPrReviewViewerDetailRepository: jest
+      .fn()
+      .mockImplementation(() => ({})),
+  }),
+);
 jest.mock('../../repositories/GitHubPrReviewRepository', () => ({
   GitHubPrReviewRepository: jest.fn().mockImplementation(() => ({})),
 }));
@@ -1777,9 +1784,14 @@ mysteryKey: 'value'
 
       const MockedServer = jest.mocked(PrReviewViewerHttpServer);
       expect(MockedServer).toHaveBeenCalled();
-      const lastInstance = MockedServer.mock.results[MockedServer.mock.results.length - 1];
+      const lastInstance =
+        MockedServer.mock.results[MockedServer.mock.results.length - 1];
       expect(lastInstance).toBeDefined();
-      if (lastInstance && lastInstance.type === 'return' && lastInstance.value) {
+      if (
+        lastInstance &&
+        lastInstance.type === 'return' &&
+        lastInstance.value
+      ) {
         expect(lastInstance.value.start).toHaveBeenCalledWith('0.0.0.0', 8080);
       }
     });

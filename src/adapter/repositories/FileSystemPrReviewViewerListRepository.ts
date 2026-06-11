@@ -3,9 +3,7 @@ import path from 'path';
 import { PrReviewViewerListRepository } from '../../domain/usecases/adapter-interfaces/PrReviewViewerRepository';
 import { PrReviewViewerItem } from '../../domain/entities/PrReviewViewerItem';
 
-export class FileSystemPrReviewViewerListRepository
-  implements PrReviewViewerListRepository
-{
+export class FileSystemPrReviewViewerListRepository implements PrReviewViewerListRepository {
   constructor(private readonly dataDir: string) {}
 
   getList = async (projectCode: string): Promise<PrReviewViewerItem[]> => {

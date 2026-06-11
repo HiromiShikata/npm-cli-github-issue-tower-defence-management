@@ -580,7 +580,10 @@ program
     '--staticFilesDir <path>',
     'Directory containing viewer static files',
   )
-  .requiredOption('--dataDir <path>', 'Directory containing PR viewer data files')
+  .requiredOption(
+    '--dataDir <path>',
+    'Directory containing PR viewer data files',
+  )
   .action(async (options: ServePrReviewViewerOptions) => {
     const token = process.env.GH_TOKEN;
     if (!token) {
@@ -599,7 +602,9 @@ program
       localStorageRepository,
       token,
     );
-    const listRepo = new FileSystemPrReviewViewerListRepository(options.dataDir);
+    const listRepo = new FileSystemPrReviewViewerListRepository(
+      options.dataDir,
+    );
     const detailRepo = new FileSystemPrReviewViewerDetailRepository(
       options.dataDir,
     );

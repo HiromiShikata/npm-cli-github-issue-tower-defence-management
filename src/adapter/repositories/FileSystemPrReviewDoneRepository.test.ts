@@ -2,10 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { FileSystemPrReviewDoneRepository } from './FileSystemPrReviewDoneRepository';
 
-const TEST_DIR = path.join(
-  __dirname,
-  '../../../../tmp/test-done-repo',
-);
+const TEST_DIR = path.join(__dirname, '../../../../tmp/test-done-repo');
 
 describe('FileSystemPrReviewDoneRepository', () => {
   beforeEach(() => {

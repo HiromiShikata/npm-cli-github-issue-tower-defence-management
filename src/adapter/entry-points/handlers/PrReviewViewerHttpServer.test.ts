@@ -1,7 +1,10 @@
 import http from 'http';
 import path from 'path';
 import fs from 'fs';
-import { PrReviewViewerHttpServer, ImageProxyRepository } from './PrReviewViewerHttpServer';
+import {
+  PrReviewViewerHttpServer,
+  ImageProxyRepository,
+} from './PrReviewViewerHttpServer';
 import { PrReviewViewerUseCaseInterface } from '../../../domain/usecases/PrReviewViewerServerStartUseCase';
 
 jest.mock('../../../domain/usecases/PrReviewViewerServerStartUseCase');
@@ -300,7 +303,9 @@ describe('PrReviewViewerHttpServer', () => {
     });
 
     it('does not return 5xx - catches errors and returns 4xx', async () => {
-      mockUseCase.executeReview.mockRejectedValue(new Error('Unexpected failure'));
+      mockUseCase.executeReview.mockRejectedValue(
+        new Error('Unexpected failure'),
+      );
       const { status, json } = await makeRequest(
         'POST',
         '/projects/myproject/prs/review',
@@ -367,11 +372,9 @@ describe('PrReviewViewerHttpServer', () => {
     });
 
     it('returns 400 when parameters are missing', async () => {
-      const { status } = await makeRequest(
-        'GET',
-        '/issue-title?owner=owner',
-        { Authorization: `Bearer ${TEST_ACCESS_KEY}` },
-      );
+      const { status } = await makeRequest('GET', '/issue-title?owner=owner', {
+        Authorization: `Bearer ${TEST_ACCESS_KEY}`,
+      });
       expect(status).toBe(400);
     });
 

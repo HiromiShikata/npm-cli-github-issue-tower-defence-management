@@ -292,9 +292,7 @@ export class GitHubPrReviewRepository
       throw new Error(`Invalid URL: ${targetUrl}`);
     }
     if (!ALLOWED_IMAGE_PROXY_HOSTNAMES.includes(parsedUrl.hostname)) {
-      throw new Error(
-        `Hostname not allowed: ${parsedUrl.hostname}`,
-      );
+      throw new Error(`Hostname not allowed: ${parsedUrl.hostname}`);
     }
     const response = await fetch(targetUrl, {
       headers: {

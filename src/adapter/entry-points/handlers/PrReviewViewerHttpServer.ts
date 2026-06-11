@@ -4,7 +4,9 @@ import path from 'path';
 import { PrReviewViewerUseCaseInterface } from '../../../domain/usecases/PrReviewViewerServerStartUseCase';
 
 export interface ImageProxyRepository {
-  fetchImageProxy: (targetUrl: string) => Promise<{ content: Buffer; contentType: string }>;
+  fetchImageProxy: (
+    targetUrl: string,
+  ) => Promise<{ content: Buffer; contentType: string }>;
 }
 
 const MIME_TYPES: Record<string, string> = {
@@ -145,9 +147,7 @@ export class PrReviewViewerHttpServer {
       return;
     }
 
-    const blobMatch = pathname.match(
-      /^\/blob\/([^/]+)\/([^/]+)\/(.+)$/,
-    );
+    const blobMatch = pathname.match(/^\/blob\/([^/]+)\/([^/]+)\/(.+)$/);
     if (blobMatch) {
       const owner = blobMatch[1];
       const repo = blobMatch[2];
@@ -163,9 +163,7 @@ export class PrReviewViewerHttpServer {
       return;
     }
 
-    const listMatch = pathname.match(
-      /^\/projects\/([^/]+)\/prs\/data\/list$/,
-    );
+    const listMatch = pathname.match(/^\/projects\/([^/]+)\/prs\/data\/list$/);
     if (listMatch && req.method === 'GET') {
       const projectCode = listMatch[1];
       await this.handleGetList(res, projectCode);
@@ -183,9 +181,7 @@ export class PrReviewViewerHttpServer {
       return;
     }
 
-    const reviewMatch = pathname.match(
-      /^\/projects\/([^/]+)\/prs\/review$/,
-    );
+    const reviewMatch = pathname.match(/^\/projects\/([^/]+)\/prs\/review$/);
     if (reviewMatch && req.method === 'POST') {
       const projectCode = reviewMatch[1];
       await this.handleReview(req, res, projectCode);
@@ -257,12 +253,30 @@ export class PrReviewViewerHttpServer {
       const action = parsed['action'];
       const repo = parsed['repo'];
       const prNumber = parsed['prNumber'];
-      const projectItemId = 'projectItemId' in parsed && typeof parsed['projectItemId'] === 'string' ? parsed['projectItemId'] : '';
-      const projectId = 'projectId' in parsed && typeof parsed['projectId'] === 'string' ? parsed['projectId'] : '';
-      const statusFieldId = 'statusFieldId' in parsed && typeof parsed['statusFieldId'] === 'string' ? parsed['statusFieldId'] : '';
-      const awaitingWorkspaceStatusOptionId = 'awaitingWorkspaceStatusOptionId' in parsed && typeof parsed['awaitingWorkspaceStatusOptionId'] === 'string' ? parsed['awaitingWorkspaceStatusOptionId'] : '';
-      const body = 'body' in parsed && typeof parsed['body'] === 'string' ? parsed['body'] : undefined;
-      const isReviewComment = (c: unknown): c is { path: string; position: number; body: string } => {
+      const projectItemId =
+        'projectItemId' in parsed && typeof parsed['projectItemId'] === 'string'
+          ? parsed['projectItemId']
+          : '';
+      const projectId =
+        'projectId' in parsed && typeof parsed['projectId'] === 'string'
+          ? parsed['projectId']
+          : '';
+      const statusFieldId =
+        'statusFieldId' in parsed && typeof parsed['statusFieldId'] === 'string'
+          ? parsed['statusFieldId']
+          : '';
+      const awaitingWorkspaceStatusOptionId =
+        'awaitingWorkspaceStatusOptionId' in parsed &&
+        typeof parsed['awaitingWorkspaceStatusOptionId'] === 'string'
+          ? parsed['awaitingWorkspaceStatusOptionId']
+          : '';
+      const body =
+        'body' in parsed && typeof parsed['body'] === 'string'
+          ? parsed['body']
+          : undefined;
+      const isReviewComment = (
+        c: unknown,
+      ): c is { path: string; position: number; body: string } => {
         if (typeof c !== 'object' || c === null) {
           return false;
         }
@@ -277,7 +291,10 @@ export class PrReviewViewerHttpServer {
         }
         return true;
       };
-      const rawComments: unknown[] = 'comments' in parsed && Array.isArray(parsed['comments']) ? parsed['comments'] : [];
+      const rawComments: unknown[] =
+        'comments' in parsed && Array.isArray(parsed['comments'])
+          ? parsed['comments']
+          : [];
       const comments = rawComments.filter(isReviewComment);
       const validActions: string[] = [
         'APPROVE',
@@ -286,7 +303,12 @@ export class PrReviewViewerHttpServer {
         'CLOSE_WRONG',
         'CLOSE_UNNEEDED',
       ];
-      type ValidAction = 'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT' | 'CLOSE_WRONG' | 'CLOSE_UNNEEDED';
+      type ValidAction =
+        | 'APPROVE'
+        | 'REQUEST_CHANGES'
+        | 'COMMENT'
+        | 'CLOSE_WRONG'
+        | 'CLOSE_UNNEEDED';
       const isValidAction = (a: string): a is ValidAction =>
         validActions.includes(a);
       if (!isValidAction(action)) {

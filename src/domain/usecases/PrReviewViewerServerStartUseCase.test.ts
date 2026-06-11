@@ -51,7 +51,10 @@ const makeReviewRepo = (): jest.Mocked<PrReviewRepository> => ({
   updateProjectItemStatus: jest.fn().mockResolvedValue(undefined),
   getFileContent: jest
     .fn()
-    .mockResolvedValue({ content: Buffer.from('data'), contentType: 'image/png' }),
+    .mockResolvedValue({
+      content: Buffer.from('data'),
+      contentType: 'image/png',
+    }),
   getIssueOrPrTitle: jest.fn().mockResolvedValue({
     title: 'Some title',
     state: 'open',
@@ -92,7 +95,14 @@ const makeUseCase = (
     doneRepo,
     titleCacheRepo,
   );
-  return { useCase, listRepo, detailRepo, reviewRepo, doneRepo, titleCacheRepo };
+  return {
+    useCase,
+    listRepo,
+    detailRepo,
+    reviewRepo,
+    doneRepo,
+    titleCacheRepo,
+  };
 };
 
 describe('PrReviewViewerServerStartUseCase', () => {
@@ -114,8 +124,13 @@ describe('PrReviewViewerServerStartUseCase', () => {
     });
 
     it('includes PRs that are not in the done set', async () => {
-      const items = [makeItem(), makeItem({ pr: { ...makeItem().pr, number: 99 } })];
-      const { useCase, doneRepo } = makeUseCase({ listRepo: makeListRepo(items) });
+      const items = [
+        makeItem(),
+        makeItem({ pr: { ...makeItem().pr, number: 99 } }),
+      ];
+      const { useCase, doneRepo } = makeUseCase({
+        listRepo: makeListRepo(items),
+      });
       doneRepo.getAllDone.mockResolvedValue([
         { owner: 'owner', repo: 'repo', prNumber: 42 },
       ]);
@@ -131,7 +146,11 @@ describe('PrReviewViewerServerStartUseCase', () => {
       detailRepo.getDetail.mockResolvedValue({ body: 'pr body', files: [] });
       const result = await useCase.getDetail('proj', 'owner__repo', 42);
       expect(result).toEqual({ body: 'pr body', files: [] });
-      expect(detailRepo.getDetail).toHaveBeenCalledWith('proj', 'owner__repo', 42);
+      expect(detailRepo.getDetail).toHaveBeenCalledWith(
+        'proj',
+        'owner__repo',
+        42,
+      );
     });
 
     it('returns null when detail not found', async () => {
@@ -263,7 +282,11 @@ describe('PrReviewViewerServerStartUseCase', () => {
         42,
         'totally wrong',
       );
-      expect(reviewRepo.closePullRequest).toHaveBeenCalledWith('owner', 'repo', 42);
+      expect(reviewRepo.closePullRequest).toHaveBeenCalledWith(
+        'owner',
+        'repo',
+        42,
+      );
       expect(reviewRepo.updateProjectItemStatus).not.toHaveBeenCalled();
       expect(doneRepo.markDone).toHaveBeenCalledWith('owner', 'repo', 42);
     });
@@ -314,7 +337,11 @@ describe('PrReviewViewerServerStartUseCase', () => {
         1,
         'chore',
       );
-      expect(reviewRepo.closePullRequest).toHaveBeenCalledWith('owner', 'repo', 42);
+      expect(reviewRepo.closePullRequest).toHaveBeenCalledWith(
+        'owner',
+        'repo',
+        42,
+      );
       expect(doneRepo.markDone).toHaveBeenCalledWith('owner', 'repo', 42);
     });
   });
@@ -409,7 +436,12 @@ describe('PrReviewViewerServerStartUseCase', () => {
       const { useCase } = makeUseCase({ titleCacheRepo, reviewRepo });
       const result = await useCase.getIssueTitleInfo('owner', 'repo', 2);
       expect(result).toEqual(fetched);
-      expect(titleCacheRepo.set).toHaveBeenCalledWith('owner', 'repo', 2, fetched);
+      expect(titleCacheRepo.set).toHaveBeenCalledWith(
+        'owner',
+        'repo',
+        2,
+        fetched,
+      );
     });
   });
 });

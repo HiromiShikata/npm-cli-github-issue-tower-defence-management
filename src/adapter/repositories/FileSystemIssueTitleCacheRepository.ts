@@ -5,9 +5,7 @@ import { IssueTitleInfo } from '../../domain/entities/PrReviewViewerItem';
 
 type CacheStore = Record<string, IssueTitleInfo>;
 
-export class FileSystemIssueTitleCacheRepository
-  implements IssueTitleCacheRepository
-{
+export class FileSystemIssueTitleCacheRepository implements IssueTitleCacheRepository {
   private readonly filePath: string;
   private readonly inMemoryCache: Map<string, IssueTitleInfo> = new Map();
 
