@@ -325,7 +325,7 @@ describe('IssueRejectionEvaluator', () => {
         expect(result.approvedPrUrl).toBe(prUrl);
       });
 
-      it('should reject when changed file is outside both change-target and change-target-must allowed paths', async () => {
+      it('should not reject when changed file is under the change-target-must path', async () => {
         mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
           createReadyPr(prUrl),
         ]);

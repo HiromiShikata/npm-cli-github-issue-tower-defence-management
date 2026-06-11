@@ -128,4 +128,29 @@ describe('ChangeTargetPullRequestApprover', () => {
     ).not.toHaveBeenCalled();
     expect(mockIssueRepository.approvePullRequest).not.toHaveBeenCalled();
   });
+
+  it('should treat change-target-must: path as an allowed confinement path and approve when all files are confined to it', async () => {
+    mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+      'src/domain/entities/Foo.ts',
+      'src/domain/usecases/Bar.ts',
+    ]);
+
+    await approver.approveIfConfined(['change-target-must:src/domain'], prUrl);
+
+    expect(
+      mockIssueRepository.getPullRequestChangedFilePaths,
+    ).toHaveBeenCalledWith(prUrl);
+    expect(mockIssueRepository.approvePullRequest).toHaveBeenCalledWith(prUrl);
+  });
+
+  it('should not approve when a file is outside the change-target-must path', async () => {
+    mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+      'src/domain/entities/Foo.ts',
+      'src/adapter/Outside.ts',
+    ]);
+
+    await approver.approveIfConfined(['change-target-must:src/domain'], prUrl);
+
+    expect(mockIssueRepository.approvePullRequest).not.toHaveBeenCalled();
+  });
 });
