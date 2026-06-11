@@ -19,15 +19,6 @@ const GITHUB_HOSTS = new Set([
   'objects.githubusercontent.com',
 ]);
 
-const isGithubUrl = (rawUrl: string): boolean => {
-  try {
-    const parsed = new URL(rawUrl);
-    return parsed.protocol === 'https:' && GITHUB_HOSTS.has(parsed.hostname);
-  } catch {
-    return false;
-  }
-};
-
 const SAFE_GITHUB_SEGMENT = /^[a-zA-Z0-9._-]+$/;
 
 const isSafeGithubSegment = (segment: string): boolean =>
@@ -199,13 +190,19 @@ const isGithubApiErrorResponse = (
   isJsonObject(data) &&
   ('message' in data ? typeof data['message'] === 'string' : true);
 
+const GITHUB_API_BASE = 'https://api.github.com';
+
 const githubApiRequest = async (
   ghToken: string,
   method: string,
   apiPath: string,
   body: unknown,
 ): Promise<unknown> => {
-  const response = await fetch(`https://api.github.com${apiPath}`, {
+  const safeUrl = new URL(apiPath, GITHUB_API_BASE);
+  if (safeUrl.hostname !== 'api.github.com') {
+    throw new Error('Invalid GitHub API path');
+  }
+  const response = await fetch(safeUrl.toString(), {
     method,
     headers: {
       Authorization: `Bearer ${ghToken}`,
@@ -427,7 +424,13 @@ const serveStaticFile = (
   staticDir: string,
   filePath: string,
 ): void => {
-  const fullPath = path.join(staticDir, filePath);
+  const resolvedBase = path.resolve(staticDir);
+  const fullPath = path.resolve(staticDir, filePath.replace(/^\//, ''));
+  if (!fullPath.startsWith(resolvedBase + path.sep) && fullPath !== resolvedBase) {
+    res.writeHead(400);
+    res.end('Bad Request');
+    return;
+  }
   if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isFile()) {
     const indexPath = path.join(staticDir, 'index.html');
     if (fs.existsSync(indexPath)) {
@@ -498,12 +501,20 @@ export const createPrReviewViewerServer = (
         sendError(res, 400, 'Missing url parameter');
         return;
       }
-      if (!isGithubUrl(imageUrl)) {
+      let safeImageUrl: URL;
+      try {
+        safeImageUrl = new URL(imageUrl);
+      } catch {
+        sendError(res, 400, 'Invalid URL');
+        return;
+      }
+      if (safeImageUrl.protocol !== 'https:' || !GITHUB_HOSTS.has(safeImageUrl.hostname)) {
         sendError(res, 400, 'Only GitHub URLs are allowed');
         return;
       }
+      const reconstructedImageUrl = new URL(safeImageUrl.pathname + safeImageUrl.search, `https://${safeImageUrl.hostname}`);
       try {
-        const imageResponse = await fetch(imageUrl, {
+        const imageResponse = await fetch(reconstructedImageUrl.toString(), {
           headers: { Authorization: `Bearer ${ghToken}` },
         });
         res.writeHead(imageResponse.status, {
@@ -619,8 +630,12 @@ export const createPrReviewViewerServer = (
         return;
       }
       try {
-        const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${ref}/${safeFilePath}`;
-        const rawResponse = await fetch(rawUrl, {
+        const encodedOwner = encodeURIComponent(owner);
+        const encodedRepo = encodeURIComponent(repo);
+        const encodedRef = encodeURIComponent(ref);
+        const encodedFilePath = safeFilePath.split('/').map(encodeURIComponent).join('/');
+        const rawUrl = new URL(`/${encodedOwner}/${encodedRepo}/${encodedRef}/${encodedFilePath}`, 'https://raw.githubusercontent.com');
+        const rawResponse = await fetch(rawUrl.toString(), {
           headers: { Authorization: `Bearer ${ghToken}` },
         });
         if (!rawResponse.ok) {
@@ -733,7 +748,7 @@ export const createPrReviewViewerServer = (
       }
 
       if (!VALID_ACTIONS.has(body.action)) {
-        sendError(res, 400, `Invalid action: ${body.action}`);
+        sendError(res, 400, 'Invalid action');
         return;
       }
 
@@ -839,8 +854,8 @@ export const createPrReviewViewerServer = (
 
   const server = http.createServer((req, res) => {
     handleRequest(req, res).catch((err: unknown) => {
-      const message = err instanceof Error ? err.message : String(err);
-      sendError(res, 500, message);
+      console.error('Unhandled request error:', err instanceof Error ? err.message : String(err));
+      sendError(res, 500, 'Internal server error');
     });
   });
 
