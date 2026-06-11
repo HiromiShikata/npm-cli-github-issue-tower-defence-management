@@ -20,9 +20,7 @@ function isDirectPullRequestResponse(value) {
 function isPullRequestFilesResponse(value) {
     if (!Array.isArray(value))
         return false;
-    return value.every((item) => typeof item === 'object' &&
-        item !== null &&
-        typeof item['filename'] === 'string');
+    return value.every((item) => typeof item === 'object' && item !== null && 'filename' in item);
 }
 const fnmatch = (pattern, str) => {
     let regexStr = '^';

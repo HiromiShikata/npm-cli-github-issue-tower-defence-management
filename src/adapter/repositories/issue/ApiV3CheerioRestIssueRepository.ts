@@ -222,10 +222,7 @@ function isPullRequestFilesResponse(
 ): value is PullRequestFilesResponseItem[] {
   if (!Array.isArray(value)) return false;
   return value.every(
-    (item) =>
-      typeof item === 'object' &&
-      item !== null &&
-      typeof (item as Record<string, unknown>)['filename'] === 'string',
+    (item) => typeof item === 'object' && item !== null && 'filename' in item,
   );
 }
 
