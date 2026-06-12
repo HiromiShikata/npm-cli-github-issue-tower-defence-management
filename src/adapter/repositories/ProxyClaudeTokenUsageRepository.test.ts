@@ -733,6 +733,9 @@ describe('ProxyClaudeTokenUsageRepository', () => {
   });
 
   describe('getTokenInFlightCounts', () => {
+    const statWithParent = (parentPid: number): string =>
+      `${parentPid + 1} (worker) S ${parentPid} ${parentPid} ${parentPid} 0 -1 4194304`;
+
     it('should return empty object when proc directory cannot be read', async () => {
       mockFsReaddirSync.mockImplementation(() => {
         throw new Error('ENOENT');
@@ -754,11 +757,14 @@ describe('ProxyClaudeTokenUsageRepository', () => {
       expect(result).toEqual({});
     });
 
-    it('should count one process when one pid has CLAUDE_CODE_OAUTH_TOKEN', async () => {
+    it('should count one worker root when one pid has CLAUDE_CODE_OAUTH_TOKEN', async () => {
       mockFsReaddirSync.mockReturnValue(['1234', 'self']);
       mockFsReadFileSync.mockImplementation((filePath: string) => {
         if (filePath === '/proc/1234/environ') {
           return 'HOME=/home/user\0CLAUDE_CODE_OAUTH_TOKEN=sk-ant-abc\0PATH=/usr/bin\0';
+        }
+        if (filePath === '/proc/1234/stat') {
+          return statWithParent(1);
         }
         throw new Error('EACCES');
       });
@@ -769,17 +775,66 @@ describe('ProxyClaudeTokenUsageRepository', () => {
       expect(result).toEqual({ 'sk-ant-abc': 1 });
     });
 
-    it('should count multiple processes using the same token', async () => {
-      mockFsReaddirSync.mockReturnValue(['1234', '5678', '9999']);
+    it('should count one worker root when six descendant processes inherit the token from a single worker', async () => {
+      mockFsReaddirSync.mockReturnValue([
+        '100',
+        '101',
+        '102',
+        '103',
+        '104',
+        '105',
+      ]);
+      const parentByPid: Record<string, number> = {
+        '100': 1,
+        '101': 100,
+        '102': 100,
+        '103': 101,
+        '104': 103,
+        '105': 104,
+      };
       mockFsReadFileSync.mockImplementation((filePath: string) => {
-        if (
-          filePath === '/proc/1234/environ' ||
-          filePath === '/proc/5678/environ'
-        ) {
+        const environMatch = filePath.match(/^\/proc\/(\d+)\/environ$/);
+        if (environMatch) {
           return 'CLAUDE_CODE_OAUTH_TOKEN=sk-ant-abc\0OTHER=val\0';
         }
-        if (filePath === '/proc/9999/environ') {
-          return 'HOME=/home/user\0PATH=/usr/bin\0';
+        const statMatch = filePath.match(/^\/proc\/(\d+)\/stat$/);
+        if (statMatch) {
+          return statWithParent(parentByPid[statMatch[1]]);
+        }
+        throw new Error('ENOENT');
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getTokenInFlightCounts();
+
+      expect(result).toEqual({ 'sk-ant-abc': 1 });
+    });
+
+    it('should count two worker roots when two workers run on the same token', async () => {
+      mockFsReaddirSync.mockReturnValue([
+        '200',
+        '201',
+        '202',
+        '300',
+        '301',
+        '302',
+      ]);
+      const parentByPid: Record<string, number> = {
+        '200': 1,
+        '201': 200,
+        '202': 201,
+        '300': 1,
+        '301': 300,
+        '302': 301,
+      };
+      mockFsReadFileSync.mockImplementation((filePath: string) => {
+        const environMatch = filePath.match(/^\/proc\/(\d+)\/environ$/);
+        if (environMatch) {
+          return 'CLAUDE_CODE_OAUTH_TOKEN=sk-ant-abc\0';
+        }
+        const statMatch = filePath.match(/^\/proc\/(\d+)\/stat$/);
+        if (statMatch) {
+          return statWithParent(parentByPid[statMatch[1]]);
         }
         throw new Error('ENOENT');
       });
@@ -790,7 +845,31 @@ describe('ProxyClaudeTokenUsageRepository', () => {
       expect(result).toEqual({ 'sk-ant-abc': 2 });
     });
 
-    it('should count processes separately when they use different tokens', async () => {
+    it('should ignore processes without the token env var when counting worker roots', async () => {
+      mockFsReaddirSync.mockReturnValue(['1234', '5678', '9999']);
+      mockFsReadFileSync.mockImplementation((filePath: string) => {
+        if (filePath === '/proc/1234/environ') {
+          return 'CLAUDE_CODE_OAUTH_TOKEN=sk-ant-abc\0OTHER=val\0';
+        }
+        if (filePath === '/proc/5678/environ') {
+          return 'HOME=/home/user\0PATH=/usr/bin\0';
+        }
+        if (filePath === '/proc/9999/environ') {
+          return 'CLAUDE_CODE_OAUTH_TOKEN=\0OTHER=val\0';
+        }
+        if (filePath === '/proc/1234/stat') {
+          return statWithParent(1);
+        }
+        throw new Error('ENOENT');
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getTokenInFlightCounts();
+
+      expect(result).toEqual({ 'sk-ant-abc': 1 });
+    });
+
+    it('should count worker roots separately when they use different tokens', async () => {
       mockFsReaddirSync.mockReturnValue(['1234', '5678']);
       mockFsReadFileSync.mockImplementation((filePath: string) => {
         if (filePath === '/proc/1234/environ') {
@@ -798,6 +877,12 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         }
         if (filePath === '/proc/5678/environ') {
           return 'CLAUDE_CODE_OAUTH_TOKEN=sk-ant-xyz\0';
+        }
+        if (filePath === '/proc/1234/stat') {
+          return statWithParent(1);
+        }
+        if (filePath === '/proc/5678/stat') {
+          return statWithParent(1);
         }
         throw new Error('ENOENT');
       });
@@ -808,11 +893,71 @@ describe('ProxyClaudeTokenUsageRepository', () => {
       expect(result).toEqual({ 'sk-ant-abc': 1, 'sk-ant-xyz': 1 });
     });
 
+    it('should treat a worker root whose stat cannot be read as a worker root', async () => {
+      mockFsReaddirSync.mockReturnValue(['1234']);
+      mockFsReadFileSync.mockImplementation((filePath: string) => {
+        if (filePath === '/proc/1234/environ') {
+          return 'CLAUDE_CODE_OAUTH_TOKEN=sk-ant-abc\0';
+        }
+        throw new Error('ENOENT');
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getTokenInFlightCounts();
+
+      expect(result).toEqual({ 'sk-ant-abc': 1 });
+    });
+
+    it('should parse the parent pid correctly when the process name contains spaces and parentheses', async () => {
+      mockFsReaddirSync.mockReturnValue(['400', '401']);
+      mockFsReadFileSync.mockImplementation((filePath: string) => {
+        if (
+          filePath === '/proc/400/environ' ||
+          filePath === '/proc/401/environ'
+        ) {
+          return 'CLAUDE_CODE_OAUTH_TOKEN=sk-ant-abc\0';
+        }
+        if (filePath === '/proc/400/stat') {
+          return '400 (claude (worker) :) ) S 1 400 400 0 -1 4194304';
+        }
+        if (filePath === '/proc/401/stat') {
+          return '401 (claude (worker) :) ) S 400 400 400 0 -1 4194304';
+        }
+        throw new Error('ENOENT');
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getTokenInFlightCounts();
+
+      expect(result).toEqual({ 'sk-ant-abc': 1 });
+    });
+
+    it('should treat a worker root whose stat is malformed as a worker root', async () => {
+      mockFsReaddirSync.mockReturnValue(['1234']);
+      mockFsReadFileSync.mockImplementation((filePath: string) => {
+        if (filePath === '/proc/1234/environ') {
+          return 'CLAUDE_CODE_OAUTH_TOKEN=sk-ant-abc\0';
+        }
+        if (filePath === '/proc/1234/stat') {
+          return '1234 (worker)';
+        }
+        throw new Error('ENOENT');
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getTokenInFlightCounts();
+
+      expect(result).toEqual({ 'sk-ant-abc': 1 });
+    });
+
     it('should skip non-numeric proc entries', async () => {
       mockFsReaddirSync.mockReturnValue(['1234', 'self', 'net', 'sys']);
       mockFsReadFileSync.mockImplementation((filePath: string) => {
         if (filePath === '/proc/1234/environ') {
           return 'CLAUDE_CODE_OAUTH_TOKEN=sk-ant-abc\0';
+        }
+        if (filePath === '/proc/1234/stat') {
+          return statWithParent(1);
         }
         throw new Error('ENOENT');
       });
@@ -828,6 +973,9 @@ describe('ProxyClaudeTokenUsageRepository', () => {
       mockFsReadFileSync.mockImplementation((filePath: string) => {
         if (filePath === '/proc/1234/environ') {
           return 'CLAUDE_CODE_OAUTH_TOKEN=sk-ant-abc\0';
+        }
+        if (filePath === '/proc/1234/stat') {
+          return statWithParent(1);
         }
         throw new Error('EPERM');
       });
