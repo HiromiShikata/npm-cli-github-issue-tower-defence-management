@@ -5,6 +5,8 @@ import {
   cacheDir,
   cachePathForToken,
   hashToken,
+  HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS,
+  HEADERLESS_429_MAX_COOLDOWN_SECONDS,
   parseModelRateLimitsFromBody,
   readRateLimit,
   writeModelRateLimit,
@@ -443,6 +445,107 @@ describe('RateLimitCache', () => {
       for (const [key, expectedValue] of Object.entries(inputHeaders)) {
         expect(raw.headers[key]).toBe(expectedValue);
       }
+    });
+  });
+
+  describe('writeRateLimit records a cooldown on a 429 with no anthropic-ratelimit-* headers', () => {
+    it('should set blockedUntilEpoch using the default cooldown when no Retry-After header is present', () => {
+      const token = '429-no-headers-default-cooldown-token';
+      const before = Date.now() / 1000;
+      writeRateLimit(token, { 'content-type': 'application/json' }, 429);
+      const after = Date.now() / 1000;
+      const snapshot = readRateLimit(token);
+      expect(snapshot).not.toBeNull();
+      expect(snapshot?.blockedUntilEpoch).toBeGreaterThanOrEqual(
+        before + HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS,
+      );
+      expect(snapshot?.blockedUntilEpoch).toBeLessThanOrEqual(
+        after + HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS,
+      );
+    });
+
+    it('should honor the Retry-After header when present', () => {
+      const token = '429-no-headers-retry-after-token';
+      const retryAfterSeconds = 120;
+      const before = Date.now() / 1000;
+      writeRateLimit(
+        token,
+        { 'content-type': 'application/json', 'retry-after': '120' },
+        429,
+      );
+      const after = Date.now() / 1000;
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.blockedUntilEpoch).toBeGreaterThanOrEqual(
+        before + retryAfterSeconds,
+      );
+      expect(snapshot?.blockedUntilEpoch).toBeLessThanOrEqual(
+        after + retryAfterSeconds,
+      );
+    });
+
+    it('should clamp the cooldown to the maximum when Retry-After is very large', () => {
+      const token = '429-no-headers-clamp-token';
+      const before = Date.now() / 1000;
+      writeRateLimit(
+        token,
+        { 'content-type': 'application/json', 'retry-after': '99999' },
+        429,
+      );
+      const after = Date.now() / 1000;
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.blockedUntilEpoch).toBeGreaterThanOrEqual(
+        before + HEADERLESS_429_MAX_COOLDOWN_SECONDS,
+      );
+      expect(snapshot?.blockedUntilEpoch).toBeLessThanOrEqual(
+        after + HEADERLESS_429_MAX_COOLDOWN_SECONDS,
+      );
+    });
+
+    it('should preserve the previous last-good snapshot while adding the cooldown', () => {
+      const token = '429-no-headers-preserve-snapshot-token';
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': '1700000000',
+        'anthropic-ratelimit-unified-5h-utilization': '42',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '1700100000',
+        'anthropic-ratelimit-unified-7d-utilization': '17',
+      });
+      writeRateLimit(token, { 'content-type': 'application/json' }, 429);
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.fiveHourUtilization).toBe(42);
+      expect(snapshot?.fiveHourReset).toBe(1700000000);
+      expect(snapshot?.sevenDayUtilization).toBe(17);
+      expect(snapshot?.sevenDayReset).toBe(1700100000);
+      expect(snapshot?.rejected).toBe(false);
+      expect(snapshot?.blocked).toBe(false);
+      expect(snapshot?.blockedUntilEpoch).toBeGreaterThan(Date.now() / 1000);
+    });
+
+    it('should clear the cooldown when a later header-bearing response arrives', () => {
+      const token = '429-then-normal-clears-cooldown-token';
+      writeRateLimit(token, { 'content-type': 'application/json' }, 429);
+      expect(readRateLimit(token)?.blockedUntilEpoch).toBeGreaterThan(
+        Date.now() / 1000,
+      );
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': '1700000000',
+        'anthropic-ratelimit-unified-5h-utilization': '30',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '1700100000',
+        'anthropic-ratelimit-unified-7d-utilization': '20',
+      });
+      expect(readRateLimit(token)?.blockedUntilEpoch).toBe(0);
+    });
+
+    it('should not write any cooldown for a headerless response that is not a 429', () => {
+      const token = '500-no-headers-no-cooldown-token';
+      writeRateLimit(token, { 'content-type': 'application/json' }, 500);
+      expect(fs.existsSync(cachePathForToken(token))).toBe(false);
+      expect(readRateLimit(token)).toBeNull();
     });
   });
 

@@ -50,7 +50,11 @@ const startProxy = (
       (upstreamResponse) => {
         if (token !== null) {
           try {
-            writeRateLimit(token, upstreamResponse.headers);
+            writeRateLimit(
+              token,
+              upstreamResponse.headers,
+              upstreamResponse.statusCode ?? null,
+            );
           } catch (error) {
             console.error('Failed to write rate limit cache:', error);
           }

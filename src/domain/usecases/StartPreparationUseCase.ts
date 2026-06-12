@@ -19,6 +19,7 @@ export type RotationOrderEntry = {
   blocked: boolean;
   rejected: boolean;
   thresholdExcluded: boolean;
+  cooldownExcluded: boolean;
 };
 
 export class StartPreparationUseCase {
@@ -44,6 +45,11 @@ export class StartPreparationUseCase {
     if (normalized.includes('opus')) return 'seven_day_opus';
     return 'seven_day';
   };
+
+  private isWithinCooldown = (
+    usage: ClaudeTokenUsage,
+    nowEpochSeconds: number,
+  ): boolean => usage.blockedUntilEpoch > nowEpochSeconds;
 
   private isModelWeeklyLimitRejected = (
     usage: ClaudeTokenUsage,
@@ -134,6 +140,7 @@ export class StartPreparationUseCase {
     const eligibleTokens = tokenUsages
       .filter((usage) => !usage.blocked)
       .filter((usage) => !usage.rejected)
+      .filter((usage) => !this.isWithinCooldown(usage, nowEpochSeconds))
       .filter(
         (usage) => !this.isModelWeeklyLimitRejected(usage, weeklyLimitType),
       )
@@ -188,6 +195,7 @@ export class StartPreparationUseCase {
     const selectedTokens = tokenUsages
       .filter((usage) => !usage.blocked)
       .filter((usage) => !usage.rejected)
+      .filter((usage) => !this.isWithinCooldown(usage, nowEpochSeconds))
       .filter(
         (usage) => !this.isModelWeeklyLimitRejected(usage, weeklyLimitType),
       )
@@ -214,8 +222,13 @@ export class StartPreparationUseCase {
         thresholdExcluded:
           !usage.blocked &&
           !usage.rejected &&
+          !this.isWithinCooldown(usage, nowEpochSeconds) &&
           !this.isModelWeeklyLimitRejected(usage, weeklyLimitType) &&
           usage.fiveHourUtilization * 100 >= utilizationPercentageThreshold,
+        cooldownExcluded:
+          !usage.blocked &&
+          !usage.rejected &&
+          this.isWithinCooldown(usage, nowEpochSeconds),
       }));
     const selectedEntries: RotationOrderEntry[] = selectedTokens.map(
       (usage) => ({
@@ -224,6 +237,7 @@ export class StartPreparationUseCase {
         blocked: false,
         rejected: false,
         thresholdExcluded: false,
+        cooldownExcluded: false,
       }),
     );
     return [...selectedEntries, ...excluded];

@@ -20,11 +20,16 @@ export interface RateLimitSnapshot {
   sevenDayRejected: boolean;
   modelWeeklyLimits: Record<string, ModelWeeklyLimit>;
   lastUpdatedEpoch: number;
+  blockedUntilEpoch: number;
 }
 
 export const PROXY_PORT = 8787;
 
 const HASH_ALGORITHM = 'sha256';
+
+export const HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS = 90;
+
+export const HEADERLESS_429_MAX_COOLDOWN_SECONDS = 600;
 
 export const cacheDir = (): string => {
   const base = process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), '.cache');
@@ -68,9 +73,21 @@ const readModelWeeklyLimits = (
   return result;
 };
 
+const cooldownEndFromRetryAfter = (
+  retryAfterSeconds: number | null,
+  nowEpochSeconds: number,
+): number => {
+  const cooldownSeconds =
+    retryAfterSeconds !== null && retryAfterSeconds > 0
+      ? Math.min(retryAfterSeconds, HEADERLESS_429_MAX_COOLDOWN_SECONDS)
+      : HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS;
+  return nowEpochSeconds + cooldownSeconds;
+};
+
 export const writeRateLimit = (
   token: string,
   headers: Record<string, string | string[] | undefined>,
+  statusCode: number | null = null,
 ): void => {
   const pick = (key: string): string | undefined => {
     const value = headers[key];
@@ -86,14 +103,35 @@ export const writeRateLimit = (
       }
     }
   }
+  const dir = cacheDir();
+  const filePath = path.join(dir, `${hashToken(token)}.json`);
   if (Object.keys(rateLimitHeaders).length === 0) {
+    if (statusCode !== 429) {
+      return;
+    }
+    const existing = readPayload(filePath);
+    const retryAfterRaw = pick('retry-after');
+    const retryAfterSeconds =
+      retryAfterRaw !== undefined && Number.isFinite(Number(retryAfterRaw))
+        ? Number(retryAfterRaw)
+        : null;
+    const blockedUntilEpoch = cooldownEndFromRetryAfter(
+      retryAfterSeconds,
+      Date.now() / 1000,
+    );
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    const payload = {
+      ...existing,
+      blockedUntilEpoch,
+    };
+    fs.writeFileSync(filePath, JSON.stringify(payload));
     return;
   }
-  const dir = cacheDir();
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
-  const filePath = path.join(dir, `${hashToken(token)}.json`);
   const existing = readPayload(filePath);
   const payload = {
     ts: Date.now() / 1000,
@@ -186,6 +224,9 @@ export const readRateLimit = (token: string): RateLimitSnapshot | null => {
     const sevenDayRejected = sevenDayStatus === 'rejected';
     const storedTs = parsed.ts;
     const lastUpdatedEpoch = typeof storedTs === 'number' ? storedTs : 0;
+    const storedBlockedUntil = parsed.blockedUntilEpoch;
+    const blockedUntilEpoch =
+      typeof storedBlockedUntil === 'number' ? storedBlockedUntil : 0;
     return {
       fiveHourUtilization: num('anthropic-ratelimit-unified-5h-utilization'),
       fiveHourReset: num('anthropic-ratelimit-unified-5h-reset'),
@@ -201,6 +242,7 @@ export const readRateLimit = (token: string): RateLimitSnapshot | null => {
       sevenDayRejected,
       modelWeeklyLimits: readModelWeeklyLimits(parsed),
       lastUpdatedEpoch,
+      blockedUntilEpoch,
     };
   } catch {
     return null;

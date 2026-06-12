@@ -33,13 +33,15 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.readRateLimit = exports.parseModelRateLimitsFromBody = exports.writeModelRateLimit = exports.writeRateLimit = exports.cachePathForToken = exports.hashToken = exports.cacheDir = exports.PROXY_PORT = void 0;
+exports.readRateLimit = exports.parseModelRateLimitsFromBody = exports.writeModelRateLimit = exports.writeRateLimit = exports.cachePathForToken = exports.hashToken = exports.cacheDir = exports.HEADERLESS_429_MAX_COOLDOWN_SECONDS = exports.HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS = exports.PROXY_PORT = void 0;
 const crypto = __importStar(require("crypto"));
 const fs = __importStar(require("fs"));
 const os = __importStar(require("os"));
 const path = __importStar(require("path"));
 exports.PROXY_PORT = 8787;
 const HASH_ALGORITHM = 'sha256';
+exports.HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS = 90;
+exports.HEADERLESS_429_MAX_COOLDOWN_SECONDS = 600;
 const cacheDir = () => {
     const base = process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), '.cache');
     return path.join(base, 'tdpm', 'ratelimit');
@@ -78,7 +80,13 @@ const readModelWeeklyLimits = (payload) => {
     }
     return result;
 };
-const writeRateLimit = (token, headers) => {
+const cooldownEndFromRetryAfter = (retryAfterSeconds, nowEpochSeconds) => {
+    const cooldownSeconds = retryAfterSeconds !== null && retryAfterSeconds > 0
+        ? Math.min(retryAfterSeconds, exports.HEADERLESS_429_MAX_COOLDOWN_SECONDS)
+        : exports.HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS;
+    return nowEpochSeconds + cooldownSeconds;
+};
+const writeRateLimit = (token, headers, statusCode = null) => {
     const pick = (key) => {
         const value = headers[key];
         if (Array.isArray(value))
@@ -94,14 +102,31 @@ const writeRateLimit = (token, headers) => {
             }
         }
     }
+    const dir = (0, exports.cacheDir)();
+    const filePath = path.join(dir, `${(0, exports.hashToken)(token)}.json`);
     if (Object.keys(rateLimitHeaders).length === 0) {
+        if (statusCode !== 429) {
+            return;
+        }
+        const existing = readPayload(filePath);
+        const retryAfterRaw = pick('retry-after');
+        const retryAfterSeconds = retryAfterRaw !== undefined && Number.isFinite(Number(retryAfterRaw))
+            ? Number(retryAfterRaw)
+            : null;
+        const blockedUntilEpoch = cooldownEndFromRetryAfter(retryAfterSeconds, Date.now() / 1000);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        const payload = {
+            ...existing,
+            blockedUntilEpoch,
+        };
+        fs.writeFileSync(filePath, JSON.stringify(payload));
         return;
     }
-    const dir = (0, exports.cacheDir)();
     if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
     }
-    const filePath = path.join(dir, `${(0, exports.hashToken)(token)}.json`);
     const existing = readPayload(filePath);
     const payload = {
         ts: Date.now() / 1000,
@@ -197,6 +222,8 @@ const readRateLimit = (token) => {
         const sevenDayRejected = sevenDayStatus === 'rejected';
         const storedTs = parsed.ts;
         const lastUpdatedEpoch = typeof storedTs === 'number' ? storedTs : 0;
+        const storedBlockedUntil = parsed.blockedUntilEpoch;
+        const blockedUntilEpoch = typeof storedBlockedUntil === 'number' ? storedBlockedUntil : 0;
         return {
             fiveHourUtilization: num('anthropic-ratelimit-unified-5h-utilization'),
             fiveHourReset: num('anthropic-ratelimit-unified-5h-reset'),
@@ -211,6 +238,7 @@ const readRateLimit = (token) => {
             sevenDayRejected,
             modelWeeklyLimits: readModelWeeklyLimits(parsed),
             lastUpdatedEpoch,
+            blockedUntilEpoch,
         };
     }
     catch {

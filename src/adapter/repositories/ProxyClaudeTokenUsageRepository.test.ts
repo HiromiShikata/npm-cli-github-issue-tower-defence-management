@@ -109,6 +109,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
+          blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day: { rejected: false, resetsAt: futureReset },
           },
@@ -120,6 +121,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
+          blockedUntilEpoch: 0,
           modelWeeklyLimits: {},
         },
       ]);
@@ -153,6 +155,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 0,
           blocked: true,
           rejected: false,
+          blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day: { rejected: false, resetsAt: futureReset },
           },
@@ -188,6 +191,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: true,
+          blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day: { rejected: false, resetsAt: futureReset },
           },
@@ -223,6 +227,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 30,
           blocked: false,
           rejected: false,
+          blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day: { rejected: false, resetsAt: futureReset },
           },
@@ -258,6 +263,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
+          blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day: { rejected: false, resetsAt: futureReset },
           },
@@ -293,6 +299,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
+          blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day: { rejected: false, resetsAt: futureReset },
           },
@@ -328,6 +335,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
+          blockedUntilEpoch: 0,
           modelWeeklyLimits: {},
         },
       ]);
@@ -361,6 +369,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: true,
+          blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day: { rejected: false, resetsAt: futureReset },
           },
@@ -396,6 +405,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 100,
           blocked: false,
           rejected: true,
+          blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day: { rejected: true, resetsAt: futureReset },
           },
@@ -431,6 +441,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
+          blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day: { rejected: false, resetsAt: futureReset },
           },
@@ -455,6 +466,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
+          blockedUntilEpoch: 0,
           modelWeeklyLimits: {},
         },
       ]);
@@ -490,6 +502,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 10,
           blocked: false,
           rejected: false,
+          blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day_sonnet: { rejected: true, resetsAt: futureReset },
           },
@@ -527,6 +540,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 10,
           blocked: false,
           rejected: false,
+          blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day_sonnet: { rejected: false, resetsAt: pastReset },
           },

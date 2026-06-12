@@ -10,6 +10,7 @@ export type RotationOrderEntry = {
     blocked: boolean;
     rejected: boolean;
     thresholdExcluded: boolean;
+    cooldownExcluded: boolean;
 };
 export declare class StartPreparationUseCase {
     private readonly projectRepository;
@@ -18,6 +19,7 @@ export declare class StartPreparationUseCase {
     private readonly claudeTokenUsageRepository;
     constructor(projectRepository: Pick<ProjectRepository, 'getByUrl'>, issueRepository: Pick<IssueRepository, 'getStoryObjectMap' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'closePullRequest' | 'deletePullRequestBranch' | 'createCommentByUrl'>, localCommandRunner: LocalCommandRunner, claudeTokenUsageRepository: ClaudeTokenUsageRepository);
     private weeklyLimitTypeForModel;
+    private isWithinCooldown;
     private isModelWeeklyLimitRejected;
     private secondsUntilSevenDayReset;
     private compareBySevenDayDeadlineThenUtilization;
