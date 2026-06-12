@@ -11,11 +11,15 @@ export class ChangeTargetPullRequestApprover {
   approveIfConfined = async (
     issueLabels: string[],
     approvedPrUrl: string | null,
+    pathAliases?: Record<string, string> | null,
   ): Promise<void> => {
     if (approvedPrUrl === null) {
       return;
     }
-    const changeTargetPaths = this.extractChangeTargetPaths(issueLabels);
+    const changeTargetPaths = this.extractChangeTargetPaths(
+      issueLabels,
+      pathAliases,
+    );
     if (changeTargetPaths.length === 0) {
       return;
     }
@@ -33,7 +37,10 @@ export class ChangeTargetPullRequestApprover {
     await this.issueRepository.approvePullRequest(approvedPrUrl);
   };
 
-  private extractChangeTargetPaths = (labels: string[]): string[] => {
+  private extractChangeTargetPaths = (
+    labels: string[],
+    pathAliases?: Record<string, string> | null,
+  ): string[] => {
     const prefixes = ['change-target:', 'change-target-must:'];
     const paths: string[] = [];
     for (const label of labels) {
@@ -41,9 +48,12 @@ export class ChangeTargetPullRequestApprover {
       if (!matchedPrefix) continue;
       const raw = label.slice(matchedPrefix.length).trim();
       if (raw.length === 0) continue;
-      const normalized = raw.replace(/\/+$/, '');
+      const normalized = raw.replace(/^\/+/, '').replace(/\/+$/, '');
       if (normalized.length === 0) continue;
-      paths.push(normalized);
+      const aliasExpanded = pathAliases?.[normalized] ?? normalized;
+      const finalPath = aliasExpanded.replace(/^\/+/, '').replace(/\/+$/, '');
+      if (finalPath.length === 0) continue;
+      paths.push(finalPath);
     }
     return paths;
   };

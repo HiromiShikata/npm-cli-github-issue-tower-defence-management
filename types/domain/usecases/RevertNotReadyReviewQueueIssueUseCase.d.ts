@@ -12,6 +12,7 @@ export declare class RevertNotReadyReviewQueueIssueUseCase {
         projectUrl: string;
         allowIssueCacheMinutes: number;
         labelsAsLlmAgentName?: string[] | null;
+        changeTargetPathAliases?: Record<string, string> | null;
     }) => Promise<void>;
 }
 //# sourceMappingURL=RevertNotReadyReviewQueueIssueUseCase.d.ts.map

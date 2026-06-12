@@ -458,6 +458,7 @@ program
       workflowBlockerResolvedWebhookUrl,
       allowedIssueAuthors,
       labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
+      changeTargetPathAliases: config.changeTargetPathAliases ?? null,
     });
   });
 

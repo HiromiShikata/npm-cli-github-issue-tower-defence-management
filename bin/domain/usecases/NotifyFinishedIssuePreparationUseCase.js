@@ -100,7 +100,7 @@ class NotifyFinishedIssuePreparationUseCase {
                 return;
             }
             if (rejections.length <= 0) {
-                await this.changeTargetPullRequestApprover.approveIfConfined(issue.labels, approvedPrUrl);
+                await this.changeTargetPullRequestApprover.approveIfConfined(issue.labels, approvedPrUrl, params.changeTargetPathAliases);
                 issue.status = WorkflowStatus_1.AWAITING_QUALITY_CHECK_STATUS_NAME;
                 await this.issueRepository.update(issue, project);
                 await this.issueRepository.updateStatus(project, issue, awaitingQualityCheckStatusOption.id);

@@ -85,6 +85,7 @@ export class HandleScheduledEventUseCase {
     disabled: boolean;
     allowIssueCacheMinutes: number;
     labelsAsLlmAgentName?: string[] | null;
+    changeTargetPathAliases?: Record<string, string> | null;
     startPreparation?: {
       defaultAgentName: string;
       defaultLlmModelName?: string | null;
@@ -296,6 +297,7 @@ ${JSON.stringify(e)}
       projectUrl: input.projectUrl,
       allowIssueCacheMinutes: input.allowIssueCacheMinutes,
       labelsAsLlmAgentName,
+      changeTargetPathAliases: input.changeTargetPathAliases,
     });
     if (this.dailySecurityScanUseCase !== null && input.dailySecurityScan) {
       await this.dailySecurityScanUseCase.run({

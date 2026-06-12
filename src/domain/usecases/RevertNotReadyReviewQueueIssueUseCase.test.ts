@@ -762,6 +762,42 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           'https://github.com/user/repo/pull/1',
         );
       });
+
+      it('should expand changeTargetPathAliases when alias matches a change-target label', async () => {
+        setupReadyIssue(['change-target:adapters']);
+        mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+          'src/domain/usecases/adapter-interfaces/IssueRepository.ts',
+        ]);
+
+        await useCase.run({
+          projectUrl: 'https://github.com/users/user/projects/1',
+          allowIssueCacheMinutes: 10,
+          changeTargetPathAliases: {
+            adapters: 'src/domain/usecases/adapter-interfaces',
+          },
+        });
+
+        expect(mockIssueRepository.approvePullRequest).toHaveBeenCalledWith(
+          'https://github.com/user/repo/pull/1',
+        );
+      });
+
+      it('should not approve when file is outside the alias-expanded path', async () => {
+        setupReadyIssue(['change-target:adapters']);
+        mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+          'src/domain/usecases/SomeOtherUseCase.ts',
+        ]);
+
+        await useCase.run({
+          projectUrl: 'https://github.com/users/user/projects/1',
+          allowIssueCacheMinutes: 10,
+          changeTargetPathAliases: {
+            adapters: 'src/domain/usecases/adapter-interfaces',
+          },
+        });
+
+        expect(mockIssueRepository.approvePullRequest).not.toHaveBeenCalled();
+      });
     });
   });
 

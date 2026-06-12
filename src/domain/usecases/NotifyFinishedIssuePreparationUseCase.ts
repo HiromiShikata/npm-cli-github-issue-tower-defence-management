@@ -78,6 +78,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     workflowBlockerResolvedWebhookUrl: string | null;
     allowedIssueAuthors?: string[] | null;
     labelsAsLlmAgentName?: string[] | null;
+    changeTargetPathAliases?: Record<string, string> | null;
   }): Promise<void> => {
     const project = await this.projectRepository.getByUrl(params.projectUrl);
 
@@ -238,6 +239,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       await this.changeTargetPullRequestApprover.approveIfConfined(
         issue.labels,
         approvedPrUrl,
+        params.changeTargetPathAliases,
       );
       issue.status = AWAITING_QUALITY_CHECK_STATUS_NAME;
       await this.issueRepository.update(issue, project);

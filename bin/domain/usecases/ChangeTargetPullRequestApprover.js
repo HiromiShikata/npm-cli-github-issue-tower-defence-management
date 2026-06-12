@@ -4,11 +4,11 @@ exports.ChangeTargetPullRequestApprover = void 0;
 class ChangeTargetPullRequestApprover {
     constructor(issueRepository) {
         this.issueRepository = issueRepository;
-        this.approveIfConfined = async (issueLabels, approvedPrUrl) => {
+        this.approveIfConfined = async (issueLabels, approvedPrUrl, pathAliases) => {
             if (approvedPrUrl === null) {
                 return;
             }
-            const changeTargetPaths = this.extractChangeTargetPaths(issueLabels);
+            const changeTargetPaths = this.extractChangeTargetPaths(issueLabels, pathAliases);
             if (changeTargetPaths.length === 0) {
                 return;
             }
@@ -22,7 +22,7 @@ class ChangeTargetPullRequestApprover {
             }
             await this.issueRepository.approvePullRequest(approvedPrUrl);
         };
-        this.extractChangeTargetPaths = (labels) => {
+        this.extractChangeTargetPaths = (labels, pathAliases) => {
             const prefixes = ['change-target:', 'change-target-must:'];
             const paths = [];
             for (const label of labels) {
@@ -32,10 +32,14 @@ class ChangeTargetPullRequestApprover {
                 const raw = label.slice(matchedPrefix.length).trim();
                 if (raw.length === 0)
                     continue;
-                const normalized = raw.replace(/\/+$/, '');
+                const normalized = raw.replace(/^\/+/, '').replace(/\/+$/, '');
                 if (normalized.length === 0)
                     continue;
-                paths.push(normalized);
+                const aliasExpanded = pathAliases?.[normalized] ?? normalized;
+                const finalPath = aliasExpanded.replace(/^\/+/, '').replace(/\/+$/, '');
+                if (finalPath.length === 0)
+                    continue;
+                paths.push(finalPath);
             }
             return paths;
         };

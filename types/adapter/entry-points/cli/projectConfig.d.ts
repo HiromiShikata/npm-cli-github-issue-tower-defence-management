@@ -17,6 +17,7 @@ export type ConfigFile = {
     awLogDirectoryPath?: string;
     awLogStaleThresholdMinutes?: number;
     labelsAsLlmAgentName?: string[];
+    changeTargetPathAliases?: Record<string, string>;
 };
 export declare const isRecord: (value: unknown) => value is Record<string, unknown>;
 export declare const loadConfigFile: (configFilePath: string) => ConfigFile;

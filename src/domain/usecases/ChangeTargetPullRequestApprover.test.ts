@@ -116,6 +116,74 @@ describe('ChangeTargetPullRequestApprover', () => {
     expect(mockIssueRepository.approvePullRequest).toHaveBeenCalledWith(prUrl);
   });
 
+  it('should normalize leading slashes in change-target label paths', async () => {
+    mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+      'src/domain/entities/Foo.ts',
+    ]);
+
+    await approver.approveIfConfined(['change-target:/src/domain'], prUrl);
+
+    expect(mockIssueRepository.approvePullRequest).toHaveBeenCalledWith(prUrl);
+  });
+
+  it('should normalize both leading and trailing slashes in change-target label paths', async () => {
+    mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+      'src/domain/entities/Foo.ts',
+    ]);
+
+    await approver.approveIfConfined(['change-target:/src/domain/'], prUrl);
+
+    expect(mockIssueRepository.approvePullRequest).toHaveBeenCalledWith(prUrl);
+  });
+
+  it('should expand a path alias when pathAliases map is provided', async () => {
+    mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+      'src/domain/usecases/adapter-interfaces/IssueRepository.ts',
+    ]);
+
+    await approver.approveIfConfined(['change-target:adapters'], prUrl, {
+      adapters: 'src/domain/usecases/adapter-interfaces',
+    });
+
+    expect(mockIssueRepository.approvePullRequest).toHaveBeenCalledWith(prUrl);
+  });
+
+  it('should not approve when file is outside the expanded alias path', async () => {
+    mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+      'src/domain/usecases/SomeOtherUseCase.ts',
+    ]);
+
+    await approver.approveIfConfined(['change-target:adapters'], prUrl, {
+      adapters: 'src/domain/usecases/adapter-interfaces',
+    });
+
+    expect(mockIssueRepository.approvePullRequest).not.toHaveBeenCalled();
+  });
+
+  it('should treat label value as literal path when it does not match any alias key', async () => {
+    mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+      'src/domain/entities/Foo.ts',
+    ]);
+
+    await approver.approveIfConfined(['change-target:src/domain'], prUrl, {
+      adapters: 'src/domain/usecases/adapter-interfaces',
+    });
+
+    expect(mockIssueRepository.approvePullRequest).toHaveBeenCalledWith(prUrl);
+  });
+
+  it('should normalize leading slash in alias expanded value', async () => {
+    mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+      'src/domain/entities/Foo.ts',
+    ]);
+
+    await approver.approveIfConfined(['change-target:domain'], prUrl, {
+      domain: '/src/domain',
+    });
+
+    expect(mockIssueRepository.approvePullRequest).toHaveBeenCalledWith(prUrl);
+  });
+
   it('should ignore empty change-target label values', async () => {
     mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
       'src/domain/Foo.ts',
@@ -127,6 +195,16 @@ describe('ChangeTargetPullRequestApprover', () => {
       mockIssueRepository.getPullRequestChangedFilePaths,
     ).not.toHaveBeenCalled();
     expect(mockIssueRepository.approvePullRequest).not.toHaveBeenCalled();
+  });
+
+  it('should normalize leading slashes in change-target-must label paths', async () => {
+    mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+      'src/domain/entities/Foo.ts',
+    ]);
+
+    await approver.approveIfConfined(['change-target-must:/src/domain'], prUrl);
+
+    expect(mockIssueRepository.approvePullRequest).toHaveBeenCalledWith(prUrl);
   });
 
   it('should treat change-target-must: path as an allowed confinement path and approve when all files are confined to it', async () => {

@@ -20,6 +20,7 @@ export type ConfigFile = {
   awLogDirectoryPath?: string;
   awLogStaleThresholdMinutes?: number;
   labelsAsLlmAgentName?: string[];
+  changeTargetPathAliases?: Record<string, string>;
 };
 
 const getStringValue = (
@@ -36,6 +37,24 @@ const getNumberValue = (
 ): number | undefined => {
   const value = obj[key];
   return typeof value === 'number' ? value : undefined;
+};
+
+const getStringRecordValue = (
+  obj: Record<string, unknown>,
+  key: string,
+): Record<string, string> | undefined => {
+  const value = obj[key];
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  const result: Record<string, string> = {};
+  for (const [k, v] of Object.entries(value)) {
+    if (typeof v !== 'string') {
+      return undefined;
+    }
+    result[k] = v;
+  }
+  return result;
 };
 
 const getStringArrayValue = (
@@ -75,6 +94,7 @@ const knownProjectReadmeConfigKeys = [
   'claudeCodeOauthTokenListJsonPath',
   'awLogDirectoryPath',
   'awLogStaleThresholdMinutes',
+  'changeTargetPathAliases',
 ] as const;
 
 export const loadConfigFile = (configFilePath: string): ConfigFile => {
@@ -121,6 +141,10 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         'awLogStaleThresholdMinutes',
       ),
       labelsAsLlmAgentName: getStringArrayValue(parsed, 'labelsAsLlmAgentName'),
+      changeTargetPathAliases: getStringRecordValue(
+        parsed,
+        'changeTargetPathAliases',
+      ),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -192,6 +216,10 @@ export const parseProjectReadmeConfig = (
       awLogStaleThresholdMinutes: getNumberValue(
         parsed,
         'awLogStaleThresholdMinutes',
+      ),
+      changeTargetPathAliases: getStringRecordValue(
+        parsed,
+        'changeTargetPathAliases',
       ),
     };
   } catch {
@@ -271,6 +299,10 @@ export const mergeConfigs = (
     readmeOverrides.labelsAsLlmAgentName ??
     cliOverrides.labelsAsLlmAgentName ??
     configFile.labelsAsLlmAgentName,
+  changeTargetPathAliases:
+    readmeOverrides.changeTargetPathAliases ??
+    cliOverrides.changeTargetPathAliases ??
+    configFile.changeTargetPathAliases,
 });
 
 type GraphqlProjectV2ReadmeResponse = {

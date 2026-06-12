@@ -353,6 +353,22 @@ codexHomeCandidates:
       ]);
     });
 
+    it('should parse changeTargetPathAliases map from README config', () => {
+      const readme = `<details>
+<summary>config</summary>
+changeTargetPathAliases:
+  adapters: src/domain/usecases/adapter-interfaces
+  domain: src/domain
+</details>`;
+
+      const result = parseProjectReadmeConfig(readme);
+
+      expect(result.changeTargetPathAliases).toEqual({
+        adapters: 'src/domain/usecases/adapter-interfaces',
+        domain: 'src/domain',
+      });
+    });
+
     it('should not warn when only known top-level keys are present', () => {
       const readme = `<details>
 <summary>config</summary>
@@ -1191,6 +1207,7 @@ mysteryKey: 'value'
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: null,
         labelsAsLlmAgentName: null,
+        changeTargetPathAliases: null,
       });
     });
 
@@ -1226,6 +1243,7 @@ mysteryKey: 'value'
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: null,
         labelsAsLlmAgentName: null,
+        changeTargetPathAliases: null,
       });
     });
 

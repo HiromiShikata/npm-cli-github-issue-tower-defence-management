@@ -47,6 +47,20 @@ const getNumberValue = (obj, key) => {
     const value = obj[key];
     return typeof value === 'number' ? value : undefined;
 };
+const getStringRecordValue = (obj, key) => {
+    const value = obj[key];
+    if (!(0, exports.isRecord)(value)) {
+        return undefined;
+    }
+    const result = {};
+    for (const [k, v] of Object.entries(value)) {
+        if (typeof v !== 'string') {
+            return undefined;
+        }
+        result[k] = v;
+    }
+    return result;
+};
 const getStringArrayValue = (obj, key) => {
     const value = obj[key];
     if (!Array.isArray(value)) {
@@ -79,6 +93,7 @@ const knownProjectReadmeConfigKeys = [
     'claudeCodeOauthTokenListJsonPath',
     'awLogDirectoryPath',
     'awLogStaleThresholdMinutes',
+    'changeTargetPathAliases',
 ];
 const loadConfigFile = (configFilePath) => {
     try {
@@ -106,6 +121,7 @@ const loadConfigFile = (configFilePath) => {
             awLogDirectoryPath: getStringValue(parsed, 'awLogDirectoryPath'),
             awLogStaleThresholdMinutes: getNumberValue(parsed, 'awLogStaleThresholdMinutes'),
             labelsAsLlmAgentName: getStringArrayValue(parsed, 'labelsAsLlmAgentName'),
+            changeTargetPathAliases: getStringRecordValue(parsed, 'changeTargetPathAliases'),
         };
     }
     catch (error) {
@@ -153,6 +169,7 @@ const parseProjectReadmeConfig = (readme, projectUrl) => {
             claudeCodeOauthTokenListJsonPath: getStringValue(parsed, 'claudeCodeOauthTokenListJsonPath'),
             awLogDirectoryPath: getStringValue(parsed, 'awLogDirectoryPath'),
             awLogStaleThresholdMinutes: getNumberValue(parsed, 'awLogStaleThresholdMinutes'),
+            changeTargetPathAliases: getStringRecordValue(parsed, 'changeTargetPathAliases'),
         };
     }
     catch {
@@ -212,6 +229,9 @@ const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
     labelsAsLlmAgentName: readmeOverrides.labelsAsLlmAgentName ??
         cliOverrides.labelsAsLlmAgentName ??
         configFile.labelsAsLlmAgentName,
+    changeTargetPathAliases: readmeOverrides.changeTargetPathAliases ??
+        cliOverrides.changeTargetPathAliases ??
+        configFile.changeTargetPathAliases,
 });
 exports.mergeConfigs = mergeConfigs;
 const isGraphqlProjectV2ReadmeResponse = (value) => {
