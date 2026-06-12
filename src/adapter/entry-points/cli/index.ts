@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import { HandleScheduledEventUseCaseHandler } from '../handlers/HandleScheduledEventUseCaseHandler';
 export {
   ConfigFile,
   loadConfigFile,
@@ -99,6 +98,9 @@ program
       process.exit(1);
     }
     if (options.trigger === 'schedule') {
+      const { HandleScheduledEventUseCaseHandler } = await import(
+        '../handlers/HandleScheduledEventUseCaseHandler'
+      );
       const handler = new HandleScheduledEventUseCaseHandler();
       await handler.handle(options.config, options.verbose);
     }
