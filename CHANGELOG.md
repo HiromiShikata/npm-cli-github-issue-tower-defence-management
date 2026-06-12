@@ -1,3 +1,10 @@
+# [1.81.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.80.1...v1.81.0) (2026-06-12)
+
+
+### Features
+
+* **core:** cooldown a token after a 429 with no rate-limit headers ([f53b5e8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f53b5e8ac7bd162f67cced29da878692631eef2b)), closes [#819](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/819)
+
 ## [1.80.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.80.0...v1.80.1) (2026-06-12)
 
 
