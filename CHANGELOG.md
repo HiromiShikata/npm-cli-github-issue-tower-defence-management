@@ -1,3 +1,10 @@
+# [1.80.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.79.0...v1.80.0) (2026-06-12)
+
+
+### Features
+
+* **domain:** add console use case base directory ([86460ee](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/86460ee145b9b9545ff2445bbc6988ca83eafc75))
+
 # [1.79.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.78.0...v1.79.0) (2026-06-12)
 
 
