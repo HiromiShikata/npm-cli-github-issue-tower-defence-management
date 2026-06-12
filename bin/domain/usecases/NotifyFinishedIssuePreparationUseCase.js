@@ -67,7 +67,7 @@ class NotifyFinishedIssuePreparationUseCase {
                 issue.status = WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME;
                 await this.issueRepository.update(issue, project);
                 await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
-                await this.issueCommentRepository.createComment(issue, `Issue has dependent issue URLs: ${issue.dependedIssueUrls.join(', ')}`);
+                await this.issueCommentRepository.createComment(issue, `Issue has dependent issue URLs:\n${issue.dependedIssueUrls.map((url) => `- ${url}`).join('\n')}`);
                 return;
             }
             if (issue.nextActionDate !== null || issue.nextActionHour !== null) {

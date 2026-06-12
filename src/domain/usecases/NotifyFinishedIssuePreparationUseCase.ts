@@ -154,7 +154,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       );
       await this.issueCommentRepository.createComment(
         issue,
-        `Issue has dependent issue URLs: ${issue.dependedIssueUrls.join(', ')}`,
+        `Issue has dependent issue URLs:\n${issue.dependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
       );
       return;
     }
