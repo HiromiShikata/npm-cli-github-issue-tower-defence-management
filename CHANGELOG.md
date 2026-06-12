@@ -1,3 +1,18 @@
+# [1.82.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.81.0...v1.82.0) (2026-06-12)
+
+
+### Bug Fixes
+
+* add changeTargetPathAliases to knownProjectReadmeConfigKeys and parseProjectReadmeConfig ([a8eef68](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a8eef684ca55a2d0302d243a658cc226e8cdf46e))
+* address review comments on changeTargetPathAliases type and port alias tests ([ea9ffed](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ea9ffedc0c1f92aed84a0caf6831a7a774b9d6cf))
+* normalize leading slash in IssueRejectionEvaluator extractChangeTargetMustPaths ([ea0a169](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ea0a1696df93d24a1d13f2544c8834515f38e5db))
+* regenerate index.js.map after rebase onto main ([2e9d660](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2e9d6601d21944b377e0a4a40cfecc43e90e4c3a))
+
+
+### Features
+
+* normalize leading slash in change-target labels and add path alias support ([27dbdf6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/27dbdf63b188bb78126ed463a965dd5223a30134))
+
 # [1.81.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.80.1...v1.81.0) (2026-06-12)
 
 
