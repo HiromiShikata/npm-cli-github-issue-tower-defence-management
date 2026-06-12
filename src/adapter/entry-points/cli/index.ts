@@ -323,8 +323,7 @@ program
 
     const webConsoleAccessKey = config.webConsoleAccessKey;
     if (webConsoleAccessKey) {
-      const webConsolePort =
-        config.webConsolePort ?? WEB_CONSOLE_DEFAULT_PORT;
+      const webConsolePort = config.webConsolePort ?? WEB_CONSOLE_DEFAULT_PORT;
       const webConsoleProcess = await ensureWebConsoleRunning(
         webConsoleAccessKey,
         webConsolePort,
@@ -604,9 +603,7 @@ program
     `Port to listen on (default: ${WEB_CONSOLE_DEFAULT_PORT})`,
   )
   .action((options: ServeWebConsoleOptions) => {
-    const port = options.port
-      ? Number(options.port)
-      : WEB_CONSOLE_DEFAULT_PORT;
+    const port = options.port ? Number(options.port) : WEB_CONSOLE_DEFAULT_PORT;
     startWebConsole(options.accessKey, port);
   });
 

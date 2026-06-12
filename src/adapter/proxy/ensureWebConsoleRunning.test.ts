@@ -75,9 +75,9 @@ describe('ensureWebConsoleRunning', () => {
     if (typeof firstArg !== 'string') {
       throw new Error('Expected first spawn argument to be a string');
     }
-    expect(
-      firstArg.endsWith(path.join('proxy', 'webConsoleEntry.js')),
-    ).toBe(true);
+    expect(firstArg.endsWith(path.join('proxy', 'webConsoleEntry.js'))).toBe(
+      true,
+    );
     const isObject = (value: unknown): value is { [key: string]: unknown } =>
       value !== null && typeof value === 'object' && !Array.isArray(value);
     if (!isObject(options)) {
