@@ -374,6 +374,60 @@ describe('PrReviewViewerServerStartUseCase', () => {
         expect(result.error).toContain('Invalid repo format');
       }
     });
+
+    it('returns error for repo with empty owner segment', async () => {
+      const { useCase } = makeUseCase();
+      const result = await useCase.executeReview('proj', {
+        action: 'APPROVE',
+        repo: '/repo',
+        prNumber: 42,
+        projectItemId: '',
+        projectId: '',
+        statusFieldId: '',
+        awaitingWorkspaceStatusOptionId: '',
+        body: null,
+        comments: null,
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok === false) {
+        expect(result.error).toContain('Invalid repo format');
+      }
+    });
+
+    it('returns error for repo with empty repo name segment', async () => {
+      const { useCase } = makeUseCase();
+      const result = await useCase.executeReview('proj', {
+        action: 'APPROVE',
+        repo: 'owner/',
+        prNumber: 42,
+        projectItemId: '',
+        projectId: '',
+        statusFieldId: '',
+        awaitingWorkspaceStatusOptionId: '',
+        body: null,
+        comments: null,
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok === false) {
+        expect(result.error).toContain('Invalid repo format');
+      }
+    });
+  });
+
+  describe('getList - malformed repo items', () => {
+    it('excludes items with malformed repo string from the list', async () => {
+      const malformedItem = makeItem({
+        pr: { ...makeItem().pr, repo: '/badrepo' },
+      });
+      const validItem = makeItem({ pr: { ...makeItem().pr, number: 99 } });
+      const { useCase, doneRepo } = makeUseCase({
+        listRepo: makeListRepo([malformedItem, validItem]),
+      });
+      doneRepo.getAllDone.mockResolvedValue([]);
+      const result = await useCase.getList('myproject');
+      expect(result).toHaveLength(1);
+      expect(result[0].pr.number).toBe(99);
+    });
   });
 
   describe('executeReview - markDone failure is non-fatal', () => {

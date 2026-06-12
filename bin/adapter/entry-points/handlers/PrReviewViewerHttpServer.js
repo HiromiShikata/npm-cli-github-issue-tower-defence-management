@@ -287,7 +287,7 @@ class PrReviewViewerHttpServer {
             }
             catch (_error) {
                 process.stderr.write(String(_error) + '\n');
-                sendJson(res, 400, { ok: false, error: 'Review action failed' });
+                sendJson(res, 500, { ok: false, error: 'Review action failed' });
             }
         };
         this.handleImageProxy = async (req, res, urlObj) => {

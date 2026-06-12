@@ -14,7 +14,11 @@ class PrReviewViewerServerStartUseCase {
             const doneItems = await this.prReviewDoneRepository.getAllDone();
             const doneSet = new Set(doneItems.map((d) => `${d.owner}/${d.repo}#${d.prNumber}`));
             return allItems.filter((item) => {
-                const [owner, repo] = item.pr.repo.split('/');
+                const repoParts = item.pr.repo.split('/');
+                if (repoParts.length !== 2 || !repoParts[0] || !repoParts[1]) {
+                    return false;
+                }
+                const [owner, repo] = repoParts;
                 const key = `${owner}/${repo}#${item.pr.number}`;
                 return !doneSet.has(key);
             });
@@ -25,7 +29,7 @@ class PrReviewViewerServerStartUseCase {
         this.executeReview = async (projectCode, request) => {
             const repoStr = request.repo;
             const repoParts = repoStr.split('/');
-            if (repoParts.length !== 2) {
+            if (repoParts.length !== 2 || !repoParts[0] || !repoParts[1]) {
                 return { ok: false, error: `Invalid repo format: ${repoStr}` };
             }
             const owner = repoParts[0];
