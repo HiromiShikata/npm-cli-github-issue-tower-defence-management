@@ -1,3 +1,10 @@
+## [1.77.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.77.2...v1.77.3) (2026-06-12)
+
+
+### Bug Fixes
+
+* **core:** count token in-flight by worker root not per descendant process ([578e256](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/578e25667ea089c9b578aa436bf9cb1f5780d3b1)), closes [#809](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/809)
+
 ## [1.77.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.77.1...v1.77.2) (2026-06-12)
 
 
