@@ -1,1 +1,0 @@
-{"version":3,"file":"ensurePrReviewViewerRunning.d.ts","sourceRoot":"","sources":["../../../src/adapter/proxy/ensurePrReviewViewerRunning.ts"],"names":[],"mappings":"AAIA,eAAO,MAAM,6BAA6B,OAAO,CAAC;AAElD,MAAM,WAAW,aAAa;IAC5B,IAAI,EAAE,MAAM,IAAI,CAAC;CAClB;AAyBD,eAAO,MAAM,2BAA2B,GACtC,WAAW,MAAM,EACjB,OAAM,MAAsC,KAC3C,OAAO,CAAC,aAAa,GAAG,IAAI,CAe9B,CAAC"}

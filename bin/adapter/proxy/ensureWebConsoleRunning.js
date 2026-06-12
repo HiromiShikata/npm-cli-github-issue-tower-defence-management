@@ -33,11 +33,11 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensurePrReviewViewerRunning = exports.PR_REVIEW_VIEWER_DEFAULT_PORT = void 0;
+exports.ensureWebConsoleRunning = exports.WEB_CONSOLE_DEFAULT_PORT = void 0;
 const child_process_1 = require("child_process");
 const net = __importStar(require("net"));
 const path = __importStar(require("path"));
-exports.PR_REVIEW_VIEWER_DEFAULT_PORT = 3737;
+exports.WEB_CONSOLE_DEFAULT_PORT = 3737;
 const PROBE_TIMEOUT_MS = 200;
 const STARTUP_WAIT_MS = 1500;
 const isPortResponding = (port) => new Promise((resolve) => {
@@ -57,22 +57,22 @@ const isPortResponding = (port) => new Promise((resolve) => {
     socket.connect(port, '127.0.0.1');
 });
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const ensurePrReviewViewerRunning = async (accessKey, port = exports.PR_REVIEW_VIEWER_DEFAULT_PORT) => {
+const ensureWebConsoleRunning = async (accessKey, port = exports.WEB_CONSOLE_DEFAULT_PORT) => {
     if (await isPortResponding(port))
         return null;
-    const entryPath = path.resolve(__dirname, 'prReviewViewerEntry.js');
+    const entryPath = path.resolve(__dirname, 'webConsoleEntry.js');
     const child = (0, child_process_1.spawn)(process.execPath, [entryPath], {
         detached: true,
         stdio: 'ignore',
         env: {
             ...process.env,
-            PR_REVIEW_VIEWER_ACCESS_KEY: accessKey,
-            PR_REVIEW_VIEWER_PORT: String(port),
+            WEB_CONSOLE_ACCESS_KEY: accessKey,
+            WEB_CONSOLE_PORT: String(port),
         },
     });
     child.unref();
     await sleep(STARTUP_WAIT_MS);
     return { kill: () => child.kill() };
 };
-exports.ensurePrReviewViewerRunning = ensurePrReviewViewerRunning;
-//# sourceMappingURL=ensurePrReviewViewerRunning.js.map
+exports.ensureWebConsoleRunning = ensureWebConsoleRunning;
+//# sourceMappingURL=ensureWebConsoleRunning.js.map

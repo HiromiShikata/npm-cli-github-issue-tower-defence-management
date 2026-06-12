@@ -1849,20 +1849,20 @@ mysteryKey: 'value'
       ensureWebConsoleRunningMock.mockRestore();
     });
 
-    it('should register a SIGTERM handler that kills the viewer process when one is spawned', async () => {
-      const configWithViewer = {
+    it('should register a SIGTERM handler that kills the web console process when one is spawned', async () => {
+      const configWithConsole = {
         ...defaultConfig,
-        prReviewViewerAccessKey: 'test-access-key',
+        webConsoleAccessKey: 'test-access-key',
       };
-      writeConfig(configWithViewer);
+      writeConfig(configWithConsole);
 
       const killMock = jest.fn();
-      const fakeViewerProcess: import('../../proxy/ensurePrReviewViewerRunning').ViewerProcess =
+      const fakeConsoleProcess: import('../../proxy/ensureWebConsoleRunning').WebConsoleProcess =
         { kill: killMock };
 
-      const ensurePrReviewViewerRunningMock = jest
-        .spyOn(ensurePrReviewViewerRunningModule, 'ensurePrReviewViewerRunning')
-        .mockImplementation(() => Promise.resolve(fakeViewerProcess));
+      const ensureWebConsoleRunningMock = jest
+        .spyOn(ensureWebConsoleRunningModule, 'ensureWebConsoleRunning')
+        .mockImplementation(() => Promise.resolve(fakeConsoleProcess));
 
       const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
       const MockedStartPreparationUseCase = jest.mocked(
@@ -1886,23 +1886,23 @@ mysteryKey: 'value'
       process.emit('SIGTERM');
       expect(killMock).toHaveBeenCalledTimes(1);
 
-      ensurePrReviewViewerRunningMock.mockRestore();
+      ensureWebConsoleRunningMock.mockRestore();
     });
 
-    it('should register a SIGINT handler that kills the viewer process when one is spawned', async () => {
-      const configWithViewer = {
+    it('should register a SIGINT handler that kills the web console process when one is spawned', async () => {
+      const configWithConsole = {
         ...defaultConfig,
-        prReviewViewerAccessKey: 'test-access-key',
+        webConsoleAccessKey: 'test-access-key',
       };
-      writeConfig(configWithViewer);
+      writeConfig(configWithConsole);
 
       const killMock = jest.fn();
-      const fakeViewerProcess: import('../../proxy/ensurePrReviewViewerRunning').ViewerProcess =
+      const fakeConsoleProcess: import('../../proxy/ensureWebConsoleRunning').WebConsoleProcess =
         { kill: killMock };
 
-      const ensurePrReviewViewerRunningMock = jest
-        .spyOn(ensurePrReviewViewerRunningModule, 'ensurePrReviewViewerRunning')
-        .mockImplementation(() => Promise.resolve(fakeViewerProcess));
+      const ensureWebConsoleRunningMock = jest
+        .spyOn(ensureWebConsoleRunningModule, 'ensureWebConsoleRunning')
+        .mockImplementation(() => Promise.resolve(fakeConsoleProcess));
 
       const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
       const MockedStartPreparationUseCase = jest.mocked(
@@ -1926,18 +1926,18 @@ mysteryKey: 'value'
       process.emit('SIGINT');
       expect(killMock).toHaveBeenCalledTimes(1);
 
-      ensurePrReviewViewerRunningMock.mockRestore();
+      ensureWebConsoleRunningMock.mockRestore();
     });
 
-    it('should not register a kill handler when ensurePrReviewViewerRunning returns null', async () => {
-      const configWithViewer = {
+    it('should not register a kill handler when ensureWebConsoleRunning returns null', async () => {
+      const configWithConsole = {
         ...defaultConfig,
-        prReviewViewerAccessKey: 'test-access-key',
+        webConsoleAccessKey: 'test-access-key',
       };
-      writeConfig(configWithViewer);
+      writeConfig(configWithConsole);
 
-      const ensurePrReviewViewerRunningMock = jest
-        .spyOn(ensurePrReviewViewerRunningModule, 'ensurePrReviewViewerRunning')
+      const ensureWebConsoleRunningMock = jest
+        .spyOn(ensureWebConsoleRunningModule, 'ensureWebConsoleRunning')
         .mockResolvedValue(null);
 
       const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
@@ -1963,7 +1963,7 @@ mysteryKey: 'value'
 
       expect(process.listenerCount('SIGTERM')).toBe(sigtermListenersBefore);
 
-      ensurePrReviewViewerRunningMock.mockRestore();
+      ensureWebConsoleRunningMock.mockRestore();
     });
   });
 
@@ -1974,9 +1974,10 @@ mysteryKey: 'value'
     });
 
     it('should call startWebConsole with the access key and default port', async () => {
-      const startWebConsoleMock = jest
-        .spyOn(webConsoleEntryModule, 'startWebConsole')
-        .mockReturnValue({} as ReturnType<typeof webConsoleEntryModule.startWebConsole>);
+      const startWebConsoleMock = jest.spyOn(
+        webConsoleEntryModule,
+        'startWebConsole',
+      );
 
       await program.parseAsync([
         'node',
@@ -1992,9 +1993,10 @@ mysteryKey: 'value'
     });
 
     it('should call startWebConsole with a custom port when --port is provided', async () => {
-      const startWebConsoleMock = jest
-        .spyOn(webConsoleEntryModule, 'startWebConsole')
-        .mockReturnValue({} as ReturnType<typeof webConsoleEntryModule.startWebConsole>);
+      const startWebConsoleMock = jest.spyOn(
+        webConsoleEntryModule,
+        'startWebConsole',
+      );
 
       await program.parseAsync([
         'node',

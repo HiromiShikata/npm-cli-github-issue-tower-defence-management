@@ -94,6 +94,8 @@ const knownProjectReadmeConfigKeys = [
     'awLogDirectoryPath',
     'awLogStaleThresholdMinutes',
     'changeTargetPathAliases',
+    'webConsoleAccessKey',
+    'webConsolePort',
 ];
 const loadConfigFile = (configFilePath) => {
     try {
@@ -122,6 +124,8 @@ const loadConfigFile = (configFilePath) => {
             awLogStaleThresholdMinutes: getNumberValue(parsed, 'awLogStaleThresholdMinutes'),
             labelsAsLlmAgentName: getStringArrayValue(parsed, 'labelsAsLlmAgentName'),
             changeTargetPathAliases: getStringRecordValue(parsed, 'changeTargetPathAliases'),
+            webConsoleAccessKey: getStringValue(parsed, 'webConsoleAccessKey'),
+            webConsolePort: getNumberValue(parsed, 'webConsolePort'),
         };
     }
     catch (error) {
@@ -170,6 +174,8 @@ const parseProjectReadmeConfig = (readme, projectUrl) => {
             awLogDirectoryPath: getStringValue(parsed, 'awLogDirectoryPath'),
             awLogStaleThresholdMinutes: getNumberValue(parsed, 'awLogStaleThresholdMinutes'),
             changeTargetPathAliases: getStringRecordValue(parsed, 'changeTargetPathAliases'),
+            webConsoleAccessKey: getStringValue(parsed, 'webConsoleAccessKey'),
+            webConsolePort: getNumberValue(parsed, 'webConsolePort'),
         };
     }
     catch {
@@ -232,6 +238,12 @@ const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
     changeTargetPathAliases: readmeOverrides.changeTargetPathAliases ??
         cliOverrides.changeTargetPathAliases ??
         configFile.changeTargetPathAliases,
+    webConsoleAccessKey: readmeOverrides.webConsoleAccessKey ??
+        cliOverrides.webConsoleAccessKey ??
+        configFile.webConsoleAccessKey,
+    webConsolePort: readmeOverrides.webConsolePort ??
+        cliOverrides.webConsolePort ??
+        configFile.webConsolePort,
 });
 exports.mergeConfigs = mergeConfigs;
 const isGraphqlProjectV2ReadmeResponse = (value) => {

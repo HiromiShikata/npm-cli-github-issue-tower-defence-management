@@ -33,10 +33,10 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.startPrReviewViewer = void 0;
+exports.startWebConsole = void 0;
 const http = __importStar(require("http"));
-const ensurePrReviewViewerRunning_1 = require("./ensurePrReviewViewerRunning");
-const startPrReviewViewer = (accessKey, port) => {
+const ensureWebConsoleRunning_1 = require("./ensureWebConsoleRunning");
+const startWebConsole = (accessKey, port) => {
     const server = http.createServer((request, response) => {
         const url = new URL(request.url ?? '/', `http://127.0.0.1:${port}`);
         const keyParam = url.searchParams.get('key');
@@ -53,20 +53,20 @@ const startPrReviewViewer = (accessKey, port) => {
         response.end(JSON.stringify({ ok: true }));
     });
     server.listen(port, '127.0.0.1', () => {
-        console.log(`pr-review-viewer listening on 127.0.0.1:${port}`);
+        console.log(`web-console listening on 127.0.0.1:${port}`);
     });
     return server;
 };
-exports.startPrReviewViewer = startPrReviewViewer;
+exports.startWebConsole = startWebConsole;
 if (require.main === module) {
-    const accessKey = process.env.PR_REVIEW_VIEWER_ACCESS_KEY ?? '';
-    const port = process.env.PR_REVIEW_VIEWER_PORT
-        ? Number(process.env.PR_REVIEW_VIEWER_PORT)
-        : ensurePrReviewViewerRunning_1.PR_REVIEW_VIEWER_DEFAULT_PORT;
+    const accessKey = process.env.WEB_CONSOLE_ACCESS_KEY ?? '';
+    const port = process.env.WEB_CONSOLE_PORT
+        ? Number(process.env.WEB_CONSOLE_PORT)
+        : ensureWebConsoleRunning_1.WEB_CONSOLE_DEFAULT_PORT;
     if (!accessKey) {
-        console.error('PR_REVIEW_VIEWER_ACCESS_KEY environment variable is required');
+        console.error('WEB_CONSOLE_ACCESS_KEY environment variable is required');
         process.exit(1);
     }
-    startPrReviewViewer(accessKey, port);
+    startWebConsole(accessKey, port);
 }
-//# sourceMappingURL=prReviewViewerEntry.js.map
+//# sourceMappingURL=webConsoleEntry.js.map
