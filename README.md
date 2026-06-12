@@ -20,7 +20,7 @@ Commands:
   startDaemon [options]                 Start daemon to prepare GitHub issues
   notifyFinishedIssuePreparation [options]  Notify that issue preparation is finished
   checkIssueReviewReadiness [options]   Check whether an issue is review-ready (read-only; does not change Status or post any comment)
-  serve-pr-review-viewer [options]      Start the PR review viewer web server
+  serve-web-console [options]           Start the web console HTTP server
   help [command]                        display help for command
 
 Options for schedule:
@@ -41,11 +41,11 @@ Options for startDaemon:
   --utilizationPercentageThreshold <percent>       5-hour utilization hard threshold; tokens at or above this percentage are excluded from rotation. Per-token concurrency also tapers from 6 slots down to 1 as either the 5h or 7d utilization rises from 80% toward 100%, taking the more restrictive of the two (default: 90)
   --allowedIssueAuthors <authors>                  Comma-separated list of allowed issue authors
   --preparationProcessCheckCommand <template>      Shell command template with {URL} placeholder to check if a preparation process is alive
-  --prReviewViewerAccessKey <key>                  Access key for the PR review viewer web server (if set, starts the viewer before the preparation cycle)
-  --prReviewViewerPort <port>                      Port for the PR review viewer web server (default: 3737)
+  --webConsoleAccessKey <key>                      Access key for the web console server (if set, starts the web console before the preparation cycle)
+  --webConsolePort <port>                          Port for the web console server (default: 3737)
 
-Options for serve-pr-review-viewer:
-  --accessKey <key>                                Access key required to access the PR review viewer (required)
+Options for serve-web-console:
+  --accessKey <key>                                Access key required to access the web console (required)
   --port <port>                                    Port to listen on (default: 3737)
 
 Options for notifyFinishedIssuePreparation:
@@ -63,7 +63,7 @@ Options for checkIssueReviewReadiness:
 
 The `checkIssueReviewReadiness` sub-command lets an agent self-check whether an issue is currently review-ready. It does NOT change the issue Status field and does NOT post any comment. It writes a single JSON line to stdout of the shape `{ "reviewReady": boolean, "rejections": [{ "type": string, "detail": string }] }` and exits 0 on a successful evaluation regardless of readiness; a non-zero exit indicates an operational error (auth failure, network error). The rejection types include: `ISSUE_NOT_FOUND`, `NO_REPORT_FROM_AGENT_BOT`, `REPORT_HAS_NEXT_STEP`, `PULL_REQUEST_NOT_FOUND`, `PULL_REQUEST_IS_DRAFT`, `PULL_REQUEST_CONFLICTED`, `ANY_CI_JOB_FAILED_OR_IN_PROGRESS`, `REQUIRED_CI_JOB_NEVER_STARTED`, `ANY_REVIEW_COMMENT_NOT_RESOLVED`, and `MULTIPLE_PULL_REQUESTS_FOUND`. The `--projectUrl` option is optional; when omitted the command still runs using only the issue URL.
 
-The `serve-pr-review-viewer` sub-command starts an HTTP server that gates all requests behind an access key. The server listens on `127.0.0.1` and accepts the access key either as a `?key=` query parameter or as an `Authorization: Bearer <key>` header. A valid key returns HTTP 200 with `{"ok":true}`; an invalid or missing key returns HTTP 403. When `prReviewViewerAccessKey` is set in the config or passed via `--prReviewViewerAccessKey` to `startDaemon`, the daemon automatically ensures this server is running before each preparation cycle by TCP-probing the configured port; if nothing responds it spawns a detached child process running the server so it persists across daemon cycles.
+The `serve-web-console` sub-command starts an HTTP server that gates all requests behind an access key. The server listens on `127.0.0.1` and accepts the access key either as a `?key=` query parameter or as an `Authorization: Bearer <key>` header. A valid key returns HTTP 200 with `{"ok":true}`; an invalid or missing key returns HTTP 403. When `webConsoleAccessKey` is set in the config or passed via `--webConsoleAccessKey` to `startDaemon`, the daemon automatically ensures this server is running before each preparation cycle by TCP-probing the configured port; if nothing responds it spawns a detached child process running the server so it persists across daemon cycles.
 
 ## Example 📖
 
@@ -90,11 +90,11 @@ npx github-issue-tower-defence-management checkIssueReviewReadiness --configFile
 ```
 
 ```
-npx github-issue-tower-defence-management serve-pr-review-viewer --accessKey my-secret-key
+npx github-issue-tower-defence-management serve-web-console --accessKey my-secret-key
 ```
 
 ```
-npx github-issue-tower-defence-management serve-pr-review-viewer --accessKey my-secret-key --port 8080
+npx github-issue-tower-defence-management serve-web-console --accessKey my-secret-key --port 8080
 ```
 
 ## Config
