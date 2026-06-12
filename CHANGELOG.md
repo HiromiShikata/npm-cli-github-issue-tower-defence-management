@@ -1,3 +1,15 @@
+# [1.79.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.78.0...v1.79.0) (2026-06-12)
+
+
+### Features
+
+* **cli:** enhance checkIssueReviewReadiness with comment checks and optional projectUrl ([41c0b6f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/41c0b6f01c24068925638e35a108d33ea5fa202d)), closes [HiromiShikata/secretary#1781](https://github.com/HiromiShikata/secretary/issues/1781)
+
+
+### Reverts
+
+* restore unrelated build artifacts to origin/main state ([30a7ec1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/30a7ec1424122d562373e79989d6fe2abefaa46d))
+
 # [1.78.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.77.3...v1.78.0) (2026-06-12)
 
 
