@@ -297,17 +297,9 @@ class PrReviewViewerHttpServer {
                     sendError(res, 400, 'Missing url parameter');
                     return;
                 }
-                let decodedUrl;
-                try {
-                    decodedUrl = decodeURIComponent(targetUrl);
-                }
-                catch {
-                    sendError(res, 400, 'Invalid url encoding');
-                    return;
-                }
                 let parsedTarget;
                 try {
-                    parsedTarget = new URL(decodedUrl);
+                    parsedTarget = new URL(targetUrl);
                 }
                 catch {
                     sendError(res, 400, 'Invalid target URL');
@@ -322,7 +314,7 @@ class PrReviewViewerHttpServer {
                     sendError(res, 400, `Hostname not allowed: ${parsedTarget.hostname}`);
                     return;
                 }
-                const { content, contentType } = await this.gitHubPrReviewRepository.fetchImageProxy(decodedUrl);
+                const { content, contentType } = await this.gitHubPrReviewRepository.fetchImageProxy(targetUrl);
                 res.writeHead(200, {
                     'Content-Type': contentType,
                     'Content-Length': content.length,

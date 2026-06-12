@@ -1,1 +1,1 @@
-{"version":3,"file":"GitHubApiError.js","sourceRoot":"","sources":["../../../src/domain/entities/GitHubApiError.ts"],"names":[],"mappings":";;;AAAA,MAAa,cAAc;IAEzB,YAAY,WAAmB;QAC7B,IAAI,CAAC,WAAW,GAAG,WAAW,CAAC;IACjC,CAAC;CACF;AALD,wCAKC"}
+{"version":3,"file":"GitHubApiError.js","sourceRoot":"","sources":["../../../src/domain/entities/GitHubApiError.ts"],"names":[],"mappings":";;;AAAA,MAAa,cAAe,SAAQ,KAAK;IAEvC,YAAY,WAAmB;QAC7B,KAAK,EAAE,CAAC;QACR,IAAI,CAAC,WAAW,GAAG,WAAW,CAAC;IACjC,CAAC;CACF;AAND,wCAMC"}

@@ -371,16 +371,9 @@ export class PrReviewViewerHttpServer {
         sendError(res, 400, 'Missing url parameter');
         return;
       }
-      let decodedUrl: string;
-      try {
-        decodedUrl = decodeURIComponent(targetUrl);
-      } catch {
-        sendError(res, 400, 'Invalid url encoding');
-        return;
-      }
       let parsedTarget: URL;
       try {
-        parsedTarget = new URL(decodedUrl);
+        parsedTarget = new URL(targetUrl);
       } catch {
         sendError(res, 400, 'Invalid target URL');
         return;
@@ -395,7 +388,7 @@ export class PrReviewViewerHttpServer {
         return;
       }
       const { content, contentType } =
-        await this.gitHubPrReviewRepository.fetchImageProxy(decodedUrl);
+        await this.gitHubPrReviewRepository.fetchImageProxy(targetUrl);
       res.writeHead(200, {
         'Content-Type': contentType,
         'Content-Length': content.length,
