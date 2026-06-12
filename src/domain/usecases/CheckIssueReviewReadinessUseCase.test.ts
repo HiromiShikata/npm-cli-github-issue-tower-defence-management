@@ -1,33 +1,7 @@
 import { CheckIssueReviewReadinessUseCase } from './CheckIssueReviewReadinessUseCase';
 import { Issue } from '../entities/Issue';
-import { Project } from '../entities/Project';
+import { Comment } from '../entities/Comment';
 import { RelatedPullRequest } from './adapter-interfaces/IssueRepository';
-
-const createMockProject = (overrides: Partial<Project> = {}): Project => ({
-  id: 'project-1',
-  url: 'https://github.com/users/user/projects/1',
-  databaseId: 1,
-  name: 'Test Project',
-  status: {
-    name: 'Status',
-    fieldId: 'field-1',
-    statuses: [
-      {
-        id: 'preparation-id',
-        name: 'Preparation',
-        color: 'YELLOW',
-        description: '',
-      },
-    ],
-  },
-  nextActionDate: null,
-  nextActionHour: null,
-  story: null,
-  remainingEstimationMinutes: null,
-  dependedIssueUrlSeparatedByComma: null,
-  completionDate50PercentConfidence: null,
-  ...overrides,
-});
 
 const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   nameWithOwner: 'user/repo',
@@ -56,6 +30,13 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   ...overrides,
 });
 
+const createMockComment = (overrides: Partial<Comment> = {}): Comment => ({
+  author: 'agent-bot',
+  content: 'From: :robot: Agent report',
+  createdAt: new Date('2000-01-01T00:00:00Z'),
+  ...overrides,
+});
+
 const createReadyPr = (
   overrides: Partial<RelatedPullRequest> = {},
 ): RelatedPullRequest => ({
@@ -73,51 +54,151 @@ const createReadyPr = (
 });
 
 describe('CheckIssueReviewReadinessUseCase', () => {
-  let mockProjectRepository: { getByUrl: jest.Mock };
   let mockIssueRepository: {
-    get: jest.Mock;
+    getIssueByUrl: jest.Mock;
     findRelatedOpenPRs: jest.Mock;
     getOpenPullRequest: jest.Mock;
     getPullRequestChangedFilePaths: jest.Mock;
     requestChangesWithInlineComment: jest.Mock;
   };
+  let mockIssueCommentRepository: {
+    getCommentsFromIssue: jest.Mock;
+  };
   let useCase: CheckIssueReviewReadinessUseCase;
-  let mockProject: Project;
 
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockProject = createMockProject();
-
-    mockProjectRepository = {
-      getByUrl: jest.fn(),
-    };
-
     mockIssueRepository = {
-      get: jest.fn(),
+      getIssueByUrl: jest.fn(),
       findRelatedOpenPRs: jest.fn(),
       getOpenPullRequest: jest.fn(),
       getPullRequestChangedFilePaths: jest.fn().mockResolvedValue([]),
       requestChangesWithInlineComment: jest.fn().mockResolvedValue(undefined),
     };
 
+    mockIssueCommentRepository = {
+      getCommentsFromIssue: jest.fn(),
+    };
+
     useCase = new CheckIssueReviewReadinessUseCase(
-      mockProjectRepository,
       mockIssueRepository,
+      mockIssueCommentRepository,
     );
   });
 
   describe('run', () => {
-    it('should return reviewReady=true with empty rejections when the linked PR is ready', async () => {
+    it('should return reviewReady=false with ISSUE_NOT_FOUND when issue does not exist', async () => {
+      mockIssueRepository.getIssueByUrl.mockResolvedValue(null);
+
+      const result = await useCase.run({
+        issueUrl: 'https://github.com/user/repo/issues/999',
+      });
+
+      expect(result.reviewReady).toBe(false);
+      expect(result.rejections).toEqual([
+        {
+          type: 'ISSUE_NOT_FOUND',
+          detail: 'Issue not found: https://github.com/user/repo/issues/999',
+        },
+      ]);
+    });
+
+    it('should return reviewReady=false with NO_REPORT_FROM_AGENT_BOT when no comments exist', async () => {
       const issue = createMockIssue();
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
         createReadyPr(),
       ]);
 
       const result = await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+      });
+
+      expect(result.reviewReady).toBe(false);
+      expect(result.rejections).toContainEqual({
+        type: 'NO_REPORT_FROM_AGENT_BOT',
+        detail: 'NO_REPORT_FROM_AGENT_BOT',
+      });
+    });
+
+    it('should return reviewReady=false with NO_REPORT_FROM_AGENT_BOT when last comment does not start with From: :robot:', async () => {
+      const issue = createMockIssue();
+      mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({ content: 'Some regular comment' }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        createReadyPr(),
+      ]);
+
+      const result = await useCase.run({
+        issueUrl: 'https://github.com/user/repo/issues/1',
+      });
+
+      expect(result.reviewReady).toBe(false);
+      expect(result.rejections).toContainEqual({
+        type: 'NO_REPORT_FROM_AGENT_BOT',
+        detail: 'NO_REPORT_FROM_AGENT_BOT',
+      });
+    });
+
+    it('should return reviewReady=false with REPORT_HAS_NEXT_STEP when last comment has nextStep in JSON', async () => {
+      const issue = createMockIssue();
+      mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
+      const commentWithNextStep = createMockComment({
+        content:
+          'From: :robot: Agent report\n```json\n{"nextStep": "fix the bug"}\n```',
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        commentWithNextStep,
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        createReadyPr(),
+      ]);
+
+      const result = await useCase.run({
+        issueUrl: 'https://github.com/user/repo/issues/1',
+      });
+
+      expect(result.reviewReady).toBe(false);
+      expect(result.rejections).toContainEqual({
+        type: 'REPORT_HAS_NEXT_STEP',
+        detail: 'REPORT_HAS_NEXT_STEP',
+      });
+    });
+
+    it('should return reviewReady=false with PULL_REQUEST_NOT_FOUND when no related PR exists', async () => {
+      const issue = createMockIssue();
+      mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment(),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      const result = await useCase.run({
+        issueUrl: 'https://github.com/user/repo/issues/1',
+      });
+
+      expect(result.reviewReady).toBe(false);
+      expect(result.rejections).toContainEqual({
+        type: 'PULL_REQUEST_NOT_FOUND',
+        detail: 'PULL_REQUEST_NOT_FOUND',
+      });
+    });
+
+    it('should return reviewReady=true with empty rejections when all checks pass', async () => {
+      const issue = createMockIssue();
+      mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment(),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        createReadyPr(),
+      ]);
+
+      const result = await useCase.run({
         issueUrl: 'https://github.com/user/repo/issues/1',
       });
 
@@ -125,10 +206,12 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       expect(result.rejections).toEqual([]);
     });
 
-    it('should return reviewReady=false with rejections when the linked PR has failing CI', async () => {
+    it('should return reviewReady=false with ANY_CI_JOB_FAILED_OR_IN_PROGRESS when PR CI is failing', async () => {
       const issue = createMockIssue();
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment(),
+      ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
         createReadyPr({
           isPassedAllCiJob: false,
@@ -137,62 +220,71 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       ]);
 
       const result = await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
         issueUrl: 'https://github.com/user/repo/issues/1',
       });
 
       expect(result.reviewReady).toBe(false);
-      expect(result.rejections).toHaveLength(1);
       expect(result.rejections[0].type).toBe(
         'ANY_CI_JOB_FAILED_OR_IN_PROGRESS',
       );
-      expect(result.rejections[0].detail).toContain(
-        'https://github.com/user/repo/pull/1',
-      );
     });
 
-    it('should return reviewReady=false with PULL_REQUEST_NOT_FOUND when no related PR exists', async () => {
+    it('should treat all authors as trusted when allowedIssueAuthors is null', async () => {
       const issue = createMockIssue();
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+      mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({ author: 'any-unknown-author' }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        createReadyPr(),
+      ]);
 
       const result = await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
         issueUrl: 'https://github.com/user/repo/issues/1',
+        allowedIssueAuthors: null,
+      });
+
+      expect(result.reviewReady).toBe(true);
+      expect(result.rejections).toEqual([]);
+    });
+
+    it('should reject when last comment author is not in allowedIssueAuthors list', async () => {
+      const issue = createMockIssue();
+      mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({ author: 'untrusted-author' }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        createReadyPr(),
+      ]);
+
+      const result = await useCase.run({
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        allowedIssueAuthors: ['trusted-author'],
       });
 
       expect(result.reviewReady).toBe(false);
-      expect(result.rejections).toEqual([
-        { type: 'PULL_REQUEST_NOT_FOUND', detail: 'PULL_REQUEST_NOT_FOUND' },
+      expect(result.rejections).toContainEqual({
+        type: 'NO_REPORT_FROM_AGENT_BOT',
+        detail: 'NO_REPORT_FROM_AGENT_BOT',
+      });
+    });
+
+    it('should accept when last comment author is in allowedIssueAuthors list', async () => {
+      const issue = createMockIssue();
+      mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({ author: 'trusted-author' }),
       ]);
-    });
-
-    it('should throw IssueNotFoundError when the issue does not exist', async () => {
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(null);
-
-      await expect(
-        useCase.run({
-          projectUrl: 'https://github.com/users/user/projects/1',
-          issueUrl: 'https://github.com/user/repo/issues/999',
-        }),
-      ).rejects.toThrow(
-        'Issue not found: https://github.com/user/repo/issues/999',
-      );
-    });
-
-    it('should not call findRelatedOpenPRs nor mutate state when issue has a category label other than e2e', async () => {
-      const issue = createMockIssue({ labels: ['category:frontend'] });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        createReadyPr(),
+      ]);
 
       const result = await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
         issueUrl: 'https://github.com/user/repo/issues/1',
+        allowedIssueAuthors: ['trusted-author'],
       });
 
-      expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
       expect(result.reviewReady).toBe(true);
       expect(result.rejections).toEqual([]);
     });

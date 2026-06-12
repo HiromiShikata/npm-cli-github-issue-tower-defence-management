@@ -261,7 +261,7 @@ exports.program
     .description('Check whether an issue is in a review-ready state without mutating any field or posting any comment')
     .requiredOption('--configFilePath <path>', 'Path to config file for tower defence management')
     .requiredOption('--issueUrl <url>', 'GitHub issue URL')
-    .option('--projectUrl <url>', 'GitHub project URL')
+    .option('--projectUrl <url>', 'GitHub project URL (optional)')
     .action(async (options) => {
     const token = process.env.GH_TOKEN;
     if (!token) {
@@ -281,25 +281,27 @@ exports.program
         }
     }
     const config = (0, projectConfig_2.mergeConfigs)(configFileValues, cliOverrides, readmeOverrides);
-    const projectUrl = config.projectUrl;
-    if (!projectUrl) {
-        console.error('projectUrl is required. Provide via --projectUrl, config file, or project README.');
-        process.exit(1);
-    }
     const projectName = config.projectName ?? 'default';
     const localStorageRepository = new LocalStorageRepository_1.LocalStorageRepository();
     const cachePath = `./tmp/cache/${projectName}`;
     const localStorageCacheRepository = new LocalStorageCacheRepository_1.LocalStorageCacheRepository(localStorageRepository, cachePath);
     const githubRepositoryParams = buildGithubRepositoryParams(localStorageRepository, token);
-    const projectRepository = new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams);
     const apiV3IssueRepository = new ApiV3IssueRepository_1.ApiV3IssueRepository(...githubRepositoryParams);
     const restIssueRepository = new RestIssueRepository_1.RestIssueRepository(...githubRepositoryParams);
     const graphqlProjectItemRepository = new GraphqlProjectItemRepository_1.GraphqlProjectItemRepository(...githubRepositoryParams);
     const issueRepository = new ApiV3CheerioRestIssueRepository_1.ApiV3CheerioRestIssueRepository(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, ...githubRepositoryParams);
-    const useCase = new CheckIssueReviewReadinessUseCase_1.CheckIssueReviewReadinessUseCase(projectRepository, issueRepository);
+    const issueCommentRepository = new GitHubIssueCommentRepository_1.GitHubIssueCommentRepository(token);
+    const rawAllowedIssueAuthors = config.allowedIssueAuthors;
+    const allowedIssueAuthors = rawAllowedIssueAuthors
+        ? rawAllowedIssueAuthors
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : null;
+    const useCase = new CheckIssueReviewReadinessUseCase_1.CheckIssueReviewReadinessUseCase(issueRepository, issueCommentRepository);
     const result = await useCase.run({
-        projectUrl,
         issueUrl: options.issueUrl,
+        allowedIssueAuthors,
         labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
     });
     process.stdout.write(`${JSON.stringify(result)}\n`);

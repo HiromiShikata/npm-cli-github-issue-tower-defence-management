@@ -470,7 +470,7 @@ program
     'Path to config file for tower defence management',
   )
   .requiredOption('--issueUrl <url>', 'GitHub issue URL')
-  .option('--projectUrl <url>', 'GitHub project URL')
+  .option('--projectUrl <url>', 'GitHub project URL (optional)')
   .action(async (options: CheckIssueReviewReadinessOptions) => {
     const token = process.env.GH_TOKEN;
     if (!token) {
@@ -501,15 +501,6 @@ program
       readmeOverrides,
     );
 
-    const projectUrl = config.projectUrl;
-
-    if (!projectUrl) {
-      console.error(
-        'projectUrl is required. Provide via --projectUrl, config file, or project README.',
-      );
-      process.exit(1);
-    }
-
     const projectName = config.projectName ?? 'default';
     const localStorageRepository = new LocalStorageRepository();
     const cachePath = `./tmp/cache/${projectName}`;
@@ -520,9 +511,6 @@ program
     const githubRepositoryParams = buildGithubRepositoryParams(
       localStorageRepository,
       token,
-    );
-    const projectRepository = new GraphqlProjectRepository(
-      ...githubRepositoryParams,
     );
     const apiV3IssueRepository = new ApiV3IssueRepository(
       ...githubRepositoryParams,
@@ -540,15 +528,24 @@ program
       localStorageCacheRepository,
       ...githubRepositoryParams,
     );
+    const issueCommentRepository = new GitHubIssueCommentRepository(token);
+
+    const rawAllowedIssueAuthors = config.allowedIssueAuthors;
+    const allowedIssueAuthors = rawAllowedIssueAuthors
+      ? rawAllowedIssueAuthors
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : null;
 
     const useCase = new CheckIssueReviewReadinessUseCase(
-      projectRepository,
       issueRepository,
+      issueCommentRepository,
     );
 
     const result = await useCase.run({
-      projectUrl,
       issueUrl: options.issueUrl,
+      allowedIssueAuthors,
       labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
     });
 
