@@ -302,7 +302,7 @@ describe('PrReviewViewerHttpServer', () => {
       });
     });
 
-    it('returns 500 and the error message when executeReview throws unexpectedly', async () => {
+    it('returns 400 and the error message when executeReview throws unexpectedly', async () => {
       mockUseCase.executeReview.mockRejectedValue(
         new Error('Unexpected failure'),
       );
@@ -323,7 +323,7 @@ describe('PrReviewViewerHttpServer', () => {
           awaitingWorkspaceStatusOptionId: 'opt_aw',
         }),
       );
-      expect(status).toBe(500);
+      expect(status).toBe(400);
       if (typeof json === 'object' && json !== null && 'ok' in json) {
         expect(json['ok']).toBe(false);
       }
