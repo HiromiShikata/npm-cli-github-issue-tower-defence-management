@@ -6,9 +6,10 @@ import { ChangeTargetPullRequestApprover } from './ChangeTargetPullRequestApprov
 import {
   AWAITING_QUALITY_CHECK_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
+  DEFAULT_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 
-export class RevertNotReadyAwaitingQualityCheckUseCase {
+export class RevertNotReadyReviewQueueIssueUseCase {
   private readonly issueRejectionEvaluator: IssueRejectionEvaluator;
   private readonly changeTargetPullRequestApprover: ChangeTargetPullRequestApprover;
 
@@ -21,6 +22,7 @@ export class RevertNotReadyAwaitingQualityCheckUseCase {
       IssueRepository,
       | 'getAllIssues'
       | 'updateStatus'
+      | 'updateStory'
       | 'findRelatedOpenPRs'
       | 'getOpenPullRequest'
       | 'getPullRequestChangedFilePaths'
@@ -102,6 +104,43 @@ export class RevertNotReadyAwaitingQualityCheckUseCase {
         issue.labels,
         approvedPrUrl,
       );
+    }
+
+    const projectStory = project.story;
+    const unreadPullRequests = issues.filter(
+      (issue) => issue.status === DEFAULT_STATUS_NAME && issue.isPr,
+    );
+
+    for (const pullRequest of unreadPullRequests) {
+      const hasLlmAgentLabel = pullRequest.labels.some(
+        (l) => l === 'llm-agent' || l.startsWith('llm-agent:'),
+      );
+      if (hasLlmAgentLabel) {
+        continue;
+      }
+
+      const { rejections } = await this.issueRejectionEvaluator.evaluate(
+        pullRequest,
+        params.labelsAsLlmAgentName ?? [],
+      );
+      if (rejections.length > 0) {
+        await this.issueRepository.updateStatus(
+          project,
+          pullRequest,
+          awaitingWorkspaceStatusOption.id,
+        );
+        if (projectStory) {
+          await this.issueRepository.updateStory(
+            { ...project, story: projectStory },
+            pullRequest,
+            projectStory.workflowManagementStory.id,
+          );
+        }
+        await this.issueCommentRepository.createComment(
+          pullRequest,
+          `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`,
+        );
+      }
     }
   };
 }

@@ -22,8 +22,7 @@ import { AssignNoAssigneeIssueToManagerUseCase } from './AssignNoAssigneeIssueTo
 import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCase';
 import { StartPreparationUseCase } from './StartPreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
-import { RevertNotReadyAwaitingQualityCheckUseCase } from './RevertNotReadyAwaitingQualityCheckUseCase';
-import { RevertNotReadyUnreadPullRequestUseCase } from './RevertNotReadyUnreadPullRequestUseCase';
+import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
 import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
 import { UpdateRateLimitCacheUseCase } from './UpdateRateLimitCacheUseCase';
 import { DailySecurityScanUseCase } from './DailySecurityScanUseCase';
@@ -116,10 +115,8 @@ describe('HandleScheduledEventUseCase', () => {
     const mockStartPreparationUseCase = mock<StartPreparationUseCase>();
     const mockRevertOrphanedPreparationUseCase =
       mock<RevertOrphanedPreparationUseCase>();
-    const mockRevertNotReadyAwaitingQualityCheckUseCase =
-      mock<RevertNotReadyAwaitingQualityCheckUseCase>();
-    const mockRevertNotReadyUnreadPullRequestUseCase =
-      mock<RevertNotReadyUnreadPullRequestUseCase>();
+    const mockRevertNotReadyReviewQueueIssueUseCase =
+      mock<RevertNotReadyReviewQueueIssueUseCase>();
     const mockUpdateRateLimitCacheUseCase = mock<UpdateRateLimitCacheUseCase>();
     const mockDailySecurityScanUseCase = mock<DailySecurityScanUseCase>();
     const mockDateRepository = mock<DateRepository>();
@@ -145,8 +142,7 @@ describe('HandleScheduledEventUseCase', () => {
       mockUpdateIssueStatusByLabelUseCase,
       mockStartPreparationUseCase,
       mockRevertOrphanedPreparationUseCase,
-      mockRevertNotReadyAwaitingQualityCheckUseCase,
-      mockRevertNotReadyUnreadPullRequestUseCase,
+      mockRevertNotReadyReviewQueueIssueUseCase,
       mockUpdateRateLimitCacheUseCase,
       mockDailySecurityScanUseCase,
       mockDateRepository,
@@ -330,7 +326,7 @@ describe('HandleScheduledEventUseCase', () => {
       );
     });
 
-    it('should invoke revertNotReadyAwaitingQualityCheckUseCase on every scheduled run', async () => {
+    it('should invoke revertNotReadyReviewQueueIssueUseCase on every scheduled run', async () => {
       const input = {
         projectName: 'test-project',
         org: 'test-org',
@@ -350,7 +346,7 @@ describe('HandleScheduledEventUseCase', () => {
       await useCase.run(input);
 
       expect(
-        mockRevertNotReadyAwaitingQualityCheckUseCase.run,
+        mockRevertNotReadyReviewQueueIssueUseCase.run,
       ).toHaveBeenCalledWith(
         expect.objectContaining({
           projectUrl: 'https://github.com/test-org/test-project',
@@ -359,7 +355,7 @@ describe('HandleScheduledEventUseCase', () => {
       );
     });
 
-    it('should invoke revertNotReadyAwaitingQualityCheckUseCase even when startPreparation is absent', async () => {
+    it('should invoke revertNotReadyReviewQueueIssueUseCase even when startPreparation is absent', async () => {
       const input = {
         projectName: 'test-project',
         org: 'test-org',
@@ -379,60 +375,7 @@ describe('HandleScheduledEventUseCase', () => {
       await useCase.run(input);
 
       expect(
-        mockRevertNotReadyAwaitingQualityCheckUseCase.run,
-      ).toHaveBeenCalledTimes(1);
-    });
-
-    it('should invoke revertNotReadyUnreadPullRequestUseCase on every scheduled run', async () => {
-      const input = {
-        projectName: 'test-project',
-        org: 'test-org',
-        projectUrl: 'https://github.com/test-org/test-project',
-        manager: 'test-manager',
-        workingReport: {
-          repo: 'test-repo',
-          members: ['member1'],
-          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
-        },
-        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
-        disabled: false,
-        allowIssueCacheMinutes: 60,
-      };
-
-      mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
-      await useCase.run(input);
-
-      expect(
-        mockRevertNotReadyUnreadPullRequestUseCase.run,
-      ).toHaveBeenCalledWith(
-        expect.objectContaining({
-          projectUrl: 'https://github.com/test-org/test-project',
-          allowIssueCacheMinutes: 60,
-        }),
-      );
-    });
-
-    it('should invoke revertNotReadyUnreadPullRequestUseCase even when startPreparation is absent', async () => {
-      const input = {
-        projectName: 'test-project',
-        org: 'test-org',
-        projectUrl: 'https://github.com/test-org/test-project',
-        manager: 'test-manager',
-        workingReport: {
-          repo: 'test-repo',
-          members: ['member1'],
-          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
-        },
-        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
-        disabled: false,
-        allowIssueCacheMinutes: 60,
-      };
-
-      mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
-      await useCase.run(input);
-
-      expect(
-        mockRevertNotReadyUnreadPullRequestUseCase.run,
+        mockRevertNotReadyReviewQueueIssueUseCase.run,
       ).toHaveBeenCalledTimes(1);
     });
 

@@ -40,8 +40,7 @@ import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeT
 import { ProxyRateLimitCacheRepository } from '../../repositories/ProxyRateLimitCacheRepository';
 import { UpdateRateLimitCacheUseCase } from '../../../domain/usecases/UpdateRateLimitCacheUseCase';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
-import { RevertNotReadyAwaitingQualityCheckUseCase } from '../../../domain/usecases/RevertNotReadyAwaitingQualityCheckUseCase';
-import { RevertNotReadyUnreadPullRequestUseCase } from '../../../domain/usecases/RevertNotReadyUnreadPullRequestUseCase';
+import { RevertNotReadyReviewQueueIssueUseCase } from '../../../domain/usecases/RevertNotReadyReviewQueueIssueUseCase';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { SetupTowerDefenceProjectUseCase } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
 import { DailySecurityScanUseCase } from '../../../domain/usecases/DailySecurityScanUseCase';
@@ -297,14 +296,8 @@ export class HandleScheduledEventUseCaseHandler {
         issueCommentRepository,
         nodeLocalCommandRunner,
       );
-    const revertNotReadyAwaitingQualityCheckUseCase =
-      new RevertNotReadyAwaitingQualityCheckUseCase(
-        projectRepository,
-        issueRepository,
-        issueCommentRepository,
-      );
-    const revertNotReadyUnreadPullRequestUseCase =
-      new RevertNotReadyUnreadPullRequestUseCase(
+    const revertNotReadyReviewQueueIssueUseCase =
+      new RevertNotReadyReviewQueueIssueUseCase(
         projectRepository,
         issueRepository,
         issueCommentRepository,
@@ -336,8 +329,7 @@ export class HandleScheduledEventUseCaseHandler {
       updateIssueStatusByLabelUseCase,
       startPreparationUseCase,
       revertOrphanedPreparationUseCase,
-      revertNotReadyAwaitingQualityCheckUseCase,
-      revertNotReadyUnreadPullRequestUseCase,
+      revertNotReadyReviewQueueIssueUseCase,
       updateRateLimitCacheUseCase,
       dailySecurityScanUseCase,
       systemDateRepository,
