@@ -75,6 +75,7 @@ class StartPreparationUseCase {
             const tokensWithLimits = eligibleTokens.map((usage) => ({
                 token: usage.token,
                 limit: this.getTokenConcurrentLimit(usage.fiveHourUtilization, usage.sevenDayUtilization),
+                secondsUntilSevenDayReset: this.secondsUntilSevenDayReset(usage, weeklyLimitType, nowEpochSeconds),
             }));
             const totalCapacity = tokensWithLimits.reduce((sum, t) => sum + t.limit, 0);
             const effectiveCap = Math.min(maxConcurrent, totalCapacity);
@@ -296,19 +297,25 @@ class StartPreparationUseCase {
                 }
                 let spawnEnv;
                 if (rotationTokens !== null && proxyBaseUrl !== null) {
-                    const tokenWithMostRemainingCapacity = selectedTokensWithLimits
+                    const tokenWithSoonestResetAmongAvailable = selectedTokensWithLimits
                         .map((t) => ({
                         token: t.token,
                         remaining: t.limit -
                             (tokenInFlightCounts[t.token] ?? 0) -
                             (spawnedInThisRunByToken[t.token] ?? 0),
+                        secondsUntilSevenDayReset: t.secondsUntilSevenDayReset,
                     }))
                         .filter((t) => t.remaining > 0)
-                        .sort((a, b) => b.remaining - a.remaining)[0];
-                    if (tokenWithMostRemainingCapacity === undefined) {
+                        .sort((a, b) => {
+                        if (a.secondsUntilSevenDayReset !== b.secondsUntilSevenDayReset) {
+                            return a.secondsUntilSevenDayReset - b.secondsUntilSevenDayReset;
+                        }
+                        return b.remaining - a.remaining;
+                    })[0];
+                    if (tokenWithSoonestResetAmongAvailable === undefined) {
                         break;
                     }
-                    const selected = tokenWithMostRemainingCapacity.token;
+                    const selected = tokenWithSoonestResetAmongAvailable.token;
                     spawnedInThisRunByToken[selected] =
                         (spawnedInThisRunByToken[selected] ?? 0) + 1;
                     spawnEnv = {

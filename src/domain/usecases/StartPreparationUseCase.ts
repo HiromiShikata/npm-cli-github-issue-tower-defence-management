@@ -133,7 +133,11 @@ export class StartPreparationUseCase {
   ): {
     tokens: string[];
     effectiveCap: number;
-    tokensWithLimits: Array<{ token: string; limit: number }>;
+    tokensWithLimits: Array<{
+      token: string;
+      limit: number;
+      secondsUntilSevenDayReset: number;
+    }>;
   } => {
     const weeklyLimitType = this.weeklyLimitTypeForModel(modelName);
     const nowEpochSeconds = Date.now() / 1000;
@@ -166,6 +170,11 @@ export class StartPreparationUseCase {
       limit: this.getTokenConcurrentLimit(
         usage.fiveHourUtilization,
         usage.sevenDayUtilization,
+      ),
+      secondsUntilSevenDayReset: this.secondsUntilSevenDayReset(
+        usage,
+        weeklyLimitType,
+        nowEpochSeconds,
       ),
     }));
 
@@ -261,7 +270,11 @@ export class StartPreparationUseCase {
       await this.claudeTokenUsageRepository.getAvailableTokenUsages();
     let rotationTokens: string[] | null = null;
     let proxyBaseUrl: string | null = null;
-    let selectedTokensWithLimits: Array<{ token: string; limit: number }> = [];
+    let selectedTokensWithLimits: Array<{
+      token: string;
+      limit: number;
+      secondsUntilSevenDayReset: number;
+    }> = [];
     let tokenInFlightCounts: Record<string, number> = {};
     const rotationOrder: RotationOrderEntry[] | null =
       tokenUsages.length > 0
@@ -530,20 +543,26 @@ export class StartPreparationUseCase {
       }
       let spawnEnv: Record<string, string> | undefined;
       if (rotationTokens !== null && proxyBaseUrl !== null) {
-        const tokenWithMostRemainingCapacity = selectedTokensWithLimits
+        const tokenWithSoonestResetAmongAvailable = selectedTokensWithLimits
           .map((t) => ({
             token: t.token,
             remaining:
               t.limit -
               (tokenInFlightCounts[t.token] ?? 0) -
               (spawnedInThisRunByToken[t.token] ?? 0),
+            secondsUntilSevenDayReset: t.secondsUntilSevenDayReset,
           }))
           .filter((t) => t.remaining > 0)
-          .sort((a, b) => b.remaining - a.remaining)[0];
-        if (tokenWithMostRemainingCapacity === undefined) {
+          .sort((a, b) => {
+            if (a.secondsUntilSevenDayReset !== b.secondsUntilSevenDayReset) {
+              return a.secondsUntilSevenDayReset - b.secondsUntilSevenDayReset;
+            }
+            return b.remaining - a.remaining;
+          })[0];
+        if (tokenWithSoonestResetAmongAvailable === undefined) {
           break;
         }
-        const selected = tokenWithMostRemainingCapacity.token;
+        const selected = tokenWithSoonestResetAmongAvailable.token;
         spawnedInThisRunByToken[selected] =
           (spawnedInThisRunByToken[selected] ?? 0) + 1;
         spawnEnv = {
