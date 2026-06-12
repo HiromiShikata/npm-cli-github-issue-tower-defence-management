@@ -1,3 +1,11 @@
+# [1.78.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.77.3...v1.78.0) (2026-06-12)
+
+
+### Features
+
+* **core:** add scheduled use case to move non-review-ready Unread pull requests to Awaiting Workspace ([52220bf](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/52220bfe7b3cc7bb47dc18afcfcc125c83cb1581))
+* **usecases:** merge Awaiting Quality Check and Unread PR review queue checks into RevertNotReadyReviewQueueIssueUseCase ([dca1199](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/dca1199c9e46fe29a7e4663273fc1ff815b7a70e)), closes [#757](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/757)
+
 ## [1.77.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.77.2...v1.77.3) (2026-06-12)
 
 
