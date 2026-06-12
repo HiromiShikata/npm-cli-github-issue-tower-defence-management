@@ -1,3 +1,10 @@
+## [1.80.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.80.0...v1.80.1) (2026-06-12)
+
+
+### Bug Fixes
+
+* **cli:** lazy-load HandleScheduledEventUseCaseHandler to avoid eager googleapis import ([2907e9e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2907e9ee7b77e8576b030ec81c6223af1077c272))
+
 # [1.80.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.79.0...v1.80.0) (2026-06-12)
 
 
