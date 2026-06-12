@@ -1849,7 +1849,7 @@ mysteryKey: 'value'
       ensureWebConsoleRunningMock.mockRestore();
     });
 
-    it('should register SIGTERM and SIGINT handlers that kill the viewer process when one is spawned', async () => {
+    it('should register a SIGTERM handler that kills the viewer process when one is spawned', async () => {
       const configWithViewer = {
         ...defaultConfig,
         prReviewViewerAccessKey: 'test-access-key',
@@ -1884,6 +1884,46 @@ mysteryKey: 'value'
       ]);
 
       process.emit('SIGTERM');
+      expect(killMock).toHaveBeenCalledTimes(1);
+
+      ensurePrReviewViewerRunningMock.mockRestore();
+    });
+
+    it('should register a SIGINT handler that kills the viewer process when one is spawned', async () => {
+      const configWithViewer = {
+        ...defaultConfig,
+        prReviewViewerAccessKey: 'test-access-key',
+      };
+      writeConfig(configWithViewer);
+
+      const killMock = jest.fn();
+      const fakeViewerProcess: import('../../proxy/ensurePrReviewViewerRunning').ViewerProcess =
+        { kill: killMock };
+
+      const ensurePrReviewViewerRunningMock = jest
+        .spyOn(ensurePrReviewViewerRunningModule, 'ensurePrReviewViewerRunning')
+        .mockImplementation(() => Promise.resolve(fakeViewerProcess));
+
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
+      MockedStartPreparationUseCase.mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'startDaemon',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      process.emit('SIGINT');
       expect(killMock).toHaveBeenCalledTimes(1);
 
       ensurePrReviewViewerRunningMock.mockRestore();
