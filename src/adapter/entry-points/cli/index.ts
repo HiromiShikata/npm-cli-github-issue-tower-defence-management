@@ -98,9 +98,8 @@ program
       process.exit(1);
     }
     if (options.trigger === 'schedule') {
-      const { HandleScheduledEventUseCaseHandler } = await import(
-        '../handlers/HandleScheduledEventUseCaseHandler'
-      );
+      const { HandleScheduledEventUseCaseHandler } =
+        await import('../handlers/HandleScheduledEventUseCaseHandler');
       const handler = new HandleScheduledEventUseCaseHandler();
       await handler.handle(options.config, options.verbose);
     }
