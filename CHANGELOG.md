@@ -1,3 +1,18 @@
+# [1.76.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.75.0...v1.76.0) (2026-06-12)
+
+
+### Bug Fixes
+
+* **core:** remove createCommentByUrl from IssueRejectionEvaluator Pick and add combined-label confinement test ([4f9de4a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4f9de4af2c566c06d54d19114d1b593e9e58b909))
+* **core:** remove createCommentByUrl from outer use-case Picks and update compiled output ([e92fc6b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e92fc6b1daaa749f2c350a110875250d3a4f52e1))
+* **core:** replace typia.is with manual type check in isPullRequestFilesResponse ([645cdc2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/645cdc2623b3dcda4186699a1f32dba8170de2ca))
+* **core:** use in operator instead of type assertion in isPullRequestFilesResponse ([bb63473](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bb63473e6f052e4b9c6d3a4a30eb11198037814e))
+
+
+### Features
+
+* **core:** reject PR with inline review comment when change-target-must path has no changes ([5d9956f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5d9956f2dbf384047a21a0be8d0a652498159355))
+
 # [1.75.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.74.1...v1.75.0) (2026-06-10)
 
 
