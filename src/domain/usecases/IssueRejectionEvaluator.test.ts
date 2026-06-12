@@ -340,6 +340,24 @@ describe('IssueRejectionEvaluator', () => {
         expect(result.rejections).toHaveLength(0);
         expect(result.approvedPrUrl).toBe(prUrl);
       });
+
+      it('should normalize leading slash in change-target-must label path', async () => {
+        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+          createReadyPr(prUrl),
+        ]);
+        mockIssueRepository.getPullRequestChangedFilePaths.mockResolvedValue([
+          'src/domain/entities/Foo.ts',
+        ]);
+
+        const result = await evaluator.evaluate({
+          url: 'https://github.com/user/repo/issues/1',
+          labels: ['change-target-must:/src/domain'],
+          isPr: false,
+        });
+
+        expect(result.rejections).toHaveLength(0);
+        expect(result.approvedPrUrl).toBe(prUrl);
+      });
     });
   });
 });

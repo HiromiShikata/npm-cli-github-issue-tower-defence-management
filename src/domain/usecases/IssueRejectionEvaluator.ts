@@ -167,7 +167,7 @@ export class IssueRejectionEvaluator {
       if (!label.startsWith(prefix)) continue;
       const raw = label.slice(prefix.length).trim();
       if (raw.length === 0) continue;
-      const normalized = raw.replace(/\/+$/, '');
+      const normalized = raw.replace(/^\/+/, '').replace(/\/+$/, '');
       if (normalized.length === 0) continue;
       paths.push(normalized);
     }
