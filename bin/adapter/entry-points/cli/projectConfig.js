@@ -93,6 +93,7 @@ const knownProjectReadmeConfigKeys = [
     'claudeCodeOauthTokenListJsonPath',
     'awLogDirectoryPath',
     'awLogStaleThresholdMinutes',
+    'changeTargetPathAliases',
 ];
 const loadConfigFile = (configFilePath) => {
     try {
@@ -168,6 +169,7 @@ const parseProjectReadmeConfig = (readme, projectUrl) => {
             claudeCodeOauthTokenListJsonPath: getStringValue(parsed, 'claudeCodeOauthTokenListJsonPath'),
             awLogDirectoryPath: getStringValue(parsed, 'awLogDirectoryPath'),
             awLogStaleThresholdMinutes: getNumberValue(parsed, 'awLogStaleThresholdMinutes'),
+            changeTargetPathAliases: getStringRecordValue(parsed, 'changeTargetPathAliases'),
         };
     }
     catch {

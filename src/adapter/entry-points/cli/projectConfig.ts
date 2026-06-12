@@ -20,7 +20,7 @@ export type ConfigFile = {
   awLogDirectoryPath?: string;
   awLogStaleThresholdMinutes?: number;
   labelsAsLlmAgentName?: string[];
-  changeTargetPathAliases?: Record<string, string>;
+  changeTargetPathAliases?: Record<string, string> | null;
 };
 
 const getStringValue = (
@@ -94,6 +94,7 @@ const knownProjectReadmeConfigKeys = [
   'claudeCodeOauthTokenListJsonPath',
   'awLogDirectoryPath',
   'awLogStaleThresholdMinutes',
+  'changeTargetPathAliases',
 ] as const;
 
 export const loadConfigFile = (configFilePath: string): ConfigFile => {
@@ -215,6 +216,10 @@ export const parseProjectReadmeConfig = (
       awLogStaleThresholdMinutes: getNumberValue(
         parsed,
         'awLogStaleThresholdMinutes',
+      ),
+      changeTargetPathAliases: getStringRecordValue(
+        parsed,
+        'changeTargetPathAliases',
       ),
     };
   } catch {
