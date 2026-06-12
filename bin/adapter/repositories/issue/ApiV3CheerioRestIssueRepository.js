@@ -18,7 +18,9 @@ function isDirectPullRequestResponse(value) {
     return true;
 }
 function isPullRequestFilesResponse(value) {
-    return (() => { const _io0 = input => "string" === typeof input.filename; return input => Array.isArray(input) && input.every(elem => "object" === typeof elem && null !== elem && _io0(elem)); })()(value);
+    if (!Array.isArray(value))
+        return false;
+    return value.every((item) => typeof item === 'object' && item !== null && 'filename' in item);
 }
 const fnmatch = (pattern, str) => {
     let regexStr = '^';
@@ -162,7 +164,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                             createdAt: createdAt,
                         };
                     });
-                    if ((() => { const _io0 = input => "string" === typeof input.nameWithOwner && "number" === typeof input.number && "string" === typeof input.title && ("OPEN" === input.state || "CLOSED" === input.state || "MERGED" === input.state) && (null === input.status || "string" === typeof input.status) && (null === input.story || "string" === typeof input.story) && (null === input.nextActionDate || input.nextActionDate instanceof Date) && (null === input.nextActionHour || "number" === typeof input.nextActionHour) && (null === input.estimationMinutes || "number" === typeof input.estimationMinutes) && (Array.isArray(input.dependedIssueUrls) && input.dependedIssueUrls.every(elem => "string" === typeof elem)) && (null === input.completionDate50PercentConfidence || input.completionDate50PercentConfidence instanceof Date) && "string" === typeof input.url && (Array.isArray(input.assignees) && input.assignees.every(elem => "string" === typeof elem)) && (Array.isArray(input.labels) && input.labels.every(elem => "string" === typeof elem)) && "string" === typeof input.org && "string" === typeof input.repo && "string" === typeof input.body && "string" === typeof input.itemId && "boolean" === typeof input.isPr && "boolean" === typeof input.isInProgress && "boolean" === typeof input.isClosed && input.createdAt instanceof Date && "string" === typeof input.author; return input => Array.isArray(input) && input.every(elem => "object" === typeof elem && null !== elem && _io0(elem)); })()(issues)) {
+                    if (typia_1.default.is(issues)) {
                         return issues;
                     }
                 }
@@ -698,6 +700,35 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             });
             if (!response.ok) {
                 throw new Error(`Failed to approve PR ${prUrl}: HTTP ${response.status}`);
+            }
+        };
+        this.requestChangesWithInlineComment = async (prUrl, changedFilePath, commentBody) => {
+            const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
+            if (changedFilePath === null) {
+                await this.createCommentByUrl(prUrl, commentBody);
+                return;
+            }
+            const reviewBody = {
+                event: 'REQUEST_CHANGES',
+                comments: [
+                    {
+                        path: changedFilePath,
+                        position: 1,
+                        body: commentBody,
+                    },
+                ],
+            };
+            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${this.ghToken}`,
+                    'Content-Type': 'application/json',
+                    Accept: 'application/vnd.github+json',
+                },
+                body: JSON.stringify(reviewBody),
+            });
+            if (!response.ok) {
+                throw new Error(`Failed to request changes on PR ${prUrl}: HTTP ${response.status}`);
             }
         };
         this.deletePullRequestBranch = async (prUrl, branchName) => {

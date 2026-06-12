@@ -23,12 +23,13 @@ class ChangeTargetPullRequestApprover {
             await this.issueRepository.approvePullRequest(approvedPrUrl);
         };
         this.extractChangeTargetPaths = (labels) => {
-            const prefix = 'change-target:';
+            const prefixes = ['change-target:', 'change-target-must:'];
             const paths = [];
             for (const label of labels) {
-                if (!label.startsWith(prefix))
+                const matchedPrefix = prefixes.find((p) => label.startsWith(p));
+                if (!matchedPrefix)
                     continue;
-                const raw = label.slice(prefix.length).trim();
+                const raw = label.slice(matchedPrefix.length).trim();
                 if (raw.length === 0)
                     continue;
                 const normalized = raw.replace(/\/+$/, '');

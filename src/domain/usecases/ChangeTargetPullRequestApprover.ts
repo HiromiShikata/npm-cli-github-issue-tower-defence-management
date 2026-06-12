@@ -34,11 +34,12 @@ export class ChangeTargetPullRequestApprover {
   };
 
   private extractChangeTargetPaths = (labels: string[]): string[] => {
-    const prefix = 'change-target:';
+    const prefixes = ['change-target:', 'change-target-must:'];
     const paths: string[] = [];
     for (const label of labels) {
-      if (!label.startsWith(prefix)) continue;
-      const raw = label.slice(prefix.length).trim();
+      const matchedPrefix = prefixes.find((p) => label.startsWith(p));
+      if (!matchedPrefix) continue;
+      const raw = label.slice(matchedPrefix.length).trim();
       if (raw.length === 0) continue;
       const normalized = raw.replace(/\/+$/, '');
       if (normalized.length === 0) continue;

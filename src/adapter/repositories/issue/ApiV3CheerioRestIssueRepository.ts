@@ -220,7 +220,10 @@ type PullRequestFilesResponseItem = {
 function isPullRequestFilesResponse(
   value: unknown,
 ): value is PullRequestFilesResponseItem[] {
-  return typia.is<PullRequestFilesResponseItem[]>(value);
+  if (!Array.isArray(value)) return false;
+  return value.every(
+    (item) => typeof item === 'object' && item !== null && 'filename' in item,
+  );
 }
 
 const fnmatch = (pattern: string, str: string): boolean => {
@@ -1171,6 +1174,45 @@ export class ApiV3CheerioRestIssueRepository
     );
     if (!response.ok) {
       throw new Error(`Failed to approve PR ${prUrl}: HTTP ${response.status}`);
+    }
+  };
+
+  requestChangesWithInlineComment = async (
+    prUrl: string,
+    changedFilePath: string | null,
+    commentBody: string,
+  ): Promise<void> => {
+    const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
+    if (changedFilePath === null) {
+      await this.createCommentByUrl(prUrl, commentBody);
+      return;
+    }
+    const reviewBody: Record<string, unknown> = {
+      event: 'REQUEST_CHANGES',
+      comments: [
+        {
+          path: changedFilePath,
+          position: 1,
+          body: commentBody,
+        },
+      ],
+    };
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.ghToken}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/vnd.github+json',
+        },
+        body: JSON.stringify(reviewBody),
+      },
+    );
+    if (!response.ok) {
+      throw new Error(
+        `Failed to request changes on PR ${prUrl}: HTTP ${response.status}`,
+      );
     }
   };
 
