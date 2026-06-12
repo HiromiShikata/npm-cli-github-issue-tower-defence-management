@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import { ClaudeTokenUsage } from '../../domain/entities/ClaudeTokenUsage';
 import { ClaudeTokenUsageRepository } from '../../domain/usecases/adapter-interfaces/ClaudeTokenUsageRepository';
 import { ensureProxyRunning } from '../proxy/ensureProxyRunning';
@@ -91,6 +93,35 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
         modelWeeklyLimits,
       };
     });
+  };
+
+  getTokenInFlightCounts = async (): Promise<Record<string, number>> => {
+    const counts: Record<string, number> = {};
+    let procEntries: string[];
+    try {
+      procEntries = fs.readdirSync('/proc');
+    } catch {
+      return counts;
+    }
+    for (const entry of procEntries) {
+      if (!/^\d+$/.test(entry)) continue;
+      const environPath = path.join('/proc', entry, 'environ');
+      let environ: string;
+      try {
+        environ = fs.readFileSync(environPath, 'utf8');
+      } catch {
+        continue;
+      }
+      const vars = environ.split('\0');
+      const tokenEntry = vars.find((v) =>
+        v.startsWith('CLAUDE_CODE_OAUTH_TOKEN='),
+      );
+      if (tokenEntry === undefined) continue;
+      const token = tokenEntry.slice('CLAUDE_CODE_OAUTH_TOKEN='.length);
+      if (token.length === 0) continue;
+      counts[token] = (counts[token] ?? 0) + 1;
+    }
+    return counts;
   };
 
   proxyBaseUrl = (): string => `http://127.0.0.1:${this.port}`;

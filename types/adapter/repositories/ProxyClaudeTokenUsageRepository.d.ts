@@ -6,6 +6,7 @@ export declare class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsage
     constructor(tokenListJsonPath: string | null, port?: number);
     ensureObservable: () => Promise<void>;
     getAvailableTokenUsages: () => Promise<ClaudeTokenUsage[]>;
+    getTokenInFlightCounts: () => Promise<Record<string, number>>;
     proxyBaseUrl: () => string;
 }
 //# sourceMappingURL=ProxyClaudeTokenUsageRepository.d.ts.map

@@ -115,6 +115,7 @@ describe('StartPreparationUseCase', () => {
     mockClaudeTokenUsageRepository = {
       ensureObservable: jest.fn().mockResolvedValue(undefined),
       getAvailableTokenUsages: jest.fn().mockResolvedValue([]),
+      getTokenInFlightCounts: jest.fn().mockResolvedValue({}),
       proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
     };
     useCase = new StartPreparationUseCase(
@@ -4581,6 +4582,183 @@ describe('StartPreparationUseCase', () => {
       consoleWarnSpy.mockRestore();
     });
   });
+
+  describe('per-token in-flight global concurrency enforcement', () => {
+    it('should not spawn when the selected token already has its full in-flight limit occupied by processes from other projects', async () => {
+      const awaitingIssues: Issue[] = [
+        createMockIssue({
+          url: 'url1',
+          title: 'Issue 1',
+          labels: ['category:impl'],
+          status: 'Awaiting Workspace',
+          number: 1,
+          itemId: 'item-1',
+        }),
+      ];
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap(awaitingIssues),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+        {
+          name: 'token-at-90-percent-7d',
+          token: 'token-at-90-percent-7d',
+          fiveHourUtilization: 0.1,
+          sevenDayUtilization: 0.9,
+          blocked: false,
+          rejected: false,
+          modelWeeklyLimits: {},
+        },
+      ]);
+      mockClaudeTokenUsageRepository.getTokenInFlightCounts.mockResolvedValue({
+        'token-at-90-percent-7d': 3,
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: null,
+        codexHomeCandidates: null,
+        allowIssueCacheMinutes: 0,
+        labelsAsLlmAgentName: null,
+      });
+
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+    });
+
+    it('should allow spawning up to the remaining capacity when a token is partially in use globally', async () => {
+      const awaitingIssues: Issue[] = Array.from({ length: 5 }, (_, i) =>
+        createMockIssue({
+          url: `url${i + 1}`,
+          title: `Issue ${i + 1}`,
+          labels: ['category:impl'],
+          status: 'Awaiting Workspace',
+          number: i + 1,
+          itemId: `item-${i + 1}`,
+        }),
+      );
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap(awaitingIssues),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+        {
+          name: 'token-at-90-percent-7d',
+          token: 'token-at-90-percent-7d',
+          fiveHourUtilization: 0.1,
+          sevenDayUtilization: 0.9,
+          blocked: false,
+          rejected: false,
+          modelWeeklyLimits: {},
+        },
+      ]);
+      mockClaudeTokenUsageRepository.getTokenInFlightCounts.mockResolvedValue({
+        'token-at-90-percent-7d': 1,
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: null,
+        codexHomeCandidates: null,
+        allowIssueCacheMinutes: 0,
+        labelsAsLlmAgentName: null,
+      });
+
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
+    });
+
+    it('should pick the token with the most remaining capacity when multiple tokens are available', async () => {
+      const awaitingIssues: Issue[] = [
+        createMockIssue({
+          url: 'url1',
+          title: 'Issue 1',
+          labels: ['category:impl'],
+          status: 'Awaiting Workspace',
+          number: 1,
+          itemId: 'item-1',
+        }),
+      ];
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap(awaitingIssues),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+        {
+          name: 'token-a',
+          token: 'token-a',
+          fiveHourUtilization: 0.1,
+          sevenDayUtilization: 0.9,
+          blocked: false,
+          rejected: false,
+          modelWeeklyLimits: {},
+        },
+        {
+          name: 'token-b',
+          token: 'token-b',
+          fiveHourUtilization: 0.1,
+          sevenDayUtilization: 0.1,
+          blocked: false,
+          rejected: false,
+          modelWeeklyLimits: {},
+        },
+      ]);
+      mockClaudeTokenUsageRepository.getTokenInFlightCounts.mockResolvedValue({
+        'token-a': 2,
+        'token-b': 0,
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: null,
+        codexHomeCandidates: null,
+        allowIssueCacheMinutes: 0,
+        labelsAsLlmAgentName: null,
+      });
+
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toMatchObject({
+        env: {
+          CLAUDE_CODE_OAUTH_TOKEN: 'token-b',
+          ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
+        },
+      });
+    });
+  });
 });
 
 describe('StartPreparationUseCase.buildRotationOrder', () => {
@@ -4616,6 +4794,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
     {
       ensureObservable: jest.fn(),
       getAvailableTokenUsages: jest.fn(),
+      getTokenInFlightCounts: jest.fn(),
       proxyBaseUrl: jest.fn(),
     };
 
@@ -4755,6 +4934,7 @@ describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
       {
         ensureObservable: jest.fn(),
         getAvailableTokenUsages: jest.fn(),
+        getTokenInFlightCounts: jest.fn(),
         proxyBaseUrl: jest.fn(),
       },
     );

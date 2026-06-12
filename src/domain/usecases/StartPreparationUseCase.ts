@@ -124,7 +124,11 @@ export class StartPreparationUseCase {
     utilizationPercentageThreshold: number,
     modelName: string | null,
     maxConcurrent: number,
-  ): { tokens: string[]; effectiveCap: number } => {
+  ): {
+    tokens: string[];
+    effectiveCap: number;
+    tokensWithLimits: Array<{ token: string; limit: number }>;
+  } => {
     const weeklyLimitType = this.weeklyLimitTypeForModel(modelName);
     const nowEpochSeconds = Date.now() / 1000;
     const eligibleTokens = tokenUsages
@@ -147,7 +151,7 @@ export class StartPreparationUseCase {
       );
 
     if (eligibleTokens.length === 0) {
-      return { tokens: [], effectiveCap: 0 };
+      return { tokens: [], effectiveCap: 0, tokensWithLimits: [] };
     }
 
     const tokensWithLimits = eligibleTokens.map((usage) => ({
@@ -171,7 +175,7 @@ export class StartPreparationUseCase {
       }
     }
 
-    return { tokens: rotationList, effectiveCap };
+    return { tokens: rotationList, effectiveCap, tokensWithLimits };
   };
 
   buildRotationOrder = (
@@ -243,6 +247,8 @@ export class StartPreparationUseCase {
       await this.claudeTokenUsageRepository.getAvailableTokenUsages();
     let rotationTokens: string[] | null = null;
     let proxyBaseUrl: string | null = null;
+    let selectedTokensWithLimits: Array<{ token: string; limit: number }> = [];
+    let tokenInFlightCounts: Record<string, number> = {};
     const rotationOrder: RotationOrderEntry[] | null =
       tokenUsages.length > 0
         ? this.buildRotationOrder(
@@ -256,7 +262,11 @@ export class StartPreparationUseCase {
     let effectiveMaxPreparingIssuesCount = maximumPreparingIssuesCount;
     let effectiveDefaultLlmModelName = params.defaultLlmModelName;
     if (tokenUsages.length > 0) {
-      const { tokens: ranked, effectiveCap } = this.selectRotationTokens(
+      const {
+        tokens: ranked,
+        effectiveCap,
+        tokensWithLimits: rankedTokensWithLimits,
+      } = this.selectRotationTokens(
         tokenUsages,
         params.utilizationPercentageThreshold,
         params.defaultLlmModelName,
@@ -264,6 +274,7 @@ export class StartPreparationUseCase {
       );
       let selectedTokens = ranked;
       let selectedCap = effectiveCap;
+      let selectedTokensWithLimitsLocal = rankedTokensWithLimits;
       if (
         selectedTokens.length === 0 &&
         this.weeklyLimitTypeForModel(params.defaultLlmModelName) ===
@@ -271,19 +282,23 @@ export class StartPreparationUseCase {
       ) {
         const fallbackModelName =
           params.fallbackLlmModelName ?? DEFAULT_FALLBACK_LLM_MODEL_NAME;
-        const { tokens: fallbackRanked, effectiveCap: fallbackCap } =
-          this.selectRotationTokens(
-            tokenUsages,
-            params.utilizationPercentageThreshold,
-            fallbackModelName,
-            maximumPreparingIssuesCount,
-          );
+        const {
+          tokens: fallbackRanked,
+          effectiveCap: fallbackCap,
+          tokensWithLimits: fallbackTokensWithLimits,
+        } = this.selectRotationTokens(
+          tokenUsages,
+          params.utilizationPercentageThreshold,
+          fallbackModelName,
+          maximumPreparingIssuesCount,
+        );
         if (fallbackRanked.length > 0) {
           console.warn(
             `Sonnet 7-day weekly limit (${this.weeklyLimitTypeForModel(params.defaultLlmModelName)}) is exhausted across all configured Claude OAuth token(s). Falling back to ${fallbackModelName}.`,
           );
           selectedTokens = fallbackRanked;
           selectedCap = fallbackCap;
+          selectedTokensWithLimitsLocal = fallbackTokensWithLimits;
           effectiveDefaultLlmModelName = fallbackModelName;
         }
       }
@@ -294,7 +309,10 @@ export class StartPreparationUseCase {
         return { rotationOrder };
       }
       await this.claudeTokenUsageRepository.ensureObservable();
+      tokenInFlightCounts =
+        await this.claudeTokenUsageRepository.getTokenInFlightCounts();
       rotationTokens = selectedTokens;
+      selectedTokensWithLimits = selectedTokensWithLimitsLocal;
       effectiveMaxPreparingIssuesCount = selectedCap;
       proxyBaseUrl = this.claudeTokenUsageRepository.proxyBaseUrl();
     }
@@ -329,6 +347,7 @@ export class StartPreparationUseCase {
     ).length;
     let updatedCurrentPreparationIssueCount = currentPreparationIssueCount;
     let startedInThisRunCount = 0;
+    const spawnedInThisRunByToken: Record<string, number> = {};
 
     const now = new Date();
     const currentHour = now.getHours();
@@ -497,8 +516,22 @@ export class StartPreparationUseCase {
       }
       let spawnEnv: Record<string, string> | undefined;
       if (rotationTokens !== null && proxyBaseUrl !== null) {
-        const selected =
-          rotationTokens[startedInThisRunCount % rotationTokens.length];
+        const tokenWithMostRemainingCapacity = selectedTokensWithLimits
+          .map((t) => ({
+            token: t.token,
+            remaining:
+              t.limit -
+              (tokenInFlightCounts[t.token] ?? 0) -
+              (spawnedInThisRunByToken[t.token] ?? 0),
+          }))
+          .filter((t) => t.remaining > 0)
+          .sort((a, b) => b.remaining - a.remaining)[0];
+        if (tokenWithMostRemainingCapacity === undefined) {
+          break;
+        }
+        const selected = tokenWithMostRemainingCapacity.token;
+        spawnedInThisRunByToken[selected] =
+          (spawnedInThisRunByToken[selected] ?? 0) + 1;
         spawnEnv = {
           CLAUDE_CODE_OAUTH_TOKEN: selected,
           ANTHROPIC_BASE_URL: proxyBaseUrl,
