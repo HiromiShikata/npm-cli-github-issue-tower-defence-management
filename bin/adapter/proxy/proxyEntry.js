@@ -70,7 +70,7 @@ const startProxy = (port, claudeMessageResponseRepository = null) => {
         }, (upstreamResponse) => {
             if (token !== null) {
                 try {
-                    (0, RateLimitCache_1.writeRateLimit)(token, upstreamResponse.headers);
+                    (0, RateLimitCache_1.writeRateLimit)(token, upstreamResponse.headers, upstreamResponse.statusCode ?? null);
                 }
                 catch (error) {
                     console.error('Failed to write rate limit cache:', error);

@@ -10,5 +10,6 @@ export type ClaudeTokenUsage = {
     blocked: boolean;
     rejected: boolean;
     modelWeeklyLimits: Record<string, ClaudeModelWeeklyLimit>;
+    blockedUntilEpoch: number;
 };
 //# sourceMappingURL=ClaudeTokenUsage.d.ts.map

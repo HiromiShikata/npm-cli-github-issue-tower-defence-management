@@ -291,6 +291,23 @@ describe('startProxy', () => {
     expect(writeModelRateLimitSpy).toHaveBeenCalledTimes(1);
   });
 
+  it('should forward the upstream status code to writeRateLimit on a 429 response', async () => {
+    upstreamHandler = (_request, response) => {
+      response.writeHead(429, { 'content-type': 'application/json' });
+      response.end('{"type":"error","error":{"type":"rate_limit_error"}}');
+    };
+
+    const response = await requestThroughProxy('POST', '/v1/messages', '{}');
+
+    expect(response.statusCode).toBe(429);
+    expect(writeRateLimitSpy).toHaveBeenCalledTimes(1);
+    expect(writeRateLimitSpy).toHaveBeenCalledWith(
+      TOKEN,
+      expect.objectContaining({ 'content-type': 'application/json' }),
+      429,
+    );
+  });
+
   it('should forward non-SSE responses without crashing', async () => {
     upstreamHandler = (_request, response) => {
       response.writeHead(200, { 'content-type': 'application/json' });

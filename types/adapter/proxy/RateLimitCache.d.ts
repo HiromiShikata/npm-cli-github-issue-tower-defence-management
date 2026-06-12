@@ -14,12 +14,15 @@ export interface RateLimitSnapshot {
     sevenDayRejected: boolean;
     modelWeeklyLimits: Record<string, ModelWeeklyLimit>;
     lastUpdatedEpoch: number;
+    blockedUntilEpoch: number;
 }
 export declare const PROXY_PORT = 8787;
+export declare const HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS = 90;
+export declare const HEADERLESS_429_MAX_COOLDOWN_SECONDS = 600;
 export declare const cacheDir: () => string;
 export declare const hashToken: (token: string) => string;
 export declare const cachePathForToken: (token: string) => string;
-export declare const writeRateLimit: (token: string, headers: Record<string, string | string[] | undefined>) => void;
+export declare const writeRateLimit: (token: string, headers: Record<string, string | string[] | undefined>, statusCode?: number | null) => void;
 export declare const writeModelRateLimit: (token: string, limits: Record<string, ModelWeeklyLimit>) => void;
 export declare const parseModelRateLimitsFromBody: (body: string) => Record<string, ModelWeeklyLimit>;
 export declare const readRateLimit: (token: string) => RateLimitSnapshot | null;

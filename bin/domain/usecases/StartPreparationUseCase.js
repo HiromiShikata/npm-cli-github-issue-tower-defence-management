@@ -20,6 +20,7 @@ class StartPreparationUseCase {
                 return 'seven_day_opus';
             return 'seven_day';
         };
+        this.isWithinCooldown = (usage, nowEpochSeconds) => usage.blockedUntilEpoch > nowEpochSeconds;
         this.isModelWeeklyLimitRejected = (usage, weeklyLimitType) => {
             const specific = usage.modelWeeklyLimits[weeklyLimitType];
             if (specific !== undefined && specific.rejected)
@@ -64,6 +65,7 @@ class StartPreparationUseCase {
             const eligibleTokens = tokenUsages
                 .filter((usage) => !usage.blocked)
                 .filter((usage) => !usage.rejected)
+                .filter((usage) => !this.isWithinCooldown(usage, nowEpochSeconds))
                 .filter((usage) => !this.isModelWeeklyLimitRejected(usage, weeklyLimitType))
                 .filter((usage) => usage.fiveHourUtilization * 100 < utilizationPercentageThreshold)
                 .sort((a, b) => this.compareBySevenDayDeadlineThenUtilization(a, b, weeklyLimitType, nowEpochSeconds));
@@ -93,6 +95,7 @@ class StartPreparationUseCase {
             const selectedTokens = tokenUsages
                 .filter((usage) => !usage.blocked)
                 .filter((usage) => !usage.rejected)
+                .filter((usage) => !this.isWithinCooldown(usage, nowEpochSeconds))
                 .filter((usage) => !this.isModelWeeklyLimitRejected(usage, weeklyLimitType))
                 .filter((usage) => usage.fiveHourUtilization * 100 < utilizationPercentageThreshold)
                 .sort((a, b) => this.compareBySevenDayDeadlineThenUtilization(a, b, weeklyLimitType, nowEpochSeconds));
@@ -106,8 +109,12 @@ class StartPreparationUseCase {
                 rejected: usage.rejected,
                 thresholdExcluded: !usage.blocked &&
                     !usage.rejected &&
+                    !this.isWithinCooldown(usage, nowEpochSeconds) &&
                     !this.isModelWeeklyLimitRejected(usage, weeklyLimitType) &&
                     usage.fiveHourUtilization * 100 >= utilizationPercentageThreshold,
+                cooldownExcluded: !usage.blocked &&
+                    !usage.rejected &&
+                    this.isWithinCooldown(usage, nowEpochSeconds),
             }));
             const selectedEntries = selectedTokens.map((usage) => ({
                 name: usage.name ?? '',
@@ -115,6 +122,7 @@ class StartPreparationUseCase {
                 blocked: false,
                 rejected: false,
                 thresholdExcluded: false,
+                cooldownExcluded: false,
             }));
             return [...selectedEntries, ...excluded];
         };

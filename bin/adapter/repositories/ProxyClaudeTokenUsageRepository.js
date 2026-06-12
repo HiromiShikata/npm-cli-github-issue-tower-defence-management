@@ -66,6 +66,7 @@ class ProxyClaudeTokenUsageRepository {
                         blocked: false,
                         rejected: false,
                         modelWeeklyLimits: {},
+                        blockedUntilEpoch: 0,
                     };
                 }
                 const fiveHourExpired = nowEpochSeconds > snapshot.fiveHourReset;
@@ -101,6 +102,7 @@ class ProxyClaudeTokenUsageRepository {
                         resetsAt: snapshot.sevenDayReset,
                     };
                 }
+                const cooldownActive = snapshot.blockedUntilEpoch > nowEpochSeconds;
                 return {
                     name,
                     token,
@@ -109,6 +111,7 @@ class ProxyClaudeTokenUsageRepository {
                     blocked: snapshot.blocked,
                     rejected,
                     modelWeeklyLimits,
+                    blockedUntilEpoch: cooldownActive ? snapshot.blockedUntilEpoch : 0,
                 };
             });
         };

@@ -28,6 +28,7 @@ describe('writeRotationOrderFile', () => {
         blocked: false,
         rejected: false,
         thresholdExcluded: false,
+        cooldownExcluded: false,
       },
     ];
 
@@ -77,6 +78,7 @@ describe('writeRotationOrderFile', () => {
         blocked: false,
         rejected: false,
         thresholdExcluded: false,
+        cooldownExcluded: false,
       },
       {
         name: 'personal-2',
@@ -84,6 +86,7 @@ describe('writeRotationOrderFile', () => {
         blocked: false,
         rejected: false,
         thresholdExcluded: true,
+        cooldownExcluded: false,
       },
     ];
 
@@ -119,6 +122,7 @@ describe('writeRotationOrderFile', () => {
         blocked: false,
         rejected: false,
         thresholdExcluded: false,
+        cooldownExcluded: false,
       },
     ];
 
