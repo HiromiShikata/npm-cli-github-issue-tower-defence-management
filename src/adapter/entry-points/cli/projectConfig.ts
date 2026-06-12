@@ -20,7 +20,7 @@ export type ConfigFile = {
   awLogDirectoryPath?: string;
   awLogStaleThresholdMinutes?: number;
   labelsAsLlmAgentName?: string[];
-  changeTargetPathAliases?: Record<string, string> | null;
+  changeTargetPathAliases?: Record<string, string>;
 };
 
 const getStringValue = (
