@@ -11,6 +11,8 @@ import {
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
 import { CheckIssueReviewReadinessUseCase } from '../../../domain/usecases/CheckIssueReviewReadinessUseCase';
+import * as ensureWebConsoleRunningModule from '../../proxy/ensureWebConsoleRunning';
+import * as webConsoleEntryModule from '../../proxy/webConsoleEntry';
 
 jest.mock('../../../domain/usecases/StartPreparationUseCase');
 jest.mock('../../../domain/usecases/NotifyFinishedIssuePreparationUseCase');
@@ -59,6 +61,16 @@ jest.mock('../handlers/HandleScheduledEventUseCaseHandler', () => ({
   HandleScheduledEventUseCaseHandler: jest.fn().mockImplementation(() => ({
     handle: jest.fn().mockResolvedValue(null),
   })),
+}));
+jest.mock('../../proxy/ensureWebConsoleRunning', () => ({
+  ensureWebConsoleRunning: jest.fn().mockResolvedValue(null),
+  WEB_CONSOLE_DEFAULT_PORT: 3737,
+}));
+jest.mock('../../proxy/webConsoleEntry', () => ({
+  startWebConsole: jest.fn().mockReturnValue({
+    listen: jest.fn(),
+    close: jest.fn(),
+  }),
 }));
 
 describe('CLI', () => {
@@ -1642,6 +1654,244 @@ mysteryKey: 'value'
 
       consoleErrorSpy.mockRestore();
       processExitSpy.mockRestore();
+    });
+  });
+
+  describe('startDaemon with webConsoleAccessKey', () => {
+    it('should call ensureWebConsoleRunning before useCase.run when webConsoleAccessKey is set in config', async () => {
+      const configWithConsole = {
+        ...defaultConfig,
+        webConsoleAccessKey: 'test-access-key',
+      };
+      writeConfig(configWithConsole);
+
+      const callOrder: string[] = [];
+      const ensureWebConsoleRunningMock = jest
+        .spyOn(ensureWebConsoleRunningModule, 'ensureWebConsoleRunning')
+        .mockImplementation(() => {
+          callOrder.push('ensureWebConsoleRunning');
+          return Promise.resolve(null);
+        });
+
+      const mockRun = jest.fn().mockImplementation(() => {
+        callOrder.push('useCase.run');
+        return Promise.resolve({ rotationOrder: null });
+      });
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
+      MockedStartPreparationUseCase.mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'startDaemon',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      const consoleIndex = callOrder.indexOf('ensureWebConsoleRunning');
+      const runIndex = callOrder.indexOf('useCase.run');
+      expect(consoleIndex).toBeGreaterThanOrEqual(0);
+      expect(consoleIndex).toBeLessThan(runIndex);
+
+      ensureWebConsoleRunningMock.mockRestore();
+    });
+
+    it('should pass the access key and default port to ensureWebConsoleRunning', async () => {
+      const configWithConsole = {
+        ...defaultConfig,
+        webConsoleAccessKey: 'my-secret-key',
+      };
+      writeConfig(configWithConsole);
+
+      const ensureWebConsoleRunningMock = jest
+        .spyOn(ensureWebConsoleRunningModule, 'ensureWebConsoleRunning')
+        .mockResolvedValue(null);
+
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
+      MockedStartPreparationUseCase.mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'startDaemon',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(ensureWebConsoleRunningMock).toHaveBeenCalledWith(
+        'my-secret-key',
+        3737,
+      );
+
+      ensureWebConsoleRunningMock.mockRestore();
+    });
+
+    it('should pass the custom port to ensureWebConsoleRunning when webConsolePort is set', async () => {
+      const configWithConsole = {
+        ...defaultConfig,
+        webConsoleAccessKey: 'my-secret-key',
+        webConsolePort: 4848,
+      };
+      writeConfig(configWithConsole);
+
+      const ensureWebConsoleRunningMock = jest
+        .spyOn(ensureWebConsoleRunningModule, 'ensureWebConsoleRunning')
+        .mockResolvedValue(null);
+
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
+      MockedStartPreparationUseCase.mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'startDaemon',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(ensureWebConsoleRunningMock).toHaveBeenCalledWith(
+        'my-secret-key',
+        4848,
+      );
+
+      ensureWebConsoleRunningMock.mockRestore();
+    });
+
+    it('should not call ensureWebConsoleRunning when webConsoleAccessKey is not set', async () => {
+      writeConfig(defaultConfig);
+
+      const ensureWebConsoleRunningMock = jest
+        .spyOn(ensureWebConsoleRunningModule, 'ensureWebConsoleRunning')
+        .mockResolvedValue(null);
+
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
+      MockedStartPreparationUseCase.mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'startDaemon',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(ensureWebConsoleRunningMock).not.toHaveBeenCalled();
+
+      ensureWebConsoleRunningMock.mockRestore();
+    });
+
+    it('should pass webConsoleAccessKey from CLI flag to ensureWebConsoleRunning', async () => {
+      writeConfig(defaultConfig);
+
+      const ensureWebConsoleRunningMock = jest
+        .spyOn(ensureWebConsoleRunningModule, 'ensureWebConsoleRunning')
+        .mockResolvedValue(null);
+
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
+      MockedStartPreparationUseCase.mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'startDaemon',
+        '--configFilePath',
+        configFilePath,
+        '--webConsoleAccessKey',
+        'cli-access-key',
+        '--webConsolePort',
+        '5959',
+      ]);
+
+      expect(ensureWebConsoleRunningMock).toHaveBeenCalledWith(
+        'cli-access-key',
+        5959,
+      );
+
+      ensureWebConsoleRunningMock.mockRestore();
+    });
+  });
+
+  describe('serve-web-console', () => {
+    it('should appear in the CLI help output', () => {
+      const helpText = program.helpInformation();
+      expect(helpText).toContain('serve-web-console');
+    });
+
+    it('should call startWebConsole with the access key and default port', async () => {
+      const startWebConsoleMock = jest
+        .spyOn(webConsoleEntryModule, 'startWebConsole')
+        .mockReturnValue({} as ReturnType<typeof webConsoleEntryModule.startWebConsole>);
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'serve-web-console',
+        '--accessKey',
+        'console-key',
+      ]);
+
+      expect(startWebConsoleMock).toHaveBeenCalledWith('console-key', 3737);
+
+      startWebConsoleMock.mockRestore();
+    });
+
+    it('should call startWebConsole with a custom port when --port is provided', async () => {
+      const startWebConsoleMock = jest
+        .spyOn(webConsoleEntryModule, 'startWebConsole')
+        .mockReturnValue({} as ReturnType<typeof webConsoleEntryModule.startWebConsole>);
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'serve-web-console',
+        '--accessKey',
+        'console-key',
+        '--port',
+        '4000',
+      ]);
+
+      expect(startWebConsoleMock).toHaveBeenCalledWith('console-key', 4000);
+
+      startWebConsoleMock.mockRestore();
     });
   });
 });

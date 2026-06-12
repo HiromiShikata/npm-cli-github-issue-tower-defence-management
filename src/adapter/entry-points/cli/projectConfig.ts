@@ -21,6 +21,8 @@ export type ConfigFile = {
   awLogStaleThresholdMinutes?: number;
   labelsAsLlmAgentName?: string[];
   changeTargetPathAliases?: Record<string, string>;
+  webConsoleAccessKey?: string;
+  webConsolePort?: number;
 };
 
 const getStringValue = (
@@ -95,6 +97,8 @@ const knownProjectReadmeConfigKeys = [
   'awLogDirectoryPath',
   'awLogStaleThresholdMinutes',
   'changeTargetPathAliases',
+  'webConsoleAccessKey',
+  'webConsolePort',
 ] as const;
 
 export const loadConfigFile = (configFilePath: string): ConfigFile => {
@@ -145,6 +149,8 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         parsed,
         'changeTargetPathAliases',
       ),
+      webConsoleAccessKey: getStringValue(parsed, 'webConsoleAccessKey'),
+      webConsolePort: getNumberValue(parsed, 'webConsolePort'),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -221,6 +227,8 @@ export const parseProjectReadmeConfig = (
         parsed,
         'changeTargetPathAliases',
       ),
+      webConsoleAccessKey: getStringValue(parsed, 'webConsoleAccessKey'),
+      webConsolePort: getNumberValue(parsed, 'webConsolePort'),
     };
   } catch {
     console.warn('Failed to parse YAML from project README config section');
@@ -303,6 +311,14 @@ export const mergeConfigs = (
     readmeOverrides.changeTargetPathAliases ??
     cliOverrides.changeTargetPathAliases ??
     configFile.changeTargetPathAliases,
+  webConsoleAccessKey:
+    readmeOverrides.webConsoleAccessKey ??
+    cliOverrides.webConsoleAccessKey ??
+    configFile.webConsoleAccessKey,
+  webConsolePort:
+    readmeOverrides.webConsolePort ??
+    cliOverrides.webConsolePort ??
+    configFile.webConsolePort,
 });
 
 type GraphqlProjectV2ReadmeResponse = {

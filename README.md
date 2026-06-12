@@ -20,6 +20,7 @@ Commands:
   startDaemon [options]                 Start daemon to prepare GitHub issues
   notifyFinishedIssuePreparation [options]  Notify that issue preparation is finished
   checkIssueReviewReadiness [options]   Check whether an issue is review-ready (read-only; does not change Status or post any comment)
+  serve-pr-review-viewer [options]      Start the PR review viewer web server
   help [command]                        display help for command
 
 Options for schedule:
@@ -40,6 +41,12 @@ Options for startDaemon:
   --utilizationPercentageThreshold <percent>       5-hour utilization hard threshold; tokens at or above this percentage are excluded from rotation. Per-token concurrency also tapers from 6 slots down to 1 as either the 5h or 7d utilization rises from 80% toward 100%, taking the more restrictive of the two (default: 90)
   --allowedIssueAuthors <authors>                  Comma-separated list of allowed issue authors
   --preparationProcessCheckCommand <template>      Shell command template with {URL} placeholder to check if a preparation process is alive
+  --prReviewViewerAccessKey <key>                  Access key for the PR review viewer web server (if set, starts the viewer before the preparation cycle)
+  --prReviewViewerPort <port>                      Port for the PR review viewer web server (default: 3737)
+
+Options for serve-pr-review-viewer:
+  --accessKey <key>                                Access key required to access the PR review viewer (required)
+  --port <port>                                    Port to listen on (default: 3737)
 
 Options for notifyFinishedIssuePreparation:
   --configFilePath <path>                          Path to config file for tower defence management (required)
@@ -55,6 +62,8 @@ Options for checkIssueReviewReadiness:
 ```
 
 The `checkIssueReviewReadiness` sub-command lets an agent self-check whether an issue is currently review-ready. It does NOT change the issue Status field and does NOT post any comment. It writes a single JSON line to stdout of the shape `{ "reviewReady": boolean, "rejections": [{ "type": string, "detail": string }] }` and exits 0 on a successful evaluation regardless of readiness; a non-zero exit indicates an operational error (auth failure, network error). The rejection types include: `ISSUE_NOT_FOUND`, `NO_REPORT_FROM_AGENT_BOT`, `REPORT_HAS_NEXT_STEP`, `PULL_REQUEST_NOT_FOUND`, `PULL_REQUEST_IS_DRAFT`, `PULL_REQUEST_CONFLICTED`, `ANY_CI_JOB_FAILED_OR_IN_PROGRESS`, `REQUIRED_CI_JOB_NEVER_STARTED`, `ANY_REVIEW_COMMENT_NOT_RESOLVED`, and `MULTIPLE_PULL_REQUESTS_FOUND`. The `--projectUrl` option is optional; when omitted the command still runs using only the issue URL.
+
+The `serve-pr-review-viewer` sub-command starts an HTTP server that gates all requests behind an access key. The server listens on `127.0.0.1` and accepts the access key either as a `?key=` query parameter or as an `Authorization: Bearer <key>` header. A valid key returns HTTP 200 with `{"ok":true}`; an invalid or missing key returns HTTP 403. When `prReviewViewerAccessKey` is set in the config or passed via `--prReviewViewerAccessKey` to `startDaemon`, the daemon automatically ensures this server is running before each preparation cycle by TCP-probing the configured port; if nothing responds it spawns a detached child process running the server so it persists across daemon cycles.
 
 ## Example 📖
 
@@ -78,6 +87,14 @@ npx github-issue-tower-defence-management notifyFinishedIssuePreparation --confi
 
 ```
 npx github-issue-tower-defence-management checkIssueReviewReadiness --configFilePath ./preparator-config.yml --issueUrl https://github.com/HiromiShikata/test-repository/issues/1
+```
+
+```
+npx github-issue-tower-defence-management serve-pr-review-viewer --accessKey my-secret-key
+```
+
+```
+npx github-issue-tower-defence-management serve-pr-review-viewer --accessKey my-secret-key --port 8080
 ```
 
 ## Config
@@ -201,6 +218,8 @@ awLogStaleThresholdMinutes?: number # Optional: Minutes since last aw log mtime 
 labelsAsLlmAgentName?: string[] # Optional: List of issue labels that are themselves agent names. When an issue carries any label that is included in this list, that label name is used as the agent name. Selection precedence is: (1) explicit `llm-agent:` label, (2) labelsAsLlmAgentName entry match, (3) `category:` label, (4) defaultLlmAgentName, (5) defaultAgentName
 changeTargetPathAliases?: # Optional: Map of short alias keys to full repository-root-relative directory paths. Allows `change-target:<alias>` labels to reference deeply nested paths that exceed GitHub's 50-character label limit. When a `change-target:` label's value matches a key in this map, it is expanded to the corresponding full path before confinement checking. Values with leading or trailing slashes are normalized automatically. Example below
   adapter-interfaces: src/domain/usecases/adapter-interfaces
+webConsoleAccessKey?: string # Optional: Access key for the web console server. When set, startDaemon ensures the web console is running before each preparation cycle
+webConsolePort?: number # Optional: Port for the web console server (default: 3737)
 ```
 
 Workflow status names (`Unread`, `Awaiting Workspace`, `Preparation`, `Failed Preparation`, `Awaiting Quality Check`, `Todo by human`, `In Tmux by human`, `Done`, `Icebox`) are hardcoded constants and are not accepted via this config, the CLI, or the project README. To ensure they exist on the target project, run the `schedule` command — it invokes `SetupTowerDefenceProjectUseCase` automatically. Projects with the legacy `Todo` and `In Tmux` status names are automatically migrated; `PC Todo` and `Awaiting Task Breakdown` are removed on the next setup run (items in `Awaiting Task Breakdown` are moved to `Todo by human` before the option is deleted).

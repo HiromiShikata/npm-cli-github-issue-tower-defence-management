@@ -31,6 +31,11 @@ import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunne
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
+import {
+  ensureWebConsoleRunning,
+  WEB_CONSOLE_DEFAULT_PORT,
+} from '../../proxy/ensureWebConsoleRunning';
+import { startWebConsole } from '../../proxy/webConsoleEntry';
 
 type StartDaemonOptions = {
   projectUrl?: string;
@@ -43,6 +48,8 @@ type StartDaemonOptions = {
   utilizationPercentageThreshold?: string;
   allowedIssueAuthors?: string;
   preparationProcessCheckCommand?: string;
+  webConsoleAccessKey?: string;
+  webConsolePort?: string;
   configFilePath: string;
 };
 
@@ -140,6 +147,14 @@ program
     '--preparationProcessCheckCommand <template>',
     'Shell command template with {URL} placeholder to check if a preparation process is alive',
   )
+  .option(
+    '--webConsoleAccessKey <key>',
+    'Access key for the web console server (if set, the web console server is started before the preparation cycle)',
+  )
+  .option(
+    '--webConsolePort <port>',
+    `Port for the web console server (default: ${WEB_CONSOLE_DEFAULT_PORT})`,
+  )
   .action(async (options: StartDaemonOptions) => {
     const token = process.env.GH_TOKEN;
     if (!token) {
@@ -166,6 +181,10 @@ program
         : undefined,
       allowedIssueAuthors: options.allowedIssueAuthors,
       preparationProcessCheckCommand: options.preparationProcessCheckCommand,
+      webConsoleAccessKey: options.webConsoleAccessKey,
+      webConsolePort: options.webConsolePort
+        ? Number(options.webConsolePort)
+        : undefined,
     };
 
     const tempProjectUrl =
@@ -301,6 +320,23 @@ program
       config.codexHomeCandidates && config.codexHomeCandidates.length > 0
         ? config.codexHomeCandidates
         : null;
+
+    const webConsoleAccessKey = config.webConsoleAccessKey;
+    if (webConsoleAccessKey) {
+      const webConsolePort =
+        config.webConsolePort ?? WEB_CONSOLE_DEFAULT_PORT;
+      const webConsoleProcess = await ensureWebConsoleRunning(
+        webConsoleAccessKey,
+        webConsolePort,
+      );
+      if (webConsoleProcess !== null) {
+        const killWebConsole = (): void => {
+          webConsoleProcess.kill();
+        };
+        process.once('SIGTERM', killWebConsole);
+        process.once('SIGINT', killWebConsole);
+      }
+    }
 
     const preparationResult = await useCase.run({
       projectUrl,
@@ -552,6 +588,26 @@ program
     });
 
     process.stdout.write(`${JSON.stringify(result)}\n`);
+  });
+
+type ServeWebConsoleOptions = {
+  accessKey: string;
+  port?: string;
+};
+
+program
+  .command('serve-web-console')
+  .description('Start the web console server')
+  .requiredOption('--accessKey <key>', 'Access key for the web console')
+  .option(
+    '--port <port>',
+    `Port to listen on (default: ${WEB_CONSOLE_DEFAULT_PORT})`,
+  )
+  .action((options: ServeWebConsoleOptions) => {
+    const port = options.port
+      ? Number(options.port)
+      : WEB_CONSOLE_DEFAULT_PORT;
+    startWebConsole(options.accessKey, port);
   });
 
 /* istanbul ignore next */
