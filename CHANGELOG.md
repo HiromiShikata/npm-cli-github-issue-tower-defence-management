@@ -1,3 +1,10 @@
+## [1.82.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.82.0...v1.82.1) (2026-06-12)
+
+
+### Bug Fixes
+
+* **core:** make per-spawn token assignment prefer the soonest-reset token, not just the least-loaded one ([ad09404](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ad09404f2e16afb892075d1715deba5e1e02718f))
+
 # [1.82.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.81.0...v1.82.0) (2026-06-12)
 
 
