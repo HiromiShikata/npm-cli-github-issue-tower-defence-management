@@ -1,3 +1,10 @@
+## [1.77.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.77.0...v1.77.1) (2026-06-12)
+
+
+### Bug Fixes
+
+* **core:** run Story-assignment use cases every slow sweep instead of only at minute 0 ([8832b59](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8832b5943b76fb89450befa46da6bccae61c9285)), closes [#780](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/780)
+
 # [1.77.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.76.0...v1.77.0) (2026-06-12)
 
 
