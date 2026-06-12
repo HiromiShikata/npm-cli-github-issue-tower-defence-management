@@ -1,10 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RevertNotReadyAwaitingQualityCheckUseCase = void 0;
+exports.RevertNotReadyReviewQueueIssueUseCase = void 0;
 const IssueRejectionEvaluator_1 = require("./IssueRejectionEvaluator");
 const ChangeTargetPullRequestApprover_1 = require("./ChangeTargetPullRequestApprover");
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
-class RevertNotReadyAwaitingQualityCheckUseCase {
+class RevertNotReadyReviewQueueIssueUseCase {
     constructor(projectRepository, issueRepository, issueCommentRepository) {
         this.projectRepository = projectRepository;
         this.issueRepository = issueRepository;
@@ -37,10 +37,26 @@ class RevertNotReadyAwaitingQualityCheckUseCase {
                 }
                 await this.changeTargetPullRequestApprover.approveIfConfined(issue.labels, approvedPrUrl);
             }
+            const projectStory = project.story;
+            const unreadPullRequests = issues.filter((issue) => issue.status === WorkflowStatus_1.DEFAULT_STATUS_NAME && issue.isPr);
+            for (const pullRequest of unreadPullRequests) {
+                const hasLlmAgentLabel = pullRequest.labels.some((l) => l === 'llm-agent' || l.startsWith('llm-agent:'));
+                if (hasLlmAgentLabel) {
+                    continue;
+                }
+                const { rejections } = await this.issueRejectionEvaluator.evaluate(pullRequest, params.labelsAsLlmAgentName ?? []);
+                if (rejections.length > 0) {
+                    await this.issueRepository.updateStatus(project, pullRequest, awaitingWorkspaceStatusOption.id);
+                    if (projectStory) {
+                        await this.issueRepository.updateStory({ ...project, story: projectStory }, pullRequest, projectStory.workflowManagementStory.id);
+                    }
+                    await this.issueCommentRepository.createComment(pullRequest, `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`);
+                }
+            }
         };
         this.issueRejectionEvaluator = new IssueRejectionEvaluator_1.IssueRejectionEvaluator(issueRepository);
         this.changeTargetPullRequestApprover = new ChangeTargetPullRequestApprover_1.ChangeTargetPullRequestApprover(issueRepository);
     }
 }
-exports.RevertNotReadyAwaitingQualityCheckUseCase = RevertNotReadyAwaitingQualityCheckUseCase;
-//# sourceMappingURL=RevertNotReadyAwaitingQualityCheckUseCase.js.map
+exports.RevertNotReadyReviewQueueIssueUseCase = RevertNotReadyReviewQueueIssueUseCase;
+//# sourceMappingURL=RevertNotReadyReviewQueueIssueUseCase.js.map

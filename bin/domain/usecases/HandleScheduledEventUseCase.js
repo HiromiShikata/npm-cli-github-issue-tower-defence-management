@@ -11,7 +11,7 @@ class ProjectNotFoundError extends Error {
 exports.ProjectNotFoundError = ProjectNotFoundError;
 const SLOW_SWEEP_INTERVAL_SECONDS = 600;
 class HandleScheduledEventUseCase {
-    constructor(setupTowerDefenceProjectUseCase, actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, revertNotReadyAwaitingQualityCheckUseCase, updateRateLimitCacheUseCase, dailySecurityScanUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
+    constructor(setupTowerDefenceProjectUseCase, actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, revertNotReadyReviewQueueIssueUseCase, updateRateLimitCacheUseCase, dailySecurityScanUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
         this.setupTowerDefenceProjectUseCase = setupTowerDefenceProjectUseCase;
         this.actionAnnouncementUseCase = actionAnnouncementUseCase;
         this.setWorkflowManagementIssueToStoryUseCase = setWorkflowManagementIssueToStoryUseCase;
@@ -29,7 +29,7 @@ class HandleScheduledEventUseCase {
         this.updateIssueStatusByLabelUseCase = updateIssueStatusByLabelUseCase;
         this.startPreparationUseCase = startPreparationUseCase;
         this.revertOrphanedPreparationUseCase = revertOrphanedPreparationUseCase;
-        this.revertNotReadyAwaitingQualityCheckUseCase = revertNotReadyAwaitingQualityCheckUseCase;
+        this.revertNotReadyReviewQueueIssueUseCase = revertNotReadyReviewQueueIssueUseCase;
         this.updateRateLimitCacheUseCase = updateRateLimitCacheUseCase;
         this.dailySecurityScanUseCase = dailySecurityScanUseCase;
         this.dateRepository = dateRepository;
@@ -138,7 +138,7 @@ ${JSON.stringify(e)}
                 topLevel: input.labelsAsLlmAgentName,
                 startPreparation: input.startPreparation?.labelsAsLlmAgentName,
             });
-            await this.revertNotReadyAwaitingQualityCheckUseCase.run({
+            await this.revertNotReadyReviewQueueIssueUseCase.run({
                 projectUrl: input.projectUrl,
                 allowIssueCacheMinutes: input.allowIssueCacheMinutes,
                 labelsAsLlmAgentName,

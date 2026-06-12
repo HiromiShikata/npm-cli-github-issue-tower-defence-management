@@ -25,7 +25,7 @@ import {
   StartPreparationUseCase,
 } from './StartPreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
-import { RevertNotReadyAwaitingQualityCheckUseCase } from './RevertNotReadyAwaitingQualityCheckUseCase';
+import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
 import { resolveLabelsAsLlmAgentName } from './resolveLabelsAsLlmAgentName';
 import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
 import { UpdateRateLimitCacheUseCase } from './UpdateRateLimitCacheUseCase';
@@ -62,7 +62,7 @@ export class HandleScheduledEventUseCase {
     readonly updateIssueStatusByLabelUseCase: UpdateIssueStatusByLabelUseCase,
     readonly startPreparationUseCase: StartPreparationUseCase,
     readonly revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase,
-    readonly revertNotReadyAwaitingQualityCheckUseCase: RevertNotReadyAwaitingQualityCheckUseCase,
+    readonly revertNotReadyReviewQueueIssueUseCase: RevertNotReadyReviewQueueIssueUseCase,
     readonly updateRateLimitCacheUseCase: UpdateRateLimitCacheUseCase | null,
     readonly dailySecurityScanUseCase: DailySecurityScanUseCase | null,
     readonly dateRepository: DateRepository,
@@ -292,7 +292,7 @@ ${JSON.stringify(e)}
       topLevel: input.labelsAsLlmAgentName,
       startPreparation: input.startPreparation?.labelsAsLlmAgentName,
     });
-    await this.revertNotReadyAwaitingQualityCheckUseCase.run({
+    await this.revertNotReadyReviewQueueIssueUseCase.run({
       projectUrl: input.projectUrl,
       allowIssueCacheMinutes: input.allowIssueCacheMinutes,
       labelsAsLlmAgentName,
