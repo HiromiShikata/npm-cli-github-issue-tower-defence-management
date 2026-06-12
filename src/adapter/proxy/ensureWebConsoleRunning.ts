@@ -8,6 +8,10 @@ export interface WebConsoleProcess {
   kill: () => void;
 }
 
+export interface ViewerProcess {
+  kill: () => void;
+}
+
 const PROBE_TIMEOUT_MS = 200;
 const STARTUP_WAIT_MS = 1500;
 

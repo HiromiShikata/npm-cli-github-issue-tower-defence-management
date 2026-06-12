@@ -58,6 +58,8 @@ const NodeLocalCommandRunner_1 = require("../../repositories/NodeLocalCommandRun
 const GitHubIssueCommentRepository_1 = require("../../repositories/GitHubIssueCommentRepository");
 const FetchWebhookRepository_1 = require("../../repositories/FetchWebhookRepository");
 const RevertOrphanedPreparationUseCase_1 = require("../../../domain/usecases/RevertOrphanedPreparationUseCase");
+const ensurePrReviewViewerRunning_1 = require("../../proxy/ensurePrReviewViewerRunning");
+const prReviewViewerEntry_1 = require("../../proxy/prReviewViewerEntry");
 const buildGithubRepositoryParams = (localStorageRepository, token) => [
     localStorageRepository,
     token,
@@ -98,6 +100,8 @@ exports.program
     .option('--utilizationPercentageThreshold <percent>', 'Per-token Claude 5h utilization % threshold; tokens at or above it are excluded from rotation. Per-token concurrency also tapers from 6 slots down to 1 as either the 5h or 7d utilization rises from 80% toward 100%, taking the more restrictive of the two (default: 90)')
     .option('--allowedIssueAuthors <authors>', 'Comma-separated list of allowed issue authors')
     .option('--preparationProcessCheckCommand <template>', 'Shell command template with {URL} placeholder to check if a preparation process is alive')
+    .option('--prReviewViewerAccessKey <key>', 'Access key for the PR review viewer server (if set, the viewer server is started before the preparation cycle)')
+    .option('--prReviewViewerPort <port>', `Port for the PR review viewer server (default: ${ensurePrReviewViewerRunning_1.PR_REVIEW_VIEWER_DEFAULT_PORT})`)
     .action(async (options) => {
     const token = process.env.GH_TOKEN;
     if (!token) {
@@ -122,6 +126,10 @@ exports.program
             : undefined,
         allowedIssueAuthors: options.allowedIssueAuthors,
         preparationProcessCheckCommand: options.preparationProcessCheckCommand,
+        prReviewViewerAccessKey: options.prReviewViewerAccessKey,
+        prReviewViewerPort: options.prReviewViewerPort
+            ? Number(options.prReviewViewerPort)
+            : undefined,
     };
     const tempProjectUrl = cliOverrides.projectUrl ?? configFileValues.projectUrl;
     let readmeOverrides = {};
@@ -193,6 +201,18 @@ exports.program
     const codexHomeCandidates = config.codexHomeCandidates && config.codexHomeCandidates.length > 0
         ? config.codexHomeCandidates
         : null;
+    const prReviewViewerAccessKey = config.prReviewViewerAccessKey;
+    if (prReviewViewerAccessKey) {
+        const prReviewViewerPort = config.prReviewViewerPort ?? ensurePrReviewViewerRunning_1.PR_REVIEW_VIEWER_DEFAULT_PORT;
+        const viewerProcess = await (0, ensurePrReviewViewerRunning_1.ensurePrReviewViewerRunning)(prReviewViewerAccessKey, prReviewViewerPort);
+        if (viewerProcess !== null) {
+            const killViewer = () => {
+                viewerProcess.kill();
+            };
+            process.once('SIGTERM', killViewer);
+            process.once('SIGINT', killViewer);
+        }
+    }
     const preparationResult = await useCase.run({
         projectUrl,
         defaultAgentName,
@@ -339,6 +359,17 @@ exports.program
         labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
     });
     process.stdout.write(`${JSON.stringify(result)}\n`);
+});
+exports.program
+    .command('serve-pr-review-viewer')
+    .description('Start the PR review viewer web server')
+    .requiredOption('--accessKey <key>', 'Access key for the PR review viewer')
+    .option('--port <port>', `Port to listen on (default: ${ensurePrReviewViewerRunning_1.PR_REVIEW_VIEWER_DEFAULT_PORT})`)
+    .action((options) => {
+    const port = options.port
+        ? Number(options.port)
+        : ensurePrReviewViewerRunning_1.PR_REVIEW_VIEWER_DEFAULT_PORT;
+    (0, prReviewViewerEntry_1.startPrReviewViewer)(options.accessKey, port);
 });
 /* istanbul ignore next */
 if (process.argv && require.main === module) {

@@ -1848,6 +1848,83 @@ mysteryKey: 'value'
 
       ensureWebConsoleRunningMock.mockRestore();
     });
+
+    it('should register SIGTERM and SIGINT handlers that kill the viewer process when one is spawned', async () => {
+      const configWithViewer = {
+        ...defaultConfig,
+        prReviewViewerAccessKey: 'test-access-key',
+      };
+      writeConfig(configWithViewer);
+
+      const killMock = jest.fn();
+      const fakeViewerProcess: import('../../proxy/ensurePrReviewViewerRunning').ViewerProcess =
+        { kill: killMock };
+
+      const ensurePrReviewViewerRunningMock = jest
+        .spyOn(ensurePrReviewViewerRunningModule, 'ensurePrReviewViewerRunning')
+        .mockImplementation(() => Promise.resolve(fakeViewerProcess));
+
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
+      MockedStartPreparationUseCase.mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'startDaemon',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      process.emit('SIGTERM');
+      expect(killMock).toHaveBeenCalledTimes(1);
+
+      ensurePrReviewViewerRunningMock.mockRestore();
+    });
+
+    it('should not register a kill handler when ensurePrReviewViewerRunning returns null', async () => {
+      const configWithViewer = {
+        ...defaultConfig,
+        prReviewViewerAccessKey: 'test-access-key',
+      };
+      writeConfig(configWithViewer);
+
+      const ensurePrReviewViewerRunningMock = jest
+        .spyOn(ensurePrReviewViewerRunningModule, 'ensurePrReviewViewerRunning')
+        .mockResolvedValue(null);
+
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
+      MockedStartPreparationUseCase.mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      const sigtermListenersBefore = process.listenerCount('SIGTERM');
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'startDaemon',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(process.listenerCount('SIGTERM')).toBe(sigtermListenersBefore);
+
+      ensurePrReviewViewerRunningMock.mockRestore();
+    });
   });
 
   describe('serve-web-console', () => {
