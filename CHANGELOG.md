@@ -1,3 +1,10 @@
+# [1.77.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.76.0...v1.77.0) (2026-06-12)
+
+
+### Features
+
+* enforce per-token global in-flight concurrency limit across projects ([0ca7c71](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0ca7c7125c7cd811ee9df056437cbd22251c86da))
+
 # [1.76.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.75.0...v1.76.0) (2026-06-12)
 
 
