@@ -1,3 +1,10 @@
+## [1.77.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.77.1...v1.77.2) (2026-06-12)
+
+
+### Bug Fixes
+
+* **core:** format dependent issue URLs as Markdown list items ([733a92f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/733a92fb24c45b5686904fa5cdd6f3b0cc3a53f2))
+
 ## [1.77.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.77.0...v1.77.1) (2026-06-12)
 
 
