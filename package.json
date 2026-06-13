@@ -79,5 +79,8 @@
     "ky": "^2.0.0",
     "typia": "^12.0.0",
     "yaml": "^2.6.0"
+  },
+  "overrides": {
+    "buffer-equal-constant-time": "file:./lib/buffer-equal-constant-time-compat"
   }
 }
