@@ -1,3 +1,10 @@
+# [1.84.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.83.0...v1.84.0) (2026-06-14)
+
+
+### Features
+
+* **console:** generate per-tab Console list.json files in scheduled cycle ([#831](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/831)) ([0368fb7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0368fb74d572a5d9b73966440da2c62669d1d4f4))
+
 # [1.83.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.82.1...v1.83.0) (2026-06-14)
 
 
