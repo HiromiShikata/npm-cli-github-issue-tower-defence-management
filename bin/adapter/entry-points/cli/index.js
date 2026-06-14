@@ -58,6 +58,8 @@ const NodeLocalCommandRunner_1 = require("../../repositories/NodeLocalCommandRun
 const GitHubIssueCommentRepository_1 = require("../../repositories/GitHubIssueCommentRepository");
 const FetchWebhookRepository_1 = require("../../repositories/FetchWebhookRepository");
 const RevertOrphanedPreparationUseCase_1 = require("../../../domain/usecases/RevertOrphanedPreparationUseCase");
+const ensureWebConsoleRunning_1 = require("../../proxy/ensureWebConsoleRunning");
+const webConsoleEntry_1 = require("../../proxy/webConsoleEntry");
 const buildGithubRepositoryParams = (localStorageRepository, token) => [
     localStorageRepository,
     token,
@@ -98,6 +100,8 @@ exports.program
     .option('--utilizationPercentageThreshold <percent>', 'Per-token Claude 5h utilization % threshold; tokens at or above it are excluded from rotation. Per-token concurrency also tapers from 6 slots down to 1 as either the 5h or 7d utilization rises from 80% toward 100%, taking the more restrictive of the two (default: 90)')
     .option('--allowedIssueAuthors <authors>', 'Comma-separated list of allowed issue authors')
     .option('--preparationProcessCheckCommand <template>', 'Shell command template with {URL} placeholder to check if a preparation process is alive')
+    .option('--webConsoleAccessKey <key>', 'Access key for the web console server (if set, the web console server is started before the preparation cycle)')
+    .option('--webConsolePort <port>', `Port for the web console server (default: ${ensureWebConsoleRunning_1.WEB_CONSOLE_DEFAULT_PORT})`)
     .action(async (options) => {
     const token = process.env.GH_TOKEN;
     if (!token) {
@@ -122,6 +126,10 @@ exports.program
             : undefined,
         allowedIssueAuthors: options.allowedIssueAuthors,
         preparationProcessCheckCommand: options.preparationProcessCheckCommand,
+        webConsoleAccessKey: options.webConsoleAccessKey,
+        webConsolePort: options.webConsolePort
+            ? Number(options.webConsolePort)
+            : undefined,
     };
     const tempProjectUrl = cliOverrides.projectUrl ?? configFileValues.projectUrl;
     let readmeOverrides = {};
@@ -193,6 +201,18 @@ exports.program
     const codexHomeCandidates = config.codexHomeCandidates && config.codexHomeCandidates.length > 0
         ? config.codexHomeCandidates
         : null;
+    const webConsoleAccessKey = config.webConsoleAccessKey;
+    if (webConsoleAccessKey) {
+        const webConsolePort = config.webConsolePort ?? ensureWebConsoleRunning_1.WEB_CONSOLE_DEFAULT_PORT;
+        const webConsoleProcess = await (0, ensureWebConsoleRunning_1.ensureWebConsoleRunning)(webConsoleAccessKey, webConsolePort);
+        if (webConsoleProcess !== null) {
+            const killWebConsole = () => {
+                webConsoleProcess.kill();
+            };
+            process.once('SIGTERM', killWebConsole);
+            process.once('SIGINT', killWebConsole);
+        }
+    }
     const preparationResult = await useCase.run({
         projectUrl,
         defaultAgentName,
@@ -339,6 +359,17 @@ exports.program
         labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
     });
     process.stdout.write(`${JSON.stringify(result)}\n`);
+});
+exports.program
+    .command('serve-web-console')
+    .description('Start the web console server')
+    .requiredOption('--accessKey <key>', 'Access key for the web console')
+    .option('--port <port>', `Port to listen on (default: ${ensureWebConsoleRunning_1.WEB_CONSOLE_DEFAULT_PORT})`)
+    .action((options) => {
+    const port = options.port
+        ? Number(options.port)
+        : ensureWebConsoleRunning_1.WEB_CONSOLE_DEFAULT_PORT;
+    (0, webConsoleEntry_1.startWebConsole)(options.accessKey, port);
 });
 /* istanbul ignore next */
 if (process.argv && require.main === module) {

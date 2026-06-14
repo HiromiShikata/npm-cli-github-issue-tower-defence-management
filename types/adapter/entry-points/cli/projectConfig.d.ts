@@ -18,6 +18,8 @@ export type ConfigFile = {
     awLogStaleThresholdMinutes?: number;
     labelsAsLlmAgentName?: string[];
     changeTargetPathAliases?: Record<string, string>;
+    webConsoleAccessKey?: string;
+    webConsolePort?: number;
 };
 export declare const isRecord: (value: unknown) => value is Record<string, unknown>;
 export declare const loadConfigFile: (configFilePath: string) => ConfigFile;
