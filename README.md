@@ -21,6 +21,7 @@ Commands:
   notifyFinishedIssuePreparation [options]  Notify that issue preparation is finished
   checkIssueReviewReadiness [options]   Check whether an issue is review-ready (read-only; does not change Status or post any comment)
   serveConsole [options]                Start the local TDPM Console HTTP server
+  selectOauthToken [options]            Print one rate-limit-aware Claude Code OAuth token to stdout (pipeable; read-only)
   help [command]                        display help for command
 
 Options for schedule:
@@ -58,6 +59,10 @@ Options for serveConsole:
   --configFilePath <path>                          Path to config file for tower defence management (required)
   --port <number>                                  Port for the console HTTP server (default: 9981)
   --consoleDataOutputDir <path>                    Directory where console data files are written and served from
+
+Options for selectOauthToken:
+  --tokenListJsonPath <path>                       Path to the JSON array of { name, token } records (falls back to the CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH environment variable)
+  --cacheDir <path>                                Directory holding per-token rate-limit cache files (falls back to the TDPM_RATELIMIT_CACHE_DIR environment variable, then to ${XDG_CACHE_HOME:-~/.cache}/tdpm/ratelimit)
 ```
 
 The `serveConsole` sub-command starts a local HTTP server that serves the TDPM Console. Every response is sent with `Cache-Control: no-store`. Any request path containing a segment that begins with a dot (for example `/.git` or `/.env`) is rejected with HTTP 404. The UI bootstrap assets (HTML and JS) are served without authentication; served `*.json` files and `/api/*` paths require an access token supplied either as the `k` query parameter (`?k=<token>`) or the `X-PV-Token` request header. The access token is read from the `consoleAccessToken` config value and never appears on the command line. When the built UI bundle directory (`ui-dist`) is absent the server still starts and serves a minimal placeholder index for `/` and `/index.html`.
@@ -71,6 +76,8 @@ Behind the token gate the server exposes three groups of routes:
 The `.done` exclusion is persisted per tab in a `.done.json` file alongside each tab's `list.json` under `consoleDataOutputDir`. The file is never directly servable because the dot-segment block rejects any path containing it.
 
 The `checkIssueReviewReadiness` sub-command lets an agent self-check whether an issue is currently review-ready. It does NOT change the issue Status field and does NOT post any comment. It writes a single JSON line to stdout of the shape `{ "reviewReady": boolean, "rejections": [{ "type": string, "detail": string }] }` and exits 0 on a successful evaluation regardless of readiness; a non-zero exit indicates an operational error (auth failure, network error). The rejection types include: `ISSUE_NOT_FOUND`, `NO_REPORT_FROM_AGENT_BOT`, `REPORT_HAS_NEXT_STEP`, `PULL_REQUEST_NOT_FOUND`, `PULL_REQUEST_IS_DRAFT`, `PULL_REQUEST_CONFLICTED`, `ANY_CI_JOB_FAILED_OR_IN_PROGRESS`, `REQUIRED_CI_JOB_NEVER_STARTED`, `ANY_REVIEW_COMMENT_NOT_RESOLVED`, and `MULTIPLE_PULL_REQUESTS_FOUND`. The `--projectUrl` option is optional; when omitted the command still runs using only the issue URL.
+
+The `selectOauthToken` sub-command reads the same per-token rate-limit cache that the `startDaemon` proxy writes (see "Claude OAuth Token Rotation" below) and prints exactly one token string to stdout so a caller can choose an appropriate token before launching Claude Code. It is read-only: it never starts the proxy, never mutates any cache file, and never writes the token anywhere. Selection runs in two stages. First, a candidate filter keeps tokens whose 5-hour window is at least 60% free (5-hour utilization at most 0.40) AND whose 7-day window is at least 30% free (7-day utilization at most 0.70), where "% free" is `1 - utilization`. A token with no cache file, or whose window reset epoch has already passed, is treated as fully free (utilization 0) for these checks. Second, among the surviving candidates it selects the single token whose 7-day window reset epoch is nearest in the future (soonest reset), so weekly quota that would otherwise reset unused is consumed first; a candidate with no active 7-day window is treated as having the farthest reset (now + 7 days) and therefore sorts last. The selected token string is written to stdout (pipeable) and the per-candidate decision trace is written to stderr. When no token passes the filter, nothing is written to stdout and the command exits non-zero with an explanatory message on stderr. The token-list path comes from `--tokenListJsonPath` or the `CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH` environment variable; the cache directory comes from `--cacheDir` or the `TDPM_RATELIMIT_CACHE_DIR` environment variable, defaulting to `${XDG_CACHE_HOME:-~/.cache}/tdpm/ratelimit`.
 
 ## Example 📖
 
@@ -98,6 +105,10 @@ npx github-issue-tower-defence-management checkIssueReviewReadiness --configFile
 
 ```
 npx github-issue-tower-defence-management serveConsole --configFilePath ./preparator-config.yml --port 9981
+```
+
+```
+TOKEN=$(npx github-issue-tower-defence-management selectOauthToken --tokenListJsonPath ./claudeCodeOauthTokenList.json)
 ```
 
 ## Config
