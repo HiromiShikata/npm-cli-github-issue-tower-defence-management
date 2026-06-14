@@ -1,3 +1,10 @@
+# [1.83.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.82.1...v1.83.0) (2026-06-14)
+
+
+### Features
+
+* **core:** route spawn model per token from each token's weekly availability ([#829](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/829)) ([d270a26](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d270a2609ed17fff33e010a236af17d9838928be)), closes [#828](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/828)
+
 ## [1.82.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.82.0...v1.82.1) (2026-06-12)
 
 

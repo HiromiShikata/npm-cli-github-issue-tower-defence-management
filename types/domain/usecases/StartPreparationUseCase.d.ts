@@ -21,6 +21,7 @@ export declare class StartPreparationUseCase {
     private weeklyLimitTypeForModel;
     private isWithinCooldown;
     private isModelWeeklyLimitRejected;
+    private selectModelForToken;
     private secondsUntilSevenDayReset;
     private compareBySevenDayDeadlineThenUtilization;
     private taperedConcurrentLimit;

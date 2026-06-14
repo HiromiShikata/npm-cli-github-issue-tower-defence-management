@@ -28,6 +28,21 @@ class StartPreparationUseCase {
             const general = usage.modelWeeklyLimits['seven_day'];
             return general !== undefined && general.rejected;
         };
+        this.selectModelForToken = (usage, defaultModelName, fallbackModelName) => {
+            const generalWeeklyLimit = usage.modelWeeklyLimits['seven_day'];
+            if (generalWeeklyLimit !== undefined && generalWeeklyLimit.rejected) {
+                return null;
+            }
+            const candidateModelNames = [defaultModelName, fallbackModelName].filter((modelName) => modelName !== null && modelName !== '');
+            for (const candidateModelName of candidateModelNames) {
+                const weeklyLimitType = this.weeklyLimitTypeForModel(candidateModelName);
+                const specificWeeklyLimit = usage.modelWeeklyLimits[weeklyLimitType];
+                if (specificWeeklyLimit === undefined || !specificWeeklyLimit.rejected) {
+                    return candidateModelName;
+                }
+            }
+            return null;
+        };
         this.secondsUntilSevenDayReset = (usage, weeklyLimitType, nowEpochSeconds) => {
             const specific = usage.modelWeeklyLimits[weeklyLimitType];
             if (specific !== undefined) {
@@ -39,9 +54,9 @@ class StartPreparationUseCase {
             }
             return Number.POSITIVE_INFINITY;
         };
-        this.compareBySevenDayDeadlineThenUtilization = (a, b, weeklyLimitType, nowEpochSeconds) => {
-            const aSecondsUntilReset = this.secondsUntilSevenDayReset(a, weeklyLimitType, nowEpochSeconds);
-            const bSecondsUntilReset = this.secondsUntilSevenDayReset(b, weeklyLimitType, nowEpochSeconds);
+        this.compareBySevenDayDeadlineThenUtilization = (a, aWeeklyLimitType, b, bWeeklyLimitType, nowEpochSeconds) => {
+            const aSecondsUntilReset = this.secondsUntilSevenDayReset(a, aWeeklyLimitType, nowEpochSeconds);
+            const bSecondsUntilReset = this.secondsUntilSevenDayReset(b, bWeeklyLimitType, nowEpochSeconds);
             if (aSecondsUntilReset !== bSecondsUntilReset) {
                 return aSecondsUntilReset - bSecondsUntilReset;
             }
@@ -59,23 +74,28 @@ class StartPreparationUseCase {
             const fiveHourLimit = this.taperedConcurrentLimit(fiveHourUtilization, FIVE_HOUR_THROTTLE_START_THRESHOLD);
             return Math.min(sevenDayLimit, fiveHourLimit);
         };
-        this.selectRotationTokens = (tokenUsages, utilizationPercentageThreshold, modelName, maxConcurrent) => {
-            const weeklyLimitType = this.weeklyLimitTypeForModel(modelName);
+        this.selectRotationTokens = (tokenUsages, utilizationPercentageThreshold, defaultModelName, fallbackModelName, maxConcurrent) => {
             const nowEpochSeconds = Date.now() / 1000;
             const eligibleTokens = tokenUsages
                 .filter((usage) => !usage.blocked)
                 .filter((usage) => !usage.rejected)
                 .filter((usage) => !this.isWithinCooldown(usage, nowEpochSeconds))
-                .filter((usage) => !this.isModelWeeklyLimitRejected(usage, weeklyLimitType))
                 .filter((usage) => usage.fiveHourUtilization * 100 < utilizationPercentageThreshold)
-                .sort((a, b) => this.compareBySevenDayDeadlineThenUtilization(a, b, weeklyLimitType, nowEpochSeconds));
+                .flatMap((usage) => {
+                const model = this.selectModelForToken(usage, defaultModelName, fallbackModelName);
+                if (model === null)
+                    return [];
+                return [{ usage, model }];
+            })
+                .sort((a, b) => this.compareBySevenDayDeadlineThenUtilization(a.usage, this.weeklyLimitTypeForModel(a.model), b.usage, this.weeklyLimitTypeForModel(b.model), nowEpochSeconds));
             if (eligibleTokens.length === 0) {
                 return { tokens: [], effectiveCap: 0, tokensWithLimits: [] };
             }
-            const tokensWithLimits = eligibleTokens.map((usage) => ({
+            const tokensWithLimits = eligibleTokens.map(({ usage, model }) => ({
                 token: usage.token,
+                model,
                 limit: this.getTokenConcurrentLimit(usage.fiveHourUtilization, usage.sevenDayUtilization),
-                secondsUntilSevenDayReset: this.secondsUntilSevenDayReset(usage, weeklyLimitType, nowEpochSeconds),
+                secondsUntilSevenDayReset: this.secondsUntilSevenDayReset(usage, this.weeklyLimitTypeForModel(model), nowEpochSeconds),
             }));
             const totalCapacity = tokensWithLimits.reduce((sum, t) => sum + t.limit, 0);
             const effectiveCap = Math.min(maxConcurrent, totalCapacity);
@@ -99,7 +119,7 @@ class StartPreparationUseCase {
                 .filter((usage) => !this.isWithinCooldown(usage, nowEpochSeconds))
                 .filter((usage) => !this.isModelWeeklyLimitRejected(usage, weeklyLimitType))
                 .filter((usage) => usage.fiveHourUtilization * 100 < utilizationPercentageThreshold)
-                .sort((a, b) => this.compareBySevenDayDeadlineThenUtilization(a, b, weeklyLimitType, nowEpochSeconds));
+                .sort((a, b) => this.compareBySevenDayDeadlineThenUtilization(a, weeklyLimitType, b, weeklyLimitType, nowEpochSeconds));
             const selectedTokenValues = new Set(selectedTokens.map((u) => u.token));
             const excluded = tokenUsages
                 .filter((usage) => !selectedTokenValues.has(usage.token))
@@ -138,27 +158,11 @@ class StartPreparationUseCase {
                 : null;
             const maximumPreparingIssuesCount = params.maximumPreparingIssuesCount ?? NORMAL_CONCURRENT_LIMIT;
             let effectiveMaxPreparingIssuesCount = maximumPreparingIssuesCount;
-            let effectiveDefaultLlmModelName = params.defaultLlmModelName;
+            const fallbackLlmModelName = params.fallbackLlmModelName ?? exports.DEFAULT_FALLBACK_LLM_MODEL_NAME;
             if (tokenUsages.length > 0) {
-                const { tokens: ranked, effectiveCap, tokensWithLimits: rankedTokensWithLimits, } = this.selectRotationTokens(tokenUsages, params.utilizationPercentageThreshold, params.defaultLlmModelName, maximumPreparingIssuesCount);
-                let selectedTokens = ranked;
-                let selectedCap = effectiveCap;
-                let selectedTokensWithLimitsLocal = rankedTokensWithLimits;
-                if (selectedTokens.length === 0 &&
-                    this.weeklyLimitTypeForModel(params.defaultLlmModelName) ===
-                        'seven_day_sonnet') {
-                    const fallbackModelName = params.fallbackLlmModelName ?? exports.DEFAULT_FALLBACK_LLM_MODEL_NAME;
-                    const { tokens: fallbackRanked, effectiveCap: fallbackCap, tokensWithLimits: fallbackTokensWithLimits, } = this.selectRotationTokens(tokenUsages, params.utilizationPercentageThreshold, fallbackModelName, maximumPreparingIssuesCount);
-                    if (fallbackRanked.length > 0) {
-                        console.warn(`Sonnet 7-day weekly limit (${this.weeklyLimitTypeForModel(params.defaultLlmModelName)}) is exhausted across all configured Claude OAuth token(s). Falling back to ${fallbackModelName}.`);
-                        selectedTokens = fallbackRanked;
-                        selectedCap = fallbackCap;
-                        selectedTokensWithLimitsLocal = fallbackTokensWithLimits;
-                        effectiveDefaultLlmModelName = fallbackModelName;
-                    }
-                }
+                const { tokens: selectedTokens, effectiveCap: selectedCap, tokensWithLimits: selectedTokensWithLimitsLocal, } = this.selectRotationTokens(tokenUsages, params.utilizationPercentageThreshold, params.defaultLlmModelName, fallbackLlmModelName, maximumPreparingIssuesCount);
                 if (selectedTokens.length === 0) {
-                    console.warn(`All ${tokenUsages.length} configured Claude OAuth token(s) are unavailable (blocked, rejected, weekly limit for ${this.weeklyLimitTypeForModel(params.defaultLlmModelName)} exhausted, or 5h utilization >= ${params.utilizationPercentageThreshold}%). Skipping starting preparation.`);
+                    console.warn(`All ${tokenUsages.length} configured Claude OAuth token(s) are unavailable (blocked, rejected, weekly limits for the configured model(s) exhausted, or 5h utilization >= ${params.utilizationPercentageThreshold}%). Skipping starting preparation.`);
                     return { rotationOrder };
                 }
                 await this.claudeTokenUsageRepository.ensureObservable();
@@ -221,11 +225,13 @@ class StartPreparationUseCase {
                         .trim() ||
                     params.defaultLlmAgentName ||
                     params.defaultAgentName;
-                const model = issue.labels
+                const labelModelName = issue.labels
                     .find((label) => label.startsWith('llm-model:'))
                     ?.replace('llm-model:', '')
-                    .trim() || effectiveDefaultLlmModelName;
-                if (!model) {
+                    .trim();
+                if (!labelModelName &&
+                    !params.defaultLlmModelName &&
+                    rotationTokens === null) {
                     console.error(`No LLM model configured for issue ${issue.url}. Provide --defaultLlmModelName or add an llm-model: label.`);
                     continue;
                 }
@@ -281,25 +287,13 @@ class StartPreparationUseCase {
                 }
                 await this.issueRepository.updateStatus(project, issue, preparationStatusOption.id);
                 issue.status = WorkflowStatus_1.PREPARATION_STATUS_NAME;
-                const awArgs = [
-                    issue.url,
-                    agent,
-                    model,
-                    '--configFilePath',
-                    params.configFilePath,
-                    '--branch',
-                    branchName,
-                ];
-                if (params.codexHomeCandidates !== null &&
-                    params.codexHomeCandidates.length > 0) {
-                    const codexHome = params.codexHomeCandidates[startedInThisRunCount % params.codexHomeCandidates.length];
-                    awArgs.push('--codexHome', codexHome);
-                }
                 let spawnEnv;
+                let routedModelName = null;
                 if (rotationTokens !== null && proxyBaseUrl !== null) {
                     const tokenWithSoonestResetAmongAvailable = selectedTokensWithLimits
                         .map((t) => ({
                         token: t.token,
+                        model: t.model,
                         remaining: t.limit -
                             (tokenInFlightCounts[t.token] ?? 0) -
                             (spawnedInThisRunByToken[t.token] ?? 0),
@@ -316,12 +310,32 @@ class StartPreparationUseCase {
                         break;
                     }
                     const selected = tokenWithSoonestResetAmongAvailable.token;
+                    routedModelName = tokenWithSoonestResetAmongAvailable.model;
                     spawnedInThisRunByToken[selected] =
                         (spawnedInThisRunByToken[selected] ?? 0) + 1;
                     spawnEnv = {
                         CLAUDE_CODE_OAUTH_TOKEN: selected,
                         ANTHROPIC_BASE_URL: proxyBaseUrl,
                     };
+                }
+                const model = labelModelName || routedModelName || params.defaultLlmModelName;
+                if (!model) {
+                    console.error(`No LLM model configured for issue ${issue.url}. Provide --defaultLlmModelName or add an llm-model: label.`);
+                    continue;
+                }
+                const awArgs = [
+                    issue.url,
+                    agent,
+                    model,
+                    '--configFilePath',
+                    params.configFilePath,
+                    '--branch',
+                    branchName,
+                ];
+                if (params.codexHomeCandidates !== null &&
+                    params.codexHomeCandidates.length > 0) {
+                    const codexHome = params.codexHomeCandidates[startedInThisRunCount % params.codexHomeCandidates.length];
+                    awArgs.push('--codexHome', codexHome);
                 }
                 await this.localCommandRunner.runCommand('aw', awArgs, spawnEnv ? { env: spawnEnv } : undefined);
                 startedInThisRunCount++;
