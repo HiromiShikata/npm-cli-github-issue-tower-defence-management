@@ -14,6 +14,7 @@ import {
   IN_TMUX_BY_AGENT_STATUS_NAME,
   IN_TMUX_STATUS_NAME,
   LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
+  LEGACY_IN_TMUX_BY_HUMAN_STATUS_NAME,
   LEGACY_IN_TMUX_STATUS_NAME,
   LEGACY_TODO_STATUS_NAME,
   PC_TODO_STATUS_NAME,
@@ -389,7 +390,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     expect(payload.some((s) => s.name === LEGACY_TODO_STATUS_NAME)).toBe(false);
   });
 
-  it('should rename legacy "In Tmux" to "In Tmux by human" by reusing the existing option ID', async () => {
+  it('should rename legacy "In Tmux" to "In Tmux live session" by reusing the existing option ID', async () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
@@ -503,6 +504,46 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     expect(
       payload.filter((s) => s.name === IN_TMUX_BY_AGENT_STATUS_NAME),
     ).toHaveLength(1);
+  });
+
+  it('should rename legacy "In Tmux by human" to "In Tmux live session" by reusing the existing option ID', async () => {
+    const mockProjectRepository =
+      mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
+    const mockIssueRepository =
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+    const statuses: FieldOption[] = REQUIRED_WORKFLOW_STATUSES.map(
+      (required, index) => ({
+        id: `id-${index}`,
+        name:
+          required.name === IN_TMUX_STATUS_NAME
+            ? LEGACY_IN_TMUX_BY_HUMAN_STATUS_NAME
+            : required.name,
+        color: required.color,
+        description: '',
+      }),
+    );
+    const project = buildProject(statuses);
+    mockProjectRepository.getByUrl.mockResolvedValue(project);
+    mockProjectRepository.updateStatusList.mockResolvedValue([]);
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [],
+      cacheUsed: false,
+    });
+
+    const useCase = new SetupTowerDefenceProjectUseCase(
+      mockProjectRepository,
+      mockIssueRepository,
+    );
+    await useCase.run({ projectUrl: project.url });
+
+    expect(mockProjectRepository.updateStatusList).toHaveBeenCalledTimes(1);
+    const [, payload] = mockProjectRepository.updateStatusList.mock.calls[0];
+    const inTmuxEntry = payload.find((s) => s.name === IN_TMUX_STATUS_NAME);
+    expect(inTmuxEntry).toBeDefined();
+    expect(inTmuxEntry?.id).toBe('id-6');
+    expect(
+      payload.some((s) => s.name === LEGACY_IN_TMUX_BY_HUMAN_STATUS_NAME),
+    ).toBe(false);
   });
 
   it('should remove "PC Todo" from the status list and not include it in others', async () => {
