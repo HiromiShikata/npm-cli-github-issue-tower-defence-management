@@ -35,6 +35,7 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
+          fiveHourRejected: false,
           modelWeeklyLimits: {},
           blockedUntilEpoch: 0,
         };
@@ -92,6 +93,7 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
         sevenDayUtilization,
         blocked: snapshot.blocked,
         rejected,
+        fiveHourRejected: fiveHourRejectionActive,
         modelWeeklyLimits,
         blockedUntilEpoch: cooldownActive ? snapshot.blockedUntilEpoch : 0,
       };

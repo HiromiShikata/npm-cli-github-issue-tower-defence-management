@@ -10,6 +10,7 @@ export type ClaudeTokenUsage = {
   sevenDayUtilization: number;
   blocked: boolean;
   rejected: boolean;
+  fiveHourRejected: boolean;
   modelWeeklyLimits: Record<string, ClaudeModelWeeklyLimit>;
   blockedUntilEpoch: number;
 };
