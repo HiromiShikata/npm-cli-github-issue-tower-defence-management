@@ -199,6 +199,7 @@ claudeCodeOauthTokenListJsonPath?: string # Optional: Path to a JSON file listin
 awLogDirectoryPath?: string # Optional: Directory path where aw log files named {org}_{repo}_{number}_* are written. Used with awLogStaleThresholdMinutes to detect zombie-wrapper orphans
 awLogStaleThresholdMinutes?: number # Optional: Minutes since last aw log mtime after which a Preparation issue is considered orphaned even when pgrep still returns 0. Requires awLogDirectoryPath
 labelsAsLlmAgentName?: string[] # Optional: List of issue labels that are themselves agent names. When an issue carries any label that is included in this list, that label name is used as the agent name. Selection precedence is: (1) explicit `llm-agent:` label, (2) labelsAsLlmAgentName entry match, (3) `category:` label, (4) defaultLlmAgentName, (5) defaultAgentName
+consoleDataOutputDir?: string # Optional: Base output directory for the per-project Console list.json files written each schedule cycle. When unset, Console list generation is skipped
 changeTargetPathAliases?: # Optional: Map of short alias keys to full repository-root-relative directory paths. Allows `change-target:<alias>` labels to reference deeply nested paths that exceed GitHub's 50-character label limit. When a `change-target:` label's value matches a key in this map, it is expanded to the corresponding full path before confinement checking. Values with leading or trailing slashes are normalized automatically. Example below
   adapter-interfaces: src/domain/usecases/adapter-interfaces
 ```
@@ -330,6 +331,68 @@ This file is written atomically (written to a `.tmp` file then renamed) so exter
 - `system.swap.usedGib` / `system.swap.totalGib`: Used and total host swap in GiB.
 
 System metrics are read from `/proc/meminfo` at snapshot write time.
+
+## Per-Project Console Lists
+
+When `consoleDataOutputDir` is configured, each schedule cycle also writes four per-tab Console list files, generated from the same in-memory project and issue data already loaded for the cycle (no additional GitHub API calls):
+
+```
+{consoleDataOutputDir}/{projectName}/{tab}/list.json
+```
+
+for `tab` in `prs`, `triage`, `unread`, and `failed-preparation`. Each file is written atomically (written to a `.tmp` file then renamed) so external readers never see a partial write. When `consoleDataOutputDir` is unset the generation is skipped, and any error during generation is logged and swallowed so the schedule cycle is never affected.
+
+### Item Selection
+
+Every tab applies a common actionable filter to the project's issues: the issue is open, is assigned to the project manager, has no depended issue URLs, and has neither a next action date nor a next action hour set. Each tab then applies its own selector:
+
+- `prs`: status equals `Awaiting Quality Check` (case-insensitive)
+- `unread`: status equals `Unread` (case-insensitive)
+- `failed-preparation`: status equals `Failed Preparation` (exact case)
+- `triage`: story name contains `no story` (case-insensitive)
+
+### JSON Shape
+
+The `prs`, `unread`, and `failed-preparation` tabs share this shape:
+
+```json
+{
+  "pjcode": "my-project",
+  "generatedAt": "2026-06-14T07:22:33Z",
+  "statusOptions": [
+    { "id": "...", "name": "Awaiting Workspace", "color": "BLUE" }
+  ],
+  "storyOrder": ["Story Alpha", "Story Beta"],
+  "storyColors": { "Story Alpha": { "color": "BLUE" } },
+  "items": [
+    {
+      "number": 1,
+      "title": "Example",
+      "url": "https://github.com/owner/repo/issues/1",
+      "repo": "owner/repo",
+      "nameWithOwner": "owner/repo",
+      "projectItemId": "...",
+      "itemId": "...",
+      "isPr": false,
+      "story": "Story Alpha",
+      "labels": ["bug"],
+      "createdAt": "2026-06-13T08:18:45.000Z"
+    }
+  ]
+}
+```
+
+The `triage` tab omits `statusOptions`, adds `storyOptions` (all story field options), and uses plain color string values in `storyColors` (for example `"Story Alpha": "BLUE"`).
+
+### Field Descriptions
+
+- `pjcode`: The configured project name.
+- `generatedAt`: UTC timestamp (no milliseconds) when the lists were generated. Item `createdAt` values keep milliseconds.
+- `statusOptions`: Project status field options offered as routing buttons. The current-status option and `Done` are excluded; `failed-preparation` additionally excludes `Preparation`, `Icebox`, `Unread`, and `In Tmux by human`.
+- `storyOptions` (triage tab only): All story field options.
+- `storyOrder`: Story field option names in field order (empty array when the project has no story field).
+- `storyColors`: Map from story name to its color. Object value (`{ "color": ... }`) for `prs`/`unread`/`failed-preparation`; plain string value for `triage`.
+- `items`: Selected issues, stable-sorted by their story's position in `storyOrder` (unknown stories sorted last). No item carries a `body` field.
 
 ## Token Rotation Order File
 

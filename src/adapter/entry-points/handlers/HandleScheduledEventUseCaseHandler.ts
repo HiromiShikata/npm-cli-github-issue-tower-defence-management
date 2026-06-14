@@ -2,6 +2,7 @@ import YAML from 'yaml';
 import TYPIA from 'typia';
 import fs from 'fs';
 import { writeSituationFile } from './situationFileWriter';
+import { writeConsoleLists } from './consoleListsWriter';
 import { writeRotationOrderFile } from './rotationOrderFileWriter';
 import {
   fetchProjectReadme,
@@ -66,6 +67,7 @@ export class HandleScheduledEventUseCaseHandler {
     const input: unknown = YAML.parse(configFileContent);
     type inputType = Parameters<HandleScheduledEventUseCase['run']>[0] & {
       claudeCodeOauthTokenListJsonPath?: string;
+      consoleDataOutputDir?: string;
       credentials: {
         manager: {
           github: {
@@ -365,6 +367,22 @@ export class HandleScheduledEventUseCaseHandler {
           mergedInput.startPreparation?.preparationProcessCheckCommand ?? null,
         localCommandRunner: nodeLocalCommandRunner,
       });
+
+      try {
+        writeConsoleLists({
+          consoleDataOutputDir: mergedInput.consoleDataOutputDir ?? null,
+          pjcode: input.projectName,
+          assigneeLogin: input.manager,
+          project: result.project,
+          issues: result.issues,
+        });
+      } catch (error) {
+        console.error(
+          `Failed to write console lists: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
     }
     return result;
   };
