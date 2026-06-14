@@ -65,6 +65,7 @@ class ProxyClaudeTokenUsageRepository {
                         sevenDayUtilization: 0,
                         blocked: false,
                         rejected: false,
+                        fiveHourRejected: false,
                         modelWeeklyLimits: {},
                         blockedUntilEpoch: 0,
                     };
@@ -94,9 +95,11 @@ class ProxyClaudeTokenUsageRepository {
                 const hasAnySevenDayWeeklyLimit = modelWeeklyLimits['seven_day'] !== undefined ||
                     modelWeeklyLimits['seven_day_opus'] !== undefined ||
                     modelWeeklyLimits['seven_day_sonnet'] !== undefined;
+                const needsGenericSevenDayBridge = modelWeeklyLimits['seven_day'] === undefined &&
+                    (!hasAnySevenDayWeeklyLimit || sevenDayRejectionActive);
                 if (snapshot.sevenDayReset > 0 &&
                     !sevenDayExpired &&
-                    !hasAnySevenDayWeeklyLimit) {
+                    needsGenericSevenDayBridge) {
                     modelWeeklyLimits['seven_day'] = {
                         rejected: sevenDayRejectionActive,
                         resetsAt: snapshot.sevenDayReset,
@@ -110,6 +113,7 @@ class ProxyClaudeTokenUsageRepository {
                     sevenDayUtilization,
                     blocked: snapshot.blocked,
                     rejected,
+                    fiveHourRejected: fiveHourRejectionActive,
                     modelWeeklyLimits,
                     blockedUntilEpoch: cooldownActive ? snapshot.blockedUntilEpoch : 0,
                 };

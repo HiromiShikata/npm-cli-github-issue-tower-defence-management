@@ -25,5 +25,6 @@ export declare const cachePathForToken: (token: string) => string;
 export declare const writeRateLimit: (token: string, headers: Record<string, string | string[] | undefined>, statusCode?: number | null) => void;
 export declare const writeModelRateLimit: (token: string, limits: Record<string, ModelWeeklyLimit>) => void;
 export declare const parseModelRateLimitsFromBody: (body: string) => Record<string, ModelWeeklyLimit>;
+export declare const parseModelRateLimitsFromHeaders: (headers: Record<string, string>) => Record<string, ModelWeeklyLimit>;
 export declare const readRateLimit: (token: string) => RateLimitSnapshot | null;
 //# sourceMappingURL=RateLimitCache.d.ts.map

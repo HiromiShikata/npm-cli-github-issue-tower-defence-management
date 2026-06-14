@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.readRateLimit = exports.parseModelRateLimitsFromBody = exports.writeModelRateLimit = exports.writeRateLimit = exports.cachePathForToken = exports.hashToken = exports.cacheDir = exports.HEADERLESS_429_MAX_COOLDOWN_SECONDS = exports.HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS = exports.PROXY_PORT = void 0;
+exports.readRateLimit = exports.parseModelRateLimitsFromHeaders = exports.parseModelRateLimitsFromBody = exports.writeModelRateLimit = exports.writeRateLimit = exports.cachePathForToken = exports.hashToken = exports.cacheDir = exports.HEADERLESS_429_MAX_COOLDOWN_SECONDS = exports.HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS = exports.PROXY_PORT = void 0;
 const crypto = __importStar(require("crypto"));
 const fs = __importStar(require("fs"));
 const os = __importStar(require("os"));
@@ -189,6 +189,28 @@ const parseModelRateLimitsFromBody = (body) => {
     return result;
 };
 exports.parseModelRateLimitsFromBody = parseModelRateLimitsFromBody;
+const HEADER_CLAIM_TO_LIMIT_TYPE = {
+    '7d_sonnet': 'seven_day_sonnet',
+    '7d_opus': 'seven_day_opus',
+};
+const parseModelRateLimitsFromHeaders = (headers) => {
+    const result = {};
+    for (const [headerClaim, limitType] of Object.entries(HEADER_CLAIM_TO_LIMIT_TYPE)) {
+        const status = headers[`anthropic-ratelimit-unified-${headerClaim}-status`];
+        const resetRaw = headers[`anthropic-ratelimit-unified-${headerClaim}-reset`];
+        if (status === undefined)
+            continue;
+        const resetsAt = resetRaw !== undefined && Number.isFinite(Number(resetRaw))
+            ? Number(resetRaw)
+            : 0;
+        result[limitType] = {
+            rejected: status === 'rejected',
+            resetsAt,
+        };
+    }
+    return result;
+};
+exports.parseModelRateLimitsFromHeaders = parseModelRateLimitsFromHeaders;
 const readRateLimit = (token) => {
     const filePath = (0, exports.cachePathForToken)(token);
     if (!fs.existsSync(filePath))
@@ -236,7 +258,10 @@ const readRateLimit = (token) => {
             unifiedRejected,
             fiveHourRejected,
             sevenDayRejected,
-            modelWeeklyLimits: readModelWeeklyLimits(parsed),
+            modelWeeklyLimits: {
+                ...(0, exports.parseModelRateLimitsFromHeaders)(headers),
+                ...readModelWeeklyLimits(parsed),
+            },
             lastUpdatedEpoch,
             blockedUntilEpoch,
         };

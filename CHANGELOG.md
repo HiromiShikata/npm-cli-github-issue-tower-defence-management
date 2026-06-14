@@ -1,3 +1,10 @@
+## [1.84.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.84.0...v1.84.1) (2026-06-14)
+
+
+### Bug Fixes
+
+* **core:** do not exclude a token from rotation solely on the unified/representative rate-limit rejection ([#833](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/833)) ([5b3e999](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5b3e999d4069c5db1e43a248b448eea4b5b38cf2)), closes [#832](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/832)
+
 # [1.84.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.83.0...v1.84.0) (2026-06-14)
 
 
