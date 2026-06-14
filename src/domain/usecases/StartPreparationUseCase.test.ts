@@ -1270,6 +1270,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -1280,6 +1281,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -1339,6 +1341,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -1349,6 +1352,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -2377,6 +2381,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -2456,6 +2461,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -2466,6 +2472,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -2578,6 +2585,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.1,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day_opus: {
@@ -2593,6 +2601,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.1,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day_opus: {
@@ -2655,6 +2664,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.1,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day_opus: {
@@ -2670,6 +2680,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.1,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day_opus: {
@@ -2731,6 +2742,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.1,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day_opus: {
@@ -2746,6 +2758,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.1,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day_opus: {
@@ -2804,6 +2817,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.7,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day_opus: {
@@ -2819,6 +2833,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.2,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day_opus: {
@@ -2890,6 +2905,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.7,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day_opus: {
@@ -2905,6 +2921,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.2,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day_opus: {
@@ -2965,6 +2982,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: true,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -2975,6 +2993,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -3031,6 +3050,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: nowEpochSeconds + 90,
         modelWeeklyLimits: {},
       },
@@ -3041,6 +3061,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -3096,6 +3117,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: true,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -3106,6 +3128,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: true,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -3167,6 +3190,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -3177,6 +3201,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -3257,6 +3282,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.5,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day_opus: {
@@ -3272,6 +3298,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.1,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day_opus: {
@@ -3287,6 +3314,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.7,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day_opus: {
@@ -3356,6 +3384,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.1,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day_opus: {
@@ -3371,6 +3400,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.1,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day_opus: {
@@ -3436,6 +3466,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.9,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -3491,6 +3522,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: true,
+        fiveHourRejected: true,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -3501,6 +3533,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -3556,6 +3589,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -3566,6 +3600,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -3621,6 +3656,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: true,
+        fiveHourRejected: true,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -3631,6 +3667,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -3686,6 +3723,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: true,
+        fiveHourRejected: true,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -3696,6 +3734,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: true,
+        fiveHourRejected: true,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -3803,6 +3842,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day_sonnet: { rejected: false, resetsAt: pastReset },
@@ -3815,6 +3855,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -3871,6 +3912,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day_sonnet: { rejected: true, resetsAt: futureReset },
@@ -3883,6 +3925,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -3939,6 +3982,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day: { rejected: true, resetsAt: futureReset },
@@ -3951,6 +3995,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -4007,6 +4052,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.1,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day_opus: {
@@ -4022,6 +4068,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.1,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day_opus: {
@@ -4083,6 +4130,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.1,
         blocked: true,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day_opus: {
@@ -4098,6 +4146,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.1,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day_opus: {
@@ -4169,6 +4218,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.1,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -4179,6 +4229,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.1,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day_opus: {
@@ -4258,6 +4309,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.1,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day: {
@@ -4273,6 +4325,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.1,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day: {
@@ -4288,6 +4341,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.1,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day: {
@@ -4353,6 +4407,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.1,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day: { rejected: false, resetsAt: sharedResetsAt },
@@ -4365,6 +4420,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.1,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day: { rejected: false, resetsAt: sharedResetsAt },
@@ -4424,6 +4480,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.1,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day_opus: { rejected: false, resetsAt: sharedResetsAt },
@@ -4436,6 +4493,7 @@ describe('StartPreparationUseCase', () => {
         sevenDayUtilization: 0.1,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day_opus: { rejected: false, resetsAt: sharedResetsAt },
@@ -4630,6 +4688,7 @@ describe('StartPreparationUseCase', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
+          fiveHourRejected: false,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day_sonnet: { rejected: true, resetsAt: futureReset },
@@ -4696,6 +4755,7 @@ describe('StartPreparationUseCase', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
+          fiveHourRejected: false,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day_sonnet: { rejected: true, resetsAt: futureReset },
@@ -4750,6 +4810,7 @@ describe('StartPreparationUseCase', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
+          fiveHourRejected: false,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day_sonnet: { rejected: true, resetsAt: futureReset },
@@ -4810,6 +4871,7 @@ describe('StartPreparationUseCase', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
+          fiveHourRejected: false,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {},
         },
@@ -4862,6 +4924,7 @@ describe('StartPreparationUseCase', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
+          fiveHourRejected: false,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day_sonnet: { rejected: true, resetsAt: futureReset },
@@ -4916,6 +4979,7 @@ describe('StartPreparationUseCase', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
+          fiveHourRejected: false,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {},
         },
@@ -4986,6 +5050,7 @@ describe('StartPreparationUseCase', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
+          fiveHourRejected: false,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day_sonnet: { rejected: true, resetsAt: futureReset },
@@ -4998,6 +5063,7 @@ describe('StartPreparationUseCase', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
+          fiveHourRejected: false,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {},
         },
@@ -5059,6 +5125,7 @@ describe('StartPreparationUseCase', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
+          fiveHourRejected: false,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day_sonnet: { rejected: true, resetsAt: futureReset },
@@ -5119,6 +5186,7 @@ describe('StartPreparationUseCase', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
+          fiveHourRejected: false,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day: { rejected: true, resetsAt: futureReset },
@@ -5177,6 +5245,7 @@ describe('StartPreparationUseCase', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
+          fiveHourRejected: false,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day_sonnet: { rejected: true, resetsAt: futureReset },
@@ -5210,6 +5279,186 @@ describe('StartPreparationUseCase', () => {
         },
       });
     });
+
+    it('includes a token whose unified representative-claim status is rejected (seven_day_sonnet) while its Opus weekly window is allowed and routes it to Opus', async () => {
+      const awaitingIssue = createMockIssue({
+        url: 'url1',
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        number: 1,
+        itemId: 'item-1',
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([awaitingIssue]),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+        {
+          name: 'token-sonnet-rejected-unified',
+          token: 'token-sonnet-rejected-unified',
+          fiveHourUtilization: 0.53,
+          sevenDayUtilization: 0.88,
+          blocked: false,
+          rejected: true,
+          fiveHourRejected: false,
+          blockedUntilEpoch: 0,
+          modelWeeklyLimits: {
+            seven_day_sonnet: { rejected: true, resetsAt: futureReset },
+            seven_day_opus: { rejected: false, resetsAt: futureReset },
+          },
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-sonnet-4-6',
+        fallbackLlmModelName: 'claude-opus-4-8',
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: null,
+        codexHomeCandidates: null,
+        allowIssueCacheMinutes: 0,
+        labelsAsLlmAgentName: null,
+      });
+
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+      expect(
+        mockLocalCommandRunner.runCommand.mock.calls[0][2]?.env
+          ?.CLAUDE_CODE_OAUTH_TOKEN,
+      ).toBe('token-sonnet-rejected-unified');
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][2]).toBe(
+        'claude-opus-4-8',
+      );
+    });
+
+    it('excludes a token whose 5-hour window is rejected even when its Opus weekly window is allowed', async () => {
+      const awaitingIssue = createMockIssue({
+        url: 'url1',
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        number: 1,
+        itemId: 'item-1',
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([awaitingIssue]),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+        {
+          name: 'token-5h-rejected',
+          token: 'token-5h-rejected',
+          fiveHourUtilization: 0.1,
+          sevenDayUtilization: 0,
+          blocked: false,
+          rejected: true,
+          fiveHourRejected: true,
+          blockedUntilEpoch: 0,
+          modelWeeklyLimits: {
+            seven_day_opus: { rejected: false, resetsAt: futureReset },
+          },
+        },
+      ]);
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-sonnet-4-6',
+        fallbackLlmModelName: 'claude-opus-4-8',
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: null,
+        codexHomeCandidates: null,
+        allowIssueCacheMinutes: 0,
+        labelsAsLlmAgentName: null,
+      });
+
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Skipping starting preparation'),
+      );
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('excludes a token whose unified status is rejected and whose seven_day_sonnet and seven_day_opus weekly windows are both rejected', async () => {
+      const awaitingIssue = createMockIssue({
+        url: 'url1',
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        number: 1,
+        itemId: 'item-1',
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([awaitingIssue]),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+        {
+          name: 'token-both-rejected-unified',
+          token: 'token-both-rejected-unified',
+          fiveHourUtilization: 0.1,
+          sevenDayUtilization: 0,
+          blocked: false,
+          rejected: true,
+          fiveHourRejected: false,
+          blockedUntilEpoch: 0,
+          modelWeeklyLimits: {
+            seven_day_sonnet: { rejected: true, resetsAt: futureReset },
+            seven_day_opus: { rejected: true, resetsAt: futureReset },
+          },
+        },
+      ]);
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-sonnet-4-6',
+        fallbackLlmModelName: 'claude-opus-4-8',
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: null,
+        codexHomeCandidates: null,
+        allowIssueCacheMinutes: 0,
+        labelsAsLlmAgentName: null,
+      });
+
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Skipping starting preparation'),
+      );
+      consoleWarnSpy.mockRestore();
+    });
   });
 
   describe('per-token in-flight global concurrency enforcement', () => {
@@ -5241,6 +5490,7 @@ describe('StartPreparationUseCase', () => {
           sevenDayUtilization: 0.9,
           blocked: false,
           rejected: false,
+          fiveHourRejected: false,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {},
         },
@@ -5295,6 +5545,7 @@ describe('StartPreparationUseCase', () => {
           sevenDayUtilization: 0.9,
           blocked: false,
           rejected: false,
+          fiveHourRejected: false,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {},
         },
@@ -5349,6 +5600,7 @@ describe('StartPreparationUseCase', () => {
           sevenDayUtilization: 0.9,
           blocked: false,
           rejected: false,
+          fiveHourRejected: false,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {},
         },
@@ -5359,6 +5611,7 @@ describe('StartPreparationUseCase', () => {
           sevenDayUtilization: 0.1,
           blocked: false,
           rejected: false,
+          fiveHourRejected: false,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {},
         },
@@ -5448,6 +5701,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
         sevenDayUtilization: 0.8,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day: {
@@ -5463,6 +5717,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
         sevenDayUtilization: 0.1,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
           seven_day: {
@@ -5478,6 +5733,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
         sevenDayUtilization: 0,
         blocked: true,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -5500,6 +5756,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -5520,6 +5777,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -5541,6 +5799,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -5564,6 +5823,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: nowEpochSeconds + 90,
         modelWeeklyLimits: {},
       },
@@ -5574,6 +5834,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {},
       },
@@ -5599,6 +5860,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
         sevenDayUtilization: 0,
         blocked: false,
         rejected: false,
+        fiveHourRejected: false,
         blockedUntilEpoch: nowEpochSeconds - 1,
         modelWeeklyLimits: {},
       },
@@ -5610,6 +5872,87 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
     expect(result[0].name).toBe('lapsed-cooldown');
     expect(result[0].cooldownExcluded).toBe(false);
     expect(result[0].thresholdExcluded).toBe(false);
+  });
+
+  it('selects a token whose unified status is rejected but whose requested model weekly window is allowed', () => {
+    const nowEpochSeconds = Math.floor(Date.now() / 1000);
+    const tokenUsages: ClaudeTokenUsage[] = [
+      {
+        name: 'sonnet-rejected-opus-ok',
+        token: 'sk-ant-sonnet-rejected',
+        fiveHourUtilization: 0.53,
+        sevenDayUtilization: 0.88,
+        blocked: false,
+        rejected: true,
+        fiveHourRejected: false,
+        blockedUntilEpoch: 0,
+        modelWeeklyLimits: {
+          seven_day_sonnet: {
+            rejected: true,
+            resetsAt: nowEpochSeconds + 20 * 3600,
+          },
+          seven_day_opus: {
+            rejected: false,
+            resetsAt: nowEpochSeconds + 20 * 3600,
+          },
+        },
+      },
+    ];
+
+    const result = useCase.buildRotationOrder(
+      tokenUsages,
+      90,
+      'claude-opus-4-8',
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe('sonnet-rejected-opus-ok');
+    expect(result[0].rejected).toBe(false);
+    expect(result[0].thresholdExcluded).toBe(false);
+    expect(result[0].cooldownExcluded).toBe(false);
+  });
+
+  it('excludes a token whose 5-hour window is rejected and marks it rejected in the rotation entry', () => {
+    const nowEpochSeconds = Math.floor(Date.now() / 1000);
+    const tokenUsages: ClaudeTokenUsage[] = [
+      {
+        name: 'five-hour-rejected',
+        token: 'sk-ant-5h-rejected',
+        fiveHourUtilization: 0.1,
+        sevenDayUtilization: 0,
+        blocked: false,
+        rejected: true,
+        fiveHourRejected: true,
+        blockedUntilEpoch: 0,
+        modelWeeklyLimits: {
+          seven_day_opus: {
+            rejected: false,
+            resetsAt: nowEpochSeconds + 20 * 3600,
+          },
+        },
+      },
+      {
+        name: 'available',
+        token: 'sk-ant-available',
+        fiveHourUtilization: 0.2,
+        sevenDayUtilization: 0,
+        blocked: false,
+        rejected: false,
+        fiveHourRejected: false,
+        blockedUntilEpoch: 0,
+        modelWeeklyLimits: {},
+      },
+    ];
+
+    const result = useCase.buildRotationOrder(tokenUsages, 90, null);
+
+    expect(result[0].name).toBe('available');
+    const excluded = result.find(
+      (entry) => entry.name === 'five-hour-rejected',
+    );
+    expect(excluded?.rejected).toBe(true);
+    expect(excluded?.thresholdExcluded).toBe(false);
+    expect(excluded?.cooldownExcluded).toBe(false);
   });
 });
 

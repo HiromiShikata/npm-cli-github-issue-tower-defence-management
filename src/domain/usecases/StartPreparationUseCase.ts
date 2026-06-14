@@ -168,7 +168,7 @@ export class StartPreparationUseCase {
     const nowEpochSeconds = Date.now() / 1000;
     const eligibleTokens = tokenUsages
       .filter((usage) => !usage.blocked)
-      .filter((usage) => !usage.rejected)
+      .filter((usage) => !usage.fiveHourRejected)
       .filter((usage) => !this.isWithinCooldown(usage, nowEpochSeconds))
       .filter(
         (usage) =>
@@ -236,7 +236,7 @@ export class StartPreparationUseCase {
     const nowEpochSeconds = Date.now() / 1000;
     const selectedTokens = tokenUsages
       .filter((usage) => !usage.blocked)
-      .filter((usage) => !usage.rejected)
+      .filter((usage) => !usage.fiveHourRejected)
       .filter((usage) => !this.isWithinCooldown(usage, nowEpochSeconds))
       .filter(
         (usage) => !this.isModelWeeklyLimitRejected(usage, weeklyLimitType),
@@ -261,16 +261,16 @@ export class StartPreparationUseCase {
         name: usage.name ?? '',
         fiveHourUtilization: usage.fiveHourUtilization,
         blocked: usage.blocked,
-        rejected: usage.rejected,
+        rejected: usage.fiveHourRejected,
         thresholdExcluded:
           !usage.blocked &&
-          !usage.rejected &&
+          !usage.fiveHourRejected &&
           !this.isWithinCooldown(usage, nowEpochSeconds) &&
           !this.isModelWeeklyLimitRejected(usage, weeklyLimitType) &&
           usage.fiveHourUtilization * 100 >= utilizationPercentageThreshold,
         cooldownExcluded:
           !usage.blocked &&
-          !usage.rejected &&
+          !usage.fiveHourRejected &&
           this.isWithinCooldown(usage, nowEpochSeconds),
       }));
     const selectedEntries: RotationOrderEntry[] = selectedTokens.map(
@@ -338,7 +338,7 @@ export class StartPreparationUseCase {
       );
       if (selectedTokens.length === 0) {
         console.warn(
-          `All ${tokenUsages.length} configured Claude OAuth token(s) are unavailable (blocked, rejected, weekly limits for the configured model(s) exhausted, or 5h utilization >= ${params.utilizationPercentageThreshold}%). Skipping starting preparation.`,
+          `All ${tokenUsages.length} configured Claude OAuth token(s) are unavailable (blocked, 5h-window rejected, within cooldown, weekly limits for every candidate model exhausted, or 5h utilization >= ${params.utilizationPercentageThreshold}%). Skipping starting preparation.`,
         );
         return { rotationOrder };
       }

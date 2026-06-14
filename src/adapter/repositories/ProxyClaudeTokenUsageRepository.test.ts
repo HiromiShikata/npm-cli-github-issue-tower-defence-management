@@ -109,6 +109,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
+          fiveHourRejected: false,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day: { rejected: false, resetsAt: futureReset },
@@ -121,6 +122,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
+          fiveHourRejected: false,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {},
         },
@@ -155,6 +157,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 0,
           blocked: true,
           rejected: false,
+          fiveHourRejected: false,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day: { rejected: false, resetsAt: futureReset },
@@ -191,6 +194,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: true,
+          fiveHourRejected: true,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day: { rejected: false, resetsAt: futureReset },
@@ -227,6 +231,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 30,
           blocked: false,
           rejected: false,
+          fiveHourRejected: false,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day: { rejected: false, resetsAt: futureReset },
@@ -263,6 +268,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
+          fiveHourRejected: false,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day: { rejected: false, resetsAt: futureReset },
@@ -299,6 +305,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
+          fiveHourRejected: false,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day: { rejected: false, resetsAt: futureReset },
@@ -335,6 +342,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
+          fiveHourRejected: false,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {},
         },
@@ -369,6 +377,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: true,
+          fiveHourRejected: true,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day: { rejected: false, resetsAt: futureReset },
@@ -405,6 +414,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 100,
           blocked: false,
           rejected: true,
+          fiveHourRejected: false,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day: { rejected: true, resetsAt: futureReset },
@@ -441,6 +451,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
+          fiveHourRejected: false,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day: { rejected: false, resetsAt: futureReset },
@@ -466,6 +477,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 0,
           blocked: false,
           rejected: false,
+          fiveHourRejected: false,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {},
         },
@@ -502,6 +514,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 10,
           blocked: false,
           rejected: false,
+          fiveHourRejected: false,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day_sonnet: { rejected: true, resetsAt: futureReset },
@@ -540,6 +553,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
           sevenDayUtilization: 10,
           blocked: false,
           rejected: false,
+          fiveHourRejected: false,
           blockedUntilEpoch: 0,
           modelWeeklyLimits: {
             seven_day_sonnet: { rejected: false, resetsAt: pastReset },
@@ -679,6 +693,35 @@ describe('ProxyClaudeTokenUsageRepository', () => {
 
       expect(result[0].modelWeeklyLimits).toEqual({
         seven_day_sonnet: { rejected: false, resetsAt: sonnetResetsAt },
+      });
+    });
+
+    it('should bridge a rejected generic seven_day window even when a per-model weekly limit is already present', async () => {
+      const opusResetsAt = futureReset + 2000;
+      mockLoadTokenEntries.mockReturnValue([
+        { name: 'alice', token: 'token-a' },
+      ]);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 10,
+        fiveHourReset: futureReset,
+        sevenDayUtilization: 100,
+        sevenDayReset: futureReset,
+        blocked: false,
+        rejected: true,
+        unifiedRejected: false,
+        fiveHourRejected: false,
+        sevenDayRejected: true,
+        modelWeeklyLimits: {
+          seven_day_opus: { rejected: false, resetsAt: opusResetsAt },
+        },
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result[0].modelWeeklyLimits).toEqual({
+        seven_day_opus: { rejected: false, resetsAt: opusResetsAt },
+        seven_day: { rejected: true, resetsAt: futureReset },
       });
     });
 
