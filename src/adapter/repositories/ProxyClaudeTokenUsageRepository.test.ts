@@ -696,6 +696,35 @@ describe('ProxyClaudeTokenUsageRepository', () => {
       });
     });
 
+    it('should bridge a rejected generic seven_day window even when a per-model weekly limit is already present', async () => {
+      const opusResetsAt = futureReset + 2000;
+      mockLoadTokenEntries.mockReturnValue([
+        { name: 'alice', token: 'token-a' },
+      ]);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 10,
+        fiveHourReset: futureReset,
+        sevenDayUtilization: 100,
+        sevenDayReset: futureReset,
+        blocked: false,
+        rejected: true,
+        unifiedRejected: false,
+        fiveHourRejected: false,
+        sevenDayRejected: true,
+        modelWeeklyLimits: {
+          seven_day_opus: { rejected: false, resetsAt: opusResetsAt },
+        },
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result[0].modelWeeklyLimits).toEqual({
+        seven_day_opus: { rejected: false, resetsAt: opusResetsAt },
+        seven_day: { rejected: true, resetsAt: futureReset },
+      });
+    });
+
     it('should not bridge sevenDayReset when the 7d reset has already passed', async () => {
       mockLoadTokenEntries.mockReturnValue([
         { name: 'alice', token: 'token-a' },

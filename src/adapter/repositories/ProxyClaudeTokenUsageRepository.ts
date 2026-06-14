@@ -75,10 +75,13 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
         modelWeeklyLimits['seven_day'] !== undefined ||
         modelWeeklyLimits['seven_day_opus'] !== undefined ||
         modelWeeklyLimits['seven_day_sonnet'] !== undefined;
+      const needsGenericSevenDayBridge =
+        modelWeeklyLimits['seven_day'] === undefined &&
+        (!hasAnySevenDayWeeklyLimit || sevenDayRejectionActive);
       if (
         snapshot.sevenDayReset > 0 &&
         !sevenDayExpired &&
-        !hasAnySevenDayWeeklyLimit
+        needsGenericSevenDayBridge
       ) {
         modelWeeklyLimits['seven_day'] = {
           rejected: sevenDayRejectionActive,
