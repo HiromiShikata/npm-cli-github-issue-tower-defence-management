@@ -61,6 +61,29 @@ export class StartPreparationUseCase {
     return general !== undefined && general.rejected;
   };
 
+  private selectModelForToken = (
+    usage: ClaudeTokenUsage,
+    defaultModelName: string | null,
+    fallbackModelName: string | null,
+  ): string | null => {
+    const generalWeeklyLimit = usage.modelWeeklyLimits['seven_day'];
+    if (generalWeeklyLimit !== undefined && generalWeeklyLimit.rejected) {
+      return null;
+    }
+    const candidateModelNames = [defaultModelName, fallbackModelName].filter(
+      (modelName): modelName is string =>
+        modelName !== null && modelName !== '',
+    );
+    for (const candidateModelName of candidateModelNames) {
+      const weeklyLimitType = this.weeklyLimitTypeForModel(candidateModelName);
+      const specificWeeklyLimit = usage.modelWeeklyLimits[weeklyLimitType];
+      if (specificWeeklyLimit === undefined || !specificWeeklyLimit.rejected) {
+        return candidateModelName;
+      }
+    }
+    return null;
+  };
+
   private secondsUntilSevenDayReset = (
     usage: ClaudeTokenUsage,
     weeklyLimitType: string,
@@ -79,18 +102,19 @@ export class StartPreparationUseCase {
 
   private compareBySevenDayDeadlineThenUtilization = (
     a: ClaudeTokenUsage,
+    aWeeklyLimitType: string,
     b: ClaudeTokenUsage,
-    weeklyLimitType: string,
+    bWeeklyLimitType: string,
     nowEpochSeconds: number,
   ): number => {
     const aSecondsUntilReset = this.secondsUntilSevenDayReset(
       a,
-      weeklyLimitType,
+      aWeeklyLimitType,
       nowEpochSeconds,
     );
     const bSecondsUntilReset = this.secondsUntilSevenDayReset(
       b,
-      weeklyLimitType,
+      bWeeklyLimitType,
       nowEpochSeconds,
     );
     if (aSecondsUntilReset !== bSecondsUntilReset) {
@@ -128,35 +152,43 @@ export class StartPreparationUseCase {
   private selectRotationTokens = (
     tokenUsages: ClaudeTokenUsage[],
     utilizationPercentageThreshold: number,
-    modelName: string | null,
+    defaultModelName: string | null,
+    fallbackModelName: string | null,
     maxConcurrent: number,
   ): {
     tokens: string[];
     effectiveCap: number;
     tokensWithLimits: Array<{
       token: string;
+      model: string;
       limit: number;
       secondsUntilSevenDayReset: number;
     }>;
   } => {
-    const weeklyLimitType = this.weeklyLimitTypeForModel(modelName);
     const nowEpochSeconds = Date.now() / 1000;
     const eligibleTokens = tokenUsages
       .filter((usage) => !usage.blocked)
       .filter((usage) => !usage.rejected)
       .filter((usage) => !this.isWithinCooldown(usage, nowEpochSeconds))
       .filter(
-        (usage) => !this.isModelWeeklyLimitRejected(usage, weeklyLimitType),
-      )
-      .filter(
         (usage) =>
           usage.fiveHourUtilization * 100 < utilizationPercentageThreshold,
       )
+      .flatMap((usage) => {
+        const model = this.selectModelForToken(
+          usage,
+          defaultModelName,
+          fallbackModelName,
+        );
+        if (model === null) return [];
+        return [{ usage, model }];
+      })
       .sort((a, b) =>
         this.compareBySevenDayDeadlineThenUtilization(
-          a,
-          b,
-          weeklyLimitType,
+          a.usage,
+          this.weeklyLimitTypeForModel(a.model),
+          b.usage,
+          this.weeklyLimitTypeForModel(b.model),
           nowEpochSeconds,
         ),
       );
@@ -165,15 +197,16 @@ export class StartPreparationUseCase {
       return { tokens: [], effectiveCap: 0, tokensWithLimits: [] };
     }
 
-    const tokensWithLimits = eligibleTokens.map((usage) => ({
+    const tokensWithLimits = eligibleTokens.map(({ usage, model }) => ({
       token: usage.token,
+      model,
       limit: this.getTokenConcurrentLimit(
         usage.fiveHourUtilization,
         usage.sevenDayUtilization,
       ),
       secondsUntilSevenDayReset: this.secondsUntilSevenDayReset(
         usage,
-        weeklyLimitType,
+        this.weeklyLimitTypeForModel(model),
         nowEpochSeconds,
       ),
     }));
@@ -215,6 +248,7 @@ export class StartPreparationUseCase {
       .sort((a, b) =>
         this.compareBySevenDayDeadlineThenUtilization(
           a,
+          weeklyLimitType,
           b,
           weeklyLimitType,
           nowEpochSeconds,
@@ -272,6 +306,7 @@ export class StartPreparationUseCase {
     let proxyBaseUrl: string | null = null;
     let selectedTokensWithLimits: Array<{
       token: string;
+      model: string;
       limit: number;
       secondsUntilSevenDayReset: number;
     }> = [];
@@ -287,51 +322,23 @@ export class StartPreparationUseCase {
     const maximumPreparingIssuesCount =
       params.maximumPreparingIssuesCount ?? NORMAL_CONCURRENT_LIMIT;
     let effectiveMaxPreparingIssuesCount = maximumPreparingIssuesCount;
-    let effectiveDefaultLlmModelName = params.defaultLlmModelName;
+    const fallbackLlmModelName =
+      params.fallbackLlmModelName ?? DEFAULT_FALLBACK_LLM_MODEL_NAME;
     if (tokenUsages.length > 0) {
       const {
-        tokens: ranked,
-        effectiveCap,
-        tokensWithLimits: rankedTokensWithLimits,
+        tokens: selectedTokens,
+        effectiveCap: selectedCap,
+        tokensWithLimits: selectedTokensWithLimitsLocal,
       } = this.selectRotationTokens(
         tokenUsages,
         params.utilizationPercentageThreshold,
         params.defaultLlmModelName,
+        fallbackLlmModelName,
         maximumPreparingIssuesCount,
       );
-      let selectedTokens = ranked;
-      let selectedCap = effectiveCap;
-      let selectedTokensWithLimitsLocal = rankedTokensWithLimits;
-      if (
-        selectedTokens.length === 0 &&
-        this.weeklyLimitTypeForModel(params.defaultLlmModelName) ===
-          'seven_day_sonnet'
-      ) {
-        const fallbackModelName =
-          params.fallbackLlmModelName ?? DEFAULT_FALLBACK_LLM_MODEL_NAME;
-        const {
-          tokens: fallbackRanked,
-          effectiveCap: fallbackCap,
-          tokensWithLimits: fallbackTokensWithLimits,
-        } = this.selectRotationTokens(
-          tokenUsages,
-          params.utilizationPercentageThreshold,
-          fallbackModelName,
-          maximumPreparingIssuesCount,
-        );
-        if (fallbackRanked.length > 0) {
-          console.warn(
-            `Sonnet 7-day weekly limit (${this.weeklyLimitTypeForModel(params.defaultLlmModelName)}) is exhausted across all configured Claude OAuth token(s). Falling back to ${fallbackModelName}.`,
-          );
-          selectedTokens = fallbackRanked;
-          selectedCap = fallbackCap;
-          selectedTokensWithLimitsLocal = fallbackTokensWithLimits;
-          effectiveDefaultLlmModelName = fallbackModelName;
-        }
-      }
       if (selectedTokens.length === 0) {
         console.warn(
-          `All ${tokenUsages.length} configured Claude OAuth token(s) are unavailable (blocked, rejected, weekly limit for ${this.weeklyLimitTypeForModel(params.defaultLlmModelName)} exhausted, or 5h utilization >= ${params.utilizationPercentageThreshold}%). Skipping starting preparation.`,
+          `All ${tokenUsages.length} configured Claude OAuth token(s) are unavailable (blocked, rejected, weekly limits for the configured model(s) exhausted, or 5h utilization >= ${params.utilizationPercentageThreshold}%). Skipping starting preparation.`,
         );
         return { rotationOrder };
       }
@@ -434,12 +441,15 @@ export class StartPreparationUseCase {
           .trim() ||
         params.defaultLlmAgentName ||
         params.defaultAgentName;
-      const model =
-        issue.labels
-          .find((label: string) => label.startsWith('llm-model:'))
-          ?.replace('llm-model:', '')
-          .trim() || effectiveDefaultLlmModelName;
-      if (!model) {
+      const labelModelName = issue.labels
+        .find((label: string) => label.startsWith('llm-model:'))
+        ?.replace('llm-model:', '')
+        .trim();
+      if (
+        !labelModelName &&
+        !params.defaultLlmModelName &&
+        rotationTokens === null
+      ) {
         console.error(
           `No LLM model configured for issue ${issue.url}. Provide --defaultLlmModelName or add an llm-model: label.`,
         );
@@ -522,6 +532,46 @@ export class StartPreparationUseCase {
       );
       issue.status = PREPARATION_STATUS_NAME;
 
+      let spawnEnv: Record<string, string> | undefined;
+      let routedModelName: string | null = null;
+      if (rotationTokens !== null && proxyBaseUrl !== null) {
+        const tokenWithSoonestResetAmongAvailable = selectedTokensWithLimits
+          .map((t) => ({
+            token: t.token,
+            model: t.model,
+            remaining:
+              t.limit -
+              (tokenInFlightCounts[t.token] ?? 0) -
+              (spawnedInThisRunByToken[t.token] ?? 0),
+            secondsUntilSevenDayReset: t.secondsUntilSevenDayReset,
+          }))
+          .filter((t) => t.remaining > 0)
+          .sort((a, b) => {
+            if (a.secondsUntilSevenDayReset !== b.secondsUntilSevenDayReset) {
+              return a.secondsUntilSevenDayReset - b.secondsUntilSevenDayReset;
+            }
+            return b.remaining - a.remaining;
+          })[0];
+        if (tokenWithSoonestResetAmongAvailable === undefined) {
+          break;
+        }
+        const selected = tokenWithSoonestResetAmongAvailable.token;
+        routedModelName = tokenWithSoonestResetAmongAvailable.model;
+        spawnedInThisRunByToken[selected] =
+          (spawnedInThisRunByToken[selected] ?? 0) + 1;
+        spawnEnv = {
+          CLAUDE_CODE_OAUTH_TOKEN: selected,
+          ANTHROPIC_BASE_URL: proxyBaseUrl,
+        };
+      }
+      const model =
+        labelModelName || routedModelName || params.defaultLlmModelName;
+      if (!model) {
+        console.error(
+          `No LLM model configured for issue ${issue.url}. Provide --defaultLlmModelName or add an llm-model: label.`,
+        );
+        continue;
+      }
       const awArgs: string[] = [
         issue.url,
         agent,
@@ -540,35 +590,6 @@ export class StartPreparationUseCase {
             startedInThisRunCount % params.codexHomeCandidates.length
           ];
         awArgs.push('--codexHome', codexHome);
-      }
-      let spawnEnv: Record<string, string> | undefined;
-      if (rotationTokens !== null && proxyBaseUrl !== null) {
-        const tokenWithSoonestResetAmongAvailable = selectedTokensWithLimits
-          .map((t) => ({
-            token: t.token,
-            remaining:
-              t.limit -
-              (tokenInFlightCounts[t.token] ?? 0) -
-              (spawnedInThisRunByToken[t.token] ?? 0),
-            secondsUntilSevenDayReset: t.secondsUntilSevenDayReset,
-          }))
-          .filter((t) => t.remaining > 0)
-          .sort((a, b) => {
-            if (a.secondsUntilSevenDayReset !== b.secondsUntilSevenDayReset) {
-              return a.secondsUntilSevenDayReset - b.secondsUntilSevenDayReset;
-            }
-            return b.remaining - a.remaining;
-          })[0];
-        if (tokenWithSoonestResetAmongAvailable === undefined) {
-          break;
-        }
-        const selected = tokenWithSoonestResetAmongAvailable.token;
-        spawnedInThisRunByToken[selected] =
-          (spawnedInThisRunByToken[selected] ?? 0) + 1;
-        spawnEnv = {
-          CLAUDE_CODE_OAUTH_TOKEN: selected,
-          ANTHROPIC_BASE_URL: proxyBaseUrl,
-        };
       }
       await this.localCommandRunner.runCommand(
         'aw',
