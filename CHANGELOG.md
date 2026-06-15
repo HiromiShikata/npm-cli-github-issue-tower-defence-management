@@ -1,3 +1,10 @@
+# [1.85.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.84.1...v1.85.0) (2026-06-15)
+
+
+### Features
+
+* **core:** add "In Tmux by agent" workflow status (yellow), mirroring "In Tmux by human" ([#839](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/839)) ([85c908c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/85c908ce234bde3b23660ccef55c04832d1630b2))
+
 ## [1.84.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.84.0...v1.84.1) (2026-06-14)
 
 

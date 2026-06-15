@@ -31,6 +31,7 @@ class GenerateConsoleListsUseCase {
                     'icebox',
                     'unread',
                     'in tmux by human',
+                    'in tmux by agent',
                 ]),
                 triage: {
                     pjcode,

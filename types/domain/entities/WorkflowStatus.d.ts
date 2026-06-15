@@ -7,6 +7,7 @@ export declare const AWAITING_QUALITY_CHECK_STATUS_NAME = "Awaiting Quality Chec
 export declare const TODO_STATUS_NAME = "Todo by human";
 export declare const PC_TODO_STATUS_NAME = "PC Todo";
 export declare const IN_TMUX_STATUS_NAME = "In Tmux by human";
+export declare const IN_TMUX_BY_AGENT_STATUS_NAME = "In Tmux by agent";
 export declare const DONE_STATUS_NAME = "Done";
 export declare const ICEBOX_STATUS_NAME = "Icebox";
 export declare const LEGACY_TODO_STATUS_NAME = "Todo";
