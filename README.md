@@ -86,7 +86,7 @@ npx github-issue-tower-defence-management checkIssueReviewReadiness --configFile
 
 The `config.yaml` for the `schedule` command must match the input type of `HandleScheduledEventUseCase.run()`. Below is the structure:
 
-Workflow status names (`Unread`, `Awaiting Workspace`, `Preparation`, `Failed Preparation`, `Awaiting Quality Check`, `Todo by human`, `In Tmux by human`, `Done`, `Icebox`) are fixed code constants and cannot be overridden from CLI options, config files, or project README. The `schedule` command automatically creates any missing required statuses on the target project on each run via `SetupTowerDefenceProjectUseCase`. Projects with the legacy `Todo` and `In Tmux` status names are automatically migrated to `Todo by human` and `In Tmux by human` respectively by reusing the existing option IDs so that task associations are preserved. The legacy `PC Todo` status is removed from the required list and excluded from the project status list on the next setup run. The legacy `Awaiting Task Breakdown` status is removed from the required list; any project items in that status are automatically moved to `Todo by human` and the status option is removed on the next setup run.
+Workflow status names (`Unread`, `Awaiting Workspace`, `Preparation`, `Failed Preparation`, `Awaiting Quality Check`, `Todo by human`, `In Tmux by human`, `In Tmux by agent`, `Done`, `Icebox`) are fixed code constants and cannot be overridden from CLI options, config files, or project README. The `schedule` command automatically creates any missing required statuses on the target project on each run via `SetupTowerDefenceProjectUseCase`. Projects with the legacy `Todo` and `In Tmux` status names are automatically migrated to `Todo by human` and `In Tmux by human` respectively by reusing the existing option IDs so that task associations are preserved. The legacy `PC Todo` status is removed from the required list and excluded from the project status list on the next setup run. The legacy `Awaiting Task Breakdown` status is removed from the required list; any project items in that status are automatically moved to `Todo by human` and the status option is removed on the next setup run.
 
 ```yaml
 disabled: boolean # When true, skip all processing and return null
@@ -204,7 +204,7 @@ changeTargetPathAliases?: # Optional: Map of short alias keys to full repository
   adapter-interfaces: src/domain/usecases/adapter-interfaces
 ```
 
-Workflow status names (`Unread`, `Awaiting Workspace`, `Preparation`, `Failed Preparation`, `Awaiting Quality Check`, `Todo by human`, `In Tmux by human`, `Done`, `Icebox`) are hardcoded constants and are not accepted via this config, the CLI, or the project README. To ensure they exist on the target project, run the `schedule` command — it invokes `SetupTowerDefenceProjectUseCase` automatically. Projects with the legacy `Todo` and `In Tmux` status names are automatically migrated; `PC Todo` and `Awaiting Task Breakdown` are removed on the next setup run (items in `Awaiting Task Breakdown` are moved to `Todo by human` before the option is deleted).
+Workflow status names (`Unread`, `Awaiting Workspace`, `Preparation`, `Failed Preparation`, `Awaiting Quality Check`, `Todo by human`, `In Tmux by human`, `In Tmux by agent`, `Done`, `Icebox`) are hardcoded constants and are not accepted via this config, the CLI, or the project README. To ensure they exist on the target project, run the `schedule` command — it invokes `SetupTowerDefenceProjectUseCase` automatically. Projects with the legacy `Todo` and `In Tmux` status names are automatically migrated; `PC Todo` and `Awaiting Task Breakdown` are removed on the next setup run (items in `Awaiting Task Breakdown` are moved to `Todo by human` before the option is deleted).
 
 Example:
 
@@ -388,7 +388,7 @@ The `triage` tab omits `statusOptions`, adds `storyOptions` (all story field opt
 
 - `pjcode`: The configured project name.
 - `generatedAt`: UTC timestamp (no milliseconds) when the lists were generated. Item `createdAt` values keep milliseconds.
-- `statusOptions`: Project status field options offered as routing buttons. The current-status option and `Done` are excluded; `failed-preparation` additionally excludes `Preparation`, `Icebox`, `Unread`, and `In Tmux by human`.
+- `statusOptions`: Project status field options offered as routing buttons. The current-status option and `Done` are excluded; `failed-preparation` additionally excludes `Preparation`, `Icebox`, `Unread`, `In Tmux by human`, and `In Tmux by agent`.
 - `storyOptions` (triage tab only): All story field options.
 - `storyOrder`: Story field option names in field order (empty array when the project has no story field).
 - `storyColors`: Map from story name to its color. Object value (`{ "color": ... }`) for `prs`/`unread`/`failed-preparation`; plain string value for `triage`.
