@@ -413,8 +413,8 @@ For the current project code `{pjcode}` (the configured `projectName`):
 ```
 {inTmuxDataOutputDir}/{pjcode}.json       # v1: [{ story, urls: string[] }]
 {inTmuxDataOutputDir}/{pjcode}.v2.json    # v2: [{ story, urls: [{ url, title }] }]
-{inTmuxDataOutputDir}/{pjcode}.v3.json    # v3: { version, overviewUrl, tdpmConsoleUrl, groups }
-{inTmuxDataOutputDir}/{pjcode}.v4.json    # v4: { version, overviewUrl, tdpmConsoleUrl, newIssueUrl, groups }
+{inTmuxDataOutputDir}/{pjcode}.v3.json    # v3: { version, overviewUrl, tdpmConsoleUrl, groups: [{ story, urls: [{ url, title }] }] }
+{inTmuxDataOutputDir}/{pjcode}.v4.json    # v4: { version, overviewUrl, tdpmConsoleUrl, newIssueUrl, groups: [{ story, sessions: [{ name, description }] }] }
 ```
 
 and the cross-project index files:
@@ -433,7 +433,7 @@ The index files list every project in `inTmuxProjectOrder` whose `{name}.json` a
 - `overviewUrl`: The GitHub Project board URL, taken from the project `url`.
 - `tdpmConsoleUrl`: `{inTmuxConsoleBaseUrl}/projects/{pjcode}/prs`. The v4 variant appends `?k={token}`. The v3 and v4 files are skipped when `inTmuxConsoleBaseUrl` is unset.
 - `newIssueUrl` (v4 only): `https://github.com/{org}/{workingReport.repo}/issues/new?assignees={manager}`, derived from existing config values.
-- `groups`: Story groups, each with `story` and `urls`. The v3 and v4 `groups` use the v2 `{ url, title }` entry shape.
+- `groups`: Story groups. The v3 `groups` carry a `urls` array using the v2 `{ url, title }` entry shape. The v4 `groups` use tmux terminology: each group carries a `sessions` array and each session is `{ name, description }` where `name` is the GitHub issue URL and `description` is the issue title.
 - Token handling: The v4 per-project file and `index.v4.json` are skipped when `inTmuxConsoleToken` is unset. The token value is never written to source code, tests, or documentation; it is supplied through configuration only.
 
 ## Token Rotation Order File

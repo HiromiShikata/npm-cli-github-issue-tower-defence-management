@@ -169,8 +169,11 @@ describe('writeInTmuxByHumanData', () => {
       groups: [
         {
           story: 'Story Alpha',
-          urls: [
-            { url: 'https://github.com/demo/repo/issues/1', title: 'Issue 1' },
+          sessions: [
+            {
+              name: 'https://github.com/demo/repo/issues/1',
+              description: 'Issue 1',
+            },
           ],
         },
       ],

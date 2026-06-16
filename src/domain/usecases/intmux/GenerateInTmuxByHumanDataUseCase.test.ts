@@ -238,8 +238,40 @@ describe('GenerateInTmuxByHumanDataUseCase', () => {
           'https://console.example.test/projects/demo/prs?k=test-token-value',
         newIssueUrl:
           'https://github.com/demo-org/demo-repo/issues/new?assignees=owner-login',
-        groups: result.v2,
+        groups: [
+          {
+            story: 'Story Alpha',
+            sessions: [
+              {
+                name: 'https://github.com/demo/repo/issues/1',
+                description: 'Issue 1',
+              },
+            ],
+          },
+        ],
       });
+    });
+
+    it('maps each session to the issue url as name and the issue title as description', () => {
+      const result = run([
+        makeIssue({ story: 'Story Alpha' }),
+        makeIssue({ story: 'Story Alpha' }),
+      ]);
+      expect(result.v4?.groups).toEqual([
+        {
+          story: 'Story Alpha',
+          sessions: [
+            {
+              name: 'https://github.com/demo/repo/issues/1',
+              description: 'Issue 1',
+            },
+            {
+              name: 'https://github.com/demo/repo/issues/2',
+              description: 'Issue 2',
+            },
+          ],
+        },
+      ]);
     });
 
     it('is null when the console token is unset while v3 is still produced', () => {

@@ -16,6 +16,16 @@ export type InTmuxByHumanGroupV2 = {
   urls: InTmuxByHumanUrlEntry[];
 };
 
+export type InTmuxByHumanSession = {
+  name: string;
+  description: string;
+};
+
+export type InTmuxByHumanGroupV4 = {
+  story: string;
+  sessions: InTmuxByHumanSession[];
+};
+
 export type InTmuxByHumanV3 = {
   version: 3;
   overviewUrl: string;
@@ -28,7 +38,7 @@ export type InTmuxByHumanV4 = {
   overviewUrl: string;
   tdpmConsoleUrl: string;
   newIssueUrl: string;
-  groups: InTmuxByHumanGroupV2[];
+  groups: InTmuxByHumanGroupV4[];
 };
 
 export type InTmuxByHumanData = {
@@ -93,6 +103,14 @@ export class GenerateInTmuxByHumanDataUseCase {
       urls: group.issues.map((issue) => issue.url),
     }));
 
+    const v4Groups: InTmuxByHumanGroupV4[] = groups.map((group) => ({
+      story: group.story,
+      sessions: group.issues.map((issue) => ({
+        name: issue.url,
+        description: issue.title,
+      })),
+    }));
+
     const overviewUrl = project.url;
     const tdpmConsoleUrl = consoleBaseUrl
       ? `${consoleBaseUrl}/projects/${pjcode}/prs`
@@ -114,7 +132,7 @@ export class GenerateInTmuxByHumanDataUseCase {
             overviewUrl,
             tdpmConsoleUrl: `${tdpmConsoleUrl}?k=${consoleToken}`,
             newIssueUrl: `https://github.com/${org}/${repo}/issues/new?assignees=${assigneeLogin}`,
-            groups: v2,
+            groups: v4Groups,
           }
         : null;
 
