@@ -360,6 +360,9 @@ export class NotifyFinishedIssuePreparationUseCase {
       ? await this.resolveOpenPrsForPrItem(issue.url)
       : await this.issueRepository.findRelatedOpenPRs(issue.url);
     for (const pr of openPRs) {
+      if (pr.url === issueUrl) {
+        continue;
+      }
       await this.issueRepository.setDependedIssueUrl(pr.url, project, issueUrl);
     }
   };

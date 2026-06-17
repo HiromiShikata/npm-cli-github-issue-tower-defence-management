@@ -1876,6 +1876,40 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
+    it('should not call setDependedIssueUrl when issue is a PR and the resolved PR URL matches the issue URL (self-reference prevention)', async () => {
+      const prUrl = 'https://github.com/user/repo/pull/77';
+      const prIssue = createMockIssue({
+        url: prUrl,
+        status: 'Preparation',
+        isPr: true,
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(prIssue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({ content: 'From: :robot: Agent report' }),
+      ]);
+      mockIssueRepository.getOpenPullRequest.mockResolvedValue({
+        url: prUrl,
+        isConflicted: false,
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: prUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(mockIssueRepository.setDependedIssueUrl).not.toHaveBeenCalled();
+    });
+
     it('should log a warning and skip setDependedIssueUrl when dependedIssueUrlSeparatedByComma is not configured in project', async () => {
       const projectWithoutDependedField = createMockProject({
         dependedIssueUrlSeparatedByComma: null,
