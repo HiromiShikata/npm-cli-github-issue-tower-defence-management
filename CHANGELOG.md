@@ -1,3 +1,10 @@
+## [1.88.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.88.0...v1.88.1) (2026-06-18)
+
+
+### Bug Fixes
+
+* **core:** prevent self-referential dependedIssueUrl for PR items in NotifyFinishedIssuePreparationUseCase ([#843](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/843)) ([ca2c4ee](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ca2c4eead62b215bb5f2df1faf37577311f42399)), closes [#842](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/842)
+
 # [1.88.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.87.0...v1.88.0) (2026-06-18)
 
 
