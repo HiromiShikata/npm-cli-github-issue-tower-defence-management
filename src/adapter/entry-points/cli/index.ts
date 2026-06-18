@@ -36,6 +36,7 @@ import {
   DEFAULT_CONSOLE_PORT,
   startConsoleServer,
 } from '../console/consoleServer';
+import { IssueTitleStateCache } from '../console/consoleReadApi';
 
 type StartDaemonOptions = {
   projectUrl?: string;
@@ -608,6 +609,62 @@ program
       port = parsedPort;
     }
 
+    const token = process.env.GH_TOKEN;
+    if (!token) {
+      console.error('GH_TOKEN environment variable is required');
+      process.exit(1);
+    }
+
+    const projectUrl = config.projectUrl;
+    if (!projectUrl) {
+      console.error(
+        'projectUrl is required. Provide it via the config file or project README.',
+      );
+      process.exit(1);
+    }
+
+    const projectName = config.projectName ?? 'default';
+    const localStorageRepository = new LocalStorageRepository();
+    const cachePath = `./tmp/cache/${projectName}`;
+    const localStorageCacheRepository = new LocalStorageCacheRepository(
+      localStorageRepository,
+      cachePath,
+    );
+    const githubRepositoryParams = buildGithubRepositoryParams(
+      localStorageRepository,
+      token,
+    );
+    const projectRepository = new GraphqlProjectRepository(
+      ...githubRepositoryParams,
+    );
+    const apiV3IssueRepository = new ApiV3IssueRepository(
+      ...githubRepositoryParams,
+    );
+    const restIssueRepository = new RestIssueRepository(
+      ...githubRepositoryParams,
+    );
+    const graphqlProjectItemRepository = new GraphqlProjectItemRepository(
+      ...githubRepositoryParams,
+    );
+    const issueRepository = new ApiV3CheerioRestIssueRepository(
+      apiV3IssueRepository,
+      restIssueRepository,
+      graphqlProjectItemRepository,
+      localStorageCacheRepository,
+      ...githubRepositoryParams,
+    );
+
+    const projectId = await projectRepository.findProjectIdByUrl(projectUrl);
+    if (!projectId) {
+      console.error(`No project found for projectUrl ${projectUrl}`);
+      process.exit(1);
+    }
+    const project = await projectRepository.getProject(projectId);
+    if (!project) {
+      console.error(`Failed to load project for projectUrl ${projectUrl}`);
+      process.exit(1);
+    }
+
     const uiDistDir = path.join(__dirname, 'ui-dist');
     const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
 
@@ -615,6 +672,10 @@ program
       accessToken,
       uiDistDir,
       consoleDataOutputDir,
+      pjcode: projectName,
+      issueRepository,
+      project,
+      issueTitleStateCache: new IssueTitleStateCache(),
       port,
     });
     console.log(`TDPM Console server listening on port ${port}`);
