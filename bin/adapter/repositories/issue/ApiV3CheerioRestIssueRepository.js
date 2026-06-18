@@ -22,6 +22,82 @@ function isPullRequestFilesResponse(value) {
         return false;
     return value.every((item) => typeof item === 'object' && item !== null && 'filename' in item);
 }
+function isRecord(value) {
+    return typeof value === 'object' && value !== null;
+}
+function isNullableString(value) {
+    return value === null || typeof value === 'string';
+}
+function isLoginContainer(value) {
+    return isRecord(value) && typeof value.login === 'string';
+}
+function isRefContainer(value) {
+    return isRecord(value) && typeof value.ref === 'string';
+}
+function isIssueOrPullRequestBodyResponse(value) {
+    return isRecord(value) && isNullableString(value.body);
+}
+function isIssueOrPullRequestStateResponse(value) {
+    return isRecord(value) && typeof value.state === 'string';
+}
+function isIssueCommentsResponseItem(value) {
+    if (!isRecord(value))
+        return false;
+    const userValid = value.user === null || isLoginContainer(value.user);
+    return (userValid &&
+        isNullableString(value.body) &&
+        typeof value.created_at === 'string');
+}
+function isIssueCommentsResponse(value) {
+    return Array.isArray(value) && value.every(isIssueCommentsResponseItem);
+}
+function isPullRequestDetailResponse(value) {
+    if (!isRecord(value))
+        return false;
+    const userValid = value.user === null || isLoginContainer(value.user);
+    return (typeof value.title === 'string' &&
+        typeof value.state === 'string' &&
+        typeof value.merged === 'boolean' &&
+        typeof value.draft === 'boolean' &&
+        typeof value.additions === 'number' &&
+        typeof value.deletions === 'number' &&
+        typeof value.changed_files === 'number' &&
+        isRefContainer(value.head) &&
+        isRefContainer(value.base) &&
+        userValid &&
+        isNullableString(value.body));
+}
+function isPullRequestDetailFilesResponseItem(value) {
+    if (!isRecord(value))
+        return false;
+    return (typeof value.filename === 'string' &&
+        typeof value.status === 'string' &&
+        typeof value.additions === 'number' &&
+        typeof value.deletions === 'number' &&
+        (value.patch === undefined || typeof value.patch === 'string'));
+}
+function isPullRequestDetailFilesResponse(value) {
+    return (Array.isArray(value) && value.every(isPullRequestDetailFilesResponseItem));
+}
+function isCommitAuthor(value) {
+    return (isRecord(value) &&
+        typeof value.name === 'string' &&
+        typeof value.date === 'string');
+}
+function isPullRequestCommitsResponseItem(value) {
+    if (!isRecord(value))
+        return false;
+    if (typeof value.sha !== 'string')
+        return false;
+    if (!isRecord(value.commit))
+        return false;
+    if (typeof value.commit.message !== 'string')
+        return false;
+    return value.commit.author === null || isCommitAuthor(value.commit.author);
+}
+function isPullRequestCommitsResponse(value) {
+    return Array.isArray(value) && value.every(isPullRequestCommitsResponseItem);
+}
 const fnmatch = (pattern, str) => {
     let regexStr = '^';
     let i = 0;
@@ -745,6 +821,236 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         };
         this.createCommentByUrl = async (issueOrPrUrl, commentBody) => {
             await this.restIssueRepository.createComment(issueOrPrUrl, commentBody);
+        };
+        this.getIssueOrPullRequestBody = async (url) => {
+            const { owner, repo, issueNumber } = this.parseIssueUrl(url);
+            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`, {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${this.ghToken}`,
+                    Accept: 'application/vnd.github+json',
+                },
+            });
+            if (!response.ok) {
+                throw new Error(`Failed to fetch body for ${url}: HTTP ${response.status}`);
+            }
+            const body = await response.json();
+            if (!isIssueOrPullRequestBodyResponse(body)) {
+                throw new Error(`Unexpected response shape when fetching body for ${url}`);
+            }
+            return body.body ?? '';
+        };
+        this.getIssueOrPullRequestComments = async (url) => {
+            const { owner, repo, issueNumber } = this.parseIssueUrl(url);
+            const perPage = 100;
+            const collectedComments = [];
+            let page = 1;
+            let hasMore = true;
+            while (hasMore) {
+                const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments?per_page=${perPage}&page=${page}`, {
+                    method: 'GET',
+                    headers: {
+                        Authorization: `Bearer ${this.ghToken}`,
+                        Accept: 'application/vnd.github+json',
+                    },
+                });
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch comments for ${url}: HTTP ${response.status}`);
+                }
+                const body = await response.json();
+                if (!isIssueCommentsResponse(body)) {
+                    throw new Error(`Unexpected response shape when fetching comments for ${url}`);
+                }
+                for (const comment of body) {
+                    collectedComments.push({
+                        author: comment.user?.login ?? '',
+                        body: comment.body ?? '',
+                        createdAt: new Date(comment.created_at),
+                    });
+                }
+                if (body.length < perPage) {
+                    hasMore = false;
+                }
+                else {
+                    page += 1;
+                }
+            }
+            return collectedComments;
+        };
+        this.getPullRequestDetail = async (prUrl) => {
+            const { owner, repo, issueNumber: prNumber, isPr, } = this.parseIssueUrl(prUrl);
+            if (!isPr) {
+                return null;
+            }
+            const detailResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`, {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${this.ghToken}`,
+                    Accept: 'application/vnd.github+json',
+                },
+            });
+            if (!detailResponse.ok) {
+                throw new Error(`Failed to fetch detail for PR ${prUrl}: HTTP ${detailResponse.status}`);
+            }
+            const detailBody = await detailResponse.json();
+            if (!isPullRequestDetailResponse(detailBody)) {
+                throw new Error(`Unexpected response shape when fetching detail for PR ${prUrl}`);
+            }
+            const files = await this.fetchPullRequestFiles(owner, repo, prNumber, prUrl);
+            return {
+                title: detailBody.title,
+                state: detailBody.state,
+                merged: detailBody.merged,
+                isDraft: detailBody.draft,
+                additions: detailBody.additions,
+                deletions: detailBody.deletions,
+                changedFiles: detailBody.changed_files,
+                headRefName: detailBody.head.ref,
+                baseRefName: detailBody.base.ref,
+                author: detailBody.user?.login ?? '',
+                files,
+            };
+        };
+        this.fetchPullRequestFiles = async (owner, repo, prNumber, prUrl) => {
+            const perPage = 100;
+            const collectedFiles = [];
+            let page = 1;
+            let hasMore = true;
+            while (hasMore) {
+                const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=${perPage}&page=${page}`, {
+                    method: 'GET',
+                    headers: {
+                        Authorization: `Bearer ${this.ghToken}`,
+                        Accept: 'application/vnd.github+json',
+                    },
+                });
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch files for PR ${prUrl}: HTTP ${response.status}`);
+                }
+                const body = await response.json();
+                if (!isPullRequestDetailFilesResponse(body)) {
+                    throw new Error(`Unexpected response shape when fetching files for PR ${prUrl}`);
+                }
+                for (const file of body) {
+                    collectedFiles.push({
+                        filename: file.filename,
+                        status: file.status,
+                        additions: file.additions,
+                        deletions: file.deletions,
+                        patch: file.patch ?? null,
+                    });
+                }
+                if (body.length < perPage) {
+                    hasMore = false;
+                }
+                else {
+                    page += 1;
+                }
+            }
+            return collectedFiles;
+        };
+        this.getPullRequestCommits = async (prUrl) => {
+            const { owner, repo, issueNumber: prNumber, isPr, } = this.parseIssueUrl(prUrl);
+            if (!isPr) {
+                return [];
+            }
+            const perPage = 100;
+            const collectedCommits = [];
+            let page = 1;
+            let hasMore = true;
+            while (hasMore) {
+                const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/commits?per_page=${perPage}&page=${page}`, {
+                    method: 'GET',
+                    headers: {
+                        Authorization: `Bearer ${this.ghToken}`,
+                        Accept: 'application/vnd.github+json',
+                    },
+                });
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch commits for PR ${prUrl}: HTTP ${response.status}`);
+                }
+                const body = await response.json();
+                if (!isPullRequestCommitsResponse(body)) {
+                    throw new Error(`Unexpected response shape when fetching commits for PR ${prUrl}`);
+                }
+                for (const commit of body) {
+                    collectedCommits.push({
+                        sha: commit.sha,
+                        message: commit.commit.message,
+                        author: commit.commit.author?.name ?? '',
+                        authoredAt: new Date(commit.commit.author?.date ?? 0),
+                    });
+                }
+                if (body.length < perPage) {
+                    hasMore = false;
+                }
+                else {
+                    page += 1;
+                }
+            }
+            return collectedCommits;
+        };
+        this.getIssueOrPullRequestState = async (url) => {
+            const { owner, repo, issueNumber, isPr } = this.parseIssueUrl(url);
+            if (isPr) {
+                const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${issueNumber}`, {
+                    method: 'GET',
+                    headers: {
+                        Authorization: `Bearer ${this.ghToken}`,
+                        Accept: 'application/vnd.github+json',
+                    },
+                });
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch state for ${url}: HTTP ${response.status}`);
+                }
+                const body = await response.json();
+                if (!isPullRequestDetailResponse(body)) {
+                    throw new Error(`Unexpected response shape when fetching state for ${url}`);
+                }
+                return { state: body.state, merged: body.merged, isPullRequest: true };
+            }
+            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`, {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${this.ghToken}`,
+                    Accept: 'application/vnd.github+json',
+                },
+            });
+            if (!response.ok) {
+                throw new Error(`Failed to fetch state for ${url}: HTTP ${response.status}`);
+            }
+            const body = await response.json();
+            if (!isIssueOrPullRequestStateResponse(body)) {
+                throw new Error(`Unexpected response shape when fetching state for ${url}`);
+            }
+            return { state: body.state, merged: false, isPullRequest: false };
+        };
+        this.getPullRequestSummary = async (prUrl) => {
+            const { owner, repo, issueNumber: prNumber, isPr, } = this.parseIssueUrl(prUrl);
+            if (!isPr) {
+                return null;
+            }
+            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`, {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${this.ghToken}`,
+                    Accept: 'application/vnd.github+json',
+                },
+            });
+            if (!response.ok) {
+                throw new Error(`Failed to fetch summary for PR ${prUrl}: HTTP ${response.status}`);
+            }
+            const body = await response.json();
+            if (!isPullRequestDetailResponse(body)) {
+                throw new Error(`Unexpected response shape when fetching summary for PR ${prUrl}`);
+            }
+            return {
+                title: body.title,
+                body: body.body ?? '',
+                additions: body.additions,
+                deletions: body.deletions,
+                changedFiles: body.changed_files,
+            };
         };
     }
 }

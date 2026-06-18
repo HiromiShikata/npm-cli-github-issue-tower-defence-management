@@ -1,4 +1,4 @@
-import { IssueRepository, RelatedPullRequest } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+import { IssueRepository, RelatedPullRequest, IssueComment, PullRequestDetail, PullRequestCommit } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
 import { StoryObjectMap } from '../../../domain/entities/StoryObjectMap';
@@ -70,5 +70,22 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     requestChangesWithInlineComment: (prUrl: string, changedFilePath: string | null, commentBody: string) => Promise<void>;
     deletePullRequestBranch: (prUrl: string, branchName: string) => Promise<void>;
     createCommentByUrl: (issueOrPrUrl: string, commentBody: string) => Promise<void>;
+    getIssueOrPullRequestBody: (url: string) => Promise<string>;
+    getIssueOrPullRequestComments: (url: string) => Promise<IssueComment[]>;
+    getPullRequestDetail: (prUrl: string) => Promise<PullRequestDetail | null>;
+    private fetchPullRequestFiles;
+    getPullRequestCommits: (prUrl: string) => Promise<PullRequestCommit[]>;
+    getIssueOrPullRequestState: (url: string) => Promise<{
+        state: string;
+        merged: boolean;
+        isPullRequest: boolean;
+    }>;
+    getPullRequestSummary: (prUrl: string) => Promise<{
+        title: string;
+        body: string;
+        additions: number;
+        deletions: number;
+        changedFiles: number;
+    } | null>;
 }
 //# sourceMappingURL=ApiV3CheerioRestIssueRepository.d.ts.map

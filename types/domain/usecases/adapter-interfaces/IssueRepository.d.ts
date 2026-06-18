@@ -14,6 +14,37 @@ export type RelatedPullRequest = {
     isBranchOutOfDate: boolean;
     missingRequiredCheckNames: string[];
 };
+export type IssueComment = {
+    author: string;
+    body: string;
+    createdAt: Date;
+};
+export type PullRequestFile = {
+    filename: string;
+    status: string;
+    additions: number;
+    deletions: number;
+    patch: string | null;
+};
+export type PullRequestDetail = {
+    title: string;
+    state: string;
+    merged: boolean;
+    isDraft: boolean;
+    additions: number;
+    deletions: number;
+    changedFiles: number;
+    headRefName: string;
+    baseRefName: string;
+    author: string;
+    files: PullRequestFile[];
+};
+export type PullRequestCommit = {
+    sha: string;
+    message: string;
+    author: string;
+    authoredAt: Date;
+};
 export interface IssueRepository {
     getAllIssues: (projectId: Project['id'], allowCacheMinutes: number) => Promise<{
         issues: Issue[];
@@ -63,5 +94,21 @@ export interface IssueRepository {
     getStoryObjectMap: (project: Project, allowCacheMinutes: number) => Promise<StoryObjectMap>;
     addIssueToProject: (project: Project, issueUrl: string) => Promise<void>;
     setDependedIssueUrl: (prUrl: string, project: Project, issueUrl: string) => Promise<void>;
+    getIssueOrPullRequestBody: (url: string) => Promise<string>;
+    getIssueOrPullRequestComments: (url: string) => Promise<IssueComment[]>;
+    getPullRequestDetail: (prUrl: string) => Promise<PullRequestDetail | null>;
+    getPullRequestCommits: (prUrl: string) => Promise<PullRequestCommit[]>;
+    getIssueOrPullRequestState: (url: string) => Promise<{
+        state: string;
+        merged: boolean;
+        isPullRequest: boolean;
+    }>;
+    getPullRequestSummary: (prUrl: string) => Promise<{
+        title: string;
+        body: string;
+        additions: number;
+        deletions: number;
+        changedFiles: number;
+    } | null>;
 }
 //# sourceMappingURL=IssueRepository.d.ts.map

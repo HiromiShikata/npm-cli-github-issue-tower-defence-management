@@ -1,3 +1,11 @@
+# [1.87.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.86.0...v1.87.0) (2026-06-18)
+
+
+### Features
+
+* **console:** scaffold React console UI with build bundling and minimal tab view ([#849](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/849)) ([2b270d5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2b270d5af8eaaa143135830efbe5089a32bda671))
+* **issue:** add IssueRepository read methods for Console read APIs ([#848](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/848)) ([4d93fc7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4d93fc7aab261ca916df230221e2ab70f8ea5cc8))
+
 # [1.86.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.85.0...v1.86.0) (2026-06-18)
 
 
