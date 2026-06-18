@@ -1,3 +1,10 @@
+# [1.86.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.85.0...v1.86.0) (2026-06-18)
+
+
+### Features
+
+* **console:** add serveConsole CLI subcommand HTTP server skeleton ([#847](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/847)) ([e9442d9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e9442d9c1c0f4823c92786a706b30ae30b1d9400)), closes [#844](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/844)
+
 # [1.85.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.84.1...v1.85.0) (2026-06-15)
 
 

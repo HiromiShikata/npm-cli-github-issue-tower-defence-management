@@ -122,6 +122,7 @@ const loadConfigFile = (configFilePath) => {
             awLogStaleThresholdMinutes: getNumberValue(parsed, 'awLogStaleThresholdMinutes'),
             labelsAsLlmAgentName: getStringArrayValue(parsed, 'labelsAsLlmAgentName'),
             changeTargetPathAliases: getStringRecordValue(parsed, 'changeTargetPathAliases'),
+            consoleAccessToken: getStringValue(parsed, 'consoleAccessToken'),
         };
     }
     catch (error) {
@@ -232,6 +233,7 @@ const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
     changeTargetPathAliases: readmeOverrides.changeTargetPathAliases ??
         cliOverrides.changeTargetPathAliases ??
         configFile.changeTargetPathAliases,
+    consoleAccessToken: cliOverrides.consoleAccessToken ?? configFile.consoleAccessToken,
 });
 exports.mergeConfigs = mergeConfigs;
 const isGraphqlProjectV2ReadmeResponse = (value) => {

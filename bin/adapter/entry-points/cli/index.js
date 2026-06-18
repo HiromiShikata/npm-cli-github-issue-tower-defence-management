@@ -58,6 +58,8 @@ const NodeLocalCommandRunner_1 = require("../../repositories/NodeLocalCommandRun
 const GitHubIssueCommentRepository_1 = require("../../repositories/GitHubIssueCommentRepository");
 const FetchWebhookRepository_1 = require("../../repositories/FetchWebhookRepository");
 const RevertOrphanedPreparationUseCase_1 = require("../../../domain/usecases/RevertOrphanedPreparationUseCase");
+const path = __importStar(require("path"));
+const consoleServer_1 = require("../console/consoleServer");
 const buildGithubRepositoryParams = (localStorageRepository, token) => [
     localStorageRepository,
     token,
@@ -339,6 +341,41 @@ exports.program
         labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
     });
     process.stdout.write(`${JSON.stringify(result)}\n`);
+});
+exports.program
+    .command('serveConsole')
+    .description('Start the local TDPM Console HTTP server')
+    .requiredOption('--configFilePath <path>', 'Path to config file for tower defence management')
+    .option('--port <number>', `Port for the console HTTP server (default: ${consoleServer_1.DEFAULT_CONSOLE_PORT})`)
+    .option('--consoleDataOutputDir <path>', 'Directory where console data files are written and served from')
+    .action(async (options) => {
+    const config = (0, projectConfig_2.loadConfigFile)(options.configFilePath);
+    const accessToken = config.consoleAccessToken;
+    if (!accessToken) {
+        console.error('consoleAccessToken is required. Provide it via the config file.');
+        process.exit(1);
+    }
+    let port = consoleServer_1.DEFAULT_CONSOLE_PORT;
+    if (options.port !== undefined) {
+        const parsedPort = Number(options.port);
+        if (!Number.isFinite(parsedPort) ||
+            !Number.isInteger(parsedPort) ||
+            parsedPort <= 0 ||
+            parsedPort > 65535) {
+            console.error('Invalid value for --port. It must be a positive integer between 1 and 65535.');
+            process.exit(1);
+        }
+        port = parsedPort;
+    }
+    const uiDistDir = path.join(__dirname, 'ui-dist');
+    const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
+    await (0, consoleServer_1.startConsoleServer)({
+        accessToken,
+        uiDistDir,
+        consoleDataOutputDir,
+        port,
+    });
+    console.log(`TDPM Console server listening on port ${port}`);
 });
 /* istanbul ignore next */
 if (process.argv && require.main === module) {
