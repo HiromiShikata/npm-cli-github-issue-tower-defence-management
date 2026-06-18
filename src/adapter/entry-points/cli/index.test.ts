@@ -60,6 +60,25 @@ jest.mock('../handlers/HandleScheduledEventUseCaseHandler', () => ({
     handle: jest.fn().mockResolvedValue(null),
   })),
 }));
+import type { StartConsoleServerOptions } from '../console/consoleServer';
+
+const mockStartConsoleServer = jest
+  .fn<Promise<unknown>, [StartConsoleServerOptions]>()
+  .mockResolvedValue({
+    close: jest.fn(),
+    address: jest.fn().mockReturnValue({ port: 9981 }),
+  });
+jest.mock('../console/consoleServer', () => {
+  const actual: Record<string, unknown> = jest.requireActual(
+    '../console/consoleServer',
+  );
+  return {
+    ...actual,
+    startConsoleServer: (
+      options: StartConsoleServerOptions,
+    ): Promise<unknown> => mockStartConsoleServer(options),
+  };
+});
 
 describe('CLI', () => {
   const originalEnv = process.env;
@@ -1638,6 +1657,113 @@ mysteryKey: 'value'
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'GH_TOKEN environment variable is required',
       );
+      expect(processExitSpy).toHaveBeenCalledWith(1);
+
+      consoleErrorSpy.mockRestore();
+      processExitSpy.mockRestore();
+    });
+  });
+
+  describe('serveConsole', () => {
+    it('should appear in the CLI help output', () => {
+      const helpText = program.helpInformation();
+      expect(helpText).toContain('serveConsole');
+    });
+
+    it('should start the server on the default port 9981 when --port is omitted', async () => {
+      writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
+      const logSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'serveConsole',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(mockStartConsoleServer).toHaveBeenCalledTimes(1);
+      const callArg = mockStartConsoleServer.mock.calls[0][0];
+      expect(callArg.port).toBe(9981);
+      expect(callArg.accessToken).toBe('config-token');
+      expect(callArg.consoleDataOutputDir).toBeNull();
+      expect(typeof callArg.uiDistDir).toBe('string');
+
+      logSpy.mockRestore();
+    });
+
+    it('should use the provided --port and --consoleDataOutputDir', async () => {
+      writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
+      const logSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'serveConsole',
+        '--configFilePath',
+        configFilePath,
+        '--port',
+        '12345',
+        '--consoleDataOutputDir',
+        '/tmp/console-data',
+      ]);
+
+      const callArg = mockStartConsoleServer.mock.calls[0][0];
+      expect(callArg.port).toBe(12345);
+      expect(callArg.consoleDataOutputDir).toBe('/tmp/console-data');
+
+      logSpy.mockRestore();
+    });
+
+    it('should exit with error when consoleAccessToken is missing from config', async () => {
+      writeConfig(defaultConfig);
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
+
+      await expect(
+        program.parseAsync([
+          'node',
+          'test',
+          'serveConsole',
+          '--configFilePath',
+          configFilePath,
+        ]),
+      ).rejects.toThrow('process.exit called');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'consoleAccessToken is required. Provide it via the config file.',
+      );
+      expect(processExitSpy).toHaveBeenCalledWith(1);
+
+      consoleErrorSpy.mockRestore();
+      processExitSpy.mockRestore();
+    });
+
+    it('should exit with error for an invalid --port value', async () => {
+      writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
+
+      await expect(
+        program.parseAsync([
+          'node',
+          'test',
+          'serveConsole',
+          '--configFilePath',
+          configFilePath,
+          '--port',
+          'not-a-number',
+        ]),
+      ).rejects.toThrow('process.exit called');
+
       expect(processExitSpy).toHaveBeenCalledWith(1);
 
       consoleErrorSpy.mockRestore();

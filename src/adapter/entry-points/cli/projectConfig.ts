@@ -21,6 +21,7 @@ export type ConfigFile = {
   awLogStaleThresholdMinutes?: number;
   labelsAsLlmAgentName?: string[];
   changeTargetPathAliases?: Record<string, string>;
+  consoleAccessToken?: string;
 };
 
 const getStringValue = (
@@ -145,6 +146,7 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         parsed,
         'changeTargetPathAliases',
       ),
+      consoleAccessToken: getStringValue(parsed, 'consoleAccessToken'),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -303,6 +305,8 @@ export const mergeConfigs = (
     readmeOverrides.changeTargetPathAliases ??
     cliOverrides.changeTargetPathAliases ??
     configFile.changeTargetPathAliases,
+  consoleAccessToken:
+    cliOverrides.consoleAccessToken ?? configFile.consoleAccessToken,
 });
 
 type GraphqlProjectV2ReadmeResponse = {

@@ -20,6 +20,7 @@ Commands:
   startDaemon [options]                 Start daemon to prepare GitHub issues
   notifyFinishedIssuePreparation [options]  Notify that issue preparation is finished
   checkIssueReviewReadiness [options]   Check whether an issue is review-ready (read-only; does not change Status or post any comment)
+  serveConsole [options]                Start the local TDPM Console HTTP server
   help [command]                        display help for command
 
 Options for schedule:
@@ -52,7 +53,14 @@ Options for checkIssueReviewReadiness:
   --configFilePath <path>                          Path to config file for tower defence management (required)
   --issueUrl <url>                                 GitHub issue URL (required)
   --projectUrl <url>                               GitHub project URL
+
+Options for serveConsole:
+  --configFilePath <path>                          Path to config file for tower defence management (required)
+  --port <number>                                  Port for the console HTTP server (default: 9981)
+  --consoleDataOutputDir <path>                    Directory where console data files are written and served from
 ```
+
+The `serveConsole` sub-command starts a local HTTP server that serves the TDPM Console. Every response is sent with `Cache-Control: no-store`. Any request path containing a segment that begins with a dot (for example `/.git` or `/.env`) is rejected with HTTP 404. The UI bootstrap assets (HTML and JS) are served without authentication; served `*.json` files and `/api/*` paths require an access token supplied either as the `k` query parameter (`?k=<token>`) or the `X-PV-Token` request header. The access token is read from the `consoleAccessToken` config value and never appears on the command line. This phase delivers only the server skeleton: the data files and the `/api/*` read and operation handlers are added in later phases, so an authenticated `/api/*` request currently passes the token gate and then returns 404. When the built UI bundle directory (`ui-dist`) is absent the server still starts and serves a minimal placeholder index for `/` and `/index.html`.
 
 The `checkIssueReviewReadiness` sub-command lets an agent self-check whether an issue is currently review-ready. It does NOT change the issue Status field and does NOT post any comment. It writes a single JSON line to stdout of the shape `{ "reviewReady": boolean, "rejections": [{ "type": string, "detail": string }] }` and exits 0 on a successful evaluation regardless of readiness; a non-zero exit indicates an operational error (auth failure, network error). The rejection types include: `ISSUE_NOT_FOUND`, `NO_REPORT_FROM_AGENT_BOT`, `REPORT_HAS_NEXT_STEP`, `PULL_REQUEST_NOT_FOUND`, `PULL_REQUEST_IS_DRAFT`, `PULL_REQUEST_CONFLICTED`, `ANY_CI_JOB_FAILED_OR_IN_PROGRESS`, `REQUIRED_CI_JOB_NEVER_STARTED`, `ANY_REVIEW_COMMENT_NOT_RESOLVED`, and `MULTIPLE_PULL_REQUESTS_FOUND`. The `--projectUrl` option is optional; when omitted the command still runs using only the issue URL.
 
@@ -78,6 +86,10 @@ npx github-issue-tower-defence-management notifyFinishedIssuePreparation --confi
 
 ```
 npx github-issue-tower-defence-management checkIssueReviewReadiness --configFilePath ./preparator-config.yml --issueUrl https://github.com/HiromiShikata/test-repository/issues/1
+```
+
+```
+npx github-issue-tower-defence-management serveConsole --configFilePath ./preparator-config.yml --port 9981
 ```
 
 ## Config
