@@ -39,8 +39,10 @@ export const cacheDir = (): string => {
 export const hashToken = (token: string): string =>
   crypto.createHash(HASH_ALGORITHM).update(token).digest('hex');
 
-export const cachePathForToken = (token: string): string =>
-  path.join(cacheDir(), `${hashToken(token)}.json`);
+export const cachePathForToken = (
+  token: string,
+  baseDir: string = cacheDir(),
+): string => path.join(baseDir, `${hashToken(token)}.json`);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -222,8 +224,11 @@ export const parseModelRateLimitsFromHeaders = (
   return result;
 };
 
-export const readRateLimit = (token: string): RateLimitSnapshot | null => {
-  const filePath = cachePathForToken(token);
+export const readRateLimit = (
+  token: string,
+  baseDir: string = cacheDir(),
+): RateLimitSnapshot | null => {
+  const filePath = cachePathForToken(token, baseDir);
   if (!fs.existsSync(filePath)) return null;
   try {
     const raw = fs.readFileSync(filePath, 'utf8');
