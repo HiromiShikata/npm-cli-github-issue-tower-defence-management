@@ -31,6 +31,11 @@ import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunne
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
+import * as path from 'path';
+import {
+  DEFAULT_CONSOLE_PORT,
+  startConsoleServer,
+} from '../console/consoleServer';
 
 type StartDaemonOptions = {
   projectUrl?: string;
@@ -58,6 +63,12 @@ type CheckIssueReviewReadinessOptions = {
   issueUrl: string;
   projectUrl?: string;
   configFilePath: string;
+};
+
+type ServeConsoleOptions = {
+  configFilePath: string;
+  port?: string;
+  consoleDataOutputDir?: string;
 };
 
 const buildGithubRepositoryParams = (
@@ -552,6 +563,61 @@ program
     });
 
     process.stdout.write(`${JSON.stringify(result)}\n`);
+  });
+
+program
+  .command('serveConsole')
+  .description('Start the local TDPM Console HTTP server')
+  .requiredOption(
+    '--configFilePath <path>',
+    'Path to config file for tower defence management',
+  )
+  .option(
+    '--port <number>',
+    `Port for the console HTTP server (default: ${DEFAULT_CONSOLE_PORT})`,
+  )
+  .option(
+    '--consoleDataOutputDir <path>',
+    'Directory where console data files are written and served from',
+  )
+  .action(async (options: ServeConsoleOptions) => {
+    const config = loadConfigFile(options.configFilePath);
+
+    const accessToken = config.consoleAccessToken;
+    if (!accessToken) {
+      console.error(
+        'consoleAccessToken is required. Provide it via the config file.',
+      );
+      process.exit(1);
+    }
+
+    let port = DEFAULT_CONSOLE_PORT;
+    if (options.port !== undefined) {
+      const parsedPort = Number(options.port);
+      if (
+        !Number.isFinite(parsedPort) ||
+        !Number.isInteger(parsedPort) ||
+        parsedPort <= 0 ||
+        parsedPort > 65535
+      ) {
+        console.error(
+          'Invalid value for --port. It must be a positive integer between 1 and 65535.',
+        );
+        process.exit(1);
+      }
+      port = parsedPort;
+    }
+
+    const uiDistDir = path.join(__dirname, 'ui-dist');
+    const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
+
+    await startConsoleServer({
+      accessToken,
+      uiDistDir,
+      consoleDataOutputDir,
+      port,
+    });
+    console.log(`TDPM Console server listening on port ${port}`);
   });
 
 /* istanbul ignore next */
