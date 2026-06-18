@@ -1,6 +1,10 @@
 import {
   IssueRepository,
   RelatedPullRequest,
+  IssueComment,
+  PullRequestDetail,
+  PullRequestFile,
+  PullRequestCommit,
 } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
@@ -224,6 +228,163 @@ function isPullRequestFilesResponse(
   return value.every(
     (item) => typeof item === 'object' && item !== null && 'filename' in item,
   );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isNullableString(value: unknown): value is string | null {
+  return value === null || typeof value === 'string';
+}
+
+function isLoginContainer(value: unknown): value is { login: string } {
+  return isRecord(value) && typeof value.login === 'string';
+}
+
+function isRefContainer(value: unknown): value is { ref: string } {
+  return isRecord(value) && typeof value.ref === 'string';
+}
+
+type IssueOrPullRequestBodyResponse = {
+  body: string | null;
+};
+
+function isIssueOrPullRequestBodyResponse(
+  value: unknown,
+): value is IssueOrPullRequestBodyResponse {
+  return isRecord(value) && isNullableString(value.body);
+}
+
+type IssueOrPullRequestStateResponse = {
+  state: string;
+};
+
+function isIssueOrPullRequestStateResponse(
+  value: unknown,
+): value is IssueOrPullRequestStateResponse {
+  return isRecord(value) && typeof value.state === 'string';
+}
+
+type IssueCommentsResponseItem = {
+  user: { login: string } | null;
+  body: string | null;
+  created_at: string;
+};
+
+function isIssueCommentsResponseItem(
+  value: unknown,
+): value is IssueCommentsResponseItem {
+  if (!isRecord(value)) return false;
+  const userValid = value.user === null || isLoginContainer(value.user);
+  return (
+    userValid &&
+    isNullableString(value.body) &&
+    typeof value.created_at === 'string'
+  );
+}
+
+function isIssueCommentsResponse(
+  value: unknown,
+): value is IssueCommentsResponseItem[] {
+  return Array.isArray(value) && value.every(isIssueCommentsResponseItem);
+}
+
+type PullRequestDetailResponse = {
+  title: string;
+  state: string;
+  merged: boolean;
+  draft: boolean;
+  additions: number;
+  deletions: number;
+  changed_files: number;
+  head: { ref: string };
+  base: { ref: string };
+  user: { login: string } | null;
+  body: string | null;
+};
+
+function isPullRequestDetailResponse(
+  value: unknown,
+): value is PullRequestDetailResponse {
+  if (!isRecord(value)) return false;
+  const userValid = value.user === null || isLoginContainer(value.user);
+  return (
+    typeof value.title === 'string' &&
+    typeof value.state === 'string' &&
+    typeof value.merged === 'boolean' &&
+    typeof value.draft === 'boolean' &&
+    typeof value.additions === 'number' &&
+    typeof value.deletions === 'number' &&
+    typeof value.changed_files === 'number' &&
+    isRefContainer(value.head) &&
+    isRefContainer(value.base) &&
+    userValid &&
+    isNullableString(value.body)
+  );
+}
+
+type PullRequestDetailFilesResponseItem = {
+  filename: string;
+  status: string;
+  additions: number;
+  deletions: number;
+  patch?: string;
+};
+
+function isPullRequestDetailFilesResponseItem(
+  value: unknown,
+): value is PullRequestDetailFilesResponseItem {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.filename === 'string' &&
+    typeof value.status === 'string' &&
+    typeof value.additions === 'number' &&
+    typeof value.deletions === 'number' &&
+    (value.patch === undefined || typeof value.patch === 'string')
+  );
+}
+
+function isPullRequestDetailFilesResponse(
+  value: unknown,
+): value is PullRequestDetailFilesResponseItem[] {
+  return (
+    Array.isArray(value) && value.every(isPullRequestDetailFilesResponseItem)
+  );
+}
+
+type PullRequestCommitsResponseItem = {
+  sha: string;
+  commit: {
+    message: string;
+    author: { name: string; date: string } | null;
+  };
+};
+
+function isCommitAuthor(
+  value: unknown,
+): value is { name: string; date: string } {
+  return (
+    isRecord(value) &&
+    typeof value.name === 'string' &&
+    typeof value.date === 'string'
+  );
+}
+
+function isPullRequestCommitsResponseItem(
+  value: unknown,
+): value is PullRequestCommitsResponseItem {
+  if (!isRecord(value)) return false;
+  if (typeof value.sha !== 'string') return false;
+  if (!isRecord(value.commit)) return false;
+  if (typeof value.commit.message !== 'string') return false;
+  return value.commit.author === null || isCommitAuthor(value.commit.author);
+}
+
+function isPullRequestCommitsResponse(
+  value: unknown,
+): value is PullRequestCommitsResponseItem[] {
+  return Array.isArray(value) && value.every(isPullRequestCommitsResponseItem);
 }
 
 const fnmatch = (pattern: string, str: string): boolean => {
@@ -1242,5 +1403,336 @@ export class ApiV3CheerioRestIssueRepository
     commentBody: string,
   ): Promise<void> => {
     await this.restIssueRepository.createComment(issueOrPrUrl, commentBody);
+  };
+
+  getIssueOrPullRequestBody = async (url: string): Promise<string> => {
+    const { owner, repo, issueNumber } = this.parseIssueUrl(url);
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${this.ghToken}`,
+          Accept: 'application/vnd.github+json',
+        },
+      },
+    );
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch body for ${url}: HTTP ${response.status}`,
+      );
+    }
+    const body: unknown = await response.json();
+    if (!isIssueOrPullRequestBodyResponse(body)) {
+      throw new Error(
+        `Unexpected response shape when fetching body for ${url}`,
+      );
+    }
+    return body.body ?? '';
+  };
+
+  getIssueOrPullRequestComments = async (
+    url: string,
+  ): Promise<IssueComment[]> => {
+    const { owner, repo, issueNumber } = this.parseIssueUrl(url);
+    const perPage = 100;
+    const collectedComments: IssueComment[] = [];
+    let page = 1;
+    let hasMore = true;
+    while (hasMore) {
+      const response = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments?per_page=${perPage}&page=${page}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            Accept: 'application/vnd.github+json',
+          },
+        },
+      );
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch comments for ${url}: HTTP ${response.status}`,
+        );
+      }
+      const body: unknown = await response.json();
+      if (!isIssueCommentsResponse(body)) {
+        throw new Error(
+          `Unexpected response shape when fetching comments for ${url}`,
+        );
+      }
+      for (const comment of body) {
+        collectedComments.push({
+          author: comment.user?.login ?? '',
+          body: comment.body ?? '',
+          createdAt: new Date(comment.created_at),
+        });
+      }
+      if (body.length < perPage) {
+        hasMore = false;
+      } else {
+        page += 1;
+      }
+    }
+    return collectedComments;
+  };
+
+  getPullRequestDetail = async (
+    prUrl: string,
+  ): Promise<PullRequestDetail | null> => {
+    const {
+      owner,
+      repo,
+      issueNumber: prNumber,
+      isPr,
+    } = this.parseIssueUrl(prUrl);
+    if (!isPr) {
+      return null;
+    }
+    const detailResponse = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${this.ghToken}`,
+          Accept: 'application/vnd.github+json',
+        },
+      },
+    );
+    if (!detailResponse.ok) {
+      throw new Error(
+        `Failed to fetch detail for PR ${prUrl}: HTTP ${detailResponse.status}`,
+      );
+    }
+    const detailBody: unknown = await detailResponse.json();
+    if (!isPullRequestDetailResponse(detailBody)) {
+      throw new Error(
+        `Unexpected response shape when fetching detail for PR ${prUrl}`,
+      );
+    }
+    const files = await this.fetchPullRequestFiles(
+      owner,
+      repo,
+      prNumber,
+      prUrl,
+    );
+    return {
+      title: detailBody.title,
+      state: detailBody.state,
+      merged: detailBody.merged,
+      isDraft: detailBody.draft,
+      additions: detailBody.additions,
+      deletions: detailBody.deletions,
+      changedFiles: detailBody.changed_files,
+      headRefName: detailBody.head.ref,
+      baseRefName: detailBody.base.ref,
+      author: detailBody.user?.login ?? '',
+      files,
+    };
+  };
+
+  private fetchPullRequestFiles = async (
+    owner: string,
+    repo: string,
+    prNumber: number,
+    prUrl: string,
+  ): Promise<PullRequestFile[]> => {
+    const perPage = 100;
+    const collectedFiles: PullRequestFile[] = [];
+    let page = 1;
+    let hasMore = true;
+    while (hasMore) {
+      const response = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=${perPage}&page=${page}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            Accept: 'application/vnd.github+json',
+          },
+        },
+      );
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch files for PR ${prUrl}: HTTP ${response.status}`,
+        );
+      }
+      const body: unknown = await response.json();
+      if (!isPullRequestDetailFilesResponse(body)) {
+        throw new Error(
+          `Unexpected response shape when fetching files for PR ${prUrl}`,
+        );
+      }
+      for (const file of body) {
+        collectedFiles.push({
+          filename: file.filename,
+          status: file.status,
+          additions: file.additions,
+          deletions: file.deletions,
+          patch: file.patch ?? null,
+        });
+      }
+      if (body.length < perPage) {
+        hasMore = false;
+      } else {
+        page += 1;
+      }
+    }
+    return collectedFiles;
+  };
+
+  getPullRequestCommits = async (
+    prUrl: string,
+  ): Promise<PullRequestCommit[]> => {
+    const {
+      owner,
+      repo,
+      issueNumber: prNumber,
+      isPr,
+    } = this.parseIssueUrl(prUrl);
+    if (!isPr) {
+      return [];
+    }
+    const perPage = 100;
+    const collectedCommits: PullRequestCommit[] = [];
+    let page = 1;
+    let hasMore = true;
+    while (hasMore) {
+      const response = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/commits?per_page=${perPage}&page=${page}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            Accept: 'application/vnd.github+json',
+          },
+        },
+      );
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch commits for PR ${prUrl}: HTTP ${response.status}`,
+        );
+      }
+      const body: unknown = await response.json();
+      if (!isPullRequestCommitsResponse(body)) {
+        throw new Error(
+          `Unexpected response shape when fetching commits for PR ${prUrl}`,
+        );
+      }
+      for (const commit of body) {
+        collectedCommits.push({
+          sha: commit.sha,
+          message: commit.commit.message,
+          author: commit.commit.author?.name ?? '',
+          authoredAt: new Date(commit.commit.author?.date ?? 0),
+        });
+      }
+      if (body.length < perPage) {
+        hasMore = false;
+      } else {
+        page += 1;
+      }
+    }
+    return collectedCommits;
+  };
+
+  getIssueOrPullRequestState = async (
+    url: string,
+  ): Promise<{ state: string; merged: boolean; isPullRequest: boolean }> => {
+    const { owner, repo, issueNumber, isPr } = this.parseIssueUrl(url);
+    if (isPr) {
+      const response = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/pulls/${issueNumber}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            Accept: 'application/vnd.github+json',
+          },
+        },
+      );
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch state for ${url}: HTTP ${response.status}`,
+        );
+      }
+      const body: unknown = await response.json();
+      if (!isPullRequestDetailResponse(body)) {
+        throw new Error(
+          `Unexpected response shape when fetching state for ${url}`,
+        );
+      }
+      return { state: body.state, merged: body.merged, isPullRequest: true };
+    }
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${this.ghToken}`,
+          Accept: 'application/vnd.github+json',
+        },
+      },
+    );
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch state for ${url}: HTTP ${response.status}`,
+      );
+    }
+    const body: unknown = await response.json();
+    if (!isIssueOrPullRequestStateResponse(body)) {
+      throw new Error(
+        `Unexpected response shape when fetching state for ${url}`,
+      );
+    }
+    return { state: body.state, merged: false, isPullRequest: false };
+  };
+
+  getPullRequestSummary = async (
+    prUrl: string,
+  ): Promise<{
+    title: string;
+    body: string;
+    additions: number;
+    deletions: number;
+    changedFiles: number;
+  } | null> => {
+    const {
+      owner,
+      repo,
+      issueNumber: prNumber,
+      isPr,
+    } = this.parseIssueUrl(prUrl);
+    if (!isPr) {
+      return null;
+    }
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${this.ghToken}`,
+          Accept: 'application/vnd.github+json',
+        },
+      },
+    );
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch summary for PR ${prUrl}: HTTP ${response.status}`,
+      );
+    }
+    const body: unknown = await response.json();
+    if (!isPullRequestDetailResponse(body)) {
+      throw new Error(
+        `Unexpected response shape when fetching summary for PR ${prUrl}`,
+      );
+    }
+    return {
+      title: body.title,
+      body: body.body ?? '',
+      additions: body.additions,
+      deletions: body.deletions,
+      changedFiles: body.changed_files,
+    };
   };
 }
