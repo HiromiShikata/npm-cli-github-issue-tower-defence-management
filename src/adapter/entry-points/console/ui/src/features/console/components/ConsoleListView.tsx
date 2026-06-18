@@ -1,17 +1,31 @@
-import { Badge } from '@/components/ui/badge';
-import type { ConsoleListItem } from '../types';
+import { useMemo } from 'react';
+import { groupItemsByStoryOrder } from '../grouping';
+import type { ConsoleColor, ConsoleListItem } from '../types';
+import { ConsoleItemRow } from './ConsoleItemRow';
+import { ConsoleStoryGroupHeader } from './ConsoleStoryGroupHeader';
 
 export type ConsoleListViewProps = {
   items: ConsoleListItem[];
+  storyColors: Record<string, ConsoleColor>;
+  selectedItemId: string | null;
+  onSelectItem: (item: ConsoleListItem) => void;
   isLoading: boolean;
   error: string | null;
 };
 
 export const ConsoleListView = ({
   items,
+  storyColors,
+  selectedItemId,
+  onSelectItem,
   isLoading,
   error,
 }: ConsoleListViewProps) => {
+  const groups = useMemo(
+    () => groupItemsByStoryOrder(items, storyColors),
+    [items, storyColors],
+  );
+
   if (error !== null) {
     return (
       <p role="alert" className="p-4 text-sm text-destructive">
@@ -21,38 +35,37 @@ export const ConsoleListView = ({
   }
 
   if (isLoading) {
-    return <p className="p-4 text-sm text-muted-foreground">Loading list...</p>;
+    return <p className="p-4 text-sm text-muted-foreground">Loading list…</p>;
   }
 
   if (items.length === 0) {
-    return <p className="p-4 text-sm text-muted-foreground">No items.</p>;
+    return (
+      <p className="p-4 text-sm text-muted-foreground">No items in this tab.</p>
+    );
   }
 
   return (
-    <ul className="divide-y divide-border">
-      {items.map((item) => (
-        <li key={item.itemId} className="flex flex-col gap-1 p-3">
-          <div className="flex items-center gap-2">
-            <Badge variant={item.isPr ? 'default' : 'secondary'}>
-              {item.isPr ? 'PR' : 'Issue'}
-            </Badge>
-            <a
-              href={item.url}
-              className="font-medium underline-offset-2 hover:underline"
-            >
-              {item.title}
-            </a>
-            <span className="text-sm text-muted-foreground">
-              #{item.number}
-            </span>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span>{item.repo}</span>
-            {item.story !== '' && <span>story: {item.story}</span>}
-            <span>{new Date(item.createdAt).toISOString()}</span>
-          </div>
-        </li>
+    <div className="flex flex-col">
+      {groups.map((group) => (
+        <section key={group.story}>
+          <ConsoleStoryGroupHeader
+            story={group.story}
+            color={group.color}
+            count={group.items.length}
+          />
+          <ul className="divide-y divide-border">
+            {group.items.map((item) => (
+              <li key={item.itemId}>
+                <ConsoleItemRow
+                  item={item}
+                  isSelected={item.itemId === selectedItemId}
+                  onSelect={onSelectItem}
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
       ))}
-    </ul>
+    </div>
   );
 };
