@@ -1,3 +1,10 @@
+# [1.88.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.87.0...v1.88.0) (2026-06-18)
+
+
+### Features
+
+* generate in-tmux-by-human per-project and index JSON files in the scheduled daemon cycle ([#841](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/841)) ([704701f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/704701f4bcb33b2963962388889cdd6aa7b88838)), closes [#840](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/840)
+
 # [1.87.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.86.0...v1.87.0) (2026-06-18)
 
 
