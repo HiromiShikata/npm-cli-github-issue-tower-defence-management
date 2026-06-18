@@ -1,3 +1,10 @@
+# [1.89.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.88.1...v1.89.0) (2026-06-18)
+
+
+### Features
+
+* **cli:** add selectOauthToken subcommand printing one rate-limit-aware OAuth token ([#835](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/835)) ([0928646](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0928646c7b32e9d45d6effc1289dc0460070263b))
+
 ## [1.88.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.88.0...v1.88.1) (2026-06-18)
 
 

@@ -61,6 +61,7 @@ const RevertOrphanedPreparationUseCase_1 = require("../../../domain/usecases/Rev
 const path = __importStar(require("path"));
 const consoleServer_1 = require("../console/consoleServer");
 const consoleReadApi_1 = require("../console/consoleReadApi");
+const OauthTokenSelectHandler_1 = require("../handlers/OauthTokenSelectHandler");
 const buildGithubRepositoryParams = (localStorageRepository, token) => [
     localStorageRepository,
     token,
@@ -411,6 +412,26 @@ exports.program
         port,
     });
     console.log(`TDPM Console server listening on port ${port}`);
+});
+exports.program
+    .command('selectOauthToken')
+    .description('Print exactly one Claude Code OAuth token chosen by a rate-limit-aware filter. The token string is written to stdout (pipeable); the per-candidate decision trace is written to stderr. Exits non-zero when no token passes the filter.')
+    .option('--tokenListJsonPath <path>', 'Path to the JSON array of { name, token } records. Falls back to the CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH environment variable.')
+    .option('--cacheDir <path>', 'Directory holding per-token rate-limit cache files. Falls back to the TDPM_RATELIMIT_CACHE_DIR environment variable, then to ${XDG_CACHE_HOME:-~/.cache}/tdpm/ratelimit.')
+    .action((options) => {
+    const handler = new OauthTokenSelectHandler_1.OauthTokenSelectHandler();
+    const output = handler.handle({
+        tokenListJsonPath: options.tokenListJsonPath ?? null,
+        cacheDirectory: options.cacheDir ?? null,
+        nowEpochSeconds: Date.now() / 1000,
+    });
+    for (const line of output.diagnostics) {
+        console.error(line);
+    }
+    if (output.selectedToken === null) {
+        process.exit(1);
+    }
+    process.stdout.write(`${output.selectedToken}\n`);
 });
 /* istanbul ignore next */
 if (process.argv && require.main === module) {
