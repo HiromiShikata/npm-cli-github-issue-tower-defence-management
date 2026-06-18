@@ -3,6 +3,9 @@ name: Console UI
 on:
   push:
 
+permissions:
+  contents: read
+
 concurrency:
   group: console-ui-${{ github.ref }}
   cancel-in-progress: true
