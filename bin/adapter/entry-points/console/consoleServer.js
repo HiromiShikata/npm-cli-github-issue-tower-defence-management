@@ -37,6 +37,9 @@ exports.startConsoleServer = exports.createConsoleServer = exports.handleConsole
 const http = __importStar(require("http"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
+const consoleDataDelivery_1 = require("./consoleDataDelivery");
+const consoleReadApi_1 = require("./consoleReadApi");
+const consoleOperationApi_1 = require("./consoleOperationApi");
 exports.DEFAULT_CONSOLE_PORT = 9981;
 exports.CONSOLE_TOKEN_HEADER = 'x-pv-token';
 const PLACEHOLDER_INDEX_HTML = `<!DOCTYPE html>
@@ -141,7 +144,134 @@ const serveBootstrapIndex = (response) => {
     });
     response.end(PLACEHOLDER_INDEX_HTML);
 };
-const handleConsoleRequest = (options, request, response) => {
+const sendJson = (response, statusCode, body) => {
+    response.writeHead(statusCode, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+    });
+    response.end(JSON.stringify(body));
+};
+const sendDataResponse = (response, statusCode, contentType, body) => {
+    response.writeHead(statusCode, {
+        'Content-Type': contentType,
+        'Cache-Control': 'no-store',
+    });
+    response.end(body);
+};
+const readRequestBody = (request) => new Promise((resolve, reject) => {
+    const chunks = [];
+    request.on('data', (chunk) => chunks.push(chunk));
+    request.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
+    request.on('error', reject);
+});
+const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
+const parseRequestBody = (raw) => {
+    if (raw.length === 0) {
+        return {};
+    }
+    let parsed;
+    try {
+        parsed = JSON.parse(raw);
+    }
+    catch {
+        return null;
+    }
+    if (!isRecord(parsed)) {
+        return null;
+    }
+    return parsed;
+};
+const handleReadApi = async (options, requestPath, searchParams) => {
+    const issueRepository = options.issueRepository ?? null;
+    if (issueRepository === null) {
+        return null;
+    }
+    const cache = options.issueTitleStateCache ?? null;
+    const url = searchParams.get('url');
+    switch (requestPath) {
+        case '/api/itembody':
+            return (0, consoleReadApi_1.handleItemBody)(issueRepository, url);
+        case '/api/comments':
+            return (0, consoleReadApi_1.handleComments)(issueRepository, url);
+        case '/api/prfiles':
+            return (0, consoleReadApi_1.handlePrFiles)(issueRepository, url);
+        case '/api/prcommits':
+            return (0, consoleReadApi_1.handlePrCommits)(issueRepository, url);
+        case '/api/relatedprs':
+            return (0, consoleReadApi_1.handleRelatedPrs)(issueRepository, url);
+        case '/api/issuetitle':
+            if (cache === null) {
+                return null;
+            }
+            return (0, consoleReadApi_1.handleIssueTitle)(issueRepository, cache, url);
+        default:
+            return null;
+    }
+};
+const handleOperationApi = async (options, requestPath, body) => {
+    const issueRepository = options.issueRepository ?? null;
+    const project = options.project ?? null;
+    if (issueRepository === null || project === null) {
+        return null;
+    }
+    const context = {
+        issueRepository,
+        project,
+        consoleDataOutputDir: options.consoleDataOutputDir,
+        pjcode: options.pjcode ?? null,
+    };
+    switch (requestPath) {
+        case '/api/review':
+            return (0, consoleOperationApi_1.handleReview)(context, body);
+        case '/api/triage':
+            return (0, consoleOperationApi_1.handleTriage)(context, body);
+        case '/api/intmux':
+            return (0, consoleOperationApi_1.handleIntmux)(context, body);
+        default:
+            return null;
+    }
+};
+const handleTokenedRequest = async (options, request, response, requestPath, searchParams) => {
+    const method = (request.method ?? 'GET').toUpperCase();
+    if (requestPath.startsWith('/api/')) {
+        if (method === 'GET') {
+            const readResult = await handleReadApi(options, requestPath, searchParams);
+            if (readResult === null) {
+                sendNotFound(response);
+                return;
+            }
+            sendJson(response, readResult.statusCode, readResult.body);
+            return;
+        }
+        if (method === 'POST') {
+            const raw = await readRequestBody(request);
+            const parsedBody = parseRequestBody(raw);
+            if (parsedBody === null) {
+                sendJson(response, 400, { error: 'invalid JSON body' });
+                return;
+            }
+            const operationResult = await handleOperationApi(options, requestPath, parsedBody);
+            if (operationResult === null) {
+                sendNotFound(response);
+                return;
+            }
+            sendJson(response, operationResult.statusCode, operationResult.body);
+            return;
+        }
+        sendNotFound(response);
+        return;
+    }
+    if (method === 'GET') {
+        const dataRoute = (0, consoleDataDelivery_1.parseConsoleDataRoute)(requestPath);
+        if (dataRoute !== null && options.consoleDataOutputDir !== null) {
+            const dataResponse = (0, consoleDataDelivery_1.buildConsoleDataResponse)(options.consoleDataOutputDir, dataRoute);
+            sendDataResponse(response, dataResponse.statusCode, dataResponse.contentType, dataResponse.body);
+            return;
+        }
+    }
+    sendNotFound(response);
+};
+const handleConsoleRequest = async (options, request, response) => {
     const requestUrl = new URL(request.url ?? '/', 'http://localhost');
     const requestPath = requestUrl.pathname;
     if ((0, exports.hasDotSegment)(requestPath)) {
@@ -154,7 +284,7 @@ const handleConsoleRequest = (options, request, response) => {
             sendUnauthorized(response);
             return;
         }
-        sendNotFound(response);
+        await handleTokenedRequest(options, request, response, requestPath, requestUrl.searchParams);
         return;
     }
     if (requestPath === '/' || requestPath === '/index.html') {
@@ -188,8 +318,22 @@ const handleConsoleRequest = (options, request, response) => {
     response.end(staticContent);
 };
 exports.handleConsoleRequest = handleConsoleRequest;
+const sendInternalServerError = (response) => {
+    if (response.headersSent) {
+        response.end();
+        return;
+    }
+    response.writeHead(500, {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-store',
+    });
+    response.end('Internal Server Error');
+};
 const createConsoleServer = (options) => http.createServer((request, response) => {
-    (0, exports.handleConsoleRequest)(options, request, response);
+    (0, exports.handleConsoleRequest)(options, request, response).catch((error) => {
+        console.error('console request failed', error);
+        sendInternalServerError(response);
+    });
 });
 exports.createConsoleServer = createConsoleServer;
 const startConsoleServer = (options) => new Promise((resolve, reject) => {

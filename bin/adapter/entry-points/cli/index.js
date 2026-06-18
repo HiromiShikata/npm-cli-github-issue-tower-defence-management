@@ -60,6 +60,7 @@ const FetchWebhookRepository_1 = require("../../repositories/FetchWebhookReposit
 const RevertOrphanedPreparationUseCase_1 = require("../../../domain/usecases/RevertOrphanedPreparationUseCase");
 const path = __importStar(require("path"));
 const consoleServer_1 = require("../console/consoleServer");
+const consoleReadApi_1 = require("../console/consoleReadApi");
 const buildGithubRepositoryParams = (localStorageRepository, token) => [
     localStorageRepository,
     token,
@@ -367,12 +368,46 @@ exports.program
         }
         port = parsedPort;
     }
+    const token = process.env.GH_TOKEN;
+    if (!token) {
+        console.error('GH_TOKEN environment variable is required');
+        process.exit(1);
+    }
+    const projectUrl = config.projectUrl;
+    if (!projectUrl) {
+        console.error('projectUrl is required. Provide it via the config file or project README.');
+        process.exit(1);
+    }
+    const projectName = config.projectName ?? 'default';
+    const localStorageRepository = new LocalStorageRepository_1.LocalStorageRepository();
+    const cachePath = `./tmp/cache/${projectName}`;
+    const localStorageCacheRepository = new LocalStorageCacheRepository_1.LocalStorageCacheRepository(localStorageRepository, cachePath);
+    const githubRepositoryParams = buildGithubRepositoryParams(localStorageRepository, token);
+    const projectRepository = new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams);
+    const apiV3IssueRepository = new ApiV3IssueRepository_1.ApiV3IssueRepository(...githubRepositoryParams);
+    const restIssueRepository = new RestIssueRepository_1.RestIssueRepository(...githubRepositoryParams);
+    const graphqlProjectItemRepository = new GraphqlProjectItemRepository_1.GraphqlProjectItemRepository(...githubRepositoryParams);
+    const issueRepository = new ApiV3CheerioRestIssueRepository_1.ApiV3CheerioRestIssueRepository(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, ...githubRepositoryParams);
+    const projectId = await projectRepository.findProjectIdByUrl(projectUrl);
+    if (!projectId) {
+        console.error(`No project found for projectUrl ${projectUrl}`);
+        process.exit(1);
+    }
+    const project = await projectRepository.getProject(projectId);
+    if (!project) {
+        console.error(`Failed to load project for projectUrl ${projectUrl}`);
+        process.exit(1);
+    }
     const uiDistDir = path.join(__dirname, 'ui-dist');
     const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
     await (0, consoleServer_1.startConsoleServer)({
         accessToken,
         uiDistDir,
         consoleDataOutputDir,
+        pjcode: projectName,
+        issueRepository,
+        project,
+        issueTitleStateCache: new consoleReadApi_1.IssueTitleStateCache(),
         port,
     });
     console.log(`TDPM Console server listening on port ${port}`);
