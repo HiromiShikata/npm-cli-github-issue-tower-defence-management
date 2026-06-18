@@ -25,3 +25,6 @@ CODEOWNERS
 types
 bin
 .npmrc
+src/adapter/entry-points/console/ui
+src/adapter/entry-points/console/ui-dist
+src/adapter/entry-points/console/ui/storybook-static

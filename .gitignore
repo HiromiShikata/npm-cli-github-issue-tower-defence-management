@@ -179,3 +179,4 @@ reports
 *.rej
 *.diff
 tmp
+src/adapter/entry-points/console/ui/storybook-static

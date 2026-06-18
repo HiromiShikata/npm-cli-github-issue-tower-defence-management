@@ -1,0 +1,47 @@
+name: Console UI
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: console-ui-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  console-ui:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Biome check (console UI)
+        run: npx biome check src/adapter/entry-points/console/ui
+
+      - name: Type check (console UI)
+        run: npx tsc --noEmit -p src/adapter/entry-points/console/ui/tsconfig.json
+
+      - name: Build console UI (Vite)
+        run: npm run build:console-ui
+
+      - name: Build Storybook (console UI)
+        run: npm run console-ui:build-storybook
+
+      - name: Upload Storybook static
+        uses: actions/upload-artifact@v7
+        with:
+          name: console-ui-storybook
+          path: src/adapter/entry-points/console/ui/storybook-static

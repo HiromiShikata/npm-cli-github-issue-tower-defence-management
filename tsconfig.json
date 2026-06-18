@@ -20,5 +20,10 @@
     "types": ["jest", "node"]
   },
   "include": ["src"],
-  "exclude": ["node_modules", "**/__tests__/*"]
+  "exclude": [
+    "node_modules",
+    "**/__tests__/*",
+    "src/adapter/entry-points/console/ui/**",
+    "src/adapter/entry-points/console/ui-dist/**"
+  ]
 }

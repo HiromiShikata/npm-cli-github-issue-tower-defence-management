@@ -20,7 +20,11 @@ module.exports = {
     'unused-imports',
   ],
   root: true,
-  ignorePatterns: fs.readFileSync('.gitignore', 'utf8').split('\n'),
+  ignorePatterns: [
+    ...fs.readFileSync('.gitignore', 'utf8').split('\n'),
+    'src/adapter/entry-points/console/ui/**',
+    'src/adapter/entry-points/console/ui-dist/**',
+  ],
   rules: {
     '@typescript-eslint/require-await': 'off',
     '@typescript-eslint/no-non-null-assertion': 'error',
