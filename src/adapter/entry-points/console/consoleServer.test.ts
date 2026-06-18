@@ -2,6 +2,7 @@ import * as http from 'http';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { mock } from 'jest-mock-extended';
 import {
   DEFAULT_CONSOLE_PORT,
   CONSOLE_TOKEN_HEADER,
@@ -11,6 +12,11 @@ import {
   extractProvidedToken,
   startConsoleServer,
 } from './consoleServer';
+import { IssueTitleStateCache } from './consoleReadApi';
+import { readDoneProjectItemIds } from './consoleDoneStore';
+import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+import { Project } from '../../../domain/entities/Project';
+import { Issue } from '../../../domain/entities/Issue';
 
 describe('consoleServer pure helpers', () => {
   describe('DEFAULT_CONSOLE_PORT', () => {
@@ -289,6 +295,269 @@ describe('consoleServer integration', () => {
         '/api/review?k=wrong-token',
       );
       expect(apiWithWrongToken.statusCode).toBe(401);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('consoleServer new routes integration', () => {
+  const testToken = 'integration-test-token-value';
+
+  const closeServer = (server: http.Server): Promise<void> =>
+    new Promise((resolve, reject) => {
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve();
+      });
+    });
+
+  const request = (
+    server: http.Server,
+    method: string,
+    requestPath: string,
+    body?: unknown,
+  ): Promise<{ statusCode: number; body: string }> => {
+    const address = server.address();
+    if (address === null || typeof address === 'string') {
+      throw new Error('server is not listening on a TCP port');
+    }
+    const port = address.port;
+    const payload = body === undefined ? null : JSON.stringify(body);
+    return new Promise((resolve, reject) => {
+      const httpRequest = http.request(
+        {
+          host: '127.0.0.1',
+          port,
+          path: requestPath,
+          method,
+          headers:
+            payload === null
+              ? {}
+              : {
+                  'Content-Type': 'application/json',
+                  'Content-Length': Buffer.byteLength(payload),
+                },
+        },
+        (response) => {
+          const chunks: Uint8Array[] = [];
+          response.on('data', (chunk: Uint8Array) => chunks.push(chunk));
+          response.on('end', () => {
+            resolve({
+              statusCode: response.statusCode ?? 0,
+              body: Buffer.concat(chunks).toString('utf-8'),
+            });
+          });
+        },
+      );
+      httpRequest.on('error', reject);
+      if (payload !== null) {
+        httpRequest.write(payload);
+      }
+      httpRequest.end();
+    });
+  };
+
+  const buildProject = (): Project => ({
+    ...mock<Project>(),
+    id: 'PVT_1',
+    status: {
+      name: 'Status',
+      fieldId: 'statusField',
+      statuses: [
+        {
+          id: 'status_aw',
+          name: 'Awaiting workspace',
+          color: 'GRAY',
+          description: '',
+        },
+      ],
+    },
+  });
+
+  it('serves a data list file with the done exclusion through the token gate', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const dataDir = path.join(tmpDir, 'data');
+    const listDir = path.join(dataDir, 'umino', 'prs');
+    fs.mkdirSync(listDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(listDir, 'list.json'),
+      JSON.stringify({
+        pjcode: 'umino',
+        items: [{ projectItemId: 'PVTI_keep' }, { projectItemId: 'PVTI_drop' }],
+      }),
+    );
+    fs.writeFileSync(
+      path.join(listDir, '.done.json'),
+      JSON.stringify({ projectItemIds: ['PVTI_drop'] }),
+    );
+    const server = await startConsoleServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: dataDir,
+      pjcode: 'umino',
+      port: 0,
+    });
+    try {
+      const unauthorized = await request(
+        server,
+        'GET',
+        '/projects/umino/prs/list.json',
+      );
+      expect(unauthorized.statusCode).toBe(401);
+
+      const authorized = await request(
+        server,
+        'GET',
+        `/projects/umino/prs/list.json?k=${testToken}`,
+      );
+      expect(authorized.statusCode).toBe(200);
+      const parsed: unknown = JSON.parse(authorized.body);
+      expect(parsed).toEqual({
+        pjcode: 'umino',
+        items: [{ projectItemId: 'PVTI_keep' }],
+      });
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('serves a read api response when an issue repository is injected', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const issueRepository = mock<IssueRepository>();
+    issueRepository.getIssueOrPullRequestBody.mockResolvedValue('body text');
+    const server = await startConsoleServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      issueRepository,
+      issueTitleStateCache: new IssueTitleStateCache(),
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'GET',
+        `/api/itembody?k=${testToken}&url=https://github.com/o/r/issues/1`,
+      );
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toEqual({ body: 'body text' });
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('runs an operation api and records the done exclusion', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const dataDir = path.join(tmpDir, 'data');
+    const issueRepository = mock<IssueRepository>();
+    issueRepository.get.mockResolvedValue({
+      ...mock<Issue>(),
+      itemId: 'PVTI_loaded',
+    });
+    const server = await startConsoleServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: dataDir,
+      pjcode: 'umino',
+      issueRepository,
+      project: buildProject(),
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'POST',
+        `/api/review?k=${testToken}`,
+        {
+          action: 'approve',
+          prUrl: 'https://github.com/o/r/pull/1',
+          projectItemId: 'PVTI_op',
+        },
+      );
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.approvePullRequest).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+      );
+      expect(readDoneProjectItemIds(dataDir, 'umino', 'prs')).toContain(
+        'PVTI_op',
+      );
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects an operation api with a malformed json body', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const issueRepository = mock<IssueRepository>();
+    const server = await startConsoleServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      issueRepository,
+      project: buildProject(),
+      port: 0,
+    });
+    try {
+      const address = server.address();
+      if (address === null || typeof address === 'string') {
+        throw new Error('server is not listening on a TCP port');
+      }
+      const malformed = await new Promise<{ statusCode: number }>(
+        (resolve, reject) => {
+          const payload = '{ not json';
+          const httpRequest = http.request(
+            {
+              host: '127.0.0.1',
+              port: address.port,
+              path: `/api/review?k=${testToken}`,
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(payload),
+              },
+            },
+            (response) => {
+              response.on('data', () => undefined);
+              response.on('end', () =>
+                resolve({ statusCode: response.statusCode ?? 0 }),
+              );
+            },
+          );
+          httpRequest.on('error', reject);
+          httpRequest.write(payload);
+          httpRequest.end();
+        },
+      );
+      expect(malformed.statusCode).toBe(400);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns 404 for a read api when no repository is injected', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const server = await startConsoleServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'GET',
+        `/api/itembody?k=${testToken}&url=https://github.com/o/r/issues/1`,
+      );
+      expect(response.statusCode).toBe(404);
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });

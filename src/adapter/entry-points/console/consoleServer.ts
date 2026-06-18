@@ -1,6 +1,27 @@
 import * as http from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
+import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+import { Project } from '../../../domain/entities/Project';
+import {
+  buildConsoleDataResponse,
+  parseConsoleDataRoute,
+} from './consoleDataDelivery';
+import {
+  IssueTitleStateCache,
+  handleComments,
+  handleIssueTitle,
+  handleItemBody,
+  handlePrCommits,
+  handlePrFiles,
+  handleRelatedPrs,
+} from './consoleReadApi';
+import {
+  ConsoleOperationContext,
+  handleIntmux,
+  handleReview,
+  handleTriage,
+} from './consoleOperationApi';
 
 export const DEFAULT_CONSOLE_PORT = 9981;
 
@@ -108,6 +129,10 @@ export type ConsoleServerOptions = {
   accessToken: string;
   uiDistDir: string;
   consoleDataOutputDir: string | null;
+  pjcode?: string | null;
+  issueRepository?: IssueRepository | null;
+  project?: Project | null;
+  issueTitleStateCache?: IssueTitleStateCache | null;
 };
 
 const sendNotFound = (response: http.ServerResponse): void => {
@@ -134,11 +159,189 @@ const serveBootstrapIndex = (response: http.ServerResponse): void => {
   response.end(PLACEHOLDER_INDEX_HTML);
 };
 
-export const handleConsoleRequest = (
+const sendJson = (
+  response: http.ServerResponse,
+  statusCode: number,
+  body: unknown,
+): void => {
+  response.writeHead(statusCode, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store',
+  });
+  response.end(JSON.stringify(body));
+};
+
+const sendDataResponse = (
+  response: http.ServerResponse,
+  statusCode: number,
+  contentType: string,
+  body: string,
+): void => {
+  response.writeHead(statusCode, {
+    'Content-Type': contentType,
+    'Cache-Control': 'no-store',
+  });
+  response.end(body);
+};
+
+const readRequestBody = (request: http.IncomingMessage): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const chunks: Uint8Array[] = [];
+    request.on('data', (chunk: Uint8Array) => chunks.push(chunk));
+    request.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
+    request.on('error', reject);
+  });
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+
+const parseRequestBody = (raw: string): Record<string, unknown> | null => {
+  if (raw.length === 0) {
+    return {};
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!isRecord(parsed)) {
+    return null;
+  }
+  return parsed;
+};
+
+const handleReadApi = async (
+  options: ConsoleServerOptions,
+  requestPath: string,
+  searchParams: URLSearchParams,
+): Promise<{ statusCode: number; body: unknown } | null> => {
+  const issueRepository = options.issueRepository ?? null;
+  if (issueRepository === null) {
+    return null;
+  }
+  const cache = options.issueTitleStateCache ?? null;
+  const url = searchParams.get('url');
+  switch (requestPath) {
+    case '/api/itembody':
+      return handleItemBody(issueRepository, url);
+    case '/api/comments':
+      return handleComments(issueRepository, url);
+    case '/api/prfiles':
+      return handlePrFiles(issueRepository, url);
+    case '/api/prcommits':
+      return handlePrCommits(issueRepository, url);
+    case '/api/relatedprs':
+      return handleRelatedPrs(issueRepository, url);
+    case '/api/issuetitle':
+      if (cache === null) {
+        return null;
+      }
+      return handleIssueTitle(issueRepository, cache, url);
+    default:
+      return null;
+  }
+};
+
+const handleOperationApi = async (
+  options: ConsoleServerOptions,
+  requestPath: string,
+  body: Record<string, unknown>,
+): Promise<{ statusCode: number; body: unknown } | null> => {
+  const issueRepository = options.issueRepository ?? null;
+  const project = options.project ?? null;
+  if (issueRepository === null || project === null) {
+    return null;
+  }
+  const context: ConsoleOperationContext = {
+    issueRepository,
+    project,
+    consoleDataOutputDir: options.consoleDataOutputDir,
+    pjcode: options.pjcode ?? null,
+  };
+  switch (requestPath) {
+    case '/api/review':
+      return handleReview(context, body);
+    case '/api/triage':
+      return handleTriage(context, body);
+    case '/api/intmux':
+      return handleIntmux(context, body);
+    default:
+      return null;
+  }
+};
+
+const handleTokenedRequest = async (
   options: ConsoleServerOptions,
   request: http.IncomingMessage,
   response: http.ServerResponse,
-): void => {
+  requestPath: string,
+  searchParams: URLSearchParams,
+): Promise<void> => {
+  const method = (request.method ?? 'GET').toUpperCase();
+
+  if (requestPath.startsWith('/api/')) {
+    if (method === 'GET') {
+      const readResult = await handleReadApi(
+        options,
+        requestPath,
+        searchParams,
+      );
+      if (readResult === null) {
+        sendNotFound(response);
+        return;
+      }
+      sendJson(response, readResult.statusCode, readResult.body);
+      return;
+    }
+    if (method === 'POST') {
+      const raw = await readRequestBody(request);
+      const parsedBody = parseRequestBody(raw);
+      if (parsedBody === null) {
+        sendJson(response, 400, { error: 'invalid JSON body' });
+        return;
+      }
+      const operationResult = await handleOperationApi(
+        options,
+        requestPath,
+        parsedBody,
+      );
+      if (operationResult === null) {
+        sendNotFound(response);
+        return;
+      }
+      sendJson(response, operationResult.statusCode, operationResult.body);
+      return;
+    }
+    sendNotFound(response);
+    return;
+  }
+
+  if (method === 'GET') {
+    const dataRoute = parseConsoleDataRoute(requestPath);
+    if (dataRoute !== null && options.consoleDataOutputDir !== null) {
+      const dataResponse = buildConsoleDataResponse(
+        options.consoleDataOutputDir,
+        dataRoute,
+      );
+      sendDataResponse(
+        response,
+        dataResponse.statusCode,
+        dataResponse.contentType,
+        dataResponse.body,
+      );
+      return;
+    }
+  }
+
+  sendNotFound(response);
+};
+
+export const handleConsoleRequest = async (
+  options: ConsoleServerOptions,
+  request: http.IncomingMessage,
+  response: http.ServerResponse,
+): Promise<void> => {
   const requestUrl = new URL(request.url ?? '/', 'http://localhost');
   const requestPath = requestUrl.pathname;
 
@@ -156,7 +359,13 @@ export const handleConsoleRequest = (
       sendUnauthorized(response);
       return;
     }
-    sendNotFound(response);
+    await handleTokenedRequest(
+      options,
+      request,
+      response,
+      requestPath,
+      requestUrl.searchParams,
+    );
     return;
   }
 
@@ -196,11 +405,26 @@ export const handleConsoleRequest = (
   response.end(staticContent);
 };
 
+const sendInternalServerError = (response: http.ServerResponse): void => {
+  if (response.headersSent) {
+    response.end();
+    return;
+  }
+  response.writeHead(500, {
+    'Content-Type': 'text/plain; charset=utf-8',
+    'Cache-Control': 'no-store',
+  });
+  response.end('Internal Server Error');
+};
+
 export const createConsoleServer = (
   options: ConsoleServerOptions,
 ): http.Server =>
   http.createServer((request, response) => {
-    handleConsoleRequest(options, request, response);
+    handleConsoleRequest(options, request, response).catch((error) => {
+      console.error('console request failed', error);
+      sendInternalServerError(response);
+    });
   });
 
 export type StartConsoleServerOptions = ConsoleServerOptions & {
