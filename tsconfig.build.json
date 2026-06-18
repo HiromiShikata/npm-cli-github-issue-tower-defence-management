@@ -1,7 +1,13 @@
 {
   "extends": "./tsconfig.json",
   "include": ["src"],
-  "exclude": ["node_modules", "**/__tests__/*", "**/*.test.ts"],
+  "exclude": [
+    "node_modules",
+    "**/__tests__/*",
+    "**/*.test.ts",
+    "src/adapter/entry-points/console/ui/**",
+    "src/adapter/entry-points/console/ui-dist/**"
+  ],
   "compilerOptions": {
     "rootDir": "./src",
     "outDir": "bin",
