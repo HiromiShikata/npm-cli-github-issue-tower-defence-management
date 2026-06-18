@@ -3,6 +3,7 @@ import TYPIA from 'typia';
 import fs from 'fs';
 import { writeSituationFile } from './situationFileWriter';
 import { writeConsoleLists } from './consoleListsWriter';
+import { writeInTmuxByHumanData } from './inTmuxByHumanDataWriter';
 import { writeRotationOrderFile } from './rotationOrderFileWriter';
 import {
   fetchProjectReadme,
@@ -68,6 +69,10 @@ export class HandleScheduledEventUseCaseHandler {
     type inputType = Parameters<HandleScheduledEventUseCase['run']>[0] & {
       claudeCodeOauthTokenListJsonPath?: string;
       consoleDataOutputDir?: string;
+      inTmuxDataOutputDir?: string;
+      inTmuxConsoleBaseUrl?: string;
+      inTmuxConsoleToken?: string;
+      inTmuxProjectOrder?: string[];
       credentials: {
         manager: {
           github: {
@@ -379,6 +384,27 @@ export class HandleScheduledEventUseCaseHandler {
       } catch (error) {
         console.error(
           `Failed to write console lists: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+
+      try {
+        writeInTmuxByHumanData({
+          inTmuxDataOutputDir: mergedInput.inTmuxDataOutputDir ?? null,
+          inTmuxConsoleBaseUrl: mergedInput.inTmuxConsoleBaseUrl ?? null,
+          inTmuxConsoleToken: mergedInput.inTmuxConsoleToken ?? null,
+          inTmuxProjectOrder: mergedInput.inTmuxProjectOrder ?? null,
+          pjcode: input.projectName,
+          assigneeLogin: input.manager,
+          org: input.org,
+          repo: input.workingReport.repo,
+          project: result.project,
+          issues: result.issues,
+        });
+      } catch (error) {
+        console.error(
+          `Failed to write in-tmux-by-human data: ${
             error instanceof Error ? error.message : String(error)
           }`,
         );

@@ -212,6 +212,10 @@ awLogDirectoryPath?: string # Optional: Directory path where aw log files named 
 awLogStaleThresholdMinutes?: number # Optional: Minutes since last aw log mtime after which a Preparation issue is considered orphaned even when pgrep still returns 0. Requires awLogDirectoryPath
 labelsAsLlmAgentName?: string[] # Optional: List of issue labels that are themselves agent names. When an issue carries any label that is included in this list, that label name is used as the agent name. Selection precedence is: (1) explicit `llm-agent:` label, (2) labelsAsLlmAgentName entry match, (3) `category:` label, (4) defaultLlmAgentName, (5) defaultAgentName
 consoleDataOutputDir?: string # Optional: Base output directory for the per-project Console list.json files written each schedule cycle. When unset, Console list generation is skipped
+inTmuxDataOutputDir?: string # Optional: Base output directory for the in-tmux-by-human per-project and index JSON files written each schedule cycle. When unset, in-tmux-by-human generation is skipped
+inTmuxConsoleBaseUrl?: string # Optional: Console base URL used to build the tdpmConsoleUrl in the v3/v4 in-tmux-by-human files (for example https://console.example.com). When unset, the v3 and v4 files are skipped
+inTmuxConsoleToken?: string # Optional: Token embedded in the ?k= query string of the v4 in-tmux-by-human files. When unset, the v4 per-project file and index.v4.json are skipped
+inTmuxProjectOrder?: string[] # Optional: Ordered list of project codes used to build the in-tmux-by-human index files. When unset or empty, the index files are skipped
 changeTargetPathAliases?: # Optional: Map of short alias keys to full repository-root-relative directory paths. Allows `change-target:<alias>` labels to reference deeply nested paths that exceed GitHub's 50-character label limit. When a `change-target:` label's value matches a key in this map, it is expanded to the corresponding full path before confinement checking. Values with leading or trailing slashes are normalized automatically. Example below
   adapter-interfaces: src/domain/usecases/adapter-interfaces
 ```
@@ -405,6 +409,44 @@ The `triage` tab omits `statusOptions`, adds `storyOptions` (all story field opt
 - `storyOrder`: Story field option names in field order (empty array when the project has no story field).
 - `storyColors`: Map from story name to its color. Object value (`{ "color": ... }`) for `prs`/`unread`/`failed-preparation`; plain string value for `triage`.
 - `items`: Selected issues, stable-sorted by their story's position in `storyOrder` (unknown stories sorted last). No item carries a `body` field.
+
+## In-Tmux-by-Human Data
+
+When `inTmuxDataOutputDir` is configured, each schedule cycle also writes the in-tmux-by-human data files for the current project, generated from the same in-memory project and issue data already loaded for the cycle (no additional GitHub API calls). Each file is written atomically (written to a `.tmp` file then renamed) so external readers never see a partial write. When `inTmuxDataOutputDir` is unset the generation is skipped, and any error during generation is logged and swallowed so the schedule cycle is never affected.
+
+### Item Selection
+
+An issue is selected when its status equals `In Tmux by human` (exact match), it is open, and its assignees include the project manager. Selected issues are grouped by their story value (a null story maps to the empty string). Groups are ordered by the project story option display order; a group whose story is not among the story options is placed at the tail, ordered by the story string. Within a group, issues keep their input order.
+
+### Files
+
+For the current project code `{pjcode}` (the configured `projectName`):
+
+```
+{inTmuxDataOutputDir}/{pjcode}.json       # v1: [{ story, urls: string[] }]
+{inTmuxDataOutputDir}/{pjcode}.v2.json    # v2: [{ story, urls: [{ url, title }] }]
+{inTmuxDataOutputDir}/{pjcode}.v3.json    # v3: { version, overviewUrl, tdpmConsoleUrl, groups: [{ story, urls: [{ url, title }] }] }
+{inTmuxDataOutputDir}/{pjcode}.v4.json    # v4: { version, overviewUrl, tdpmConsoleUrl, newIssueUrl, groups: [{ story, sessions: [{ name, description }] }] }
+```
+
+and the cross-project index files:
+
+```
+{inTmuxDataOutputDir}/index.json          # { projects: string[] }
+{inTmuxDataOutputDir}/index.v2.json       # { version: 2, projects: string[] }
+{inTmuxDataOutputDir}/index.v3.json       # { version: 3, projects: string[] }
+{inTmuxDataOutputDir}/index.v4.json       # { version: 4, projects: [{ name, path }] }
+```
+
+The index files list every project in `inTmuxProjectOrder` whose `{name}.json` already exists in the output directory, so successive per-project schedule cycles incrementally build the same shared index. In `index.v4.json`, each `path` is `/{basename of inTmuxDataOutputDir}/{name}.v4.json?k={token}`.
+
+### Field Descriptions
+
+- `overviewUrl`: The GitHub Project board URL, taken from the project `url`.
+- `tdpmConsoleUrl`: `{inTmuxConsoleBaseUrl}/projects/{pjcode}/prs`. The v4 variant appends `?k={token}`. The v3 and v4 files are skipped when `inTmuxConsoleBaseUrl` is unset.
+- `newIssueUrl` (v4 only): `https://github.com/{org}/{workingReport.repo}/issues/new?assignees={manager}`, derived from existing config values.
+- `groups`: Story groups. The v3 `groups` carry a `urls` array using the v2 `{ url, title }` entry shape. The v4 `groups` use tmux terminology: each group carries a `sessions` array and each session is `{ name, description }` where `name` is the GitHub issue URL and `description` is the issue title.
+- Token handling: The v4 per-project file and `index.v4.json` are skipped when `inTmuxConsoleToken` is unset. The token value is never written to source code, tests, or documentation; it is supplied through configuration only.
 
 ## Token Rotation Order File
 
