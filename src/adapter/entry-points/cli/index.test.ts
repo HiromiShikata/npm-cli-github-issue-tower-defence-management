@@ -24,6 +24,19 @@ jest.mock('../../repositories/LocalStorageCacheRepository', () => ({
 jest.mock('../../repositories/GraphqlProjectRepository', () => ({
   GraphqlProjectRepository: jest.fn().mockImplementation(() => ({
     findProjectIdByUrl: jest.fn().mockResolvedValue('PVT_kwHOtest456'),
+    getProject: jest.fn().mockResolvedValue({
+      id: 'PVT_kwHOtest456',
+      url: 'https://github.com/orgs/test/projects/1',
+      databaseId: 1,
+      name: 'test-project',
+      status: { name: 'Status', fieldId: 'statusField', statuses: [] },
+      nextActionDate: null,
+      nextActionHour: null,
+      story: null,
+      remainingEstimationMinutes: null,
+      dependedIssueUrlSeparatedByComma: null,
+      completionDate50PercentConfidence: null,
+    }),
   })),
 }));
 jest.mock('../../repositories/issue/ApiV3IssueRepository', () => ({
@@ -1765,6 +1778,87 @@ mysteryKey: 'value'
       ).rejects.toThrow('process.exit called');
 
       expect(processExitSpy).toHaveBeenCalledWith(1);
+
+      consoleErrorSpy.mockRestore();
+      processExitSpy.mockRestore();
+    });
+
+    it('should inject the resolved project and issue repository into the server', async () => {
+      writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
+      const logSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'serveConsole',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      const callArg = mockStartConsoleServer.mock.calls[0][0];
+      expect(callArg.project).not.toBeNull();
+      expect(callArg.issueRepository).not.toBeNull();
+      expect(callArg.issueTitleStateCache).not.toBeNull();
+      expect(callArg.pjcode).toBe('test-project');
+
+      logSpy.mockRestore();
+    });
+
+    it('should exit with error when GH_TOKEN is missing', async () => {
+      delete process.env.GH_TOKEN;
+      writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
+
+      await expect(
+        program.parseAsync([
+          'node',
+          'test',
+          'serveConsole',
+          '--configFilePath',
+          configFilePath,
+        ]),
+      ).rejects.toThrow('process.exit called');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'GH_TOKEN environment variable is required',
+      );
+
+      consoleErrorSpy.mockRestore();
+      processExitSpy.mockRestore();
+    });
+
+    it('should exit with error when projectUrl is missing from config', async () => {
+      writeConfig({
+        defaultAgentName: 'agent1',
+        projectName: 'test-project',
+        consoleAccessToken: 'config-token',
+      });
+      mockFetchReturningReadme(null);
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
+
+      await expect(
+        program.parseAsync([
+          'node',
+          'test',
+          'serveConsole',
+          '--configFilePath',
+          configFilePath,
+        ]),
+      ).rejects.toThrow('process.exit called');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'projectUrl is required. Provide it via the config file or project README.',
+      );
 
       consoleErrorSpy.mockRestore();
       processExitSpy.mockRestore();
