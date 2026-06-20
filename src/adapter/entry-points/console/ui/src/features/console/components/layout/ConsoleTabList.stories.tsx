@@ -56,6 +56,20 @@ export const ActiveZeroCountTabStaysVisible: Story = {
   },
 };
 
+export const AfterAutoAdvanceToNextTab: Story = {
+  args: {
+    activeTab: 'unread',
+    counts: {
+      prs: 0,
+      triage: 0,
+      unread: 7,
+      'failed-preparation': 2,
+      'todo-by-human': 4,
+    },
+    onSelectTab: () => {},
+  },
+};
+
 export const Interactive: Story = {
   render: () => {
     const [activeTab, setActiveTab] = useState<ConsoleTabName>('prs');
