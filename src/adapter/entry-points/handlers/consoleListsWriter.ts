@@ -22,6 +22,7 @@ const CONSOLE_TAB_NAMES: ConsoleTabName[] = [
   'triage',
   'unread',
   'failed-preparation',
+  'todo-by-human',
 ];
 
 export const formatConsoleGeneratedAt = (date: Date): string =>

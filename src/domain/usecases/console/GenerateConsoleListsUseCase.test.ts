@@ -175,6 +175,25 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(result['failed-preparation'].items[0].number).toBe(1);
     });
 
+    it('selects todo-by-human items for the current and legacy status with exact case', () => {
+      const result = run([
+        makeIssue({ status: 'Todo by human' }),
+        makeIssue({ status: 'Todo' }),
+        makeIssue({ status: 'todo by human' }),
+        makeIssue({ status: 'Unread' }),
+      ]);
+      expect(result['todo-by-human'].items.map((item) => item.number)).toEqual([
+        1, 2,
+      ]);
+    });
+
+    it('rejects a non-actionable todo-by-human issue', () => {
+      const result = run([
+        makeIssue({ status: 'Todo by human', nextActionHour: 9 }),
+      ]);
+      expect(result['todo-by-human'].items).toHaveLength(0);
+    });
+
     it('selects no-story items case-insensitively for triage', () => {
       const result = run([
         makeIssue({ story: 'regular / NO STORY; SET STORY FIELD' }),
@@ -295,6 +314,13 @@ describe('GenerateConsoleListsUseCase', () => {
       ]) {
         expect(names).not.toContain(excluded);
       }
+      expect(names).toContain('Awaiting Workspace');
+    });
+
+    it('excludes todo by human and done from todo-by-human status options', () => {
+      const names = run([])['todo-by-human'].statusOptions.map((o) => o.name);
+      expect(names).not.toContain('Todo by human');
+      expect(names).not.toContain('Done');
       expect(names).toContain('Awaiting Workspace');
     });
 

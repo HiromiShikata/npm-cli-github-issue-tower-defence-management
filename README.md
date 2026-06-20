@@ -382,13 +382,13 @@ System metrics are read from `/proc/meminfo` at snapshot write time.
 
 ## Per-Project Console Lists
 
-When `consoleDataOutputDir` is configured, each schedule cycle also writes four per-tab Console list files, generated from the same in-memory project and issue data already loaded for the cycle (no additional GitHub API calls):
+When `consoleDataOutputDir` is configured, each schedule cycle also writes five per-tab Console list files, generated from the same in-memory project and issue data already loaded for the cycle (no additional GitHub API calls):
 
 ```
 {consoleDataOutputDir}/{projectName}/{tab}/list.json
 ```
 
-for `tab` in `prs`, `triage`, `unread`, and `failed-preparation`. Each file is written atomically (written to a `.tmp` file then renamed) so external readers never see a partial write. When `consoleDataOutputDir` is unset the generation is skipped, and any error during generation is logged and swallowed so the schedule cycle is never affected.
+for `tab` in `prs`, `triage`, `unread`, `failed-preparation`, and `todo-by-human`. Each file is written atomically (written to a `.tmp` file then renamed) so external readers never see a partial write. When `consoleDataOutputDir` is unset the generation is skipped, and any error during generation is logged and swallowed so the schedule cycle is never affected.
 
 ### Item Selection
 
@@ -397,11 +397,12 @@ Every tab applies a common actionable filter to the project's issues: the issue 
 - `prs`: status equals `Awaiting Quality Check` (case-insensitive)
 - `unread`: status equals `Unread` (case-insensitive)
 - `failed-preparation`: status equals `Failed Preparation` (exact case)
+- `todo-by-human`: status equals `Todo by human` or the legacy value `Todo` (exact case)
 - `triage`: story name contains `no story` (case-insensitive)
 
 ### JSON Shape
 
-The `prs`, `unread`, and `failed-preparation` tabs share this shape:
+The `prs`, `unread`, `failed-preparation`, and `todo-by-human` tabs share this shape:
 
 ```json
 {
@@ -439,7 +440,7 @@ The `triage` tab omits `statusOptions`, adds `storyOptions` (all story field opt
 - `statusOptions`: Project status field options offered as routing buttons. The current-status option and `Done` are excluded; `failed-preparation` additionally excludes `Preparation`, `Icebox`, `Unread`, `In Tmux by human`, and `In Tmux by agent`.
 - `storyOptions` (triage tab only): All story field options.
 - `storyOrder`: Story field option names in field order (empty array when the project has no story field).
-- `storyColors`: Map from story name to its color. Object value (`{ "color": ... }`) for `prs`/`unread`/`failed-preparation`; plain string value for `triage`.
+- `storyColors`: Map from story name to its color. Object value (`{ "color": ... }`) for `prs`/`unread`/`failed-preparation`/`todo-by-human`; plain string value for `triage`.
 - `items`: Selected issues, stable-sorted by their story's position in `storyOrder` (unknown stories sorted last). No item carries a `body` field.
 
 ## In-Tmux-by-Human Data

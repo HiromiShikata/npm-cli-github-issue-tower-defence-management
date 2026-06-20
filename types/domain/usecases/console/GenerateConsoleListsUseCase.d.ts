@@ -37,12 +37,13 @@ export type ConsoleTriageTab = {
     storyColors: Record<string, ConsoleColor>;
     items: ConsoleListItem[];
 };
-export type ConsoleTabName = 'prs' | 'triage' | 'unread' | 'failed-preparation';
+export type ConsoleTabName = 'prs' | 'triage' | 'unread' | 'failed-preparation' | 'todo-by-human';
 export type ConsoleLists = {
     prs: ConsoleStatusTab;
     triage: ConsoleTriageTab;
     unread: ConsoleStatusTab;
     'failed-preparation': ConsoleStatusTab;
+    'todo-by-human': ConsoleStatusTab;
 };
 export type GenerateConsoleListsInput = {
     project: Project;

@@ -12,6 +12,7 @@ const CONSOLE_TAB_NAMES = [
     'triage',
     'unread',
     'failed-preparation',
+    'todo-by-human',
 ];
 const formatConsoleGeneratedAt = (date) => date.toISOString().replace(/\.\d{3}Z$/, 'Z');
 exports.formatConsoleGeneratedAt = formatConsoleGeneratedAt;
