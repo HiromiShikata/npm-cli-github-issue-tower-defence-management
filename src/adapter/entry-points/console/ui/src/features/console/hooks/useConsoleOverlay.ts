@@ -1,10 +1,10 @@
 import { useCallback, useState } from 'react';
-import { overlayStorageKey, writeOverlayEntry } from '../overlay';
+import { overlayStorageKey, writeOverlayEntry } from '../logic/overlay';
 import type {
   ConsoleOverlay,
   ConsoleOverlayEntry,
   ConsoleTabName,
-} from '../types';
+} from '../logic/types';
 
 const isOverlayEntry = (value: unknown): value is ConsoleOverlayEntry =>
   value !== null &&

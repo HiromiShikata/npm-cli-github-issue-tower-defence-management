@@ -4,7 +4,7 @@ import type {
   ConsoleCommit,
   ConsoleIssueState,
   ConsoleRelatedPullRequest,
-} from '../types';
+} from '../logic/types';
 
 export type ConsoleApiClient = {
   fetchItemBody: (url: string) => Promise<string>;

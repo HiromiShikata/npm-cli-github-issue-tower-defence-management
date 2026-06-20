@@ -1,9 +1,9 @@
 import { act, renderHook } from '@testing-library/react';
+import { overlayStorageKey } from '../logic/overlay';
 import {
   consoleListItemsFixture,
   consoleStatusOptionsFixture,
-} from '../fixtures';
-import { overlayStorageKey } from '../overlay';
+} from '../testing/fixtures';
 import { useConsoleOperations } from './useConsoleOperations';
 import { useConsoleOverlay } from './useConsoleOverlay';
 

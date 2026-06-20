@@ -1,10 +1,10 @@
-import { ConsoleItemDetail } from '../components/ConsoleItemDetail';
-import { ConsoleOperationBar } from '../components/ConsoleOperationBar';
-import { resolveStoryColorEnum } from '../grouping';
+import { ConsoleItemDetail } from '../components/detail/ConsoleItemDetail';
+import { ConsoleOperationMenu } from '../components/operations/ConsoleOperationMenu';
 import type { ConsoleCaches } from '../hooks/useConsoleCaches';
 import { useConsoleItemDetailData } from '../hooks/useConsoleItemDetailData';
 import type { ConsoleOperationsApi } from '../hooks/useConsoleOperations';
-import type { ConsoleOperationHandlers } from '../operations';
+import { resolveStoryColorEnum } from '../logic/grouping';
+import type { ConsoleOperationHandlers } from '../logic/operations';
 import type {
   ConsoleColor,
   ConsoleFieldOption,
@@ -12,7 +12,7 @@ import type {
   ConsoleOverlayStatus,
   ConsoleStoryColorSource,
   ConsoleTabName,
-} from '../types';
+} from '../logic/types';
 
 export type ConsoleItemDetailContainerProps = {
   tab: ConsoleTabName;
@@ -95,7 +95,7 @@ export const ConsoleItemDetailContainer = ({
       relatedPullRequests={detail.relatedPullRequests}
       now={now}
       operationBar={
-        <ConsoleOperationBar
+        <ConsoleOperationMenu
           tab={tab}
           item={item}
           hasPullRequest={hasPullRequest}

@@ -1,13 +1,13 @@
 import { fireEvent, render, waitFor } from '@testing-library/react';
+import type { ConsoleCaches } from '../hooks/useConsoleCaches';
+import type { ConsoleOperationsApi } from '../hooks/useConsoleOperations';
+import { ResourceCache } from '../lib/resourceCache';
 import {
   consoleListItemsFixture,
   consoleStatusOptionsFixture,
   consoleStoryColorsFixture,
   consoleStoryOptionsFixture,
-} from '../fixtures';
-import type { ConsoleCaches } from '../hooks/useConsoleCaches';
-import type { ConsoleOperationsApi } from '../hooks/useConsoleOperations';
-import { ResourceCache } from '../lib/resourceCache';
+} from '../testing/fixtures';
 import { ConsoleItemDetailContainer } from './ConsoleItemDetailContainer';
 
 jest.mock('../lib/mermaidLoader', () => ({

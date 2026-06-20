@@ -4,8 +4,8 @@ import type {
   ConsoleListItem,
   ConsoleStoryColorSource,
   ConsoleTabName,
-} from '../types';
-import { CONSOLE_TABS } from '../types';
+} from '../logic/types';
+import { CONSOLE_TABS } from '../logic/types';
 import { useConsoleToken } from './useConsoleToken';
 
 export type ConsoleTabSnapshot = {

@@ -7,7 +7,7 @@ import type {
   ConsoleIssueState,
   ConsoleListItem,
   ConsoleRelatedPullRequest,
-} from '../types';
+} from '../logic/types';
 import type { ConsoleCaches } from './useConsoleCaches';
 import { useConsoleItemDetailData } from './useConsoleItemDetailData';
 
