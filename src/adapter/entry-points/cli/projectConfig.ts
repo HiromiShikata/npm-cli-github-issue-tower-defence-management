@@ -22,6 +22,7 @@ export type ConfigFile = {
   labelsAsLlmAgentName?: string[];
   changeTargetPathAliases?: Record<string, string>;
   consoleAccessToken?: string;
+  consoleProjects?: Record<string, string>;
 };
 
 const getStringValue = (
@@ -147,6 +148,7 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         'changeTargetPathAliases',
       ),
       consoleAccessToken: getStringValue(parsed, 'consoleAccessToken'),
+      consoleProjects: getStringRecordValue(parsed, 'consoleProjects'),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -307,6 +309,7 @@ export const mergeConfigs = (
     configFile.changeTargetPathAliases,
   consoleAccessToken:
     cliOverrides.consoleAccessToken ?? configFile.consoleAccessToken,
+  consoleProjects: cliOverrides.consoleProjects ?? configFile.consoleProjects,
 });
 
 type GraphqlProjectV2ReadmeResponse = {

@@ -69,10 +69,19 @@ describe('consoleOperationApi', () => {
     };
     context = {
       issueRepository,
-      project,
+      resolveProject: async (pjcode: string) =>
+        pjcode === 'umino' ? { pjcode, project } : null,
       consoleDataOutputDir: baseDir,
-      pjcode: 'umino',
     };
+  });
+
+  const contextForProject = (
+    nextProject: Project,
+  ): ConsoleOperationContext => ({
+    issueRepository,
+    resolveProject: async (pjcode: string) =>
+      pjcode === 'umino' ? { pjcode, project: nextProject } : null,
+    consoleDataOutputDir: baseDir,
   });
 
   afterEach(() => {
@@ -90,6 +99,7 @@ describe('consoleOperationApi', () => {
   describe('handleReview', () => {
     it('approves and sets Awaiting workspace then records done', async () => {
       const response = await handleReview(context, {
+        pjcode: 'umino',
         action: 'approve',
         prUrl: 'https://github.com/o/r/pull/1',
         projectItemId: 'PVTI_a',
@@ -108,6 +118,7 @@ describe('consoleOperationApi', () => {
 
     it('requests changes with the inline comment', async () => {
       const response = await handleReview(context, {
+        pjcode: 'umino',
         action: 'request_changes',
         prUrl: 'https://github.com/o/r/pull/1',
         projectItemId: 'PVTI_b',
@@ -127,6 +138,7 @@ describe('consoleOperationApi', () => {
 
     it('rejects request_changes without a comment body', async () => {
       const response = await handleReview(context, {
+        pjcode: 'umino',
         action: 'request_changes',
         prUrl: 'https://github.com/o/r/pull/1',
         projectItemId: 'PVTI_b',
@@ -139,6 +151,7 @@ describe('consoleOperationApi', () => {
 
     it('closes a pull request and posts a comment', async () => {
       const response = await handleReview(context, {
+        pjcode: 'umino',
         action: 'close',
         prUrl: 'https://github.com/o/r/pull/1',
         projectItemId: 'PVTI_c',
@@ -157,6 +170,7 @@ describe('consoleOperationApi', () => {
 
     it('rejects an unknown review action', async () => {
       const response = await handleReview(context, {
+        pjcode: 'umino',
         action: 'frobnicate',
         prUrl: 'https://github.com/o/r/pull/1',
         projectItemId: 'PVTI_c',
@@ -166,6 +180,7 @@ describe('consoleOperationApi', () => {
 
     it('rejects a missing prUrl', async () => {
       const response = await handleReview(context, {
+        pjcode: 'umino',
         action: 'approve',
         projectItemId: 'PVTI_c',
       });
@@ -174,6 +189,7 @@ describe('consoleOperationApi', () => {
 
     it('rejects a missing action', async () => {
       const response = await handleReview(context, {
+        pjcode: 'umino',
         prUrl: 'https://github.com/o/r/pull/1',
         projectItemId: 'PVTI_c',
       });
@@ -182,6 +198,7 @@ describe('consoleOperationApi', () => {
 
     it('rejects a missing projectItemId', async () => {
       const response = await handleReview(context, {
+        pjcode: 'umino',
         action: 'approve',
         prUrl: 'https://github.com/o/r/pull/1',
       });
@@ -191,6 +208,7 @@ describe('consoleOperationApi', () => {
     it('returns 400 when the issue cannot be loaded during approve', async () => {
       issueRepository.get.mockResolvedValue(null);
       const response = await handleReview(context, {
+        pjcode: 'umino',
         action: 'approve',
         prUrl: 'https://github.com/o/r/pull/1',
         projectItemId: 'PVTI_c',
@@ -200,14 +218,12 @@ describe('consoleOperationApi', () => {
     });
 
     it('returns 400 when the Awaiting workspace status is absent', async () => {
-      const contextWithoutStatus: ConsoleOperationContext = {
-        ...context,
-        project: {
-          ...project,
-          status: { name: 'Status', fieldId: 'f', statuses: [] },
-        },
-      };
+      const contextWithoutStatus = contextForProject({
+        ...project,
+        status: { name: 'Status', fieldId: 'f', statuses: [] },
+      });
       const response = await handleReview(contextWithoutStatus, {
+        pjcode: 'umino',
         action: 'approve',
         prUrl: 'https://github.com/o/r/pull/1',
         projectItemId: 'PVTI_c',
@@ -219,6 +235,7 @@ describe('consoleOperationApi', () => {
   describe('handleTriage', () => {
     it('sets the status by name', async () => {
       const response = await handleTriage(context, {
+        pjcode: 'umino',
         action: 'set_status',
         issueUrl: 'https://github.com/o/r/issues/1',
         projectItemId: 'PVTI_d',
@@ -235,6 +252,7 @@ describe('consoleOperationApi', () => {
 
     it('rejects an unknown status name', async () => {
       const response = await handleTriage(context, {
+        pjcode: 'umino',
         action: 'set_status',
         issueUrl: 'https://github.com/o/r/issues/1',
         projectItemId: 'PVTI_d',
@@ -246,6 +264,7 @@ describe('consoleOperationApi', () => {
 
     it('sets the story option', async () => {
       const response = await handleTriage(context, {
+        pjcode: 'umino',
         action: 'set_story',
         issueUrl: 'https://github.com/o/r/issues/1',
         projectItemId: 'PVTI_e',
@@ -262,6 +281,7 @@ describe('consoleOperationApi', () => {
 
     it('snoozes for one day via updateNextActionDate', async () => {
       const response = await handleTriage(context, {
+        pjcode: 'umino',
         action: 'snooze_1day',
         issueUrl: 'https://github.com/o/r/issues/1',
         projectItemId: 'PVTI_f',
@@ -277,6 +297,7 @@ describe('consoleOperationApi', () => {
 
     it('snoozes for one week via updateNextActionDate', async () => {
       const response = await handleTriage(context, {
+        pjcode: 'umino',
         action: 'snooze_1week',
         issueUrl: 'https://github.com/o/r/issues/1',
         projectItemId: 'PVTI_g',
@@ -286,16 +307,18 @@ describe('consoleOperationApi', () => {
       expectRecordedAcrossTabs('PVTI_g');
     });
 
-    it('closes via the triage close action', async () => {
+    it('closes an issue as completed via the triage close action', async () => {
       const response = await handleTriage(context, {
+        pjcode: 'umino',
         action: 'close',
         issueUrl: 'https://github.com/o/r/issues/1',
         projectItemId: 'PVTI_h',
         commentBody: 'duplicate',
       });
       expect(response.statusCode).toBe(200);
-      expect(issueRepository.closePullRequest).toHaveBeenCalledWith(
+      expect(issueRepository.closeIssueByUrl).toHaveBeenCalledWith(
         'https://github.com/o/r/issues/1',
+        'completed',
       );
       expect(issueRepository.createCommentByUrl).toHaveBeenCalledWith(
         'https://github.com/o/r/issues/1',
@@ -304,8 +327,24 @@ describe('consoleOperationApi', () => {
       expectRecordedAcrossTabs('PVTI_h');
     });
 
+    it('closes an issue as not planned via the triage close_not_planned action', async () => {
+      const response = await handleTriage(context, {
+        pjcode: 'umino',
+        action: 'close_not_planned',
+        issueUrl: 'https://github.com/o/r/issues/2',
+        projectItemId: 'PVTI_np',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.closeIssueByUrl).toHaveBeenCalledWith(
+        'https://github.com/o/r/issues/2',
+        'not_planned',
+      );
+      expectRecordedAcrossTabs('PVTI_np');
+    });
+
     it('rejects an unknown triage action', async () => {
       const response = await handleTriage(context, {
+        pjcode: 'umino',
         action: 'unknown',
         issueUrl: 'https://github.com/o/r/issues/1',
         projectItemId: 'PVTI_h',
@@ -315,6 +354,7 @@ describe('consoleOperationApi', () => {
 
     it('rejects set_status without a status name', async () => {
       const response = await handleTriage(context, {
+        pjcode: 'umino',
         action: 'set_status',
         issueUrl: 'https://github.com/o/r/issues/1',
         projectItemId: 'PVTI_h',
@@ -324,6 +364,7 @@ describe('consoleOperationApi', () => {
 
     it('rejects set_story without a story option id', async () => {
       const response = await handleTriage(context, {
+        pjcode: 'umino',
         action: 'set_story',
         issueUrl: 'https://github.com/o/r/issues/1',
         projectItemId: 'PVTI_h',
@@ -332,11 +373,12 @@ describe('consoleOperationApi', () => {
     });
 
     it('rejects set_story when the project has no story field', async () => {
-      const contextWithoutStory: ConsoleOperationContext = {
-        ...context,
-        project: { ...project, story: null },
-      };
+      const contextWithoutStory = contextForProject({
+        ...project,
+        story: null,
+      });
       const response = await handleTriage(contextWithoutStory, {
+        pjcode: 'umino',
         action: 'set_story',
         issueUrl: 'https://github.com/o/r/issues/1',
         projectItemId: 'PVTI_h',
@@ -348,6 +390,7 @@ describe('consoleOperationApi', () => {
 
     it('rejects a missing issueUrl', async () => {
       const response = await handleTriage(context, {
+        pjcode: 'umino',
         action: 'set_status',
         projectItemId: 'PVTI_h',
         statusName: 'Todo',
@@ -358,6 +401,7 @@ describe('consoleOperationApi', () => {
     it('returns 400 when the issue cannot be loaded for set_story', async () => {
       issueRepository.get.mockResolvedValue(null);
       const response = await handleTriage(context, {
+        pjcode: 'umino',
         action: 'set_story',
         issueUrl: 'https://github.com/o/r/issues/1',
         projectItemId: 'PVTI_h',
@@ -370,6 +414,7 @@ describe('consoleOperationApi', () => {
   describe('handleIntmux', () => {
     it('sets the In Tmux by human status and records done', async () => {
       const response = await handleIntmux(context, {
+        pjcode: 'umino',
         action: 'set_intmux',
         issueUrl: 'https://github.com/o/r/issues/1',
         projectItemId: 'PVTI_i',
@@ -385,6 +430,7 @@ describe('consoleOperationApi', () => {
 
     it('rejects an unknown intmux action', async () => {
       const response = await handleIntmux(context, {
+        pjcode: 'umino',
         action: 'unset_intmux',
         issueUrl: 'https://github.com/o/r/issues/1',
         projectItemId: 'PVTI_i',
@@ -395,6 +441,7 @@ describe('consoleOperationApi', () => {
     it('returns 400 when the issue cannot be loaded', async () => {
       issueRepository.get.mockResolvedValue(null);
       const response = await handleIntmux(context, {
+        pjcode: 'umino',
         action: 'set_intmux',
         issueUrl: 'https://github.com/o/r/issues/1',
         projectItemId: 'PVTI_i',
@@ -404,6 +451,7 @@ describe('consoleOperationApi', () => {
 
     it('rejects a missing issueUrl', async () => {
       const response = await handleIntmux(context, {
+        pjcode: 'umino',
         action: 'set_intmux',
         projectItemId: 'PVTI_i',
       });
@@ -412,6 +460,7 @@ describe('consoleOperationApi', () => {
 
     it('rejects a missing projectItemId', async () => {
       const response = await handleIntmux(context, {
+        pjcode: 'umino',
         action: 'set_intmux',
         issueUrl: 'https://github.com/o/r/issues/1',
       });
@@ -420,10 +469,74 @@ describe('consoleOperationApi', () => {
 
     it('rejects a missing action', async () => {
       const response = await handleIntmux(context, {
+        pjcode: 'umino',
         issueUrl: 'https://github.com/o/r/issues/1',
         projectItemId: 'PVTI_i',
       });
       expect(response.statusCode).toBe(400);
+    });
+  });
+
+  describe('per-project resolution', () => {
+    it('rejects an operation whose body has no pjcode', async () => {
+      const response = await handleTriage(context, {
+        action: 'set_status',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_k',
+        statusName: 'Todo',
+      });
+      expect(response.statusCode).toBe(400);
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('rejects an operation whose pjcode has no configured project', async () => {
+      const response = await handleTriage(context, {
+        pjcode: 'unknown-project',
+        action: 'set_status',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_k',
+        statusName: 'Todo',
+      });
+      expect(response.statusCode).toBe(400);
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('records the .done exclusion under the resolved pjcode', async () => {
+      const otherProject: Project = { ...project, id: 'PVT_other' };
+      const multiContext: ConsoleOperationContext = {
+        issueRepository,
+        resolveProject: async (pjcode: string) => {
+          if (pjcode === 'umino') {
+            return { pjcode, project };
+          }
+          if (pjcode === 'xmile') {
+            return { pjcode, project: otherProject };
+          }
+          return null;
+        },
+        consoleDataOutputDir: baseDir,
+      };
+      const response = await handleTriage(multiContext, {
+        pjcode: 'xmile',
+        action: 'set_status',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_x',
+        statusName: 'Todo',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.updateStatus).toHaveBeenCalledWith(
+        otherProject,
+        { ...issue, itemId: 'PVTI_x' },
+        'status_todo',
+      );
+      for (const tab of CONSOLE_DONE_TAB_NAMES) {
+        expect(readDoneProjectItemIds(baseDir, 'xmile', tab)).toContain(
+          'PVTI_x',
+        );
+        expect(readDoneProjectItemIds(baseDir, 'umino', tab)).not.toContain(
+          'PVTI_x',
+        );
+      }
     });
   });
 
@@ -434,6 +547,7 @@ describe('consoleOperationApi', () => {
         consoleDataOutputDir: null,
       };
       const response = await handleIntmux(noStorageContext, {
+        pjcode: 'umino',
         action: 'set_intmux',
         issueUrl: 'https://github.com/o/r/issues/1',
         projectItemId: 'PVTI_j',

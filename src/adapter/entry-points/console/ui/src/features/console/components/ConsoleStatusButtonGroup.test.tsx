@@ -1,0 +1,49 @@
+import { fireEvent, render } from '@testing-library/react';
+import { consoleStatusOptionsFixture } from '../fixtures';
+import { ConsoleStatusButtonGroup } from './ConsoleStatusButtonGroup';
+
+describe('ConsoleStatusButtonGroup', () => {
+  it('renders only the four routed status buttons that exist in the data', () => {
+    const { getByText, queryByText } = render(
+      <ConsoleStatusButtonGroup
+        statusOptions={consoleStatusOptionsFixture}
+        onSetStatus={() => {}}
+        onSetInTmuxByHuman={() => {}}
+      />,
+    );
+    expect(getByText('In Tmux by agent')).toBeInTheDocument();
+    expect(getByText('In Tmux by human')).toBeInTheDocument();
+    expect(getByText('Todo by human')).toBeInTheDocument();
+    expect(getByText('Awaiting Workspace')).toBeInTheDocument();
+    expect(queryByText('Preparation')).toBeNull();
+  });
+
+  it('routes In Tmux by human to the intmux handler and others to the status handler', () => {
+    const onSetStatus = jest.fn();
+    const onSetInTmuxByHuman = jest.fn();
+    const { getByText } = render(
+      <ConsoleStatusButtonGroup
+        statusOptions={consoleStatusOptionsFixture}
+        onSetStatus={onSetStatus}
+        onSetInTmuxByHuman={onSetInTmuxByHuman}
+      />,
+    );
+    fireEvent.click(getByText('In Tmux by human'));
+    fireEvent.click(getByText('In Tmux by agent'));
+    expect(onSetInTmuxByHuman).toHaveBeenCalledTimes(1);
+    expect(onSetInTmuxByHuman.mock.calls[0][0].name).toBe('In Tmux by human');
+    expect(onSetStatus).toHaveBeenCalledTimes(1);
+    expect(onSetStatus.mock.calls[0][0].name).toBe('In Tmux by agent');
+  });
+
+  it('renders nothing when no routed option exists', () => {
+    const { container } = render(
+      <ConsoleStatusButtonGroup
+        statusOptions={[{ id: 'x', name: 'Preparation', color: 'YELLOW' }]}
+        onSetStatus={() => {}}
+        onSetInTmuxByHuman={() => {}}
+      />,
+    );
+    expect(container.firstChild).toBeNull();
+  });
+});

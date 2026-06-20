@@ -12,23 +12,59 @@ export default meta;
 
 type Story = StoryObj<typeof ConsoleTabBar>;
 
-export const PrsActive: Story = {
+const counts: Record<ConsoleTabName, number> = {
+  prs: 35,
+  triage: 12,
+  unread: 7,
+  'failed-preparation': 2,
+  'todo-by-human': 4,
+};
+
+export const AllTabsWithCounts: Story = {
   args: {
     activeTab: 'prs',
-    onSelectTab: () => undefined,
+    counts,
+    onSelectTab: () => {},
   },
 };
 
-export const TriageActive: Story = {
+export const ZeroCountTabsHidden: Story = {
+  args: {
+    activeTab: 'prs',
+    counts: {
+      prs: 35,
+      triage: 0,
+      unread: 7,
+      'failed-preparation': 0,
+      'todo-by-human': 0,
+    },
+    onSelectTab: () => {},
+  },
+};
+
+export const ActiveZeroCountTabStaysVisible: Story = {
   args: {
     activeTab: 'triage',
-    onSelectTab: () => undefined,
+    counts: {
+      prs: 35,
+      triage: 0,
+      unread: 7,
+      'failed-preparation': 0,
+      'todo-by-human': 0,
+    },
+    onSelectTab: () => {},
   },
 };
 
 export const Interactive: Story = {
   render: () => {
     const [activeTab, setActiveTab] = useState<ConsoleTabName>('prs');
-    return <ConsoleTabBar activeTab={activeTab} onSelectTab={setActiveTab} />;
+    return (
+      <ConsoleTabBar
+        activeTab={activeTab}
+        counts={counts}
+        onSelectTab={setActiveTab}
+      />
+    );
   },
 };

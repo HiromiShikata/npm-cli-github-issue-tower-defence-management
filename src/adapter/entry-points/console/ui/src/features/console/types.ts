@@ -48,6 +48,78 @@ export type ConsoleTriageTab = {
 
 export type ConsoleTabData = ConsoleStatusTab | ConsoleTriageTab;
 
+export type ConsoleStoryColorSource = Record<
+  string,
+  ConsoleColor | { color: ConsoleColor }
+>;
+
+export type ConsoleIssueState = {
+  state: string;
+  merged: boolean;
+  isPullRequest: boolean;
+};
+
+export type ConsoleComment = {
+  author: string;
+  body: string;
+  createdAt: string;
+};
+
+export type ConsoleChangedFile = {
+  path: string;
+  additions: number;
+  deletions: number;
+  status: string;
+  patch: string | null;
+};
+
+export type ConsoleCommit = {
+  sha: string;
+  message: string;
+  author: string;
+  authoredAt: string;
+};
+
+export type ConsoleRelatedPullRequest = {
+  url: string;
+  branchName: string | null;
+  createdAt: string;
+  isDraft: boolean;
+  isConflicted: boolean;
+  isPassedAllCiJob: boolean;
+  isCiStateSuccess: boolean;
+  isResolvedAllReviewComments: boolean;
+  isBranchOutOfDate: boolean;
+  missingRequiredCheckNames: string[];
+  summary: {
+    title: string;
+    body: string;
+    additions: number;
+    deletions: number;
+    changedFiles: number;
+  } | null;
+};
+
+export type ConsoleOverlayStatus = {
+  name: string;
+  color: ConsoleColor;
+};
+
+export type ConsoleOverlayStory = {
+  name: string;
+  color: ConsoleColor;
+};
+
+export type ConsoleOverlayEntry = {
+  done?: boolean;
+  status?: ConsoleOverlayStatus;
+  story?: ConsoleOverlayStory;
+  ts: number;
+  mode: ConsoleTabName;
+};
+
+export type ConsoleOverlay = Record<string, ConsoleOverlayEntry>;
+
 export type ConsoleTabName =
   | 'prs'
   | 'triage'
@@ -65,5 +137,5 @@ export const CONSOLE_TABS: ConsoleTab[] = [
   { name: 'triage', label: 'Triage' },
   { name: 'unread', label: 'Unread' },
   { name: 'failed-preparation', label: 'Failed Preparation' },
-  { name: 'todo-by-human', label: 'Todo By Human' },
+  { name: 'todo-by-human', label: 'Todo by human' },
 ];

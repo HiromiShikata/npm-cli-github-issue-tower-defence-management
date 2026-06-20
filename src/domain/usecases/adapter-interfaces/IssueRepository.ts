@@ -133,6 +133,10 @@ export interface IssueRepository {
     commentBody: string,
   ) => Promise<void>;
   closePullRequest: (prUrl: string) => Promise<void>;
+  closeIssueByUrl: (
+    issueUrl: string,
+    stateReason: 'completed' | 'not_planned',
+  ) => Promise<void>;
   deletePullRequestBranch: (prUrl: string, branchName: string) => Promise<void>;
   createCommentByUrl: (
     issueOrPrUrl: string,

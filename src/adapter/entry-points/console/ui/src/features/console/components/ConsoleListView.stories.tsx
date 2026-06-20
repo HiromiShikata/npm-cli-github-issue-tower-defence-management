@@ -1,5 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { consoleListItemsFixture } from '../fixtures';
+import {
+  consoleListItemsFixture,
+  consoleStoryColorsFixture,
+} from '../fixtures';
+import { buildConsoleListRows } from '../grouping';
 import { ConsoleListView } from './ConsoleListView';
 
 const meta: Meta<typeof ConsoleListView> = {
@@ -11,34 +15,46 @@ export default meta;
 
 type Story = StoryObj<typeof ConsoleListView>;
 
-export const WithItems: Story = {
+export const WithStoryGroups: Story = {
   args: {
-    items: consoleListItemsFixture,
+    rows: buildConsoleListRows(consoleListItemsFixture, {}),
+    storyColors: consoleStoryColorsFixture,
+    activeItemId: null,
     isLoading: false,
     error: null,
+    onSelectItem: () => {},
   },
 };
 
 export const Loading: Story = {
   args: {
-    items: [],
+    rows: [],
+    storyColors: {},
+    activeItemId: null,
     isLoading: true,
     error: null,
+    onSelectItem: () => {},
   },
 };
 
 export const Empty: Story = {
   args: {
-    items: [],
+    rows: [],
+    storyColors: {},
+    activeItemId: null,
     isLoading: false,
     error: null,
+    onSelectItem: () => {},
   },
 };
 
 export const ErrorState: Story = {
   args: {
-    items: [],
+    rows: [],
+    storyColors: {},
+    activeItemId: null,
     isLoading: false,
     error: 'HTTP 404',
+    onSelectItem: () => {},
   },
 };
