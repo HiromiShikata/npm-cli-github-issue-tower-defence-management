@@ -1,3 +1,10 @@
+# [1.91.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.90.0...v1.91.0) (2026-06-20)
+
+
+### Features
+
+* **console:** rebuild React console UI feature parity with single-artifact dist ([#859](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/859)) ([c78187f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c78187f0ed192b5c241f17b204d449b178511b60))
+
 # [1.90.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.89.0...v1.90.0) (2026-06-20)
 
 

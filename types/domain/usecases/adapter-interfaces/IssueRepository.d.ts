@@ -88,6 +88,7 @@ export interface IssueRepository {
     approvePullRequest: (prUrl: string) => Promise<void>;
     requestChangesWithInlineComment: (prUrl: string, changedFilePath: string | null, commentBody: string) => Promise<void>;
     closePullRequest: (prUrl: string) => Promise<void>;
+    closeIssueByUrl: (issueUrl: string, stateReason: 'completed' | 'not_planned') => Promise<void>;
     deletePullRequestBranch: (prUrl: string, branchName: string) => Promise<void>;
     createCommentByUrl: (issueOrPrUrl: string, commentBody: string) => Promise<void>;
     getAllOpened: (project: Project, allowCacheMinutes: number) => Promise<Issue[]>;

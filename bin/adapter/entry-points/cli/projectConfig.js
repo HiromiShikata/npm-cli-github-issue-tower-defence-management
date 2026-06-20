@@ -123,6 +123,7 @@ const loadConfigFile = (configFilePath) => {
             labelsAsLlmAgentName: getStringArrayValue(parsed, 'labelsAsLlmAgentName'),
             changeTargetPathAliases: getStringRecordValue(parsed, 'changeTargetPathAliases'),
             consoleAccessToken: getStringValue(parsed, 'consoleAccessToken'),
+            consoleProjects: getStringRecordValue(parsed, 'consoleProjects'),
         };
     }
     catch (error) {
@@ -234,6 +235,7 @@ const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
         cliOverrides.changeTargetPathAliases ??
         configFile.changeTargetPathAliases,
     consoleAccessToken: cliOverrides.consoleAccessToken ?? configFile.consoleAccessToken,
+    consoleProjects: cliOverrides.consoleProjects ?? configFile.consoleProjects,
 });
 exports.mergeConfigs = mergeConfigs;
 const isGraphqlProjectV2ReadmeResponse = (value) => {

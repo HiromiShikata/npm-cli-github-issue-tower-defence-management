@@ -1,7 +1,7 @@
 import * as http from 'http';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
-import { Project } from '../../../domain/entities/Project';
 import { IssueTitleStateCache } from './consoleReadApi';
+import { ConsoleProjectResolver } from './consoleOperationApi';
 export declare const DEFAULT_CONSOLE_PORT = 9981;
 export declare const CONSOLE_TOKEN_HEADER = "x-pv-token";
 export declare const hasDotSegment: (requestPath: string) => boolean;
@@ -13,9 +13,8 @@ export type ConsoleServerOptions = {
     accessToken: string;
     uiDistDir: string;
     consoleDataOutputDir: string | null;
-    pjcode?: string | null;
     issueRepository?: IssueRepository | null;
-    project?: Project | null;
+    resolveProject?: ConsoleProjectResolver | null;
     issueTitleStateCache?: IssueTitleStateCache | null;
 };
 export declare const handleConsoleRequest: (options: ConsoleServerOptions, request: http.IncomingMessage, response: http.ServerResponse) => Promise<void>;

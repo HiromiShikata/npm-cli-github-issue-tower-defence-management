@@ -245,15 +245,14 @@ const handleReadApi = async (options, requestPath, searchParams) => {
 };
 const handleOperationApi = async (options, requestPath, body) => {
     const issueRepository = options.issueRepository ?? null;
-    const project = options.project ?? null;
-    if (issueRepository === null || project === null) {
+    const resolveProject = options.resolveProject ?? null;
+    if (issueRepository === null || resolveProject === null) {
         return null;
     }
     const context = {
         issueRepository,
-        project,
+        resolveProject,
         consoleDataOutputDir: options.consoleDataOutputDir,
-        pjcode: options.pjcode ?? null,
     };
     switch (requestPath) {
         case '/api/review':

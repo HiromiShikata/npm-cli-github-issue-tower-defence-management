@@ -61,6 +61,7 @@ const RevertOrphanedPreparationUseCase_1 = require("../../../domain/usecases/Rev
 const path = __importStar(require("path"));
 const consoleServer_1 = require("../console/consoleServer");
 const consoleReadApi_1 = require("../console/consoleReadApi");
+const consoleProjectResolver_1 = require("../console/consoleProjectResolver");
 const OauthTokenSelectHandler_1 = require("../handlers/OauthTokenSelectHandler");
 const buildGithubRepositoryParams = (localStorageRepository, token) => [
     localStorageRepository,
@@ -389,25 +390,28 @@ exports.program
     const restIssueRepository = new RestIssueRepository_1.RestIssueRepository(...githubRepositoryParams);
     const graphqlProjectItemRepository = new GraphqlProjectItemRepository_1.GraphqlProjectItemRepository(...githubRepositoryParams);
     const issueRepository = new ApiV3CheerioRestIssueRepository_1.ApiV3CheerioRestIssueRepository(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, ...githubRepositoryParams);
-    const projectId = await projectRepository.findProjectIdByUrl(projectUrl);
-    if (!projectId) {
-        console.error(`No project found for projectUrl ${projectUrl}`);
-        process.exit(1);
-    }
-    const project = await projectRepository.getProject(projectId);
-    if (!project) {
-        console.error(`Failed to load project for projectUrl ${projectUrl}`);
-        process.exit(1);
-    }
+    const pjcodeToProjectUrl = (0, consoleProjectResolver_1.buildPjcodeToProjectUrl)(projectName, projectUrl, config.consoleProjects ?? null);
+    const resolveProject = (0, consoleProjectResolver_1.createConsoleProjectResolver)(pjcodeToProjectUrl, async (targetProjectUrl) => {
+        const targetProjectId = await projectRepository.findProjectIdByUrl(targetProjectUrl);
+        if (!targetProjectId) {
+            console.error(`No project found for projectUrl ${targetProjectUrl}`);
+            return null;
+        }
+        const loadedProject = await projectRepository.getProject(targetProjectId);
+        if (!loadedProject) {
+            console.error(`Failed to load project for projectUrl ${targetProjectUrl}`);
+            return null;
+        }
+        return loadedProject;
+    });
     const uiDistDir = path.join(__dirname, 'ui-dist');
     const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
     await (0, consoleServer_1.startConsoleServer)({
         accessToken,
         uiDistDir,
         consoleDataOutputDir,
-        pjcode: projectName,
         issueRepository,
-        project,
+        resolveProject,
         issueTitleStateCache: new consoleReadApi_1.IssueTitleStateCache(),
         port,
     });

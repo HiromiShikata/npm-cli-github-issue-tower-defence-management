@@ -18,29 +18,41 @@ const resolveStatusId = (project, statusName) => {
     const match = project.status.statuses.find((option) => option.name.toLowerCase() === lower);
     return match ? match.id : null;
 };
-const loadIssueWithProjectItemId = async (context, issueUrl, projectItemId) => {
-    const issue = await context.issueRepository.get(issueUrl, context.project);
+const loadIssueWithProjectItemId = async (issueRepository, project, issueUrl, projectItemId) => {
+    const issue = await issueRepository.get(issueUrl, project);
     if (issue === null) {
         return null;
     }
     return { ...issue, itemId: projectItemId };
 };
-const recordDone = (context, projectItemId) => {
-    if (context.consoleDataOutputDir === null || context.pjcode === null) {
+const recordDone = (context, pjcode, projectItemId) => {
+    if (context.consoleDataOutputDir === null) {
         return;
     }
-    (0, consoleDoneStore_1.recordDoneProjectItemIdAcrossTabs)(context.consoleDataOutputDir, context.pjcode, projectItemId);
+    (0, consoleDoneStore_1.recordDoneProjectItemIdAcrossTabs)(context.consoleDataOutputDir, pjcode, projectItemId);
 };
-const updateStatusByName = async (context, issueUrl, projectItemId, statusName) => {
-    const statusId = resolveStatusId(context.project, statusName);
+const resolveBinding = async (context, body) => {
+    const pjcode = body.pjcode;
+    if (!isNonEmptyString(pjcode)) {
+        return badRequest('pjcode is required');
+    }
+    const binding = await context.resolveProject(pjcode);
+    if (binding === null) {
+        return badRequest(`no project configured for pjcode "${pjcode}"`);
+    }
+    return binding;
+};
+const isOperationResponse = (value) => Object.prototype.hasOwnProperty.call(value, 'statusCode');
+const updateStatusByName = async (issueRepository, project, issueUrl, projectItemId, statusName) => {
+    const statusId = resolveStatusId(project, statusName);
     if (statusId === null) {
         return badRequest(`status option "${statusName}" not found in project`);
     }
-    const issue = await loadIssueWithProjectItemId(context, issueUrl, projectItemId);
+    const issue = await loadIssueWithProjectItemId(issueRepository, project, issueUrl, projectItemId);
     if (issue === null) {
         return badRequest('issue not found');
     }
-    await context.issueRepository.updateStatus(context.project, issue, statusId);
+    await issueRepository.updateStatus(project, issue, statusId);
     return null;
 };
 const handleReview = async (context, body) => {
@@ -56,13 +68,18 @@ const handleReview = async (context, body) => {
     if (!isNonEmptyString(projectItemId)) {
         return badRequest('projectItemId is required');
     }
+    const binding = await resolveBinding(context, body);
+    if (isOperationResponse(binding)) {
+        return binding;
+    }
+    const { project, pjcode } = binding;
     if (action === 'approve') {
         await context.issueRepository.approvePullRequest(prUrl);
-        const failure = await updateStatusByName(context, prUrl, projectItemId, exports.AWAITING_WORKSPACE_STATUS_NAME);
+        const failure = await updateStatusByName(context.issueRepository, project, prUrl, projectItemId, exports.AWAITING_WORKSPACE_STATUS_NAME);
         if (failure !== null) {
             return failure;
         }
-        recordDone(context, projectItemId);
+        recordDone(context, pjcode, projectItemId);
         return ok();
     }
     if (action === 'request_changes') {
@@ -74,11 +91,11 @@ const handleReview = async (context, body) => {
             ? body.changedFilePath
             : null;
         await context.issueRepository.requestChangesWithInlineComment(prUrl, changedFilePath, commentBody);
-        const failure = await updateStatusByName(context, prUrl, projectItemId, exports.AWAITING_WORKSPACE_STATUS_NAME);
+        const failure = await updateStatusByName(context.issueRepository, project, prUrl, projectItemId, exports.AWAITING_WORKSPACE_STATUS_NAME);
         if (failure !== null) {
             return failure;
         }
-        recordDone(context, projectItemId);
+        recordDone(context, pjcode, projectItemId);
         return ok();
     }
     if (action === 'close') {
@@ -86,7 +103,7 @@ const handleReview = async (context, body) => {
         if (isNonEmptyString(body.commentBody)) {
             await context.issueRepository.createCommentByUrl(prUrl, body.commentBody);
         }
-        recordDone(context, projectItemId);
+        recordDone(context, pjcode, projectItemId);
         return ok();
     }
     return badRequest(`unknown review action "${action}"`);
@@ -105,16 +122,21 @@ const handleTriage = async (context, body) => {
     if (!isNonEmptyString(projectItemId)) {
         return badRequest('projectItemId is required');
     }
+    const binding = await resolveBinding(context, body);
+    if (isOperationResponse(binding)) {
+        return binding;
+    }
+    const { project, pjcode } = binding;
     if (action === 'set_status') {
         const statusName = body.statusName;
         if (!isNonEmptyString(statusName)) {
             return badRequest('statusName is required for set_status');
         }
-        const failure = await updateStatusByName(context, issueUrl, projectItemId, statusName);
+        const failure = await updateStatusByName(context.issueRepository, project, issueUrl, projectItemId, statusName);
         if (failure !== null) {
             return failure;
         }
-        recordDone(context, projectItemId);
+        recordDone(context, pjcode, projectItemId);
         return ok();
     }
     if (action === 'set_story') {
@@ -122,30 +144,30 @@ const handleTriage = async (context, body) => {
         if (!isNonEmptyString(storyOptionId)) {
             return badRequest('storyOptionId is required for set_story');
         }
-        if (context.project.story === null) {
+        if (project.story === null) {
             return badRequest('project does not have a story field');
         }
-        const issue = await loadIssueWithProjectItemId(context, issueUrl, projectItemId);
+        const issue = await loadIssueWithProjectItemId(context.issueRepository, project, issueUrl, projectItemId);
         if (issue === null) {
             return badRequest('issue not found');
         }
-        await context.issueRepository.updateStory({ ...context.project, story: context.project.story }, issue, storyOptionId);
-        recordDone(context, projectItemId);
+        await context.issueRepository.updateStory({ ...project, story: project.story }, issue, storyOptionId);
+        recordDone(context, pjcode, projectItemId);
         return ok();
     }
-    if (action === 'close') {
-        await context.issueRepository.closePullRequest(issueUrl);
+    if (action === 'close' || action === 'close_not_planned') {
         if (isNonEmptyString(body.commentBody)) {
             await context.issueRepository.createCommentByUrl(issueUrl, body.commentBody);
         }
-        recordDone(context, projectItemId);
+        await context.issueRepository.closeIssueByUrl(issueUrl, action === 'close_not_planned' ? 'not_planned' : 'completed');
+        recordDone(context, pjcode, projectItemId);
         return ok();
     }
     if (action === 'snooze_1day' || action === 'snooze_1week') {
         const days = action === 'snooze_1day' ? 1 : 7;
         const target = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-        await context.issueRepository.updateNextActionDate(issueUrl, context.project, target);
-        recordDone(context, projectItemId);
+        await context.issueRepository.updateNextActionDate(issueUrl, project, target);
+        recordDone(context, pjcode, projectItemId);
         return ok();
     }
     return badRequest(`unknown triage action "${action}"`);
@@ -167,11 +189,16 @@ const handleIntmux = async (context, body) => {
     if (!isNonEmptyString(projectItemId)) {
         return badRequest('projectItemId is required');
     }
-    const failure = await updateStatusByName(context, issueUrl, projectItemId, exports.IN_TMUX_BY_HUMAN_STATUS_NAME);
+    const binding = await resolveBinding(context, body);
+    if (isOperationResponse(binding)) {
+        return binding;
+    }
+    const { project, pjcode } = binding;
+    const failure = await updateStatusByName(context.issueRepository, project, issueUrl, projectItemId, exports.IN_TMUX_BY_HUMAN_STATUS_NAME);
     if (failure !== null) {
         return failure;
     }
-    recordDone(context, projectItemId);
+    recordDone(context, pjcode, projectItemId);
     return ok();
 };
 exports.handleIntmux = handleIntmux;

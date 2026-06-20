@@ -19,6 +19,7 @@ export type ConfigFile = {
     labelsAsLlmAgentName?: string[];
     changeTargetPathAliases?: Record<string, string>;
     consoleAccessToken?: string;
+    consoleProjects?: Record<string, string>;
 };
 export declare const isRecord: (value: unknown) => value is Record<string, unknown>;
 export declare const loadConfigFile: (configFilePath: string) => ConfigFile;

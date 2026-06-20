@@ -2,11 +2,15 @@ import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/Iss
 import { Project } from '../../../domain/entities/Project';
 export declare const AWAITING_WORKSPACE_STATUS_NAME = "awaiting workspace";
 export declare const IN_TMUX_BY_HUMAN_STATUS_NAME = "in tmux by human";
+export type ConsoleProjectBinding = {
+    pjcode: string;
+    project: Project;
+};
+export type ConsoleProjectResolver = (pjcode: string) => Promise<ConsoleProjectBinding | null>;
 export type ConsoleOperationContext = {
     issueRepository: IssueRepository;
-    project: Project;
+    resolveProject: ConsoleProjectResolver;
     consoleDataOutputDir: string | null;
-    pjcode: string | null;
 };
 export type ConsoleOperationResponse = {
     statusCode: number;
