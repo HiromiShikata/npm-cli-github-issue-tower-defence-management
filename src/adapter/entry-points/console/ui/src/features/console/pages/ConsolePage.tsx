@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ConsoleProjectSummary } from '../components/layout/ConsoleProjectSummary';
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
 import { ConsoleItemList } from '../components/list/ConsoleItemList';
@@ -13,6 +13,7 @@ import {
   filterPendingItems,
   overlayKeyForItem,
 } from '../logic/overlay';
+import { findNextNonEmptyTabToRight } from '../logic/tabAdvance';
 import type {
   ConsoleListItem,
   ConsoleOverlayStatus,
@@ -82,6 +83,26 @@ export const ConsolePage = () => {
     setActiveTab(tab);
     setSelectedItem(null);
   };
+
+  const activeCount = counts[activeTab];
+  const previousActiveTabCountRef = useRef<{
+    tab: ConsoleTabName;
+    count: number;
+  }>({ tab: activeTab, count: activeCount });
+  useEffect(() => {
+    const previous = previousActiveTabCountRef.current;
+    previousActiveTabCountRef.current = { tab: activeTab, count: activeCount };
+    if (previous.tab !== activeTab) {
+      return;
+    }
+    if (previous.count > 0 && activeCount === 0) {
+      const nextTab = findNextNonEmptyTabToRight(activeTab, counts);
+      if (nextTab !== null) {
+        setActiveTab(nextTab);
+        setSelectedItem(null);
+      }
+    }
+  }, [activeTab, activeCount, counts]);
 
   const overlayStatusForSelected = ((): ConsoleOverlayStatus | null => {
     if (selectedItem === null) {

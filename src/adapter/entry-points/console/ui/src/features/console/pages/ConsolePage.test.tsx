@@ -125,4 +125,24 @@ describe('ConsolePage', () => {
       prsTabButton?.querySelector('.console-tab-badge')?.textContent ?? '0';
     expect(prsBadge).toBe('0');
   });
+
+  it('auto-advances to the next non-empty tab on the right after the active tab is driven to zero', async () => {
+    const { getByText, findByText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    expect(await findByText('← Back to list')).toBeInTheDocument();
+    fireEvent.click(getByText('Approve'));
+
+    await waitFor(() => {
+      expect(
+        getByText('Notify finished issue preparation'),
+      ).toBeInTheDocument();
+    });
+    expect(
+      getByText('Unread').closest('button')?.getAttribute('aria-current'),
+    ).toBe('page');
+  });
 });
