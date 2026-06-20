@@ -1,3 +1,11 @@
+## [1.91.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.91.0...v1.91.1) (2026-06-20)
+
+
+### Bug Fixes
+
+* **console:** generate todo-by-human per-tab list data ([#866](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/866)) ([74e74f4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/74e74f408a41b4a48ef132360f5fa41270233295)), closes [#864](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/864)
+* **console:** serveConsole serves placeholder HTML instead of built React UI (uiDistDir path mismatch) ([#867](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/867)) ([0ca317f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0ca317f7f6ef2e71211f4577fdaf691e2cb1eb69))
+
 # [1.91.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.90.0...v1.91.0) (2026-06-20)
 
 
