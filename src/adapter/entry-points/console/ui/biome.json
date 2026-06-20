@@ -8,7 +8,13 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["src/**", ".storybook/**"]
+    "includes": [
+      "src/**",
+      ".storybook/**",
+      "e2e/**",
+      "!e2e/report/**",
+      "!e2e/test-results/**"
+    ]
   },
   "formatter": {
     "enabled": true,
