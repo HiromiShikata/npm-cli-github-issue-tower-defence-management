@@ -1,3 +1,10 @@
+## [1.91.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.91.1...v1.91.2) (2026-06-20)
+
+
+### Bug Fixes
+
+* **console:** apply processed-item overlay to all tab badges so a zeroed tab stays zero ([#871](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/871)) ([4eda1ab](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4eda1ab29cce54969c5fcc2b8a5ff838013978f7)), closes [#868](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/868)
+
 ## [1.91.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.91.0...v1.91.1) (2026-06-20)
 
 
