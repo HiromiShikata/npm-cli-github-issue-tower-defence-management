@@ -4,6 +4,7 @@ import * as path from 'path';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Project } from '../../../domain/entities/Project';
 import {
+  CONSOLE_LIST_TAB_NAMES,
   buildConsoleDataResponse,
   parseConsoleDataRoute,
 } from './consoleDataDelivery';
@@ -69,6 +70,29 @@ export const requiresToken = (requestPath: string): boolean =>
   requestPath.startsWith('/api/') ||
   requestPath === '/api' ||
   requestPath.endsWith('.json');
+
+const SAFE_PJCODE = /^[A-Za-z0-9._-]+$/;
+
+export const isConsoleAppRoute = (requestPath: string): boolean => {
+  const segments = requestPath
+    .split('/')
+    .filter((segment) => segment.length > 0);
+  if (segments.length < 2 || segments[0] !== 'projects') {
+    return false;
+  }
+  const pjcode = segments[1];
+  if (!SAFE_PJCODE.test(pjcode) || pjcode.startsWith('.')) {
+    return false;
+  }
+  if (segments.length === 2) {
+    return true;
+  }
+  if (segments.length !== 3) {
+    return false;
+  }
+  const tab = segments[2];
+  return CONSOLE_LIST_TAB_NAMES.includes(tab);
+};
 
 export const isTokenValid = (
   expectedToken: string,
@@ -157,6 +181,24 @@ const serveBootstrapIndex = (response: http.ServerResponse): void => {
     'Cache-Control': 'no-store',
   });
   response.end(PLACEHOLDER_INDEX_HTML);
+};
+
+const serveIndexHtml = (
+  options: ConsoleServerOptions,
+  response: http.ServerResponse,
+): void => {
+  const indexFilePath = resolveStaticFilePath(options.uiDistDir, '/index.html');
+  const indexContent =
+    indexFilePath === null ? null : readStaticFile(indexFilePath);
+  if (indexContent === null) {
+    serveBootstrapIndex(response);
+    return;
+  }
+  response.writeHead(200, {
+    'Content-Type': 'text/html; charset=utf-8',
+    'Cache-Control': 'no-store',
+  });
+  response.end(indexContent);
 };
 
 const sendJson = (
@@ -369,22 +411,12 @@ export const handleConsoleRequest = async (
     return;
   }
 
-  if (requestPath === '/' || requestPath === '/index.html') {
-    const indexFilePath = resolveStaticFilePath(
-      options.uiDistDir,
-      '/index.html',
-    );
-    const indexContent =
-      indexFilePath === null ? null : readStaticFile(indexFilePath);
-    if (indexContent === null) {
-      serveBootstrapIndex(response);
-      return;
-    }
-    response.writeHead(200, {
-      'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'no-store',
-    });
-    response.end(indexContent);
+  if (
+    requestPath === '/' ||
+    requestPath === '/index.html' ||
+    isConsoleAppRoute(requestPath)
+  ) {
+    serveIndexHtml(options, response);
     return;
   }
 

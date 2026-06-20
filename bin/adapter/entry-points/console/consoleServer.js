@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.startConsoleServer = exports.createConsoleServer = exports.handleConsoleRequest = exports.extractProvidedToken = exports.isTokenValid = exports.requiresToken = exports.hasDotSegment = exports.CONSOLE_TOKEN_HEADER = exports.DEFAULT_CONSOLE_PORT = void 0;
+exports.startConsoleServer = exports.createConsoleServer = exports.handleConsoleRequest = exports.extractProvidedToken = exports.isTokenValid = exports.isConsoleAppRoute = exports.requiresToken = exports.hasDotSegment = exports.CONSOLE_TOKEN_HEADER = exports.DEFAULT_CONSOLE_PORT = void 0;
 const http = __importStar(require("http"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
@@ -81,6 +81,28 @@ const requiresToken = (requestPath) => requestPath.startsWith('/api/') ||
     requestPath === '/api' ||
     requestPath.endsWith('.json');
 exports.requiresToken = requiresToken;
+const SAFE_PJCODE = /^[A-Za-z0-9._-]+$/;
+const isConsoleAppRoute = (requestPath) => {
+    const segments = requestPath
+        .split('/')
+        .filter((segment) => segment.length > 0);
+    if (segments.length < 2 || segments[0] !== 'projects') {
+        return false;
+    }
+    const pjcode = segments[1];
+    if (!SAFE_PJCODE.test(pjcode) || pjcode.startsWith('.')) {
+        return false;
+    }
+    if (segments.length === 2) {
+        return true;
+    }
+    if (segments.length !== 3) {
+        return false;
+    }
+    const tab = segments[2];
+    return consoleDataDelivery_1.CONSOLE_LIST_TAB_NAMES.includes(tab);
+};
+exports.isConsoleAppRoute = isConsoleAppRoute;
 const isTokenValid = (expectedToken, providedToken) => providedToken !== null && providedToken === expectedToken;
 exports.isTokenValid = isTokenValid;
 const extractProvidedToken = (queryToken, headerToken) => {
@@ -143,6 +165,19 @@ const serveBootstrapIndex = (response) => {
         'Cache-Control': 'no-store',
     });
     response.end(PLACEHOLDER_INDEX_HTML);
+};
+const serveIndexHtml = (options, response) => {
+    const indexFilePath = resolveStaticFilePath(options.uiDistDir, '/index.html');
+    const indexContent = indexFilePath === null ? null : readStaticFile(indexFilePath);
+    if (indexContent === null) {
+        serveBootstrapIndex(response);
+        return;
+    }
+    response.writeHead(200, {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store',
+    });
+    response.end(indexContent);
 };
 const sendJson = (response, statusCode, body) => {
     response.writeHead(statusCode, {
@@ -287,18 +322,10 @@ const handleConsoleRequest = async (options, request, response) => {
         await handleTokenedRequest(options, request, response, requestPath, requestUrl.searchParams);
         return;
     }
-    if (requestPath === '/' || requestPath === '/index.html') {
-        const indexFilePath = resolveStaticFilePath(options.uiDistDir, '/index.html');
-        const indexContent = indexFilePath === null ? null : readStaticFile(indexFilePath);
-        if (indexContent === null) {
-            serveBootstrapIndex(response);
-            return;
-        }
-        response.writeHead(200, {
-            'Content-Type': 'text/html; charset=utf-8',
-            'Cache-Control': 'no-store',
-        });
-        response.end(indexContent);
+    if (requestPath === '/' ||
+        requestPath === '/index.html' ||
+        (0, exports.isConsoleAppRoute)(requestPath)) {
+        serveIndexHtml(options, response);
         return;
     }
     const staticFilePath = resolveStaticFilePath(options.uiDistDir, requestPath);
