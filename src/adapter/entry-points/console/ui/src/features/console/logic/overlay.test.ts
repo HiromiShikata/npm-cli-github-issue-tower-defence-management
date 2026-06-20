@@ -1,12 +1,9 @@
 import {
   countPendingItems,
   filterPendingItems,
-  getOverlayEntry,
-  isOverlayEntryActedForMode,
-  isOverlayEntryExpiredForMode,
+  isOverlayEntryActed,
   overlayKeyForItem,
   overlayStorageKey,
-  parseGeneratedAtMs,
   writeOverlayEntry,
 } from './overlay';
 import type { ConsoleListItem, ConsoleOverlay } from './types';
@@ -34,68 +31,71 @@ describe('overlay helpers', () => {
     expect(overlayKeyForItem(item(5))).toBe('PVTI_5');
   });
 
-  it('parses a generatedAt timestamp', () => {
-    expect(parseGeneratedAtMs('2026-06-10T00:00:00.000Z')).toBe(
-      Date.parse('2026-06-10T00:00:00.000Z'),
-    );
-    expect(parseGeneratedAtMs('not-a-date')).toBe(0);
+  it('falls back to the itemId when the projectItemId is empty', () => {
+    expect(overlayKeyForItem({ ...item(5), projectItemId: '' })).toBe('PVTI_5');
   });
 });
 
-describe('mode-aware expiry', () => {
-  it('expires a same-mode entry written before the snapshot', () => {
-    expect(
-      isOverlayEntryExpiredForMode(
-        { ts: 100, mode: 'prs', done: true },
-        200,
-        'prs',
-      ),
-    ).toBe(true);
+describe('isOverlayEntryActed', () => {
+  it('treats a done entry as acted', () => {
+    expect(isOverlayEntryActed({ ts: 100, mode: 'prs', done: true })).toBe(
+      true,
+    );
   });
 
-  it('does not expire an entry written in a different mode', () => {
+  it('treats a missing entry as not acted', () => {
+    expect(isOverlayEntryActed(undefined)).toBe(false);
+  });
+
+  it('treats an entry without done as not acted', () => {
     expect(
-      isOverlayEntryExpiredForMode(
-        { ts: 100, mode: 'triage', done: true },
-        200,
-        'prs',
-      ),
+      isOverlayEntryActed({
+        ts: 100,
+        mode: 'prs',
+        story: { name: 'Story', color: 'BLUE' },
+      }),
     ).toBe(false);
   });
 
-  it('does not expire an entry written after the snapshot', () => {
-    expect(
-      isOverlayEntryExpiredForMode(
-        { ts: 300, mode: 'prs', done: true },
-        200,
-        'prs',
-      ),
-    ).toBe(false);
+  it('treats a done entry as acted regardless of the mode it was written in', () => {
+    expect(isOverlayEntryActed({ ts: 100, mode: 'triage', done: true })).toBe(
+      true,
+    );
   });
 });
 
 describe('counts driven to zero do not revive on tab switch', () => {
-  it('keeps a done item subtracted in its own mode', () => {
+  it('keeps a done item subtracted in the tab it was processed in', () => {
     const overlay: ConsoleOverlay = {
       PVTI_1: { ts: 500, mode: 'prs', done: true },
     };
-    const generatedAtMs = 400;
-    expect(countPendingItems([item(1)], overlay, generatedAtMs, 'prs')).toBe(0);
+    expect(countPendingItems([item(1)], overlay)).toBe(0);
   });
 
-  it('treats a done entry from another mode as still acted', () => {
+  it('keeps a done item subtracted from every tab regardless of its mode', () => {
     const overlay: ConsoleOverlay = {
       PVTI_1: { ts: 100, mode: 'triage', done: true },
     };
-    expect(isOverlayEntryActedForMode(overlay.PVTI_1, 999, 'prs')).toBe(true);
-    expect(countPendingItems([item(1)], overlay, 999, 'prs')).toBe(0);
+    expect(countPendingItems([item(1)], overlay)).toBe(0);
   });
 
-  it('revives the count only when a newer same-mode snapshot supersedes the entry', () => {
+  it('does not revive a done item even when an entry was processed before the snapshot it still appears in', () => {
     const overlay: ConsoleOverlay = {
       PVTI_1: { ts: 100, mode: 'prs', done: true },
     };
-    expect(countPendingItems([item(1)], overlay, 200, 'prs')).toBe(1);
+    expect(countPendingItems([item(1)], overlay)).toBe(0);
+  });
+
+  it('does not revive a done item when it appears in a tab other than the one it was processed in', () => {
+    const overlay: ConsoleOverlay = {
+      PVTI_1: { ts: 100, mode: 'prs', done: true },
+    };
+    expect(countPendingItems([item(1)], overlay)).toBe(0);
+    expect(filterPendingItems([item(1)], overlay)).toEqual([]);
+  });
+
+  it('counts an item that has no done entry', () => {
+    expect(countPendingItems([item(1)], {})).toBe(1);
   });
 });
 
@@ -104,21 +104,43 @@ describe('filterPendingItems', () => {
     const overlay: ConsoleOverlay = {
       PVTI_1: { ts: 500, mode: 'prs', done: true },
     };
-    const result = filterPendingItems([item(1), item(2)], overlay, 400, 'prs');
+    const result = filterPendingItems([item(1), item(2)], overlay);
     expect(result.map((entry) => entry.number)).toEqual([2]);
+  });
+
+  it('keeps the badge count and the filtered list consistent', () => {
+    const overlay: ConsoleOverlay = {
+      PVTI_1: { ts: 500, mode: 'prs', done: true },
+    };
+    const items = [item(1), item(2)];
+    expect(countPendingItems(items, overlay)).toBe(
+      filterPendingItems(items, overlay).length,
+    );
   });
 });
 
-describe('getOverlayEntry and writeOverlayEntry', () => {
-  it('returns null for an expired entry', () => {
-    const overlay: ConsoleOverlay = {
-      PVTI_1: { ts: 100, mode: 'prs', done: true },
-    };
-    expect(getOverlayEntry(overlay, item(1), 200, 'prs')).toBeNull();
-  });
-
+describe('writeOverlayEntry', () => {
   it('stamps the timestamp and mode on write', () => {
     const next = writeOverlayEntry({}, 'PVTI_1', { done: true }, 'prs', 1234);
     expect(next.PVTI_1).toEqual({ done: true, ts: 1234, mode: 'prs' });
+  });
+
+  it('merges a patch into an existing entry while refreshing ts and mode', () => {
+    const overlay: ConsoleOverlay = {
+      PVTI_1: { ts: 100, mode: 'prs', done: true },
+    };
+    const next = writeOverlayEntry(
+      overlay,
+      'PVTI_1',
+      { story: { name: 'New Story', color: 'GREEN' } },
+      'triage',
+      999,
+    );
+    expect(next.PVTI_1).toEqual({
+      done: true,
+      story: { name: 'New Story', color: 'GREEN' },
+      ts: 999,
+      mode: 'triage',
+    });
   });
 });
