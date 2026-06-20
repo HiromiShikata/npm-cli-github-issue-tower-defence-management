@@ -12,7 +12,6 @@ import {
   countPendingItems,
   filterPendingItems,
   overlayKeyForItem,
-  parseGeneratedAtMs,
 } from '../logic/overlay';
 import type {
   ConsoleListItem,
@@ -57,8 +56,6 @@ export const ConsolePage = () => {
       result[tab.name] = countPendingItems(
         snapshot.items,
         overlayState.overlay,
-        parseGeneratedAtMs(snapshot.generatedAt),
-        tab.name,
       );
     }
     return result;
@@ -69,13 +66,8 @@ export const ConsolePage = () => {
     if (activeSnapshot === null) {
       return [];
     }
-    return filterPendingItems(
-      activeSnapshot.items,
-      overlayState.overlay,
-      parseGeneratedAtMs(activeSnapshot.generatedAt),
-      activeTab,
-    );
-  }, [activeSnapshot, overlayState.overlay, activeTab]);
+    return filterPendingItems(activeSnapshot.items, overlayState.overlay);
+  }, [activeSnapshot, overlayState.overlay]);
 
   const rows = useMemo(
     () => buildConsoleListRows(pendingItems, overlayState.overlay),

@@ -28,7 +28,23 @@ const listPayload = (tab: string) => ({
             createdAt: '2026-06-17T00:00:00.000Z',
           },
         ]
-      : [],
+      : tab === 'unread'
+        ? [
+            {
+              number: 866,
+              title: 'Notify finished issue preparation',
+              url: 'https://github.com/o/r/issues/866',
+              repo: 'o/r',
+              nameWithOwner: 'o/r',
+              projectItemId: 'PVTI_2',
+              itemId: 'PVTI_2',
+              isPr: false,
+              story: 'TDPM Console port',
+              labels: [],
+              createdAt: '2026-06-18T00:00:00.000Z',
+            },
+          ]
+        : [],
 });
 
 const installFetch = (): void => {
@@ -70,5 +86,43 @@ describe('ConsolePage', () => {
     fireEvent.click(getByText('Add serveConsole subcommand'));
     expect(await findByText('← Back to list')).toBeInTheDocument();
     expect(getByText('Approve')).toBeInTheDocument();
+  });
+
+  it('keeps a tab driven to zero at zero and does not revive its badge after switching tabs', async () => {
+    const { getByText, queryByText, findByText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    expect(
+      getByText('Awaiting Quality Check')
+        .closest('button')
+        ?.querySelector('.console-tab-badge')?.textContent,
+    ).toBe('1');
+
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    expect(await findByText('← Back to list')).toBeInTheDocument();
+    fireEvent.click(getByText('Approve'));
+
+    await waitFor(() => {
+      expect(
+        getByText('Awaiting Quality Check')
+          .closest('button')
+          ?.querySelector('.console-tab-badge')?.textContent,
+      ).toBe('0');
+    });
+
+    fireEvent.click(getByText('Unread'));
+    await waitFor(() => {
+      expect(
+        getByText('Notify finished issue preparation'),
+      ).toBeInTheDocument();
+    });
+
+    const prsTabButton = queryByText('Awaiting Quality Check')?.closest(
+      'button',
+    );
+    const prsBadge =
+      prsTabButton?.querySelector('.console-tab-badge')?.textContent ?? '0';
+    expect(prsBadge).toBe('0');
   });
 });

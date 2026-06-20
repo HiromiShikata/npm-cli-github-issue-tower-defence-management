@@ -11,76 +11,23 @@ export const overlayStorageKey = (pjcode: string): string =>
 export const overlayKeyForItem = (item: ConsoleListItem): string =>
   item.projectItemId !== '' ? item.projectItemId : item.itemId;
 
-export const parseGeneratedAtMs = (generatedAt: string): number => {
-  const parsed = Date.parse(generatedAt);
-  return Number.isNaN(parsed) ? 0 : parsed;
-};
-
-export const isOverlayEntryExpiredForMode = (
-  entry: ConsoleOverlayEntry,
-  generatedAtMs: number,
-  mode: ConsoleTabName,
-): boolean =>
-  entry.ts > 0 &&
-  generatedAtMs > 0 &&
-  entry.mode === mode &&
-  entry.ts < generatedAtMs;
-
-export const getOverlayEntry = (
-  overlay: ConsoleOverlay,
-  item: ConsoleListItem,
-  generatedAtMs: number,
-  mode: ConsoleTabName,
-): ConsoleOverlayEntry | null => {
-  const entry = overlay[overlayKeyForItem(item)];
-  if (entry === undefined) {
-    return null;
-  }
-  if (isOverlayEntryExpiredForMode(entry, generatedAtMs, mode)) {
-    return null;
-  }
-  return entry;
-};
-
-export const isOverlayEntryActedForMode = (
+export const isOverlayEntryActed = (
   entry: ConsoleOverlayEntry | undefined,
-  generatedAtMs: number,
-  mode: ConsoleTabName,
-): boolean => {
-  if (entry === undefined || entry.done !== true) {
-    return false;
-  }
-  return !isOverlayEntryExpiredForMode(entry, generatedAtMs, mode);
-};
+): boolean => entry !== undefined && entry.done === true;
 
 export const countPendingItems = (
   items: ConsoleListItem[],
   overlay: ConsoleOverlay,
-  generatedAtMs: number,
-  mode: ConsoleTabName,
 ): number =>
-  items.filter(
-    (item) =>
-      !isOverlayEntryActedForMode(
-        overlay[overlayKeyForItem(item)],
-        generatedAtMs,
-        mode,
-      ),
-  ).length;
+  items.filter((item) => !isOverlayEntryActed(overlay[overlayKeyForItem(item)]))
+    .length;
 
 export const filterPendingItems = (
   items: ConsoleListItem[],
   overlay: ConsoleOverlay,
-  generatedAtMs: number,
-  mode: ConsoleTabName,
 ): ConsoleListItem[] =>
   items.filter(
-    (item) =>
-      !isOverlayEntryActedForMode(
-        overlay[overlayKeyForItem(item)],
-        generatedAtMs,
-        mode,
-      ),
+    (item) => !isOverlayEntryActed(overlay[overlayKeyForItem(item)]),
   );
 
 export const writeOverlayEntry = (
