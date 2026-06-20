@@ -1,3 +1,10 @@
+# [1.90.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.89.0...v1.90.0) (2026-06-20)
+
+
+### Features
+
+* **console:** serve all projects from one serveConsole instance via per-project URL paths ([#858](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/858)) ([f30a38e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f30a38e2e920a47c46c84e34c6943cf8d585f5e5)), closes [#856](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/856)
+
 # [1.89.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.88.1...v1.89.0) (2026-06-18)
 
 
