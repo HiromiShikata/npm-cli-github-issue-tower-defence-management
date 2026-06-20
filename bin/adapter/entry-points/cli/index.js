@@ -404,7 +404,7 @@ exports.program
         }
         return loadedProject;
     });
-    const uiDistDir = path.join(__dirname, 'ui-dist');
+    const uiDistDir = path.join(__dirname, '..', 'console', 'ui-dist');
     const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
     await (0, consoleServer_1.startConsoleServer)({
         accessToken,
