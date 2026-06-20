@@ -16,6 +16,7 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
+    "types": ["jest", "node", "@testing-library/jest-dom"],
     "paths": {
       "@/*": ["./src/*"]
     }

@@ -37,6 +37,10 @@ import {
   startConsoleServer,
 } from '../console/consoleServer';
 import { IssueTitleStateCache } from '../console/consoleReadApi';
+import {
+  buildPjcodeToProjectUrl,
+  createConsoleProjectResolver,
+} from '../console/consoleProjectResolver';
 import { OauthTokenSelectHandler } from '../handlers/OauthTokenSelectHandler';
 
 type StartDaemonOptions = {
@@ -660,16 +664,31 @@ program
       ...githubRepositoryParams,
     );
 
-    const projectId = await projectRepository.findProjectIdByUrl(projectUrl);
-    if (!projectId) {
-      console.error(`No project found for projectUrl ${projectUrl}`);
-      process.exit(1);
-    }
-    const project = await projectRepository.getProject(projectId);
-    if (!project) {
-      console.error(`Failed to load project for projectUrl ${projectUrl}`);
-      process.exit(1);
-    }
+    const pjcodeToProjectUrl = buildPjcodeToProjectUrl(
+      projectName,
+      projectUrl,
+      config.consoleProjects ?? null,
+    );
+    const resolveProject = createConsoleProjectResolver(
+      pjcodeToProjectUrl,
+      async (targetProjectUrl: string) => {
+        const targetProjectId =
+          await projectRepository.findProjectIdByUrl(targetProjectUrl);
+        if (!targetProjectId) {
+          console.error(`No project found for projectUrl ${targetProjectUrl}`);
+          return null;
+        }
+        const loadedProject =
+          await projectRepository.getProject(targetProjectId);
+        if (!loadedProject) {
+          console.error(
+            `Failed to load project for projectUrl ${targetProjectUrl}`,
+          );
+          return null;
+        }
+        return loadedProject;
+      },
+    );
 
     const uiDistDir = path.join(__dirname, 'ui-dist');
     const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
@@ -678,9 +697,8 @@ program
       accessToken,
       uiDistDir,
       consoleDataOutputDir,
-      pjcode: projectName,
       issueRepository,
-      project,
+      resolveProject,
       issueTitleStateCache: new IssueTitleStateCache(),
       port,
     });

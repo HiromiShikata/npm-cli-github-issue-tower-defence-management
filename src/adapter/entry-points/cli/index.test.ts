@@ -1796,10 +1796,20 @@ mysteryKey: 'value'
       ]);
 
       const callArg = mockStartConsoleServer.mock.calls[0][0];
-      expect(callArg.project).not.toBeNull();
       expect(callArg.issueRepository).not.toBeNull();
       expect(callArg.issueTitleStateCache).not.toBeNull();
-      expect(callArg.pjcode).toBe('test-project');
+
+      const resolveProject = callArg.resolveProject;
+      if (resolveProject === null || resolveProject === undefined) {
+        throw new Error('resolveProject was not injected');
+      }
+      const binding = await resolveProject('test-project');
+      expect(binding).not.toBeNull();
+      expect(binding?.pjcode).toBe('test-project');
+      expect(binding?.project.name).toBe('test-project');
+
+      const unknownBinding = await resolveProject('not-configured');
+      expect(unknownBinding).toBeNull();
 
       logSpy.mockRestore();
     });

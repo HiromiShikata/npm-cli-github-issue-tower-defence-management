@@ -2,7 +2,6 @@ import * as http from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
-import { Project } from '../../../domain/entities/Project';
 import {
   CONSOLE_LIST_TAB_NAMES,
   buildConsoleDataResponse,
@@ -19,6 +18,7 @@ import {
 } from './consoleReadApi';
 import {
   ConsoleOperationContext,
+  ConsoleProjectResolver,
   handleIntmux,
   handleReview,
   handleTriage,
@@ -153,9 +153,8 @@ export type ConsoleServerOptions = {
   accessToken: string;
   uiDistDir: string;
   consoleDataOutputDir: string | null;
-  pjcode?: string | null;
   issueRepository?: IssueRepository | null;
-  project?: Project | null;
+  resolveProject?: ConsoleProjectResolver | null;
   issueTitleStateCache?: IssueTitleStateCache | null;
 };
 
@@ -291,15 +290,14 @@ const handleOperationApi = async (
   body: Record<string, unknown>,
 ): Promise<{ statusCode: number; body: unknown } | null> => {
   const issueRepository = options.issueRepository ?? null;
-  const project = options.project ?? null;
-  if (issueRepository === null || project === null) {
+  const resolveProject = options.resolveProject ?? null;
+  if (issueRepository === null || resolveProject === null) {
     return null;
   }
   const context: ConsoleOperationContext = {
     issueRepository,
-    project,
+    resolveProject,
     consoleDataOutputDir: options.consoleDataOutputDir,
-    pjcode: options.pjcode ?? null,
   };
   switch (requestPath) {
     case '/api/review':

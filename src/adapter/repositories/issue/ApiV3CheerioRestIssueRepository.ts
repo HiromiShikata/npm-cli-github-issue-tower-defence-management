@@ -1279,6 +1279,31 @@ export class ApiV3CheerioRestIssueRepository
     }
   };
 
+  closeIssueByUrl = async (
+    issueUrl: string,
+    stateReason: 'completed' | 'not_planned',
+  ): Promise<void> => {
+    const { owner, repo, issueNumber } = this.parseIssueUrl(issueUrl);
+    const ownerSegment = encodeURIComponent(owner);
+    const repoSegment = encodeURIComponent(repo);
+    const response = await fetch(
+      `https://api.github.com/repos/${ownerSegment}/${repoSegment}/issues/${issueNumber}`,
+      {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${this.ghToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ state: 'closed', state_reason: stateReason }),
+      },
+    );
+    if (!response.ok) {
+      throw new Error(
+        `Failed to close issue ${issueUrl}: HTTP ${response.status}`,
+      );
+    }
+  };
+
   getPullRequestChangedFilePaths = async (prUrl: string): Promise<string[]> => {
     const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
     const perPage = 100;

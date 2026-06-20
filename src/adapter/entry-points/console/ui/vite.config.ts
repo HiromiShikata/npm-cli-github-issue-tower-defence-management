@@ -15,5 +15,10 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, '../ui-dist'),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        inlineDynamicImports: true,
+      },
+    },
   },
 });

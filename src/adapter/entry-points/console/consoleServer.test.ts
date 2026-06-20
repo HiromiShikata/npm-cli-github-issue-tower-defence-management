@@ -480,7 +480,6 @@ describe('consoleServer new routes integration', () => {
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: dataDir,
-      pjcode: 'umino',
       port: 0,
     });
     try {
@@ -546,9 +545,9 @@ describe('consoleServer new routes integration', () => {
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: dataDir,
-      pjcode: 'umino',
       issueRepository,
-      project: buildProject(),
+      resolveProject: async (pjcode) =>
+        pjcode === 'umino' ? { pjcode, project: buildProject() } : null,
       port: 0,
     });
     try {
@@ -557,6 +556,7 @@ describe('consoleServer new routes integration', () => {
         'POST',
         `/api/review?k=${testToken}`,
         {
+          pjcode: 'umino',
           action: 'approve',
           prUrl: 'https://github.com/o/r/pull/1',
           projectItemId: 'PVTI_op',
@@ -583,7 +583,8 @@ describe('consoleServer new routes integration', () => {
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
       issueRepository,
-      project: buildProject(),
+      resolveProject: async (pjcode) =>
+        pjcode === 'umino' ? { pjcode, project: buildProject() } : null,
       port: 0,
     });
     try {

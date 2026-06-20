@@ -6,11 +6,19 @@ import { recordDoneProjectItemIdAcrossTabs } from './consoleDoneStore';
 export const AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
 export const IN_TMUX_BY_HUMAN_STATUS_NAME = 'in tmux by human';
 
+export type ConsoleProjectBinding = {
+  pjcode: string;
+  project: Project;
+};
+
+export type ConsoleProjectResolver = (
+  pjcode: string,
+) => Promise<ConsoleProjectBinding | null>;
+
 export type ConsoleOperationContext = {
   issueRepository: IssueRepository;
-  project: Project;
+  resolveProject: ConsoleProjectResolver;
   consoleDataOutputDir: string | null;
-  pjcode: string | null;
 };
 
 export type ConsoleOperationResponse = {
@@ -43,11 +51,12 @@ const resolveStatusId = (
 };
 
 const loadIssueWithProjectItemId = async (
-  context: ConsoleOperationContext,
+  issueRepository: IssueRepository,
+  project: Project,
   issueUrl: string,
   projectItemId: string,
 ): Promise<Issue | null> => {
-  const issue = await context.issueRepository.get(issueUrl, context.project);
+  const issue = await issueRepository.get(issueUrl, project);
   if (issue === null) {
     return null;
   }
@@ -56,37 +65,60 @@ const loadIssueWithProjectItemId = async (
 
 const recordDone = (
   context: ConsoleOperationContext,
+  pjcode: string,
   projectItemId: string,
 ): void => {
-  if (context.consoleDataOutputDir === null || context.pjcode === null) {
+  if (context.consoleDataOutputDir === null) {
     return;
   }
   recordDoneProjectItemIdAcrossTabs(
     context.consoleDataOutputDir,
-    context.pjcode,
+    pjcode,
     projectItemId,
   );
 };
 
-const updateStatusByName = async (
+const resolveBinding = async (
   context: ConsoleOperationContext,
+  body: Record<string, unknown>,
+): Promise<ConsoleProjectBinding | ConsoleOperationResponse> => {
+  const pjcode = body.pjcode;
+  if (!isNonEmptyString(pjcode)) {
+    return badRequest('pjcode is required');
+  }
+  const binding = await context.resolveProject(pjcode);
+  if (binding === null) {
+    return badRequest(`no project configured for pjcode "${pjcode}"`);
+  }
+  return binding;
+};
+
+const isOperationResponse = (
+  value: ConsoleProjectBinding | ConsoleOperationResponse,
+): value is ConsoleOperationResponse =>
+  Object.prototype.hasOwnProperty.call(value, 'statusCode');
+
+const updateStatusByName = async (
+  issueRepository: IssueRepository,
+  project: Project,
   issueUrl: string,
   projectItemId: string,
   statusName: string,
 ): Promise<ConsoleOperationResponse | null> => {
-  const statusId = resolveStatusId(context.project, statusName);
+  const statusId = resolveStatusId(project, statusName);
   if (statusId === null) {
     return badRequest(`status option "${statusName}" not found in project`);
   }
   const issue = await loadIssueWithProjectItemId(
-    context,
+    issueRepository,
+    project,
     issueUrl,
     projectItemId,
   );
   if (issue === null) {
     return badRequest('issue not found');
   }
-  await context.issueRepository.updateStatus(context.project, issue, statusId);
+  await issueRepository.updateStatus(project, issue, statusId);
   return null;
 };
 
@@ -106,11 +138,17 @@ export const handleReview = async (
   if (!isNonEmptyString(projectItemId)) {
     return badRequest('projectItemId is required');
   }
+  const binding = await resolveBinding(context, body);
+  if (isOperationResponse(binding)) {
+    return binding;
+  }
+  const { project, pjcode } = binding;
 
   if (action === 'approve') {
     await context.issueRepository.approvePullRequest(prUrl);
     const failure = await updateStatusByName(
-      context,
+      context.issueRepository,
+      project,
       prUrl,
       projectItemId,
       AWAITING_WORKSPACE_STATUS_NAME,
@@ -118,7 +156,7 @@ export const handleReview = async (
     if (failure !== null) {
       return failure;
     }
-    recordDone(context, projectItemId);
+    recordDone(context, pjcode, projectItemId);
     return ok();
   }
 
@@ -136,7 +174,8 @@ export const handleReview = async (
       commentBody,
     );
     const failure = await updateStatusByName(
-      context,
+      context.issueRepository,
+      project,
       prUrl,
       projectItemId,
       AWAITING_WORKSPACE_STATUS_NAME,
@@ -144,7 +183,7 @@ export const handleReview = async (
     if (failure !== null) {
       return failure;
     }
-    recordDone(context, projectItemId);
+    recordDone(context, pjcode, projectItemId);
     return ok();
   }
 
@@ -153,7 +192,7 @@ export const handleReview = async (
     if (isNonEmptyString(body.commentBody)) {
       await context.issueRepository.createCommentByUrl(prUrl, body.commentBody);
     }
-    recordDone(context, projectItemId);
+    recordDone(context, pjcode, projectItemId);
     return ok();
   }
 
@@ -176,6 +215,11 @@ export const handleTriage = async (
   if (!isNonEmptyString(projectItemId)) {
     return badRequest('projectItemId is required');
   }
+  const binding = await resolveBinding(context, body);
+  if (isOperationResponse(binding)) {
+    return binding;
+  }
+  const { project, pjcode } = binding;
 
   if (action === 'set_status') {
     const statusName = body.statusName;
@@ -183,7 +227,8 @@ export const handleTriage = async (
       return badRequest('statusName is required for set_status');
     }
     const failure = await updateStatusByName(
-      context,
+      context.issueRepository,
+      project,
       issueUrl,
       projectItemId,
       statusName,
@@ -191,7 +236,7 @@ export const handleTriage = async (
     if (failure !== null) {
       return failure;
     }
-    recordDone(context, projectItemId);
+    recordDone(context, pjcode, projectItemId);
     return ok();
   }
 
@@ -200,11 +245,12 @@ export const handleTriage = async (
     if (!isNonEmptyString(storyOptionId)) {
       return badRequest('storyOptionId is required for set_story');
     }
-    if (context.project.story === null) {
+    if (project.story === null) {
       return badRequest('project does not have a story field');
     }
     const issue = await loadIssueWithProjectItemId(
-      context,
+      context.issueRepository,
+      project,
       issueUrl,
       projectItemId,
     );
@@ -212,23 +258,26 @@ export const handleTriage = async (
       return badRequest('issue not found');
     }
     await context.issueRepository.updateStory(
-      { ...context.project, story: context.project.story },
+      { ...project, story: project.story },
       issue,
       storyOptionId,
     );
-    recordDone(context, projectItemId);
+    recordDone(context, pjcode, projectItemId);
     return ok();
   }
 
-  if (action === 'close') {
-    await context.issueRepository.closePullRequest(issueUrl);
+  if (action === 'close' || action === 'close_not_planned') {
     if (isNonEmptyString(body.commentBody)) {
       await context.issueRepository.createCommentByUrl(
         issueUrl,
         body.commentBody,
       );
     }
-    recordDone(context, projectItemId);
+    await context.issueRepository.closeIssueByUrl(
+      issueUrl,
+      action === 'close_not_planned' ? 'not_planned' : 'completed',
+    );
+    recordDone(context, pjcode, projectItemId);
     return ok();
   }
 
@@ -237,10 +286,10 @@ export const handleTriage = async (
     const target = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
     await context.issueRepository.updateNextActionDate(
       issueUrl,
-      context.project,
+      project,
       target,
     );
-    recordDone(context, projectItemId);
+    recordDone(context, pjcode, projectItemId);
     return ok();
   }
 
@@ -266,8 +315,14 @@ export const handleIntmux = async (
   if (!isNonEmptyString(projectItemId)) {
     return badRequest('projectItemId is required');
   }
+  const binding = await resolveBinding(context, body);
+  if (isOperationResponse(binding)) {
+    return binding;
+  }
+  const { project, pjcode } = binding;
   const failure = await updateStatusByName(
-    context,
+    context.issueRepository,
+    project,
     issueUrl,
     projectItemId,
     IN_TMUX_BY_HUMAN_STATUS_NAME,
@@ -275,6 +330,6 @@ export const handleIntmux = async (
   if (failure !== null) {
     return failure;
   }
-  recordDone(context, projectItemId);
+  recordDone(context, pjcode, projectItemId);
   return ok();
 };

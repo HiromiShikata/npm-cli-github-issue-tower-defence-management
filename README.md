@@ -71,9 +71,22 @@ Behind the token gate the server exposes three groups of routes:
 
 - Data delivery (GET): `GET /projects/{pjcode}/{prs|triage|unread|failed-preparation|todo-by-human}/list.json` and the matching `detail/<key>.json` files are read from `{consoleDataOutputDir}/{pjcode}/{tab}/`, and `GET /projects/{pjcode}/in-tmux-by-human/*` is read from `{consoleDataOutputDir}/{pjcode}/in-tmux-by-human/`. Each served list has the `.done` cross-tab exclusion applied. Generation of these files is performed by the schedule cycle, not by this server.
 - Read APIs (GET, backed by the server-side `GH_TOKEN`): `GET /api/itembody`, `GET /api/comments`, `GET /api/prfiles`, `GET /api/prcommits`, `GET /api/relatedprs`, and `GET /api/issuetitle`. Each takes a `url` query parameter. `GET /api/issuetitle` is served through an in-process cache: a merged result is cached permanently and every other result is re-fetched after 300 seconds.
-- Operation APIs (POST, JSON body): `POST /api/review` (`approve`, `request_changes`, `close`), `POST /api/triage` (`set_status`, `set_story`, `close`, `snooze_1day`, `snooze_1week`), and `POST /api/intmux` (`set_intmux`). Each confirmed operation records the affected `projectItemId` into the `.done` exclusion so it disappears from every tab's served list. These routes require `projectUrl` to be configured so the project status and story options can be resolved at runtime, and they operate against that single configured project; the bundled read-only UI is multi-project, while per-project write-operation routing is not yet implemented.
+- Operation APIs (POST, JSON body): `POST /api/review` (`approve`, `request_changes`, `close`), `POST /api/triage` (`set_status`, `set_story`, `close`, `close_not_planned`, `snooze_1day`, `snooze_1week`), and `POST /api/intmux` (`set_intmux`). These routes are multi-project: every request body carries the `pjcode` of the project the UI is currently viewing (taken from the UI's own `/projects/{pjcode}` URL path), the server resolves that `pjcode` to its GitHub Project URL through the `pjcode → projectUrl` mapping described below, loads that project's status and story options (lazily, cached per `pjcode`), and applies the operation against the resolved project. A request with no `pjcode`, or a `pjcode` that has no configured project URL, is rejected with HTTP 400. Each confirmed operation records the affected `projectItemId` into the `.done` exclusion under the resolved `pjcode` so it disappears from every tab's served list for that project only. One running `serveConsole` instance therefore serves both reads and writes for every configured project.
 
 The `.done` exclusion is persisted per tab in a `.done.json` file alongside each tab's `list.json` under `consoleDataOutputDir`. The file is never directly servable because the dot-segment block rejects any path containing it.
+
+Multi-project operation routing is configured through an optional `consoleProjects` mapping in the config file. It maps each `pjcode` to that project's GitHub Project URL so the operation APIs can resolve the correct project per request. The configured `projectName` is always added to this mapping automatically (pointing at the configured `projectUrl`), so a single-project deployment needs no `consoleProjects` entry at all. When the same `serveConsole` instance serves write operations for several projects, list each additional project explicitly:
+
+```yaml
+consoleAccessToken: '<console access token>'
+projectUrl: 'https://github.com/orgs/my-org/projects/1'
+projectName: 'my-project'
+consoleProjects:
+  my-project: 'https://github.com/orgs/my-org/projects/1'
+  other-project: 'https://github.com/orgs/other-org/projects/2'
+```
+
+Each project's status and story options are loaded lazily the first time a `pjcode` is used and then cached for the life of the process, so the additional projects add no startup cost.
 
 The `checkIssueReviewReadiness` sub-command lets an agent self-check whether an issue is currently review-ready. It does NOT change the issue Status field and does NOT post any comment. It writes a single JSON line to stdout of the shape `{ "reviewReady": boolean, "rejections": [{ "type": string, "detail": string }] }` and exits 0 on a successful evaluation regardless of readiness; a non-zero exit indicates an operational error (auth failure, network error). The rejection types include: `ISSUE_NOT_FOUND`, `NO_REPORT_FROM_AGENT_BOT`, `REPORT_HAS_NEXT_STEP`, `PULL_REQUEST_NOT_FOUND`, `PULL_REQUEST_IS_DRAFT`, `PULL_REQUEST_CONFLICTED`, `ANY_CI_JOB_FAILED_OR_IN_PROGRESS`, `REQUIRED_CI_JOB_NEVER_STARTED`, `ANY_REVIEW_COMMENT_NOT_RESOLVED`, and `MULTIPLE_PULL_REQUESTS_FOUND`. The `--projectUrl` option is optional; when omitted the command still runs using only the issue URL.
 
