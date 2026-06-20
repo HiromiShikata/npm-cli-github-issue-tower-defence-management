@@ -9,6 +9,7 @@ import {
   hasDotSegment,
   requiresToken,
   isTokenValid,
+  isConsoleAppRoute,
   extractProvidedToken,
   startConsoleServer,
 } from './consoleServer';
@@ -58,6 +59,35 @@ describe('consoleServer pure helpers', () => {
       expect(requiresToken('/')).toBe(false);
       expect(requiresToken('/index.html')).toBe(false);
       expect(requiresToken('/assets/app.js')).toBe(false);
+    });
+  });
+
+  describe('isConsoleAppRoute', () => {
+    it('matches a per-project root route', () => {
+      expect(isConsoleAppRoute('/projects/umino')).toBe(true);
+      expect(isConsoleAppRoute('/projects/umino/')).toBe(true);
+    });
+
+    it('matches a per-project tab route for every list tab', () => {
+      expect(isConsoleAppRoute('/projects/umino/prs')).toBe(true);
+      expect(isConsoleAppRoute('/projects/xmile/triage')).toBe(true);
+      expect(isConsoleAppRoute('/projects/xcare/unread')).toBe(true);
+      expect(isConsoleAppRoute('/projects/utage3/failed-preparation')).toBe(
+        true,
+      );
+      expect(isConsoleAppRoute('/projects/utage3/todo-by-human')).toBe(true);
+    });
+
+    it('does not match data, api, or unknown tab routes', () => {
+      expect(isConsoleAppRoute('/projects/umino/prs/list.json')).toBe(false);
+      expect(isConsoleAppRoute('/projects/umino/unknown')).toBe(false);
+      expect(isConsoleAppRoute('/projects')).toBe(false);
+      expect(isConsoleAppRoute('/api/review')).toBe(false);
+      expect(isConsoleAppRoute('/')).toBe(false);
+    });
+
+    it('does not match a dot-prefixed pjcode', () => {
+      expect(isConsoleAppRoute('/projects/.git')).toBe(false);
     });
   });
 
@@ -224,6 +254,57 @@ describe('consoleServer integration', () => {
       expect(appJs.body).toContain('app');
       expect(appJs.contentType).toContain('text/javascript');
       expect(appJs.cacheControl).toBe('no-store');
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('serves the SPA index for per-project app routes without a token', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const uiDistDir = path.join(tmpDir, 'ui-dist');
+    fs.mkdirSync(uiDistDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(uiDistDir, 'index.html'),
+      '<!DOCTYPE html><title>spa</title><div id="root"></div>',
+    );
+    const server = await startConsoleServer({
+      accessToken: testToken,
+      uiDistDir,
+      consoleDataOutputDir: null,
+      port: 0,
+    });
+    try {
+      const projectRoot = await requestServer(server, '/projects/umino');
+      expect(projectRoot.statusCode).toBe(200);
+      expect(projectRoot.body).toContain('spa');
+      expect(projectRoot.contentType).toContain('text/html');
+      expect(projectRoot.cacheControl).toBe('no-store');
+
+      const projectTab = await requestServer(server, '/projects/xmile/prs');
+      expect(projectTab.statusCode).toBe(200);
+      expect(projectTab.body).toContain('spa');
+
+      const unknownTab = await requestServer(server, '/projects/xmile/unknown');
+      expect(unknownTab.statusCode).toBe(404);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('serves the placeholder index for per-project routes when ui-dist is absent', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const server = await startConsoleServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'missing-ui-dist'),
+      consoleDataOutputDir: null,
+      port: 0,
+    });
+    try {
+      const projectRoot = await requestServer(server, '/projects/umino/triage');
+      expect(projectRoot.statusCode).toBe(200);
+      expect(projectRoot.body).toContain('TDPM Console');
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });

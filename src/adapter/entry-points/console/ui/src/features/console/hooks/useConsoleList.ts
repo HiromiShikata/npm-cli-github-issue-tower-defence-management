@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import type { ConsoleListItem, ConsoleTabName } from '../types';
 import { useConsoleToken } from './useConsoleToken';
 
-const buildListUrl = (tab: ConsoleTabName): string => `./${tab}/list.json`;
+const buildListUrl = (pjcode: string, tab: ConsoleTabName): string =>
+  `/projects/${pjcode}/${tab}/list.json`;
 
 const extractItems = (payload: unknown): ConsoleListItem[] => {
   if (
@@ -22,7 +23,10 @@ export type ConsoleListState = {
   error: string | null;
 };
 
-export const useConsoleList = (tab: ConsoleTabName): ConsoleListState => {
+export const useConsoleList = (
+  pjcode: string | null,
+  tab: ConsoleTabName,
+): ConsoleListState => {
   const { appendToken } = useConsoleToken();
   const [items, setItems] = useState<ConsoleListItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -33,7 +37,16 @@ export const useConsoleList = (tab: ConsoleTabName): ConsoleListState => {
     setIsLoading(true);
     setError(null);
 
-    const url = appendToken(buildListUrl(tab));
+    if (pjcode === null) {
+      setItems([]);
+      setIsLoading(false);
+      setError('No project specified in the URL path.');
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const url = appendToken(buildListUrl(pjcode, tab));
     fetch(url)
       .then(async (response) => {
         if (!response.ok) {
@@ -59,7 +72,7 @@ export const useConsoleList = (tab: ConsoleTabName): ConsoleListState => {
     return () => {
       cancelled = true;
     };
-  }, [tab, appendToken]);
+  }, [pjcode, tab, appendToken]);
 
   return { items, isLoading, error };
 };

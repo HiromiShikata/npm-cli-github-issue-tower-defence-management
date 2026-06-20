@@ -6,6 +6,7 @@ export declare const DEFAULT_CONSOLE_PORT = 9981;
 export declare const CONSOLE_TOKEN_HEADER = "x-pv-token";
 export declare const hasDotSegment: (requestPath: string) => boolean;
 export declare const requiresToken: (requestPath: string) => boolean;
+export declare const isConsoleAppRoute: (requestPath: string) => boolean;
 export declare const isTokenValid: (expectedToken: string, providedToken: string | null) => boolean;
 export declare const extractProvidedToken: (queryToken: string | string[] | null, headerToken: string | string[] | undefined) => string | null;
 export type ConsoleServerOptions = {
