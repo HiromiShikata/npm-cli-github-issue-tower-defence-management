@@ -1700,7 +1700,12 @@ mysteryKey: 'value'
       expect(callArg.port).toBe(9981);
       expect(callArg.accessToken).toBe('config-token');
       expect(callArg.consoleDataOutputDir).toBeNull();
-      expect(typeof callArg.uiDistDir).toBe('string');
+      expect(callArg.uiDistDir).toBe(
+        path.join(__dirname, '..', 'console', 'ui-dist'),
+      );
+      expect(fs.existsSync(path.join(callArg.uiDistDir, 'index.html'))).toBe(
+        true,
+      );
 
       logSpy.mockRestore();
     });
