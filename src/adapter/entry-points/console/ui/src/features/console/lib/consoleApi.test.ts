@@ -20,8 +20,36 @@ describe('createConsoleApiClient', () => {
     const body = await client.fetchItemBody('https://github.com/o/r/issues/1');
     expect(body).toBe('# Title');
     const requested = fetchMock.mock.calls[0][0] as string;
-    expect(requested).toContain('./api/itembody?url=');
+    expect(requested).toContain('/api/itembody?url=');
     expect(requested).toContain('&k=token');
+  });
+
+  it('anchors every read endpoint at the server root regardless of route', async () => {
+    const readers: ((url: string) => Promise<unknown>)[] = [];
+    const client = createConsoleApiClient(appendToken);
+    readers.push((url) => client.fetchItemBody(url));
+    readers.push((url) => client.fetchComments(url));
+    readers.push((url) => client.fetchPrFiles(url));
+    readers.push((url) => client.fetchPrCommits(url));
+    readers.push((url) => client.fetchRelatedPrs(url));
+    readers.push((url) => client.fetchIssueState(url));
+    const expectedPaths = [
+      '/api/itembody',
+      '/api/comments',
+      '/api/prfiles',
+      '/api/prcommits',
+      '/api/relatedprs',
+      '/api/issuetitle',
+    ];
+    for (let index = 0; index < readers.length; index += 1) {
+      const fetchMock = mockFetchOnce({});
+      await readers[index]('https://github.com/o/r/issues/1');
+      const requested = fetchMock.mock.calls[0][0] as string;
+      expect(requested.startsWith(expectedPaths[index])).toBe(true);
+      expect(requested.startsWith('/api/')).toBe(true);
+      expect(requested.startsWith('./')).toBe(false);
+      expect(requested.startsWith('/projects')).toBe(false);
+    }
   });
 
   it('parses comments', async () => {

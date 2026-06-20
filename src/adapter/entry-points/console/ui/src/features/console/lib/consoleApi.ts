@@ -156,19 +156,19 @@ export const createConsoleApiClient = (
   appendToken: AppendToken,
 ): ConsoleApiClient => ({
   fetchItemBody: async (url) => {
-    const payload = await requestJson(appendToken, './api/itembody', url);
+    const payload = await requestJson(appendToken, '/api/itembody', url);
     return isRecord(payload) ? getString(payload.body) : '';
   },
   fetchComments: async (url) =>
-    parseComments(await requestJson(appendToken, './api/comments', url)),
+    parseComments(await requestJson(appendToken, '/api/comments', url)),
   fetchPrFiles: async (url) =>
-    parseFiles(await requestJson(appendToken, './api/prfiles', url)),
+    parseFiles(await requestJson(appendToken, '/api/prfiles', url)),
   fetchPrCommits: async (url) =>
-    parseCommits(await requestJson(appendToken, './api/prcommits', url)),
+    parseCommits(await requestJson(appendToken, '/api/prcommits', url)),
   fetchRelatedPrs: async (url) =>
-    parseRelatedPrs(await requestJson(appendToken, './api/relatedprs', url)),
+    parseRelatedPrs(await requestJson(appendToken, '/api/relatedprs', url)),
   fetchIssueState: async (url) =>
-    parseState(await requestJson(appendToken, './api/issuetitle', url)),
+    parseState(await requestJson(appendToken, '/api/issuetitle', url)),
 });
 
 export const postConsoleOperation = async (
