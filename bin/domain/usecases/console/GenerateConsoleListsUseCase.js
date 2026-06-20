@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GenerateConsoleListsUseCase = void 0;
+const WorkflowStatus_1 = require("../../entities/WorkflowStatus");
 const UNKNOWN_STORY_SORT_INDEX = 999999;
 class GenerateConsoleListsUseCase {
     constructor() {
@@ -33,6 +34,8 @@ class GenerateConsoleListsUseCase {
                     'in tmux by human',
                     'in tmux by agent',
                 ]),
+                'todo-by-human': buildStatusTab((issue) => issue.status === WorkflowStatus_1.TODO_STATUS_NAME ||
+                    issue.status === WorkflowStatus_1.LEGACY_TODO_STATUS_NAME, [WorkflowStatus_1.TODO_STATUS_NAME.toLowerCase(), 'done']),
                 triage: {
                     pjcode,
                     generatedAt,

@@ -78,7 +78,7 @@ describe('writeConsoleLists', () => {
   const tabFile = (tab: string): string =>
     path.join(outDir, 'demo', tab, 'list.json');
 
-  it('writes all four tab list.json files', () => {
+  it('writes all five tab list.json files', () => {
     writeConsoleLists({
       consoleDataOutputDir: outDir,
       pjcode: 'demo',
@@ -88,9 +88,34 @@ describe('writeConsoleLists', () => {
       generatedAt: '2026-06-14T07:22:33Z',
     });
 
-    for (const tab of ['prs', 'triage', 'unread', 'failed-preparation']) {
+    for (const tab of [
+      'prs',
+      'triage',
+      'unread',
+      'failed-preparation',
+      'todo-by-human',
+    ]) {
       expect(fs.existsSync(tabFile(tab))).toBe(true);
     }
+  });
+
+  it('writes todo-by-human items selected by the Todo by human status', () => {
+    writeConsoleLists({
+      consoleDataOutputDir: outDir,
+      pjcode: 'demo',
+      assigneeLogin: ASSIGNEE,
+      project,
+      issues: [makeIssue({ status: 'Todo by human' })],
+      generatedAt: '2026-06-14T07:22:33Z',
+    });
+
+    const raw: unknown = JSON.parse(
+      fs.readFileSync(tabFile('todo-by-human'), 'utf8'),
+    );
+    expect(isRecord(raw)).toBe(true);
+    const items: unknown = isRecord(raw) ? raw.items : undefined;
+    expect(isUnknownArray(items)).toBe(true);
+    expect(isUnknownArray(items) ? items.length : 0).toBe(1);
   });
 
   it('writes items with no body field', () => {
