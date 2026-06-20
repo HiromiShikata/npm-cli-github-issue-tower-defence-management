@@ -11,13 +11,13 @@ import {
   type ConsoleReviewAction,
   TOTALLY_WRONG_COMMENT_BODY,
   UNNECESSARY_COMMENT_BODY,
-} from '../operations';
-import { overlayKeyForItem } from '../overlay';
+} from '../logic/operations';
+import { overlayKeyForItem } from '../logic/overlay';
 import type {
   ConsoleFieldOption,
   ConsoleListItem,
   ConsoleTabName,
-} from '../types';
+} from '../logic/types';
 import type { ConsoleOverlayState } from './useConsoleOverlay';
 import { useConsoleToken } from './useConsoleToken';
 

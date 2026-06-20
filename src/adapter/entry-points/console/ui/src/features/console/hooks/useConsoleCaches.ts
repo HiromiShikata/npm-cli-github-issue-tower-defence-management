@@ -10,7 +10,7 @@ import type {
   ConsoleCommit,
   ConsoleIssueState,
   ConsoleRelatedPullRequest,
-} from '../types';
+} from '../logic/types';
 import { useConsoleToken } from './useConsoleToken';
 
 export type ConsoleCaches = {

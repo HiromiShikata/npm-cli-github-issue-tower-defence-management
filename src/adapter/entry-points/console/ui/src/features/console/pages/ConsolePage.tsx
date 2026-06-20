@@ -1,25 +1,25 @@
 import { useMemo, useState } from 'react';
-import { ConsoleListView } from '../components/ConsoleListView';
-import { ConsoleProjectHeader } from '../components/ConsoleProjectHeader';
-import { ConsoleTabBar } from '../components/ConsoleTabBar';
-import { buildConsoleListRows, resolveItemStory } from '../grouping';
+import { ConsoleProjectSummary } from '../components/layout/ConsoleProjectSummary';
+import { ConsoleTabList } from '../components/layout/ConsoleTabList';
+import { ConsoleItemList } from '../components/list/ConsoleItemList';
 import { useConsoleCaches } from '../hooks/useConsoleCaches';
 import { useConsoleOperations } from '../hooks/useConsoleOperations';
 import { useConsoleOverlay } from '../hooks/useConsoleOverlay';
 import { useConsolePjcode } from '../hooks/useConsolePjcode';
 import { useConsoleTabData } from '../hooks/useConsoleTabData';
+import { buildConsoleListRows, resolveItemStory } from '../logic/grouping';
 import {
   countPendingItems,
   filterPendingItems,
   overlayKeyForItem,
   parseGeneratedAtMs,
-} from '../overlay';
+} from '../logic/overlay';
 import type {
   ConsoleListItem,
   ConsoleOverlayStatus,
   ConsoleTabName,
-} from '../types';
-import { CONSOLE_TABS } from '../types';
+} from '../logic/types';
+import { CONSOLE_TABS } from '../logic/types';
 import { ConsoleItemDetailContainer } from './ConsoleItemDetailContainer';
 
 const emptyCounts = (): Record<ConsoleTabName, number> => {
@@ -106,14 +106,14 @@ export const ConsolePage = () => {
 
   return (
     <main className="console-app">
-      <ConsoleProjectHeader pjcode={pjcode} />
-      <ConsoleTabBar
+      <ConsoleProjectSummary pjcode={pjcode} />
+      <ConsoleTabList
         activeTab={activeTab}
         counts={counts}
         onSelectTab={selectTab}
       />
       {selectedItem === null ? (
-        <ConsoleListView
+        <ConsoleItemList
           rows={rows}
           storyColors={storyColors}
           activeItemId={null}

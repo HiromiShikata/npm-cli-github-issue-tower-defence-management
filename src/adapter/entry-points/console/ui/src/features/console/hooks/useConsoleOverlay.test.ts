@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
-import { overlayStorageKey } from '../overlay';
+import { overlayStorageKey } from '../logic/overlay';
 import { useConsoleOverlay } from './useConsoleOverlay';
 
 describe('useConsoleOverlay', () => {

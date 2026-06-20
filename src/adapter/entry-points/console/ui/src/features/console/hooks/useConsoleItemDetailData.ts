@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { ConsoleRelatedPullRequestView } from '../components/ConsoleItemDetail';
+import type { ConsoleRelatedPullRequestView } from '../components/detail/ConsoleItemDetail';
 import type {
   ConsoleChangedFile,
   ConsoleComment,
@@ -7,7 +7,7 @@ import type {
   ConsoleIssueState,
   ConsoleListItem,
   ConsoleRelatedPullRequest,
-} from '../types';
+} from '../logic/types';
 import type { ConsoleCaches } from './useConsoleCaches';
 import { useConsoleResource } from './useConsoleResource';
 
