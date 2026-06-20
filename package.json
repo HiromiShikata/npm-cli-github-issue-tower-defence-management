@@ -15,6 +15,8 @@
     "build": "tsc -p ./tsconfig.build.json",
     "postbuild": "node scripts/copyConsoleUiDist.mjs",
     "console-ui:lint": "biome check src/adapter/entry-points/console/ui",
+    "console-ui:e2e:typecheck": "tsc --noEmit -p src/adapter/entry-points/console/ui/e2e/tsconfig.json",
+    "console-ui:e2e": "npm run build:console-ui && playwright test --config src/adapter/entry-points/console/ui/e2e/playwright.config.ts",
     "console-ui:storybook": "storybook dev -p 6006 -c src/adapter/entry-points/console/ui/.storybook",
     "console-ui:build-storybook": "storybook build -c src/adapter/entry-points/console/ui/.storybook -o src/adapter/entry-points/console/ui/storybook-static",
     "test": "jest",
@@ -54,6 +56,7 @@
   "homepage": "https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management#readme",
   "devDependencies": {
     "@biomejs/biome": "^2.2.0",
+    "@playwright/test": "1.60.0",
     "@radix-ui/react-slot": "^1.2.0",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/commit-analyzer": "^13.0.0",
