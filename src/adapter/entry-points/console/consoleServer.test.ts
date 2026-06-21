@@ -761,6 +761,8 @@ describe('consoleServer flat in-tmux-by-human route integration', () => {
     body: string;
     cacheControl: string | undefined;
     contentType: string | undefined;
+    contentLength: string | undefined;
+    transferEncoding: string | undefined;
   }> => {
     const address = server.address();
     if (address === null || typeof address === 'string') {
@@ -779,6 +781,8 @@ describe('consoleServer flat in-tmux-by-human route integration', () => {
               body: Buffer.concat(chunks).toString('utf-8'),
               cacheControl: response.headers['cache-control'],
               contentType: response.headers['content-type'],
+              contentLength: response.headers['content-length'],
+              transferEncoding: response.headers['transfer-encoding'],
             });
           });
         },
@@ -835,6 +839,25 @@ describe('consoleServer flat in-tmux-by-human route integration', () => {
       expect(response.body).toBe(indexV4Raw);
       expect(response.contentType).toContain('application/json');
       expect(response.cacheControl).toBe('no-store');
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('sends an explicit Content-Length and no chunked encoding for the flat index.v4.json', async () => {
+    const { server, tmpDir } = await startWithFixture();
+    try {
+      const response = await requestServer(
+        server,
+        `/in-tmux-by-human/index.v4.json?k=${testToken}`,
+      );
+      expect(response.statusCode).toBe(200);
+      expect(response.contentLength).toBe(
+        String(Buffer.byteLength(indexV4Raw)),
+      );
+      expect(response.transferEncoding).toBeUndefined();
+      expect(response.body).toBe(indexV4Raw);
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
