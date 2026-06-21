@@ -1,3 +1,10 @@
+## [1.92.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.92.0...v1.92.1) (2026-06-21)
+
+
+### Bug Fixes
+
+* **console:** send Content-Length for flat in-tmux JSON responses ([#890](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/890)) ([56b8216](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/56b82169140bbf1fdf3c9b664fcd02e283e350d1))
+
 # [1.92.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.91.5...v1.92.0) (2026-06-21)
 
 
