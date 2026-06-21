@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { ConsoleProjectSummary } from '../components/layout/ConsoleProjectSummary';
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
 import { ConsoleItemList } from '../components/list/ConsoleItemList';
 import { useConsoleCaches } from '../hooks/useConsoleCaches';
@@ -102,7 +101,6 @@ export const ConsolePage = () => {
 
   return (
     <main className="console-app">
-      <ConsoleProjectSummary pjcode={pjcode} />
       <ConsoleTabList
         activeTab={activeTab}
         counts={counts}

@@ -33,7 +33,7 @@ export const AllTabsWithCounts: Story = {
   },
 };
 
-export const ZeroCountTabsStillShown: Story = {
+export const ZeroCountTabsHidden: Story = {
   args: {
     activeTab: 'prs',
     counts: {
@@ -46,15 +46,15 @@ export const ZeroCountTabsStillShown: Story = {
   },
 };
 
-export const ZeroCountActiveTab: Story = {
+export const ZeroCountActiveTabStaysVisible: Story = {
   args: {
     activeTab: 'failed-preparation',
     counts: {
       prs: 35,
-      triage: 132,
+      triage: 0,
       unread: 18,
       'failed-preparation': 0,
-      'todo-by-human': 66,
+      'todo-by-human': 0,
     },
   },
 };
