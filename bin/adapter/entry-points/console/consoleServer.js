@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.startConsoleServer = exports.createConsoleServer = exports.handleConsoleRequest = exports.extractProvidedToken = exports.isTokenValid = exports.isConsoleAppRoute = exports.requiresToken = exports.hasDotSegment = exports.CONSOLE_TOKEN_HEADER = exports.DEFAULT_CONSOLE_PORT = void 0;
+exports.startConsoleServer = exports.createConsoleServer = exports.handleConsoleRequest = exports.resolveFlatInTmuxFilePath = exports.extractProvidedToken = exports.isTokenValid = exports.isConsoleAppRoute = exports.requiresToken = exports.hasDotSegment = exports.CONSOLE_TOKEN_HEADER = exports.DEFAULT_CONSOLE_PORT = void 0;
 const http = __importStar(require("http"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
@@ -145,6 +145,25 @@ const readStaticFile = (filePath) => {
         return null;
     }
 };
+const FLAT_IN_TMUX_PREFIX = '/in-tmux-by-human/';
+const FLAT_IN_TMUX_FILE = /^[A-Za-z0-9._-]+\.json$/;
+const resolveFlatInTmuxFilePath = (inTmuxDataDir, requestPath) => {
+    if (!requestPath.startsWith(FLAT_IN_TMUX_PREFIX)) {
+        return null;
+    }
+    const fileName = requestPath.slice(FLAT_IN_TMUX_PREFIX.length);
+    if (fileName.length === 0 || !FLAT_IN_TMUX_FILE.test(fileName)) {
+        return null;
+    }
+    const candidate = path.join(inTmuxDataDir, fileName);
+    const resolvedRoot = path.resolve(inTmuxDataDir);
+    const resolvedCandidate = path.resolve(candidate);
+    if (!resolvedCandidate.startsWith(resolvedRoot + path.sep)) {
+        return null;
+    }
+    return resolvedCandidate;
+};
+exports.resolveFlatInTmuxFilePath = resolveFlatInTmuxFilePath;
 const sendNotFound = (response) => {
     response.writeHead(404, {
         'Content-Type': 'text/plain; charset=utf-8',
@@ -298,6 +317,24 @@ const handleTokenedRequest = async (options, request, response, requestPath, sea
         return;
     }
     if (method === 'GET') {
+        if (requestPath.startsWith(FLAT_IN_TMUX_PREFIX)) {
+            if (options.inTmuxDataDir === null) {
+                sendNotFound(response);
+                return;
+            }
+            const flatFilePath = (0, exports.resolveFlatInTmuxFilePath)(options.inTmuxDataDir, requestPath);
+            const flatContent = flatFilePath === null ? null : readStaticFile(flatFilePath);
+            if (flatContent === null) {
+                sendNotFound(response);
+                return;
+            }
+            response.writeHead(200, {
+                'Content-Type': 'application/json; charset=utf-8',
+                'Cache-Control': 'no-store',
+            });
+            response.end(flatContent);
+            return;
+        }
         const dataRoute = (0, consoleDataDelivery_1.parseConsoleDataRoute)(requestPath);
         if (dataRoute !== null && options.consoleDataOutputDir !== null) {
             const dataResponse = (0, consoleDataDelivery_1.buildConsoleDataResponse)(options.consoleDataOutputDir, dataRoute);

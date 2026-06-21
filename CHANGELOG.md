@@ -1,3 +1,10 @@
+# [1.92.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.91.5...v1.92.0) (2026-06-21)
+
+
+### Features
+
+* **console:** serve flat /in-tmux-by-human static JSON from serveConsole ([#888](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/888)) ([c01ec22](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c01ec22a83d72b2db8b7f964726dfe064e7a9ca1)), closes [#887](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/887)
+
 ## [1.91.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.91.4...v1.91.5) (2026-06-21)
 
 

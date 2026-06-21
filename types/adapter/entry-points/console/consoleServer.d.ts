@@ -13,10 +13,12 @@ export type ConsoleServerOptions = {
     accessToken: string;
     uiDistDir: string;
     consoleDataOutputDir: string | null;
+    inTmuxDataDir: string | null;
     issueRepository?: IssueRepository | null;
     resolveProject?: ConsoleProjectResolver | null;
     issueTitleStateCache?: IssueTitleStateCache | null;
 };
+export declare const resolveFlatInTmuxFilePath: (inTmuxDataDir: string, requestPath: string) => string | null;
 export declare const handleConsoleRequest: (options: ConsoleServerOptions, request: http.IncomingMessage, response: http.ServerResponse) => Promise<void>;
 export declare const createConsoleServer: (options: ConsoleServerOptions) => http.Server;
 export type StartConsoleServerOptions = ConsoleServerOptions & {

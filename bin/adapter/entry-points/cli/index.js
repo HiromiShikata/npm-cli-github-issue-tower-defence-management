@@ -63,6 +63,7 @@ const consoleServer_1 = require("../console/consoleServer");
 const consoleReadApi_1 = require("../console/consoleReadApi");
 const consoleProjectResolver_1 = require("../console/consoleProjectResolver");
 const OauthTokenSelectHandler_1 = require("../handlers/OauthTokenSelectHandler");
+const DEFAULT_IN_TMUX_DATA_DIR = '/home/hiromi/0_workspaces/workspace1/jsonpub/in-tmux-by-human';
 const buildGithubRepositoryParams = (localStorageRepository, token) => [
     localStorageRepository,
     token,
@@ -351,6 +352,7 @@ exports.program
     .requiredOption('--configFilePath <path>', 'Path to config file for tower defence management')
     .option('--port <number>', `Port for the console HTTP server (default: ${consoleServer_1.DEFAULT_CONSOLE_PORT})`)
     .option('--consoleDataOutputDir <path>', 'Directory where console data files are written and served from')
+    .option('--inTmuxDataDir <path>', `Directory containing the flat in-tmux-by-human static JSON files served at /in-tmux-by-human/*.json (default: ${DEFAULT_IN_TMUX_DATA_DIR})`)
     .action(async (options) => {
     const config = (0, projectConfig_2.loadConfigFile)(options.configFilePath);
     const accessToken = config.consoleAccessToken;
@@ -406,10 +408,12 @@ exports.program
     });
     const uiDistDir = path.join(__dirname, '..', 'console', 'ui-dist');
     const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
+    const inTmuxDataDir = options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR;
     await (0, consoleServer_1.startConsoleServer)({
         accessToken,
         uiDistDir,
         consoleDataOutputDir,
+        inTmuxDataDir,
         issueRepository,
         resolveProject,
         issueTitleStateCache: new consoleReadApi_1.IssueTitleStateCache(),
