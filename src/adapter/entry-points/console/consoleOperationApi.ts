@@ -309,9 +309,8 @@ export const handleComment = async (
     return badRequest('body is required');
   }
   await context.issueRepository.createCommentByUrl(url, commentBody);
-  const comments = await context.issueRepository.getIssueOrPullRequestComments(
-    url,
-  );
+  const comments =
+    await context.issueRepository.getIssueOrPullRequestComments(url);
   const posted = comments[comments.length - 1] ?? null;
   return {
     statusCode: 200,
