@@ -127,19 +127,27 @@ describe('ConsolePage', () => {
       ).toBeInTheDocument();
     });
 
-    const prsTabLink = queryByText('Awaiting Quality Check')?.closest('a');
-    const prsBadge =
-      prsTabLink?.querySelector('.console-tab-badge')?.textContent ?? '0';
-    expect(prsBadge).toBe('0');
+    expect(queryByText('Awaiting Quality Check')).toBeNull();
   });
 
-  it('shows every tab even when its count is zero', async () => {
+  it('hides zero-count tabs but keeps non-zero tabs', async () => {
     const { getByText, queryByText } = render(<ConsolePage />);
     await waitFor(() => {
       expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
     });
-    expect(queryByText('Triage')).not.toBeNull();
-    expect(queryByText('Failed Preparation')).not.toBeNull();
-    expect(queryByText('Todo by human')).not.toBeNull();
+    expect(queryByText('Awaiting Quality Check')).not.toBeNull();
+    expect(queryByText('Unread')).not.toBeNull();
+    expect(queryByText('Triage')).toBeNull();
+    expect(queryByText('Failed Preparation')).toBeNull();
+    expect(queryByText('Todo by human')).toBeNull();
+  });
+
+  it('does not render the project header bar above the tab bar', async () => {
+    const { getByText, queryByText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    expect(queryByText('TDPM Console')).toBeNull();
+    expect(queryByText('project: umino')).toBeNull();
   });
 });

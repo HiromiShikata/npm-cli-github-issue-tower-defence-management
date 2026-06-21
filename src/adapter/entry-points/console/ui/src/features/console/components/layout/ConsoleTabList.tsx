@@ -29,7 +29,10 @@ export const ConsoleTabList = ({
   return (
     <>
       <nav aria-label="Console tabs" className="console-tabbar">
-        {CONSOLE_TABS.map((tab) => {
+        {CONSOLE_TABS.filter((tab) => {
+          const count = counts[tab.name] ?? 0;
+          return count > 0 || tab.name === activeTab;
+        }).map((tab) => {
           const count = counts[tab.name] ?? 0;
           const isActive = tab.name === activeTab;
           return (

@@ -18,26 +18,41 @@ const baseProps = {
 };
 
 describe('ConsoleTabList', () => {
-  it('shows every tab including zero-count tabs', () => {
+  it('hides zero-count tabs while showing non-zero tabs', () => {
     const { queryByText } = render(
       <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
     );
     expect(queryByText('Awaiting Quality Check')).not.toBeNull();
-    expect(queryByText('Triage')).not.toBeNull();
     expect(queryByText('Unread')).not.toBeNull();
-    expect(queryByText('Failed Preparation')).not.toBeNull();
     expect(queryByText('Todo by human')).not.toBeNull();
+    expect(queryByText('Triage')).toBeNull();
+    expect(queryByText('Failed Preparation')).toBeNull();
   });
 
-  it('marks the active tab and renders zero badges with the zero attribute', () => {
+  it('keeps the active tab visible even when its count is zero', () => {
+    const { getByText, queryByText } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="failed-preparation"
+        counts={counts}
+      />,
+    );
+    const activeBadge = getByText('Failed Preparation')
+      .closest('a')
+      ?.querySelector('.console-tab-badge');
+    expect(activeBadge).toHaveAttribute('data-zero', 'true');
+    expect(activeBadge?.textContent).toBe('0');
+    expect(getByText('Failed Preparation').closest('a')).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(queryByText('Triage')).toBeNull();
+  });
+
+  it('marks the active tab as the current page', () => {
     const { getByText } = render(
       <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
     );
-    const triageBadge = getByText('Triage')
-      .closest('a')
-      ?.querySelector('.console-tab-badge');
-    expect(triageBadge).toHaveAttribute('data-zero', 'true');
-    expect(triageBadge?.textContent).toBe('0');
     expect(getByText('Awaiting Quality Check').closest('a')).toHaveAttribute(
       'aria-current',
       'page',
