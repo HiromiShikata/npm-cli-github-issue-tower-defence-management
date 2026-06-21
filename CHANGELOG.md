@@ -1,3 +1,10 @@
+## [1.91.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.91.2...v1.91.3) (2026-06-21)
+
+
+### Bug Fixes
+
+* **console:** anchor read API paths at server root so per-project routes load detail content ([#879](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/879)) ([789e4a1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/789e4a1da0ec087e061f051de08af7d30e3735ef))
+
 ## [1.91.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.91.1...v1.91.2) (2026-06-20)
 
 
