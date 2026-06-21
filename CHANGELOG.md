@@ -1,3 +1,10 @@
+## [1.91.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.91.3...v1.91.4) (2026-06-21)
+
+
+### Bug Fixes
+
+* **console:** make React console UI visually and navigationally identical to the reference prototype ([#883](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/883)) ([f2db7dc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f2db7dcce985a11a7b09a4a4b641acb08c47f09e)), closes [#882](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/882)
+
 ## [1.91.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.91.2...v1.91.3) (2026-06-21)
 
 
