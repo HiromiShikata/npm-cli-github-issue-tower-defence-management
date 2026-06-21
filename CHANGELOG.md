@@ -1,3 +1,10 @@
+## [1.91.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.91.4...v1.91.5) (2026-06-21)
+
+
+### Bug Fixes
+
+* **console:** remove header bar and hide zero-count tabs to match reference console ([#886](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/886)) ([1900623](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1900623fd0a4992c9d544ea4b4c46fe178d716f7)), closes [#884](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/884)
+
 ## [1.91.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.91.3...v1.91.4) (2026-06-21)
 
 
