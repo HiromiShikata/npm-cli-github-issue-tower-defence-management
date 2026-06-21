@@ -177,6 +177,43 @@ describe('useConsoleOperations', () => {
     expect(stored[issueItem.projectItemId].done).toBe(true);
   });
 
+  it('posts a comment to the comment endpoint and returns the created comment', async () => {
+    const fetchMock: jest.Mock = jest.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        ok: true,
+        comment: {
+          author: 'HiromiShikata',
+          body: 'Thanks for the parity fix.',
+          createdAt: '2026-06-18T03:21:00.000Z',
+        },
+      }),
+    }));
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const { result } = setup();
+    let created: Awaited<
+      ReturnType<typeof result.current.operations.addComment>
+    > | null = null;
+    await act(async () => {
+      created = await result.current.operations.addComment(
+        issueItem,
+        'Thanks for the parity fix.',
+      );
+    });
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/comment?k=token');
+    expect(lastBody(fetchMock)).toMatchObject({
+      pjcode: 'umino',
+      url: issueItem.url,
+      body: 'Thanks for the parity fix.',
+    });
+    expect(created).toEqual({
+      author: 'HiromiShikata',
+      body: 'Thanks for the parity fix.',
+      createdAt: '2026-06-18T03:21:00.000Z',
+    });
+  });
+
   it('rejects an operation and posts nothing when no pjcode is available', async () => {
     const fetchMock = captureFetch();
     localStorage.clear();

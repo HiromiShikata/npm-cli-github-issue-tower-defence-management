@@ -39,53 +39,94 @@ body {
 
 .console-tabbar {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 8px;
-  border-bottom: 1px solid #30363d;
+  align-items: stretch;
+  gap: 0;
+  padding: 0 8px;
+  min-height: 42px;
+  background: #161b22;
+  border-bottom: 2px solid #30363d;
 }
 
 .console-tab {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
-  border: 1px solid transparent;
-  border-radius: 6px;
+  padding: 10px 14px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
   background: transparent;
   color: #8b949e;
   font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-decoration: none;
   cursor: pointer;
 }
 
-.console-tab[data-active="true"] {
-  background: #161b22;
-  border-color: #30363d;
+.console-tab:hover {
   color: #e6edf3;
-  font-weight: 600;
+}
+
+.console-tab[data-active="true"] {
+  color: #e6edf3;
+  font-weight: 700;
+  border-bottom-color: #2f81f7;
 }
 
 .console-tab-badge {
-  min-width: 18px;
+  min-width: 20px;
   text-align: center;
-  border-radius: 999px;
-  background: #21262d;
-  padding: 0 6px;
-  font-size: 12px;
+  border-radius: 20px;
+  background: #484f58;
+  color: #e6edf3;
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.5;
 }
 
 .console-tab-badge[data-zero="true"] {
-  opacity: 0.5;
+  background: #30363d;
+  color: #8b949e;
+}
+
+.console-tab-pjname {
+  margin-left: auto;
+  align-self: center;
+  padding: 0 8px;
+  color: #8b949e;
+  font-size: 11.5px;
+}
+
+.console-tab-geninfo {
+  align-self: center;
+  padding: 0 4px;
+  color: #8b949e;
+  font-size: 11px;
+}
+
+.console-tab-count-heading {
+  margin: 0;
+  padding: 12px 18px 0;
+  color: #8b949e;
+  font-size: 13px;
 }
 
 .console-list {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 12px 18px 18px;
 }
 
 .console-list-group {
   list-style: none;
+}
+
+.console-item-row .console-item-icon {
+  flex: 0 0 auto;
+  margin-top: 3px;
 }
 
 .console-group-header {
@@ -119,35 +160,71 @@ body {
 
 .console-item-row {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  gap: 14px;
+  align-items: flex-start;
   width: 100%;
-  padding: 8px 12px;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid #21262d;
+  padding: 12px 16px;
+  margin-bottom: 10px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
   color: #e6edf3;
   text-align: left;
   cursor: pointer;
 }
 
-.console-item-row:hover,
+.console-item-row:hover {
+  border-color: #484f58;
+  background: #1a2029;
+}
+
 .console-item-row[data-active="true"] {
-  background: #161b22;
+  border-color: #4493f8;
+  background: #1a2029;
+}
+
+.console-item-meta {
+  flex: 1;
+  min-width: 0;
 }
 
 .console-item-title {
-  flex: 1;
-  font-size: 14px;
+  display: block;
+  font-weight: 600;
+  font-size: 14.5px;
 }
 
-.console-item-number {
+.console-item-sub {
+  display: block;
+  margin-top: 3px;
   color: #8b949e;
-  font-size: 12px;
+  font-size: 12.5px;
+}
+
+.console-item-pill {
+  display: inline-block;
+  border: 1px solid #30363d;
+  border-radius: 20px;
+  padding: 1px 8px;
+  font-size: 11px;
+  color: #8b949e;
+  margin-right: 6px;
+}
+
+.console-item-createdat {
+  color: #8b949e;
+  cursor: help;
 }
 
 .console-list-message {
   padding: 16px;
+  color: #8b949e;
+  font-size: 14px;
+}
+
+.console-list-empty {
+  padding: 40px;
+  text-align: center;
   color: #8b949e;
   font-size: 14px;
 }
@@ -329,12 +406,23 @@ body {
   color: #8b949e;
 }
 
+.console-actionbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: #161b22;
+  border-top: 2px solid #30363d;
+  padding: 10px 16px;
+}
+
 .console-operation-bar {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  border-top: 1px solid #30363d;
-  padding-top: 12px;
+  gap: 8px;
+  max-width: 920px;
+  margin: 0 auto;
 }
 
 .console-op-group {
@@ -343,14 +431,56 @@ body {
   gap: 8px;
 }
 
+.console-op-group-review {
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .console-op-button {
-  padding: 6px 12px;
+  padding: 7px 16px;
   border: 1px solid #30363d;
   border-radius: 6px;
-  background: #161b22;
+  background: #21262d;
   color: #e6edf3;
   font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
+}
+
+.console-op-button:hover {
+  border-color: #484f58;
+}
+
+.console-op-button-approve {
+  background: #238636;
+  border-color: #2ea043;
+  color: #ffffff;
+}
+
+.console-op-button-reject {
+  background: #7d5000;
+  border-color: #a06800;
+  color: #ffd166;
+}
+
+.console-op-button-wrong {
+  background: #3a1518;
+  border-color: #f85149;
+  color: #f85149;
+}
+
+.console-op-button-unneeded {
+  background: #2a2d31;
+  border-color: #6e7681;
+  color: #aab0b8;
+}
+
+.console-op-button-snooze {
+  background: #1c2b4a;
+  border-color: #4493f8;
+  color: #79c0ff;
 }
 
 .console-pr-section {
@@ -369,13 +499,85 @@ body {
   color: #8b949e;
 }
 
-.console-back-button {
-  align-self: flex-start;
-  margin: 12px 16px 0;
-  background: transparent;
+.console-detail-screen {
+  padding-bottom: 140px;
+}
+
+.console-panel-open-link {
+  color: #4493f8;
+  font-weight: 400;
+  font-size: 13px;
+}
+
+.console-composer {
+  margin-top: 4px;
+}
+
+.console-composer-toggle {
+  background: none;
+  border: none;
+  color: #8b949e;
+  font-size: 12.5px;
+  padding: 2px 0;
+  cursor: pointer;
+}
+
+.console-composer-toggle:hover {
+  color: #e6edf3;
+}
+
+.console-composer-posted {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.console-composer-form {
+  margin-top: 8px;
+}
+
+.console-composer-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: #21262d;
   border: 1px solid #30363d;
   border-radius: 6px;
   color: #e6edf3;
-  padding: 4px 10px;
+  font: inherit;
+  font-size: 14px;
+  padding: 8px;
+  resize: vertical;
+}
+
+.console-composer-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.console-composer-submit {
+  padding: 7px 16px;
+  border: 1px solid #2ea043;
+  border-radius: 6px;
+  background: #238636;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
+}
+
+.console-composer-submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.console-composer-status {
+  font-size: 12px;
+  color: #8b949e;
+}
+
+.console-composer-error {
+  color: #f85149;
 }

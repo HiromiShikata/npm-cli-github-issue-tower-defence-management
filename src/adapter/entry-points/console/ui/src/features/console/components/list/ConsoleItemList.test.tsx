@@ -7,6 +7,7 @@ import {
 import { ConsoleItemList } from './ConsoleItemList';
 
 const rows = buildConsoleListRows(consoleListItemsFixture, {});
+const now = Date.parse('2026-06-19T12:00:00.000Z');
 
 describe('ConsoleItemList', () => {
   it('renders group headers and items in array order', () => {
@@ -15,6 +16,7 @@ describe('ConsoleItemList', () => {
         rows={rows}
         storyColors={consoleStoryColorsFixture}
         activeItemId={null}
+        now={now}
         isLoading={false}
         error={null}
         onSelectItem={() => {}}
@@ -32,6 +34,7 @@ describe('ConsoleItemList', () => {
         rows={rows}
         storyColors={consoleStoryColorsFixture}
         activeItemId={null}
+        now={now}
         isLoading={false}
         error={null}
         onSelectItem={onSelectItem}
@@ -49,6 +52,7 @@ describe('ConsoleItemList', () => {
         rows={[]}
         storyColors={{}}
         activeItemId={null}
+        now={now}
         isLoading
         error={null}
         onSelectItem={() => {}}
@@ -63,12 +67,13 @@ describe('ConsoleItemList', () => {
         rows={[]}
         storyColors={{}}
         activeItemId={null}
+        now={now}
         isLoading={false}
         error={null}
         onSelectItem={() => {}}
       />,
     );
-    expect(getByText('No items.')).toBeInTheDocument();
+    expect(getByText('No items')).toBeInTheDocument();
   });
 
   it('shows the error state', () => {
@@ -77,6 +82,7 @@ describe('ConsoleItemList', () => {
         rows={[]}
         storyColors={{}}
         activeItemId={null}
+        now={now}
         isLoading={false}
         error="HTTP 404"
         onSelectItem={() => {}}

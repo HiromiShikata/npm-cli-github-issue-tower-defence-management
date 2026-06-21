@@ -533,6 +533,55 @@ describe('consoleServer new routes integration', () => {
     }
   });
 
+  it('posts a comment through the comment operation api', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const issueRepository = mock<IssueRepository>();
+    issueRepository.getIssueOrPullRequestComments.mockResolvedValue([
+      {
+        author: 'HiromiShikata',
+        body: 'Thanks, this resolves the parity gap.',
+        createdAt: new Date('2026-06-18T03:21:00.000Z'),
+      },
+    ]);
+    const server = await startConsoleServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      issueRepository,
+      resolveProject: async (pjcode) =>
+        pjcode === 'umino' ? { pjcode, project: buildProject() } : null,
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'POST',
+        `/api/comment?k=${testToken}`,
+        {
+          pjcode: 'umino',
+          url: 'https://github.com/o/r/issues/1',
+          body: 'Thanks, this resolves the parity gap.',
+        },
+      );
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledWith(
+        'https://github.com/o/r/issues/1',
+        'Thanks, this resolves the parity gap.',
+      );
+      expect(JSON.parse(response.body)).toEqual({
+        ok: true,
+        comment: {
+          author: 'HiromiShikata',
+          body: 'Thanks, this resolves the parity gap.',
+          createdAt: '2026-06-18T03:21:00.000Z',
+        },
+      });
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   it('runs an operation api and records the done exclusion', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
     const dataDir = path.join(tmpDir, 'data');

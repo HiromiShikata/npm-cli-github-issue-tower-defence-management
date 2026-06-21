@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleIntmux = exports.handleTriage = exports.handleReview = exports.IN_TMUX_BY_HUMAN_STATUS_NAME = exports.AWAITING_WORKSPACE_STATUS_NAME = void 0;
+exports.handleIntmux = exports.handleComment = exports.handleTriage = exports.handleReview = exports.IN_TMUX_BY_HUMAN_STATUS_NAME = exports.AWAITING_WORKSPACE_STATUS_NAME = void 0;
 const consoleDoneStore_1 = require("./consoleDoneStore");
 exports.AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
 exports.IN_TMUX_BY_HUMAN_STATUS_NAME = 'in tmux by human';
@@ -173,6 +173,33 @@ const handleTriage = async (context, body) => {
     return badRequest(`unknown triage action "${action}"`);
 };
 exports.handleTriage = handleTriage;
+const handleComment = async (context, body) => {
+    const url = body.url;
+    const commentBody = body.body;
+    if (!isNonEmptyString(url)) {
+        return badRequest('url is required');
+    }
+    if (!isNonEmptyString(commentBody)) {
+        return badRequest('body is required');
+    }
+    await context.issueRepository.createCommentByUrl(url, commentBody);
+    const comments = await context.issueRepository.getIssueOrPullRequestComments(url);
+    const posted = comments[comments.length - 1] ?? null;
+    return {
+        statusCode: 200,
+        body: {
+            ok: true,
+            comment: posted === null
+                ? { author: '', body: commentBody, createdAt: '' }
+                : {
+                    author: posted.author,
+                    body: posted.body,
+                    createdAt: posted.createdAt.toISOString(),
+                },
+        },
+    };
+};
+exports.handleComment = handleComment;
 const handleIntmux = async (context, body) => {
     const action = body.action;
     const issueUrl = body.issueUrl;

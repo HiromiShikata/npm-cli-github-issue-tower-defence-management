@@ -1,3 +1,4 @@
+import { ConsoleCommentComposer } from '../components/detail/ConsoleCommentComposer';
 import { ConsoleItemDetail } from '../components/detail/ConsoleItemDetail';
 import { ConsoleOperationMenu } from '../components/operations/ConsoleOperationMenu';
 import type { ConsoleCaches } from '../hooks/useConsoleCaches';
@@ -94,6 +95,13 @@ export const ConsoleItemDetailContainer = ({
       commitsError={detail.commitsError}
       relatedPullRequests={detail.relatedPullRequests}
       now={now}
+      commentComposer={
+        <ConsoleCommentComposer
+          isPr={item.isPr}
+          now={now}
+          onSubmit={(body) => operations.addComment(item, body)}
+        />
+      }
       operationBar={
         <ConsoleOperationMenu
           tab={tab}

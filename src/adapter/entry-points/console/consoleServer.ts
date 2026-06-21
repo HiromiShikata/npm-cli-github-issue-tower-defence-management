@@ -19,6 +19,7 @@ import {
 import {
   ConsoleOperationContext,
   ConsoleProjectResolver,
+  handleComment,
   handleIntmux,
   handleReview,
   handleTriage,
@@ -306,6 +307,8 @@ const handleOperationApi = async (
       return handleTriage(context, body);
     case '/api/intmux':
       return handleIntmux(context, body);
+    case '/api/comment':
+      return handleComment(context, body);
     default:
       return null;
   }

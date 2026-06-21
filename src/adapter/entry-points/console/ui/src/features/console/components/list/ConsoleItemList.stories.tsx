@@ -9,6 +9,7 @@ import { ConsoleItemList } from './ConsoleItemList';
 const meta: Meta<typeof ConsoleItemList> = {
   title: 'Console/ConsoleItemList',
   component: ConsoleItemList,
+  args: { now: Date.parse('2026-06-19T12:00:00.000Z') },
 };
 
 export default meta;

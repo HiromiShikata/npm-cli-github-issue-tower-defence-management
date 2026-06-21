@@ -47,6 +47,11 @@ const buildOperations = (): ConsoleOperationsApi => ({
   setStatus: jest.fn(async () => {}),
   setInTmuxByHuman: jest.fn(async () => {}),
   closeIssue: jest.fn(async () => {}),
+  addComment: jest.fn(async () => ({
+    author: 'HiromiShikata',
+    body: 'comment body',
+    createdAt: '2026-06-19T11:58:00.000Z',
+  })),
 });
 
 describe('ConsoleItemDetailContainer', () => {

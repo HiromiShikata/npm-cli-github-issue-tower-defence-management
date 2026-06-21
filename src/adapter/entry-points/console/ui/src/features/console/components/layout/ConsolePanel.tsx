@@ -2,6 +2,7 @@ import { type ReactNode, useState } from 'react';
 
 export type ConsolePanelProps = {
   title: string;
+  count?: number | null;
   defaultCollapsed?: boolean;
   headerAction?: ReactNode;
   children: ReactNode;
@@ -9,11 +10,13 @@ export type ConsolePanelProps = {
 
 export const ConsolePanel = ({
   title,
+  count = null,
   defaultCollapsed = false,
   headerAction,
   children,
 }: ConsolePanelProps) => {
   const [collapsed, setCollapsed] = useState<boolean>(defaultCollapsed);
+  const heading = count === null ? title : `${title} (${count})`;
   return (
     <section className="console-panel">
       <header className="console-panel-header">
@@ -24,7 +27,7 @@ export const ConsolePanel = ({
           onClick={() => setCollapsed((value) => !value)}
         >
           <span className="console-panel-caret">{collapsed ? '▸' : '▾'}</span>
-          <span className="console-panel-title">{title}</span>
+          <span className="console-panel-title">{heading}</span>
         </button>
         {headerAction !== undefined && (
           <div className="console-panel-action">{headerAction}</div>

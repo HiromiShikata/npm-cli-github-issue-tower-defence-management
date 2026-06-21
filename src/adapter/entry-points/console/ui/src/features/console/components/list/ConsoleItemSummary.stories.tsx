@@ -5,7 +5,7 @@ import { ConsoleItemSummary } from './ConsoleItemSummary';
 const meta: Meta<typeof ConsoleItemSummary> = {
   title: 'Console/ConsoleItemSummary',
   component: ConsoleItemSummary,
-  args: { onSelect: () => {} },
+  args: { onSelect: () => {}, now: Date.parse('2026-06-19T12:00:00.000Z') },
 };
 
 export default meta;

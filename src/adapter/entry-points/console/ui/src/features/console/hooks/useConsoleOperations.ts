@@ -3,6 +3,7 @@ import {
   type ConsoleIntmuxRequest,
   type ConsoleReviewRequest,
   type ConsoleTriageRequest,
+  postConsoleComment,
   postConsoleOperation,
 } from '../lib/consoleApi';
 import {
@@ -14,6 +15,7 @@ import {
 } from '../logic/operations';
 import { overlayKeyForItem } from '../logic/overlay';
 import type {
+  ConsoleComment,
   ConsoleFieldOption,
   ConsoleListItem,
   ConsoleTabName,
@@ -51,6 +53,7 @@ export type ConsoleOperationsApi = {
     item: ConsoleListItem,
     action: ConsoleCloseAction,
   ) => Promise<void>;
+  addComment: (item: ConsoleListItem, body: string) => Promise<ConsoleComment>;
 };
 
 const reviewRequest = (
@@ -232,6 +235,20 @@ export const useConsoleOperations = (
     [pjcode, appendToken, markDone],
   );
 
+  const addComment = useCallback(
+    async (item: ConsoleListItem, body: string) => {
+      if (pjcode === null) {
+        throw missingPjcodeError();
+      }
+      return postConsoleComment(appendToken, {
+        pjcode,
+        url: item.url,
+        body,
+      });
+    },
+    [pjcode, appendToken],
+  );
+
   return {
     reviewPullRequest,
     setNextActionDate,
@@ -239,5 +256,6 @@ export const useConsoleOperations = (
     setStatus,
     setInTmuxByHuman,
     closeIssue,
+    addComment,
   };
 };

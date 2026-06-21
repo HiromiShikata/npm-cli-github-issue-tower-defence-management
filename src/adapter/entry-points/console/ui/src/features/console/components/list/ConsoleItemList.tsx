@@ -13,6 +13,7 @@ export type ConsoleListViewProps = {
   rows: ConsoleListRow[];
   storyColors: ConsoleStoryColorSource;
   activeItemId: string | null;
+  now: number;
   isLoading: boolean;
   error: string | null;
   onSelectItem: (item: ConsoleListItem) => void;
@@ -22,6 +23,7 @@ export const ConsoleItemList = ({
   rows,
   storyColors,
   activeItemId,
+  now,
   isLoading,
   error,
   onSelectItem,
@@ -39,7 +41,7 @@ export const ConsoleItemList = ({
   }
 
   if (rows.length === 0) {
-    return <p className="console-list-message">No items.</p>;
+    return <p className="console-list-empty">No items</p>;
   }
 
   return (
@@ -58,6 +60,7 @@ export const ConsoleItemList = ({
             <ConsoleItemSummary
               item={row.item}
               isActive={row.item.itemId === activeItemId}
+              now={now}
               onSelect={onSelectItem}
             />
           </li>

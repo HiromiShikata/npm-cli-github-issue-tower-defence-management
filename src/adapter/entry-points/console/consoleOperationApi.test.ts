@@ -7,6 +7,7 @@ import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
 import {
   ConsoleOperationContext,
+  handleComment,
   handleIntmux,
   handleReview,
   handleTriage,
@@ -553,6 +554,77 @@ describe('consoleOperationApi', () => {
         projectItemId: 'PVTI_j',
       });
       expect(response.statusCode).toBe(200);
+    });
+  });
+
+  describe('handleComment', () => {
+    it('posts a comment and returns the created comment', async () => {
+      issueRepository.getIssueOrPullRequestComments.mockResolvedValue([
+        {
+          author: 'github-actions',
+          body: 'All required checks have passed.',
+          createdAt: new Date('2026-06-17T07:48:11.000Z'),
+        },
+        {
+          author: 'HiromiShikata',
+          body: 'Please rebase onto the latest main branch.',
+          createdAt: new Date('2026-06-17T09:03:27.000Z'),
+        },
+      ]);
+      const response = await handleComment(context, {
+        pjcode: 'umino',
+        url: 'https://github.com/o/r/issues/1',
+        body: 'Please rebase onto the latest main branch.',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledWith(
+        'https://github.com/o/r/issues/1',
+        'Please rebase onto the latest main branch.',
+      );
+      expect(response.body).toEqual({
+        ok: true,
+        comment: {
+          author: 'HiromiShikata',
+          body: 'Please rebase onto the latest main branch.',
+          createdAt: '2026-06-17T09:03:27.000Z',
+        },
+      });
+    });
+
+    it('falls back to the posted body when no comment is returned', async () => {
+      issueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+      const response = await handleComment(context, {
+        pjcode: 'umino',
+        url: 'https://github.com/o/r/issues/1',
+        body: 'A first comment on this issue.',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toEqual({
+        ok: true,
+        comment: {
+          author: '',
+          body: 'A first comment on this issue.',
+          createdAt: '',
+        },
+      });
+    });
+
+    it('rejects when url is missing', async () => {
+      const response = await handleComment(context, {
+        pjcode: 'umino',
+        body: 'A comment without a target url.',
+      });
+      expect(response.statusCode).toBe(400);
+      expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
+    });
+
+    it('rejects when body is missing', async () => {
+      const response = await handleComment(context, {
+        pjcode: 'umino',
+        url: 'https://github.com/o/r/issues/1',
+      });
+      expect(response.statusCode).toBe(400);
+      expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
     });
   });
 });
