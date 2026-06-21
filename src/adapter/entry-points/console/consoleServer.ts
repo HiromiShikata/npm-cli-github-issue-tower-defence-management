@@ -154,9 +154,34 @@ export type ConsoleServerOptions = {
   accessToken: string;
   uiDistDir: string;
   consoleDataOutputDir: string | null;
+  inTmuxDataDir: string | null;
   issueRepository?: IssueRepository | null;
   resolveProject?: ConsoleProjectResolver | null;
   issueTitleStateCache?: IssueTitleStateCache | null;
+};
+
+const FLAT_IN_TMUX_PREFIX = '/in-tmux-by-human/';
+
+const FLAT_IN_TMUX_FILE = /^[A-Za-z0-9._-]+\.json$/;
+
+export const resolveFlatInTmuxFilePath = (
+  inTmuxDataDir: string,
+  requestPath: string,
+): string | null => {
+  if (!requestPath.startsWith(FLAT_IN_TMUX_PREFIX)) {
+    return null;
+  }
+  const fileName = requestPath.slice(FLAT_IN_TMUX_PREFIX.length);
+  if (fileName.length === 0 || !FLAT_IN_TMUX_FILE.test(fileName)) {
+    return null;
+  }
+  const candidate = path.join(inTmuxDataDir, fileName);
+  const resolvedRoot = path.resolve(inTmuxDataDir);
+  const resolvedCandidate = path.resolve(candidate);
+  if (!resolvedCandidate.startsWith(resolvedRoot + path.sep)) {
+    return null;
+  }
+  return resolvedCandidate;
 };
 
 const sendNotFound = (response: http.ServerResponse): void => {
@@ -361,6 +386,29 @@ const handleTokenedRequest = async (
   }
 
   if (method === 'GET') {
+    if (requestPath.startsWith(FLAT_IN_TMUX_PREFIX)) {
+      if (options.inTmuxDataDir === null) {
+        sendNotFound(response);
+        return;
+      }
+      const flatFilePath = resolveFlatInTmuxFilePath(
+        options.inTmuxDataDir,
+        requestPath,
+      );
+      const flatContent =
+        flatFilePath === null ? null : readStaticFile(flatFilePath);
+      if (flatContent === null) {
+        sendNotFound(response);
+        return;
+      }
+      response.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+      });
+      response.end(flatContent);
+      return;
+    }
+
     const dataRoute = parseConsoleDataRoute(requestPath);
     if (dataRoute !== null && options.consoleDataOutputDir !== null) {
       const dataResponse = buildConsoleDataResponse(

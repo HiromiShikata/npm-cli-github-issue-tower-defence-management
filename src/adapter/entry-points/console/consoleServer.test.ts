@@ -11,6 +11,7 @@ import {
   isTokenValid,
   isConsoleAppRoute,
   extractProvidedToken,
+  resolveFlatInTmuxFilePath,
   startConsoleServer,
 } from './consoleServer';
 import { IssueTitleStateCache } from './consoleReadApi';
@@ -175,6 +176,7 @@ describe('consoleServer integration', () => {
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
+      inTmuxDataDir: null,
       port: 0,
     });
     const address = server.address();
@@ -190,6 +192,7 @@ describe('consoleServer integration', () => {
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'missing-ui-dist'),
       consoleDataOutputDir: null,
+      inTmuxDataDir: null,
       port: 0,
     });
     try {
@@ -214,6 +217,7 @@ describe('consoleServer integration', () => {
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'missing-ui-dist'),
       consoleDataOutputDir: null,
+      inTmuxDataDir: null,
       port: 0,
     });
     try {
@@ -242,6 +246,7 @@ describe('consoleServer integration', () => {
       accessToken: testToken,
       uiDistDir,
       consoleDataOutputDir: null,
+      inTmuxDataDir: null,
       port: 0,
     });
     try {
@@ -272,6 +277,7 @@ describe('consoleServer integration', () => {
       accessToken: testToken,
       uiDistDir,
       consoleDataOutputDir: null,
+      inTmuxDataDir: null,
       port: 0,
     });
     try {
@@ -299,6 +305,7 @@ describe('consoleServer integration', () => {
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'missing-ui-dist'),
       consoleDataOutputDir: null,
+      inTmuxDataDir: null,
       port: 0,
     });
     try {
@@ -320,6 +327,7 @@ describe('consoleServer integration', () => {
       accessToken: testToken,
       uiDistDir,
       consoleDataOutputDir: null,
+      inTmuxDataDir: null,
       port: 0,
     });
     try {
@@ -344,6 +352,7 @@ describe('consoleServer integration', () => {
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
+      inTmuxDataDir: null,
       port: 0,
     });
     try {
@@ -480,6 +489,7 @@ describe('consoleServer new routes integration', () => {
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: dataDir,
+      inTmuxDataDir: null,
       port: 0,
     });
     try {
@@ -515,6 +525,7 @@ describe('consoleServer new routes integration', () => {
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
+      inTmuxDataDir: null,
       issueRepository,
       issueTitleStateCache: new IssueTitleStateCache(),
       port: 0,
@@ -547,6 +558,7 @@ describe('consoleServer new routes integration', () => {
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
+      inTmuxDataDir: null,
       issueRepository,
       resolveProject: async (pjcode) =>
         pjcode === 'umino' ? { pjcode, project: buildProject() } : null,
@@ -594,6 +606,7 @@ describe('consoleServer new routes integration', () => {
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: dataDir,
+      inTmuxDataDir: null,
       issueRepository,
       resolveProject: async (pjcode) =>
         pjcode === 'umino' ? { pjcode, project: buildProject() } : null,
@@ -631,6 +644,7 @@ describe('consoleServer new routes integration', () => {
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
+      inTmuxDataDir: null,
       issueRepository,
       resolveProject: async (pjcode) =>
         pjcode === 'umino' ? { pjcode, project: buildProject() } : null,
@@ -680,6 +694,7 @@ describe('consoleServer new routes integration', () => {
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
+      inTmuxDataDir: null,
       port: 0,
     });
     try {
@@ -687,6 +702,223 @@ describe('consoleServer new routes integration', () => {
         server,
         'GET',
         `/api/itembody?k=${testToken}&url=https://github.com/o/r/issues/1`,
+      );
+      expect(response.statusCode).toBe(404);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('resolveFlatInTmuxFilePath', () => {
+  const baseDir = path.join(os.tmpdir(), 'in-tmux-data');
+
+  it('resolves a flat .json file under the in-tmux data dir', () => {
+    const resolved = resolveFlatInTmuxFilePath(
+      baseDir,
+      '/in-tmux-by-human/index.v4.json',
+    );
+    expect(resolved).toBe(path.join(path.resolve(baseDir), 'index.v4.json'));
+  });
+
+  it('returns null for paths outside the flat in-tmux prefix', () => {
+    expect(resolveFlatInTmuxFilePath(baseDir, '/index.v4.json')).toBeNull();
+    expect(
+      resolveFlatInTmuxFilePath(baseDir, '/projects/umino/in-tmux-by-human/x'),
+    ).toBeNull();
+  });
+
+  it('returns null for non-json or nested file names', () => {
+    expect(
+      resolveFlatInTmuxFilePath(baseDir, '/in-tmux-by-human/index.txt'),
+    ).toBeNull();
+    expect(
+      resolveFlatInTmuxFilePath(baseDir, '/in-tmux-by-human/sub/index.json'),
+    ).toBeNull();
+    expect(resolveFlatInTmuxFilePath(baseDir, '/in-tmux-by-human/')).toBeNull();
+  });
+
+  it('returns null for path traversal attempts', () => {
+    expect(
+      resolveFlatInTmuxFilePath(baseDir, '/in-tmux-by-human/../secret.json'),
+    ).toBeNull();
+    expect(
+      resolveFlatInTmuxFilePath(baseDir, '/in-tmux-by-human/..%2fsecret.json'),
+    ).toBeNull();
+  });
+});
+
+describe('consoleServer flat in-tmux-by-human route integration', () => {
+  const testToken = 'integration-test-token-value';
+
+  const requestServer = (
+    server: http.Server,
+    requestPath: string,
+    headers: http.OutgoingHttpHeaders = {},
+  ): Promise<{
+    statusCode: number;
+    body: string;
+    cacheControl: string | undefined;
+    contentType: string | undefined;
+  }> => {
+    const address = server.address();
+    if (address === null || typeof address === 'string') {
+      throw new Error('server is not listening on a TCP port');
+    }
+    const port = address.port;
+    return new Promise((resolve, reject) => {
+      const httpRequest = http.request(
+        { host: '127.0.0.1', port, path: requestPath, headers },
+        (response) => {
+          const chunks: Uint8Array[] = [];
+          response.on('data', (chunk: Uint8Array) => chunks.push(chunk));
+          response.on('end', () => {
+            resolve({
+              statusCode: response.statusCode ?? 0,
+              body: Buffer.concat(chunks).toString('utf-8'),
+              cacheControl: response.headers['cache-control'],
+              contentType: response.headers['content-type'],
+            });
+          });
+        },
+      );
+      httpRequest.on('error', reject);
+      httpRequest.end();
+    });
+  };
+
+  const closeServer = (server: http.Server): Promise<void> =>
+    new Promise((resolve, reject) => {
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve();
+      });
+    });
+
+  const indexV4Raw =
+    '{"version":4,"projects":[{"name":"umino","path":"/in-tmux-by-human/umino.v4.json?k=secret"}]}\n';
+  const indexV3Raw = '{"version":3,"projects":["umino"]}\n';
+
+  const startWithFixture = async (): Promise<{
+    server: http.Server;
+    tmpDir: string;
+    inTmuxDataDir: string;
+  }> => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const inTmuxDataDir = path.join(tmpDir, 'in-tmux-by-human');
+    fs.mkdirSync(inTmuxDataDir, { recursive: true });
+    fs.writeFileSync(path.join(inTmuxDataDir, 'index.v4.json'), indexV4Raw);
+    fs.writeFileSync(path.join(inTmuxDataDir, 'index.v3.json'), indexV3Raw);
+    fs.writeFileSync(path.join(tmpDir, 'secret.json'), '{"secret":true}');
+    const server = await startConsoleServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir,
+      port: 0,
+    });
+    return { server, tmpDir, inTmuxDataDir };
+  };
+
+  it('serves the flat index.v4.json byte-for-byte with a valid token', async () => {
+    const { server, tmpDir } = await startWithFixture();
+    try {
+      const response = await requestServer(
+        server,
+        `/in-tmux-by-human/index.v4.json?k=${testToken}`,
+      );
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toBe(indexV4Raw);
+      expect(response.contentType).toContain('application/json');
+      expect(response.cacheControl).toBe('no-store');
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects the flat route without a token', async () => {
+    const { server, tmpDir } = await startWithFixture();
+    try {
+      const response = await requestServer(
+        server,
+        '/in-tmux-by-human/index.v4.json',
+      );
+      expect(response.statusCode).toBe(401);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('serves a v3 file for backward compatibility', async () => {
+    const { server, tmpDir } = await startWithFixture();
+    try {
+      const response = await requestServer(
+        server,
+        `/in-tmux-by-human/index.v3.json?k=${testToken}`,
+      );
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toBe(indexV3Raw);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects path traversal attempts with 404 and does not disclose files', async () => {
+    const { server, tmpDir } = await startWithFixture();
+    try {
+      const traversal = await requestServer(
+        server,
+        `/in-tmux-by-human/../secret.json?k=${testToken}`,
+      );
+      expect(traversal.statusCode).toBe(404);
+      expect(traversal.body).not.toContain('secret');
+
+      const encodedTraversal = await requestServer(
+        server,
+        `/in-tmux-by-human/..%2fsecret.json?k=${testToken}`,
+      );
+      expect(encodedTraversal.statusCode).toBe(404);
+      expect(encodedTraversal.body).not.toContain('secret');
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns 404 for a non-existent flat file', async () => {
+    const { server, tmpDir } = await startWithFixture();
+    try {
+      const response = await requestServer(
+        server,
+        `/in-tmux-by-human/missing.v4.json?k=${testToken}`,
+      );
+      expect(response.statusCode).toBe(404);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns 404 for the flat route when inTmuxDataDir is null', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const server = await startConsoleServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      port: 0,
+    });
+    try {
+      const response = await requestServer(
+        server,
+        `/in-tmux-by-human/index.v4.json?k=${testToken}`,
       );
       expect(response.statusCode).toBe(404);
     } finally {

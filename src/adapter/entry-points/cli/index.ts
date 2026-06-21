@@ -75,7 +75,11 @@ type ServeConsoleOptions = {
   configFilePath: string;
   port?: string;
   consoleDataOutputDir?: string;
+  inTmuxDataDir?: string;
 };
+
+const DEFAULT_IN_TMUX_DATA_DIR =
+  '/home/hiromi/0_workspaces/workspace1/jsonpub/in-tmux-by-human';
 
 type SelectOauthTokenOptions = {
   tokenListJsonPath?: string;
@@ -591,6 +595,10 @@ program
     '--consoleDataOutputDir <path>',
     'Directory where console data files are written and served from',
   )
+  .option(
+    '--inTmuxDataDir <path>',
+    `Directory containing the flat in-tmux-by-human static JSON files served at /in-tmux-by-human/*.json (default: ${DEFAULT_IN_TMUX_DATA_DIR})`,
+  )
   .action(async (options: ServeConsoleOptions) => {
     const config = loadConfigFile(options.configFilePath);
 
@@ -692,11 +700,13 @@ program
 
     const uiDistDir = path.join(__dirname, '..', 'console', 'ui-dist');
     const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
+    const inTmuxDataDir = options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR;
 
     await startConsoleServer({
       accessToken,
       uiDistDir,
       consoleDataOutputDir,
+      inTmuxDataDir,
       issueRepository,
       resolveProject,
       issueTitleStateCache: new IssueTitleStateCache(),
