@@ -12,14 +12,14 @@ export const ConsoleNextActionDateActions = ({
   <div className="console-op-group">
     <button
       type="button"
-      className="console-op-button"
+      className="console-op-button console-op-button-snooze"
       onClick={() => onSetNextActionDate('snooze_1day')}
     >
       +1 day
     </button>
     <button
       type="button"
-      className="console-op-button"
+      className="console-op-button console-op-button-snooze"
       onClick={() => onSetNextActionDate('snooze_1week')}
     >
       {isTodoByHuman ? '+1 week and skip' : '+1 week'}

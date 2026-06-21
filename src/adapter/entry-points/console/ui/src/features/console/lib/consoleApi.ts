@@ -185,3 +185,37 @@ export const postConsoleOperation = async (
     throw new Error(`HTTP ${response.status}`);
   }
 };
+
+export const COMMENT_OPERATION_PATH = '/api/comment';
+
+export type ConsoleCommentRequest = {
+  pjcode: string;
+  url: string;
+  body: string;
+};
+
+const parsePostedComment = (payload: unknown): ConsoleComment => {
+  if (!isRecord(payload) || !isRecord(payload.comment)) {
+    throw new Error('comment was not returned');
+  }
+  return {
+    author: getString(payload.comment.author),
+    body: getString(payload.comment.body),
+    createdAt: getString(payload.comment.createdAt),
+  };
+};
+
+export const postConsoleComment = async (
+  appendToken: AppendToken,
+  request: ConsoleCommentRequest,
+): Promise<ConsoleComment> => {
+  const response = await fetch(appendToken(COMMENT_OPERATION_PATH), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  return parsePostedComment(await response.json());
+};

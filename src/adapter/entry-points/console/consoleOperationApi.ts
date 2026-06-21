@@ -296,6 +296,39 @@ export const handleTriage = async (
   return badRequest(`unknown triage action "${action}"`);
 };
 
+export const handleComment = async (
+  context: ConsoleOperationContext,
+  body: Record<string, unknown>,
+): Promise<ConsoleOperationResponse> => {
+  const url = body.url;
+  const commentBody = body.body;
+  if (!isNonEmptyString(url)) {
+    return badRequest('url is required');
+  }
+  if (!isNonEmptyString(commentBody)) {
+    return badRequest('body is required');
+  }
+  await context.issueRepository.createCommentByUrl(url, commentBody);
+  const comments = await context.issueRepository.getIssueOrPullRequestComments(
+    url,
+  );
+  const posted = comments[comments.length - 1] ?? null;
+  return {
+    statusCode: 200,
+    body: {
+      ok: true,
+      comment:
+        posted === null
+          ? { author: '', body: commentBody, createdAt: '' }
+          : {
+              author: posted.author,
+              body: posted.body,
+              createdAt: posted.createdAt.toISOString(),
+            },
+    },
+  };
+};
+
 export const handleIntmux = async (
   context: ConsoleOperationContext,
   body: Record<string, unknown>,

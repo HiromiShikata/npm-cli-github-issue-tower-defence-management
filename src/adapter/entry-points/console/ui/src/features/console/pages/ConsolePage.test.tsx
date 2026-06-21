@@ -84,8 +84,17 @@ describe('ConsolePage', () => {
       expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
     });
     fireEvent.click(getByText('Add serveConsole subcommand'));
-    expect(await findByText('← Back to list')).toBeInTheDocument();
-    expect(getByText('Approve')).toBeInTheDocument();
+    expect(await findByText('Approve')).toBeInTheDocument();
+    expect(window.location.hash).toBe('#item/PVTI_1');
+  });
+
+  it('renders the per-tab count sub-heading and snapshot time', async () => {
+    const { getByText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    expect(getByText('1 items awaiting quality check')).toBeInTheDocument();
+    expect(getByText('snapshot: 2026-06-19T00:00:00.000Z')).toBeInTheDocument();
   });
 
   it('keeps a tab driven to zero at zero and does not revive its badge after switching tabs', async () => {
@@ -95,18 +104,18 @@ describe('ConsolePage', () => {
     });
     expect(
       getByText('Awaiting Quality Check')
-        .closest('button')
+        .closest('a')
         ?.querySelector('.console-tab-badge')?.textContent,
     ).toBe('1');
 
     fireEvent.click(getByText('Add serveConsole subcommand'));
-    expect(await findByText('← Back to list')).toBeInTheDocument();
+    expect(await findByText('Approve')).toBeInTheDocument();
     fireEvent.click(getByText('Approve'));
 
     await waitFor(() => {
       expect(
         getByText('Awaiting Quality Check')
-          .closest('button')
+          .closest('a')
           ?.querySelector('.console-tab-badge')?.textContent,
       ).toBe('0');
     });
@@ -118,11 +127,19 @@ describe('ConsolePage', () => {
       ).toBeInTheDocument();
     });
 
-    const prsTabButton = queryByText('Awaiting Quality Check')?.closest(
-      'button',
-    );
+    const prsTabLink = queryByText('Awaiting Quality Check')?.closest('a');
     const prsBadge =
-      prsTabButton?.querySelector('.console-tab-badge')?.textContent ?? '0';
+      prsTabLink?.querySelector('.console-tab-badge')?.textContent ?? '0';
     expect(prsBadge).toBe('0');
+  });
+
+  it('shows every tab even when its count is zero', async () => {
+    const { getByText, queryByText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    expect(queryByText('Triage')).not.toBeNull();
+    expect(queryByText('Failed Preparation')).not.toBeNull();
+    expect(queryByText('Todo by human')).not.toBeNull();
   });
 });

@@ -52,6 +52,7 @@ export type ConsoleItemDetailProps = {
   commitsError: string | null;
   relatedPullRequests: ConsoleRelatedPullRequestView[];
   now: number;
+  commentComposer: ReactNode;
   operationBar: ReactNode;
 };
 
@@ -75,6 +76,7 @@ export const ConsoleItemDetail = ({
   commitsError,
   relatedPullRequests,
   now,
+  commentComposer,
   operationBar,
 }: ConsoleItemDetailProps) => {
   const resolvedState = state?.state ?? 'open';
@@ -85,6 +87,12 @@ export const ConsoleItemDetail = ({
   const statusPalette = overlayStatus
     ? colorFromEnum(overlayStatus.color)
     : null;
+  const filesCount =
+    filesAreLoading || filesError !== null ? null : files.length;
+  const commentsCount =
+    commentsAreLoading || commentsError !== null ? null : comments.length;
+  const commitsCount =
+    commitsAreLoading || commitsError !== null ? null : commits.length;
 
   return (
     <article className="console-detail">
@@ -164,7 +172,19 @@ export const ConsoleItemDetail = ({
         opened {formatRelativeTime(item.createdAt, now)}
       </div>
 
-      <ConsolePanel title="Description">
+      <ConsolePanel
+        title="Description"
+        headerAction={
+          <a
+            href={item.url}
+            className="console-panel-open-link"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            open
+          </a>
+        }
+      >
         {bodyError !== null ? (
           <p role="alert" className="console-detail-body-error">
             Failed to load description: {bodyError}
@@ -177,7 +197,7 @@ export const ConsoleItemDetail = ({
       </ConsolePanel>
 
       {item.isPr && (
-        <ConsolePanel title="Changed files">
+        <ConsolePanel title="Changed files" count={filesCount}>
           <ConsoleChangedFileList
             files={files}
             isLoading={filesAreLoading}
@@ -186,7 +206,11 @@ export const ConsoleItemDetail = ({
         </ConsolePanel>
       )}
 
-      <ConsolePanel title="Comments" defaultCollapsed={item.isPr}>
+      <ConsolePanel
+        title="Comments"
+        count={commentsCount}
+        defaultCollapsed={item.isPr}
+      >
         <ConsoleCommentList
           comments={comments}
           isLoading={commentsAreLoading}
@@ -196,7 +220,7 @@ export const ConsoleItemDetail = ({
       </ConsolePanel>
 
       {item.isPr && (
-        <ConsolePanel title="Commits" defaultCollapsed>
+        <ConsolePanel title="Commits" count={commitsCount} defaultCollapsed>
           <ConsoleCommitList
             commits={commits}
             isLoading={commitsAreLoading}
@@ -223,7 +247,9 @@ export const ConsoleItemDetail = ({
           />
         ))}
 
-      <div className="console-detail-operations">{operationBar}</div>
+      {commentComposer}
+
+      <div className="console-actionbar">{operationBar}</div>
     </article>
   );
 };

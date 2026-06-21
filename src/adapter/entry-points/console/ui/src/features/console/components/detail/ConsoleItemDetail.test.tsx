@@ -34,18 +34,35 @@ const baseProps = {
   commitsError: null,
   relatedPullRequests: [],
   now,
+  commentComposer: <div>comment-composer</div>,
   operationBar: <div>operation-bar</div>,
 };
 
 describe('ConsoleItemDetail', () => {
-  it('renders the PR title with the PR number, sub bar and changed files panel', () => {
+  it('renders the PR title with the PR number, sub bar and counted panels', () => {
     const { getByText, getAllByText } = render(
       <ConsoleItemDetail item={prItem} {...baseProps} />,
     );
     expect(getAllByText(`PR #${prItem.number}`).length).toBeGreaterThan(0);
-    expect(getByText('Changed files')).toBeInTheDocument();
-    expect(getByText('Commits')).toBeInTheDocument();
+    expect(
+      getByText(`Changed files (${consoleChangedFilesFixture.length})`),
+    ).toBeInTheDocument();
+    expect(
+      getByText(`Comments (${consoleCommentsFixture.length})`),
+    ).toBeInTheDocument();
+    expect(
+      getByText(`Commits (${consoleCommitsFixture.length})`),
+    ).toBeInTheDocument();
     expect(getByText('operation-bar')).toBeInTheDocument();
+    expect(getByText('comment-composer')).toBeInTheDocument();
+  });
+
+  it('renders the Description open link to the item url', () => {
+    const { getByText } = render(
+      <ConsoleItemDetail item={prItem} {...baseProps} />,
+    );
+    const openLink = getByText('open');
+    expect(openLink).toHaveAttribute('href', prItem.url);
   });
 
   it('renders the story tag and opened relative time', () => {

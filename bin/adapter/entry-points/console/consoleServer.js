@@ -261,6 +261,8 @@ const handleOperationApi = async (options, requestPath, body) => {
             return (0, consoleOperationApi_1.handleTriage)(context, body);
         case '/api/intmux':
             return (0, consoleOperationApi_1.handleIntmux)(context, body);
+        case '/api/comment':
+            return (0, consoleOperationApi_1.handleComment)(context, body);
         default:
             return null;
     }

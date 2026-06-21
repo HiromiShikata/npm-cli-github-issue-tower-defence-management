@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { ConsoleProjectSummary } from '../components/layout/ConsoleProjectSummary';
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
 import { ConsoleItemList } from '../components/list/ConsoleItemList';
 import { useConsoleCaches } from '../hooks/useConsoleCaches';
+import { useConsoleNavigation } from '../hooks/useConsoleNavigation';
 import { useConsoleOperations } from '../hooks/useConsoleOperations';
 import { useConsoleOverlay } from '../hooks/useConsoleOverlay';
 import { useConsolePjcode } from '../hooks/useConsolePjcode';
@@ -34,12 +35,8 @@ const OVERLAY_NAMESPACE_FALLBACK = 'console';
 export const ConsolePage = () => {
   const pjcode = useConsolePjcode();
   const { snapshots, isLoading, error } = useConsoleTabData(pjcode);
-  const [activeTab, setActiveTab] = useState<ConsoleTabName>(
-    CONSOLE_TABS[0].name,
-  );
-  const [selectedItem, setSelectedItem] = useState<ConsoleListItem | null>(
-    null,
-  );
+  const navigation = useConsoleNavigation(pjcode);
+  const { activeTab, selectedItemKey } = navigation;
 
   const overlayState = useConsoleOverlay(pjcode ?? OVERLAY_NAMESPACE_FALLBACK);
   const caches = useConsoleCaches();
@@ -77,11 +74,18 @@ export const ConsolePage = () => {
   const storyColors = activeSnapshot?.storyColors ?? {};
   const statusOptions = activeSnapshot?.statusOptions ?? [];
   const storyOptions = activeSnapshot?.storyOptions ?? [];
+  const generatedAt = activeSnapshot?.generatedAt ?? null;
 
-  const selectTab = (tab: ConsoleTabName): void => {
-    setActiveTab(tab);
-    setSelectedItem(null);
-  };
+  const selectedItem = useMemo<ConsoleListItem | null>(() => {
+    if (selectedItemKey === null || activeSnapshot === null) {
+      return null;
+    }
+    return (
+      activeSnapshot.items.find(
+        (item) => item.projectItemId === selectedItemKey,
+      ) ?? null
+    );
+  }, [selectedItemKey, activeSnapshot]);
 
   const overlayStatusForSelected = ((): ConsoleOverlayStatus | null => {
     if (selectedItem === null) {
@@ -102,26 +106,23 @@ export const ConsolePage = () => {
       <ConsoleTabList
         activeTab={activeTab}
         counts={counts}
-        onSelectTab={selectTab}
+        pjcode={pjcode}
+        generatedAt={generatedAt}
+        tabHref={navigation.tabHref}
+        onSelectTab={navigation.selectTab}
       />
       {selectedItem === null ? (
         <ConsoleItemList
           rows={rows}
           storyColors={storyColors}
           activeItemId={null}
+          now={now}
           isLoading={isLoading}
           error={error}
-          onSelectItem={setSelectedItem}
+          onSelectItem={(item) => navigation.openItem(item.projectItemId)}
         />
       ) : (
         <div className="console-detail-screen">
-          <button
-            type="button"
-            className="console-back-button"
-            onClick={() => setSelectedItem(null)}
-          >
-            ← Back to list
-          </button>
           <ConsoleItemDetailContainer
             tab={activeTab}
             item={selectedItem}
