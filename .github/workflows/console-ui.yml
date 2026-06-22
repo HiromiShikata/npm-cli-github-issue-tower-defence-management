@@ -37,6 +37,9 @@ jobs:
       - name: Build console UI (Vite)
         run: npm run build:console-ui
 
+      - name: Verify served console UI bundle matches source
+        run: node scripts/verifyConsoleUiDist.mjs
+
       - name: Build Storybook (console UI)
         run: npm run console-ui:build-storybook
 
