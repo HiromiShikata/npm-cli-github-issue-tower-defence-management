@@ -1,3 +1,10 @@
+## [1.93.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.93.0...v1.93.1) (2026-06-22)
+
+
+### Bug Fixes
+
+* **console:** regenerate served bin ui-dist bundle and guard against staleness ([#894](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/894)) ([bc7a50b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bc7a50bd72756c3264a1a42d85a0a10f9e5730be))
+
 # [1.93.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.92.1...v1.93.0) (2026-06-22)
 
 
