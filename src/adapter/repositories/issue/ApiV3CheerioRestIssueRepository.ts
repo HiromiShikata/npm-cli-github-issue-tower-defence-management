@@ -73,8 +73,10 @@ type TimelineItem = {
     commits?: {
       nodes: Array<{
         commit: {
-          statusCheckRollup?: {
+          statusCheckRollupState?: {
             state: string;
+          } | null;
+          statusCheckRollup?: {
             contexts?: {
               nodes: Array<
                 | {
@@ -162,8 +164,10 @@ type PrStatusComputationData = {
   commits?: {
     nodes: Array<{
       commit: {
-        statusCheckRollup?: {
+        statusCheckRollupState?: {
           state: string;
+        } | null;
+        statusCheckRollup?: {
           contexts?: {
             nodes: Array<
               | {
@@ -835,7 +839,7 @@ export class ApiV3CheerioRestIssueRepository
   ): RelatedPullRequest => {
     const isConflicted = data.mergeable === 'CONFLICTING';
     const lastCommit = data.commits?.nodes[0]?.commit;
-    const ciState = lastCommit?.statusCheckRollup?.state;
+    const ciState = lastCommit?.statusCheckRollupState?.state;
     const contexts = lastCommit?.statusCheckRollup?.contexts?.nodes || [];
 
     const branchProtectionRules =
@@ -1005,8 +1009,10 @@ export class ApiV3CheerioRestIssueRepository
                       commits(last: 1) {
                         nodes {
                           commit {
-                            statusCheckRollup {
+                            statusCheckRollupState: statusCheckRollup {
                               state
+                            }
+                            statusCheckRollup {
                               contexts(first: 100) {
                                 nodes {
                                   __typename
@@ -1197,8 +1203,10 @@ export class ApiV3CheerioRestIssueRepository
             commits(last: 1) {
               nodes {
                 commit {
-                  statusCheckRollup {
+                  statusCheckRollupState: statusCheckRollup {
                     state
+                  }
+                  statusCheckRollup {
                     contexts(first: 100) {
                       nodes {
                         __typename
