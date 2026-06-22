@@ -433,12 +433,12 @@ body {
 .console-op-group {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
   gap: 8px;
 }
 
 .console-op-group-review {
-  align-items: center;
-  justify-content: flex-end;
   gap: 10px;
 }
 
