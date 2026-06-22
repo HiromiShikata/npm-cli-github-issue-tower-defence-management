@@ -1,3 +1,10 @@
+# [1.93.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.92.1...v1.93.0) (2026-06-22)
+
+
+### Features
+
+* **console:** cancellable action toast, auto-advance, file diff, and swipe navigation for reference parity ([#893](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/893)) ([9f983af](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9f983af0dfff353ff22c9d126b18aff31bbcb082)), closes [#891](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/891)
+
 ## [1.92.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.92.0...v1.92.1) (2026-06-21)
 
 
