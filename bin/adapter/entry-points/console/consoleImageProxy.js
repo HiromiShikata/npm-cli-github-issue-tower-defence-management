@@ -1,9 +1,34 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.fetchProxiedImage = exports.isAllowedImageUrl = void 0;
-const ALLOWED_IMAGE_URL = new RegExp('^https://github\\.com/user-attachments/' +
-    '|^https://[a-z0-9][a-z0-9.-]*\\.githubusercontent\\.com/');
-const isAllowedImageUrl = (url) => ALLOWED_IMAGE_URL.test(url);
+const GITHUBUSERCONTENT_HOST_SUFFIX = '.githubusercontent.com';
+const isAllowedHost = (hostname) => {
+    if (hostname === 'github.com') {
+        return true;
+    }
+    if (!hostname.endsWith(GITHUBUSERCONTENT_HOST_SUFFIX)) {
+        return false;
+    }
+    const subdomain = hostname.slice(0, hostname.length - GITHUBUSERCONTENT_HOST_SUFFIX.length);
+    return subdomain.length > 0 && /^[a-z0-9][a-z0-9.-]*$/.test(subdomain);
+};
+const parseAllowedImageUrl = (url) => {
+    let parsed;
+    try {
+        parsed = new URL(url);
+    }
+    catch {
+        return null;
+    }
+    if (parsed.protocol !== 'https:') {
+        return null;
+    }
+    if (parsed.hostname === 'github.com') {
+        return parsed.pathname.startsWith('/user-attachments/') ? parsed : null;
+    }
+    return isAllowedHost(parsed.hostname) ? parsed : null;
+};
+const isAllowedImageUrl = (url) => parseAllowedImageUrl(url) !== null;
 exports.isAllowedImageUrl = isAllowedImageUrl;
 const defaultImageFetcher = async (url, headers) => {
     const response = await fetch(url, { headers, redirect: 'follow' });
@@ -18,12 +43,13 @@ const fetchProxiedImage = async (url, githubToken, fetcher = defaultImageFetcher
     if (url.length === 0) {
         return { ok: false, statusCode: 400, error: 'missing url parameter' };
     }
-    if (!(0, exports.isAllowedImageUrl)(url)) {
+    const allowedUrl = parseAllowedImageUrl(url);
+    if (allowedUrl === null) {
         return { ok: false, statusCode: 400, error: 'url not in allowed domain' };
     }
     let result;
     try {
-        result = await fetcher(url, {
+        result = await fetcher(allowedUrl.toString(), {
             Authorization: `token ${githubToken}`,
         });
     }

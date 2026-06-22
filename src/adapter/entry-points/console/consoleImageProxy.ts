@@ -1,10 +1,37 @@
-const ALLOWED_IMAGE_URL = new RegExp(
-  '^https://github\\.com/user-attachments/' +
-    '|^https://[a-z0-9][a-z0-9.-]*\\.githubusercontent\\.com/',
-);
+const GITHUBUSERCONTENT_HOST_SUFFIX = '.githubusercontent.com';
+
+const isAllowedHost = (hostname: string): boolean => {
+  if (hostname === 'github.com') {
+    return true;
+  }
+  if (!hostname.endsWith(GITHUBUSERCONTENT_HOST_SUFFIX)) {
+    return false;
+  }
+  const subdomain = hostname.slice(
+    0,
+    hostname.length - GITHUBUSERCONTENT_HOST_SUFFIX.length,
+  );
+  return subdomain.length > 0 && /^[a-z0-9][a-z0-9.-]*$/.test(subdomain);
+};
+
+const parseAllowedImageUrl = (url: string): URL | null => {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== 'https:') {
+    return null;
+  }
+  if (parsed.hostname === 'github.com') {
+    return parsed.pathname.startsWith('/user-attachments/') ? parsed : null;
+  }
+  return isAllowedHost(parsed.hostname) ? parsed : null;
+};
 
 export const isAllowedImageUrl = (url: string): boolean =>
-  ALLOWED_IMAGE_URL.test(url);
+  parseAllowedImageUrl(url) !== null;
 
 export type ProxiedImageSuccess = {
   ok: true;
@@ -47,7 +74,8 @@ export const fetchProxiedImage = async (
   if (url.length === 0) {
     return { ok: false, statusCode: 400, error: 'missing url parameter' };
   }
-  if (!isAllowedImageUrl(url)) {
+  const allowedUrl = parseAllowedImageUrl(url);
+  if (allowedUrl === null) {
     return { ok: false, statusCode: 400, error: 'url not in allowed domain' };
   }
   let result: {
@@ -56,7 +84,7 @@ export const fetchProxiedImage = async (
     body: Buffer;
   };
   try {
-    result = await fetcher(url, {
+    result = await fetcher(allowedUrl.toString(), {
       Authorization: `token ${githubToken}`,
     });
   } catch (error) {
