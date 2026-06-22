@@ -182,21 +182,37 @@ export const consoleChangedFilesFixture: ConsoleChangedFile[] = [
     additions: 312,
     deletions: 4,
     status: 'added',
-    patch: null,
+    patch: `@@ -54,7 +54,12 @@ export const serveConsole = (
+           loose-matching: true
+       - name: Install dependencies
+         run: |
+-          npm install
++          npm ci
++          npm run build:console-ui
+       - name: Start the token-protected console server
+         run: node bin/serveConsole.js --port 9981`,
   },
   {
     path: 'src/adapter/entry-points/console/consoleServer.test.ts',
     additions: 268,
     deletions: 0,
     status: 'added',
-    patch: null,
+    patch: `@@ -0,0 +1,4 @@
++describe('serveConsole', () => {
++  it('rejects a request without a valid token', async () => {
++  });
++});`,
   },
   {
     path: 'package.json',
     additions: 6,
     deletions: 1,
     status: 'modified',
-    patch: null,
+    patch: `@@ -12,7 +12,7 @@
+   "scripts": {
+-    "build": "tsc -p ./tsconfig.build.json"
++    "build": "tsc -p ./tsconfig.build.json && npm run build:console-ui"
+   },`,
   },
 ];
 
