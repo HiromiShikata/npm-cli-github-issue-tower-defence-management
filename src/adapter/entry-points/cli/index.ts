@@ -76,10 +76,13 @@ type ServeConsoleOptions = {
   port?: string;
   consoleDataOutputDir?: string;
   inTmuxDataDir?: string;
+  dashboardDir?: string;
 };
 
 const DEFAULT_IN_TMUX_DATA_DIR =
   '/home/hiromi/0_workspaces/workspace1/jsonpub/in-tmux-by-human';
+
+const DEFAULT_DASHBOARD_DIR = '/home/hiromi/0_workspaces/workspace1/jsonpub';
 
 type SelectOauthTokenOptions = {
   tokenListJsonPath?: string;
@@ -599,6 +602,10 @@ program
     '--inTmuxDataDir <path>',
     `Directory containing the flat in-tmux-by-human static JSON files served at /in-tmux-by-human/*.json (default: ${DEFAULT_IN_TMUX_DATA_DIR})`,
   )
+  .option(
+    '--dashboardDir <path>',
+    `Directory containing the dashboard HTML fragment tdpm.txt served unauthenticated at /tdpm.txt (default: ${DEFAULT_DASHBOARD_DIR})`,
+  )
   .action(async (options: ServeConsoleOptions) => {
     const config = loadConfigFile(options.configFilePath);
 
@@ -701,12 +708,14 @@ program
     const uiDistDir = path.join(__dirname, '..', 'console', 'ui-dist');
     const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
     const inTmuxDataDir = options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR;
+    const dashboardDir = options.dashboardDir ?? DEFAULT_DASHBOARD_DIR;
 
     await startConsoleServer({
       accessToken,
       uiDistDir,
       consoleDataOutputDir,
       inTmuxDataDir,
+      dashboardDir,
       issueRepository,
       resolveProject,
       issueTitleStateCache: new IssueTitleStateCache(),

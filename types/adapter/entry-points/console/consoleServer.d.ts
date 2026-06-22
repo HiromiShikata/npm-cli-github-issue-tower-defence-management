@@ -14,10 +14,13 @@ export type ConsoleServerOptions = {
     uiDistDir: string;
     consoleDataOutputDir: string | null;
     inTmuxDataDir: string | null;
+    dashboardDir: string | null;
     issueRepository?: IssueRepository | null;
     resolveProject?: ConsoleProjectResolver | null;
     issueTitleStateCache?: IssueTitleStateCache | null;
 };
+export declare const DASHBOARD_REQUEST_PATH = "/tdpm.txt";
+export declare const resolveDashboardFilePath: (dashboardDir: string, requestPath: string) => string | null;
 export declare const resolveFlatInTmuxFilePath: (inTmuxDataDir: string, requestPath: string) => string | null;
 export declare const handleConsoleRequest: (options: ConsoleServerOptions, request: http.IncomingMessage, response: http.ServerResponse) => Promise<void>;
 export declare const createConsoleServer: (options: ConsoleServerOptions) => http.Server;
