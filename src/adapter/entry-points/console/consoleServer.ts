@@ -24,6 +24,7 @@ import {
   handleReview,
   handleTriage,
 } from './consoleOperationApi';
+import { ImageFetcher, fetchProxiedImage } from './consoleImageProxy';
 
 export const DEFAULT_CONSOLE_PORT = 9981;
 
@@ -156,6 +157,8 @@ export type ConsoleServerOptions = {
   consoleDataOutputDir: string | null;
   inTmuxDataDir: string | null;
   dashboardDir: string | null;
+  githubToken?: string | null;
+  imageFetcher?: ImageFetcher | null;
   issueRepository?: IssueRepository | null;
   resolveProject?: ConsoleProjectResolver | null;
   issueTitleStateCache?: IssueTitleStateCache | null;
@@ -166,6 +169,8 @@ const FLAT_IN_TMUX_PREFIX = '/in-tmux-by-human/';
 const FLAT_IN_TMUX_FILE = /^[A-Za-z0-9._-]+\.json$/;
 
 export const DASHBOARD_REQUEST_PATH = '/tdpm.txt';
+
+export const IMAGE_PROXY_REQUEST_PATH = '/api/img';
 
 const DASHBOARD_FILE_NAME = 'tdpm.txt';
 
@@ -257,6 +262,42 @@ const sendJson = (
     'Cache-Control': 'no-store',
   });
   response.end(JSON.stringify(body));
+};
+
+const sendImage = (
+  response: http.ServerResponse,
+  contentType: string,
+  body: Buffer,
+): void => {
+  response.writeHead(200, {
+    'Content-Type': contentType,
+    'Content-Length': String(body.length),
+    'Cache-Control': 'private, max-age=300',
+  });
+  response.end(body);
+};
+
+const handleImageProxy = async (
+  options: ConsoleServerOptions,
+  response: http.ServerResponse,
+  searchParams: URLSearchParams,
+): Promise<void> => {
+  const githubToken = options.githubToken ?? null;
+  if (githubToken === null || githubToken.length === 0) {
+    sendJson(response, 502, { error: 'github token is not configured' });
+    return;
+  }
+  const url = searchParams.get('url') ?? '';
+  const result = await fetchProxiedImage(
+    url,
+    githubToken,
+    options.imageFetcher ?? undefined,
+  );
+  if (!result.ok) {
+    sendJson(response, result.statusCode, { error: result.error });
+    return;
+  }
+  sendImage(response, result.contentType, result.body);
 };
 
 const sendDataResponse = (
@@ -371,6 +412,10 @@ const handleTokenedRequest = async (
 
   if (requestPath.startsWith('/api/')) {
     if (method === 'GET') {
+      if (requestPath === IMAGE_PROXY_REQUEST_PATH) {
+        await handleImageProxy(options, response, searchParams);
+        return;
+      }
       const readResult = await handleReadApi(
         options,
         requestPath,

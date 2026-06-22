@@ -15,6 +15,7 @@ import {
   resolveDashboardFilePath,
   startConsoleServer,
 } from './consoleServer';
+import type { ImageFetcher } from './consoleImageProxy';
 import { IssueTitleStateCache } from './consoleReadApi';
 import { readDoneProjectItemIds } from './consoleDoneStore';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
@@ -1125,6 +1126,187 @@ describe('consoleServer dashboard /tdpm.txt route integration', () => {
     try {
       const response = await requestServer(server, '/tdpm.txt', 'POST');
       expect(response.statusCode).toBe(404);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('consoleServer image proxy', () => {
+  const testToken = 'image-proxy-token-value';
+  const githubToken = 'gh-token-value';
+  const allowedUrl = 'https://github.com/user-attachments/assets/abc-123';
+
+  const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]);
+
+  const stubFetcher: ImageFetcher = async () => ({
+    status: 200,
+    contentType: 'image/png',
+    body: pngBytes,
+  });
+
+  const closeServer = (server: http.Server): Promise<void> =>
+    new Promise((resolve, reject) => {
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve();
+      });
+    });
+
+  const requestImage = (
+    server: http.Server,
+    requestPath: string,
+  ): Promise<{
+    statusCode: number;
+    contentType: string | undefined;
+    contentLength: string | undefined;
+    cacheControl: string | undefined;
+    body: Buffer;
+  }> => {
+    const address = server.address();
+    if (address === null || typeof address === 'string') {
+      throw new Error('server is not listening on a TCP port');
+    }
+    const port = address.port;
+    return new Promise((resolve, reject) => {
+      const request = http.request(
+        { host: '127.0.0.1', port, path: requestPath, method: 'GET' },
+        (response) => {
+          const chunks: Uint8Array[] = [];
+          response.on('data', (chunk: Uint8Array) => chunks.push(chunk));
+          response.on('end', () => {
+            resolve({
+              statusCode: response.statusCode ?? 0,
+              contentType: response.headers['content-type'],
+              contentLength: response.headers['content-length'],
+              cacheControl: response.headers['cache-control'],
+              body: Buffer.concat(chunks),
+            });
+          });
+        },
+      );
+      request.on('error', reject);
+      request.end();
+    });
+  };
+
+  const startProxyServer = (
+    fetcher: ImageFetcher | null = stubFetcher,
+    token: string | null = githubToken,
+  ): Promise<{ server: http.Server; tmpDir: string }> =>
+    (async () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+      const server = await startConsoleServer({
+        accessToken: testToken,
+        uiDistDir: path.join(tmpDir, 'ui-dist'),
+        consoleDataOutputDir: null,
+        inTmuxDataDir: null,
+        dashboardDir: null,
+        githubToken: token,
+        imageFetcher: fetcher,
+        port: 0,
+      });
+      return { server, tmpDir };
+    })();
+
+  it('returns image bytes for an allow-listed url with a valid token', async () => {
+    const { server, tmpDir } = await startProxyServer();
+    try {
+      const response = await requestImage(
+        server,
+        `/api/img?url=${encodeURIComponent(allowedUrl)}&k=${testToken}`,
+      );
+      expect(response.statusCode).toBe(200);
+      expect(response.contentType).toBe('image/png');
+      expect(response.contentLength).toBe(String(pngBytes.length));
+      expect(response.cacheControl).toBe('private, max-age=300');
+      expect(Array.from(response.body)).toEqual(Array.from(pngBytes));
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects a non-allow-listed url with 400', async () => {
+    const { server, tmpDir } = await startProxyServer();
+    try {
+      const response = await requestImage(
+        server,
+        `/api/img?url=${encodeURIComponent('https://example.com/x.png')}&k=${testToken}`,
+      );
+      expect(response.statusCode).toBe(400);
+      expect(response.body.toString('utf-8')).toContain(
+        'not in allowed domain',
+      );
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects a request without a token with 401', async () => {
+    const { server, tmpDir } = await startProxyServer();
+    try {
+      const response = await requestImage(
+        server,
+        `/api/img?url=${encodeURIComponent(allowedUrl)}`,
+      );
+      expect(response.statusCode).toBe(401);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects a request with an invalid token with 401', async () => {
+    const { server, tmpDir } = await startProxyServer();
+    try {
+      const response = await requestImage(
+        server,
+        `/api/img?url=${encodeURIComponent(allowedUrl)}&k=wrong-token`,
+      );
+      expect(response.statusCode).toBe(401);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns 502 when the github token is not configured', async () => {
+    const { server, tmpDir } = await startProxyServer(stubFetcher, null);
+    try {
+      const response = await requestImage(
+        server,
+        `/api/img?url=${encodeURIComponent(allowedUrl)}&k=${testToken}`,
+      );
+      expect(response.statusCode).toBe(502);
+      expect(response.body.toString('utf-8')).toContain(
+        'github token is not configured',
+      );
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns 502 when the upstream image fetch fails', async () => {
+    const failingFetcher: ImageFetcher = async () => ({
+      status: 404,
+      contentType: null,
+      body: Buffer.alloc(0),
+    });
+    const { server, tmpDir } = await startProxyServer(failingFetcher);
+    try {
+      const response = await requestImage(
+        server,
+        `/api/img?url=${encodeURIComponent(allowedUrl)}&k=${testToken}`,
+      );
+      expect(response.statusCode).toBe(502);
+      expect(response.body.toString('utf-8')).toContain('upstream 404');
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });

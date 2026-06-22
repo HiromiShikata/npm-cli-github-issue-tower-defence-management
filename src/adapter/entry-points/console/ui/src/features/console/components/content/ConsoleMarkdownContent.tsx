@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useRef } from 'react';
 import {
+  type ImageProxyUrlBuilder,
+  rewriteGitHubImageSources,
+} from '../../lib/imageProxy';
+import {
   renderMarkdownToSafeHtml,
   splitMarkdownSegments,
 } from '../../lib/markdown';
@@ -7,16 +11,25 @@ import { ConsoleMermaidDiagram } from './ConsoleMermaidDiagram';
 
 export type ConsoleMarkdownViewProps = {
   body: string;
+  buildImageProxyUrl?: ImageProxyUrlBuilder;
 };
 
 type ConsoleMarkdownHtmlBlockProps = {
   source: string;
+  buildImageProxyUrl?: ImageProxyUrlBuilder;
 };
 
 const ConsoleMarkdownHtmlBlock = ({
   source,
+  buildImageProxyUrl,
 }: ConsoleMarkdownHtmlBlockProps) => {
-  const html = useMemo(() => renderMarkdownToSafeHtml(source), [source]);
+  const html = useMemo(() => {
+    const safeHtml = renderMarkdownToSafeHtml(source);
+    if (buildImageProxyUrl === undefined) {
+      return safeHtml;
+    }
+    return rewriteGitHubImageSources(safeHtml, buildImageProxyUrl);
+  }, [source, buildImageProxyUrl]);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -29,7 +42,10 @@ const ConsoleMarkdownHtmlBlock = ({
   return <div ref={containerRef} className="console-markdown" />;
 };
 
-export const ConsoleMarkdownContent = ({ body }: ConsoleMarkdownViewProps) => {
+export const ConsoleMarkdownContent = ({
+  body,
+  buildImageProxyUrl,
+}: ConsoleMarkdownViewProps) => {
   const segments = useMemo(() => splitMarkdownSegments(body), [body]);
 
   if (body.trim() === '') {
@@ -42,7 +58,11 @@ export const ConsoleMarkdownContent = ({ body }: ConsoleMarkdownViewProps) => {
         segment.kind === 'mermaid' ? (
           <ConsoleMermaidDiagram key={segment.key} code={segment.code} />
         ) : (
-          <ConsoleMarkdownHtmlBlock key={segment.key} source={segment.source} />
+          <ConsoleMarkdownHtmlBlock
+            key={segment.key}
+            source={segment.source}
+            buildImageProxyUrl={buildImageProxyUrl}
+          />
         ),
       )}
     </div>

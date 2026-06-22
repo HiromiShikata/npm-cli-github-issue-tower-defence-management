@@ -133,6 +133,17 @@ console bundle and the token-protected \`/api\` endpoints.
 - [x] Token validation via \`?k=\` and the \`x-pv-token\` header
 `;
 
+export const consoleMarkdownImageBodyFixture = `## Screenshot
+
+The failing screen is attached below.
+
+![console screenshot](https://github.com/user-attachments/assets/0a1b2c3d-4e5f-6789-abcd-ef0123456789)
+
+For reference, the avatar comes from an external host:
+
+![external avatar](https://example.com/avatar.png)
+`;
+
 export const consoleMermaidBodyFixture = `Here is the request flow:
 
 \`\`\`mermaid

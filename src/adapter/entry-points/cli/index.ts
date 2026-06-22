@@ -716,6 +716,7 @@ program
       consoleDataOutputDir,
       inTmuxDataDir,
       dashboardDir,
+      githubToken: token,
       issueRepository,
       resolveProject,
       issueTitleStateCache: new IssueTitleStateCache(),

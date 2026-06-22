@@ -33,13 +33,14 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.startConsoleServer = exports.createConsoleServer = exports.handleConsoleRequest = exports.resolveFlatInTmuxFilePath = exports.resolveDashboardFilePath = exports.DASHBOARD_REQUEST_PATH = exports.extractProvidedToken = exports.isTokenValid = exports.isConsoleAppRoute = exports.requiresToken = exports.hasDotSegment = exports.CONSOLE_TOKEN_HEADER = exports.DEFAULT_CONSOLE_PORT = void 0;
+exports.startConsoleServer = exports.createConsoleServer = exports.handleConsoleRequest = exports.resolveFlatInTmuxFilePath = exports.resolveDashboardFilePath = exports.IMAGE_PROXY_REQUEST_PATH = exports.DASHBOARD_REQUEST_PATH = exports.extractProvidedToken = exports.isTokenValid = exports.isConsoleAppRoute = exports.requiresToken = exports.hasDotSegment = exports.CONSOLE_TOKEN_HEADER = exports.DEFAULT_CONSOLE_PORT = void 0;
 const http = __importStar(require("http"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const consoleDataDelivery_1 = require("./consoleDataDelivery");
 const consoleReadApi_1 = require("./consoleReadApi");
 const consoleOperationApi_1 = require("./consoleOperationApi");
+const consoleImageProxy_1 = require("./consoleImageProxy");
 exports.DEFAULT_CONSOLE_PORT = 9981;
 exports.CONSOLE_TOKEN_HEADER = 'x-pv-token';
 const PLACEHOLDER_INDEX_HTML = `<!DOCTYPE html>
@@ -148,6 +149,7 @@ const readStaticFile = (filePath) => {
 const FLAT_IN_TMUX_PREFIX = '/in-tmux-by-human/';
 const FLAT_IN_TMUX_FILE = /^[A-Za-z0-9._-]+\.json$/;
 exports.DASHBOARD_REQUEST_PATH = '/tdpm.txt';
+exports.IMAGE_PROXY_REQUEST_PATH = '/api/img';
 const DASHBOARD_FILE_NAME = 'tdpm.txt';
 const resolveDashboardFilePath = (dashboardDir, requestPath) => {
     if (requestPath !== exports.DASHBOARD_REQUEST_PATH) {
@@ -219,6 +221,28 @@ const sendJson = (response, statusCode, body) => {
         'Cache-Control': 'no-store',
     });
     response.end(JSON.stringify(body));
+};
+const sendImage = (response, contentType, body) => {
+    response.writeHead(200, {
+        'Content-Type': contentType,
+        'Content-Length': String(body.length),
+        'Cache-Control': 'private, max-age=300',
+    });
+    response.end(body);
+};
+const handleImageProxy = async (options, response, searchParams) => {
+    const githubToken = options.githubToken ?? null;
+    if (githubToken === null || githubToken.length === 0) {
+        sendJson(response, 502, { error: 'github token is not configured' });
+        return;
+    }
+    const url = searchParams.get('url') ?? '';
+    const result = await (0, consoleImageProxy_1.fetchProxiedImage)(url, githubToken, options.imageFetcher ?? undefined);
+    if (!result.ok) {
+        sendJson(response, result.statusCode, { error: result.error });
+        return;
+    }
+    sendImage(response, result.contentType, result.body);
 };
 const sendDataResponse = (response, statusCode, contentType, body) => {
     response.writeHead(statusCode, {
@@ -305,6 +329,10 @@ const handleTokenedRequest = async (options, request, response, requestPath, sea
     const method = (request.method ?? 'GET').toUpperCase();
     if (requestPath.startsWith('/api/')) {
         if (method === 'GET') {
+            if (requestPath === exports.IMAGE_PROXY_REQUEST_PATH) {
+                await handleImageProxy(options, response, searchParams);
+                return;
+            }
             const readResult = await handleReadApi(options, requestPath, searchParams);
             if (readResult === null) {
                 sendNotFound(response);
