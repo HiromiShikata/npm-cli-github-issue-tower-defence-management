@@ -264,6 +264,97 @@ const twoItemPrPayload = () => ({
   ],
 });
 
+const touchEvent = (
+  type: string,
+  point: { clientX: number; clientY: number },
+  property: 'touches' | 'changedTouches',
+): TouchEvent => {
+  const event = new Event(type, { bubbles: true }) as TouchEvent;
+  Object.defineProperty(event, property, {
+    value: [point],
+    configurable: true,
+  });
+  return event;
+};
+
+const swipeDetailScreen = (
+  element: HTMLElement,
+  from: { clientX: number; clientY: number },
+  to: { clientX: number; clientY: number },
+): void => {
+  element.dispatchEvent(touchEvent('touchstart', from, 'touches'));
+  element.dispatchEvent(touchEvent('touchmove', to, 'touches'));
+  element.dispatchEvent(touchEvent('touchend', to, 'changedTouches'));
+};
+
+describe('ConsolePage swipe navigation', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/umino/prs?k=token');
+    const fetchMock = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            listMatch[1] === 'prs'
+              ? twoItemPrPayload()
+              : { ...twoItemPrPayload(), items: [] },
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+  });
+
+  it('navigates to the next item on a left swipe of the opened detail screen', async () => {
+    const { container, getByText, findByText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    expect(await findByText('Approve')).toBeInTheDocument();
+    expect(window.location.hash).toBe('#item/PVTI_1');
+
+    const detailScreen = container.querySelector('.console-detail-screen');
+    expect(detailScreen).not.toBeNull();
+    swipeDetailScreen(
+      detailScreen as HTMLElement,
+      { clientX: 240, clientY: 100 },
+      { clientX: 40, clientY: 110 },
+    );
+
+    await waitFor(() => {
+      expect(window.location.hash).toBe('#item/PVTI_2');
+    });
+  });
+
+  it('navigates to the previous item on a right swipe of the opened detail screen', async () => {
+    const { container, getByText, findByText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(
+        getByText('Add server-side console API handlers'),
+      ).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add server-side console API handlers'));
+    expect(await findByText('Approve')).toBeInTheDocument();
+    expect(window.location.hash).toBe('#item/PVTI_2');
+
+    const detailScreen = container.querySelector('.console-detail-screen');
+    expect(detailScreen).not.toBeNull();
+    swipeDetailScreen(
+      detailScreen as HTMLElement,
+      { clientX: 40, clientY: 100 },
+      { clientX: 240, clientY: 110 },
+    );
+
+    await waitFor(() => {
+      expect(window.location.hash).toBe('#item/PVTI_1');
+    });
+  });
+});
+
 describe('ConsolePage auto-advance', () => {
   beforeEach(() => {
     localStorage.clear();

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo } from 'react';
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
 import { ConsoleItemList } from '../components/list/ConsoleItemList';
 import { ConsoleUndoToast } from '../components/operations/ConsoleUndoToast';
@@ -58,7 +58,6 @@ export const ConsolePage = () => {
   const caches = useConsoleCaches();
   const operations = useConsoleOperations(pjcode, activeTab, overlayState);
   const actionQueue = useConsoleActionQueue();
-  const detailScreenRef = useRef<HTMLDivElement | null>(null);
   const now = Date.now();
 
   const counts = useMemo(() => {
@@ -170,7 +169,7 @@ export const ConsolePage = () => {
     [selectedItemKey, orderedPendingKeys, openItem],
   );
 
-  useConsoleSwipeNavigation(detailScreenRef, handleSwipe);
+  const detailScreenRef = useConsoleSwipeNavigation(handleSwipe);
 
   return (
     <main className="console-app">

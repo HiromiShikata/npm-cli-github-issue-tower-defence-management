@@ -17,15 +17,19 @@ export const ConsoleUndoToast = ({
 }: ConsoleUndoToastProps) => (
   <div
     className={`console-undo-toast console-undo-toast-${color}`}
-    role="alert"
+    role="status"
+    aria-live="polite"
   >
     <span className="console-undo-toast-message">{message}</span>
     <button type="button" className="console-undo-toast-undo" onClick={onUndo}>
       Undo
     </button>
-    <span className="console-undo-toast-countdown">{remainingSeconds}s</span>
+    <span className="console-undo-toast-countdown" aria-hidden="true">
+      {remainingSeconds}s
+    </span>
     <span
       className="console-undo-toast-bar"
+      aria-hidden="true"
       style={{ width: `${Math.max(0, Math.min(100, progress * 100))}%` }}
     />
   </div>

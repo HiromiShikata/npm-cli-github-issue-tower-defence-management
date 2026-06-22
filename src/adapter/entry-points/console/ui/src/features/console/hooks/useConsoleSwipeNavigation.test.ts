@@ -1,5 +1,4 @@
 import { renderHook } from '@testing-library/react';
-import { createRef } from 'react';
 import { useConsoleSwipeNavigation } from './useConsoleSwipeNavigation';
 
 const touchEvent = (
@@ -29,10 +28,9 @@ describe('useConsoleSwipeNavigation', () => {
   it('reports next for a dominant left swipe', () => {
     const element = document.createElement('div');
     document.body.appendChild(element);
-    const ref = createRef<HTMLElement>();
-    ref.current = element;
     const onSwipe = jest.fn();
-    renderHook(() => useConsoleSwipeNavigation(ref, onSwipe));
+    const { result } = renderHook(() => useConsoleSwipeNavigation(onSwipe));
+    result.current(element);
     swipe(
       element,
       { clientX: 200, clientY: 100 },
@@ -45,10 +43,9 @@ describe('useConsoleSwipeNavigation', () => {
   it('reports previous for a dominant right swipe', () => {
     const element = document.createElement('div');
     document.body.appendChild(element);
-    const ref = createRef<HTMLElement>();
-    ref.current = element;
     const onSwipe = jest.fn();
-    renderHook(() => useConsoleSwipeNavigation(ref, onSwipe));
+    const { result } = renderHook(() => useConsoleSwipeNavigation(onSwipe));
+    result.current(element);
     swipe(
       element,
       { clientX: 60, clientY: 100 },
@@ -61,10 +58,9 @@ describe('useConsoleSwipeNavigation', () => {
   it('ignores a mostly vertical drag', () => {
     const element = document.createElement('div');
     document.body.appendChild(element);
-    const ref = createRef<HTMLElement>();
-    ref.current = element;
     const onSwipe = jest.fn();
-    renderHook(() => useConsoleSwipeNavigation(ref, onSwipe));
+    const { result } = renderHook(() => useConsoleSwipeNavigation(onSwipe));
+    result.current(element);
     swipe(
       element,
       { clientX: 100, clientY: 50 },
@@ -88,15 +84,30 @@ describe('useConsoleSwipeNavigation', () => {
     scroller.style.overflowX = 'auto';
     element.appendChild(scroller);
     document.body.appendChild(element);
-    const ref = createRef<HTMLElement>();
-    ref.current = element;
     const onSwipe = jest.fn();
-    renderHook(() => useConsoleSwipeNavigation(ref, onSwipe));
+    const { result } = renderHook(() => useConsoleSwipeNavigation(onSwipe));
+    result.current(element);
     scroller.dispatchEvent(
       touchEvent('touchstart', { clientX: 200, clientY: 100 }, 'touches'),
     );
     scroller.dispatchEvent(
       touchEvent('touchend', { clientX: 60, clientY: 100 }, 'changedTouches'),
+    );
+    expect(onSwipe).not.toHaveBeenCalled();
+    document.body.removeChild(element);
+  });
+
+  it('detaches listeners when the element is unmounted', () => {
+    const element = document.createElement('div');
+    document.body.appendChild(element);
+    const onSwipe = jest.fn();
+    const { result } = renderHook(() => useConsoleSwipeNavigation(onSwipe));
+    result.current(element);
+    result.current(null);
+    swipe(
+      element,
+      { clientX: 200, clientY: 100 },
+      { clientX: 60, clientY: 110 },
     );
     expect(onSwipe).not.toHaveBeenCalled();
     document.body.removeChild(element);

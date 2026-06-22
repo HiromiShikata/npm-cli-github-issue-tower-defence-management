@@ -368,12 +368,17 @@ body {
   padding: 0;
 }
 
-.console-file,
 .console-commit {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 4px 0;
+  font-size: 13px;
+}
+
+.console-file {
+  display: flex;
+  flex-direction: column;
   font-size: 13px;
 }
 

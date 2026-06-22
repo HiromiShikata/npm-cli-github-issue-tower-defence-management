@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import {
   type ConsoleSwipeDirection,
   isVerticallyDominant,
@@ -22,17 +22,14 @@ const isHorizontallyScrollable = (start: EventTarget | null): boolean => {
 };
 
 export const useConsoleSwipeNavigation = (
-  ref: RefObject<HTMLElement | null>,
   onSwipe: (direction: ConsoleSwipeDirection) => void,
-): void => {
+): ((element: HTMLElement | null) => void) => {
   const onSwipeRef = useRef(onSwipe);
   onSwipeRef.current = onSwipe;
 
-  useEffect(() => {
-    const element = ref.current;
-    if (element === null) {
-      return;
-    }
+  const detachRef = useRef<(() => void) | null>(null);
+
+  const attach = useCallback((element: HTMLElement): (() => void) => {
     let startX = 0;
     let startY = 0;
     let tracking = false;
@@ -90,5 +87,29 @@ export const useConsoleSwipeNavigation = (
       element.removeEventListener('touchmove', onTouchMove);
       element.removeEventListener('touchend', onTouchEnd);
     };
-  }, [ref]);
+  }, []);
+
+  const swipeRef = useCallback(
+    (element: HTMLElement | null): void => {
+      if (detachRef.current !== null) {
+        detachRef.current();
+        detachRef.current = null;
+      }
+      if (element !== null) {
+        detachRef.current = attach(element);
+      }
+    },
+    [attach],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (detachRef.current !== null) {
+        detachRef.current();
+        detachRef.current = null;
+      }
+    };
+  }, []);
+
+  return swipeRef;
 };
