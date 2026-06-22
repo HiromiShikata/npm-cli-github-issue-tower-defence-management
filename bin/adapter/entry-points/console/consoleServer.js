@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.startConsoleServer = exports.createConsoleServer = exports.handleConsoleRequest = exports.resolveFlatInTmuxFilePath = exports.extractProvidedToken = exports.isTokenValid = exports.isConsoleAppRoute = exports.requiresToken = exports.hasDotSegment = exports.CONSOLE_TOKEN_HEADER = exports.DEFAULT_CONSOLE_PORT = void 0;
+exports.startConsoleServer = exports.createConsoleServer = exports.handleConsoleRequest = exports.resolveFlatInTmuxFilePath = exports.resolveDashboardFilePath = exports.DASHBOARD_REQUEST_PATH = exports.extractProvidedToken = exports.isTokenValid = exports.isConsoleAppRoute = exports.requiresToken = exports.hasDotSegment = exports.CONSOLE_TOKEN_HEADER = exports.DEFAULT_CONSOLE_PORT = void 0;
 const http = __importStar(require("http"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
@@ -147,6 +147,21 @@ const readStaticFile = (filePath) => {
 };
 const FLAT_IN_TMUX_PREFIX = '/in-tmux-by-human/';
 const FLAT_IN_TMUX_FILE = /^[A-Za-z0-9._-]+\.json$/;
+exports.DASHBOARD_REQUEST_PATH = '/tdpm.txt';
+const DASHBOARD_FILE_NAME = 'tdpm.txt';
+const resolveDashboardFilePath = (dashboardDir, requestPath) => {
+    if (requestPath !== exports.DASHBOARD_REQUEST_PATH) {
+        return null;
+    }
+    const candidate = path.join(dashboardDir, DASHBOARD_FILE_NAME);
+    const resolvedRoot = path.resolve(dashboardDir);
+    const resolvedCandidate = path.resolve(candidate);
+    if (resolvedCandidate !== path.join(resolvedRoot, DASHBOARD_FILE_NAME)) {
+        return null;
+    }
+    return resolvedCandidate;
+};
+exports.resolveDashboardFilePath = resolveDashboardFilePath;
 const resolveFlatInTmuxFilePath = (inTmuxDataDir, requestPath) => {
     if (!requestPath.startsWith(FLAT_IN_TMUX_PREFIX)) {
         return null;
@@ -350,6 +365,30 @@ const handleConsoleRequest = async (options, request, response) => {
     const requestPath = requestUrl.pathname;
     if ((0, exports.hasDotSegment)(requestPath)) {
         sendNotFound(response);
+        return;
+    }
+    if (requestPath === exports.DASHBOARD_REQUEST_PATH) {
+        const method = (request.method ?? 'GET').toUpperCase();
+        if (method !== 'GET') {
+            sendNotFound(response);
+            return;
+        }
+        if (options.dashboardDir === null) {
+            sendNotFound(response);
+            return;
+        }
+        const dashboardFilePath = (0, exports.resolveDashboardFilePath)(options.dashboardDir, requestPath);
+        const dashboardContent = dashboardFilePath === null ? null : readStaticFile(dashboardFilePath);
+        if (dashboardContent === null) {
+            sendNotFound(response);
+            return;
+        }
+        response.writeHead(200, {
+            'Content-Type': 'text/html; charset=utf-8',
+            'Cache-Control': 'no-store',
+            'Content-Length': String(dashboardContent.length),
+        });
+        response.end(dashboardContent);
         return;
     }
     if ((0, exports.requiresToken)(requestPath)) {
