@@ -79,7 +79,8 @@ const hasDotSegment = (requestPath) => requestPath
 exports.hasDotSegment = hasDotSegment;
 const requiresToken = (requestPath) => requestPath.startsWith('/api/') ||
     requestPath === '/api' ||
-    requestPath.endsWith('.json');
+    requestPath.endsWith('.json') ||
+    requestPath === exports.DASHBOARD_REQUEST_PATH;
 exports.requiresToken = requiresToken;
 const SAFE_PJCODE = /^[A-Za-z0-9._-]+$/;
 const isConsoleAppRoute = (requestPath) => {
@@ -332,6 +333,25 @@ const handleTokenedRequest = async (options, request, response, requestPath, sea
         return;
     }
     if (method === 'GET') {
+        if (requestPath === exports.DASHBOARD_REQUEST_PATH) {
+            if (options.dashboardDir === null) {
+                sendNotFound(response);
+                return;
+            }
+            const dashboardFilePath = (0, exports.resolveDashboardFilePath)(options.dashboardDir, requestPath);
+            const dashboardContent = dashboardFilePath === null ? null : readStaticFile(dashboardFilePath);
+            if (dashboardContent === null) {
+                sendNotFound(response);
+                return;
+            }
+            response.writeHead(200, {
+                'Content-Type': 'text/html; charset=utf-8',
+                'Cache-Control': 'no-store',
+                'Content-Length': String(dashboardContent.length),
+            });
+            response.end(dashboardContent);
+            return;
+        }
         if (requestPath.startsWith(FLAT_IN_TMUX_PREFIX)) {
             if (options.inTmuxDataDir === null) {
                 sendNotFound(response);
@@ -365,30 +385,6 @@ const handleConsoleRequest = async (options, request, response) => {
     const requestPath = requestUrl.pathname;
     if ((0, exports.hasDotSegment)(requestPath)) {
         sendNotFound(response);
-        return;
-    }
-    if (requestPath === exports.DASHBOARD_REQUEST_PATH) {
-        const method = (request.method ?? 'GET').toUpperCase();
-        if (method !== 'GET') {
-            sendNotFound(response);
-            return;
-        }
-        if (options.dashboardDir === null) {
-            sendNotFound(response);
-            return;
-        }
-        const dashboardFilePath = (0, exports.resolveDashboardFilePath)(options.dashboardDir, requestPath);
-        const dashboardContent = dashboardFilePath === null ? null : readStaticFile(dashboardFilePath);
-        if (dashboardContent === null) {
-            sendNotFound(response);
-            return;
-        }
-        response.writeHead(200, {
-            'Content-Type': 'text/html; charset=utf-8',
-            'Cache-Control': 'no-store',
-            'Content-Length': String(dashboardContent.length),
-        });
-        response.end(dashboardContent);
         return;
     }
     if ((0, exports.requiresToken)(requestPath)) {

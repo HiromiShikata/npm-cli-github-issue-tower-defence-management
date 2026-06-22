@@ -604,7 +604,7 @@ program
   )
   .option(
     '--dashboardDir <path>',
-    `Directory containing the dashboard HTML fragment tdpm.txt served unauthenticated at /tdpm.txt (default: ${DEFAULT_DASHBOARD_DIR})`,
+    `Directory containing the dashboard HTML fragment tdpm.txt served token-gated at /tdpm.txt (default: ${DEFAULT_DASHBOARD_DIR})`,
   )
   .action(async (options: ServeConsoleOptions) => {
     const config = loadConfigFile(options.configFilePath);

@@ -354,7 +354,7 @@ exports.program
     .option('--port <number>', `Port for the console HTTP server (default: ${consoleServer_1.DEFAULT_CONSOLE_PORT})`)
     .option('--consoleDataOutputDir <path>', 'Directory where console data files are written and served from')
     .option('--inTmuxDataDir <path>', `Directory containing the flat in-tmux-by-human static JSON files served at /in-tmux-by-human/*.json (default: ${DEFAULT_IN_TMUX_DATA_DIR})`)
-    .option('--dashboardDir <path>', `Directory containing the dashboard HTML fragment tdpm.txt served unauthenticated at /tdpm.txt (default: ${DEFAULT_DASHBOARD_DIR})`)
+    .option('--dashboardDir <path>', `Directory containing the dashboard HTML fragment tdpm.txt served token-gated at /tdpm.txt (default: ${DEFAULT_DASHBOARD_DIR})`)
     .action(async (options) => {
     const config = (0, projectConfig_2.loadConfigFile)(options.configFilePath);
     const accessToken = config.consoleAccessToken;

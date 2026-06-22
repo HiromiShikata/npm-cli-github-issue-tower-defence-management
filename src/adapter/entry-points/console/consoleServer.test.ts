@@ -57,6 +57,10 @@ describe('consoleServer pure helpers', () => {
       expect(requiresToken('/api')).toBe(true);
     });
 
+    it('requires a token for the dashboard /tdpm.txt path', () => {
+      expect(requiresToken('/tdpm.txt')).toBe(true);
+    });
+
     it('does not require a token for bootstrap assets', () => {
       expect(requiresToken('/')).toBe(false);
       expect(requiresToken('/index.html')).toBe(false);
@@ -1060,10 +1064,10 @@ describe('consoleServer dashboard /tdpm.txt route integration', () => {
     return { server, tmpDir };
   };
 
-  it('serves /tdpm.txt without a token, byte-identical, as text/html with an explicit Content-Length and no chunked encoding', async () => {
+  it('serves /tdpm.txt with a valid token, byte-identical, as text/html with an explicit Content-Length and no chunked encoding', async () => {
     const { server, tmpDir } = await startWithDashboard();
     try {
-      const response = await requestServer(server, '/tdpm.txt');
+      const response = await requestServer(server, `/tdpm.txt?k=${testToken}`);
       expect(response.statusCode).toBe(200);
       expect(response.body).toBe(dashboardRaw);
       expect(response.contentType).toBe('text/html; charset=utf-8');
@@ -1078,7 +1082,31 @@ describe('consoleServer dashboard /tdpm.txt route integration', () => {
     }
   });
 
-  it('returns 404 for /tdpm.txt when the file is absent', async () => {
+  it('rejects /tdpm.txt without a token and does not disclose the dashboard body', async () => {
+    const { server, tmpDir } = await startWithDashboard();
+    try {
+      const response = await requestServer(server, '/tdpm.txt');
+      expect(response.statusCode).toBe(401);
+      expect(response.body).not.toContain('MEM');
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects /tdpm.txt with a wrong token', async () => {
+    const { server, tmpDir } = await startWithDashboard();
+    try {
+      const response = await requestServer(server, '/tdpm.txt?k=wrong-token');
+      expect(response.statusCode).toBe(401);
+      expect(response.body).not.toContain('MEM');
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns 404 for /tdpm.txt with a valid token when the file is absent', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
     const server = await startConsoleServer({
       accessToken: testToken,
@@ -1089,7 +1117,7 @@ describe('consoleServer dashboard /tdpm.txt route integration', () => {
       port: 0,
     });
     try {
-      const response = await requestServer(server, '/tdpm.txt');
+      const response = await requestServer(server, `/tdpm.txt?k=${testToken}`);
       expect(response.statusCode).toBe(404);
     } finally {
       await closeServer(server);
@@ -1097,7 +1125,7 @@ describe('consoleServer dashboard /tdpm.txt route integration', () => {
     }
   });
 
-  it('returns 404 for /tdpm.txt when dashboardDir is null', async () => {
+  it('returns 404 for /tdpm.txt with a valid token when dashboardDir is null', async () => {
     const { server, tmpDir } = await (async () => {
       const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
       fs.writeFileSync(path.join(dir, 'tdpm.txt'), dashboardRaw);
@@ -1112,7 +1140,7 @@ describe('consoleServer dashboard /tdpm.txt route integration', () => {
       return { server: srv, tmpDir: dir };
     })();
     try {
-      const response = await requestServer(server, '/tdpm.txt');
+      const response = await requestServer(server, `/tdpm.txt?k=${testToken}`);
       expect(response.statusCode).toBe(404);
     } finally {
       await closeServer(server);
@@ -1120,10 +1148,14 @@ describe('consoleServer dashboard /tdpm.txt route integration', () => {
     }
   });
 
-  it('rejects a non-GET method on /tdpm.txt with 404', async () => {
+  it('rejects a non-GET method on /tdpm.txt with a valid token with 404', async () => {
     const { server, tmpDir } = await startWithDashboard();
     try {
-      const response = await requestServer(server, '/tdpm.txt', 'POST');
+      const response = await requestServer(
+        server,
+        `/tdpm.txt?k=${testToken}`,
+        'POST',
+      );
       expect(response.statusCode).toBe(404);
     } finally {
       await closeServer(server);
