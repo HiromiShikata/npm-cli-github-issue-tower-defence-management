@@ -57,7 +57,12 @@ export type ImageFetcher = (
 }>;
 
 const defaultImageFetcher: ImageFetcher = async (url, headers) => {
-  const response = await fetch(url, { headers, redirect: 'follow' });
+  const validated = parseAllowedImageUrl(url);
+  if (validated === null) {
+    throw new Error('url not in allowed domain');
+  }
+  const safeUrl = `https://${validated.host}${validated.pathname}${validated.search}`;
+  const response = await fetch(safeUrl, { headers, redirect: 'follow' });
   const arrayBuffer = await response.arrayBuffer();
   return {
     status: response.status,
