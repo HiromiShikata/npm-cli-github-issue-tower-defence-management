@@ -1,3 +1,10 @@
+## [1.94.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.94.0...v1.94.1) (2026-06-22)
+
+
+### Bug Fixes
+
+* **console:** right-align operation-bar action buttons to match reference prototype ([#907](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/907)) ([06fa927](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/06fa9271908fe2daa2e71c9f6a21a7e67423d987))
+
 # [1.94.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.93.1...v1.94.0) (2026-06-22)
 
 
