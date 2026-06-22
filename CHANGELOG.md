@@ -1,3 +1,10 @@
+# [1.94.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.93.1...v1.94.0) (2026-06-22)
+
+
+### Features
+
+* **console:** serveConsole serves the dashboard tdpm.txt unauthenticated at /tdpm.txt ([#897](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/897)) ([f381eb7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f381eb76059812451d6b114cf2987732b05fb503)), closes [#896](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/896)
+
 ## [1.93.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.93.0...v1.93.1) (2026-06-22)
 
 
