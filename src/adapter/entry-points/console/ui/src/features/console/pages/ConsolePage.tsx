@@ -1,25 +1,42 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
 import { ConsoleItemList } from '../components/list/ConsoleItemList';
+import { ConsoleUndoToast } from '../components/operations/ConsoleUndoToast';
+import { useConsoleActionQueue } from '../hooks/useConsoleActionQueue';
 import { useConsoleCaches } from '../hooks/useConsoleCaches';
 import { useConsoleNavigation } from '../hooks/useConsoleNavigation';
 import { useConsoleOperations } from '../hooks/useConsoleOperations';
 import { useConsoleOverlay } from '../hooks/useConsoleOverlay';
 import { useConsolePjcode } from '../hooks/useConsolePjcode';
+import { useConsoleSwipeNavigation } from '../hooks/useConsoleSwipeNavigation';
 import { useConsoleTabData } from '../hooks/useConsoleTabData';
+import {
+  actionAdvances,
+  actionToastColor,
+  formatActionToast,
+} from '../logic/actionToast';
 import { buildConsoleListRows, resolveItemStory } from '../logic/grouping';
+import {
+  nextPendingKeyAfter,
+  nextPendingKeyBrowse,
+  previousPendingKeyBefore,
+} from '../logic/navigation';
 import {
   countPendingItems,
   filterPendingItems,
   overlayKeyForItem,
 } from '../logic/overlay';
+import type { ConsoleSwipeDirection } from '../logic/swipe';
 import type {
   ConsoleListItem,
   ConsoleOverlayStatus,
   ConsoleTabName,
 } from '../logic/types';
 import { CONSOLE_TABS } from '../logic/types';
-import { ConsoleItemDetailContainer } from './ConsoleItemDetailContainer';
+import {
+  ConsoleItemDetailContainer,
+  type ConsoleQueueActionInput,
+} from './ConsoleItemDetailContainer';
 
 const emptyCounts = (): Record<ConsoleTabName, number> => {
   const result = {} as Record<ConsoleTabName, number>;
@@ -40,6 +57,7 @@ export const ConsolePage = () => {
   const overlayState = useConsoleOverlay(pjcode ?? OVERLAY_NAMESPACE_FALLBACK);
   const caches = useConsoleCaches();
   const operations = useConsoleOperations(pjcode, activeTab, overlayState);
+  const actionQueue = useConsoleActionQueue();
   const now = Date.now();
 
   const counts = useMemo(() => {
@@ -64,6 +82,11 @@ export const ConsolePage = () => {
     }
     return filterPendingItems(activeSnapshot.items, overlayState.overlay);
   }, [activeSnapshot, overlayState.overlay]);
+
+  const orderedPendingKeys = useMemo(
+    () => pendingItems.map((item) => overlayKeyForItem(item)),
+    [pendingItems],
+  );
 
   const rows = useMemo(
     () => buildConsoleListRows(pendingItems, overlayState.overlay),
@@ -99,8 +122,66 @@ export const ConsolePage = () => {
       ? resolveItemStory(selectedItem, overlayState.overlay)
       : null;
 
+  const { openItem, closeItem } = navigation;
+
+  const advanceToNext = useCallback(
+    (actedKey: string): void => {
+      const nextKey = nextPendingKeyAfter(orderedPendingKeys, actedKey);
+      if (nextKey !== null) {
+        openItem(nextKey);
+      } else {
+        closeItem();
+      }
+    },
+    [orderedPendingKeys, openItem, closeItem],
+  );
+
+  const handleQueueAction = useCallback(
+    (input: ConsoleQueueActionInput): void => {
+      const actedKey = overlayKeyForItem(input.item);
+      actionQueue.enqueue({
+        message: formatActionToast(input.kind, input.item, activeTab),
+        color: actionToastColor(input.kind),
+        commit: input.commit,
+        advance: () => {
+          if (actionAdvances(input.kind, activeTab)) {
+            advanceToNext(actedKey);
+          }
+        },
+      });
+    },
+    [actionQueue, activeTab, advanceToNext],
+  );
+
+  const handleSwipe = useCallback(
+    (direction: ConsoleSwipeDirection): void => {
+      if (selectedItemKey === null || direction === null) {
+        return;
+      }
+      const targetKey =
+        direction === 'next'
+          ? nextPendingKeyBrowse(orderedPendingKeys, selectedItemKey)
+          : previousPendingKeyBefore(orderedPendingKeys, selectedItemKey);
+      if (targetKey !== null) {
+        openItem(targetKey);
+      }
+    },
+    [selectedItemKey, orderedPendingKeys, openItem],
+  );
+
+  const detailScreenRef = useConsoleSwipeNavigation(handleSwipe);
+
   return (
     <main className="console-app">
+      {actionQueue.pending !== null && (
+        <ConsoleUndoToast
+          message={actionQueue.pending.message}
+          color={actionQueue.pending.color}
+          remainingSeconds={actionQueue.pending.remainingSeconds}
+          progress={actionQueue.pending.progress}
+          onUndo={actionQueue.undo}
+        />
+      )}
       <ConsoleTabList
         activeTab={activeTab}
         counts={counts}
@@ -120,7 +201,7 @@ export const ConsolePage = () => {
           onSelectItem={(item) => navigation.openItem(item.projectItemId)}
         />
       ) : (
-        <div className="console-detail-screen">
+        <div className="console-detail-screen" ref={detailScreenRef}>
           <ConsoleItemDetailContainer
             tab={activeTab}
             item={selectedItem}
@@ -132,6 +213,7 @@ export const ConsolePage = () => {
             storyName={storyNameForSelected}
             overlayStatus={overlayStatusForSelected}
             now={now}
+            onQueueAction={handleQueueAction}
           />
         </div>
       )}

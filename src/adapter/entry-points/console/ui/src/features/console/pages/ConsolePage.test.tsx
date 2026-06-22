@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import { ConsolePage } from './ConsolePage';
 
 jest.mock('../lib/mermaidLoader', () => ({
@@ -97,27 +97,103 @@ describe('ConsolePage', () => {
     expect(getByText('snapshot: 2026-06-19T00:00:00.000Z')).toBeInTheDocument();
   });
 
-  it('keeps a tab driven to zero at zero and does not revive its badge after switching tabs', async () => {
-    const { getByText, queryByText, findByText } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-    });
-    expect(
-      getByText('Awaiting Quality Check')
-        .closest('a')
-        ?.querySelector('.console-tab-badge')?.textContent,
-    ).toBe('1');
-
-    fireEvent.click(getByText('Add serveConsole subcommand'));
-    expect(await findByText('Approve')).toBeInTheDocument();
-    fireEvent.click(getByText('Approve'));
-
-    await waitFor(() => {
+  it('shows a cancellable toast and only drives the tab to zero after the five second window', async () => {
+    jest.useFakeTimers();
+    try {
+      const { getByText, findByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
       expect(
         getByText('Awaiting Quality Check')
           .closest('a')
           ?.querySelector('.console-tab-badge')?.textContent,
-      ).toBe('0');
+      ).toBe('1');
+
+      fireEvent.click(getByText('Add serveConsole subcommand'));
+      expect(await findByText('Approve')).toBeInTheDocument();
+      fireEvent.click(getByText('Approve'));
+
+      expect(getByText('Approved — PR #851')).toBeInTheDocument();
+      expect(getByText('Undo')).toBeInTheDocument();
+      expect(
+        getByText('Awaiting Quality Check')
+          .closest('a')
+          ?.querySelector('.console-tab-badge')?.textContent,
+      ).toBe('1');
+
+      act(() => {
+        jest.advanceTimersByTime(5100);
+      });
+
+      await waitFor(() => {
+        expect(
+          getByText('Awaiting Quality Check')
+            .closest('a')
+            ?.querySelector('.console-tab-badge')?.textContent,
+        ).toBe('0');
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('cancels the command and keeps the item pending when Undo is clicked', async () => {
+    jest.useFakeTimers();
+    try {
+      const fetchMock = jest.fn(
+        async (_url: string, init?: { method?: string }) => {
+          const listMatch = _url.match(
+            /\/projects\/[^/]+\/([^/]+)\/list\.json/,
+          );
+          if (listMatch !== null) {
+            return {
+              ok: true,
+              status: 200,
+              json: async () => listPayload(listMatch[1]),
+            };
+          }
+          void init;
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ body: '# body' }),
+          };
+        },
+      );
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const { getByText, findByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Add serveConsole subcommand'));
+      expect(await findByText('Approve')).toBeInTheDocument();
+      fireEvent.click(getByText('Approve'));
+
+      fireEvent.click(getByText('Undo'));
+      act(() => {
+        jest.advanceTimersByTime(6000);
+      });
+
+      const postCalls = fetchMock.mock.calls.filter(
+        (call) => call[1]?.method === 'POST',
+      );
+      expect(postCalls.length).toBe(0);
+      expect(
+        getByText('Awaiting Quality Check')
+          .closest('a')
+          ?.querySelector('.console-tab-badge')?.textContent,
+      ).toBe('1');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('does not revive a zeroed tab badge after switching tabs', async () => {
+    const { getByText, queryByText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
     });
 
     fireEvent.click(getByText('Unread'));
@@ -127,7 +203,7 @@ describe('ConsolePage', () => {
       ).toBeInTheDocument();
     });
 
-    expect(queryByText('Awaiting Quality Check')).toBeNull();
+    expect(queryByText('Triage')).toBeNull();
   });
 
   it('hides zero-count tabs but keeps non-zero tabs', async () => {
@@ -149,5 +225,175 @@ describe('ConsolePage', () => {
     });
     expect(queryByText('TDPM Console')).toBeNull();
     expect(queryByText('project: umino')).toBeNull();
+  });
+});
+
+const twoItemPrPayload = () => ({
+  pjcode: 'umino',
+  generatedAt: '2026-06-19T00:00:00.000Z',
+  statusOptions: [{ id: 's1', name: 'Awaiting Workspace', color: 'BLUE' }],
+  storyOptions: [{ id: 'st1', name: 'TDPM Console port', color: 'BLUE' }],
+  storyColors: { 'TDPM Console port': { color: 'BLUE' } },
+  items: [
+    {
+      number: 851,
+      title: 'Add serveConsole subcommand',
+      url: 'https://github.com/o/r/pull/851',
+      repo: 'o/r',
+      nameWithOwner: 'o/r',
+      projectItemId: 'PVTI_1',
+      itemId: 'PVTI_1',
+      isPr: true,
+      story: 'TDPM Console port',
+      labels: [],
+      createdAt: '2026-06-17T00:00:00.000Z',
+    },
+    {
+      number: 852,
+      title: 'Add server-side console API handlers',
+      url: 'https://github.com/o/r/pull/852',
+      repo: 'o/r',
+      nameWithOwner: 'o/r',
+      projectItemId: 'PVTI_2',
+      itemId: 'PVTI_2',
+      isPr: true,
+      story: 'TDPM Console port',
+      labels: [],
+      createdAt: '2026-06-17T01:00:00.000Z',
+    },
+  ],
+});
+
+const touchEvent = (
+  type: string,
+  point: { clientX: number; clientY: number },
+  property: 'touches' | 'changedTouches',
+): TouchEvent => {
+  const event = new Event(type, { bubbles: true }) as TouchEvent;
+  Object.defineProperty(event, property, {
+    value: [point],
+    configurable: true,
+  });
+  return event;
+};
+
+const swipeDetailScreen = (
+  element: HTMLElement,
+  from: { clientX: number; clientY: number },
+  to: { clientX: number; clientY: number },
+): void => {
+  element.dispatchEvent(touchEvent('touchstart', from, 'touches'));
+  element.dispatchEvent(touchEvent('touchmove', to, 'touches'));
+  element.dispatchEvent(touchEvent('touchend', to, 'changedTouches'));
+};
+
+describe('ConsolePage swipe navigation', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/umino/prs?k=token');
+    const fetchMock = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            listMatch[1] === 'prs'
+              ? twoItemPrPayload()
+              : { ...twoItemPrPayload(), items: [] },
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+  });
+
+  it('navigates to the next item on a left swipe of the opened detail screen', async () => {
+    const { container, getByText, findByText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    expect(await findByText('Approve')).toBeInTheDocument();
+    expect(window.location.hash).toBe('#item/PVTI_1');
+
+    const detailScreen = container.querySelector('.console-detail-screen');
+    expect(detailScreen).not.toBeNull();
+    swipeDetailScreen(
+      detailScreen as HTMLElement,
+      { clientX: 240, clientY: 100 },
+      { clientX: 40, clientY: 110 },
+    );
+
+    await waitFor(() => {
+      expect(window.location.hash).toBe('#item/PVTI_2');
+    });
+  });
+
+  it('navigates to the previous item on a right swipe of the opened detail screen', async () => {
+    const { container, getByText, findByText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(
+        getByText('Add server-side console API handlers'),
+      ).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add server-side console API handlers'));
+    expect(await findByText('Approve')).toBeInTheDocument();
+    expect(window.location.hash).toBe('#item/PVTI_2');
+
+    const detailScreen = container.querySelector('.console-detail-screen');
+    expect(detailScreen).not.toBeNull();
+    swipeDetailScreen(
+      detailScreen as HTMLElement,
+      { clientX: 40, clientY: 100 },
+      { clientX: 240, clientY: 110 },
+    );
+
+    await waitFor(() => {
+      expect(window.location.hash).toBe('#item/PVTI_1');
+    });
+  });
+});
+
+describe('ConsolePage auto-advance', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/umino/prs?k=token');
+    const fetchMock = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            listMatch[1] === 'prs'
+              ? twoItemPrPayload()
+              : { ...twoItemPrPayload(), items: [] },
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+  });
+
+  it('advances the detail view to the next pending item after an action', async () => {
+    jest.useFakeTimers();
+    try {
+      const { getByText, findByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Add serveConsole subcommand'));
+      expect(await findByText('Approve')).toBeInTheDocument();
+      expect(window.location.hash).toBe('#item/PVTI_1');
+
+      fireEvent.click(getByText('Approve'));
+
+      await waitFor(() => {
+        expect(window.location.hash).toBe('#item/PVTI_2');
+      });
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

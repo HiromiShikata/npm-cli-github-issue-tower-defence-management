@@ -4,6 +4,7 @@ import { ConsoleOperationMenu } from '../components/operations/ConsoleOperationM
 import type { ConsoleCaches } from '../hooks/useConsoleCaches';
 import { useConsoleItemDetailData } from '../hooks/useConsoleItemDetailData';
 import type { ConsoleOperationsApi } from '../hooks/useConsoleOperations';
+import type { ConsoleActionKind } from '../logic/actionToast';
 import { resolveStoryColorEnum } from '../logic/grouping';
 import type { ConsoleOperationHandlers } from '../logic/operations';
 import type {
@@ -14,6 +15,12 @@ import type {
   ConsoleStoryColorSource,
   ConsoleTabName,
 } from '../logic/types';
+
+export type ConsoleQueueActionInput = {
+  kind: ConsoleActionKind;
+  item: ConsoleListItem;
+  commit: () => void;
+};
 
 export type ConsoleItemDetailContainerProps = {
   tab: ConsoleTabName;
@@ -26,6 +33,7 @@ export type ConsoleItemDetailContainerProps = {
   storyName: string | null;
   overlayStatus: ConsoleOverlayStatus | null;
   now: number;
+  onQueueAction: (input: ConsoleQueueActionInput) => void;
 };
 
 export const ConsoleItemDetailContainer = ({
@@ -39,6 +47,7 @@ export const ConsoleItemDetailContainer = ({
   storyName,
   overlayStatus,
   now,
+  onQueueAction,
 }: ConsoleItemDetailContainerProps) => {
   const detail = useConsoleItemDetailData(caches, item);
   const hasPullRequest = item.isPr || detail.relatedPullRequests.length > 0;
@@ -48,22 +57,58 @@ export const ConsoleItemDetailContainer = ({
       const prUrl = item.isPr
         ? item.url
         : (detail.relatedPullRequests[0]?.pullRequest.url ?? item.url);
-      void operations.reviewPullRequest(item, prUrl, action);
+      onQueueAction({
+        kind: { type: 'review', action },
+        item,
+        commit: () => {
+          void operations.reviewPullRequest(item, prUrl, action);
+        },
+      });
     },
     onSetNextActionDate: (action) => {
-      void operations.setNextActionDate(item, action);
+      onQueueAction({
+        kind: { type: 'next_action_date', action },
+        item,
+        commit: () => {
+          void operations.setNextActionDate(item, action);
+        },
+      });
     },
     onSetStory: (option: ConsoleFieldOption) => {
-      void operations.setStory(item, option);
+      onQueueAction({
+        kind: { type: 'set_story', optionName: option.name },
+        item,
+        commit: () => {
+          void operations.setStory(item, option);
+        },
+      });
     },
     onSetStatus: (option: ConsoleFieldOption) => {
-      void operations.setStatus(item, option);
+      onQueueAction({
+        kind: { type: 'set_status', optionName: option.name },
+        item,
+        commit: () => {
+          void operations.setStatus(item, option);
+        },
+      });
     },
     onSetInTmuxByHuman: (option: ConsoleFieldOption) => {
-      void operations.setInTmuxByHuman(item, option);
+      onQueueAction({
+        kind: { type: 'set_in_tmux_by_human', optionName: option.name },
+        item,
+        commit: () => {
+          void operations.setInTmuxByHuman(item, option);
+        },
+      });
     },
     onClose: (action) => {
-      void operations.closeIssue(item, action);
+      onQueueAction({
+        kind: { type: 'close', action },
+        item,
+        commit: () => {
+          void operations.closeIssue(item, action);
+        },
+      });
     },
   };
 

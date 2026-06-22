@@ -34,9 +34,13 @@ export const ConsolePullRequestDetail = ({
   now,
 }: ConsolePullRequestSectionProps) => {
   const summary = pullRequest.summary;
+  const filesCount =
+    filesAreLoading || filesError !== null ? null : files.length;
+  const commitsCount =
+    commitsAreLoading || commitsError !== null ? null : commits.length;
   return (
-    <section className="console-pr-section">
-      <header className="console-pr-section-header">
+    <>
+      <div className="console-pr-header">
         <a
           href={pullRequest.url}
           className="console-pr-section-title"
@@ -48,34 +52,36 @@ export const ConsolePullRequestDetail = ({
         {pullRequest.isDraft && (
           <span className="console-pr-section-state">draft</span>
         )}
-      </header>
-      <div className="console-pr-statbar">
-        {pullRequest.branchName !== null && (
-          <span className="console-pr-branch">{pullRequest.branchName}</span>
-        )}
-        {summary !== null && (
-          <>
-            <span className="console-pr-add">+{summary.additions}</span>
-            <span className="console-pr-del">-{summary.deletions}</span>
-            <span className="console-pr-files-count">
-              {summary.changedFiles} files
-            </span>
-          </>
-        )}
+        <div className="console-pr-statbar">
+          {pullRequest.branchName !== null && (
+            <span className="console-pr-branch">{pullRequest.branchName}</span>
+          )}
+          {summary !== null && (
+            <>
+              <span className="console-pr-add">+{summary.additions}</span>
+              <span className="console-pr-del">-{summary.deletions}</span>
+              <span className="console-pr-files-count">
+                {summary.changedFiles} files
+              </span>
+            </>
+          )}
+        </div>
       </div>
-      {bodyIsLoading ? (
-        <p className="console-pr-body-loading">Loading description...</p>
-      ) : (
-        <ConsoleMarkdownContent body={summary?.body ?? body} />
-      )}
-      <ConsolePanel title="Changed files">
+      <ConsolePanel title="Description" defaultCollapsed>
+        {bodyIsLoading ? (
+          <p className="console-pr-body-loading">Loading description...</p>
+        ) : (
+          <ConsoleMarkdownContent body={summary?.body ?? body} />
+        )}
+      </ConsolePanel>
+      <ConsolePanel title="Changed files" count={filesCount}>
         <ConsoleChangedFileList
           files={files}
           isLoading={filesAreLoading}
           error={filesError}
         />
       </ConsolePanel>
-      <ConsolePanel title="Commits" defaultCollapsed>
+      <ConsolePanel title="Commits" count={commitsCount} defaultCollapsed>
         <ConsoleCommitList
           commits={commits}
           isLoading={commitsAreLoading}
@@ -83,6 +89,6 @@ export const ConsolePullRequestDetail = ({
           now={now}
         />
       </ConsolePanel>
-    </section>
+    </>
   );
 };

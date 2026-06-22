@@ -55,8 +55,9 @@ const buildOperations = (): ConsoleOperationsApi => ({
 });
 
 describe('ConsoleItemDetailContainer', () => {
-  it('wires the review action to the operations api for a PR item', async () => {
+  it('queues the review action and commits it through the operations api for a PR item', async () => {
     const operations = buildOperations();
+    const onQueueAction = jest.fn();
     const { getByText } = render(
       <ConsoleItemDetailContainer
         tab="prs"
@@ -69,12 +70,19 @@ describe('ConsoleItemDetailContainer', () => {
         storyName="TDPM Console port"
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
       />,
     );
     await waitFor(() => {
       expect(getByText('Approve')).toBeInTheDocument();
     });
     fireEvent.click(getByText('Approve'));
+    expect(onQueueAction).toHaveBeenCalledTimes(1);
+    const input = onQueueAction.mock.calls[0][0];
+    expect(input.kind).toEqual({ type: 'review', action: 'approve' });
+    expect(input.item).toBe(prItem);
+    expect(operations.reviewPullRequest).not.toHaveBeenCalled();
+    input.commit();
     expect(operations.reviewPullRequest).toHaveBeenCalledWith(
       prItem,
       prItem.url,
