@@ -53,7 +53,8 @@ export const ConsolePage = () => {
   const pjcode = useConsolePjcode();
   const { snapshots, isLoading, error } = useConsoleTabData(pjcode);
   const navigation = useConsoleNavigation(pjcode);
-  const { activeTab, selectedItemKey } = navigation;
+  const { activeTab, selectedItemKey, openItem, closeItem, selectTab } =
+    navigation;
 
   const overlayState = useConsoleOverlay(pjcode ?? OVERLAY_NAMESPACE_FALLBACK);
   const caches = useConsoleCaches();
@@ -124,11 +125,11 @@ export const ConsolePage = () => {
     if (previous.count > 0 && activeCount === 0) {
       const nextTab = findNextNonEmptyTabToRight(activeTab, counts);
       if (nextTab !== null) {
-        navigation.selectTab(nextTab);
-        navigation.closeItem();
+        selectTab(nextTab);
+        closeItem();
       }
     }
-  }, [activeTab, activeCount, counts, navigation]);
+  }, [activeTab, activeCount, counts, selectTab, closeItem]);
 
   const overlayStatusForSelected = ((): ConsoleOverlayStatus | null => {
     if (selectedItem === null) {
@@ -142,8 +143,6 @@ export const ConsolePage = () => {
     selectedItem !== null
       ? resolveItemStory(selectedItem, overlayState.overlay)
       : null;
-
-  const { openItem, closeItem } = navigation;
 
   const advanceToNext = useCallback(
     (actedKey: string): void => {

@@ -18,8 +18,8 @@ export default defineConfig({
   use: {
     actionTimeout: 3_000,
     navigationTimeout: 3_000,
-    trace: 'on',
-    screenshot: 'on',
+    trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
   },
   projects: [
     {
