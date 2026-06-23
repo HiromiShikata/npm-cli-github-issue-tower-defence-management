@@ -1,3 +1,10 @@
+## [1.94.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.94.2...v1.94.3) (2026-06-23)
+
+
+### Bug Fixes
+
+* **console:** regenerate served bin/ui-dist to match fixed src bundle ([#881](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/881)) ([357f6bf](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/357f6bf8351c04eae137a3c7540f9f4bcb9e6962)), closes [#880](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/880)
+
 ## [1.94.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.94.1...v1.94.2) (2026-06-23)
 
 
