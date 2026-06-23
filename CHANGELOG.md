@@ -1,3 +1,10 @@
+## [1.94.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.94.3...v1.94.4) (2026-06-23)
+
+
+### Bug Fixes
+
+* **console:** proxy GitHub user-attachment images via token-gated /api/img ([#904](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/904)) ([b823927](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b8239276d3010d6702ccefe788a9783545540ac9)), closes [#903](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/903)
+
 ## [1.94.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.94.2...v1.94.3) (2026-06-23)
 
 
