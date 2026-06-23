@@ -42,6 +42,7 @@ import {
   createConsoleProjectResolver,
 } from '../console/consoleProjectResolver';
 import { OauthTokenSelectHandler } from '../handlers/OauthTokenSelectHandler';
+import { LiveSessionOauthTokenSelectHandler } from '../handlers/LiveSessionOauthTokenSelectHandler';
 
 type StartDaemonOptions = {
   projectUrl?: string;
@@ -85,6 +86,11 @@ const DEFAULT_IN_TMUX_DATA_DIR =
 const DEFAULT_DASHBOARD_DIR = '/home/hiromi/0_workspaces/workspace1/jsonpub';
 
 type SelectOauthTokenOptions = {
+  tokenListJsonPath?: string;
+  cacheDir?: string;
+};
+
+type SelectLiveSessionOauthTokenOptions = {
   tokenListJsonPath?: string;
   cacheDir?: string;
 };
@@ -740,6 +746,38 @@ program
   )
   .action((options: SelectOauthTokenOptions) => {
     const handler = new OauthTokenSelectHandler();
+    const output = handler.handle({
+      tokenListJsonPath: options.tokenListJsonPath ?? null,
+      cacheDirectory: options.cacheDir ?? null,
+      nowEpochSeconds: Date.now() / 1000,
+    });
+
+    for (const line of output.diagnostics) {
+      console.error(line);
+    }
+
+    if (output.selectedToken === null) {
+      process.exit(1);
+    }
+
+    process.stdout.write(`${output.selectedToken}\n`);
+  });
+
+program
+  .command('selectLiveSessionOauthToken')
+  .description(
+    'Print exactly one Claude Code OAuth token chosen for a new live interactive session. Among rate-limit-eligible tokens it prefers the one with the fewest current live sessions (by distinct CLAUDE_CODE_SESSION_ID found in running Claude Code processes), tiebreaking on the soonest 7d reset. The token string is written to stdout (pipeable); the per-candidate decision trace is written to stderr. Exits non-zero when no token passes the filter.',
+  )
+  .option(
+    '--tokenListJsonPath <path>',
+    'Path to the JSON array of { name, token } records. Falls back to the CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH environment variable.',
+  )
+  .option(
+    '--cacheDir <path>',
+    'Directory holding per-token rate-limit cache files. Falls back to the TDPM_RATELIMIT_CACHE_DIR environment variable, then to ${XDG_CACHE_HOME:-~/.cache}/tdpm/ratelimit.',
+  )
+  .action((options: SelectLiveSessionOauthTokenOptions) => {
+    const handler = new LiveSessionOauthTokenSelectHandler();
     const output = handler.handle({
       tokenListJsonPath: options.tokenListJsonPath ?? null,
       cacheDirectory: options.cacheDir ?? null,
