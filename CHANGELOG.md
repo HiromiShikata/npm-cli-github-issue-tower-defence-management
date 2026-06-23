@@ -1,3 +1,10 @@
+# [1.96.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.95.0...v1.96.0) (2026-06-23)
+
+
+### Features
+
+* **cli:** add selectLiveSessionOauthToken that prefers the least-occupied eligible token ([#915](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/915)) ([fe36f36](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/fe36f36a8c6b3c7626c9b9535692a6174ebdc525)), closes [#914](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/914)
+
 # [1.95.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.94.4...v1.95.0) (2026-06-23)
 
 

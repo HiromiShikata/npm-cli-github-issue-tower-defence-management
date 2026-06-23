@@ -63,6 +63,7 @@ const consoleServer_1 = require("../console/consoleServer");
 const consoleReadApi_1 = require("../console/consoleReadApi");
 const consoleProjectResolver_1 = require("../console/consoleProjectResolver");
 const OauthTokenSelectHandler_1 = require("../handlers/OauthTokenSelectHandler");
+const LiveSessionOauthTokenSelectHandler_1 = require("../handlers/LiveSessionOauthTokenSelectHandler");
 const DEFAULT_IN_TMUX_DATA_DIR = '/home/hiromi/0_workspaces/workspace1/jsonpub/in-tmux-by-human';
 const DEFAULT_DASHBOARD_DIR = '/home/hiromi/0_workspaces/workspace1/jsonpub';
 const buildGithubRepositoryParams = (localStorageRepository, token) => [
@@ -433,6 +434,26 @@ exports.program
     .option('--cacheDir <path>', 'Directory holding per-token rate-limit cache files. Falls back to the TDPM_RATELIMIT_CACHE_DIR environment variable, then to ${XDG_CACHE_HOME:-~/.cache}/tdpm/ratelimit.')
     .action((options) => {
     const handler = new OauthTokenSelectHandler_1.OauthTokenSelectHandler();
+    const output = handler.handle({
+        tokenListJsonPath: options.tokenListJsonPath ?? null,
+        cacheDirectory: options.cacheDir ?? null,
+        nowEpochSeconds: Date.now() / 1000,
+    });
+    for (const line of output.diagnostics) {
+        console.error(line);
+    }
+    if (output.selectedToken === null) {
+        process.exit(1);
+    }
+    process.stdout.write(`${output.selectedToken}\n`);
+});
+exports.program
+    .command('selectLiveSessionOauthToken')
+    .description('Print exactly one Claude Code OAuth token chosen for a new live interactive session. Among rate-limit-eligible tokens it prefers the one with the fewest current live sessions (by distinct CLAUDE_CODE_SESSION_ID found in running Claude Code processes), tiebreaking on the soonest 7d reset. The token string is written to stdout (pipeable); the per-candidate decision trace is written to stderr. Exits non-zero when no token passes the filter.')
+    .option('--tokenListJsonPath <path>', 'Path to the JSON array of { name, token } records. Falls back to the CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH environment variable.')
+    .option('--cacheDir <path>', 'Directory holding per-token rate-limit cache files. Falls back to the TDPM_RATELIMIT_CACHE_DIR environment variable, then to ${XDG_CACHE_HOME:-~/.cache}/tdpm/ratelimit.')
+    .action((options) => {
+    const handler = new LiveSessionOauthTokenSelectHandler_1.LiveSessionOauthTokenSelectHandler();
     const output = handler.handle({
         tokenListJsonPath: options.tokenListJsonPath ?? null,
         cacheDirectory: options.cacheDir ?? null,
