@@ -1,3 +1,10 @@
+# [1.97.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.96.0...v1.97.0) (2026-06-23)
+
+
+### Features
+
+* **intmux:** restart missing In Tmux by human sessions each schedule cycle ([#917](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/917)) ([0afe2b1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0afe2b1bc3a4c2ec76d51c0cd9337ed10bf871ec)), closes [#916](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/916)
+
 # [1.96.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.95.0...v1.96.0) (2026-06-23)
 
 
