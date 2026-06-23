@@ -34,11 +34,28 @@ jobs:
       - name: Type check (console UI)
         run: npx tsc --noEmit -p src/adapter/entry-points/console/ui/tsconfig.json
 
+      - name: Type check (console UI E2E)
+        run: npm run console-ui:e2e:typecheck
+
       - name: Build console UI (Vite)
         run: npm run build:console-ui
 
       - name: Verify served console UI bundle matches source
         run: node scripts/verifyConsoleUiDist.mjs
+
+      - name: Install Playwright browsers (console UI E2E)
+        run: npx playwright install --with-deps chromium
+
+      - name: Run console UI browser E2E (Playwright)
+        run: npx playwright test --config src/adapter/entry-points/console/ui/e2e/playwright.config.ts
+
+      - name: Upload console UI E2E report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: console-ui-e2e-report
+          path: src/adapter/entry-points/console/ui/e2e/report
+          if-no-files-found: ignore
 
       - name: Build Storybook (console UI)
         run: npm run console-ui:build-storybook

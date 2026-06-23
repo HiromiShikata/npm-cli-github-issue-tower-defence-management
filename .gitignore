@@ -180,3 +180,7 @@ reports
 *.diff
 tmp
 src/adapter/entry-points/console/ui/storybook-static
+test-results
+src/adapter/entry-points/console/ui/e2e/report
+src/adapter/entry-points/console/ui/e2e/test-results
+playwright/.cache

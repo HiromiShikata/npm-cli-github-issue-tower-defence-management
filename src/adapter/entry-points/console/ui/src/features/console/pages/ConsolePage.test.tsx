@@ -100,7 +100,7 @@ describe('ConsolePage', () => {
   it('shows a cancellable toast and only drives the tab to zero after the five second window', async () => {
     jest.useFakeTimers();
     try {
-      const { getByText, findByText } = render(<ConsolePage />);
+      const { getByText, findByText, queryByText } = render(<ConsolePage />);
       await waitFor(() => {
         expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
       });
@@ -127,9 +127,7 @@ describe('ConsolePage', () => {
       });
 
       await waitFor(() => {
-        expect(
-          getByText('Unread').closest('a')?.getAttribute('aria-current'),
-        ).toBe('page');
+        expect(queryByText('Awaiting Quality Check')).toBeNull();
       });
     } finally {
       jest.useRealTimers();

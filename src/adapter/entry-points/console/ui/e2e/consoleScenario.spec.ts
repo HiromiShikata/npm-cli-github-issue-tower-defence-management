@@ -1,0 +1,93 @@
+import { expect, type Page, test } from '@playwright/test';
+import {
+  type ConsoleE2eHarness,
+  startConsoleE2eHarness,
+} from './consoleTestHarness';
+
+let harness: ConsoleE2eHarness;
+
+test.beforeAll(async () => {
+  harness = await startConsoleE2eHarness();
+});
+
+test.afterAll(async () => {
+  if (harness !== undefined) {
+    await harness.stop();
+  }
+});
+
+const activeTabLabel = (page: Page) =>
+  page.locator('.console-tab[data-active="true"] .console-tab-label');
+
+const tabByLabel = (page: Page, label: string) =>
+  page.locator('.console-tab', { hasText: label });
+
+const tabBadge = (page: Page, label: string) =>
+  tabByLabel(page, label).locator('.console-tab-badge');
+
+const itemRowByText = (page: Page, text: string) =>
+  page.locator('.console-item-row', { hasText: text });
+
+const processSelectedItemViaStatus = async (page: Page): Promise<void> => {
+  const statusButton = page
+    .locator('.console-op-button', { hasText: 'Awaiting Workspace' })
+    .first();
+  await expect(statusButton).toBeVisible();
+  await statusButton.click();
+};
+
+test('processing tabs drives auto-advance and keeps emptied badges at zero', async ({
+  page,
+}) => {
+  await page.goto(harness.appUrl);
+
+  await expect(activeTabLabel(page)).toHaveText('Awaiting Quality Check');
+  await expect(tabBadge(page, 'Awaiting Quality Check')).toHaveText('1');
+  await expect(tabBadge(page, 'Unread')).toHaveText('2');
+  await expect(tabBadge(page, 'Triage')).toHaveText('2');
+  await expect(tabBadge(page, 'Todo by human')).toHaveText('1');
+
+  await itemRowByText(
+    page,
+    'Serve the committed console UI bundle from serveConsole',
+  ).click();
+  const approveButton = page
+    .locator('.console-op-button', { hasText: 'Approve' })
+    .first();
+  await expect(approveButton).toBeVisible();
+  await approveButton.click();
+
+  await expect(activeTabLabel(page)).toHaveText('Triage', { timeout: 8000 });
+  await expect(tabByLabel(page, 'Awaiting Quality Check')).toHaveCount(0, {
+    timeout: 8000,
+  });
+
+  await itemRowByText(
+    page,
+    'Add Sonnet to Opus weekly-limit fallback routing per token',
+  ).click();
+  await processSelectedItemViaStatus(page);
+  await expect(tabBadge(page, 'Triage')).toHaveText('1', { timeout: 8000 });
+  await page.locator('.console-back-button').click();
+
+  await itemRowByText(
+    page,
+    'Publish the generated documentation site to GitHub Pages',
+  ).click();
+  await processSelectedItemViaStatus(page);
+
+  await expect(activeTabLabel(page)).toHaveText('Unread', { timeout: 8000 });
+  await expect(tabByLabel(page, 'Triage')).toHaveCount(0, {
+    timeout: 8000,
+  });
+
+  await tabByLabel(page, 'Todo by human').click();
+  await expect(activeTabLabel(page)).toHaveText('Todo by human');
+  await expect(tabByLabel(page, 'Triage')).toHaveCount(0);
+  await expect(tabBadge(page, 'Todo by human')).toHaveText('1');
+
+  await tabByLabel(page, 'Unread').click();
+  await expect(activeTabLabel(page)).toHaveText('Unread');
+  await expect(tabByLabel(page, 'Triage')).toHaveCount(0);
+  await expect(tabBadge(page, 'Unread')).toHaveText('2');
+});
