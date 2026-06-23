@@ -11,16 +11,16 @@ export const ConsoleCloseActions = ({
     <button
       type="button"
       className="console-op-button"
-      onClick={() => onClose('close')}
+      onClick={() => onClose('close_not_planned')}
     >
-      Close
+      Close as not planned
     </button>
     <button
       type="button"
       className="console-op-button"
-      onClick={() => onClose('close_not_planned')}
+      onClick={() => onClose('close')}
     >
-      Close as not planned
+      Close
     </button>
   </div>
 );
