@@ -39,12 +39,15 @@ body {
 
 .console-tabbar {
   display: flex;
+  flex-wrap: nowrap;
   align-items: stretch;
   gap: 0;
   padding: 0 8px;
   min-height: 42px;
   background: #161b22;
   border-bottom: 2px solid #30363d;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .console-tab {
