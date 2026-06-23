@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
 import { ConsoleItemList } from '../components/list/ConsoleItemList';
 import { ConsoleUndoToast } from '../components/operations/ConsoleUndoToast';
@@ -27,6 +27,7 @@ import {
   overlayKeyForItem,
 } from '../logic/overlay';
 import type { ConsoleSwipeDirection } from '../logic/swipe';
+import { findNextNonEmptyTabToRight } from '../logic/tabAdvance';
 import type {
   ConsoleListItem,
   ConsoleOverlayStatus,
@@ -108,6 +109,26 @@ export const ConsolePage = () => {
       ) ?? null
     );
   }, [selectedItemKey, activeSnapshot]);
+
+  const activeCount = counts[activeTab];
+  const previousActiveTabCountRef = useRef<{
+    tab: ConsoleTabName;
+    count: number;
+  }>({ tab: activeTab, count: activeCount });
+  useEffect(() => {
+    const previous = previousActiveTabCountRef.current;
+    previousActiveTabCountRef.current = { tab: activeTab, count: activeCount };
+    if (previous.tab !== activeTab) {
+      return;
+    }
+    if (previous.count > 0 && activeCount === 0) {
+      const nextTab = findNextNonEmptyTabToRight(activeTab, counts);
+      if (nextTab !== null) {
+        navigation.selectTab(nextTab);
+        navigation.closeItem();
+      }
+    }
+  }, [activeTab, activeCount, counts, navigation]);
 
   const overlayStatusForSelected = ((): ConsoleOverlayStatus | null => {
     if (selectedItem === null) {
@@ -202,6 +223,13 @@ export const ConsolePage = () => {
         />
       ) : (
         <div className="console-detail-screen" ref={detailScreenRef}>
+          <button
+            type="button"
+            className="console-back-button"
+            onClick={closeItem}
+          >
+            ← Back to list
+          </button>
           <ConsoleItemDetailContainer
             tab={activeTab}
             item={selectedItem}
