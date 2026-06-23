@@ -1,3 +1,10 @@
+## [1.97.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.97.3...v1.97.4) (2026-06-23)
+
+
+### Bug Fixes
+
+* **console:** place Close button on the right of the close button group ([#926](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/926)) ([4a0e1e5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4a0e1e56fa91b4be6148d633af966d879511379c))
+
 ## [1.97.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.97.2...v1.97.3) (2026-06-23)
 
 
