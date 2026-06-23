@@ -58,7 +58,9 @@ test('processing tabs drives auto-advance and keeps emptied badges at zero', asy
   await approveButton.click();
 
   await expect(activeTabLabel(page)).toHaveText('Triage', { timeout: 8000 });
-  await expect(tabByLabel(page, 'Awaiting Quality Check')).toHaveCount(0, { timeout: 8000 });
+  await expect(tabByLabel(page, 'Awaiting Quality Check')).toHaveCount(0, {
+    timeout: 8000,
+  });
 
   await itemRowByText(
     page,
@@ -75,7 +77,9 @@ test('processing tabs drives auto-advance and keeps emptied badges at zero', asy
   await processSelectedItemViaStatus(page);
 
   await expect(activeTabLabel(page)).toHaveText('Unread', { timeout: 8000 });
-  await expect(tabByLabel(page, 'Triage')).toHaveCount(0, { timeout: 8000 });
+  await expect(tabByLabel(page, 'Triage')).toHaveCount(0, {
+    timeout: 8000,
+  });
 
   await tabByLabel(page, 'Todo by human').click();
   await expect(activeTabLabel(page)).toHaveText('Todo by human');

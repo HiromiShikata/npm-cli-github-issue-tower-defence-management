@@ -1,7 +1,7 @@
-import * as fs from 'fs';
-import type * as http from 'http';
-import * as os from 'os';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import type * as http from 'node:http';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import type { Issue } from '../../../../../domain/entities/Issue';
 import type { Project } from '../../../../../domain/entities/Project';
 import type {

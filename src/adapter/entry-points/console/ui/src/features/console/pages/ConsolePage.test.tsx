@@ -100,7 +100,7 @@ describe('ConsolePage', () => {
   it('shows a cancellable toast and only drives the tab to zero after the five second window', async () => {
     jest.useFakeTimers();
     try {
-      const { getByText, findByText } = render(<ConsolePage />);
+      const { getByText, findByText, queryByText } = render(<ConsolePage />);
       await waitFor(() => {
         expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
       });
@@ -127,9 +127,7 @@ describe('ConsolePage', () => {
       });
 
       await waitFor(() => {
-        expect(
-          getByText('Unread').closest('a')?.getAttribute('aria-current'),
-        ).toBe('page');
+        expect(queryByText('Awaiting Quality Check')).toBeNull();
       });
     } finally {
       jest.useRealTimers();
@@ -390,44 +388,6 @@ describe('ConsolePage auto-advance', () => {
       await waitFor(() => {
         expect(window.location.hash).toBe('#item/PVTI_2');
       });
-    } finally {
-      jest.useRealTimers();
-    }
-  });
-
-});
-
-describe('ConsolePage auto-advance tab', () => {
-  beforeEach(() => {
-    localStorage.clear();
-    window.history.replaceState({}, '', '/projects/umino/prs?k=token');
-    installFetch();
-  });
-
-  it('auto-advances to the next non-empty tab on the right after the active tab is driven to zero', async () => {
-    jest.useFakeTimers();
-    try {
-      const { getByText, findByText } = render(<ConsolePage />);
-      await waitFor(() => {
-        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-      });
-
-      fireEvent.click(getByText('Add serveConsole subcommand'));
-      expect(await findByText('← Back to list')).toBeInTheDocument();
-      fireEvent.click(getByText('Approve'));
-
-      act(() => {
-        jest.advanceTimersByTime(5100);
-      });
-
-      await waitFor(() => {
-        expect(
-          getByText('Notify finished issue preparation'),
-        ).toBeInTheDocument();
-      });
-      expect(
-        getByText('Unread').closest('a')?.getAttribute('aria-current'),
-      ).toBe('page');
     } finally {
       jest.useRealTimers();
     }
