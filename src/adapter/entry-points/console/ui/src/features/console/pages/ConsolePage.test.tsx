@@ -395,24 +395,42 @@ describe('ConsolePage auto-advance', () => {
     }
   });
 
+});
+
+describe('ConsolePage auto-advance tab', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/umino/prs?k=token');
+    installFetch();
+  });
+
   it('auto-advances to the next non-empty tab on the right after the active tab is driven to zero', async () => {
-    const { getByText, findByText } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-    });
+    jest.useFakeTimers();
+    try {
+      const { getByText, findByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
 
-    fireEvent.click(getByText('Add serveConsole subcommand'));
-    expect(await findByText('← Back to list')).toBeInTheDocument();
-    fireEvent.click(getByText('Approve'));
+      fireEvent.click(getByText('Add serveConsole subcommand'));
+      expect(await findByText('← Back to list')).toBeInTheDocument();
+      fireEvent.click(getByText('Approve'));
 
-    await waitFor(() => {
+      act(() => {
+        jest.advanceTimersByTime(5100);
+      });
+
+      await waitFor(() => {
+        expect(
+          getByText('Notify finished issue preparation'),
+        ).toBeInTheDocument();
+      });
       expect(
-        getByText('Notify finished issue preparation'),
-      ).toBeInTheDocument();
-    });
-    expect(
-      getByText('Unread').closest('button')?.getAttribute('aria-current'),
-    ).toBe('page');
+        getByText('Unread').closest('a')?.getAttribute('aria-current'),
+      ).toBe('page');
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });
 
