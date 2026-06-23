@@ -6,6 +6,24 @@ import { normalizeFieldName } from './utils';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
+export const convertToFieldOptionColor = (
+  color: string,
+): FieldOption['color'] => {
+  switch (color) {
+    case 'RED':
+    case 'YELLOW':
+    case 'GREEN':
+    case 'BLUE':
+    case 'PURPLE':
+    case 'ORANGE':
+    case 'PINK':
+    case 'GRAY':
+      return color;
+    default:
+      return 'GRAY';
+  }
+};
+
 export class GraphqlProjectRepository
   extends BaseGitHubRepository
   implements
@@ -274,19 +292,6 @@ export class GraphqlProjectRepository
     const completionDate50PercentConfidence = project.fields.nodes.find(
       (field) => normalizeFieldName(field.name).startsWith('completiondate'),
     );
-    const convertToFieldOptionColor = (color: string): FieldOption['color'] => {
-      switch (color) {
-        case 'RED':
-        case 'YELLOW':
-        case 'GREEN':
-        case 'BLUE':
-        case 'PURPLE':
-        case 'GRAY':
-          return color;
-        default:
-          return 'GRAY';
-      }
-    };
     return {
       id: project.id,
       url: project.url,

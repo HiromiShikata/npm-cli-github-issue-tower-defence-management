@@ -1,6 +1,32 @@
-import { GraphqlProjectRepository } from './GraphqlProjectRepository';
+import {
+  GraphqlProjectRepository,
+  convertToFieldOptionColor,
+} from './GraphqlProjectRepository';
 import { LocalStorageRepository } from './LocalStorageRepository';
 import { FieldOption, Project } from '../../domain/entities/Project';
+
+describe('convertToFieldOptionColor', () => {
+  it('should preserve PINK so the Todo by human status button renders pink', () => {
+    expect(convertToFieldOptionColor('PINK')).toEqual('PINK');
+  });
+
+  it('should preserve ORANGE so the Unread status button renders orange', () => {
+    expect(convertToFieldOptionColor('ORANGE')).toEqual('ORANGE');
+  });
+
+  it('should preserve the remaining GitHub project option colors', () => {
+    expect(convertToFieldOptionColor('RED')).toEqual('RED');
+    expect(convertToFieldOptionColor('YELLOW')).toEqual('YELLOW');
+    expect(convertToFieldOptionColor('GREEN')).toEqual('GREEN');
+    expect(convertToFieldOptionColor('BLUE')).toEqual('BLUE');
+    expect(convertToFieldOptionColor('PURPLE')).toEqual('PURPLE');
+    expect(convertToFieldOptionColor('GRAY')).toEqual('GRAY');
+  });
+
+  it('should fall back to GRAY for an unknown color value', () => {
+    expect(convertToFieldOptionColor('UNKNOWN')).toEqual('GRAY');
+  });
+});
 
 describe('GraphqlProjectRepository', () => {
   const localStorageRepository = new LocalStorageRepository();
