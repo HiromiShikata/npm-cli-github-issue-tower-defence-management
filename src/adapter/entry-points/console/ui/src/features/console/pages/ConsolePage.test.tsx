@@ -128,10 +128,8 @@ describe('ConsolePage', () => {
 
       await waitFor(() => {
         expect(
-          getByText('Awaiting Quality Check')
-            .closest('a')
-            ?.querySelector('.console-tab-badge')?.textContent,
-        ).toBe('0');
+          getByText('Unread').closest('a')?.getAttribute('aria-current'),
+        ).toBe('page');
       });
     } finally {
       jest.useRealTimers();
@@ -396,7 +394,6 @@ describe('ConsolePage auto-advance', () => {
       jest.useRealTimers();
     }
   });
-
 });
 
 describe('ConsolePage auto-advance tab', () => {
