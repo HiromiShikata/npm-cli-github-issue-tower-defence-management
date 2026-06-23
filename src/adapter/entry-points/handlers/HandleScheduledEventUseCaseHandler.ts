@@ -4,6 +4,7 @@ import fs from 'fs';
 import { writeSituationFile } from './situationFileWriter';
 import { writeConsoleLists } from './consoleListsWriter';
 import { writeInTmuxByHumanData } from './inTmuxByHumanDataWriter';
+import { reconcileInTmuxByHumanSessions } from './inTmuxByHumanSessionReconciler';
 import { writeRotationOrderFile } from './rotationOrderFileWriter';
 import {
   fetchProjectReadme,
@@ -73,6 +74,7 @@ export class HandleScheduledEventUseCaseHandler {
       inTmuxConsoleBaseUrl?: string;
       inTmuxConsoleToken?: string;
       inTmuxProjectOrder?: string[];
+      inTmuxLauncherCommand?: string;
       credentials: {
         manager: {
           github: {
@@ -405,6 +407,21 @@ export class HandleScheduledEventUseCaseHandler {
       } catch (error) {
         console.error(
           `Failed to write in-tmux-by-human data: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+
+      try {
+        await reconcileInTmuxByHumanSessions({
+          inTmuxLauncherCommand: mergedInput.inTmuxLauncherCommand ?? null,
+          assigneeLogin: input.manager,
+          issues: result.issues,
+          localCommandRunner: nodeLocalCommandRunner,
+        });
+      } catch (error) {
+        console.error(
+          `Failed to reconcile in-tmux-by-human sessions: ${
             error instanceof Error ? error.message : String(error)
           }`,
         );
