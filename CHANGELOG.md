@@ -1,3 +1,10 @@
+## [1.97.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.97.0...v1.97.1) (2026-06-23)
+
+
+### Bug Fixes
+
+* **console:** cap triage story-selection button area at 50vh with scroll ([#922](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/922)) ([7c746c4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7c746c4df5476cb934f62dc6b72938eb309f5104))
+
 # [1.97.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.96.0...v1.97.0) (2026-06-23)
 
 
