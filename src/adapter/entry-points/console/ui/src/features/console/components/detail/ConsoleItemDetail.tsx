@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { ImageProxyUrlBuilder } from '../../lib/imageProxy';
 import { colorFromEnum } from '../../logic/colors';
 import {
   formatFullTimestamp,
@@ -54,6 +55,7 @@ export type ConsoleItemDetailProps = {
   now: number;
   commentComposer: ReactNode;
   operationBar: ReactNode;
+  buildImageProxyUrl?: ImageProxyUrlBuilder;
 };
 
 export const ConsoleItemDetail = ({
@@ -78,6 +80,7 @@ export const ConsoleItemDetail = ({
   now,
   commentComposer,
   operationBar,
+  buildImageProxyUrl,
 }: ConsoleItemDetailProps) => {
   const resolvedState = state?.state ?? 'open';
   const merged = state?.merged ?? false;
@@ -192,7 +195,10 @@ export const ConsoleItemDetail = ({
         ) : bodyIsLoading ? (
           <p className="console-detail-body-loading">Loading description...</p>
         ) : (
-          <ConsoleMarkdownContent body={body} />
+          <ConsoleMarkdownContent
+            body={body}
+            buildImageProxyUrl={buildImageProxyUrl}
+          />
         )}
       </ConsolePanel>
 
@@ -216,6 +222,7 @@ export const ConsoleItemDetail = ({
           isLoading={commentsAreLoading}
           error={commentsError}
           now={now}
+          buildImageProxyUrl={buildImageProxyUrl}
         />
       </ConsolePanel>
 
@@ -244,6 +251,7 @@ export const ConsoleItemDetail = ({
             commitsAreLoading={related.commitsAreLoading}
             commitsError={related.commitsError}
             now={now}
+            buildImageProxyUrl={buildImageProxyUrl}
           />
         ))}
 

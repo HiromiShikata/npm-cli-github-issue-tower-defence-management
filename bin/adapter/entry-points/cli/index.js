@@ -418,6 +418,7 @@ exports.program
         consoleDataOutputDir,
         inTmuxDataDir,
         dashboardDir,
+        githubToken: token,
         issueRepository,
         resolveProject,
         issueTitleStateCache: new consoleReadApi_1.IssueTitleStateCache(),

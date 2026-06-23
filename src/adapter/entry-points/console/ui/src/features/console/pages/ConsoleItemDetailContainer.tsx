@@ -1,9 +1,12 @@
+import { useCallback } from 'react';
 import { ConsoleCommentComposer } from '../components/detail/ConsoleCommentComposer';
 import { ConsoleItemDetail } from '../components/detail/ConsoleItemDetail';
 import { ConsoleOperationMenu } from '../components/operations/ConsoleOperationMenu';
 import type { ConsoleCaches } from '../hooks/useConsoleCaches';
 import { useConsoleItemDetailData } from '../hooks/useConsoleItemDetailData';
 import type { ConsoleOperationsApi } from '../hooks/useConsoleOperations';
+import { useConsoleToken } from '../hooks/useConsoleToken';
+import { buildImageProxyUrl } from '../lib/imageProxy';
 import type { ConsoleActionKind } from '../logic/actionToast';
 import { resolveStoryColorEnum } from '../logic/grouping';
 import type { ConsoleOperationHandlers } from '../logic/operations';
@@ -50,6 +53,11 @@ export const ConsoleItemDetailContainer = ({
   onQueueAction,
 }: ConsoleItemDetailContainerProps) => {
   const detail = useConsoleItemDetailData(caches, item);
+  const { token } = useConsoleToken();
+  const resolveImageProxyUrl = useCallback(
+    (src: string): string => buildImageProxyUrl(src, token),
+    [token],
+  );
   const hasPullRequest = item.isPr || detail.relatedPullRequests.length > 0;
 
   const handlers: ConsoleOperationHandlers = {
@@ -140,6 +148,7 @@ export const ConsoleItemDetailContainer = ({
       commitsError={detail.commitsError}
       relatedPullRequests={detail.relatedPullRequests}
       now={now}
+      buildImageProxyUrl={resolveImageProxyUrl}
       commentComposer={
         <ConsoleCommentComposer
           isPr={item.isPr}

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { ImageProxyUrlBuilder } from '../../lib/imageProxy';
 import { formatRelativeTime } from '../../logic/relativeTime';
 import type { ConsoleComment } from '../../logic/types';
 import { ConsoleMarkdownContent } from '../content/ConsoleMarkdownContent';
@@ -8,6 +9,7 @@ export type ConsoleCommentListProps = {
   isLoading: boolean;
   error: string | null;
   now: number;
+  buildImageProxyUrl?: ImageProxyUrlBuilder;
 };
 
 export const ConsoleCommentList = ({
@@ -15,6 +17,7 @@ export const ConsoleCommentList = ({
   isLoading,
   error,
   now,
+  buildImageProxyUrl,
 }: ConsoleCommentListProps) => {
   const [showAll, setShowAll] = useState<boolean>(false);
 
@@ -58,7 +61,10 @@ export const ConsoleCommentList = ({
               {formatRelativeTime(comment.createdAt, now)}
             </span>
           </header>
-          <ConsoleMarkdownContent body={comment.body} />
+          <ConsoleMarkdownContent
+            body={comment.body}
+            buildImageProxyUrl={buildImageProxyUrl}
+          />
         </article>
       ))}
     </div>

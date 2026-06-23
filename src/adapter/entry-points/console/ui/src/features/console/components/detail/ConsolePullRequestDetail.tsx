@@ -1,3 +1,4 @@
+import type { ImageProxyUrlBuilder } from '../../lib/imageProxy';
 import type {
   ConsoleChangedFile,
   ConsoleCommit,
@@ -19,6 +20,7 @@ export type ConsolePullRequestSectionProps = {
   commitsAreLoading: boolean;
   commitsError: string | null;
   now: number;
+  buildImageProxyUrl?: ImageProxyUrlBuilder;
 };
 
 export const ConsolePullRequestDetail = ({
@@ -32,6 +34,7 @@ export const ConsolePullRequestDetail = ({
   commitsAreLoading,
   commitsError,
   now,
+  buildImageProxyUrl,
 }: ConsolePullRequestSectionProps) => {
   const summary = pullRequest.summary;
   const filesCount =
@@ -71,7 +74,10 @@ export const ConsolePullRequestDetail = ({
         {bodyIsLoading ? (
           <p className="console-pr-body-loading">Loading description...</p>
         ) : (
-          <ConsoleMarkdownContent body={summary?.body ?? body} />
+          <ConsoleMarkdownContent
+            body={summary?.body ?? body}
+            buildImageProxyUrl={buildImageProxyUrl}
+          />
         )}
       </ConsolePanel>
       <ConsolePanel title="Changed files" count={filesCount}>
