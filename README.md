@@ -145,6 +145,8 @@ The `config.yaml` for the `schedule` command must match the input type of `Handl
 
 Workflow status names (`Unread`, `Awaiting Workspace`, `Preparation`, `Failed Preparation`, `Awaiting Quality Check`, `Todo by human`, `In Tmux by human`, `In Tmux by agent`, `Done`, `Icebox`) are fixed code constants and cannot be overridden from CLI options, config files, or project README. The `schedule` command automatically creates any missing required statuses on the target project on each run via `SetupTowerDefenceProjectUseCase`. Projects with the legacy `Todo` and `In Tmux` status names are automatically migrated to `Todo by human` and `In Tmux by human` respectively by reusing the existing option IDs so that task associations are preserved. The legacy `PC Todo` status is removed from the required list and excluded from the project status list on the next setup run. The legacy `Awaiting Task Breakdown` status is removed from the required list; any project items in that status are automatically moved to `Todo by human` and the status option is removed on the next setup run.
 
+The two tmux-related statuses have distinct meanings. `In Tmux by human` means a task being handled in a live tmux session together with the human owner, who attends the session and converses with it; the owner does look at these tasks. `In Tmux by agent` means a task managed by an agent in tmux that the human owner does not look at. A task launched into a live, owner-attended session therefore belongs to `In Tmux by human`, and setting such a task to `In Tmux by agent` would remove it from the owner's view.
+
 ```yaml
 disabled: boolean # When true, skip all processing and return null
 org: string # Organization name
