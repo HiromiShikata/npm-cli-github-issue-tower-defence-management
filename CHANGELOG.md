@@ -1,3 +1,10 @@
+## [1.94.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.94.1...v1.94.2) (2026-06-23)
+
+
+### Bug Fixes
+
+* **console:** make tab bar scroll horizontally to stop page overflow on narrow viewports ([#909](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/909)) ([b145320](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b14532008aaf406abdc8638fd74280315906e12a))
+
 ## [1.94.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.94.0...v1.94.1) (2026-06-22)
 
 
