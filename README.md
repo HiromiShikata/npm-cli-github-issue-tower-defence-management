@@ -261,6 +261,7 @@ inTmuxDataOutputDir?: string # Optional: Base output directory for the in-tmux-b
 inTmuxConsoleBaseUrl?: string # Optional: Console base URL used to build the tdpmConsoleUrl in the v3/v4 in-tmux-by-human files (for example https://console.example.com). When unset, the v3 and v4 files are skipped
 inTmuxConsoleToken?: string # Optional: Token embedded in the ?k= query string of the v4 in-tmux-by-human files. When unset, the v4 per-project file and index.v4.json are skipped
 inTmuxProjectOrder?: string[] # Optional: Ordered list of project codes used to build the in-tmux-by-human index files. When unset or empty, the index files are skipped
+inTmuxLauncherCommand?: string # Optional: Launcher command that starts an interactive session for an `In Tmux by human` issue. Each schedule cycle, any open assigned `In Tmux by human` issue without a live session is restarted by running this command with the issue URL as its argument inside a new detached tmux session named after the issue URL. When unset, session restarting is skipped
 changeTargetPathAliases?: # Optional: Map of short alias keys to full repository-root-relative directory paths. Allows `change-target:<alias>` labels to reference deeply nested paths that exceed GitHub's 50-character label limit. When a `change-target:` label's value matches a key in this map, it is expanded to the corresponding full path before confinement checking. Values with leading or trailing slashes are normalized automatically. Example below
   adapter-interfaces: src/domain/usecases/adapter-interfaces
 ```
@@ -493,6 +494,14 @@ The index files list every project in `inTmuxProjectOrder` whose `{name}.json` a
 - `newIssueUrl` (v4 only): `https://github.com/{org}/{workingReport.repo}/issues/new?assignees={manager}`, derived from existing config values.
 - `groups`: Story groups. The v3 `groups` carry a `urls` array using the v2 `{ url, title }` entry shape. The v4 `groups` use tmux terminology: each group carries a `sessions` array and each session is `{ name, description }` where `name` is the GitHub issue URL and `description` is the issue title.
 - Token handling: The v4 per-project file and `index.v4.json` are skipped when `inTmuxConsoleToken` is unset. The token value is never written to source code, tests, or documentation; it is supplied through configuration only.
+
+### Session Restart Reconciler
+
+When `inTmuxLauncherCommand` is configured, each schedule cycle also reconciles the interactive sessions for `In Tmux by human` issues so that those sessions keep running. The same issues selected for the data files above (status `In Tmux by human`, open, assigned to the project manager) are checked for liveness, and any whose session is missing is restarted.
+
+A session is considered live for an issue only when both of the following hold: a tmux session named after the issue URL exists, and a running process advertises the issue URL on its command line. The tmux session name is the issue URL with every non-alphanumeric character replaced by an underscore.
+
+For each `In Tmux by human` issue with no live session, the reconciler launches a new detached tmux session named after the issue URL that runs `{inTmuxLauncherCommand} {issueUrl}`. Process and tmux inspection and session launching are performed through injectable ports, so the reconciliation logic is unit-testable without touching the host. When `inTmuxLauncherCommand` is unset the reconciler is skipped, and any error during reconciliation is logged and swallowed so the schedule cycle is never affected.
 
 ## Token Rotation Order File
 
