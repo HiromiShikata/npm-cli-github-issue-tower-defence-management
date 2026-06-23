@@ -445,6 +445,11 @@ body {
   gap: 10px;
 }
 
+.console-op-group-stories {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
 .console-op-button {
   padding: 7px 16px;
   border: 1px solid #30363d;
