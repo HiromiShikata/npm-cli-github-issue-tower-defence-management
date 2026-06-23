@@ -3,11 +3,15 @@ import { LocalStorageRepository } from '../LocalStorageRepository';
 import dotenv from 'dotenv';
 
 dotenv.config();
-describe('ApiV3IssueRepository', () => {
+
+const githubToken = process.env.GH_TOKEN;
+const describeWhenCredentials = githubToken ? describe : describe.skip;
+
+describeWhenCredentials('ApiV3IssueRepository', () => {
   const localStorageRepository = new LocalStorageRepository();
   const repository = new ApiV3IssueRepository(
     localStorageRepository,
-    process.env.GH_TOKEN || 'dummy',
+    githubToken,
   );
   test('searchIssue', async () => {
     const result = await repository.searchIssue({
