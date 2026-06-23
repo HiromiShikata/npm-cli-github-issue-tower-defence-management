@@ -19,6 +19,15 @@ describe('renderMarkdownToSafeHtml', () => {
     expect(html).toContain('<li>one</li>');
   });
 
+  it('renders GitHub-flavored markdown tables', () => {
+    const html = renderMarkdownToSafeHtml(
+      '| Name | Value |\n| --- | --- |\n| one | 1 |',
+    );
+    expect(html).toContain('<table>');
+    expect(html).toContain('<th>Name</th>');
+    expect(html).toContain('<td>one</td>');
+  });
+
   it('strips script tags via DOMPurify', () => {
     const html = renderMarkdownToSafeHtml(
       'before <script>alert(1)</script> after',
