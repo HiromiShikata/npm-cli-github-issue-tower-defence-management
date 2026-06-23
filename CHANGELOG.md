@@ -1,3 +1,10 @@
+## [1.97.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.97.2...v1.97.3) (2026-06-23)
+
+
+### Bug Fixes
+
+* **console:** render markdown tables and lists in console markdown content ([#925](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/925)) ([76410ce](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/76410ce2207bf13e17d2225ea4f00a2408de5ab5)), closes [#912](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/912)
+
 ## [1.97.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.97.1...v1.97.2) (2026-06-23)
 
 
