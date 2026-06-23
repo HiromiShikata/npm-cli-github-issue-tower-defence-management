@@ -343,6 +343,8 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
     issueRepository: createStubIssueRepository(),
     resolveProject,
     issueTitleStateCache: new IssueTitleStateCache(),
+    inTmuxDataDir: null,
+    dashboardDir: null,
     port: 0,
   });
 
