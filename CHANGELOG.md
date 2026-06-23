@@ -1,3 +1,10 @@
+# [1.95.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.94.4...v1.95.0) (2026-06-23)
+
+
+### Features
+
+* **console:** auto-advance to next non-empty tab when active tab becomes empty ([#872](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/872)) ([414deff](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/414defffeb3893f0a263fae050bcc6a9dccce240))
+
 ## [1.94.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.94.3...v1.94.4) (2026-06-23)
 
 
