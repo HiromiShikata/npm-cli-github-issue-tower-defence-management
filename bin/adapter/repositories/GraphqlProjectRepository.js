@@ -3,11 +3,27 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.GraphqlProjectRepository = void 0;
+exports.GraphqlProjectRepository = exports.convertToFieldOptionColor = void 0;
 const ky_1 = __importDefault(require("ky"));
 const BaseGitHubRepository_1 = require("./BaseGitHubRepository");
 const utils_1 = require("./utils");
 const ONE_HOUR_MS = 60 * 60 * 1000;
+const convertToFieldOptionColor = (color) => {
+    switch (color) {
+        case 'RED':
+        case 'YELLOW':
+        case 'GREEN':
+        case 'BLUE':
+        case 'PURPLE':
+        case 'ORANGE':
+        case 'PINK':
+        case 'GRAY':
+            return color;
+        default:
+            return 'GRAY';
+    }
+};
+exports.convertToFieldOptionColor = convertToFieldOptionColor;
 class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
     constructor() {
         super(...arguments);
@@ -171,19 +187,6 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             const remainignEstimationMinutes = project.fields.nodes.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'remainingestimationminutes');
             const dependedIssueUrlSeparatedByComma = project.fields.nodes.find((field) => (0, utils_1.normalizeFieldName)(field.name).startsWith('dependedissueurlseparatedbycomma'));
             const completionDate50PercentConfidence = project.fields.nodes.find((field) => (0, utils_1.normalizeFieldName)(field.name).startsWith('completiondate'));
-            const convertToFieldOptionColor = (color) => {
-                switch (color) {
-                    case 'RED':
-                    case 'YELLOW':
-                    case 'GREEN':
-                    case 'BLUE':
-                    case 'PURPLE':
-                    case 'GRAY':
-                        return color;
-                    default:
-                        return 'GRAY';
-                }
-            };
             return {
                 id: project.id,
                 url: project.url,
@@ -195,7 +198,7 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
                     statuses: status.options.map((option) => ({
                         id: option.id,
                         name: option.name,
-                        color: convertToFieldOptionColor(option.color),
+                        color: (0, exports.convertToFieldOptionColor)(option.color),
                         description: option.description,
                     })),
                 },
@@ -219,7 +222,7 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
                         stories: story.options.map((option) => ({
                             id: option.id,
                             name: option.name,
-                            color: convertToFieldOptionColor(option.color),
+                            color: (0, exports.convertToFieldOptionColor)(option.color),
                             description: option.description,
                         })),
                         workflowManagementStory,

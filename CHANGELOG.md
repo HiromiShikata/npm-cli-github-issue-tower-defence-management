@@ -1,3 +1,10 @@
+## [1.97.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.97.1...v1.97.2) (2026-06-23)
+
+
+### Bug Fixes
+
+* convert PINK and ORANGE GitHub project colors instead of defaulting to gray ([#927](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/927)) ([b0fcc19](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b0fcc199cb1e55ee610cb6b217c3f908d9168346))
+
 ## [1.97.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.97.0...v1.97.1) (2026-06-23)
 
 
