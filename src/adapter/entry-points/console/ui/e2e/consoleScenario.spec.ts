@@ -68,7 +68,7 @@ test('processing tabs drives auto-advance and keeps emptied badges at zero', asy
   ).click();
   await processSelectedItemViaStatus(page);
   await expect(tabBadge(page, 'Triage')).toHaveText('1', { timeout: 8000 });
-  await page.locator('.console-back-button').click();
+  await tabByLabel(page, 'Triage').click();
 
   await itemRowByText(
     page,

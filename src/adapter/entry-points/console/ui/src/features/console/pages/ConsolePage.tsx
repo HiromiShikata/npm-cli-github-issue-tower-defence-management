@@ -222,13 +222,6 @@ export const ConsolePage = () => {
         />
       ) : (
         <div className="console-detail-screen" ref={detailScreenRef}>
-          <button
-            type="button"
-            className="console-back-button"
-            onClick={closeItem}
-          >
-            ← Back to list
-          </button>
           <ConsoleItemDetailContainer
             tab={activeTab}
             item={selectedItem}
