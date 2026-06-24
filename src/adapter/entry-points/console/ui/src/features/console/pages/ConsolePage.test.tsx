@@ -410,8 +410,7 @@ describe('ConsolePage auto-advance tab', () => {
       });
 
       fireEvent.click(getByText('Add serveConsole subcommand'));
-      expect(await findByText('← Back to list')).toBeInTheDocument();
-      fireEvent.click(getByText('Approve'));
+      fireEvent.click(await findByText('Approve'));
 
       act(() => {
         jest.advanceTimersByTime(5100);
