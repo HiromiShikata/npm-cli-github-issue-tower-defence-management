@@ -32,6 +32,7 @@ import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueComm
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import * as path from 'path';
+import { ensureWebConsoleRunning } from './ensureWebConsoleRunning';
 import {
   DEFAULT_CONSOLE_PORT,
   startConsoleServer,
@@ -343,6 +344,17 @@ program
       config.codexHomeCandidates && config.codexHomeCandidates.length > 0
         ? config.codexHomeCandidates
         : null;
+
+    if (config.consoleAccessToken) {
+      const consoleProcess = await ensureWebConsoleRunning(
+        options.configFilePath,
+        DEFAULT_CONSOLE_PORT,
+      );
+      if (consoleProcess !== null) {
+        process.once('SIGTERM', () => consoleProcess.kill());
+        process.once('SIGINT', () => consoleProcess.kill());
+      }
+    }
 
     const preparationResult = await useCase.run({
       projectUrl,
