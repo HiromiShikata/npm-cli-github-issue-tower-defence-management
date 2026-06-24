@@ -1,3 +1,10 @@
+## [1.98.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.98.1...v1.98.2) (2026-06-24)
+
+
+### Bug Fixes
+
+* **console:** remove the Back to list button from the console detail view ([#936](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/936)) ([d21726c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d21726c1c2ae6ee09bdefec370fa9ba7ad9d6a02))
+
 ## [1.98.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.98.0...v1.98.1) (2026-06-24)
 
 
