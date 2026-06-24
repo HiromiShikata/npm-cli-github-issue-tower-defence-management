@@ -31,7 +31,9 @@ describe('ConsoleStatusActions', () => {
     fireEvent.click(getByText('In Tmux live session'));
     fireEvent.click(getByText('In Tmux by agent'));
     expect(onSetInTmuxByHuman).toHaveBeenCalledTimes(1);
-    expect(onSetInTmuxByHuman.mock.calls[0][0].name).toBe('In Tmux live session');
+    expect(onSetInTmuxByHuman.mock.calls[0][0].name).toBe(
+      'In Tmux live session',
+    );
     expect(onSetStatus).toHaveBeenCalledTimes(1);
     expect(onSetStatus.mock.calls[0][0].name).toBe('In Tmux by agent');
   });
