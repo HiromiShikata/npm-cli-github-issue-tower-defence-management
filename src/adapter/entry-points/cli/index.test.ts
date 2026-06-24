@@ -1321,13 +1321,17 @@ mysteryKey: 'value'
 
       processOnceSpy.mockRestore();
 
-      const sigtermHandler = sigtermCall?.[1] as (() => void) | undefined;
-      const sigintHandler = sigintCall?.[1] as (() => void) | undefined;
-      expect(typeof sigtermHandler).toBe('function');
-      expect(typeof sigintHandler).toBe('function');
-      sigtermHandler?.();
+      const rawSigtermHandler = sigtermCall?.[1];
+      const rawSigintHandler = sigintCall?.[1];
+      if (typeof rawSigtermHandler !== 'function') {
+        throw new Error('Expected SIGTERM handler to be a function');
+      }
+      if (typeof rawSigintHandler !== 'function') {
+        throw new Error('Expected SIGINT handler to be a function');
+      }
+      rawSigtermHandler();
       expect(mockKill).toHaveBeenCalledTimes(1);
-      sigintHandler?.();
+      rawSigintHandler();
       expect(mockKill).toHaveBeenCalledTimes(2);
     });
   });
