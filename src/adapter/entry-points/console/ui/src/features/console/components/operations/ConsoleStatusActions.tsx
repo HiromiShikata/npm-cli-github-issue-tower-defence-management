@@ -1,6 +1,6 @@
 import { colorFromEnum } from '../../logic/colors';
 import {
-  IN_TMUX_BY_HUMAN_NAME,
+  IN_TMUX_LIVE_SESSION_NAME,
   STATUS_BUTTON_NAMES,
 } from '../../logic/operations';
 import type { ConsoleFieldOption } from '../../logic/types';
@@ -42,7 +42,7 @@ export const ConsoleStatusActions = ({
     <div className="console-op-group">
       {buttons.map(({ name, option }) => {
         const palette = colorFromEnum(option.color);
-        const isInTmuxByHuman = name === IN_TMUX_BY_HUMAN_NAME;
+        const isInTmuxLiveSession = name === IN_TMUX_LIVE_SESSION_NAME;
         return (
           <button
             key={option.id}
@@ -54,7 +54,9 @@ export const ConsoleStatusActions = ({
               backgroundColor: palette.bg,
             }}
             onClick={() =>
-              isInTmuxByHuman ? onSetInTmuxByHuman(option) : onSetStatus(option)
+              isInTmuxLiveSession
+                ? onSetInTmuxByHuman(option)
+                : onSetStatus(option)
             }
           >
             {option.name}

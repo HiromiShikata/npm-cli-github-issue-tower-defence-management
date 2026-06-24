@@ -1,5 +1,5 @@
 import {
-  IN_TMUX_BY_HUMAN_NAME,
+  IN_TMUX_LIVE_SESSION_NAME,
   isTodoByHumanTab,
   STATUS_BUTTON_NAMES,
   TOTALLY_WRONG_COMMENT_BODY,
@@ -24,8 +24,8 @@ describe('operation constants', () => {
     ]);
   });
 
-  it('names the in-tmux-by-human status', () => {
-    expect(IN_TMUX_BY_HUMAN_NAME).toBe('In Tmux live session');
+  it('names the in-tmux-live-session status', () => {
+    expect(IN_TMUX_LIVE_SESSION_NAME).toBe('In Tmux live session');
   });
 });
 

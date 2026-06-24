@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GenerateInTmuxByHumanDataUseCase = void 0;
-const IN_TMUX_BY_HUMAN_STATUS_NAME = 'In Tmux live session';
+const IN_TMUX_LIVE_SESSION_STATUS_NAME = 'In Tmux live session';
 const UNKNOWN_STORY_SORT_INDEX = 999999;
 class GenerateInTmuxByHumanDataUseCase {
     constructor() {
@@ -53,7 +53,7 @@ class GenerateInTmuxByHumanDataUseCase {
                 : null;
             return { v1, v2, v3, v4 };
         };
-        this.isInTmuxByHuman = (issue, assigneeLogin) => issue.status === IN_TMUX_BY_HUMAN_STATUS_NAME &&
+        this.isInTmuxByHuman = (issue, assigneeLogin) => issue.status === IN_TMUX_LIVE_SESSION_STATUS_NAME &&
             issue.isClosed === false &&
             issue.assignees.includes(assigneeLogin);
         this.groupByStoryOrder = (issues, storyOrder) => {

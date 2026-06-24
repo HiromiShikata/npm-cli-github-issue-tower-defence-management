@@ -29,7 +29,7 @@ export const STATUS_BUTTON_NAMES: string[] = [
   'Awaiting Workspace',
 ];
 
-export const IN_TMUX_BY_HUMAN_NAME = 'In Tmux live session';
+export const IN_TMUX_LIVE_SESSION_NAME = 'In Tmux live session';
 
 export const isTodoByHumanTab = (tab: ConsoleTabName): boolean =>
   tab === 'todo-by-human';
