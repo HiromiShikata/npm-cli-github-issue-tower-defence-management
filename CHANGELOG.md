@@ -1,3 +1,10 @@
+# [1.98.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.97.4...v1.98.0) (2026-06-24)
+
+
+### Features
+
+* **cli:** add countInTmuxByHumanSessionsPerToken command ([#931](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/931)) ([01ba558](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/01ba55898365ea1058dab85387b984a6b7f3fbce)), closes [#930](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/930)
+
 ## [1.97.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.97.3...v1.97.4) (2026-06-23)
 
 

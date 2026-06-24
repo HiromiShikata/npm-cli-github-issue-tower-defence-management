@@ -64,6 +64,7 @@ const consoleReadApi_1 = require("../console/consoleReadApi");
 const consoleProjectResolver_1 = require("../console/consoleProjectResolver");
 const OauthTokenSelectHandler_1 = require("../handlers/OauthTokenSelectHandler");
 const LiveSessionOauthTokenSelectHandler_1 = require("../handlers/LiveSessionOauthTokenSelectHandler");
+const InTmuxByHumanSessionTokenCountHandler_1 = require("../handlers/InTmuxByHumanSessionTokenCountHandler");
 const DEFAULT_IN_TMUX_DATA_DIR = '/home/hiromi/0_workspaces/workspace1/jsonpub/in-tmux-by-human';
 const DEFAULT_DASHBOARD_DIR = '/home/hiromi/0_workspaces/workspace1/jsonpub';
 const buildGithubRepositoryParams = (localStorageRepository, token) => [
@@ -466,6 +467,67 @@ exports.program
         process.exit(1);
     }
     process.stdout.write(`${output.selectedToken}\n`);
+});
+exports.program
+    .command('countInTmuxByHumanSessionsPerToken')
+    .description('Print, per Claude Code OAuth token, the count of live interactive sessions (cl-launched Claude processes carrying CLAUDE_CODE_OAUTH_TOKEN and CLAUDE_CODE_SESSION_ID with a --name <issue-url> argument, excluding Take ownership spawns) whose issue is currently in GitHub Project Status "In Tmux by human". One tab-separated line per token (<tokenName>\\t<count>) is written to stdout; the decision trace is written to stderr. Token values are never printed.')
+    .requiredOption('--configFilePath <path>', 'Path to config file for tower defence management')
+    .option('--projectUrl <url>', 'GitHub project URL (optional)')
+    .option('--tokenListJsonPath <path>', 'Path to the JSON array of { name, token } records. Falls back to the claudeCodeOauthTokenListJsonPath config value, then to the CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH environment variable.')
+    .action(async (options) => {
+    const token = process.env.GH_TOKEN;
+    if (!token) {
+        console.error('GH_TOKEN environment variable is required');
+        process.exit(1);
+    }
+    const configFileValues = (0, projectConfig_2.loadConfigFile)(options.configFilePath);
+    const cliOverrides = {
+        projectUrl: options.projectUrl,
+    };
+    const tempProjectUrl = cliOverrides.projectUrl ?? configFileValues.projectUrl;
+    let readmeOverrides = {};
+    if (tempProjectUrl) {
+        const readme = await (0, projectConfig_2.fetchProjectReadme)(tempProjectUrl, token);
+        if (readme) {
+            readmeOverrides = (0, projectConfig_2.parseProjectReadmeConfig)(readme, tempProjectUrl);
+        }
+    }
+    const config = (0, projectConfig_2.mergeConfigs)(configFileValues, cliOverrides, readmeOverrides);
+    const projectUrl = config.projectUrl;
+    if (!projectUrl) {
+        console.error('projectUrl is required. Provide via --projectUrl, config file, or project README.');
+        process.exit(1);
+    }
+    const projectName = config.projectName ?? 'default';
+    const localStorageRepository = new LocalStorageRepository_1.LocalStorageRepository();
+    const cachePath = `./tmp/cache/${projectName}`;
+    const localStorageCacheRepository = new LocalStorageCacheRepository_1.LocalStorageCacheRepository(localStorageRepository, cachePath);
+    const githubRepositoryParams = buildGithubRepositoryParams(localStorageRepository, token);
+    const projectRepository = new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams);
+    const apiV3IssueRepository = new ApiV3IssueRepository_1.ApiV3IssueRepository(...githubRepositoryParams);
+    const restIssueRepository = new RestIssueRepository_1.RestIssueRepository(...githubRepositoryParams);
+    const graphqlProjectItemRepository = new GraphqlProjectItemRepository_1.GraphqlProjectItemRepository(...githubRepositoryParams);
+    const issueRepository = new ApiV3CheerioRestIssueRepository_1.ApiV3CheerioRestIssueRepository(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, ...githubRepositoryParams);
+    const projectId = await projectRepository.findProjectIdByUrl(projectUrl);
+    if (!projectId) {
+        console.error(`No project found for projectUrl ${projectUrl}`);
+        process.exit(1);
+    }
+    const allowIssueCacheMinutes = config.allowIssueCacheMinutes ?? 10;
+    const { issues } = await issueRepository.getAllIssues(projectId, allowIssueCacheMinutes);
+    const handler = new InTmuxByHumanSessionTokenCountHandler_1.InTmuxByHumanSessionTokenCountHandler();
+    const output = handler.handle({
+        tokenListJsonPath: options.tokenListJsonPath ??
+            config.claudeCodeOauthTokenListJsonPath ??
+            null,
+        issues,
+    });
+    for (const line of output.diagnostics) {
+        console.error(line);
+    }
+    for (const line of output.lines) {
+        process.stdout.write(`${line}\n`);
+    }
 });
 /* istanbul ignore next */
 if (process.argv && require.main === module) {
