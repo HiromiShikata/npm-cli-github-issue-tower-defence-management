@@ -4,7 +4,7 @@ import { Issue } from '../../../domain/entities/Issue';
 import { recordDoneProjectItemIdAcrossTabs } from './consoleDoneStore';
 
 export const AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
-export const IN_TMUX_BY_HUMAN_STATUS_NAME = 'in tmux by human';
+export const IN_TMUX_BY_HUMAN_STATUS_NAME = 'in tmux live session';
 
 export type ConsoleProjectBinding = {
   pjcode: string;

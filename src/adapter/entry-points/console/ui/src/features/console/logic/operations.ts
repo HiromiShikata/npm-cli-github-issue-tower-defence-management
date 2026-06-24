@@ -24,12 +24,12 @@ export type ConsoleOperationHandlers = {
 
 export const STATUS_BUTTON_NAMES: string[] = [
   'In Tmux by agent',
-  'In Tmux by human',
+  'In Tmux live session',
   'Todo by human',
   'Awaiting Workspace',
 ];
 
-export const IN_TMUX_BY_HUMAN_NAME = 'In Tmux by human';
+export const IN_TMUX_BY_HUMAN_NAME = 'In Tmux live session';
 
 export const isTodoByHumanTab = (tab: ConsoleTabName): boolean =>
   tab === 'todo-by-human';

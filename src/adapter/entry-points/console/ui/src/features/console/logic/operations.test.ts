@@ -18,14 +18,14 @@ describe('operation constants', () => {
   it('lists the status buttons left to right', () => {
     expect(STATUS_BUTTON_NAMES).toEqual([
       'In Tmux by agent',
-      'In Tmux by human',
+      'In Tmux live session',
       'Todo by human',
       'Awaiting Workspace',
     ]);
   });
 
   it('names the in-tmux-by-human status', () => {
-    expect(IN_TMUX_BY_HUMAN_NAME).toBe('In Tmux by human');
+    expect(IN_TMUX_BY_HUMAN_NAME).toBe('In Tmux live session');
   });
 });
 

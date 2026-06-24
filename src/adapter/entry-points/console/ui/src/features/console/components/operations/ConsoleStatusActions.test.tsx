@@ -12,13 +12,13 @@ describe('ConsoleStatusActions', () => {
       />,
     );
     expect(getByText('In Tmux by agent')).toBeInTheDocument();
-    expect(getByText('In Tmux by human')).toBeInTheDocument();
+    expect(getByText('In Tmux live session')).toBeInTheDocument();
     expect(getByText('Todo by human')).toBeInTheDocument();
     expect(getByText('Awaiting Workspace')).toBeInTheDocument();
     expect(queryByText('Preparation')).toBeNull();
   });
 
-  it('routes In Tmux by human to the intmux handler and others to the status handler', () => {
+  it('routes In Tmux live session to the intmux handler and others to the status handler', () => {
     const onSetStatus = jest.fn();
     const onSetInTmuxByHuman = jest.fn();
     const { getByText } = render(
@@ -28,10 +28,10 @@ describe('ConsoleStatusActions', () => {
         onSetInTmuxByHuman={onSetInTmuxByHuman}
       />,
     );
-    fireEvent.click(getByText('In Tmux by human'));
+    fireEvent.click(getByText('In Tmux live session'));
     fireEvent.click(getByText('In Tmux by agent'));
     expect(onSetInTmuxByHuman).toHaveBeenCalledTimes(1);
-    expect(onSetInTmuxByHuman.mock.calls[0][0].name).toBe('In Tmux by human');
+    expect(onSetInTmuxByHuman.mock.calls[0][0].name).toBe('In Tmux live session');
     expect(onSetStatus).toHaveBeenCalledTimes(1);
     expect(onSetStatus.mock.calls[0][0].name).toBe('In Tmux by agent');
   });

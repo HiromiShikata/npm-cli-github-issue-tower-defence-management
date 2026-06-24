@@ -78,10 +78,10 @@ describe('actionToastMessage', () => {
   it('labels the in-tmux-by-human action', () => {
     expect(
       actionToastMessage(
-        { type: 'set_in_tmux_by_human', optionName: 'In Tmux by human' },
+        { type: 'set_in_tmux_by_human', optionName: 'In Tmux live session' },
         'prs',
       ),
-    ).toBe('Added to In Tmux by human');
+    ).toBe('Added to In Tmux live session');
   });
 
   it('labels field updates with the chosen option name', () => {

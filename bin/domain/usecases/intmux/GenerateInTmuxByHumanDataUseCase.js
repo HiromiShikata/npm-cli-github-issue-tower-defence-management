@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GenerateInTmuxByHumanDataUseCase = void 0;
-const IN_TMUX_BY_HUMAN_STATUS_NAME = 'In Tmux by human';
+const IN_TMUX_BY_HUMAN_STATUS_NAME = 'In Tmux live session';
 const UNKNOWN_STORY_SORT_INDEX = 999999;
 class GenerateInTmuxByHumanDataUseCase {
     constructor() {

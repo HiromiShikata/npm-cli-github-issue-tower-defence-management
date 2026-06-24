@@ -64,7 +64,7 @@ type InTmuxByHumanStoryGroup = {
   issues: Issue[];
 };
 
-const IN_TMUX_BY_HUMAN_STATUS_NAME = 'In Tmux by human';
+const IN_TMUX_BY_HUMAN_STATUS_NAME = 'In Tmux live session';
 const UNKNOWN_STORY_SORT_INDEX = 999999;
 
 export class GenerateInTmuxByHumanDataUseCase {

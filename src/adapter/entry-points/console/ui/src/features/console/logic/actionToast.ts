@@ -54,7 +54,7 @@ export const actionToastMessage = (
     case 'set_status':
       return `Status → ${kind.optionName}`;
     case 'set_in_tmux_by_human':
-      return 'Added to In Tmux by human';
+      return 'Added to In Tmux live session';
     case 'close':
       return kind.action === 'close' ? 'Closed' : 'Closed as not planned';
   }

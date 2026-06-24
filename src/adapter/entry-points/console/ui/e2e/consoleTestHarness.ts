@@ -62,7 +62,7 @@ const STATUS_OPTIONS: ConsoleFixtureFieldOption[] = [
   { id: 'f57f1ce9', name: 'Preparation', color: 'YELLOW' },
   { id: 'fd313492', name: 'Failed Preparation', color: 'RED' },
   { id: 'e9931e57', name: 'Todo by human', color: 'PINK' },
-  { id: 'c2d278b2', name: 'In Tmux by human', color: 'RED' },
+  { id: 'c2d278b2', name: 'In Tmux live session', color: 'RED' },
   { id: 'e9f6a726', name: 'In Tmux by agent', color: 'YELLOW' },
 ];
 
