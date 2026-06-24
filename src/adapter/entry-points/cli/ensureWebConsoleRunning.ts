@@ -34,7 +34,7 @@ export const ensureWebConsoleRunning = async (
   port: number,
 ): Promise<WebConsoleProcess | null> => {
   if (await isPortResponding(port)) return null;
-  const cliEntry = path.resolve(__dirname, '..', '..', '..', '..', 'index.js');
+  const cliEntry = path.resolve(__dirname, 'index.js');
   const child = spawn(
     process.execPath,
     [
