@@ -1213,7 +1213,9 @@ mysteryKey: 'value'
 
     it('should start web console before preparation cycle when consoleAccessToken is provided', async () => {
       const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
-      const MockedStartPreparationUseCase = jest.mocked(StartPreparationUseCase);
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
       MockedStartPreparationUseCase.mockImplementation(function (
         this: StartPreparationUseCase,
       ) {
@@ -1252,7 +1254,9 @@ mysteryKey: 'value'
 
     it('should not start web console when consoleAccessToken is not provided', async () => {
       const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
-      const MockedStartPreparationUseCase = jest.mocked(StartPreparationUseCase);
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
       MockedStartPreparationUseCase.mockImplementation(function (
         this: StartPreparationUseCase,
       ) {
@@ -1279,7 +1283,9 @@ mysteryKey: 'value'
 
     it('should register SIGTERM and SIGINT handlers when a new web console process is started', async () => {
       const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
-      const MockedStartPreparationUseCase = jest.mocked(StartPreparationUseCase);
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
       MockedStartPreparationUseCase.mockImplementation(function (
         this: StartPreparationUseCase,
       ) {
