@@ -1320,6 +1320,15 @@ mysteryKey: 'value'
       expect(sigintCall).toBeDefined();
 
       processOnceSpy.mockRestore();
+
+      const sigtermHandler = sigtermCall?.[1] as (() => void) | undefined;
+      const sigintHandler = sigintCall?.[1] as (() => void) | undefined;
+      expect(typeof sigtermHandler).toBe('function');
+      expect(typeof sigintHandler).toBe('function');
+      sigtermHandler?.();
+      expect(mockKill).toHaveBeenCalledTimes(1);
+      sigintHandler?.();
+      expect(mockKill).toHaveBeenCalledTimes(2);
     });
   });
 
