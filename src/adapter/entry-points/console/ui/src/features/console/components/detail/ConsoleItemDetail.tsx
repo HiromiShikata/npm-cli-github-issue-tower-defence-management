@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 import type { ImageProxyUrlBuilder } from '../../lib/imageProxy';
 import { colorFromEnum } from '../../logic/colors';
 import {
@@ -55,6 +55,7 @@ export type ConsoleItemDetailProps = {
   now: number;
   commentComposer: ReactNode;
   operationBar: ReactNode;
+  scrollRef?: Ref<HTMLElement>;
   buildImageProxyUrl?: ImageProxyUrlBuilder;
 };
 
@@ -80,6 +81,7 @@ export const ConsoleItemDetail = ({
   now,
   commentComposer,
   operationBar,
+  scrollRef,
   buildImageProxyUrl,
 }: ConsoleItemDetailProps) => {
   const resolvedState = state?.state ?? 'open';
@@ -98,166 +100,170 @@ export const ConsoleItemDetail = ({
     commitsAreLoading || commitsError !== null ? null : commits.length;
 
   return (
-    <article className="console-detail">
-      {storyName !== null && (
-        <div className="console-detail-story">
-          <span className="console-storytag">
-            <span
-              className="console-story-dot"
-              style={{ backgroundColor: storyPalette.dot }}
-            />
-            {storyName}
-          </span>
-        </div>
-      )}
+    <>
+      <article className="console-detail" ref={scrollRef}>
+        {storyName !== null && (
+          <div className="console-detail-story">
+            <span className="console-storytag">
+              <span
+                className="console-story-dot"
+                style={{ backgroundColor: storyPalette.dot }}
+              />
+              {storyName}
+            </span>
+          </div>
+        )}
 
-      {overlayStatus !== null && statusPalette !== null && (
-        <span
-          className="console-detail-status-chip"
-          style={{
-            color: statusPalette.fg,
-            borderColor: statusPalette.border,
-            backgroundColor: statusPalette.bg,
-          }}
-        >
-          {overlayStatus.name}
-        </span>
-      )}
-
-      <h2 className="console-detail-title">
-        <ConsoleItemIcon
-          isPr={item.isPr}
-          state={resolvedState}
-          merged={merged}
-          isDraft={false}
-          stateReason=""
-        />
-        <span className="console-detail-title-text">{item.title}</span>
-        <span className="console-detail-number">
-          {item.isPr ? `PR #${item.number}` : `#${item.number}`}
-        </span>
-        {closedStateLabel !== null && (
-          <span className="console-detail-closed-label">
-            {closedStateLabel}
+        {overlayStatus !== null && statusPalette !== null && (
+          <span
+            className="console-detail-status-chip"
+            style={{
+              color: statusPalette.fg,
+              borderColor: statusPalette.border,
+              backgroundColor: statusPalette.bg,
+            }}
+          >
+            {overlayStatus.name}
           </span>
         )}
-      </h2>
 
-      <div className="console-detail-subbar">
-        <a
-          href={item.url}
-          className="console-detail-link"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {item.isPr ? `PR #${item.number}` : `Issue #${item.number}`}
-        </a>
-        <span className="console-detail-repo">{item.repo}</span>
-        <span className="console-detail-pill">
-          {item.isPr ? 'PR' : 'Issue'}
-        </span>
-      </div>
-
-      {item.labels.length > 0 && (
-        <div className="console-detail-labels">
-          {item.labels.map((label) => (
-            <span key={label} className="console-label-chip">
-              {label}
+        <h2 className="console-detail-title">
+          <ConsoleItemIcon
+            isPr={item.isPr}
+            state={resolvedState}
+            merged={merged}
+            isDraft={false}
+            stateReason=""
+          />
+          <span className="console-detail-title-text">{item.title}</span>
+          <span className="console-detail-number">
+            {item.isPr ? `PR #${item.number}` : `#${item.number}`}
+          </span>
+          {closedStateLabel !== null && (
+            <span className="console-detail-closed-label">
+              {closedStateLabel}
             </span>
-          ))}
-        </div>
-      )}
+          )}
+        </h2>
 
-      <div
-        className="console-detail-createdat"
-        title={formatFullTimestamp(item.createdAt)}
-      >
-        opened {formatRelativeTime(item.createdAt, now)}
-      </div>
-
-      <ConsolePanel
-        title="Description"
-        headerAction={
+        <div className="console-detail-subbar">
           <a
             href={item.url}
-            className="console-panel-open-link"
+            className="console-detail-link"
             target="_blank"
             rel="noopener noreferrer"
           >
-            open
+            {item.isPr ? `PR #${item.number}` : `Issue #${item.number}`}
           </a>
-        }
-      >
-        {bodyError !== null ? (
-          <p role="alert" className="console-detail-body-error">
-            Failed to load description: {bodyError}
-          </p>
-        ) : bodyIsLoading ? (
-          <p className="console-detail-body-loading">Loading description...</p>
-        ) : (
-          <ConsoleMarkdownContent
-            body={body}
-            buildImageProxyUrl={buildImageProxyUrl}
-          />
+          <span className="console-detail-repo">{item.repo}</span>
+          <span className="console-detail-pill">
+            {item.isPr ? 'PR' : 'Issue'}
+          </span>
+        </div>
+
+        {item.labels.length > 0 && (
+          <div className="console-detail-labels">
+            {item.labels.map((label) => (
+              <span key={label} className="console-label-chip">
+                {label}
+              </span>
+            ))}
+          </div>
         )}
-      </ConsolePanel>
 
-      {item.isPr && (
-        <ConsolePanel title="Changed files" count={filesCount}>
-          <ConsoleChangedFileList
-            files={files}
-            isLoading={filesAreLoading}
-            error={filesError}
-          />
+        <div
+          className="console-detail-createdat"
+          title={formatFullTimestamp(item.createdAt)}
+        >
+          opened {formatRelativeTime(item.createdAt, now)}
+        </div>
+
+        <ConsolePanel
+          title="Description"
+          headerAction={
+            <a
+              href={item.url}
+              className="console-panel-open-link"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              open
+            </a>
+          }
+        >
+          {bodyError !== null ? (
+            <p role="alert" className="console-detail-body-error">
+              Failed to load description: {bodyError}
+            </p>
+          ) : bodyIsLoading ? (
+            <p className="console-detail-body-loading">
+              Loading description...
+            </p>
+          ) : (
+            <ConsoleMarkdownContent
+              body={body}
+              buildImageProxyUrl={buildImageProxyUrl}
+            />
+          )}
         </ConsolePanel>
-      )}
 
-      <ConsolePanel
-        title="Comments"
-        count={commentsCount}
-        defaultCollapsed={item.isPr}
-      >
-        <ConsoleCommentList
-          comments={comments}
-          isLoading={commentsAreLoading}
-          error={commentsError}
-          now={now}
-          buildImageProxyUrl={buildImageProxyUrl}
-        />
-      </ConsolePanel>
+        {item.isPr && (
+          <ConsolePanel title="Changed files" count={filesCount}>
+            <ConsoleChangedFileList
+              files={files}
+              isLoading={filesAreLoading}
+              error={filesError}
+            />
+          </ConsolePanel>
+        )}
 
-      {item.isPr && (
-        <ConsolePanel title="Commits" count={commitsCount} defaultCollapsed>
-          <ConsoleCommitList
-            commits={commits}
-            isLoading={commitsAreLoading}
-            error={commitsError}
-            now={now}
-          />
-        </ConsolePanel>
-      )}
-
-      {!item.isPr &&
-        relatedPullRequests.map((related) => (
-          <ConsolePullRequestDetail
-            key={related.pullRequest.url}
-            pullRequest={related.pullRequest}
-            body={related.pullRequest.summary?.body ?? ''}
-            bodyIsLoading={false}
-            files={related.files}
-            filesAreLoading={related.filesAreLoading}
-            filesError={related.filesError}
-            commits={related.commits}
-            commitsAreLoading={related.commitsAreLoading}
-            commitsError={related.commitsError}
+        <ConsolePanel
+          title="Comments"
+          count={commentsCount}
+          defaultCollapsed={item.isPr}
+        >
+          <ConsoleCommentList
+            comments={comments}
+            isLoading={commentsAreLoading}
+            error={commentsError}
             now={now}
             buildImageProxyUrl={buildImageProxyUrl}
           />
-        ))}
+        </ConsolePanel>
 
-      {commentComposer}
+        {item.isPr && (
+          <ConsolePanel title="Commits" count={commitsCount} defaultCollapsed>
+            <ConsoleCommitList
+              commits={commits}
+              isLoading={commitsAreLoading}
+              error={commitsError}
+              now={now}
+            />
+          </ConsolePanel>
+        )}
 
-      <div className="console-actionbar">{operationBar}</div>
-    </article>
+        {!item.isPr &&
+          relatedPullRequests.map((related) => (
+            <ConsolePullRequestDetail
+              key={related.pullRequest.url}
+              pullRequest={related.pullRequest}
+              body={related.pullRequest.summary?.body ?? ''}
+              bodyIsLoading={false}
+              files={related.files}
+              filesAreLoading={related.filesAreLoading}
+              filesError={related.filesError}
+              commits={related.commits}
+              commitsAreLoading={related.commitsAreLoading}
+              commitsError={related.commitsError}
+              now={now}
+              buildImageProxyUrl={buildImageProxyUrl}
+            />
+          ))}
+
+        {commentComposer}
+      </article>
+
+      <footer className="console-actionbar">{operationBar}</footer>
+    </>
   );
 };
