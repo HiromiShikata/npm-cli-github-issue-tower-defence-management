@@ -1,3 +1,10 @@
+# [1.100.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.99.1...v1.100.0) (2026-06-25)
+
+
+### Features
+
+* **console:** default project route lands on the left-most non-empty tab ([#945](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/945)) ([c91f2e1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c91f2e112bddb32f913660dd1ecb40e39b2e6b13))
+
 ## [1.99.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.99.0...v1.99.1) (2026-06-25)
 
 
