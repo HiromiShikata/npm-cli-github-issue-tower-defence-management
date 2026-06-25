@@ -38,6 +38,7 @@ const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const consoleDoneStore_1 = require("./consoleDoneStore");
 exports.CONSOLE_LIST_TAB_NAMES = [
+    'workflow-blocker',
     'prs',
     'triage',
     'unread',

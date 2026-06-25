@@ -6,22 +6,22 @@ const UNKNOWN_STORY_SORT_INDEX = 999999;
 class GenerateConsoleListsUseCase {
     constructor() {
         this.run = (input) => {
-            const { project, issues, pjcode, assigneeLogin, generatedAt } = input;
+            const { project, issues, pjcode, assigneeLogin, generatedAt, workflowBlockerStoryName, } = input;
             const storyOptions = project.story ? project.story.stories : [];
             const storyOrder = storyOptions.map((option) => option.name);
             const statusOptions = project.status.statuses;
             const actionableIssues = issues.filter((issue) => this.isActionable(issue, assigneeLogin));
-            const buildStatusTab = (selector, excludedStatusNames) => ({
+            const buildStatusTabFromSource = (sourceIssues, selector, excludedStatusNames) => ({
                 pjcode,
                 generatedAt,
                 statusOptions: this.buildFieldOptions(statusOptions, excludedStatusNames),
                 storyOrder,
                 storyColors: this.buildStoryColorsObject(storyOptions),
-                items: this.sortByStoryOrder(actionableIssues
-                    .filter(selector)
-                    .map((issue) => this.projectItem(issue)), storyOrder),
+                items: this.sortByStoryOrder(sourceIssues.filter(selector).map((issue) => this.projectItem(issue)), storyOrder),
             });
+            const buildStatusTab = (selector, excludedStatusNames) => buildStatusTabFromSource(actionableIssues, selector, excludedStatusNames);
             return {
+                'workflow-blocker': buildStatusTabFromSource(issues.filter((issue) => issue.isClosed === false), this.workflowBlockerSelector(workflowBlockerStoryName), ['done']),
                 prs: buildStatusTab((issue) => issue.status !== null &&
                     issue.status.toLowerCase() === 'awaiting quality check', ['awaiting quality check', 'done']),
                 unread: buildStatusTab((issue) => issue.status !== null && issue.status.toLowerCase() === 'unread', ['unread', 'done']),
@@ -54,6 +54,13 @@ class GenerateConsoleListsUseCase {
             issue.dependedIssueUrls.length === 0 &&
             issue.nextActionDate === null &&
             issue.nextActionHour === null;
+        this.workflowBlockerSelector = (workflowBlockerStoryName) => {
+            const target = workflowBlockerStoryName?.toLowerCase() ?? '';
+            if (target === '') {
+                return () => false;
+            }
+            return (issue) => issue.story !== null && issue.story.toLowerCase() === target;
+        };
         this.projectItem = (issue) => ({
             number: issue.number,
             title: issue.title,

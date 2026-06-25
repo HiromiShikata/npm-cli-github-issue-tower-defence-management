@@ -8,6 +8,7 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const GenerateConsoleListsUseCase_1 = require("../../../domain/usecases/console/GenerateConsoleListsUseCase");
 const CONSOLE_TAB_NAMES = [
+    'workflow-blocker',
     'prs',
     'triage',
     'unread',
@@ -35,6 +36,7 @@ const writeConsoleLists = (params) => {
         pjcode,
         assigneeLogin,
         generatedAt,
+        workflowBlockerStoryName: params.workflowBlockerStoryName ?? null,
     });
     for (const tab of CONSOLE_TAB_NAMES) {
         writeJsonAtomic(path_1.default.join(consoleDataOutputDir, pjcode, tab, 'list.json'), lists[tab]);

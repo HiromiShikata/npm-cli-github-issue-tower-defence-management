@@ -37,8 +37,9 @@ export type ConsoleTriageTab = {
     storyColors: Record<string, ConsoleColor>;
     items: ConsoleListItem[];
 };
-export type ConsoleTabName = 'prs' | 'triage' | 'unread' | 'failed-preparation' | 'todo-by-human';
+export type ConsoleTabName = 'workflow-blocker' | 'prs' | 'triage' | 'unread' | 'failed-preparation' | 'todo-by-human';
 export type ConsoleLists = {
+    'workflow-blocker': ConsoleStatusTab;
     prs: ConsoleStatusTab;
     triage: ConsoleTriageTab;
     unread: ConsoleStatusTab;
@@ -51,10 +52,12 @@ export type GenerateConsoleListsInput = {
     pjcode: string;
     assigneeLogin: string;
     generatedAt: string;
+    workflowBlockerStoryName: string | null;
 };
 export declare class GenerateConsoleListsUseCase {
     run: (input: GenerateConsoleListsInput) => ConsoleLists;
     private isActionable;
+    private workflowBlockerSelector;
     private projectItem;
     private buildFieldOptions;
     private buildStoryColorsObject;

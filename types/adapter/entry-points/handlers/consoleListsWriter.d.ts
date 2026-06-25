@@ -6,6 +6,7 @@ export type ConsoleListsWriterParams = {
     assigneeLogin: string | null | undefined;
     project: Project;
     issues: Issue[];
+    workflowBlockerStoryName?: string | null | undefined;
     generatedAt?: string;
 };
 export declare const formatConsoleGeneratedAt: (date: Date) => string;

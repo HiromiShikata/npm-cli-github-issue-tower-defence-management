@@ -1,3 +1,10 @@
+# [1.99.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.98.3...v1.99.0) (2026-06-25)
+
+
+### Features
+
+* **console:** add Workflow Blocker tab and remove item-count indicator from detail view ([#940](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/940)) ([75f16b2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/75f16b2602783386eb2d8e246e544a96bac8a60e)), closes [#937](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/937)
+
 ## [1.98.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.98.2...v1.98.3) (2026-06-25)
 
 
