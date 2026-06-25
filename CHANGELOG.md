@@ -1,3 +1,10 @@
+## [1.101.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.101.4...v1.101.5) (2026-06-25)
+
+
+### Bug Fixes
+
+* **console:** scroll review content above a fixed footer, reset scroll on item change, and prefetch the next item ([#956](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/956)) ([4dea62e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4dea62e09bd14e1e6ccc038ce8f5c42067187422))
+
 ## [1.101.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.101.3...v1.101.4) (2026-06-25)
 
 
