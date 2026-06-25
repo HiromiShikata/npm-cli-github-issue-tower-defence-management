@@ -1,5 +1,6 @@
 import { Issue } from '../../entities/Issue';
 import { FieldOption, Project } from '../../entities/Project';
+import { IN_TMUX_STATUS_NAME } from '../../entities/WorkflowStatus';
 
 export type InTmuxByHumanUrlEntry = {
   url: string;
@@ -64,7 +65,6 @@ type InTmuxByHumanStoryGroup = {
   issues: Issue[];
 };
 
-const IN_TMUX_LIVE_SESSION_STATUS_NAME = 'In Tmux live session';
 const UNKNOWN_STORY_SORT_INDEX = 999999;
 
 export class GenerateInTmuxByHumanDataUseCase {
@@ -140,7 +140,7 @@ export class GenerateInTmuxByHumanDataUseCase {
   };
 
   private isInTmuxByHuman = (issue: Issue, assigneeLogin: string): boolean =>
-    issue.status === IN_TMUX_LIVE_SESSION_STATUS_NAME &&
+    issue.status === IN_TMUX_STATUS_NAME &&
     issue.isClosed === false &&
     issue.assignees.includes(assigneeLogin);
 
