@@ -73,6 +73,11 @@ jest.mock('../handlers/HandleScheduledEventUseCaseHandler', () => ({
     handle: jest.fn().mockResolvedValue(null),
   })),
 }));
+jest.mock('../console/ensureConsoleRunning', () => ({
+  ensureConsoleRunning: jest.fn().mockResolvedValue(null),
+}));
+import * as ensureConsoleRunningModule from '../console/ensureConsoleRunning';
+
 import type { StartConsoleServerOptions } from '../console/consoleServer';
 
 const mockStartConsoleServer = jest
@@ -1204,6 +1209,128 @@ mysteryKey: 'value'
           codexHomeCandidates: ['.codex-readme1', '.codex-readme2'],
         }),
       );
+    });
+
+    it('should start web console before preparation cycle when consoleAccessToken is provided', async () => {
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
+      MockedStartPreparationUseCase.mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      const mockKill = jest.fn();
+      const callOrder: string[] = [];
+      jest
+        .mocked(ensureConsoleRunningModule.ensureConsoleRunning)
+        .mockImplementationOnce(async () => {
+          callOrder.push('ensureWebConsoleRunning');
+          return { kill: mockKill };
+        });
+      mockRun.mockImplementationOnce(async () => {
+        callOrder.push('preparationRun');
+        return { rotationOrder: null };
+      });
+
+      writeConfig({ ...defaultConfig, consoleAccessToken: 'test-key-abc' });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'startDaemon',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(callOrder).toEqual(['ensureWebConsoleRunning', 'preparationRun']);
+      expect(
+        ensureConsoleRunningModule.ensureConsoleRunning,
+      ).toHaveBeenCalledWith(configFilePath, 9981);
+    });
+
+    it('should not start web console when consoleAccessToken is not provided', async () => {
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
+      MockedStartPreparationUseCase.mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      jest.mocked(ensureConsoleRunningModule.ensureConsoleRunning).mockClear();
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'startDaemon',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(
+        ensureConsoleRunningModule.ensureConsoleRunning,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('should register SIGTERM and SIGINT handlers when a new web console process is started', async () => {
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
+      MockedStartPreparationUseCase.mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      const mockKill = jest.fn();
+      jest
+        .mocked(ensureConsoleRunningModule.ensureConsoleRunning)
+        .mockResolvedValueOnce({ kill: mockKill });
+
+      const processOnceSpy = jest.spyOn(process, 'once');
+
+      writeConfig({ ...defaultConfig, consoleAccessToken: 'test-key-sigterm' });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'startDaemon',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      const sigtermCall = processOnceSpy.mock.calls.find(
+        ([event]) => event === 'SIGTERM',
+      );
+      const sigintCall = processOnceSpy.mock.calls.find(
+        ([event]) => event === 'SIGINT',
+      );
+      expect(sigtermCall).toBeDefined();
+      expect(sigintCall).toBeDefined();
+
+      processOnceSpy.mockRestore();
+
+      const rawSigtermHandler = sigtermCall?.[1];
+      const rawSigintHandler = sigintCall?.[1];
+      if (typeof rawSigtermHandler !== 'function') {
+        throw new Error('Expected SIGTERM handler to be a function');
+      }
+      if (typeof rawSigintHandler !== 'function') {
+        throw new Error('Expected SIGINT handler to be a function');
+      }
+      rawSigtermHandler();
+      expect(mockKill).toHaveBeenCalledTimes(1);
+      rawSigintHandler();
+      expect(mockKill).toHaveBeenCalledTimes(2);
     });
   });
 
