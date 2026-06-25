@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.LiveSessionOauthTokenSelectHandler = void 0;
 const LiveSessionOauthTokenSelectUseCase_1 = require("../../../domain/usecases/LiveSessionOauthTokenSelectUseCase");
+const OauthTokenSelectUseCase_1 = require("../../../domain/usecases/OauthTokenSelectUseCase");
 const ProcClaudeLiveSessionRepository_1 = require("../../repositories/ProcClaudeLiveSessionRepository");
 const RateLimitCache_1 = require("../../proxy/RateLimitCache");
 const TokenListLoader_1 = require("../../proxy/TokenListLoader");
@@ -64,7 +65,7 @@ class LiveSessionOauthTokenSelectHandler {
                 return `${metric.name}: ${metric.liveSessionCount} live session(s), 5h ${Math.round(metric.fiveHourFreeRatio * 100)}% free, 7d ${Math.round(metric.sevenDayFreeRatio * 100)}% free, 7d-end in ${secondsUntilSevenDayEnd}s -> ${status}`;
             });
             if (result.selected === null) {
-                lines.push('No eligible token passed the rate-limit filter.');
+                lines.push(`No eligible token: every token is below the 5h >= ${Math.round(OauthTokenSelectUseCase_1.FIVE_HOUR_MIN_FREE_RATIO * 100)}% free and 7d >= ${Math.round(OauthTokenSelectUseCase_1.SEVEN_DAY_MIN_FREE_RATIO * 100)}% free thresholds required to start a live session.`);
             }
             else {
                 lines.push(`Selected ${result.selected.name} (fewest live sessions, then soonest 7d reset among eligible tokens).`);

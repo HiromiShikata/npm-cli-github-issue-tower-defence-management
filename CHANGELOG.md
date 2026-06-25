@@ -1,3 +1,10 @@
+## [1.101.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.101.1...v1.101.2) (2026-06-25)
+
+
+### Bug Fixes
+
+* **cli:** name 5h/7d free thresholds in selectLiveSessionOauthToken no-eligible error ([#951](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/951)) ([dbfefda](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/dbfefda5a6b80de2bdbc2eb59bce63366cd0b6a2)), closes [#950](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/950)
+
 ## [1.101.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.101.0...v1.101.1) (2026-06-25)
 
 

@@ -1,10 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.OauthTokenSelectUseCase = void 0;
+exports.OauthTokenSelectUseCase = exports.SEVEN_DAY_MIN_FREE_RATIO = exports.FIVE_HOUR_MIN_FREE_RATIO = void 0;
 const SECONDS_PER_DAY = 86400;
 const SEVEN_DAYS_IN_SECONDS = 7 * SECONDS_PER_DAY;
-const FIVE_HOUR_MIN_FREE_RATIO = 0.6;
-const SEVEN_DAY_MIN_FREE_RATIO = 0.3;
+exports.FIVE_HOUR_MIN_FREE_RATIO = 0.6;
+exports.SEVEN_DAY_MIN_FREE_RATIO = 0.3;
 class OauthTokenSelectUseCase {
     constructor() {
         this.run = (candidates, nowEpochSeconds) => {
@@ -37,11 +37,11 @@ class OauthTokenSelectUseCase {
             };
         };
         this.exclusionReason = (fiveHourFreeRatio, sevenDayFreeRatio) => {
-            if (fiveHourFreeRatio < FIVE_HOUR_MIN_FREE_RATIO) {
-                return `5h window only ${this.toPercent(fiveHourFreeRatio)}% free (requires >= ${this.toPercent(FIVE_HOUR_MIN_FREE_RATIO)}%)`;
+            if (fiveHourFreeRatio < exports.FIVE_HOUR_MIN_FREE_RATIO) {
+                return `5h window only ${this.toPercent(fiveHourFreeRatio)}% free (requires >= ${this.toPercent(exports.FIVE_HOUR_MIN_FREE_RATIO)}%)`;
             }
-            if (sevenDayFreeRatio < SEVEN_DAY_MIN_FREE_RATIO) {
-                return `7d window only ${this.toPercent(sevenDayFreeRatio)}% free (requires >= ${this.toPercent(SEVEN_DAY_MIN_FREE_RATIO)}%)`;
+            if (sevenDayFreeRatio < exports.SEVEN_DAY_MIN_FREE_RATIO) {
+                return `7d window only ${this.toPercent(sevenDayFreeRatio)}% free (requires >= ${this.toPercent(exports.SEVEN_DAY_MIN_FREE_RATIO)}%)`;
             }
             return null;
         };
