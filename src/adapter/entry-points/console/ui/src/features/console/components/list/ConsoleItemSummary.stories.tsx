@@ -20,6 +20,10 @@ export const IssueRow: Story = {
   args: { item: consoleListItemsFixture[2], isActive: false },
 };
 
+export const ReactivationTriggerRow: Story = {
+  args: { item: consoleListItemsFixture[3], isActive: false },
+};
+
 export const ActiveRow: Story = {
   args: { item: consoleListItemsFixture[0], isActive: true },
 };

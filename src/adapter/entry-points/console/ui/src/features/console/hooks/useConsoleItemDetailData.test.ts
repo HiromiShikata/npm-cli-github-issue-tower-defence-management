@@ -21,6 +21,10 @@ const prItem: ConsoleListItem = {
   itemId: 'PVTI_1',
   isPr: true,
   story: 'Story',
+  status: null,
+  nextActionDate: null,
+  nextActionHour: null,
+  dependedIssueUrls: [],
   labels: [],
   createdAt: '2026-06-10T00:00:00.000Z',
 };

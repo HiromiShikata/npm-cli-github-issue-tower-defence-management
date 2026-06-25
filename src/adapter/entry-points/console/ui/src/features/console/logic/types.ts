@@ -18,6 +18,10 @@ export type ConsoleListItem = {
   itemId: string;
   isPr: boolean;
   story: string;
+  status: string | null;
+  nextActionDate: string | null;
+  nextActionHour: number | null;
+  dependedIssueUrls: string[];
   labels: string[];
   createdAt: string;
 };

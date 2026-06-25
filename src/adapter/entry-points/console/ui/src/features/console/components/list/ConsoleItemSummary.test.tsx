@@ -52,6 +52,54 @@ describe('ConsoleItemSummary', () => {
     );
   });
 
+  it('renders the story, status and depended issue url for a pull request', () => {
+    const { getByText } = render(
+      <ConsoleItemSummary
+        item={prItem}
+        isActive={false}
+        now={now}
+        onSelect={() => {}}
+      />,
+    );
+    expect(getByText('Story')).toBeInTheDocument();
+    expect(getByText(prItem.story)).toBeInTheDocument();
+    expect(getByText('Status')).toBeInTheDocument();
+    expect(getByText(prItem.status as string)).toBeInTheDocument();
+    expect(getByText('Depended Issue URL')).toBeInTheDocument();
+    expect(getByText(prItem.dependedIssueUrls.join(', '))).toBeInTheDocument();
+  });
+
+  it('renders the next action date and hour for an issue', () => {
+    const { getByText, queryByText } = render(
+      <ConsoleItemSummary
+        item={issueItem}
+        isActive={false}
+        now={now}
+        onSelect={() => {}}
+      />,
+    );
+    expect(getByText('Next Action Date')).toBeInTheDocument();
+    expect(
+      getByText((issueItem.nextActionDate as string).slice(0, 10)),
+    ).toBeInTheDocument();
+    expect(getByText('Next Action Hour')).toBeInTheDocument();
+    expect(getByText(String(issueItem.nextActionHour))).toBeInTheDocument();
+    expect(queryByText('Depended Issue URL')).not.toBeInTheDocument();
+  });
+
+  it('omits the status field when the item has no status', () => {
+    const itemWithoutStatus = { ...prItem, status: null };
+    const { queryByText } = render(
+      <ConsoleItemSummary
+        item={itemWithoutStatus}
+        isActive={false}
+        now={now}
+        onSelect={() => {}}
+      />,
+    );
+    expect(queryByText('Status')).not.toBeInTheDocument();
+  });
+
   it('reports the item on click', () => {
     const onSelect = jest.fn();
     const { getByRole } = render(

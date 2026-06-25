@@ -11,7 +11,7 @@ const now = Date.parse('2026-06-19T12:00:00.000Z');
 
 describe('ConsoleItemList', () => {
   it('renders group headers and items in array order', () => {
-    const { getAllByRole, getByText } = render(
+    const { getAllByRole, container } = render(
       <ConsoleItemList
         rows={rows}
         storyColors={consoleStoryColorsFixture}
@@ -22,8 +22,17 @@ describe('ConsoleItemList', () => {
         onSelectItem={() => {}}
       />,
     );
-    expect(getByText('TDPM Console port')).toBeInTheDocument();
-    expect(getByText('regular / workflow improvement')).toBeInTheDocument();
+    const groupHeaderTexts = Array.from(
+      container.querySelectorAll('.console-group-header'),
+    ).map((header) => header.textContent ?? '');
+    expect(
+      groupHeaderTexts.some((text) => text.includes('TDPM Console port')),
+    ).toBe(true);
+    expect(
+      groupHeaderTexts.some((text) =>
+        text.includes('regular / workflow improvement'),
+      ),
+    ).toBe(true);
     expect(getAllByRole('button').length).toBe(consoleListItemsFixture.length);
   });
 
