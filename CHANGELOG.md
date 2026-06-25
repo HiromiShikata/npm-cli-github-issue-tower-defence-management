@@ -1,3 +1,10 @@
+## [1.101.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.101.0...v1.101.1) (2026-06-25)
+
+
+### Bug Fixes
+
+* **intmux:** match tmux session name to app and attach-or-create to avoid duplicate sessions ([#949](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/949)) ([cf0208b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cf0208b956ba9abad8057e731d52fe917c8f5889))
+
 # [1.101.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.100.0...v1.101.0) (2026-06-25)
 
 

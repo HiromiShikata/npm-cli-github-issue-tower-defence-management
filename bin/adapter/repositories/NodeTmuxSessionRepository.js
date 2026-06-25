@@ -27,6 +27,7 @@ class NodeTmuxSessionRepository {
         this.launchDetachedSession = async (sessionName, launcherCommand, issueUrl) => {
             await this.localCommandRunner.runCommand('tmux', [
                 'new-session',
+                '-A',
                 '-d',
                 '-s',
                 sessionName,
