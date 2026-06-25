@@ -94,13 +94,18 @@ describe('GenerateConsoleListsUseCase', () => {
     issueCounter = 0;
   });
 
-  const run = (issues: Issue[], project: Project = projectWithStory) =>
+  const run = (
+    issues: Issue[],
+    project: Project = projectWithStory,
+    workflowBlockerStoryName: string | null = 'regular / WORKFLOW BLOCKER',
+  ) =>
     usecase.run({
       project,
       issues,
       pjcode: 'demo',
       assigneeLogin: ASSIGNEE,
       generatedAt,
+      workflowBlockerStoryName,
     });
 
   describe('common actionable filter', () => {
@@ -202,6 +207,66 @@ describe('GenerateConsoleListsUseCase', () => {
         makeIssue({ story: null }),
       ]);
       expect(result.triage.items).toHaveLength(2);
+    });
+  });
+
+  describe('workflow-blocker tab', () => {
+    it('selects items whose story matches the configured name case-insensitively', () => {
+      const result = run([
+        makeIssue({ story: 'regular / WORKFLOW BLOCKER' }),
+        makeIssue({ story: 'regular / workflow blocker' }),
+        makeIssue({ story: 'Story Alpha' }),
+        makeIssue({ story: null }),
+      ]);
+      expect(result['workflow-blocker'].items).toHaveLength(2);
+    });
+
+    it('includes matching items regardless of their status', () => {
+      const result = run([
+        makeIssue({ story: 'regular / WORKFLOW BLOCKER', status: 'Unread' }),
+        makeIssue({
+          story: 'regular / WORKFLOW BLOCKER',
+          status: 'Awaiting Quality Check',
+        }),
+        makeIssue({ story: 'regular / WORKFLOW BLOCKER', status: null }),
+      ]);
+      expect(result['workflow-blocker'].items).toHaveLength(3);
+    });
+
+    it('includes matching items that are not actionable', () => {
+      const result = run([
+        makeIssue({
+          story: 'regular / WORKFLOW BLOCKER',
+          nextActionDate: new Date('2026-07-01T00:00:00.000Z'),
+        }),
+        makeIssue({
+          story: 'regular / WORKFLOW BLOCKER',
+          nextActionHour: 9,
+        }),
+        makeIssue({
+          story: 'regular / WORKFLOW BLOCKER',
+          dependedIssueUrls: ['https://github.com/demo/repo/issues/99'],
+        }),
+      ]);
+      expect(result['workflow-blocker'].items).toHaveLength(3);
+    });
+
+    it('excludes closed matching items', () => {
+      const result = run([
+        makeIssue({ story: 'regular / WORKFLOW BLOCKER', isClosed: true }),
+        makeIssue({ story: 'regular / WORKFLOW BLOCKER', isClosed: false }),
+      ]);
+      expect(result['workflow-blocker'].items).toHaveLength(1);
+      expect(result['workflow-blocker'].items[0].number).toBe(2);
+    });
+
+    it('returns no items when the workflow blocker story name is not configured', () => {
+      const result = run(
+        [makeIssue({ story: 'regular / WORKFLOW BLOCKER' })],
+        projectWithStory,
+        null,
+      );
+      expect(result['workflow-blocker'].items).toHaveLength(0);
     });
   });
 

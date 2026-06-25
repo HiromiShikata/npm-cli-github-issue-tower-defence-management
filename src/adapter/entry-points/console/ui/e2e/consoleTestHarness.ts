@@ -74,12 +74,14 @@ const STORY_OPTIONS: ConsoleFixtureFieldOption[] = [
     name: 'Publish product documentation site',
     color: 'GREEN',
   },
+  { id: 'a3b9c4d2', name: 'regular / WORKFLOW BLOCKER', color: 'RED' },
 ];
 
 const STORY_COLORS: Record<string, { color: string }> = {
   'TDPM Console port': { color: 'BLUE' },
   'regular / workflow improvement': { color: 'GRAY' },
   'Publish product documentation site': { color: 'GREEN' },
+  'regular / WORKFLOW BLOCKER': { color: 'RED' },
 };
 
 const issueItem = (
@@ -134,6 +136,15 @@ const buildSnapshot = (
 });
 
 export const CONSOLE_E2E_TAB_ITEMS: Record<string, ConsoleFixtureListItem[]> = {
+  'workflow-blocker': [
+    issueItem(
+      720,
+      'Resolve the shared GitHub token rate-limit exhaustion blocker',
+      'WFB00720',
+      'regular / WORKFLOW BLOCKER',
+      '2026-06-11T08:30:00.000Z',
+    ),
+  ],
   prs: [
     pullRequestItem(
       867,
@@ -319,6 +330,7 @@ const createStubIssueRepository = (): IssueRepository => ({
 export type ConsoleE2eHarness = {
   baseUrl: string;
   appUrl: string;
+  appRootUrl: string;
   consoleDataOutputDir: string;
   stop: () => Promise<void>;
 };
@@ -355,11 +367,13 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
     throw new Error('console E2E server is not listening on a TCP port');
   }
   const baseUrl = `http://127.0.0.1:${address.port}`;
-  const appUrl = `${baseUrl}/projects/${CONSOLE_E2E_PJCODE}?k=${CONSOLE_E2E_TOKEN}`;
+  const appUrl = `${baseUrl}/projects/${CONSOLE_E2E_PJCODE}/prs?k=${CONSOLE_E2E_TOKEN}`;
+  const appRootUrl = `${baseUrl}/projects/${CONSOLE_E2E_PJCODE}?k=${CONSOLE_E2E_TOKEN}`;
 
   return {
     baseUrl,
     appUrl,
+    appRootUrl,
     consoleDataOutputDir,
     stop: async (): Promise<void> => {
       await closeServer(server);

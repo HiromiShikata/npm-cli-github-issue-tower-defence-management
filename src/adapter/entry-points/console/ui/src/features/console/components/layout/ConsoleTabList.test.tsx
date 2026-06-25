@@ -3,6 +3,7 @@ import type { ConsoleTabName } from '../../logic/types';
 import { ConsoleTabList } from './ConsoleTabList';
 
 const counts: Record<ConsoleTabName, number> = {
+  'workflow-blocker': 4,
   prs: 3,
   triage: 0,
   unread: 5,
@@ -59,11 +60,25 @@ describe('ConsoleTabList', () => {
     );
   });
 
-  it('renders the active tab count sub-heading', () => {
-    const { getByText } = render(
-      <ConsoleTabList {...baseProps} activeTab="triage" counts={counts} />,
+  it('does not render an item-count sub-heading', () => {
+    const { container } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
     );
-    expect(getByText('0 items to triage')).toBeInTheDocument();
+    expect(container.querySelector('.console-tab-count-heading')).toBeNull();
+  });
+
+  it('renders the Workflow Blocker tab immediately left of Awaiting Quality Check', () => {
+    const { getByText } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    const tabBar = getByText('Workflow Blocker').closest('nav');
+    const labels = Array.from(
+      tabBar?.querySelectorAll('.console-tab-label') ?? [],
+    ).map((node) => node.textContent);
+    const blockerIndex = labels.indexOf('Workflow Blocker');
+    const prsIndex = labels.indexOf('Awaiting Quality Check');
+    expect(blockerIndex).toBeGreaterThanOrEqual(0);
+    expect(prsIndex).toBe(blockerIndex + 1);
   });
 
   it('renders the project code and snapshot time', () => {

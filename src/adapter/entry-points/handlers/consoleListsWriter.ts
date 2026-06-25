@@ -14,10 +14,12 @@ export type ConsoleListsWriterParams = {
   assigneeLogin: string | null | undefined;
   project: Project;
   issues: Issue[];
+  workflowBlockerStoryName?: string | null | undefined;
   generatedAt?: string;
 };
 
 const CONSOLE_TAB_NAMES: ConsoleTabName[] = [
+  'workflow-blocker',
   'prs',
   'triage',
   'unread',
@@ -50,6 +52,7 @@ export const writeConsoleLists = (params: ConsoleListsWriterParams): void => {
     pjcode,
     assigneeLogin,
     generatedAt,
+    workflowBlockerStoryName: params.workflowBlockerStoryName ?? null,
   });
 
   for (const tab of CONSOLE_TAB_NAMES) {

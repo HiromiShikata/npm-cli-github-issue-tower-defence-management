@@ -19,6 +19,7 @@ export default meta;
 type Story = StoryObj<typeof ConsoleTabList>;
 
 const counts: Record<ConsoleTabName, number> = {
+  'workflow-blocker': 5,
   prs: 35,
   triage: 132,
   unread: 18,
@@ -37,6 +38,7 @@ export const ZeroCountTabsHidden: Story = {
   args: {
     activeTab: 'prs',
     counts: {
+      'workflow-blocker': 0,
       prs: 35,
       triage: 0,
       unread: 18,
@@ -50,6 +52,7 @@ export const ZeroCountActiveTabStaysVisible: Story = {
   args: {
     activeTab: 'failed-preparation',
     counts: {
+      'workflow-blocker': 0,
       prs: 35,
       triage: 0,
       unread: 18,
@@ -63,6 +66,7 @@ export const AfterAutoAdvanceToNextTab: Story = {
   args: {
     activeTab: 'unread',
     counts: {
+      'workflow-blocker': 0,
       prs: 0,
       triage: 0,
       unread: 7,

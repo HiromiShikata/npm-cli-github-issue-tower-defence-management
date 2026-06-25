@@ -89,6 +89,7 @@ describe('writeConsoleLists', () => {
     });
 
     for (const tab of [
+      'workflow-blocker',
       'prs',
       'triage',
       'unread',
@@ -97,6 +98,50 @@ describe('writeConsoleLists', () => {
     ]) {
       expect(fs.existsSync(tabFile(tab))).toBe(true);
     }
+  });
+
+  it('writes workflow-blocker items matched by story name regardless of status or actionability', () => {
+    writeConsoleLists({
+      consoleDataOutputDir: outDir,
+      pjcode: 'demo',
+      assigneeLogin: ASSIGNEE,
+      project,
+      issues: [
+        makeIssue({
+          story: 'regular / WORKFLOW BLOCKER',
+          status: 'Awaiting Quality Check',
+          nextActionHour: 9,
+        }),
+        makeIssue({ story: 'Story Alpha', status: 'Unread' }),
+      ],
+      workflowBlockerStoryName: 'regular / WORKFLOW BLOCKER',
+      generatedAt: '2026-06-14T07:22:33Z',
+    });
+
+    const raw: unknown = JSON.parse(
+      fs.readFileSync(tabFile('workflow-blocker'), 'utf8'),
+    );
+    expect(isRecord(raw)).toBe(true);
+    const items: unknown = isRecord(raw) ? raw.items : undefined;
+    expect(isUnknownArray(items)).toBe(true);
+    expect(isUnknownArray(items) ? items.length : 0).toBe(1);
+  });
+
+  it('writes an empty workflow-blocker list when no story name is configured', () => {
+    writeConsoleLists({
+      consoleDataOutputDir: outDir,
+      pjcode: 'demo',
+      assigneeLogin: ASSIGNEE,
+      project,
+      issues: [makeIssue({ story: 'regular / WORKFLOW BLOCKER' })],
+      generatedAt: '2026-06-14T07:22:33Z',
+    });
+
+    const raw: unknown = JSON.parse(
+      fs.readFileSync(tabFile('workflow-blocker'), 'utf8'),
+    );
+    const items: unknown = isRecord(raw) ? raw.items : undefined;
+    expect(isUnknownArray(items) ? items.length : 0).toBe(0);
   });
 
   it('writes todo-by-human items selected by the Todo by human status', () => {
