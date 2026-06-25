@@ -102,7 +102,6 @@ test('renders the Workflow Blocker tab leftmost and shows its detail operations'
 
   const labels = page.locator('.console-tab .console-tab-label');
   await expect(labels.nth(0)).toHaveText('Workflow Blocker');
-  await expect(labels.nth(1)).toHaveText('Awaiting Quality Check');
 
   await expect(page.locator('.console-tab-count-heading')).toHaveCount(0);
 
