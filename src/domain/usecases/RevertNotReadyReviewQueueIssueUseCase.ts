@@ -9,6 +9,21 @@ import {
   DEFAULT_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 
+const DEPENDENCY_UPDATE_BOT_AUTHORS = ['dependabot[bot]', 'renovate[bot]'];
+
+const isAuthorAuthorizedForAutoStatusCheck = (
+  author: string,
+  allowedIssueAuthors: string[] | null,
+): boolean => {
+  if (DEPENDENCY_UPDATE_BOT_AUTHORS.includes(author)) {
+    return true;
+  }
+  if (allowedIssueAuthors === null) {
+    return true;
+  }
+  return allowedIssueAuthors.includes(author);
+};
+
 export class RevertNotReadyReviewQueueIssueUseCase {
   private readonly issueRejectionEvaluator: IssueRejectionEvaluator;
   private readonly changeTargetPullRequestApprover: ChangeTargetPullRequestApprover;
@@ -45,7 +60,9 @@ export class RevertNotReadyReviewQueueIssueUseCase {
     allowIssueCacheMinutes: number;
     labelsAsLlmAgentName?: string[] | null;
     changeTargetPathAliases?: Record<string, string> | null;
+    allowedIssueAuthors?: string[] | null;
   }): Promise<void> => {
+    const allowedIssueAuthors = params.allowedIssueAuthors ?? null;
     const projectId = await this.projectRepository.findProjectIdByUrl(
       params.projectUrl,
     );
@@ -80,6 +97,12 @@ export class RevertNotReadyReviewQueueIssueUseCase {
         (l) => l === 'llm-agent' || l.startsWith('llm-agent:'),
       );
       if (hasLlmAgentLabel) {
+        continue;
+      }
+
+      if (
+        !isAuthorAuthorizedForAutoStatusCheck(issue.author, allowedIssueAuthors)
+      ) {
         continue;
       }
 
@@ -118,6 +141,15 @@ export class RevertNotReadyReviewQueueIssueUseCase {
         (l) => l === 'llm-agent' || l.startsWith('llm-agent:'),
       );
       if (hasLlmAgentLabel) {
+        continue;
+      }
+
+      if (
+        !isAuthorAuthorizedForAutoStatusCheck(
+          pullRequest.author,
+          allowedIssueAuthors,
+        )
+      ) {
         continue;
       }
 
