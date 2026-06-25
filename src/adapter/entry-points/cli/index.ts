@@ -37,6 +37,7 @@ import {
   DEFAULT_WEB_PORT,
   startWebServer,
 } from '../console/webServer';
+import { ensureConsoleRunning } from '../console/ensureConsoleRunning';
 import {
   IssueTitleStateCache,
   PullRequestStatusCache,
@@ -363,6 +364,17 @@ program
       config.codexHomeCandidates && config.codexHomeCandidates.length > 0
         ? config.codexHomeCandidates
         : null;
+
+    if (config.consoleAccessToken) {
+      const consoleProcess = await ensureConsoleRunning(
+        options.configFilePath,
+        DEFAULT_WEB_PORT,
+      );
+      if (consoleProcess !== null) {
+        process.once('SIGTERM', () => consoleProcess.kill());
+        process.once('SIGINT', () => consoleProcess.kill());
+      }
+    }
 
     const preparationResult = await useCase.run({
       projectUrl,
