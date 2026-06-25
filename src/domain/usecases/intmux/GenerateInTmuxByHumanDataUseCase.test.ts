@@ -5,6 +5,7 @@ import { GenerateInTmuxByHumanDataUseCase } from './GenerateInTmuxByHumanDataUse
 const ASSIGNEE = 'owner-login';
 const CONSOLE_BASE_URL = 'https://console.example.test';
 const CONSOLE_TOKEN = 'test-token-value';
+const NOW = new Date('2026-06-25T12:00:00.000Z');
 
 const storyOption = (
   id: string,
@@ -112,6 +113,7 @@ describe('GenerateInTmuxByHumanDataUseCase', () => {
         overrides.consoleToken === undefined
           ? CONSOLE_TOKEN
           : overrides.consoleToken,
+      now: NOW,
     });
 
   describe('item filter', () => {
@@ -138,6 +140,38 @@ describe('GenerateInTmuxByHumanDataUseCase', () => {
     it('rejects issues not assigned to the assignee login', () => {
       const result = run([makeIssue({ assignees: ['other-person'] })]);
       expect(result.v1).toEqual([]);
+    });
+
+    it('rejects issues whose next action date is in the future', () => {
+      const result = run([
+        makeIssue({
+          story: 'Story Alpha',
+          nextActionDate: new Date(NOW.getTime() + 24 * 60 * 60 * 1000),
+        }),
+      ]);
+      expect(result.v1).toEqual([]);
+    });
+
+    it('rejects issues whose next action hour is set', () => {
+      const result = run([
+        makeIssue({ story: 'Story Alpha', nextActionHour: 9 }),
+      ]);
+      expect(result.v1).toEqual([]);
+    });
+
+    it('keeps issues whose next action date is in the past and is now due', () => {
+      const result = run([
+        makeIssue({
+          story: 'Story Alpha',
+          nextActionDate: new Date(NOW.getTime() - 24 * 60 * 60 * 1000),
+        }),
+      ]);
+      expect(result.v1).toEqual([
+        {
+          story: 'Story Alpha',
+          urls: ['https://github.com/demo/repo/issues/1'],
+        },
+      ]);
     });
   });
 

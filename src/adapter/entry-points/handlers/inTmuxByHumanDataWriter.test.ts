@@ -8,6 +8,7 @@ import { writeInTmuxByHumanData } from './inTmuxByHumanDataWriter';
 const ASSIGNEE = 'owner-login';
 const CONSOLE_BASE_URL = 'https://console.example.test';
 const CONSOLE_TOKEN = 'test-token-value';
+const NOW = new Date('2026-06-25T12:00:00.000Z');
 
 const option = (
   id: string,
@@ -77,6 +78,7 @@ const baseParams = (outDir: string) => ({
   repo: 'demo-repo',
   project,
   issues: [makeIssue({})],
+  now: NOW,
 });
 
 const readJson = (filePath: string): unknown =>

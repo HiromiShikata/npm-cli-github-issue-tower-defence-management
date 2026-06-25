@@ -8,13 +8,19 @@ export type ReconcileInTmuxByHumanSessionsParams = {
   assigneeLogin: string;
   issues: Issue[];
   localCommandRunner: LocalCommandRunner;
+  now: Date;
 };
 
 export const reconcileInTmuxByHumanSessions = async (
   params: ReconcileInTmuxByHumanSessionsParams,
 ): Promise<void> => {
-  const { inTmuxLauncherCommand, assigneeLogin, issues, localCommandRunner } =
-    params;
+  const {
+    inTmuxLauncherCommand,
+    assigneeLogin,
+    issues,
+    localCommandRunner,
+    now,
+  } = params;
   if (!inTmuxLauncherCommand || !assigneeLogin) {
     return;
   }
@@ -25,5 +31,6 @@ export const reconcileInTmuxByHumanSessions = async (
     issues,
     assigneeLogin,
     launcherCommand: inTmuxLauncherCommand,
+    now,
   });
 };
