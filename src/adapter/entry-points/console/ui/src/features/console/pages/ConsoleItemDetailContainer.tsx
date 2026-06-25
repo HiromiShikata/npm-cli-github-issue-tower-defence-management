@@ -1,4 +1,4 @@
-import { type Ref, useCallback } from 'react';
+import { useCallback } from 'react';
 import { ConsoleCommentComposer } from '../components/detail/ConsoleCommentComposer';
 import { ConsoleItemDetail } from '../components/detail/ConsoleItemDetail';
 import { ConsoleOperationMenu } from '../components/operations/ConsoleOperationMenu';
@@ -37,7 +37,6 @@ export type ConsoleItemDetailContainerProps = {
   overlayStatus: ConsoleOverlayStatus | null;
   now: number;
   onQueueAction: (input: ConsoleQueueActionInput) => void;
-  scrollRef?: Ref<HTMLElement>;
 };
 
 export const ConsoleItemDetailContainer = ({
@@ -52,7 +51,6 @@ export const ConsoleItemDetailContainer = ({
   overlayStatus,
   now,
   onQueueAction,
-  scrollRef,
 }: ConsoleItemDetailContainerProps) => {
   const detail = useConsoleItemDetailData(caches, item);
   const { token } = useConsoleToken();
@@ -150,7 +148,6 @@ export const ConsoleItemDetailContainer = ({
       commitsError={detail.commitsError}
       relatedPullRequests={detail.relatedPullRequests}
       now={now}
-      scrollRef={scrollRef}
       buildImageProxyUrl={resolveImageProxyUrl}
       commentComposer={
         <ConsoleCommentComposer

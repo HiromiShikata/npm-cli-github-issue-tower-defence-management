@@ -191,44 +191,6 @@ export const ConsolePage = () => {
   );
 
   const detailScreenRef = useConsoleSwipeNavigation(handleSwipe);
-  const detailScrollElementRef = useRef<HTMLElement | null>(null);
-
-  useEffect(() => {
-    if (selectedItemKey === null) {
-      return;
-    }
-    const element = detailScrollElementRef.current;
-    if (element !== null) {
-      element.scrollTop = 0;
-    }
-  }, [selectedItemKey]);
-
-  const nextPendingItem = useMemo<ConsoleListItem | null>(() => {
-    if (selectedItemKey === null) {
-      return null;
-    }
-    const nextKey = nextPendingKeyBrowse(orderedPendingKeys, selectedItemKey);
-    if (nextKey === null) {
-      return null;
-    }
-    return (
-      pendingItems.find((item) => overlayKeyForItem(item) === nextKey) ?? null
-    );
-  }, [selectedItemKey, orderedPendingKeys, pendingItems]);
-
-  useEffect(() => {
-    if (nextPendingItem === null) {
-      return;
-    }
-    const key = `${nextPendingItem.repo}#${nextPendingItem.number}`;
-    const url = nextPendingItem.url;
-    void caches.body.load(key, url);
-    void caches.state.load(key, url);
-    if (nextPendingItem.isPr) {
-      void caches.files.load(key, url);
-      void caches.commits.load(key, url);
-    }
-  }, [nextPendingItem, caches]);
 
   return (
     <main className="console-app">
@@ -273,7 +235,6 @@ export const ConsolePage = () => {
             overlayStatus={overlayStatusForSelected}
             now={now}
             onQueueAction={handleQueueAction}
-            scrollRef={detailScrollElementRef}
           />
         </div>
       )}
