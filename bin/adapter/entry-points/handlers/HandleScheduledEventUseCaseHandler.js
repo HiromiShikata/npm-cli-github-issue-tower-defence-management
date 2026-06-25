@@ -183,6 +183,7 @@ class HandleScheduledEventUseCaseHandler {
                         assigneeLogin: input.manager,
                         project: result.project,
                         issues: result.issues,
+                        workflowBlockerStoryName: mergedInput.workflowBlockerStoryName ?? null,
                     });
                 }
                 catch (error) {
