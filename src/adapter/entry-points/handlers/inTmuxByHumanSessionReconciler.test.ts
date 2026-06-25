@@ -9,7 +9,7 @@ const makeIssue = (overrides: Partial<Issue> = {}): Issue => ({
   number: 1,
   title: 'Issue 1',
   state: 'OPEN',
-  status: 'In Tmux by human',
+  status: 'In Tmux live session',
   story: null,
   nextActionDate: null,
   nextActionHour: null,
@@ -51,7 +51,7 @@ describe('reconcileInTmuxByHumanSessions', () => {
     expect(runner.runCommand.mock.calls).toHaveLength(0);
   });
 
-  it('launches a detached tmux session when an In Tmux by human session is missing', async () => {
+  it('launches a detached tmux session when an In Tmux live session session is missing', async () => {
     const runner = createMockRunner();
     runner.runCommand.mockImplementation(async (program, args) => {
       if (program === 'tmux' && args[0] === 'list-sessions') {

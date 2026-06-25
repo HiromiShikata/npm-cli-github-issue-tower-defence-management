@@ -70,7 +70,7 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
     issueCounter = 0;
   });
 
-  it('launches a detached session for an In Tmux by human issue with no live session', async () => {
+  it('launches a detached session for an In Tmux live session issue with no live session', async () => {
     const issue = makeIssue();
     const repository = createFakeTmuxSessionRepository({
       liveSessionNames: [],
@@ -132,7 +132,7 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
     expect(result.launchedIssueUrls).toEqual([issue.url]);
   });
 
-  it('launches only the missing sessions across multiple In Tmux by human issues', async () => {
+  it('launches only the missing sessions across multiple In Tmux live session issues', async () => {
     const liveIssue = makeIssue();
     const missingIssueOne = makeIssue();
     const missingIssueTwo = makeIssue();
@@ -158,7 +158,7 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
     ]);
   });
 
-  it('ignores issues that are not In Tmux by human, closed, or assigned to another login', async () => {
+  it('ignores issues that are not In Tmux live session, closed, or assigned to another login', async () => {
     const otherStatusIssue = makeIssue({ status: 'Done' });
     const closedIssue = makeIssue({ isClosed: true });
     const otherAssigneeIssue = makeIssue({ assignees: ['someone-else'] });

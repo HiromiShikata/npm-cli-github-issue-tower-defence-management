@@ -23,7 +23,7 @@ const project: Project = {
   status: {
     name: 'Status',
     fieldId: 'status-field',
-    statuses: [option('st-tmux', 'In Tmux by human', 'RED')],
+    statuses: [option('st-tmux', 'In Tmux live session', 'RED')],
   },
   nextActionDate: null,
   nextActionHour: null,
@@ -44,7 +44,7 @@ const makeIssue = (overrides: Partial<Issue>): Issue => ({
   number: 1,
   title: 'Issue 1',
   state: 'OPEN',
-  status: 'In Tmux by human',
+  status: 'In Tmux live session',
   story: 'Story Alpha',
   nextActionDate: null,
   nextActionHour: null,

@@ -4,6 +4,7 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import {
   IN_TMUX_STATUS_NAME,
   LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
+  LEGACY_IN_TMUX_BY_HUMAN_STATUS_NAME,
   LEGACY_IN_TMUX_STATUS_NAME,
   LEGACY_TODO_STATUS_NAME,
   PC_TODO_STATUS_NAME,
@@ -25,15 +26,19 @@ export class SetupTowerDefenceProjectUseCase {
   ) {}
 
   private static readonly LEGACY_STATUS_NAMES: Readonly<
-    Record<string, string>
+    Record<string, string[]>
   > = {
-    [TODO_STATUS_NAME]: LEGACY_TODO_STATUS_NAME,
-    [IN_TMUX_STATUS_NAME]: LEGACY_IN_TMUX_STATUS_NAME,
+    [TODO_STATUS_NAME]: [LEGACY_TODO_STATUS_NAME],
+    [IN_TMUX_STATUS_NAME]: [
+      LEGACY_IN_TMUX_BY_HUMAN_STATUS_NAME,
+      LEGACY_IN_TMUX_STATUS_NAME,
+    ],
   };
 
   private static readonly MIGRATED_FROM_NAMES: ReadonlySet<string> = new Set([
     LEGACY_TODO_STATUS_NAME,
     LEGACY_IN_TMUX_STATUS_NAME,
+    LEGACY_IN_TMUX_BY_HUMAN_STATUS_NAME,
     PC_TODO_STATUS_NAME,
     LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
   ]);
@@ -91,12 +96,12 @@ export class SetupTowerDefenceProjectUseCase {
       id: FieldOption['id'] | null;
     })[] = [
       ...REQUIRED_WORKFLOW_STATUSES.map((required) => {
-        const legacyName =
+        const legacyNames =
           SetupTowerDefenceProjectUseCase.LEGACY_STATUS_NAMES[required.name];
         const found =
           existing.find((status) => status.name === required.name) ??
-          (legacyName !== undefined
-            ? existing.find((status) => status.name === legacyName)
+          (legacyNames !== undefined
+            ? existing.find((status) => legacyNames.includes(status.name))
             : undefined);
         return {
           id: found ? found.id : null,

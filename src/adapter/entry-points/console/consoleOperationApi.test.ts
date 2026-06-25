@@ -48,7 +48,7 @@ describe('consoleOperationApi', () => {
           },
           {
             id: 'status_intmux',
-            name: 'In Tmux by human',
+            name: 'In Tmux live session',
             color: 'YELLOW',
             description: '',
           },
@@ -413,7 +413,7 @@ describe('consoleOperationApi', () => {
   });
 
   describe('handleIntmux', () => {
-    it('sets the In Tmux by human status and records done', async () => {
+    it('sets the In Tmux live session status and records done', async () => {
       const response = await handleIntmux(context, {
         pjcode: 'umino',
         action: 'set_intmux',

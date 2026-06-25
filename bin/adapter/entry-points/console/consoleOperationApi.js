@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleIntmux = exports.handleComment = exports.handleTriage = exports.handleReview = exports.IN_TMUX_BY_HUMAN_STATUS_NAME = exports.AWAITING_WORKSPACE_STATUS_NAME = void 0;
+exports.handleIntmux = exports.handleComment = exports.handleTriage = exports.handleReview = exports.IN_TMUX_LIVE_SESSION_STATUS_NAME = exports.AWAITING_WORKSPACE_STATUS_NAME = void 0;
 const consoleDoneStore_1 = require("./consoleDoneStore");
 exports.AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
-exports.IN_TMUX_BY_HUMAN_STATUS_NAME = 'in tmux by human';
+exports.IN_TMUX_LIVE_SESSION_STATUS_NAME = 'in tmux live session';
 const ok = () => ({
     statusCode: 200,
     body: { ok: true },
@@ -221,7 +221,7 @@ const handleIntmux = async (context, body) => {
         return binding;
     }
     const { project, pjcode } = binding;
-    const failure = await updateStatusByName(context.issueRepository, project, issueUrl, projectItemId, exports.IN_TMUX_BY_HUMAN_STATUS_NAME);
+    const failure = await updateStatusByName(context.issueRepository, project, issueUrl, projectItemId, exports.IN_TMUX_LIVE_SESSION_STATUS_NAME);
     if (failure !== null) {
         return failure;
     }

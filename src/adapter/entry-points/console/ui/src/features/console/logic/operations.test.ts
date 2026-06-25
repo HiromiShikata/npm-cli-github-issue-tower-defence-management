@@ -1,5 +1,5 @@
 import {
-  IN_TMUX_BY_HUMAN_NAME,
+  IN_TMUX_LIVE_SESSION_NAME,
   isTodoByHumanTab,
   STATUS_BUTTON_NAMES,
   TOTALLY_WRONG_COMMENT_BODY,
@@ -18,14 +18,14 @@ describe('operation constants', () => {
   it('lists the status buttons left to right', () => {
     expect(STATUS_BUTTON_NAMES).toEqual([
       'In Tmux by agent',
-      'In Tmux by human',
+      'In Tmux live session',
       'Todo by human',
       'Awaiting Workspace',
     ]);
   });
 
-  it('names the in-tmux-by-human status', () => {
-    expect(IN_TMUX_BY_HUMAN_NAME).toBe('In Tmux by human');
+  it('names the in-tmux-live-session status', () => {
+    expect(IN_TMUX_LIVE_SESSION_NAME).toBe('In Tmux live session');
   });
 });
 

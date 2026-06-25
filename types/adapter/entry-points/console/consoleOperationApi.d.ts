@@ -1,7 +1,7 @@
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Project } from '../../../domain/entities/Project';
 export declare const AWAITING_WORKSPACE_STATUS_NAME = "awaiting workspace";
-export declare const IN_TMUX_BY_HUMAN_STATUS_NAME = "in tmux by human";
+export declare const IN_TMUX_LIVE_SESSION_STATUS_NAME = "in tmux live session";
 export type ConsoleProjectBinding = {
     pjcode: string;
     project: Project;

@@ -30,10 +30,10 @@ class SetupTowerDefenceProjectUseCase {
                 !SetupTowerDefenceProjectUseCase.MIGRATED_FROM_NAMES.has(status.name));
             const newStatusList = [
                 ...WorkflowStatus_1.REQUIRED_WORKFLOW_STATUSES.map((required) => {
-                    const legacyName = SetupTowerDefenceProjectUseCase.LEGACY_STATUS_NAMES[required.name];
+                    const legacyNames = SetupTowerDefenceProjectUseCase.LEGACY_STATUS_NAMES[required.name];
                     const found = existing.find((status) => status.name === required.name) ??
-                        (legacyName !== undefined
-                            ? existing.find((status) => status.name === legacyName)
+                        (legacyNames !== undefined
+                            ? existing.find((status) => legacyNames.includes(status.name))
                             : undefined);
                     return {
                         id: found ? found.id : null,
@@ -55,12 +55,16 @@ class SetupTowerDefenceProjectUseCase {
 }
 exports.SetupTowerDefenceProjectUseCase = SetupTowerDefenceProjectUseCase;
 SetupTowerDefenceProjectUseCase.LEGACY_STATUS_NAMES = {
-    [WorkflowStatus_1.TODO_STATUS_NAME]: WorkflowStatus_1.LEGACY_TODO_STATUS_NAME,
-    [WorkflowStatus_1.IN_TMUX_STATUS_NAME]: WorkflowStatus_1.LEGACY_IN_TMUX_STATUS_NAME,
+    [WorkflowStatus_1.TODO_STATUS_NAME]: [WorkflowStatus_1.LEGACY_TODO_STATUS_NAME],
+    [WorkflowStatus_1.IN_TMUX_STATUS_NAME]: [
+        WorkflowStatus_1.LEGACY_IN_TMUX_BY_HUMAN_STATUS_NAME,
+        WorkflowStatus_1.LEGACY_IN_TMUX_STATUS_NAME,
+    ],
 };
 SetupTowerDefenceProjectUseCase.MIGRATED_FROM_NAMES = new Set([
     WorkflowStatus_1.LEGACY_TODO_STATUS_NAME,
     WorkflowStatus_1.LEGACY_IN_TMUX_STATUS_NAME,
+    WorkflowStatus_1.LEGACY_IN_TMUX_BY_HUMAN_STATUS_NAME,
     WorkflowStatus_1.PC_TODO_STATUS_NAME,
     WorkflowStatus_1.LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
 ]);

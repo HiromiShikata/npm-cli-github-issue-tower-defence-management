@@ -139,7 +139,7 @@ export class GenerateConsoleListsUseCase {
           'preparation',
           'icebox',
           'unread',
-          'in tmux by human',
+          'in tmux live session',
           'in tmux by agent',
         ],
       ),

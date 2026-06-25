@@ -19,7 +19,7 @@ const STORY_OPTIONS: FieldOption[] = [
 
 const STATUS_OPTIONS: FieldOption[] = [
   storyOption('st-unread', 'Unread', 'ORANGE'),
-  storyOption('st-tmux', 'In Tmux by human', 'RED'),
+  storyOption('st-tmux', 'In Tmux live session', 'RED'),
   storyOption('st-done', 'Done', 'PURPLE'),
 ];
 
@@ -59,7 +59,7 @@ const makeIssue = (overrides: Partial<Issue>): Issue => {
     number: issueCounter,
     title: `Issue ${issueCounter}`,
     state: 'OPEN',
-    status: 'In Tmux by human',
+    status: 'In Tmux live session',
     story: null,
     nextActionDate: null,
     nextActionHour: null,
@@ -115,7 +115,7 @@ describe('GenerateInTmuxByHumanDataUseCase', () => {
     });
 
   describe('item filter', () => {
-    it('keeps In Tmux by human open issues assigned to the assignee login', () => {
+    it('keeps In Tmux live session open issues assigned to the assignee login', () => {
       const result = run([makeIssue({ story: 'Story Alpha' })]);
       expect(result.v1).toEqual([
         {
@@ -125,7 +125,7 @@ describe('GenerateInTmuxByHumanDataUseCase', () => {
       ]);
     });
 
-    it('rejects issues whose status is not In Tmux by human', () => {
+    it('rejects issues whose status is not In Tmux live session', () => {
       const result = run([makeIssue({ status: 'Unread' })]);
       expect(result.v1).toEqual([]);
     });
