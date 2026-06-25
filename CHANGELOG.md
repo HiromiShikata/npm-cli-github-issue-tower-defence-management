@@ -1,3 +1,10 @@
+## [1.99.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.99.0...v1.99.1) (2026-06-25)
+
+
+### Bug Fixes
+
+* **ci:** skip umino-project jobs for renovate[bot] actor ([#920](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/920)) ([17c4162](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/17c416223b5ef782291ea822bf1936a33111b470)), closes [#900](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/900)
+
 # [1.99.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.98.3...v1.99.0) (2026-06-25)
 
 
