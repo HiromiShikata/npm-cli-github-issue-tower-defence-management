@@ -6,6 +6,7 @@ export type InTmuxByHumanSessionReconcileInput = {
   issues: Issue[];
   assigneeLogin: string;
   launcherCommand: string;
+  now: Date;
 };
 
 export type InTmuxByHumanSessionReconcileResult = {
@@ -29,10 +30,10 @@ export class InTmuxByHumanSessionReconcileUseCase {
   run = async (
     input: InTmuxByHumanSessionReconcileInput,
   ): Promise<InTmuxByHumanSessionReconcileResult> => {
-    const { issues, assigneeLogin, launcherCommand } = input;
+    const { issues, assigneeLogin, launcherCommand, now } = input;
 
     const targetIssues = issues.filter((issue) =>
-      this.isInTmuxByHuman(issue, assigneeLogin),
+      this.isInTmuxByHuman(issue, assigneeLogin, now),
     );
     if (targetIssues.length === 0) {
       return { launchedIssueUrls: [] };
@@ -62,10 +63,17 @@ export class InTmuxByHumanSessionReconcileUseCase {
     return { launchedIssueUrls };
   };
 
-  private isInTmuxByHuman = (issue: Issue, assigneeLogin: string): boolean =>
+  private isInTmuxByHuman = (
+    issue: Issue,
+    assigneeLogin: string,
+    now: Date,
+  ): boolean =>
     issue.status === IN_TMUX_STATUS_NAME &&
     issue.isClosed === false &&
-    issue.assignees.includes(assigneeLogin);
+    issue.assignees.includes(assigneeLogin) &&
+    (issue.nextActionDate === null ||
+      issue.nextActionDate.getTime() <= now.getTime()) &&
+    issue.nextActionHour === null;
 
   private hasLiveSession = (
     issueUrl: string,

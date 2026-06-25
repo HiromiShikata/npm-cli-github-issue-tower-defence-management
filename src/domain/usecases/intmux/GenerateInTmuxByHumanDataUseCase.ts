@@ -57,6 +57,7 @@ export type GenerateInTmuxByHumanDataInput = {
   repo: string;
   consoleBaseUrl: string | null;
   consoleToken: string | null;
+  now: Date;
 };
 
 type InTmuxByHumanStoryGroup = {
@@ -78,6 +79,7 @@ export class GenerateInTmuxByHumanDataUseCase {
       repo,
       consoleBaseUrl,
       consoleToken,
+      now,
     } = input;
 
     const storyOrder = project.story
@@ -85,7 +87,7 @@ export class GenerateInTmuxByHumanDataUseCase {
       : [];
 
     const selectedIssues = issues.filter((issue) =>
-      this.isInTmuxByHuman(issue, assigneeLogin),
+      this.isInTmuxByHuman(issue, assigneeLogin, now),
     );
 
     const groups = this.groupByStoryOrder(selectedIssues, storyOrder);
@@ -139,10 +141,17 @@ export class GenerateInTmuxByHumanDataUseCase {
     return { v1, v2, v3, v4 };
   };
 
-  private isInTmuxByHuman = (issue: Issue, assigneeLogin: string): boolean =>
+  private isInTmuxByHuman = (
+    issue: Issue,
+    assigneeLogin: string,
+    now: Date,
+  ): boolean =>
     issue.status === IN_TMUX_BY_HUMAN_STATUS_NAME &&
     issue.isClosed === false &&
-    issue.assignees.includes(assigneeLogin);
+    issue.assignees.includes(assigneeLogin) &&
+    (issue.nextActionDate === null ||
+      issue.nextActionDate.getTime() <= now.getTime()) &&
+    issue.nextActionHour === null;
 
   private groupByStoryOrder = (
     issues: Issue[],

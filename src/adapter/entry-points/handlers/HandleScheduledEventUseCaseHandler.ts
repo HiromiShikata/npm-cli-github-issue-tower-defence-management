@@ -394,6 +394,8 @@ export class HandleScheduledEventUseCaseHandler {
         );
       }
 
+      const inTmuxNow = new Date();
+
       try {
         writeInTmuxByHumanData({
           inTmuxDataOutputDir: mergedInput.inTmuxDataOutputDir ?? null,
@@ -406,6 +408,7 @@ export class HandleScheduledEventUseCaseHandler {
           repo: input.workingReport.repo,
           project: result.project,
           issues: result.issues,
+          now: inTmuxNow,
         });
       } catch (error) {
         console.error(
@@ -421,6 +424,7 @@ export class HandleScheduledEventUseCaseHandler {
           assigneeLogin: input.manager,
           issues: result.issues,
           localCommandRunner: nodeLocalCommandRunner,
+          now: inTmuxNow,
         });
       } catch (error) {
         console.error(

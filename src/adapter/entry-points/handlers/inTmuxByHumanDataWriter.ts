@@ -18,6 +18,7 @@ export type InTmuxByHumanDataWriterParams = {
   repo: string;
   project: Project;
   issues: Issue[];
+  now: Date;
 };
 
 const writeJsonAtomic = (filePath: string, data: unknown): void => {
@@ -42,6 +43,7 @@ export const writeInTmuxByHumanData = (
     repo,
     project,
     issues,
+    now,
   } = params;
   if (!inTmuxDataOutputDir || !pjcode || !assigneeLogin) {
     return;
@@ -56,6 +58,7 @@ export const writeInTmuxByHumanData = (
     repo,
     consoleBaseUrl: inTmuxConsoleBaseUrl ?? null,
     consoleToken: inTmuxConsoleToken ?? null,
+    now,
   });
 
   writeJsonAtomic(path.join(inTmuxDataOutputDir, `${pjcode}.json`), data.v1);

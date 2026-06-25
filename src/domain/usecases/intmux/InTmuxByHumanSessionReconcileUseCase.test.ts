@@ -8,6 +8,7 @@ import {
 
 const ASSIGNEE = 'owner-login';
 const LAUNCHER = 'cl';
+const NOW = new Date('2026-06-25T12:00:00.000Z');
 
 let issueCounter = 0;
 const makeIssue = (overrides: Partial<Issue> = {}): Issue => {
@@ -82,6 +83,7 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
       issues: [issue],
       assigneeLogin: ASSIGNEE,
       launcherCommand: LAUNCHER,
+      now: NOW,
     });
 
     expect(repository.launches).toEqual([
@@ -108,6 +110,7 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
       issues: [issue],
       assigneeLogin: ASSIGNEE,
       launcherCommand: LAUNCHER,
+      now: NOW,
     });
 
     expect(repository.launches).toEqual([]);
@@ -126,6 +129,7 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
       issues: [issue],
       assigneeLogin: ASSIGNEE,
       launcherCommand: LAUNCHER,
+      now: NOW,
     });
 
     expect(repository.launches).toHaveLength(1);
@@ -146,6 +150,7 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
       issues: [liveIssue, missingIssueOne, missingIssueTwo],
       assigneeLogin: ASSIGNEE,
       launcherCommand: LAUNCHER,
+      now: NOW,
     });
 
     expect(result.launchedIssueUrls).toEqual([
@@ -172,10 +177,71 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
       issues: [otherStatusIssue, closedIssue, otherAssigneeIssue],
       assigneeLogin: ASSIGNEE,
       launcherCommand: LAUNCHER,
+      now: NOW,
     });
 
     expect(repository.launches).toEqual([]);
     expect(result.launchedIssueUrls).toEqual([]);
+  });
+
+  it('excludes an issue whose next action date is in the future', async () => {
+    const futureIssue = makeIssue({
+      nextActionDate: new Date(NOW.getTime() + 24 * 60 * 60 * 1000),
+    });
+    const repository = createFakeTmuxSessionRepository({
+      liveSessionNames: [],
+      processCommandLines: [],
+    });
+    const useCase = new InTmuxByHumanSessionReconcileUseCase(repository);
+
+    const result = await useCase.run({
+      issues: [futureIssue],
+      assigneeLogin: ASSIGNEE,
+      launcherCommand: LAUNCHER,
+      now: NOW,
+    });
+
+    expect(repository.launches).toEqual([]);
+    expect(result.launchedIssueUrls).toEqual([]);
+  });
+
+  it('excludes an issue whose next action hour is set', async () => {
+    const hourIssue = makeIssue({ nextActionHour: 9 });
+    const repository = createFakeTmuxSessionRepository({
+      liveSessionNames: [],
+      processCommandLines: [],
+    });
+    const useCase = new InTmuxByHumanSessionReconcileUseCase(repository);
+
+    const result = await useCase.run({
+      issues: [hourIssue],
+      assigneeLogin: ASSIGNEE,
+      launcherCommand: LAUNCHER,
+      now: NOW,
+    });
+
+    expect(repository.launches).toEqual([]);
+    expect(result.launchedIssueUrls).toEqual([]);
+  });
+
+  it('includes an issue whose next action date is in the past and is now due', async () => {
+    const dueIssue = makeIssue({
+      nextActionDate: new Date(NOW.getTime() - 24 * 60 * 60 * 1000),
+    });
+    const repository = createFakeTmuxSessionRepository({
+      liveSessionNames: [],
+      processCommandLines: [],
+    });
+    const useCase = new InTmuxByHumanSessionReconcileUseCase(repository);
+
+    const result = await useCase.run({
+      issues: [dueIssue],
+      assigneeLogin: ASSIGNEE,
+      launcherCommand: LAUNCHER,
+      now: NOW,
+    });
+
+    expect(result.launchedIssueUrls).toEqual([dueIssue.url]);
   });
 
   it('transforms an issue url into the same session name tmux derives from the raw url, replacing only "." and ":" and keeping "/"', () => {

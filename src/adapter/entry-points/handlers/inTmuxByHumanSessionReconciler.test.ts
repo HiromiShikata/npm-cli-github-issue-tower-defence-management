@@ -3,6 +3,7 @@ import { LocalCommandRunner } from '../../../domain/usecases/adapter-interfaces/
 import { reconcileInTmuxByHumanSessions } from './inTmuxByHumanSessionReconciler';
 
 const ASSIGNEE = 'owner-login';
+const NOW = new Date('2026-06-25T12:00:00.000Z');
 
 const makeIssue = (overrides: Partial<Issue> = {}): Issue => ({
   nameWithOwner: 'demo/repo',
@@ -46,6 +47,7 @@ describe('reconcileInTmuxByHumanSessions', () => {
       assigneeLogin: ASSIGNEE,
       issues: [makeIssue()],
       localCommandRunner: runner,
+      now: NOW,
     });
 
     expect(runner.runCommand.mock.calls).toHaveLength(0);
@@ -68,6 +70,7 @@ describe('reconcileInTmuxByHumanSessions', () => {
       assigneeLogin: ASSIGNEE,
       issues: [makeIssue()],
       localCommandRunner: runner,
+      now: NOW,
     });
 
     const newSessionCall = runner.runCommand.mock.calls.find(
@@ -114,6 +117,7 @@ describe('reconcileInTmuxByHumanSessions', () => {
       assigneeLogin: ASSIGNEE,
       issues: [makeIssue()],
       localCommandRunner: runner,
+      now: NOW,
     });
 
     const newSessionCalls = runner.runCommand.mock.calls.filter(
