@@ -939,8 +939,13 @@ export class ApiV3CheerioRestIssueRepository
       if (!statusCheckRollup) return false;
       const latestRuns = [...latestCheckRunByName.values()];
       const statusContexts = contexts.filter(
-        (ctx): ctx is { __typename: 'StatusContext'; context: string; state: string } =>
-          ctx.__typename === 'StatusContext',
+        (
+          ctx,
+        ): ctx is {
+          __typename: 'StatusContext';
+          context: string;
+          state: string;
+        } => ctx.__typename === 'StatusContext',
       );
       const hasFailure =
         latestRuns.some(
