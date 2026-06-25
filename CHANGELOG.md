@@ -1,3 +1,10 @@
+# [1.101.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.100.0...v1.101.0) (2026-06-25)
+
+
+### Features
+
+* **console:** show Story and reactivation-trigger fields on each task row ([#946](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/946)) ([b20d75a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b20d75a4c87b836091cd0ed602deb0c50360c9f8))
+
 # [1.100.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.99.1...v1.100.0) (2026-06-25)
 
 

@@ -71,6 +71,10 @@ class GenerateConsoleListsUseCase {
             itemId: issue.itemId,
             isPr: issue.isPr,
             story: issue.story ?? '',
+            status: issue.status,
+            nextActionDate: issue.nextActionDate === null ? null : issue.nextActionDate.toISOString(),
+            nextActionHour: issue.nextActionHour,
+            dependedIssueUrls: issue.dependedIssueUrls,
             labels: issue.labels,
             createdAt: issue.createdAt.toISOString(),
         });
