@@ -82,4 +82,38 @@ describe('ConsoleOperationMenu', () => {
     expect(queryByText('Approve')).toBeNull();
     expect(queryByText('Close')).not.toBeNull();
   });
+
+  it('shows status, close and next-action groups but hides the story group on the workflow-blocker tab', () => {
+    const { getByText, queryByText } = render(
+      <ConsoleOperationMenu
+        tab="workflow-blocker"
+        item={issueItem}
+        hasPullRequest={false}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        handlers={handlers}
+      />,
+    );
+    expect(getByText('Awaiting Workspace')).toBeInTheDocument();
+    expect(getByText('Close')).toBeInTheDocument();
+    expect(getByText('Close as not planned')).toBeInTheDocument();
+    expect(getByText('+1 day')).toBeInTheDocument();
+    expect(queryByText('Move to Okinawa')).toBeNull();
+    expect(queryByText('Approve')).toBeNull();
+  });
+
+  it('shows the review group on the workflow-blocker tab when the item has a pull request', () => {
+    const { getByText } = render(
+      <ConsoleOperationMenu
+        tab="workflow-blocker"
+        item={prItem}
+        hasPullRequest
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        handlers={handlers}
+      />,
+    );
+    expect(getByText('Approve')).toBeInTheDocument();
+    expect(getByText('Close')).toBeInTheDocument();
+  });
 });

@@ -77,11 +77,11 @@ Options for countInTmuxByHumanSessionsPerToken:
   --tokenListJsonPath <path>                       Path to the JSON array of { name, token } records (falls back to the claudeCodeOauthTokenListJsonPath config value, then to the CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH environment variable)
 ```
 
-The `serveConsole` sub-command starts a local HTTP server that serves the TDPM Console. One running instance serves every project: the user opens a per-project URL path `/projects/{pjcode}` (or `/projects/{pjcode}/{prs|triage|unread|failed-preparation|todo-by-human}`) and the bundled UI reads the `pjcode` from its own URL path and loads that project's list data. The server serves the bundled single-page-application `index.html` at `/`, `/index.html`, and every `/projects/{pjcode}` and `/projects/{pjcode}/{tab}` app route. Every response is sent with `Cache-Control: no-store`. Any request path containing a segment that begins with a dot (for example `/.git` or `/.env`) is rejected with HTTP 404. The UI bootstrap assets (HTML and JS) are served without authentication; served `*.json` files and `/api/*` paths require an access token supplied either as the `k` query parameter (`?k=<token>`) or the `X-PV-Token` request header. The access token is read from the `consoleAccessToken` config value and never appears on the command line. When the built UI bundle directory (`ui-dist`) is absent the server still starts and serves a minimal placeholder index for `/`, `/index.html`, and the per-project app routes.
+The `serveConsole` sub-command starts a local HTTP server that serves the TDPM Console. One running instance serves every project: the user opens a per-project URL path `/projects/{pjcode}` (or `/projects/{pjcode}/{workflow-blocker|prs|triage|unread|failed-preparation|todo-by-human}`) and the bundled UI reads the `pjcode` from its own URL path and loads that project's list data. The server serves the bundled single-page-application `index.html` at `/`, `/index.html`, and every `/projects/{pjcode}` and `/projects/{pjcode}/{tab}` app route. Every response is sent with `Cache-Control: no-store`. Any request path containing a segment that begins with a dot (for example `/.git` or `/.env`) is rejected with HTTP 404. The UI bootstrap assets (HTML and JS) are served without authentication; served `*.json` files and `/api/*` paths require an access token supplied either as the `k` query parameter (`?k=<token>`) or the `X-PV-Token` request header. The access token is read from the `consoleAccessToken` config value and never appears on the command line. When the built UI bundle directory (`ui-dist`) is absent the server still starts and serves a minimal placeholder index for `/`, `/index.html`, and the per-project app routes.
 
 Behind the token gate the server exposes three groups of routes:
 
-- Data delivery (GET): `GET /projects/{pjcode}/{prs|triage|unread|failed-preparation|todo-by-human}/list.json` and the matching `detail/<key>.json` files are read from `{consoleDataOutputDir}/{pjcode}/{tab}/`, and `GET /projects/{pjcode}/in-tmux-by-human/*` is read from `{consoleDataOutputDir}/{pjcode}/in-tmux-by-human/`. Each served list has the `.done` cross-tab exclusion applied. Generation of these files is performed by the schedule cycle, not by this server.
+- Data delivery (GET): `GET /projects/{pjcode}/{workflow-blocker|prs|triage|unread|failed-preparation|todo-by-human}/list.json` and the matching `detail/<key>.json` files are read from `{consoleDataOutputDir}/{pjcode}/{tab}/`, and `GET /projects/{pjcode}/in-tmux-by-human/*` is read from `{consoleDataOutputDir}/{pjcode}/in-tmux-by-human/`. Each served list has the `.done` cross-tab exclusion applied. Generation of these files is performed by the schedule cycle, not by this server.
 - Flat in-tmux-by-human static files (GET): `GET /in-tmux-by-human/<file>.json` serves the flat static JSON files (for example `index.v4.json` and `{project}.v4.json`, plus the v3 files for backward compatibility) byte-for-byte from `--inTmuxDataDir`. Only flat file names directly under that directory are served; nested paths and any path traversal attempt are rejected with HTTP 404. This route is distinct from the per-project `/projects/{pjcode}/in-tmux-by-human/*` data-delivery route above. These files are still gated by the same access token, so requests carry `?k=<token>`. The token-keyed file generation is performed by an external watcher, not by this server.
 - Read APIs (GET, backed by the server-side `GH_TOKEN`): `GET /api/itembody`, `GET /api/comments`, `GET /api/prfiles`, `GET /api/prcommits`, `GET /api/relatedprs`, and `GET /api/issuetitle`. Each takes a `url` query parameter. `GET /api/issuetitle` is served through an in-process cache: a merged result is cached permanently and every other result is re-fetched after 300 seconds.
 - Operation APIs (POST, JSON body): `POST /api/review` (`approve`, `request_changes`, `close`), `POST /api/triage` (`set_status`, `set_story`, `close`, `close_not_planned`, `snooze_1day`, `snooze_1week`), and `POST /api/intmux` (`set_intmux`). These routes are multi-project: every request body carries the `pjcode` of the project the UI is currently viewing (taken from the UI's own `/projects/{pjcode}` URL path), the server resolves that `pjcode` to its GitHub Project URL through the `pjcode → projectUrl` mapping described below, loads that project's status and story options (lazily, cached per `pjcode`), and applies the operation against the resolved project. A request with no `pjcode`, or a `pjcode` that has no configured project URL, is rejected with HTTP 400. Each confirmed operation records the affected `projectItemId` into the `.done` exclusion under the resolved `pjcode` so it disappears from every tab's served list for that project only. One running `serveConsole` instance therefore serves both reads and writes for every configured project.
@@ -271,6 +271,7 @@ awLogDirectoryPath?: string # Optional: Directory path where aw log files named 
 awLogStaleThresholdMinutes?: number # Optional: Minutes since last aw log mtime after which a Preparation issue is considered orphaned even when pgrep still returns 0. Requires awLogDirectoryPath
 labelsAsLlmAgentName?: string[] # Optional: List of issue labels that are themselves agent names. When an issue carries any label that is included in this list, that label name is used as the agent name. Selection precedence is: (1) explicit `llm-agent:` label, (2) labelsAsLlmAgentName entry match, (3) `category:` label, (4) defaultLlmAgentName, (5) defaultAgentName
 consoleDataOutputDir?: string # Optional: Base output directory for the per-project Console list.json files written each schedule cycle. When unset, Console list generation is skipped
+workflowBlockerStoryName?: string # Optional: Story field name that the Console "workflow-blocker" tab matches (case-insensitive). Every non-closed issue with this story is listed regardless of status or reactivation-trigger fields. When unset, the workflow-blocker list is always empty
 inTmuxDataOutputDir?: string # Optional: Base output directory for the in-tmux-by-human per-project and index JSON files written each schedule cycle. When unset, in-tmux-by-human generation is skipped
 inTmuxConsoleBaseUrl?: string # Optional: Console base URL used to build the tdpmConsoleUrl in the v3/v4 in-tmux-by-human files (for example https://console.example.com). When unset, the v3 and v4 files are skipped
 inTmuxConsoleToken?: string # Optional: Token embedded in the ?k= query string of the v4 in-tmux-by-human files. When unset, the v4 per-project file and index.v4.json are skipped
@@ -410,17 +411,17 @@ System metrics are read from `/proc/meminfo` at snapshot write time.
 
 ## Per-Project Console Lists
 
-When `consoleDataOutputDir` is configured, each schedule cycle also writes five per-tab Console list files, generated from the same in-memory project and issue data already loaded for the cycle (no additional GitHub API calls):
+When `consoleDataOutputDir` is configured, each schedule cycle also writes six per-tab Console list files, generated from the same in-memory project and issue data already loaded for the cycle (no additional GitHub API calls):
 
 ```
 {consoleDataOutputDir}/{projectName}/{tab}/list.json
 ```
 
-for `tab` in `prs`, `triage`, `unread`, `failed-preparation`, and `todo-by-human`. Each file is written atomically (written to a `.tmp` file then renamed) so external readers never see a partial write. When `consoleDataOutputDir` is unset the generation is skipped, and any error during generation is logged and swallowed so the schedule cycle is never affected.
+for `tab` in `workflow-blocker`, `prs`, `triage`, `unread`, `failed-preparation`, and `todo-by-human`. Each file is written atomically (written to a `.tmp` file then renamed) so external readers never see a partial write. When `consoleDataOutputDir` is unset the generation is skipped, and any error during generation is logged and swallowed so the schedule cycle is never affected.
 
 ### Item Selection
 
-Every tab applies a common actionable filter to the project's issues: the issue is open, is assigned to the project manager, has no depended issue URLs, and has neither a next action date nor a next action hour set. Each tab then applies its own selector:
+Most tabs apply a common actionable filter to the project's issues: the issue is open, is assigned to the project manager, has no depended issue URLs, and has neither a next action date nor a next action hour set. Each tab then applies its own selector:
 
 - `prs`: status equals `Awaiting Quality Check` (case-insensitive)
 - `unread`: status equals `Unread` (case-insensitive)
@@ -428,9 +429,11 @@ Every tab applies a common actionable filter to the project's issues: the issue 
 - `todo-by-human`: status equals `Todo by human` or the legacy value `Todo` (exact case)
 - `triage`: story name contains `no story` (case-insensitive)
 
+The `workflow-blocker` tab is the one exception to the common actionable filter: it lists every issue whose story name equals the configured `workflowBlockerStoryName` (case-insensitive) and whose issue state is not closed, regardless of its status, next action date, next action hour, or depended issue URLs. When `workflowBlockerStoryName` is unset, the `workflow-blocker` list is always empty.
+
 ### JSON Shape
 
-The `prs`, `unread`, `failed-preparation`, and `todo-by-human` tabs share this shape:
+The `workflow-blocker`, `prs`, `unread`, `failed-preparation`, and `todo-by-human` tabs share this shape:
 
 ```json
 {
@@ -468,7 +471,7 @@ The `triage` tab omits `statusOptions`, adds `storyOptions` (all story field opt
 - `statusOptions`: Project status field options offered as routing buttons. The current-status option and `Done` are excluded; `failed-preparation` additionally excludes `Preparation`, `Icebox`, `Unread`, `In Tmux by human`, and `In Tmux by agent`.
 - `storyOptions` (triage tab only): All story field options.
 - `storyOrder`: Story field option names in field order (empty array when the project has no story field).
-- `storyColors`: Map from story name to its color. Object value (`{ "color": ... }`) for `prs`/`unread`/`failed-preparation`/`todo-by-human`; plain string value for `triage`.
+- `storyColors`: Map from story name to its color. Object value (`{ "color": ... }`) for `workflow-blocker`/`prs`/`unread`/`failed-preparation`/`todo-by-human`; plain string value for `triage`.
 - `items`: Selected issues, stable-sorted by their story's position in `storyOrder` (unknown stories sorted last). No item carries a `body` field.
 
 ## In-Tmux-by-Human Data

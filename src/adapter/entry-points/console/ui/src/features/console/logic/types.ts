@@ -121,6 +121,7 @@ export type ConsoleOverlayEntry = {
 export type ConsoleOverlay = Record<string, ConsoleOverlayEntry>;
 
 export type ConsoleTabName =
+  | 'workflow-blocker'
   | 'prs'
   | 'triage'
   | 'unread'
@@ -133,6 +134,7 @@ export type ConsoleTab = {
 };
 
 export const CONSOLE_TABS: ConsoleTab[] = [
+  { name: 'workflow-blocker', label: 'Workflow Blocker' },
   { name: 'prs', label: 'Awaiting Quality Check' },
   { name: 'triage', label: 'Triage' },
   { name: 'unread', label: 'Unread' },

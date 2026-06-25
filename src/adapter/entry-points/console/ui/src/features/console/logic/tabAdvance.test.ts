@@ -4,6 +4,7 @@ import type { ConsoleTabName } from './types';
 const counts = (
   overrides: Partial<Record<ConsoleTabName, number>>,
 ): Record<ConsoleTabName, number> => ({
+  'workflow-blocker': 0,
   prs: 0,
   triage: 0,
   unread: 0,

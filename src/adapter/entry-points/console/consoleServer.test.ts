@@ -72,6 +72,7 @@ describe('consoleServer pure helpers', () => {
     });
 
     it('matches a per-project tab route for every list tab', () => {
+      expect(isConsoleAppRoute('/projects/umino/workflow-blocker')).toBe(true);
       expect(isConsoleAppRoute('/projects/umino/prs')).toBe(true);
       expect(isConsoleAppRoute('/projects/xmile/triage')).toBe(true);
       expect(isConsoleAppRoute('/projects/xcare/unread')).toBe(true);

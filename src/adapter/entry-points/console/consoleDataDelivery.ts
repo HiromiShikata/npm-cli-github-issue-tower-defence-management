@@ -3,6 +3,7 @@ import * as path from 'path';
 import { readDoneProjectItemIds } from './consoleDoneStore';
 
 export const CONSOLE_LIST_TAB_NAMES: string[] = [
+  'workflow-blocker',
   'prs',
   'triage',
   'unread',

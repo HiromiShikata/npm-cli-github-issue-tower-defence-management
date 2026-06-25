@@ -46,6 +46,7 @@ export type ConsoleTriageTab = {
 };
 
 export type ConsoleTabName =
+  | 'workflow-blocker'
   | 'prs'
   | 'triage'
   | 'unread'
@@ -53,6 +54,7 @@ export type ConsoleTabName =
   | 'todo-by-human';
 
 export type ConsoleLists = {
+  'workflow-blocker': ConsoleStatusTab;
   prs: ConsoleStatusTab;
   triage: ConsoleTriageTab;
   unread: ConsoleStatusTab;
@@ -66,13 +68,21 @@ export type GenerateConsoleListsInput = {
   pjcode: string;
   assigneeLogin: string;
   generatedAt: string;
+  workflowBlockerStoryName: string | null;
 };
 
 const UNKNOWN_STORY_SORT_INDEX = 999999;
 
 export class GenerateConsoleListsUseCase {
   run = (input: GenerateConsoleListsInput): ConsoleLists => {
-    const { project, issues, pjcode, assigneeLogin, generatedAt } = input;
+    const {
+      project,
+      issues,
+      pjcode,
+      assigneeLogin,
+      generatedAt,
+      workflowBlockerStoryName,
+    } = input;
 
     const storyOptions = project.story ? project.story.stories : [];
     const storyOrder = storyOptions.map((option) => option.name);
@@ -82,7 +92,8 @@ export class GenerateConsoleListsUseCase {
       this.isActionable(issue, assigneeLogin),
     );
 
-    const buildStatusTab = (
+    const buildStatusTabFromSource = (
+      sourceIssues: Issue[],
       selector: (issue: Issue) => boolean,
       excludedStatusNames: string[],
     ): ConsoleStatusTab => ({
@@ -92,14 +103,23 @@ export class GenerateConsoleListsUseCase {
       storyOrder,
       storyColors: this.buildStoryColorsObject(storyOptions),
       items: this.sortByStoryOrder(
-        actionableIssues
-          .filter(selector)
-          .map((issue) => this.projectItem(issue)),
+        sourceIssues.filter(selector).map((issue) => this.projectItem(issue)),
         storyOrder,
       ),
     });
 
+    const buildStatusTab = (
+      selector: (issue: Issue) => boolean,
+      excludedStatusNames: string[],
+    ): ConsoleStatusTab =>
+      buildStatusTabFromSource(actionableIssues, selector, excludedStatusNames);
+
     return {
+      'workflow-blocker': buildStatusTabFromSource(
+        issues.filter((issue) => issue.isClosed === false),
+        this.workflowBlockerSelector(workflowBlockerStoryName),
+        ['done'],
+      ),
       prs: buildStatusTab(
         (issue) =>
           issue.status !== null &&
@@ -155,6 +175,17 @@ export class GenerateConsoleListsUseCase {
     issue.dependedIssueUrls.length === 0 &&
     issue.nextActionDate === null &&
     issue.nextActionHour === null;
+
+  private workflowBlockerSelector = (
+    workflowBlockerStoryName: string | null,
+  ): ((issue: Issue) => boolean) => {
+    const target = workflowBlockerStoryName?.toLowerCase() ?? '';
+    if (target === '') {
+      return () => false;
+    }
+    return (issue: Issue): boolean =>
+      issue.story !== null && issue.story.toLowerCase() === target;
+  };
 
   private projectItem = (issue: Issue): ConsoleListItem => ({
     number: issue.number,

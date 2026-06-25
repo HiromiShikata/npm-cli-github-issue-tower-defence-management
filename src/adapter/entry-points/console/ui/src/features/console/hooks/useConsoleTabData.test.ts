@@ -27,7 +27,7 @@ describe('useConsoleTabData', () => {
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
     });
-    expect(fetchMock).toHaveBeenCalledTimes(5);
+    expect(fetchMock).toHaveBeenCalledTimes(6);
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining('/projects/umino/prs/list.json'),
     );

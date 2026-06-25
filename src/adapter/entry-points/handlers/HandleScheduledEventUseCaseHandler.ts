@@ -70,6 +70,7 @@ export class HandleScheduledEventUseCaseHandler {
     type inputType = Parameters<HandleScheduledEventUseCase['run']>[0] & {
       claudeCodeOauthTokenListJsonPath?: string;
       consoleDataOutputDir?: string;
+      workflowBlockerStoryName?: string;
       inTmuxDataOutputDir?: string;
       inTmuxConsoleBaseUrl?: string;
       inTmuxConsoleToken?: string;
@@ -382,6 +383,8 @@ export class HandleScheduledEventUseCaseHandler {
           assigneeLogin: input.manager,
           project: result.project,
           issues: result.issues,
+          workflowBlockerStoryName:
+            mergedInput.workflowBlockerStoryName ?? null,
         });
       } catch (error) {
         console.error(

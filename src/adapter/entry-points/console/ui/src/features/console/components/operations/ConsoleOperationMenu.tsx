@@ -31,7 +31,7 @@ export const ConsoleOperationMenu = ({
   handlers,
 }: ConsoleOperationBarProps) => {
   const showStory = tab === 'triage';
-  const showClose = !item.isPr;
+  const showClose = tab === 'workflow-blocker' || !item.isPr;
   return (
     <div className="console-operation-bar">
       {hasPullRequest && (

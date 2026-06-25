@@ -91,3 +91,33 @@ test('processing tabs drives auto-advance and keeps emptied badges at zero', asy
   await expect(tabByLabel(page, 'Triage')).toHaveCount(0);
   await expect(tabBadge(page, 'Unread')).toHaveText('2');
 });
+
+test('renders the Workflow Blocker tab leftmost and shows its detail operations', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await expect(activeTabLabel(page)).toHaveText('Workflow Blocker');
+  await expect(tabBadge(page, 'Workflow Blocker')).toHaveText('1');
+
+  const labels = page.locator('.console-tab .console-tab-label');
+  await expect(labels.nth(0)).toHaveText('Workflow Blocker');
+  await expect(labels.nth(1)).toHaveText('Awaiting Quality Check');
+
+  await expect(page.locator('.console-tab-count-heading')).toHaveCount(0);
+
+  await itemRowByText(
+    page,
+    'Resolve the shared GitHub token rate-limit exhaustion blocker',
+  ).click();
+
+  await expect(
+    page.locator('.console-op-button', { hasText: 'Awaiting Workspace' }),
+  ).toBeVisible();
+  await expect(
+    page.locator('.console-op-button', { hasText: 'Close as not planned' }),
+  ).toBeVisible();
+  await expect(
+    page.locator('.console-op-button', { hasText: '+1 day' }),
+  ).toBeVisible();
+});

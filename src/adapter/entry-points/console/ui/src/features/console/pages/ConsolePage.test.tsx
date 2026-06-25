@@ -88,12 +88,12 @@ describe('ConsolePage', () => {
     expect(window.location.hash).toBe('#item/PVTI_1');
   });
 
-  it('renders the per-tab count sub-heading and snapshot time', async () => {
-    const { getByText } = render(<ConsolePage />);
+  it('renders the snapshot time without an item-count sub-heading', async () => {
+    const { getByText, container } = render(<ConsolePage />);
     await waitFor(() => {
       expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
     });
-    expect(getByText('1 items awaiting quality check')).toBeInTheDocument();
+    expect(container.querySelector('.console-tab-count-heading')).toBeNull();
     expect(getByText('snapshot: 2026-06-19T00:00:00.000Z')).toBeInTheDocument();
   });
 
