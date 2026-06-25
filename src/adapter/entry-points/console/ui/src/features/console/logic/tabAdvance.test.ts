@@ -1,4 +1,7 @@
-import { findNextNonEmptyTabToRight } from './tabAdvance';
+import {
+  findNextNonEmptyTabToRight,
+  resolveDefaultActiveTab,
+} from './tabAdvance';
 import type { ConsoleTabName } from './types';
 
 const counts = (
@@ -45,5 +48,34 @@ describe('findNextNonEmptyTabToRight', () => {
     expect(
       findNextNonEmptyTabToRight('todo-by-human', counts({ prs: 35 })),
     ).toBeNull();
+  });
+});
+
+describe('resolveDefaultActiveTab', () => {
+  it('returns the left-most tab when every tab is non-empty', () => {
+    expect(
+      resolveDefaultActiveTab(
+        counts({
+          'workflow-blocker': 3,
+          prs: 5,
+          triage: 2,
+          unread: 9,
+          'failed-preparation': 1,
+          'todo-by-human': 4,
+        }),
+      ),
+    ).toBe('workflow-blocker');
+  });
+
+  it('skips empty left-most tabs and returns the first non-empty tab', () => {
+    expect(
+      resolveDefaultActiveTab(
+        counts({ 'workflow-blocker': 0, prs: 0, triage: 8 }),
+      ),
+    ).toBe('triage');
+  });
+
+  it('falls back to the first tab when every tab is empty', () => {
+    expect(resolveDefaultActiveTab(counts({}))).toBe('workflow-blocker');
   });
 });

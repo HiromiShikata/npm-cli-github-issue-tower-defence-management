@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { resolveDefaultActiveTab } from '../logic/tabAdvance';
 import { CONSOLE_TABS, type ConsoleTabName } from '../logic/types';
 
 const TAB_NAMES = new Set<string>(CONSOLE_TABS.map((tab) => tab.name));
@@ -35,20 +36,21 @@ export type ConsoleNavigation = {
 
 export const useConsoleNavigation = (
   pjcode: string | null,
+  counts: Record<ConsoleTabName, number>,
 ): ConsoleNavigation => {
   const readState = useCallback((): {
     activeTab: ConsoleTabName;
     selectedItemKey: string | null;
   } => {
+    const fallbackTab = resolveDefaultActiveTab(counts);
     if (typeof window === 'undefined') {
-      return { activeTab: CONSOLE_TABS[0].name, selectedItemKey: null };
+      return { activeTab: fallbackTab, selectedItemKey: null };
     }
     return {
-      activeTab:
-        parseTabFromPath(window.location.pathname) ?? CONSOLE_TABS[0].name,
+      activeTab: parseTabFromPath(window.location.pathname) ?? fallbackTab,
       selectedItemKey: parseItemKeyFromHash(window.location.hash),
     };
-  }, []);
+  }, [counts]);
 
   const [state, setState] = useState(readState);
 
@@ -66,6 +68,21 @@ export const useConsoleNavigation = (
       window.removeEventListener('hashchange', sync);
     };
   }, [readState]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    if (parseTabFromPath(window.location.pathname) !== null) {
+      return;
+    }
+    const fallbackTab = resolveDefaultActiveTab(counts);
+    setState((current) =>
+      current.activeTab === fallbackTab
+        ? current
+        : { ...current, activeTab: fallbackTab },
+    );
+  }, [counts]);
 
   const tabHref = useCallback(
     (tab: ConsoleTabName): string =>

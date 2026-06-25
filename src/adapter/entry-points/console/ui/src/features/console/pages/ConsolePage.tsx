@@ -52,15 +52,7 @@ const OVERLAY_NAMESPACE_FALLBACK = 'console';
 export const ConsolePage = () => {
   const pjcode = useConsolePjcode();
   const { snapshots, isLoading, error } = useConsoleTabData(pjcode);
-  const navigation = useConsoleNavigation(pjcode);
-  const { activeTab, selectedItemKey, openItem, closeItem, selectTab } =
-    navigation;
-
   const overlayState = useConsoleOverlay(pjcode ?? OVERLAY_NAMESPACE_FALLBACK);
-  const caches = useConsoleCaches();
-  const operations = useConsoleOperations(pjcode, activeTab, overlayState);
-  const actionQueue = useConsoleActionQueue();
-  const now = Date.now();
 
   const counts = useMemo(() => {
     const result = emptyCounts();
@@ -76,6 +68,15 @@ export const ConsolePage = () => {
     }
     return result;
   }, [snapshots, overlayState.overlay]);
+
+  const navigation = useConsoleNavigation(pjcode, counts);
+  const { activeTab, selectedItemKey, openItem, closeItem, selectTab } =
+    navigation;
+
+  const caches = useConsoleCaches();
+  const operations = useConsoleOperations(pjcode, activeTab, overlayState);
+  const actionQueue = useConsoleActionQueue();
+  const now = Date.now();
 
   const activeSnapshot = snapshots[activeTab];
   const pendingItems = useMemo(() => {

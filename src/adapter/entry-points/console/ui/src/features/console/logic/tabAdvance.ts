@@ -17,3 +17,14 @@ export const findNextNonEmptyTabToRight = (
   }
   return null;
 };
+
+export const resolveDefaultActiveTab = (
+  counts: Record<ConsoleTabName, number>,
+): ConsoleTabName => {
+  for (const tab of CONSOLE_TABS) {
+    if ((counts[tab.name] ?? 0) > 0) {
+      return tab.name;
+    }
+  }
+  return CONSOLE_TABS[0].name;
+};
