@@ -1,3 +1,10 @@
+## [1.98.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.98.2...v1.98.3) (2026-06-25)
+
+
+### Bug Fixes
+
+* **console:** keep diff line-number cells on one line ([#939](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/939)) ([bb6c7a2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bb6c7a20f0f949abd9237be973b6e324a3f169ad))
+
 ## [1.98.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.98.1...v1.98.2) (2026-06-24)
 
 
