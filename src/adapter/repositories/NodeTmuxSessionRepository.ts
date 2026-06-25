@@ -39,6 +39,7 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
   ): Promise<void> => {
     await this.localCommandRunner.runCommand('tmux', [
       'new-session',
+      '-A',
       '-d',
       '-s',
       sessionName,

@@ -12,8 +12,16 @@ export type InTmuxByHumanSessionReconcileResult = {
   launchedIssueUrls: string[];
 };
 
+// tmux sanitizes a requested session name by replacing only `.` and `:` with
+// `_`, while keeping every other character (including `/`). The Termux app
+// launches each agent with `tmux new -A -s {ISSUE_URL}`, so tmux derives the
+// authoritative session name from the raw issue URL. This function MUST return
+// exactly that derived name so the reconciler recognizes the app's existing
+// session instead of creating a duplicate under a differently-normalized name.
+// For example `https://github.com/owner/repo/issues/9` becomes
+// `https_//github_com/owner/repo/issues/9`.
 export const toTmuxSessionName = (issueUrl: string): string =>
-  issueUrl.replace(/[^a-zA-Z0-9]/g, '_');
+  issueUrl.replace(/[.:]/g, '_');
 
 export class InTmuxByHumanSessionReconcileUseCase {
   constructor(private readonly tmuxSessionRepository: TmuxSessionRepository) {}

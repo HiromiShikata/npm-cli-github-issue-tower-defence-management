@@ -178,9 +178,9 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
     expect(result.launchedIssueUrls).toEqual([]);
   });
 
-  it('transforms an issue url into a tmux session name by replacing non-alphanumeric characters', () => {
+  it('transforms an issue url into the same session name tmux derives from the raw url, replacing only "." and ":" and keeping "/"', () => {
     expect(toTmuxSessionName('https://github.com/demo/repo/issues/42')).toBe(
-      'https___github_com_demo_repo_issues_42',
+      'https_//github_com/demo/repo/issues/42',
     );
   });
 });

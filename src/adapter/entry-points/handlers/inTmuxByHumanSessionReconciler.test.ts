@@ -76,9 +76,10 @@ describe('reconcileInTmuxByHumanSessions', () => {
     expect(newSessionCall).toBeDefined();
     expect(newSessionCall?.[1]).toEqual([
       'new-session',
+      '-A',
       '-d',
       '-s',
-      'https___github_com_demo_repo_issues_1',
+      'https_//github_com/demo/repo/issues/1',
       'sh',
       '-lc',
       'exec "$1" "$2"',
@@ -93,7 +94,7 @@ describe('reconcileInTmuxByHumanSessions', () => {
     runner.runCommand.mockImplementation(async (program, args) => {
       if (program === 'tmux' && args[0] === 'list-sessions') {
         return {
-          stdout: 'https___github_com_demo_repo_issues_1\n',
+          stdout: 'https_//github_com/demo/repo/issues/1\n',
           stderr: '',
           exitCode: 0,
         };

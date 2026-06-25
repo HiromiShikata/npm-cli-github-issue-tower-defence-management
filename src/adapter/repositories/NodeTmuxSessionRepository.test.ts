@@ -67,7 +67,7 @@ describe('NodeTmuxSessionRepository', () => {
   });
 
   describe('launchDetachedSession', () => {
-    it('creates a detached tmux session running the launcher command with the issue url', async () => {
+    it('attaches-or-creates a detached tmux session running the launcher command with the issue url', async () => {
       const runner = createMockRunner();
       runner.runCommand.mockResolvedValue({
         stdout: '',
@@ -77,7 +77,7 @@ describe('NodeTmuxSessionRepository', () => {
       const repository = new NodeTmuxSessionRepository(runner);
 
       await repository.launchDetachedSession(
-        'https___github_com_demo_repo_issues_1',
+        'https_//github_com/demo/repo/issues/1',
         'cl',
         'https://github.com/demo/repo/issues/1',
       );
@@ -85,9 +85,10 @@ describe('NodeTmuxSessionRepository', () => {
       expect(runner.runCommand.mock.calls[0][0]).toBe('tmux');
       expect(runner.runCommand.mock.calls[0][1]).toEqual([
         'new-session',
+        '-A',
         '-d',
         '-s',
-        'https___github_com_demo_repo_issues_1',
+        'https_//github_com/demo/repo/issues/1',
         'sh',
         '-lc',
         'exec "$1" "$2"',
