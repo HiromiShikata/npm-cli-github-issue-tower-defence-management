@@ -212,6 +212,30 @@ body {
   cursor: help;
 }
 
+.console-item-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: #adbac7;
+}
+
+.console-item-field {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+  word-break: break-all;
+}
+
+.console-item-field-label {
+  color: #6e7681;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
 .console-list-message {
   padding: 16px;
   color: #8b949e;

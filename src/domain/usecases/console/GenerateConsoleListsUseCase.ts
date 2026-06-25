@@ -17,6 +17,10 @@ export type ConsoleListItem = {
   itemId: string;
   isPr: boolean;
   story: string;
+  status: string | null;
+  nextActionDate: string | null;
+  nextActionHour: number | null;
+  dependedIssueUrls: string[];
   labels: string[];
   createdAt: string;
 };
@@ -197,6 +201,11 @@ export class GenerateConsoleListsUseCase {
     itemId: issue.itemId,
     isPr: issue.isPr,
     story: issue.story ?? '',
+    status: issue.status,
+    nextActionDate:
+      issue.nextActionDate === null ? null : issue.nextActionDate.toISOString(),
+    nextActionHour: issue.nextActionHour,
+    dependedIssueUrls: issue.dependedIssueUrls,
     labels: issue.labels,
     createdAt: issue.createdAt.toISOString(),
   });

@@ -52,6 +52,46 @@ export const ConsoleItemSummary = ({
           </span>
         )}
       </span>
+      {(item.story !== '' ||
+        (item.status !== null && item.status !== '') ||
+        item.nextActionDate !== null ||
+        item.nextActionHour !== null ||
+        item.dependedIssueUrls.length > 0) && (
+        <span className="console-item-fields">
+          {item.story !== '' && (
+            <span className="console-item-field">
+              <span className="console-item-field-label">Story</span>
+              {item.story}
+            </span>
+          )}
+          {item.status !== null && item.status !== '' && (
+            <span className="console-item-field">
+              <span className="console-item-field-label">Status</span>
+              {item.status}
+            </span>
+          )}
+          {item.nextActionDate !== null && (
+            <span className="console-item-field">
+              <span className="console-item-field-label">Next Action Date</span>
+              {item.nextActionDate.slice(0, 10)}
+            </span>
+          )}
+          {item.nextActionHour !== null && (
+            <span className="console-item-field">
+              <span className="console-item-field-label">Next Action Hour</span>
+              {item.nextActionHour}
+            </span>
+          )}
+          {item.dependedIssueUrls.length > 0 && (
+            <span className="console-item-field">
+              <span className="console-item-field-label">
+                Depended Issue URL
+              </span>
+              {item.dependedIssueUrls.join(', ')}
+            </span>
+          )}
+        </span>
+      )}
     </span>
   </button>
 );

@@ -1,5 +1,19 @@
-import { act, fireEvent, render, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { ConsolePage } from './ConsolePage';
+
+const tabBar = (): HTMLElement => {
+  const nav = document.querySelector('nav.console-tabbar');
+  if (nav === null) {
+    throw new Error('console tab bar not found');
+  }
+  return nav as HTMLElement;
+};
 
 jest.mock('../lib/mermaidLoader', () => ({
   renderMermaidToSvg: jest.fn(async () => '<svg></svg>'),
@@ -24,6 +38,10 @@ const listPayload = (tab: string) => ({
             itemId: 'PVTI_1',
             isPr: true,
             story: 'TDPM Console port',
+            status: 'Awaiting Quality Check',
+            nextActionDate: null,
+            nextActionHour: null,
+            dependedIssueUrls: [],
             labels: [],
             createdAt: '2026-06-17T00:00:00.000Z',
           },
@@ -40,6 +58,10 @@ const listPayload = (tab: string) => ({
               itemId: 'PVTI_2',
               isPr: false,
               story: 'TDPM Console port',
+              status: 'Unread',
+              nextActionDate: null,
+              nextActionHour: null,
+              dependedIssueUrls: [],
               labels: [],
               createdAt: '2026-06-18T00:00:00.000Z',
             },
@@ -74,8 +96,12 @@ describe('ConsolePage', () => {
     await waitFor(() => {
       expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
     });
-    expect(getByText('Awaiting Quality Check')).toBeInTheDocument();
-    expect(getByText('TDPM Console port')).toBeInTheDocument();
+    expect(
+      within(tabBar()).getByText('Awaiting Quality Check'),
+    ).toBeInTheDocument();
+    expect(
+      document.querySelector('.console-group-header')?.textContent,
+    ).toContain('TDPM Console port');
   });
 
   it('opens the detail view when an item is selected', async () => {
@@ -100,12 +126,13 @@ describe('ConsolePage', () => {
   it('shows a cancellable toast and only drives the tab to zero after the five second window', async () => {
     jest.useFakeTimers();
     try {
-      const { getByText, findByText, queryByText } = render(<ConsolePage />);
+      const { getByText, findByText } = render(<ConsolePage />);
       await waitFor(() => {
         expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
       });
       expect(
-        getByText('Awaiting Quality Check')
+        within(tabBar())
+          .getByText('Awaiting Quality Check')
           .closest('a')
           ?.querySelector('.console-tab-badge')?.textContent,
       ).toBe('1');
@@ -117,7 +144,8 @@ describe('ConsolePage', () => {
       expect(getByText('Approved — PR #851')).toBeInTheDocument();
       expect(getByText('Undo')).toBeInTheDocument();
       expect(
-        getByText('Awaiting Quality Check')
+        within(tabBar())
+          .getByText('Awaiting Quality Check')
           .closest('a')
           ?.querySelector('.console-tab-badge')?.textContent,
       ).toBe('1');
@@ -127,7 +155,9 @@ describe('ConsolePage', () => {
       });
 
       await waitFor(() => {
-        expect(queryByText('Awaiting Quality Check')).toBeNull();
+        expect(
+          within(tabBar()).queryByText('Awaiting Quality Check'),
+        ).toBeNull();
       });
     } finally {
       jest.useRealTimers();
@@ -177,7 +207,8 @@ describe('ConsolePage', () => {
       );
       expect(postCalls.length).toBe(0);
       expect(
-        getByText('Awaiting Quality Check')
+        within(tabBar())
+          .getByText('Awaiting Quality Check')
           .closest('a')
           ?.querySelector('.console-tab-badge')?.textContent,
       ).toBe('1');
@@ -203,15 +234,16 @@ describe('ConsolePage', () => {
   });
 
   it('hides zero-count tabs but keeps non-zero tabs', async () => {
-    const { getByText, queryByText } = render(<ConsolePage />);
+    const { getByText } = render(<ConsolePage />);
     await waitFor(() => {
       expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
     });
-    expect(queryByText('Awaiting Quality Check')).not.toBeNull();
-    expect(queryByText('Unread')).not.toBeNull();
-    expect(queryByText('Triage')).toBeNull();
-    expect(queryByText('Failed Preparation')).toBeNull();
-    expect(queryByText('Todo by human')).toBeNull();
+    const tabs = within(tabBar());
+    expect(tabs.queryByText('Awaiting Quality Check')).not.toBeNull();
+    expect(tabs.queryByText('Unread')).not.toBeNull();
+    expect(tabs.queryByText('Triage')).toBeNull();
+    expect(tabs.queryByText('Failed Preparation')).toBeNull();
+    expect(tabs.queryByText('Todo by human')).toBeNull();
   });
 
   it('does not render the project header bar above the tab bar', async () => {
@@ -241,6 +273,10 @@ const twoItemPrPayload = () => ({
       itemId: 'PVTI_1',
       isPr: true,
       story: 'TDPM Console port',
+      status: 'Awaiting Quality Check',
+      nextActionDate: null,
+      nextActionHour: null,
+      dependedIssueUrls: [],
       labels: [],
       createdAt: '2026-06-17T00:00:00.000Z',
     },
@@ -254,6 +290,10 @@ const twoItemPrPayload = () => ({
       itemId: 'PVTI_2',
       isPr: true,
       story: 'TDPM Console port',
+      status: 'Awaiting Quality Check',
+      nextActionDate: null,
+      nextActionHour: null,
+      dependedIssueUrls: [],
       labels: [],
       createdAt: '2026-06-17T01:00:00.000Z',
     },
@@ -422,7 +462,10 @@ describe('ConsolePage auto-advance tab', () => {
         ).toBeInTheDocument();
       });
       expect(
-        getByText('Unread').closest('a')?.getAttribute('aria-current'),
+        within(tabBar())
+          .getByText('Unread')
+          .closest('a')
+          ?.getAttribute('aria-current'),
       ).toBe('page');
     } finally {
       jest.useRealTimers();

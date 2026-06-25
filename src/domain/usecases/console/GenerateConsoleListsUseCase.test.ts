@@ -284,13 +284,17 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(Object.keys(item).sort()).toEqual(
         [
           'createdAt',
+          'dependedIssueUrls',
           'isPr',
           'itemId',
           'labels',
           'nameWithOwner',
+          'nextActionDate',
+          'nextActionHour',
           'number',
           'projectItemId',
           'repo',
+          'status',
           'story',
           'title',
           'url',
@@ -303,6 +307,45 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(item.isPr).toBe(true);
       expect(item.story).toBe('Story Alpha');
       expect(item.labels).toEqual(['bug', 'p1']);
+    });
+
+    it('emits the status, reactivation-trigger and depended issue url fields', () => {
+      const result = run([
+        makeIssue({
+          story: 'regular / WORKFLOW BLOCKER',
+          status: 'Unread',
+          nextActionDate: new Date('2026-06-20T07:00:00.000Z'),
+          nextActionHour: 9,
+          dependedIssueUrls: [
+            'https://github.com/demo/repo/issues/10',
+            'https://github.com/demo/repo/issues/11',
+          ],
+        }),
+      ]);
+      const item = result['workflow-blocker'].items[0];
+      expect(item.status).toBe('Unread');
+      expect(item.nextActionDate).toBe('2026-06-20T07:00:00.000Z');
+      expect(item.nextActionHour).toBe(9);
+      expect(item.dependedIssueUrls).toEqual([
+        'https://github.com/demo/repo/issues/10',
+        'https://github.com/demo/repo/issues/11',
+      ]);
+    });
+
+    it('emits null reactivation-trigger fields and an empty depended url array when absent', () => {
+      const result = run([
+        makeIssue({
+          status: 'Unread',
+          nextActionDate: null,
+          nextActionHour: null,
+          dependedIssueUrls: [],
+        }),
+      ]);
+      const item = result.unread.items[0];
+      expect(item.status).toBe('Unread');
+      expect(item.nextActionDate).toBeNull();
+      expect(item.nextActionHour).toBeNull();
+      expect(item.dependedIssueUrls).toEqual([]);
     });
 
     it('maps a null story to an empty string', () => {
