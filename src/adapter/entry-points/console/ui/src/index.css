@@ -772,6 +772,12 @@ body {
   white-space: nowrap;
 }
 
+.console-file-diff td.console-diff-ln {
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
 .console-diff-add td {
   background: rgba(46, 160, 67, 0.15);
 }
