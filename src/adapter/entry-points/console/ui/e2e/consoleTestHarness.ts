@@ -28,6 +28,10 @@ type ConsoleFixtureListItem = {
   itemId: string;
   isPr: boolean;
   story: string;
+  status: string | null;
+  nextActionDate: string | null;
+  nextActionHour: number | null;
+  dependedIssueUrls: string[];
   labels: string[];
   createdAt: string;
 };
@@ -100,6 +104,10 @@ const issueItem = (
   itemId: `PVTI_lADOABCD1234zg${projectItemSuffix}`,
   isPr: false,
   story,
+  status: null,
+  nextActionDate: null,
+  nextActionHour: null,
+  dependedIssueUrls: [],
   labels: [],
   createdAt,
 });
@@ -120,6 +128,10 @@ const pullRequestItem = (
   itemId: `PVTI_lADOABCD1234zg${projectItemSuffix}`,
   isPr: true,
   story,
+  status: null,
+  nextActionDate: null,
+  nextActionHour: null,
+  dependedIssueUrls: [],
   labels: ['claude'],
   createdAt,
 });
