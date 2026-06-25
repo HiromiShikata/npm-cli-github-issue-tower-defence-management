@@ -1294,6 +1294,61 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result?.isPassedAllCiJob).toBe(false);
     });
 
+    it('returns isCiStateSuccess false when a StatusContext has FAILURE state', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              repository: {
+                pullRequest: {
+                  url: 'https://github.com/HiromiShikata/test-repository/pull/31',
+                  state: 'OPEN',
+                  isDraft: false,
+                  headRefName: 'feature-branch',
+                  baseRefName: 'main',
+                  mergeable: 'MERGEABLE',
+                  baseRepository: {
+                    branchProtectionRules: { nodes: [] },
+                    defaultBranchRef: { name: 'main' },
+                    rulesets: { nodes: [] },
+                  },
+                  commits: {
+                    nodes: [
+                      {
+                        commit: {
+                          statusCheckRollup: {
+                            contexts: {
+                              nodes: [
+                                {
+                                  __typename: 'StatusContext',
+                                  context: 'external-ci',
+                                  state: 'FAILURE',
+                                },
+                              ],
+                            },
+                          },
+                        },
+                      },
+                    ],
+                  },
+                  reviewThreads: { nodes: [] },
+                },
+              },
+            },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.isCiStateSuccess).toBe(false);
+    });
+
     it('returns isCiStateSuccess false when statusCheckRollup is null', async () => {
       jest.spyOn(global, 'fetch').mockResolvedValueOnce(
         new Response(
