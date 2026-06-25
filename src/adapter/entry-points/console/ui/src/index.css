@@ -33,8 +33,10 @@ body {
 .console-app {
   max-width: 920px;
   margin: 0 auto;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .console-tabbar {
@@ -114,6 +116,10 @@ body {
   list-style: none;
   margin: 0;
   padding: 12px 18px 18px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .console-list-group {
@@ -258,6 +264,10 @@ body {
 }
 
 .console-detail {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -463,14 +473,11 @@ body {
 }
 
 .console-actionbar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 100;
+  flex-shrink: 0;
   background: #161b22;
   border-top: 2px solid #30363d;
   padding: 10px 16px;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom));
 }
 
 .console-operation-bar {
@@ -561,7 +568,10 @@ body {
 }
 
 .console-detail-screen {
-  padding-bottom: 140px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .console-panel-open-link {

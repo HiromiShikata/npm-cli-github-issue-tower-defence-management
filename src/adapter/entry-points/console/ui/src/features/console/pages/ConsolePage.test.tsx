@@ -391,6 +391,103 @@ describe('ConsolePage swipe navigation', () => {
   });
 });
 
+describe('ConsolePage detail scroll reset', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/umino/prs?k=token');
+    const fetchMock = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            listMatch[1] === 'prs'
+              ? twoItemPrPayload()
+              : { ...twoItemPrPayload(), items: [] },
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+  });
+
+  it('resets the detail scroll container to the top when navigating to the next item', async () => {
+    const { container, getByText, findByText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    expect(await findByText('Approve')).toBeInTheDocument();
+
+    const scrollContainer = container.querySelector('.console-detail');
+    expect(scrollContainer).not.toBeNull();
+    (scrollContainer as HTMLElement).scrollTop = 240;
+    expect((scrollContainer as HTMLElement).scrollTop).toBe(240);
+
+    const detailScreen = container.querySelector('.console-detail-screen');
+    swipeDetailScreen(
+      detailScreen as HTMLElement,
+      { clientX: 240, clientY: 100 },
+      { clientX: 40, clientY: 110 },
+    );
+
+    await waitFor(() => {
+      expect(window.location.hash).toBe('#item/PVTI_2');
+    });
+    await waitFor(() => {
+      expect((scrollContainer as HTMLElement).scrollTop).toBe(0);
+    });
+  });
+});
+
+describe('ConsolePage next item prefetch', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/umino/prs?k=token');
+  });
+
+  it('warms the next pending item resources while the current item is open', async () => {
+    const fetchMock = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            listMatch[1] === 'prs'
+              ? twoItemPrPayload()
+              : { ...twoItemPrPayload(), items: [] },
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const { getByText, findByText, queryByText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    expect(await findByText('Approve')).toBeInTheDocument();
+    expect(window.location.hash).toBe('#item/PVTI_1');
+    expect(queryByText('Add server-side console API handlers')).toBeNull();
+
+    const nextItemUrlFragment = encodeURIComponent(
+      'https://github.com/o/r/pull/852',
+    );
+    await waitFor(() => {
+      const calledNextItemBody = fetchMock.mock.calls.some(
+        ([url]) =>
+          typeof url === 'string' &&
+          url.includes('/api/itembody') &&
+          url.includes(nextItemUrlFragment),
+      );
+      expect(calledNextItemBody).toBe(true);
+    });
+  });
+});
+
 describe('ConsolePage auto-advance', () => {
   beforeEach(() => {
     localStorage.clear();
