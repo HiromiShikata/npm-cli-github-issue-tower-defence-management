@@ -1,3 +1,10 @@
+## [1.101.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.101.3...v1.101.4) (2026-06-25)
+
+
+### Bug Fixes
+
+* **ApiV3CheerioRestIssueRepository:** compute CI state from latest CheckRun per name to fix Dependabot PR readiness ([#941](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/941)) ([f343310](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f343310dcdfe99558832dd8b1049b9f876d89355))
+
 ## [1.101.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.101.2...v1.101.3) (2026-06-25)
 
 
