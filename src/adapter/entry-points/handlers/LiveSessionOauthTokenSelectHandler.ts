@@ -3,7 +3,11 @@ import {
   LiveSessionOauthTokenSelectResult,
   LiveSessionOauthTokenSelectUseCase,
 } from '../../../domain/usecases/LiveSessionOauthTokenSelectUseCase';
-import { OauthTokenCandidate } from '../../../domain/usecases/OauthTokenSelectUseCase';
+import {
+  FIVE_HOUR_MIN_FREE_RATIO,
+  OauthTokenCandidate,
+  SEVEN_DAY_MIN_FREE_RATIO,
+} from '../../../domain/usecases/OauthTokenSelectUseCase';
 import { ProcClaudeLiveSessionRepository } from '../../repositories/ProcClaudeLiveSessionRepository';
 import { readRateLimit } from '../../proxy/RateLimitCache';
 import { loadTokenEntries } from '../../proxy/TokenListLoader';
@@ -104,7 +108,9 @@ export class LiveSessionOauthTokenSelectHandler {
     });
 
     if (result.selected === null) {
-      lines.push('No eligible token passed the rate-limit filter.');
+      lines.push(
+        `No eligible token: every token is below the 5h >= ${Math.round(FIVE_HOUR_MIN_FREE_RATIO * 100)}% free and 7d >= ${Math.round(SEVEN_DAY_MIN_FREE_RATIO * 100)}% free thresholds required to start a live session.`,
+      );
     } else {
       lines.push(
         `Selected ${result.selected.name} (fewest live sessions, then soonest 7d reset among eligible tokens).`,

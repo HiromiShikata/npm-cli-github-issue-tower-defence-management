@@ -218,7 +218,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     expect(output.selectedName).toBe('free');
   });
 
-  it('returns null and a diagnostic when no token passes the filter', () => {
+  it('returns no token and a threshold-naming diagnostic without leaking the token when no token passes the filter', () => {
     writeTokenList([{ name: 'busy', token: 'fake-busy' }]);
     writeCache('fake-busy', {
       fiveHourUtilization: 0.9,
@@ -235,9 +235,33 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     });
 
     expect(output.selectedToken).toBeNull();
-    expect(output.diagnostics.join('\n')).toContain(
-      'No eligible token passed the rate-limit filter.',
-    );
+    expect(output.selectedName).toBeNull();
+    const diagnostics = output.diagnostics.join('\n');
+    expect(diagnostics).toContain('No eligible token');
+    expect(diagnostics).toContain('5h >= 60% free');
+    expect(diagnostics).toContain('7d >= 30% free');
+    expect(diagnostics).not.toContain('fake-busy');
+  });
+
+  it('returns the token on the selected path when an eligible token exists', () => {
+    writeTokenList([{ name: 'free', token: 'fake-free' }]);
+    writeCache('fake-free', {
+      fiveHourUtilization: 0.1,
+      fiveHourReset: NOW + HOUR,
+      sevenDayUtilization: 0.1,
+      sevenDayReset: NOW + DAY,
+    });
+
+    const handler = buildHandler([]);
+    const output = handler.handle({
+      tokenListJsonPath: tokenListPath,
+      cacheDirectory,
+      nowEpochSeconds: NOW,
+    });
+
+    expect(output.selectedToken).toBe('fake-free');
+    expect(output.selectedName).toBe('free');
+    expect(output.diagnostics.join('\n')).not.toContain('No eligible token');
   });
 
   it('returns a diagnostic when no token list path is resolvable', () => {
