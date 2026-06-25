@@ -5,6 +5,7 @@ export type ReconcileInTmuxByHumanSessionsParams = {
     assigneeLogin: string;
     issues: Issue[];
     localCommandRunner: LocalCommandRunner;
+    now: Date;
 };
 export declare const reconcileInTmuxByHumanSessions: (params: ReconcileInTmuxByHumanSessionsParams) => Promise<void>;
 //# sourceMappingURL=inTmuxByHumanSessionReconciler.d.ts.map

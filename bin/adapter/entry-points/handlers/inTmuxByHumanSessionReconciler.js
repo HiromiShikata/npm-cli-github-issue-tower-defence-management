@@ -4,7 +4,7 @@ exports.reconcileInTmuxByHumanSessions = void 0;
 const InTmuxByHumanSessionReconcileUseCase_1 = require("../../../domain/usecases/intmux/InTmuxByHumanSessionReconcileUseCase");
 const NodeTmuxSessionRepository_1 = require("../../repositories/NodeTmuxSessionRepository");
 const reconcileInTmuxByHumanSessions = async (params) => {
-    const { inTmuxLauncherCommand, assigneeLogin, issues, localCommandRunner } = params;
+    const { inTmuxLauncherCommand, assigneeLogin, issues, localCommandRunner, now, } = params;
     if (!inTmuxLauncherCommand || !assigneeLogin) {
         return;
     }
@@ -13,6 +13,7 @@ const reconcileInTmuxByHumanSessions = async (params) => {
         issues,
         assigneeLogin,
         launcherCommand: inTmuxLauncherCommand,
+        now,
     });
 };
 exports.reconcileInTmuxByHumanSessions = reconcileInTmuxByHumanSessions;

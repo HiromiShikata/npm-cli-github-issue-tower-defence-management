@@ -6,11 +6,11 @@ const UNKNOWN_STORY_SORT_INDEX = 999999;
 class GenerateInTmuxByHumanDataUseCase {
     constructor() {
         this.run = (input) => {
-            const { project, issues, pjcode, assigneeLogin, org, repo, consoleBaseUrl, consoleToken, } = input;
+            const { project, issues, pjcode, assigneeLogin, org, repo, consoleBaseUrl, consoleToken, now, } = input;
             const storyOrder = project.story
                 ? project.story.stories.map((option) => option.name)
                 : [];
-            const selectedIssues = issues.filter((issue) => this.isInTmuxByHuman(issue, assigneeLogin));
+            const selectedIssues = issues.filter((issue) => this.isInTmuxByHuman(issue, assigneeLogin, now));
             const groups = this.groupByStoryOrder(selectedIssues, storyOrder);
             const v2 = groups.map((group) => ({
                 story: group.story,
@@ -53,9 +53,12 @@ class GenerateInTmuxByHumanDataUseCase {
                 : null;
             return { v1, v2, v3, v4 };
         };
-        this.isInTmuxByHuman = (issue, assigneeLogin) => issue.status === IN_TMUX_BY_HUMAN_STATUS_NAME &&
+        this.isInTmuxByHuman = (issue, assigneeLogin, now) => issue.status === IN_TMUX_BY_HUMAN_STATUS_NAME &&
             issue.isClosed === false &&
-            issue.assignees.includes(assigneeLogin);
+            issue.assignees.includes(assigneeLogin) &&
+            (issue.nextActionDate === null ||
+                issue.nextActionDate.getTime() <= now.getTime()) &&
+            issue.nextActionHour === null;
         this.groupByStoryOrder = (issues, storyOrder) => {
             const indexByStory = new Map(storyOrder.map((name, index) => [name, index]));
             const issuesByStory = new Map();

@@ -48,6 +48,7 @@ export type GenerateInTmuxByHumanDataInput = {
     repo: string;
     consoleBaseUrl: string | null;
     consoleToken: string | null;
+    now: Date;
 };
 export declare class GenerateInTmuxByHumanDataUseCase {
     run: (input: GenerateInTmuxByHumanDataInput) => InTmuxByHumanData;

@@ -16,8 +16,8 @@ class InTmuxByHumanSessionReconcileUseCase {
     constructor(tmuxSessionRepository) {
         this.tmuxSessionRepository = tmuxSessionRepository;
         this.run = async (input) => {
-            const { issues, assigneeLogin, launcherCommand } = input;
-            const targetIssues = issues.filter((issue) => this.isInTmuxByHuman(issue, assigneeLogin));
+            const { issues, assigneeLogin, launcherCommand, now } = input;
+            const targetIssues = issues.filter((issue) => this.isInTmuxByHuman(issue, assigneeLogin, now));
             if (targetIssues.length === 0) {
                 return { launchedIssueUrls: [] };
             }
@@ -33,9 +33,12 @@ class InTmuxByHumanSessionReconcileUseCase {
             }
             return { launchedIssueUrls };
         };
-        this.isInTmuxByHuman = (issue, assigneeLogin) => issue.status === WorkflowStatus_1.IN_TMUX_STATUS_NAME &&
+        this.isInTmuxByHuman = (issue, assigneeLogin, now) => issue.status === WorkflowStatus_1.IN_TMUX_STATUS_NAME &&
             issue.isClosed === false &&
-            issue.assignees.includes(assigneeLogin);
+            issue.assignees.includes(assigneeLogin) &&
+            (issue.nextActionDate === null ||
+                issue.nextActionDate.getTime() <= now.getTime()) &&
+            issue.nextActionHour === null;
         this.hasLiveSession = (issueUrl, liveSessionNames, processCommandLines) => {
             const sessionName = (0, exports.toTmuxSessionName)(issueUrl);
             if (!liveSessionNames.has(sessionName)) {

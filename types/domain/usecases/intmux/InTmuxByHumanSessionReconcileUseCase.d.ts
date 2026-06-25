@@ -4,6 +4,7 @@ export type InTmuxByHumanSessionReconcileInput = {
     issues: Issue[];
     assigneeLogin: string;
     launcherCommand: string;
+    now: Date;
 };
 export type InTmuxByHumanSessionReconcileResult = {
     launchedIssueUrls: string[];

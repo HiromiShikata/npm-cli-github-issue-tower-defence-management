@@ -11,6 +11,7 @@ export type InTmuxByHumanDataWriterParams = {
     repo: string;
     project: Project;
     issues: Issue[];
+    now: Date;
 };
 export declare const writeInTmuxByHumanData: (params: InTmuxByHumanDataWriterParams) => void;
 //# sourceMappingURL=inTmuxByHumanDataWriter.d.ts.map

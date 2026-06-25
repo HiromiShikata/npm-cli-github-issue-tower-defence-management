@@ -574,6 +574,7 @@ class HandleScheduledEventUseCaseHandler {
                 catch (error) {
                     console.error(`Failed to write console lists: ${error instanceof Error ? error.message : String(error)}`);
                 }
+                const inTmuxNow = new Date();
                 try {
                     (0, inTmuxByHumanDataWriter_1.writeInTmuxByHumanData)({
                         inTmuxDataOutputDir: mergedInput.inTmuxDataOutputDir ?? null,
@@ -586,6 +587,7 @@ class HandleScheduledEventUseCaseHandler {
                         repo: input.workingReport.repo,
                         project: result.project,
                         issues: result.issues,
+                        now: inTmuxNow,
                     });
                 }
                 catch (error) {
@@ -597,6 +599,7 @@ class HandleScheduledEventUseCaseHandler {
                         assigneeLogin: input.manager,
                         issues: result.issues,
                         localCommandRunner: nodeLocalCommandRunner,
+                        now: inTmuxNow,
                     });
                 }
                 catch (error) {
