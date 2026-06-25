@@ -1149,6 +1149,247 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('getOpenPullRequest CI state computation', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    const buildGraphqlPrResponse = (
+      checkRunNodes: Array<{
+        __typename: 'CheckRun';
+        databaseId: number;
+        name: string;
+        conclusion: string | null;
+      }>,
+    ) => ({
+      data: {
+        repository: {
+          pullRequest: {
+            url: 'https://github.com/HiromiShikata/test-repository/pull/31',
+            state: 'OPEN',
+            isDraft: false,
+            headRefName: 'dependabot/npm_and_yarn/some-package-2.0.0',
+            baseRefName: 'main',
+            mergeable: 'MERGEABLE',
+            baseRepository: {
+              branchProtectionRules: { nodes: [] },
+              defaultBranchRef: { name: 'main' },
+              rulesets: { nodes: [] },
+            },
+            commits: {
+              nodes: [
+                {
+                  commit: {
+                    statusCheckRollup: {
+                      contexts: {
+                        nodes: checkRunNodes,
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+            reviewThreads: { nodes: [] },
+          },
+        },
+      },
+    });
+
+    it('returns isCiStateSuccess true when latest CheckRun per name is SUCCESS even though an older run has FAILURE', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify(
+            buildGraphqlPrResponse([
+              {
+                __typename: 'CheckRun',
+                databaseId: 100,
+                name: 'check_pull_requests_to_link_issues',
+                conclusion: 'FAILURE',
+              },
+              {
+                __typename: 'CheckRun',
+                databaseId: 200,
+                name: 'check_pull_requests_to_link_issues',
+                conclusion: 'SUCCESS',
+              },
+            ]),
+          ),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.isCiStateSuccess).toBe(true);
+      expect(result?.isPassedAllCiJob).toBe(true);
+    });
+
+    it('returns isCiStateSuccess false when latest CheckRun per name has FAILURE conclusion', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify(
+            buildGraphqlPrResponse([
+              {
+                __typename: 'CheckRun',
+                databaseId: 100,
+                name: 'ci',
+                conclusion: 'SUCCESS',
+              },
+              {
+                __typename: 'CheckRun',
+                databaseId: 200,
+                name: 'ci',
+                conclusion: 'FAILURE',
+              },
+            ]),
+          ),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.isCiStateSuccess).toBe(false);
+      expect(result?.isPassedAllCiJob).toBe(false);
+    });
+
+    it('returns isCiStateSuccess false when latest CheckRun per name has null conclusion (still running)', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify(
+            buildGraphqlPrResponse([
+              {
+                __typename: 'CheckRun',
+                databaseId: 100,
+                name: 'ci',
+                conclusion: 'FAILURE',
+              },
+              {
+                __typename: 'CheckRun',
+                databaseId: 200,
+                name: 'ci',
+                conclusion: null,
+              },
+            ]),
+          ),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.isCiStateSuccess).toBe(false);
+      expect(result?.isPassedAllCiJob).toBe(false);
+    });
+
+    it('returns isCiStateSuccess false when a StatusContext has FAILURE state', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              repository: {
+                pullRequest: {
+                  url: 'https://github.com/HiromiShikata/test-repository/pull/31',
+                  state: 'OPEN',
+                  isDraft: false,
+                  headRefName: 'feature-branch',
+                  baseRefName: 'main',
+                  mergeable: 'MERGEABLE',
+                  baseRepository: {
+                    branchProtectionRules: { nodes: [] },
+                    defaultBranchRef: { name: 'main' },
+                    rulesets: { nodes: [] },
+                  },
+                  commits: {
+                    nodes: [
+                      {
+                        commit: {
+                          statusCheckRollup: {
+                            contexts: {
+                              nodes: [
+                                {
+                                  __typename: 'StatusContext',
+                                  context: 'external-ci',
+                                  state: 'FAILURE',
+                                },
+                              ],
+                            },
+                          },
+                        },
+                      },
+                    ],
+                  },
+                  reviewThreads: { nodes: [] },
+                },
+              },
+            },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.isCiStateSuccess).toBe(false);
+    });
+
+    it('returns isCiStateSuccess false when statusCheckRollup is null', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              repository: {
+                pullRequest: {
+                  url: 'https://github.com/HiromiShikata/test-repository/pull/31',
+                  state: 'OPEN',
+                  isDraft: false,
+                  headRefName: 'feature-branch',
+                  baseRefName: 'main',
+                  mergeable: 'MERGEABLE',
+                  baseRepository: {
+                    branchProtectionRules: { nodes: [] },
+                    defaultBranchRef: { name: 'main' },
+                    rulesets: { nodes: [] },
+                  },
+                  commits: {
+                    nodes: [{ commit: { statusCheckRollup: null } }],
+                  },
+                  reviewThreads: { nodes: [] },
+                },
+              },
+            },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.isCiStateSuccess).toBe(false);
+      expect(result?.isPassedAllCiJob).toBe(false);
+    });
+  });
+
   const createApiV3CheerioRestIssueRepository = () => {
     const apiV3IssueRepository = mock<ApiV3IssueRepository>();
     const restIssueRepository = mock<RestIssueRepository>();
