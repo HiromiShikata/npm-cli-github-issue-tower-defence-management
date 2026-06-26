@@ -1,27 +1,58 @@
 const mockPost = jest.fn();
 
-jest.mock('ky', () => ({
-  default: {
-    post: mockPost,
-    get: jest.fn(),
-    put: jest.fn(),
-    patch: jest.fn(),
-    delete: jest.fn(),
-    extend: jest.fn(),
-    create: jest.fn(),
-    stop: jest.fn(),
-  },
-  __esModule: true,
-}));
+jest.mock('ky', () => {
+  const actualKy: typeof import('ky') = jest.requireActual('ky');
+  return {
+    default: {
+      post: mockPost,
+      get: jest.fn(),
+      put: jest.fn(),
+      patch: jest.fn(),
+      delete: jest.fn(),
+      extend: jest.fn(),
+      create: jest.fn(),
+      stop: jest.fn(),
+    },
+    HTTPError: actualKy.HTTPError,
+    __esModule: true,
+  };
+});
 
+import { HTTPError } from 'ky';
 import {
   GraphqlProjectItemRepository,
   PAGINATION_DELAY_MS,
+  RATE_LIMIT_MAX_RETRIES,
+  callWithRateLimitRetry,
 } from './GraphqlProjectItemRepository';
 import { LocalStorageRepository } from '../LocalStorageRepository';
 
 const mockJsonResponse = <T>(data: T) => ({
   json: jest.fn().mockResolvedValue(data),
+});
+
+const makeHttpError = (
+  status: number,
+  headers: Record<string, string> = {},
+): HTTPError => {
+  const response = new Response('rate limited', {
+    status,
+    headers,
+  });
+  const request = new Request('https://api.github.com/graphql');
+  const normalizedOptions: ConstructorParameters<typeof HTTPError>[2] = {
+    method: 'post',
+    retry: {},
+    prefix: '',
+    onDownloadProgress: undefined,
+    onUploadProgress: undefined,
+    context: {},
+  };
+  return new HTTPError(response, request, normalizedOptions);
+};
+
+const mockRejectedJsonResponse = (error: HTTPError) => ({
+  json: jest.fn().mockRejectedValue(error),
 });
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -434,6 +465,229 @@ describe('GraphqlProjectItemRepository', () => {
       );
       expect(requestedFirstSeries).toEqual([100, 50, 25, 12, 6, 3, 1]);
     });
+
+    it('should not sleep the legacy 5000ms blanket delay between pages', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
+      mockPost
+        .mockReturnValueOnce(makePageResponse(true, 'cursor-1'))
+        .mockReturnValueOnce(makePageResponse(false, 'cursor-2'));
+
+      const resultPromise = repository.fetchProjectItems('test-project-id');
+      await jest.advanceTimersByTimeAsync(PAGINATION_DELAY_MS);
+      const result = await resultPromise;
+
+      expect(result).toHaveLength(2);
+      expect(PAGINATION_DELAY_MS).toBeLessThanOrEqual(500);
+      expect(setTimeoutSpy).not.toHaveBeenCalledWith(
+        expect.any(Function),
+        5000,
+      );
+      setTimeoutSpy.mockRestore();
+    });
+
+    it('should back off and retry once when GitHub responds 429, then succeed', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost
+        .mockReturnValueOnce(
+          mockRejectedJsonResponse(makeHttpError(429, { 'retry-after': '3' })),
+        )
+        .mockReturnValueOnce(makePageResponse(false, 'cursor-1', 1));
+
+      const resultPromise = repository.fetchProjectItems('test-project-id');
+      await jest.advanceTimersByTimeAsync(3000);
+      const result = await resultPromise;
+
+      expect(result).toHaveLength(1);
+      expect(mockPost).toHaveBeenCalledTimes(2);
+    });
+
+    it('should honor the retry-after header duration before retrying after a 429', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost
+        .mockReturnValueOnce(
+          mockRejectedJsonResponse(makeHttpError(429, { 'retry-after': '7' })),
+        )
+        .mockReturnValueOnce(makePageResponse(false, 'cursor-1', 1));
+
+      const resultPromise = repository.fetchProjectItems('test-project-id');
+      await jest.advanceTimersByTimeAsync(6999);
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      await jest.advanceTimersByTimeAsync(1);
+      const result = await resultPromise;
+
+      expect(result).toHaveLength(1);
+      expect(mockPost).toHaveBeenCalledTimes(2);
+    });
+
+    it('should wait until x-ratelimit-reset when 403 has no retry-after and remaining is 0', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      const resetEpochSeconds = Math.floor(Date.now() / 1000) + 4;
+      mockPost
+        .mockReturnValueOnce(
+          mockRejectedJsonResponse(
+            makeHttpError(403, {
+              'x-ratelimit-remaining': '0',
+              'x-ratelimit-reset': String(resetEpochSeconds),
+            }),
+          ),
+        )
+        .mockReturnValueOnce(makePageResponse(false, 'cursor-1', 1));
+
+      const resultPromise = repository.fetchProjectItems('test-project-id');
+      await jest.advanceTimersByTimeAsync(5000);
+      const result = await resultPromise;
+
+      expect(result).toHaveLength(1);
+      expect(mockPost).toHaveBeenCalledTimes(2);
+    });
+
+    it('should give up and rethrow after exhausting rate-limit retries', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValue(
+        mockRejectedJsonResponse(makeHttpError(429, { 'retry-after': '1' })),
+      );
+
+      const resultPromise = repository
+        .fetchProjectItems('test-project-id')
+        .catch((error: unknown) => error);
+      await jest.runAllTimersAsync();
+      const caught = await resultPromise;
+
+      expect(caught).toBeInstanceOf(HTTPError);
+      expect(mockPost).toHaveBeenCalledTimes(RATE_LIMIT_MAX_RETRIES + 1);
+    }, 30000);
+
+    it('should not let the page-size halving fallback re-issue a rate-limit request', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValue(
+        mockRejectedJsonResponse(makeHttpError(429, { 'retry-after': '1' })),
+      );
+
+      const resultPromise = repository
+        .fetchProjectItems('test-project-id')
+        .catch((error: unknown) => error);
+      await jest.runAllTimersAsync();
+      await resultPromise;
+
+      const requestedFirstSeries = mockPost.mock.calls.map((call) =>
+        extractRequestedFirstFromMockCall(call),
+      );
+      expect(requestedFirstSeries.every((first) => first === 100)).toBe(true);
+    }, 30000);
+  });
+
+  describe('callWithRateLimitRetry', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('should return the result without retrying when the request succeeds', async () => {
+      const request = jest.fn().mockResolvedValue('ok');
+
+      const result = await callWithRateLimitRetry(request);
+
+      expect(result).toBe('ok');
+      expect(request).toHaveBeenCalledTimes(1);
+    });
+
+    it('should retry on a 429 then return the eventual success value', async () => {
+      const request = jest
+        .fn()
+        .mockRejectedValueOnce(makeHttpError(429, { 'retry-after': '2' }))
+        .mockResolvedValueOnce('recovered');
+
+      const resultPromise = callWithRateLimitRetry(request);
+      await jest.advanceTimersByTimeAsync(2000);
+      const result = await resultPromise;
+
+      expect(result).toBe('recovered');
+      expect(request).toHaveBeenCalledTimes(2);
+    });
+
+    it('should retry on a 403 rate-limit response then succeed', async () => {
+      const resetEpochSeconds = Math.floor(Date.now() / 1000) + 3;
+      const request = jest
+        .fn()
+        .mockRejectedValueOnce(
+          makeHttpError(403, {
+            'x-ratelimit-remaining': '0',
+            'x-ratelimit-reset': String(resetEpochSeconds),
+          }),
+        )
+        .mockResolvedValueOnce('recovered');
+
+      const resultPromise = callWithRateLimitRetry(request);
+      await jest.advanceTimersByTimeAsync(4000);
+      const result = await resultPromise;
+
+      expect(result).toBe('recovered');
+      expect(request).toHaveBeenCalledTimes(2);
+    });
+
+    it('should not retry a non-rate-limit HTTP error such as 500', async () => {
+      const httpError = makeHttpError(500);
+      const request = jest.fn().mockRejectedValue(httpError);
+
+      await expect(callWithRateLimitRetry(request)).rejects.toBe(httpError);
+      expect(request).toHaveBeenCalledTimes(1);
+    });
+
+    it('should rethrow immediately for a non-HTTPError', async () => {
+      const plainError = new Error('boom');
+      const request = jest.fn().mockRejectedValue(plainError);
+
+      await expect(callWithRateLimitRetry(request)).rejects.toBe(plainError);
+      expect(request).toHaveBeenCalledTimes(1);
+    });
+
+    it('should stop after the maximum number of rate-limit retries', async () => {
+      const httpError = makeHttpError(429, { 'retry-after': '1' });
+      const request = jest.fn().mockRejectedValue(httpError);
+
+      const resultPromise = callWithRateLimitRetry(request).catch(
+        (error: unknown) => error,
+      );
+      await jest.runAllTimersAsync();
+      const caught = await resultPromise;
+
+      expect(caught).toBe(httpError);
+      expect(request).toHaveBeenCalledTimes(RATE_LIMIT_MAX_RETRIES + 1);
+    }, 30000);
   });
 
   describe('getProjectItemFields', () => {

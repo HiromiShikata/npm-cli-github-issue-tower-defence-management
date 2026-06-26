@@ -1,4 +1,4 @@
-import ky from 'ky';
+import ky, { HTTPError } from 'ky';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
@@ -20,9 +20,94 @@ export type ProjectItem = {
     value: string | null;
   }[];
 };
-export const PAGINATION_DELAY_MS = 5000;
+export const PAGINATION_DELAY_MS = 500;
 export const FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE = 100;
 export const FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH = 4000;
+export const RATE_LIMIT_MAX_RETRIES = 6;
+export const RATE_LIMIT_MIN_BACKOFF_MS = 1000;
+export const RATE_LIMIT_DEFAULT_BACKOFF_MS = 60000;
+export const RATE_LIMIT_MAX_BACKOFF_MS = 300000;
+
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+const parseNonNegativeIntegerHeader = (value: string | null): number | null => {
+  if (value === null) {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!/^\d+$/.test(trimmed)) {
+    return null;
+  }
+  const parsed = Number.parseInt(trimmed, 10);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const computeRateLimitBackoffMs = (
+  headers: Headers | undefined,
+  attempt: number,
+  nowMs: number,
+): number => {
+  const exponentialMs = Math.min(
+    RATE_LIMIT_MAX_BACKOFF_MS,
+    RATE_LIMIT_DEFAULT_BACKOFF_MS * Math.pow(2, attempt),
+  );
+  const retryAfterSeconds = parseNonNegativeIntegerHeader(
+    headers?.get('retry-after') ?? null,
+  );
+  if (retryAfterSeconds !== null) {
+    return Math.min(
+      RATE_LIMIT_MAX_BACKOFF_MS,
+      Math.max(RATE_LIMIT_MIN_BACKOFF_MS, retryAfterSeconds * 1000),
+    );
+  }
+  const remaining = parseNonNegativeIntegerHeader(
+    headers?.get('x-ratelimit-remaining') ?? null,
+  );
+  const resetEpochSeconds = parseNonNegativeIntegerHeader(
+    headers?.get('x-ratelimit-reset') ?? null,
+  );
+  if (remaining === 0 && resetEpochSeconds !== null) {
+    const waitMs = resetEpochSeconds * 1000 - nowMs;
+    return Math.min(
+      RATE_LIMIT_MAX_BACKOFF_MS,
+      Math.max(RATE_LIMIT_MIN_BACKOFF_MS, waitMs),
+    );
+  }
+  return Math.max(RATE_LIMIT_MIN_BACKOFF_MS, exponentialMs);
+};
+
+const isRateLimitStatus = (status: number): boolean =>
+  status === 429 || status === 403;
+
+export const callWithRateLimitRetry = async <T>(
+  request: () => Promise<T>,
+): Promise<T> => {
+  let attempt = 0;
+  for (;;) {
+    try {
+      return await request();
+    } catch (error) {
+      if (
+        !(error instanceof HTTPError) ||
+        !isRateLimitStatus(error.response.status) ||
+        attempt >= RATE_LIMIT_MAX_RETRIES
+      ) {
+        throw error;
+      }
+      const backoffMs = computeRateLimitBackoffMs(
+        error.response.headers,
+        attempt,
+        Date.now(),
+      );
+      console.log(
+        `fetchProjectItems: GitHub returned ${error.response.status} (rate limit). Backing off ${backoffMs}ms before retry ${attempt + 1}/${RATE_LIMIT_MAX_RETRIES}.`,
+      );
+      await sleep(backoffMs);
+      attempt++;
+    }
+  }
+};
 
 const stringifyGraphqlErrorsForLog = (
   errors: { message: string }[],
@@ -277,53 +362,55 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!) {
           first: first,
         },
       };
-      const response = await ky
-        .post('https://api.github.com/graphql', {
-          json: graphqlQuery,
-          headers: {
-            Authorization: `Bearer ${this.ghToken}`,
-          },
-        })
-        .json<{
-          data: {
-            node: {
-              items: {
-                totalCount: number;
-                pageInfo: {
-                  endCursor: string;
-                  startCursor: string;
-                  hasNextPage: boolean;
-                };
-                nodes: {
-                  id: string;
-                  fieldValues: {
-                    nodes: {
-                      text: string;
+      const response = await callWithRateLimitRetry(() =>
+        ky
+          .post('https://api.github.com/graphql', {
+            json: graphqlQuery,
+            headers: {
+              Authorization: `Bearer ${this.ghToken}`,
+            },
+          })
+          .json<{
+            data: {
+              node: {
+                items: {
+                  totalCount: number;
+                  pageInfo: {
+                    endCursor: string;
+                    startCursor: string;
+                    hasNextPage: boolean;
+                  };
+                  nodes: {
+                    id: string;
+                    fieldValues: {
+                      nodes: {
+                        text: string;
+                        number: number;
+                        date: string;
+                        field: {
+                          name: string;
+                        };
+                      }[];
+                    };
+                    content: {
+                      repository: { nameWithOwner: string };
                       number: number;
-                      date: string;
-                      field: {
-                        name: string;
-                      };
-                    }[];
-                  };
-                  content: {
-                    repository: { nameWithOwner: string };
-                    number: number;
-                    title: string;
-                    state: string;
-                    url: string;
-                    createdAt: string;
-                    author: { login: string } | null;
-                    labels: { nodes: { name: string }[] };
-                    assignees: { nodes: { login: string }[] };
-                    closingIssuesReferences?: { nodes: { url: string }[] };
-                  };
-                }[];
-              };
+                      title: string;
+                      state: string;
+                      url: string;
+                      createdAt: string;
+                      author: { login: string } | null;
+                      labels: { nodes: { name: string }[] };
+                      assignees: { nodes: { login: string }[] };
+                      closingIssuesReferences?: { nodes: { url: string }[] };
+                    };
+                  }[];
+                };
+              } | null;
             } | null;
-          } | null;
-          errors?: { message: string }[];
-        }>();
+            errors?: { message: string }[];
+          }>(),
+      );
       if (response.errors && response.errors.length > 0) {
         throw new Error(
           `GitHub GraphQL errors: ${stringifyGraphqlErrorsForLog(response.errors)}`,
@@ -385,6 +472,12 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!) {
           return await callGraphql(projectId, after, attemptFirst);
         } catch (error) {
           lastError = error;
+          if (
+            error instanceof HTTPError &&
+            isRateLimitStatus(error.response.status)
+          ) {
+            throw error;
+          }
           if (attemptFirst === 1) {
             throw error;
           }
