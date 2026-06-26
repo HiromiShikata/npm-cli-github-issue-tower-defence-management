@@ -1,3 +1,10 @@
+# [1.104.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.103.1...v1.104.0) (2026-06-26)
+
+
+### Features
+
+* **schedule:** derive PR-to-issue dependency from PR closing references ([#981](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/981)) ([8ae7965](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8ae79653a9543ae4bb4d0f85b2808b4230c88c31))
+
 ## [1.103.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.103.0...v1.103.1) (2026-06-26)
 
 
