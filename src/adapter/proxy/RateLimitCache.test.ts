@@ -781,11 +781,11 @@ describe('RateLimitCache', () => {
       const token = 'sub-disabled-token';
       writeSubscriptionDisabled(token);
       const filePath = cachePathForToken(token);
-      const raw = fs.readFileSync(filePath, 'utf8');
-      const parsed: unknown = JSON.parse(raw);
-      expect(parsed).toMatchObject({
-        subscriptionDisabledEpoch: expect.any(Number),
-      });
+      const isRecord = (v: unknown): v is Record<string, unknown> =>
+        v !== null && typeof v === 'object' && !Array.isArray(v);
+      const raw: unknown = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const epoch = isRecord(raw) ? raw.subscriptionDisabledEpoch : undefined;
+      expect(typeof epoch).toBe('number');
     });
 
     it('should preserve existing cache fields when writing subscriptionDisabledEpoch', () => {
