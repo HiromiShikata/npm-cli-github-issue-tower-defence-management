@@ -1,3 +1,10 @@
+# [1.107.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.106.0...v1.107.0) (2026-06-26)
+
+
+### Features
+
+* **dashboard:** compose the dashboard from per-project, machine, and token status files at serve time ([#1000](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1000)) ([124b4e6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/124b4e629d7aacf145d9452eb83896dc9c2ec7d7)), closes [#999](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/999)
+
 # [1.106.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.105.0...v1.106.0) (2026-06-26)
 
 
