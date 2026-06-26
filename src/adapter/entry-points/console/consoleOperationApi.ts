@@ -1,4 +1,7 @@
-import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+import {
+  IssueRepository,
+  PullRequestReviewCommentSide,
+} from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
 import { recordDoneProjectItemIdAcrossTabs } from './consoleDoneStore';
@@ -36,8 +39,21 @@ const badRequest = (message: string): ConsoleOperationResponse => ({
   body: { error: message },
 });
 
+const badGateway = (message: string): ConsoleOperationResponse => ({
+  statusCode: 502,
+  body: { error: message },
+});
+
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === 'string' && value.length > 0;
+
+const isReviewCommentSide = (
+  value: unknown,
+): value is PullRequestReviewCommentSide =>
+  value === 'LEFT' || value === 'RIGHT';
+
+const isPositiveInteger = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isInteger(value) && value > 0;
 
 const resolveStatusId = (
   project: Project,
@@ -326,6 +342,44 @@ export const handleComment = async (
             },
     },
   };
+};
+
+export const handleReviewComment = async (
+  context: ConsoleOperationContext,
+  body: Record<string, unknown>,
+): Promise<ConsoleOperationResponse> => {
+  const url = body.url;
+  const path = body.path;
+  const line = body.line;
+  const side = body.side;
+  const commentBody = body.body;
+  if (!isNonEmptyString(url)) {
+    return badRequest('url is required');
+  }
+  if (!isNonEmptyString(path)) {
+    return badRequest('path is required');
+  }
+  if (!isPositiveInteger(line)) {
+    return badRequest('line must be a positive integer');
+  }
+  if (!isReviewCommentSide(side)) {
+    return badRequest('side must be "LEFT" or "RIGHT"');
+  }
+  if (!isNonEmptyString(commentBody)) {
+    return badRequest('body is required');
+  }
+  try {
+    await context.issueRepository.createPullRequestReviewComment(
+      url,
+      path,
+      line,
+      side,
+      commentBody,
+    );
+  } catch (error) {
+    return badGateway(error instanceof Error ? error.message : 'unknown error');
+  }
+  return ok();
 };
 
 export const handleIntmux = async (

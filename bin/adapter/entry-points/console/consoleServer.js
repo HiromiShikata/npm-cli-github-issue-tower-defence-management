@@ -317,6 +317,8 @@ const dispatchOperation = (context, requestPath, body) => {
             return (0, consoleOperationApi_1.handleIntmux)(context, body);
         case '/api/comment':
             return (0, consoleOperationApi_1.handleComment)(context, body);
+        case '/api/reviewcomment':
+            return (0, consoleOperationApi_1.handleReviewComment)(context, body);
         default:
             return null;
     }

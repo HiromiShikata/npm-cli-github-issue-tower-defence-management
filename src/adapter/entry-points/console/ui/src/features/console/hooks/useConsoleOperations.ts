@@ -1,10 +1,12 @@
 import { useCallback } from 'react';
 import {
   type ConsoleIntmuxRequest,
+  type ConsoleReviewCommentSide,
   type ConsoleReviewRequest,
   type ConsoleTriageRequest,
   postConsoleComment,
   postConsoleOperation,
+  postConsoleReviewComment,
 } from '../lib/consoleApi';
 import {
   type ConsoleCloseAction,
@@ -54,6 +56,13 @@ export type ConsoleOperationsApi = {
     action: ConsoleCloseAction,
   ) => Promise<void>;
   addComment: (item: ConsoleListItem, body: string) => Promise<ConsoleComment>;
+  addInlineReviewComment: (
+    prUrl: string,
+    path: string,
+    line: number,
+    side: ConsoleReviewCommentSide,
+    body: string,
+  ) => Promise<void>;
 };
 
 const reviewRequest = (
@@ -247,6 +256,29 @@ export const useConsoleOperations = (
     [pjcode, appendToken],
   );
 
+  const addInlineReviewComment = useCallback(
+    async (
+      prUrl: string,
+      path: string,
+      line: number,
+      side: ConsoleReviewCommentSide,
+      body: string,
+    ) => {
+      if (pjcode === null) {
+        throw missingPjcodeError();
+      }
+      await postConsoleReviewComment(appendToken, {
+        pjcode,
+        url: prUrl,
+        path,
+        line,
+        side,
+        body,
+      });
+    },
+    [pjcode, appendToken],
+  );
+
   return {
     reviewPullRequest,
     setNextActionDate,
@@ -255,5 +287,6 @@ export const useConsoleOperations = (
     setInTmuxByHuman,
     closeIssue,
     addComment,
+    addInlineReviewComment,
   };
 };

@@ -5,6 +5,7 @@ import {
   PullRequestDetail,
   PullRequestFile,
   PullRequestCommit,
+  PullRequestReviewCommentSide,
 } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
@@ -1448,6 +1449,109 @@ export class ApiV3CheerioRestIssueRepository
         `Failed to request changes on PR ${prUrl}: HTTP ${response.status}`,
       );
     }
+  };
+
+  private fetchPullRequestHeadSha = async (
+    owner: string,
+    repo: string,
+    prNumber: number,
+    prUrl: string,
+  ): Promise<string> => {
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${this.ghToken}`,
+          Accept: 'application/vnd.github+json',
+        },
+      },
+    );
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch head commit for PR ${prUrl}: HTTP ${response.status}`,
+      );
+    }
+    const body: unknown = await response.json();
+    if (
+      !isRecord(body) ||
+      !isRecord(body.head) ||
+      typeof body.head.sha !== 'string'
+    ) {
+      throw new Error(
+        `Unexpected response shape when fetching head commit for PR ${prUrl}`,
+      );
+    }
+    return body.head.sha;
+  };
+
+  createPullRequestReviewComment = async (
+    prUrl: string,
+    path: string,
+    line: number,
+    side: PullRequestReviewCommentSide,
+    commentBody: string,
+  ): Promise<void> => {
+    const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
+    const commitId = await this.fetchPullRequestHeadSha(
+      owner,
+      repo,
+      prNumber,
+      prUrl,
+    );
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/comments`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.ghToken}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/vnd.github+json',
+        },
+        body: JSON.stringify({
+          body: commentBody,
+          commit_id: commitId,
+          path,
+          line,
+          side,
+        }),
+      },
+    );
+    if (!response.ok) {
+      const reason = await this.readGitHubErrorMessage(response);
+      throw new Error(
+        `Failed to create review comment on PR ${prUrl}: ${reason}`,
+      );
+    }
+  };
+
+  private readGitHubErrorMessage = async (
+    response: Response,
+  ): Promise<string> => {
+    const fallback = `HTTP ${response.status}`;
+    let parsed: unknown;
+    try {
+      parsed = await response.json();
+    } catch {
+      return fallback;
+    }
+    if (!isRecord(parsed) || typeof parsed.message !== 'string') {
+      return fallback;
+    }
+    if (Array.isArray(parsed.errors) && parsed.errors.length > 0) {
+      const details = parsed.errors
+        .map((error) =>
+          isRecord(error) && typeof error.message === 'string'
+            ? error.message
+            : '',
+        )
+        .filter((detail) => detail.length > 0)
+        .join('; ');
+      if (details.length > 0) {
+        return `${parsed.message}: ${details}`;
+      }
+    }
+    return parsed.message;
   };
 
   deletePullRequestBranch = async (

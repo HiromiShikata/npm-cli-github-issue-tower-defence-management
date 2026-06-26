@@ -17,3 +17,12 @@ export const WithPatch: Story = {};
 export const NoPatch: Story = {
   args: { patch: null },
 };
+
+export const WithInlineComments: Story = {
+  args: {
+    path: consoleChangedFilesFixture[0].path,
+    onAddInlineComment: async (path, line, side, body) => {
+      window.alert(`comment on ${path}:${line} (${side})\n${body}`);
+    },
+  },
+};

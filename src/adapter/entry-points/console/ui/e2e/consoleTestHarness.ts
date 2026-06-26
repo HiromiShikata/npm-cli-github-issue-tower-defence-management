@@ -310,6 +310,7 @@ const createStubIssueRepository = (): IssueRepository => ({
   getPullRequestChangedFilePaths: async (): Promise<string[]> => [],
   approvePullRequest: async (): Promise<void> => undefined,
   requestChangesWithInlineComment: async (): Promise<void> => undefined,
+  createPullRequestReviewComment: async (): Promise<void> => undefined,
   closePullRequest: async (): Promise<void> => undefined,
   closeIssueByUrl: async (): Promise<void> => undefined,
   deletePullRequestBranch: () => notImplemented('deletePullRequestBranch'),

@@ -6,6 +6,7 @@ import type { ConsoleCaches } from '../hooks/useConsoleCaches';
 import { useConsoleItemDetailData } from '../hooks/useConsoleItemDetailData';
 import type { ConsoleOperationsApi } from '../hooks/useConsoleOperations';
 import { useConsoleToken } from '../hooks/useConsoleToken';
+import type { ConsoleReviewCommentSide } from '../lib/consoleApi';
 import { buildImageProxyUrl } from '../lib/imageProxy';
 import type { ConsoleActionKind } from '../logic/actionToast';
 import { resolveStoryColorEnum } from '../logic/grouping';
@@ -59,6 +60,15 @@ export const ConsoleItemDetailContainer = ({
     [token],
   );
   const hasPullRequest = item.isPr || detail.relatedPullRequests.length > 0;
+  const addInlineComment = useCallback(
+    (
+      path: string,
+      line: number,
+      side: ConsoleReviewCommentSide,
+      body: string,
+    ) => operations.addInlineReviewComment(item.url, path, line, side, body),
+    [operations, item.url],
+  );
 
   const handlers: ConsoleOperationHandlers = {
     onReview: (action) => {
@@ -137,6 +147,7 @@ export const ConsoleItemDetailContainer = ({
       relatedPullRequests={detail.relatedPullRequests}
       now={now}
       buildImageProxyUrl={resolveImageProxyUrl}
+      onAddInlineComment={item.isPr ? addInlineComment : undefined}
       commentComposer={
         <ConsoleCommentComposer
           isPr={item.isPr}

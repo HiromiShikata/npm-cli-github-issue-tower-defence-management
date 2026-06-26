@@ -826,6 +826,110 @@ body {
   font-size: 12px;
 }
 
+.console-diff-comment-cell {
+  width: 1%;
+  padding: 0 2px;
+  text-align: center;
+  user-select: none;
+}
+
+.console-diff-comment-button {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  line-height: 16px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: #6e7681;
+  font-size: 14px;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.console-diff-row:hover .console-diff-comment-button,
+.console-diff-comment-button[aria-expanded="true"] {
+  opacity: 1;
+  border-color: #2f81f7;
+  background: #1f6feb;
+  color: #ffffff;
+}
+
+.console-diff-composer-row td {
+  padding: 6px 10px;
+  background: #0d1117;
+}
+
+.console-diff-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 8px;
+  background: #161b22;
+}
+
+.console-diff-composer-anchor {
+  font-size: 11px;
+  color: #8b949e;
+}
+
+.console-diff-composer-input {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #0d1117;
+  color: #c9d1d9;
+  padding: 6px 8px;
+  font: inherit;
+}
+
+.console-diff-composer-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.console-diff-composer-submit {
+  border: 1px solid #238636;
+  border-radius: 6px;
+  background: #238636;
+  color: #ffffff;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+
+.console-diff-composer-submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.console-diff-composer-cancel {
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: transparent;
+  color: #c9d1d9;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+
+.console-diff-composer-status {
+  font-size: 12px;
+  color: #8b949e;
+}
+
+.console-diff-composer-error {
+  color: #ff7b72;
+}
+
+.console-diff-composer-posted {
+  margin: 0;
+  font-size: 12px;
+  color: #3fb950;
+}
+
 .console-pr-header {
   display: flex;
   flex-wrap: wrap;

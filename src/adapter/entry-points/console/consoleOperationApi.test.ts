@@ -10,6 +10,7 @@ import {
   handleComment,
   handleIntmux,
   handleReview,
+  handleReviewComment,
   handleTriage,
 } from './consoleOperationApi';
 import {
@@ -625,6 +626,101 @@ describe('consoleOperationApi', () => {
       });
       expect(response.statusCode).toBe(400);
       expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('handleReviewComment', () => {
+    const validRequest = {
+      pjcode: 'umino',
+      url: 'https://github.com/o/r/pull/1',
+      path: 'src/index.ts',
+      line: 42,
+      side: 'RIGHT',
+      body: 'Consider extracting this into a helper.',
+    };
+
+    it('creates a line-anchored review comment on the pull request', async () => {
+      const response = await handleReviewComment(context, validRequest);
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toEqual({ ok: true });
+      expect(
+        issueRepository.createPullRequestReviewComment,
+      ).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+        'src/index.ts',
+        42,
+        'RIGHT',
+        'Consider extracting this into a helper.',
+      );
+    });
+
+    it('rejects when url is missing', async () => {
+      const response = await handleReviewComment(context, {
+        ...validRequest,
+        url: '',
+      });
+      expect(response.statusCode).toBe(400);
+      expect(
+        issueRepository.createPullRequestReviewComment,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('rejects when path is missing', async () => {
+      const response = await handleReviewComment(context, {
+        ...validRequest,
+        path: '',
+      });
+      expect(response.statusCode).toBe(400);
+      expect(
+        issueRepository.createPullRequestReviewComment,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('rejects when line is not a positive integer', async () => {
+      const response = await handleReviewComment(context, {
+        ...validRequest,
+        line: 0,
+      });
+      expect(response.statusCode).toBe(400);
+      expect(
+        issueRepository.createPullRequestReviewComment,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('rejects when side is not LEFT or RIGHT', async () => {
+      const response = await handleReviewComment(context, {
+        ...validRequest,
+        side: 'CENTER',
+      });
+      expect(response.statusCode).toBe(400);
+      expect(
+        issueRepository.createPullRequestReviewComment,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('rejects when body is missing', async () => {
+      const response = await handleReviewComment(context, {
+        ...validRequest,
+        body: '',
+      });
+      expect(response.statusCode).toBe(400);
+      expect(
+        issueRepository.createPullRequestReviewComment,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('surfaces the GitHub error message when the comment cannot be created', async () => {
+      issueRepository.createPullRequestReviewComment.mockRejectedValue(
+        new Error(
+          'Failed to create review comment on PR https://github.com/o/r/pull/1: Validation Failed: line must be part of the diff',
+        ),
+      );
+      const response = await handleReviewComment(context, validRequest);
+      expect(response.statusCode).toBe(502);
+      expect(response.body).toEqual({
+        error:
+          'Failed to create review comment on PR https://github.com/o/r/pull/1: Validation Failed: line must be part of the diff',
+      });
     });
   });
 });

@@ -52,6 +52,7 @@ const buildOperations = (): ConsoleOperationsApi => ({
     body: 'comment body',
     createdAt: '2026-06-19T11:58:00.000Z',
   })),
+  addInlineReviewComment: jest.fn(async () => {}),
 });
 
 describe('ConsoleItemDetailContainer', () => {
