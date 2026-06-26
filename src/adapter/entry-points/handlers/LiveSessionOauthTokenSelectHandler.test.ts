@@ -239,7 +239,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     const diagnostics = output.diagnostics.join('\n');
     expect(diagnostics).toContain('No eligible token');
     expect(diagnostics).toContain('5h >= 60% free');
-    expect(diagnostics).toContain('7d >= 30% free');
+    expect(diagnostics).toContain('7d >= 7% free');
     expect(diagnostics).not.toContain('fake-busy');
   });
 
