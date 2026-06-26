@@ -279,6 +279,7 @@ const buildIssueForUrl = (url: string): Issue => ({
   isClosed: false,
   createdAt: new Date('2026-06-18T00:00:00.000Z'),
   author: 'HiromiShikata',
+  closingIssueReferenceUrls: [],
 });
 
 const notImplemented = (method: string): never => {

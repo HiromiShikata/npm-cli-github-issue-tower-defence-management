@@ -13,6 +13,7 @@ export type ProjectItem = {
     assignees: string[];
     createdAt: string;
     author: string;
+    closingIssueReferenceUrls: string[];
     customFields: {
         name: string;
         value: string | null;

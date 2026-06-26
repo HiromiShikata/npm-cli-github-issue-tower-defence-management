@@ -543,6 +543,7 @@ export class ApiV3CheerioRestIssueRepository
       isClosed: item.state !== 'OPEN',
       createdAt: new Date(item.createdAt || '2000-01-01'),
       author: item.author,
+      closingIssueReferenceUrls: item.closingIssueReferenceUrls,
     };
   };
   getAllIssuesFromCache = async (
@@ -578,6 +579,14 @@ export class ApiV3CheerioRestIssueRepository
               !('createdAt' in issue) || typeof issue.createdAt !== 'string'
                 ? new Date()
                 : new Date(issue.createdAt);
+            const closingIssueReferenceUrls =
+              'closingIssueReferenceUrls' in issue &&
+              Array.isArray(issue.closingIssueReferenceUrls) &&
+              issue.closingIssueReferenceUrls.every(
+                (url): url is string => typeof url === 'string',
+              )
+                ? issue.closingIssueReferenceUrls
+                : [];
 
             return {
               ...issue,
@@ -585,6 +594,7 @@ export class ApiV3CheerioRestIssueRepository
               completionDate50PercentConfidence:
                 completionDate50PercentConfidence,
               createdAt: createdAt,
+              closingIssueReferenceUrls: closingIssueReferenceUrls,
             };
           });
 
