@@ -1298,7 +1298,9 @@ mysteryKey: 'value'
       const processOnceSpy = jest.spyOn(process, 'once');
       const processExitSpy = jest
         .spyOn(process, 'exit')
-        .mockImplementation(() => undefined as never);
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
 
       writeConfig({ ...defaultConfig, consoleAccessToken: 'test-key-sigterm' });
 
@@ -1329,10 +1331,10 @@ mysteryKey: 'value'
       if (typeof rawSigintHandler !== 'function') {
         throw new Error('Expected SIGINT handler to be a function');
       }
-      rawSigtermHandler();
+      expect(() => rawSigtermHandler()).toThrow('process.exit called');
       expect(mockKill).toHaveBeenCalledTimes(1);
       expect(processExitSpy).toHaveBeenCalledWith(0);
-      rawSigintHandler();
+      expect(() => rawSigintHandler()).toThrow('process.exit called');
       expect(mockKill).toHaveBeenCalledTimes(2);
       expect(processExitSpy).toHaveBeenCalledTimes(2);
 
