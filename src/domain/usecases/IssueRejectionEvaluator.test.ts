@@ -205,6 +205,188 @@ describe('IssueRejectionEvaluator', () => {
       expect(result.rejections[0].type).toBe('PULL_REQUEST_NOT_FOUND');
     });
 
+    describe('prebuilt relatedOpenPrUrls (in-memory derivation path)', () => {
+      it('should resolve PR status via getOpenPullRequest and not call findRelatedOpenPRs when relatedOpenPrUrls is provided', async () => {
+        mockIssueRepository.getOpenPullRequest.mockResolvedValue(
+          createReadyPr('https://github.com/user/repo/pull/7'),
+        );
+
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: [],
+            isPr: false,
+          },
+          [],
+          { relatedOpenPrUrls: ['https://github.com/user/repo/pull/7'] },
+        );
+
+        expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+        expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledWith(
+          'https://github.com/user/repo/pull/7',
+        );
+        expect(result.rejections).toHaveLength(0);
+        expect(result.approvedPrUrl).toBe(
+          'https://github.com/user/repo/pull/7',
+        );
+      });
+
+      it('should reject with PULL_REQUEST_NOT_FOUND when relatedOpenPrUrls is empty', async () => {
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: [],
+            isPr: false,
+          },
+          [],
+          { relatedOpenPrUrls: [] },
+        );
+
+        expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+        expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
+        expect(result.rejections).toHaveLength(1);
+        expect(result.rejections[0].type).toBe('PULL_REQUEST_NOT_FOUND');
+        expect(result.approvedPrUrl).toBeNull();
+      });
+
+      it('should drop a related URL whose PR is no longer open (getOpenPullRequest returns null), yielding PULL_REQUEST_NOT_FOUND', async () => {
+        mockIssueRepository.getOpenPullRequest.mockResolvedValue(null);
+
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: [],
+            isPr: false,
+          },
+          [],
+          { relatedOpenPrUrls: ['https://github.com/user/repo/pull/9'] },
+        );
+
+        expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+        expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledWith(
+          'https://github.com/user/repo/pull/9',
+        );
+        expect(result.rejections).toHaveLength(1);
+        expect(result.rejections[0].type).toBe('PULL_REQUEST_NOT_FOUND');
+      });
+
+      it('should reject with MULTIPLE_PULL_REQUESTS_FOUND when more than one related open PR resolves', async () => {
+        mockIssueRepository.getOpenPullRequest.mockImplementation(
+          (prUrl: string) => Promise.resolve(createReadyPr(prUrl)),
+        );
+
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: [],
+            isPr: false,
+          },
+          [],
+          {
+            relatedOpenPrUrls: [
+              'https://github.com/user/repo/pull/1',
+              'https://github.com/user/repo/pull/2',
+            ],
+          },
+        );
+
+        expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+        expect(result.rejections).toHaveLength(1);
+        expect(result.rejections[0].type).toBe('MULTIPLE_PULL_REQUESTS_FOUND');
+      });
+
+      it('should de-duplicate repeated related URLs before resolving, mirroring findRelatedOpenPRs', async () => {
+        mockIssueRepository.getOpenPullRequest.mockResolvedValue(
+          createReadyPr('https://github.com/user/repo/pull/5'),
+        );
+
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: [],
+            isPr: false,
+          },
+          [],
+          {
+            relatedOpenPrUrls: [
+              'https://github.com/user/repo/pull/5',
+              'https://github.com/user/repo/pull/5',
+            ],
+          },
+        );
+
+        expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledTimes(1);
+        expect(result.rejections).toHaveLength(0);
+        expect(result.approvedPrUrl).toBe(
+          'https://github.com/user/repo/pull/5',
+        );
+      });
+
+      it('should produce the same draft rejection through the prebuilt path as through findRelatedOpenPRs', async () => {
+        mockIssueRepository.getOpenPullRequest.mockResolvedValue(
+          createReadyPr('https://github.com/user/repo/pull/3', {
+            isDraft: true,
+          }),
+        );
+
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: [],
+            isPr: false,
+          },
+          [],
+          { relatedOpenPrUrls: ['https://github.com/user/repo/pull/3'] },
+        );
+
+        expect(result.rejections).toHaveLength(1);
+        expect(result.rejections[0].type).toBe('PULL_REQUEST_IS_DRAFT');
+        expect(result.approvedPrUrl).toBeNull();
+      });
+
+      it('should still use findRelatedOpenPRs when relatedOpenPrUrls is undefined (single-issue path unchanged)', async () => {
+        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+          createReadyPr(),
+        ]);
+
+        const result = await evaluator.evaluate({
+          url: 'https://github.com/user/repo/issues/1',
+          labels: [],
+          isPr: false,
+        });
+
+        expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalledWith(
+          'https://github.com/user/repo/issues/1',
+        );
+        expect(result.rejections).toHaveLength(0);
+      });
+
+      it('should ignore relatedOpenPrUrls for a PR item (isPr=true) and use getOpenPullRequest on the PR URL itself', async () => {
+        mockIssueRepository.getOpenPullRequest.mockResolvedValue(
+          createReadyPr('https://github.com/user/repo/pull/10'),
+        );
+
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/pull/10',
+            labels: [],
+            isPr: true,
+          },
+          [],
+          { relatedOpenPrUrls: ['https://github.com/user/repo/pull/999'] },
+        );
+
+        expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+        expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledWith(
+          'https://github.com/user/repo/pull/10',
+        );
+        expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalledWith(
+          'https://github.com/user/repo/pull/999',
+        );
+        expect(result.rejections).toHaveLength(0);
+      });
+    });
+
     describe('change-target-must: label behavior', () => {
       const prUrl = 'https://github.com/user/repo/pull/1';
 

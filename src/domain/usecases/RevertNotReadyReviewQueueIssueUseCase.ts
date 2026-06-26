@@ -1,3 +1,4 @@
+import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
@@ -90,6 +91,9 @@ export class RevertNotReadyReviewQueueIssueUseCase {
       (issue) => issue.status === AWAITING_QUALITY_CHECK_STATUS_NAME,
     );
 
+    const relatedOpenPrUrlsByIssueUrl =
+      this.buildRelatedOpenPrUrlsByIssueUrl(issues);
+
     for (const issue of awaitingQualityCheckIssues) {
       const hasLlmAgentLabel = issue.labels.some(
         (l) => l === 'llm-agent' || l.startsWith('llm-agent:'),
@@ -108,6 +112,9 @@ export class RevertNotReadyReviewQueueIssueUseCase {
         await this.issueRejectionEvaluator.evaluate(
           issue,
           params.labelsAsLlmAgentName ?? [],
+          {
+            relatedOpenPrUrls: relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? [],
+          },
         );
       if (rejections.length > 0) {
         await this.issueRepository.updateStatus(
@@ -174,5 +181,35 @@ export class RevertNotReadyReviewQueueIssueUseCase {
         );
       }
     }
+  };
+
+  // Derives, for each issue, the set of open pull request URLs that reference it
+  // via a closing keyword. The linkage is taken from each open PR item's
+  // closingIssueReferenceUrls (populated in bulk by fetchProjectItems), the same
+  // in-memory derivation SetDependedIssueUrlForOpenTaskPRsUseCase uses. This
+  // replaces the per-issue findRelatedOpenPRs timeline query in the
+  // review-readiness sweep with a single in-memory pass over the bulk items.
+  private buildRelatedOpenPrUrlsByIssueUrl = (
+    issues: Issue[],
+  ): Map<string, string[]> => {
+    const openPrUrlsByIssueUrl = new Map<string, Set<string>>();
+    for (const issue of issues) {
+      if (!issue.isPr || issue.isClosed) {
+        continue;
+      }
+      for (const referencedIssueUrl of issue.closingIssueReferenceUrls) {
+        const existing = openPrUrlsByIssueUrl.get(referencedIssueUrl);
+        if (existing) {
+          existing.add(issue.url);
+        } else {
+          openPrUrlsByIssueUrl.set(referencedIssueUrl, new Set([issue.url]));
+        }
+      }
+    }
+    const result = new Map<string, string[]>();
+    for (const [issueUrl, prUrls] of openPrUrlsByIssueUrl) {
+      result.set(issueUrl, Array.from(prUrls));
+    }
+    return result;
   };
 }
