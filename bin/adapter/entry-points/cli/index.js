@@ -59,7 +59,7 @@ const GitHubIssueCommentRepository_1 = require("../../repositories/GitHubIssueCo
 const FetchWebhookRepository_1 = require("../../repositories/FetchWebhookRepository");
 const RevertOrphanedPreparationUseCase_1 = require("../../../domain/usecases/RevertOrphanedPreparationUseCase");
 const path = __importStar(require("path"));
-const consoleServer_1 = require("../console/consoleServer");
+const webServer_1 = require("../console/webServer");
 const consoleReadApi_1 = require("../console/consoleReadApi");
 const consoleProjectResolver_1 = require("../console/consoleProjectResolver");
 const OauthTokenSelectHandler_1 = require("../handlers/OauthTokenSelectHandler");
@@ -349,22 +349,14 @@ exports.program
     });
     process.stdout.write(`${JSON.stringify(result)}\n`);
 });
-exports.program
-    .command('serveConsole')
-    .description('Start the local TDPM Console HTTP server')
-    .requiredOption('--configFilePath <path>', 'Path to config file for tower defence management')
-    .option('--port <number>', `Port for the console HTTP server (default: ${consoleServer_1.DEFAULT_CONSOLE_PORT})`)
-    .option('--consoleDataOutputDir <path>', 'Directory where console data files are written and served from')
-    .option('--inTmuxDataDir <path>', `Directory containing the flat in-tmux-by-human static JSON files served at /in-tmux-by-human/*.json (default: ${DEFAULT_IN_TMUX_DATA_DIR})`)
-    .option('--dashboardDir <path>', `Directory containing the dashboard HTML fragment tdpm.txt served unauthenticated at /tdpm.txt (default: ${DEFAULT_DASHBOARD_DIR})`)
-    .action(async (options) => {
+const runServeWeb = async (options) => {
     const config = (0, projectConfig_2.loadConfigFile)(options.configFilePath);
     const accessToken = config.consoleAccessToken;
     if (!accessToken) {
         console.error('consoleAccessToken is required. Provide it via the config file.');
         process.exit(1);
     }
-    let port = consoleServer_1.DEFAULT_CONSOLE_PORT;
+    let port = webServer_1.DEFAULT_WEB_PORT;
     if (options.port !== undefined) {
         const parsedPort = Number(options.port);
         if (!Number.isFinite(parsedPort) ||
@@ -414,7 +406,7 @@ exports.program
     const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
     const inTmuxDataDir = options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR;
     const dashboardDir = options.dashboardDir ?? DEFAULT_DASHBOARD_DIR;
-    await (0, consoleServer_1.startConsoleServer)({
+    await (0, webServer_1.startWebServer)({
         accessToken,
         uiDistDir,
         consoleDataOutputDir,
@@ -426,7 +418,23 @@ exports.program
         issueTitleStateCache: new consoleReadApi_1.IssueTitleStateCache(),
         port,
     });
-    console.log(`TDPM Console server listening on port ${port}`);
+    console.log(`TDPM web server listening on port ${port}`);
+};
+const addServeWebOptions = (command) => command
+    .requiredOption('--configFilePath <path>', 'Path to config file for tower defence management')
+    .option('--port <number>', `Port for the web HTTP server (default: ${webServer_1.DEFAULT_WEB_PORT})`)
+    .option('--consoleDataOutputDir <path>', 'Directory where console data files are written and served from')
+    .option('--inTmuxDataDir <path>', `Directory containing the flat in-tmux-by-human static JSON files served at /in-tmux-by-human/*.json (default: ${DEFAULT_IN_TMUX_DATA_DIR})`)
+    .option('--dashboardDir <path>', `Directory containing the dashboard HTML fragment tdpm.txt served unauthenticated at /tdpm.txt (default: ${DEFAULT_DASHBOARD_DIR})`);
+addServeWebOptions(exports.program.command('serveWeb'))
+    .description('Start the local TDPM web server (console tabs, dashboard, and in-tmux session list)')
+    .action(async (options) => {
+    await runServeWeb(options);
+});
+addServeWebOptions(exports.program.command('serveConsole'))
+    .description('Deprecated alias for serveWeb. Use serveWeb instead.')
+    .action(async (options) => {
+    await runServeWeb(options);
 });
 exports.program
     .command('selectOauthToken')

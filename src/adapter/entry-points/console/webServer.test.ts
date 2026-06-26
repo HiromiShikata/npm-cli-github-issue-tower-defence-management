@@ -4,7 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { mock } from 'jest-mock-extended';
 import {
-  DEFAULT_CONSOLE_PORT,
+  DEFAULT_WEB_PORT,
   CONSOLE_TOKEN_HEADER,
   hasDotSegment,
   requiresToken,
@@ -13,8 +13,8 @@ import {
   extractProvidedToken,
   resolveFlatInTmuxFilePath,
   resolveDashboardFilePath,
-  startConsoleServer,
-} from './consoleServer';
+  startWebServer,
+} from './webServer';
 import type { ImageFetcher } from './consoleImageProxy';
 import { IssueTitleStateCache } from './consoleReadApi';
 import { readDoneProjectItemIds } from './consoleDoneStore';
@@ -22,10 +22,10 @@ import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/Iss
 import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
 
-describe('consoleServer pure helpers', () => {
-  describe('DEFAULT_CONSOLE_PORT', () => {
+describe('webServer pure helpers', () => {
+  describe('DEFAULT_WEB_PORT', () => {
     it('is 9981', () => {
-      expect(DEFAULT_CONSOLE_PORT).toBe(9981);
+      expect(DEFAULT_WEB_PORT).toBe(9981);
     });
   });
 
@@ -123,7 +123,7 @@ describe('consoleServer pure helpers', () => {
   });
 });
 
-describe('consoleServer integration', () => {
+describe('webServer integration', () => {
   const testToken = 'integration-test-token-value';
 
   const requestServer = (
@@ -175,7 +175,7 @@ describe('consoleServer integration', () => {
 
   it('starts on an ephemeral port and closes gracefully', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
-    const server = await startConsoleServer({
+    const server = await startWebServer({
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
@@ -192,7 +192,7 @@ describe('consoleServer integration', () => {
 
   it('serves the placeholder index without a token when ui-dist is absent', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
-    const server = await startConsoleServer({
+    const server = await startWebServer({
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'missing-ui-dist'),
       consoleDataOutputDir: null,
@@ -218,7 +218,7 @@ describe('consoleServer integration', () => {
 
   it('returns 404 for a missing non-index file when ui-dist is absent', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
-    const server = await startConsoleServer({
+    const server = await startWebServer({
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'missing-ui-dist'),
       consoleDataOutputDir: null,
@@ -248,7 +248,7 @@ describe('consoleServer integration', () => {
       path.join(uiDistDir, 'assets', 'app.js'),
       'console.log("app");',
     );
-    const server = await startConsoleServer({
+    const server = await startWebServer({
       accessToken: testToken,
       uiDistDir,
       consoleDataOutputDir: null,
@@ -280,7 +280,7 @@ describe('consoleServer integration', () => {
       path.join(uiDistDir, 'index.html'),
       '<!DOCTYPE html><title>spa</title><div id="root"></div>',
     );
-    const server = await startConsoleServer({
+    const server = await startWebServer({
       accessToken: testToken,
       uiDistDir,
       consoleDataOutputDir: null,
@@ -309,7 +309,7 @@ describe('consoleServer integration', () => {
 
   it('serves the placeholder index for per-project routes when ui-dist is absent', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
-    const server = await startConsoleServer({
+    const server = await startWebServer({
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'missing-ui-dist'),
       consoleDataOutputDir: null,
@@ -332,7 +332,7 @@ describe('consoleServer integration', () => {
     const uiDistDir = path.join(tmpDir, 'ui-dist');
     fs.mkdirSync(uiDistDir, { recursive: true });
     fs.writeFileSync(path.join(uiDistDir, '.env'), 'SECRET=should-not-serve');
-    const server = await startConsoleServer({
+    const server = await startWebServer({
       accessToken: testToken,
       uiDistDir,
       consoleDataOutputDir: null,
@@ -358,7 +358,7 @@ describe('consoleServer integration', () => {
 
   it('rejects .json and /api/* without a token and passes the gate with a valid token', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
-    const server = await startConsoleServer({
+    const server = await startWebServer({
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
@@ -403,7 +403,7 @@ describe('consoleServer integration', () => {
   });
 });
 
-describe('consoleServer new routes integration', () => {
+describe('webServer new routes integration', () => {
   const testToken = 'integration-test-token-value';
 
   const closeServer = (server: http.Server): Promise<void> =>
@@ -496,7 +496,7 @@ describe('consoleServer new routes integration', () => {
       path.join(listDir, '.done.json'),
       JSON.stringify({ projectItemIds: ['PVTI_drop'] }),
     );
-    const server = await startConsoleServer({
+    const server = await startWebServer({
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: dataDir,
@@ -533,7 +533,7 @@ describe('consoleServer new routes integration', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
     const issueRepository = mock<IssueRepository>();
     issueRepository.getIssueOrPullRequestBody.mockResolvedValue('body text');
-    const server = await startConsoleServer({
+    const server = await startWebServer({
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
@@ -567,7 +567,7 @@ describe('consoleServer new routes integration', () => {
         createdAt: new Date('2026-06-18T03:21:00.000Z'),
       },
     ]);
-    const server = await startConsoleServer({
+    const server = await startWebServer({
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
@@ -616,7 +616,7 @@ describe('consoleServer new routes integration', () => {
       ...mock<Issue>(),
       itemId: 'PVTI_loaded',
     });
-    const server = await startConsoleServer({
+    const server = await startWebServer({
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: dataDir,
@@ -662,7 +662,7 @@ describe('consoleServer new routes integration', () => {
     issueRepository.approvePullRequest.mockRejectedValue(
       new Error('Failed to approve PR https://github.com/o/r/pull/1: HTTP 422'),
     );
-    const server = await startConsoleServer({
+    const server = await startWebServer({
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
@@ -698,7 +698,7 @@ describe('consoleServer new routes integration', () => {
   it('rejects an operation api with a malformed json body', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
     const issueRepository = mock<IssueRepository>();
-    const server = await startConsoleServer({
+    const server = await startWebServer({
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
@@ -749,7 +749,7 @@ describe('consoleServer new routes integration', () => {
 
   it('returns 404 for a read api when no repository is injected', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
-    const server = await startConsoleServer({
+    const server = await startWebServer({
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
@@ -809,7 +809,7 @@ describe('resolveFlatInTmuxFilePath', () => {
   });
 });
 
-describe('consoleServer flat in-tmux-by-human route integration', () => {
+describe('webServer flat in-tmux-by-human route integration', () => {
   const testToken = 'integration-test-token-value';
 
   const requestServer = (
@@ -878,7 +878,7 @@ describe('consoleServer flat in-tmux-by-human route integration', () => {
     fs.writeFileSync(path.join(inTmuxDataDir, 'index.v4.json'), indexV4Raw);
     fs.writeFileSync(path.join(inTmuxDataDir, 'index.v3.json'), indexV3Raw);
     fs.writeFileSync(path.join(tmpDir, 'secret.json'), '{"secret":true}');
-    const server = await startConsoleServer({
+    const server = await startWebServer({
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
@@ -992,7 +992,7 @@ describe('consoleServer flat in-tmux-by-human route integration', () => {
 
   it('returns 404 for the flat route when inTmuxDataDir is null', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
-    const server = await startConsoleServer({
+    const server = await startWebServer({
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
@@ -1030,7 +1030,7 @@ describe('resolveDashboardFilePath', () => {
   });
 });
 
-describe('consoleServer dashboard /tdpm.txt route integration', () => {
+describe('webServer dashboard /tdpm.txt route integration', () => {
   const testToken = 'integration-test-token-value';
 
   const requestServer = (
@@ -1094,7 +1094,7 @@ describe('consoleServer dashboard /tdpm.txt route integration', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
     fs.writeFileSync(path.join(tmpDir, 'tdpm.txt'), dashboardRaw);
     fs.writeFileSync(path.join(tmpDir, 'secret.txt'), 'secret content');
-    const server = await startConsoleServer({
+    const server = await startWebServer({
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
@@ -1125,7 +1125,7 @@ describe('consoleServer dashboard /tdpm.txt route integration', () => {
 
   it('returns 404 for /tdpm.txt when the file is absent', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
-    const server = await startConsoleServer({
+    const server = await startWebServer({
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
@@ -1146,7 +1146,7 @@ describe('consoleServer dashboard /tdpm.txt route integration', () => {
     const { server, tmpDir } = await (async () => {
       const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
       fs.writeFileSync(path.join(dir, 'tdpm.txt'), dashboardRaw);
-      const srv = await startConsoleServer({
+      const srv = await startWebServer({
         accessToken: testToken,
         uiDistDir: path.join(dir, 'ui-dist'),
         consoleDataOutputDir: null,
@@ -1177,7 +1177,7 @@ describe('consoleServer dashboard /tdpm.txt route integration', () => {
   });
 });
 
-describe('consoleServer image proxy', () => {
+describe('webServer image proxy', () => {
   const testToken = 'image-proxy-token-value';
   const githubToken = 'gh-token-value';
   const allowedUrl = 'https://github.com/user-attachments/assets/abc-123';
@@ -1244,7 +1244,7 @@ describe('consoleServer image proxy', () => {
   ): Promise<{ server: http.Server; tmpDir: string }> =>
     (async () => {
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
-      const server = await startConsoleServer({
+      const server = await startWebServer({
         accessToken: testToken,
         uiDistDir: path.join(tmpDir, 'ui-dist'),
         consoleDataOutputDir: null,

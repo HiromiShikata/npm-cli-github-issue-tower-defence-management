@@ -3,14 +3,14 @@ import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/Iss
 import { IssueTitleStateCache } from './consoleReadApi';
 import { ConsoleProjectResolver } from './consoleOperationApi';
 import { ImageFetcher } from './consoleImageProxy';
-export declare const DEFAULT_CONSOLE_PORT = 9981;
+export declare const DEFAULT_WEB_PORT = 9981;
 export declare const CONSOLE_TOKEN_HEADER = "x-pv-token";
 export declare const hasDotSegment: (requestPath: string) => boolean;
 export declare const requiresToken: (requestPath: string) => boolean;
 export declare const isConsoleAppRoute: (requestPath: string) => boolean;
 export declare const isTokenValid: (expectedToken: string, providedToken: string | null) => boolean;
 export declare const extractProvidedToken: (queryToken: string | string[] | null, headerToken: string | string[] | undefined) => string | null;
-export type ConsoleServerOptions = {
+export type WebServerOptions = {
     accessToken: string;
     uiDistDir: string;
     consoleDataOutputDir: string | null;
@@ -26,10 +26,10 @@ export declare const DASHBOARD_REQUEST_PATH = "/tdpm.txt";
 export declare const IMAGE_PROXY_REQUEST_PATH = "/api/img";
 export declare const resolveDashboardFilePath: (dashboardDir: string, requestPath: string) => string | null;
 export declare const resolveFlatInTmuxFilePath: (inTmuxDataDir: string, requestPath: string) => string | null;
-export declare const handleConsoleRequest: (options: ConsoleServerOptions, request: http.IncomingMessage, response: http.ServerResponse) => Promise<void>;
-export declare const createConsoleServer: (options: ConsoleServerOptions) => http.Server;
-export type StartConsoleServerOptions = ConsoleServerOptions & {
+export declare const handleWebRequest: (options: WebServerOptions, request: http.IncomingMessage, response: http.ServerResponse) => Promise<void>;
+export declare const createWebServer: (options: WebServerOptions) => http.Server;
+export type StartWebServerOptions = WebServerOptions & {
     port: number;
 };
-export declare const startConsoleServer: (options: StartConsoleServerOptions) => Promise<http.Server>;
-//# sourceMappingURL=consoleServer.d.ts.map
+export declare const startWebServer: (options: StartWebServerOptions) => Promise<http.Server>;
+//# sourceMappingURL=webServer.d.ts.map
