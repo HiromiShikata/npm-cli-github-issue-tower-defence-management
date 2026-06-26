@@ -1,3 +1,10 @@
+# [1.102.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.101.8...v1.102.0) (2026-06-26)
+
+
+### Features
+
+* **console:** render GitHub emoji shortcodes as Unicode glyphs in markdown ([#976](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/976)) ([59788fc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/59788fc8d565ae1cb641a620bd2d5b95de51d134))
+
 ## [1.101.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.101.7...v1.101.8) (2026-06-26)
 
 
