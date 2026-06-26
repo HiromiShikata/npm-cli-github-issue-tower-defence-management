@@ -1,3 +1,10 @@
+## [1.104.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.104.2...v1.104.3) (2026-06-26)
+
+
+### Bug Fixes
+
+* **intmux:** drop /prs and exclude reactivation-triggered items from in-tmux-by-human list ([#994](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/994)) ([4ab59fa](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4ab59fa24fbfc9e38436ba0ea12d6375dea99674))
+
 ## [1.104.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.104.1...v1.104.2) (2026-06-26)
 
 
