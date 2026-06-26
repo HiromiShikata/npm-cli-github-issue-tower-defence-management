@@ -331,4 +331,28 @@ describe('startProxy', () => {
     expect(response.body).toBe('Upstream error');
     expect(writeModelRateLimitSpy).not.toHaveBeenCalled();
   });
+
+  it('should call writeSubscriptionDisabled when the response body contains the subscription-disabled message', async () => {
+    const writeSubscriptionDisabledSpy = jest
+      .spyOn(RateLimitCache, 'writeSubscriptionDisabled')
+      .mockImplementation(() => undefined);
+
+    upstreamHandler = (_request, response) => {
+      response.writeHead(403, { 'content-type': 'application/json' });
+      response.end(
+        JSON.stringify({
+          error: {
+            message:
+              'Your organization has disabled Claude subscription access for Claude Code',
+          },
+        }),
+      );
+    };
+
+    await requestThroughProxy('POST', '/v1/messages', null);
+
+    expect(writeSubscriptionDisabledSpy).toHaveBeenCalledTimes(1);
+    expect(writeSubscriptionDisabledSpy).toHaveBeenCalledWith(TOKEN);
+    writeSubscriptionDisabledSpy.mockRestore();
+  });
 });

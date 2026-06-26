@@ -9,6 +9,7 @@ export type OauthTokenCandidate = {
   name: string;
   token: string;
   snapshot: OauthTokenWindowSnapshot | null;
+  subscriptionDisabled: boolean;
 };
 
 export type OauthTokenCandidateMetrics = {
@@ -75,6 +76,7 @@ export class OauthTokenSelectUseCase {
     );
 
     const exclusionReason = this.exclusionReason(
+      candidate.subscriptionDisabled,
       fiveHourFreeRatio,
       sevenDayFreeRatio,
     );
@@ -90,9 +92,13 @@ export class OauthTokenSelectUseCase {
   };
 
   private exclusionReason = (
+    subscriptionDisabled: boolean,
     fiveHourFreeRatio: number,
     sevenDayFreeRatio: number,
   ): string | null => {
+    if (subscriptionDisabled) {
+      return 'organization has disabled Claude subscription access for Claude Code';
+    }
     if (fiveHourFreeRatio < FIVE_HOUR_MIN_FREE_RATIO) {
       return `5h window only ${this.toPercent(fiveHourFreeRatio)}% free (requires >= ${this.toPercent(FIVE_HOUR_MIN_FREE_RATIO)}%)`;
     }

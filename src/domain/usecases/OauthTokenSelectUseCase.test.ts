@@ -21,10 +21,12 @@ const snapshot = (
 const candidate = (
   name: string,
   snapshotValue: OauthTokenWindowSnapshot | null,
+  subscriptionDisabled = false,
 ): OauthTokenCandidate => ({
   name,
   token: `fake-token-${name}`,
   snapshot: snapshotValue,
+  subscriptionDisabled,
 });
 
 describe('OauthTokenSelectUseCase', () => {
@@ -175,5 +177,22 @@ describe('OauthTokenSelectUseCase', () => {
     );
 
     expect(result.metrics.map((m) => m.name)).toEqual(['a', 'b']);
+  });
+
+  it('excludes a subscription-disabled token even when rate-limit windows are fully free', () => {
+    const result = useCase.run(
+      [
+        candidate('disabled', snapshot({}), true),
+        candidate('active', snapshot({}), false),
+      ],
+      NOW,
+    );
+
+    expect(result.selected?.name).toBe('active');
+    const disabled = result.metrics.find((m) => m.name === 'disabled');
+    expect(disabled?.eligible).toBe(false);
+    expect(disabled?.exclusionReason).toContain(
+      'organization has disabled Claude subscription access for Claude Code',
+    );
   });
 });

@@ -22,10 +22,12 @@ const snapshot = (
 const candidate = (
   name: string,
   snapshotValue: OauthTokenWindowSnapshot | null,
+  subscriptionDisabled = false,
 ): OauthTokenCandidate => ({
   name,
   token: `fake-token-${name}`,
   snapshot: snapshotValue,
+  subscriptionDisabled,
 });
 
 const session = (name: string, sessionId: string): ClaudeLiveSession => ({
@@ -143,5 +145,24 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
 
     const lonely = result.metrics.find((m) => m.name === 'lonely');
     expect(lonely?.liveSessionCount).toBe(0);
+  });
+
+  it('excludes a subscription-disabled token even when it has zero live sessions', () => {
+    const result = useCase.run(
+      [
+        candidate('disabled', snapshot({}), true),
+        candidate('active', snapshot({}), false),
+      ],
+      [session('active', 'session-a')],
+      NOW,
+    );
+
+    expect(result.selected?.name).toBe('active');
+    const disabled = result.metrics.find((m) => m.name === 'disabled');
+    expect(disabled?.eligible).toBe(false);
+    expect(disabled?.liveSessionCount).toBe(0);
+    expect(disabled?.exclusionReason).toContain(
+      'organization has disabled Claude subscription access for Claude Code',
+    );
   });
 });

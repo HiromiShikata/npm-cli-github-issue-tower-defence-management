@@ -85,6 +85,14 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     );
   };
 
+  const writeSubscriptionDisabledCache = (token: string): void => {
+    const payload = { subscriptionDisabledEpoch: NOW };
+    fs.writeFileSync(
+      path.join(cacheDirectory, `${hashToken(token)}.json`),
+      JSON.stringify(payload),
+    );
+  };
+
   const buildHandler = (
     sessions: ClaudeLiveSession[],
   ): LiveSessionOauthTokenSelectHandler =>
@@ -288,5 +296,33 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
 
     expect(output.selectedToken).toBeNull();
     expect(output.diagnostics.join('\n')).toContain('No usable token entries');
+  });
+
+  it('excludes a subscription-disabled token even when it has zero live sessions', () => {
+    writeTokenList([
+      { name: 'disabled', token: 'fake-disabled' },
+      { name: 'active', token: 'fake-active' },
+    ]);
+    writeSubscriptionDisabledCache('fake-disabled');
+    writeCache('fake-active', {
+      fiveHourUtilization: 0.1,
+      fiveHourReset: NOW + HOUR,
+      sevenDayUtilization: 0.1,
+      sevenDayReset: NOW + DAY,
+    });
+
+    const handler = buildHandler([
+      { token: 'fake-active', sessionId: 'session-a' },
+    ]);
+    const output = handler.handle({
+      tokenListJsonPath: tokenListPath,
+      cacheDirectory,
+      nowEpochSeconds: NOW,
+    });
+
+    expect(output.selectedName).toBe('active');
+    expect(output.diagnostics.join('\n')).toContain(
+      'organization has disabled Claude subscription access for Claude Code',
+    );
   });
 });

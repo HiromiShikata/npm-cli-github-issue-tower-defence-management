@@ -12,6 +12,7 @@ import {
   readRateLimit,
   writeModelRateLimit,
   writeRateLimit,
+  writeSubscriptionDisabled,
 } from './RateLimitCache';
 
 describe('RateLimitCache', () => {
@@ -772,6 +773,58 @@ describe('RateLimitCache', () => {
       expect(snapshot?.modelWeeklyLimits).toEqual({
         seven_day_sonnet: { rejected: true, resetsAt: 1779642000 },
       });
+    });
+  });
+
+  describe('writeSubscriptionDisabled', () => {
+    it('should persist subscriptionDisabledEpoch to the cache file', () => {
+      const token = 'sub-disabled-token';
+      writeSubscriptionDisabled(token);
+      const filePath = cachePathForToken(token);
+      const raw = fs.readFileSync(filePath, 'utf8');
+      const parsed: unknown = JSON.parse(raw);
+      expect(parsed).toMatchObject({
+        subscriptionDisabledEpoch: expect.any(Number),
+      });
+    });
+
+    it('should preserve existing cache fields when writing subscriptionDisabledEpoch', () => {
+      const token = 'sub-disabled-preserve-token';
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': '2000100',
+        'anthropic-ratelimit-unified-5h-utilization': '0.1',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '2000200',
+        'anthropic-ratelimit-unified-7d-utilization': '0.1',
+      });
+      writeSubscriptionDisabled(token);
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.subscriptionDisabled).toBe(true);
+      expect(snapshot?.fiveHourReset).toBe(2000100);
+    });
+  });
+
+  describe('readRateLimit subscriptionDisabled', () => {
+    it('returns subscriptionDisabled: true after writeSubscriptionDisabled is called', () => {
+      const token = 'sub-disabled-read-token';
+      writeSubscriptionDisabled(token);
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.subscriptionDisabled).toBe(true);
+    });
+
+    it('returns subscriptionDisabled: false when no subscriptionDisabledEpoch is in the cache', () => {
+      const token = 'sub-not-disabled-token';
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': '2000100',
+        'anthropic-ratelimit-unified-5h-utilization': '0.1',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '2000200',
+        'anthropic-ratelimit-unified-7d-utilization': '0.1',
+      });
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.subscriptionDisabled).toBe(false);
     });
   });
 });

@@ -6,6 +6,7 @@ import {
   parseModelRateLimitsFromBody,
   writeModelRateLimit,
   writeRateLimit,
+  writeSubscriptionDisabled,
 } from './RateLimitCache';
 import { ClaudeMessageResponseRepository } from '../../domain/usecases/adapter-interfaces/ClaudeMessageResponseRepository';
 import { parseClaudeMessageResponse } from './ClaudeMessageResponseParser';
@@ -72,6 +73,20 @@ const startProxy = (
               writeModelRateLimit(token, limits);
             } catch (error) {
               console.error('Failed to write model rate limit cache:', error);
+            }
+            if (
+              body.includes(
+                'Your organization has disabled Claude subscription access for Claude Code',
+              )
+            ) {
+              try {
+                writeSubscriptionDisabled(token);
+              } catch (error) {
+                console.error(
+                  'Failed to write subscription disabled cache:',
+                  error,
+                );
+              }
             }
             if (claudeMessageResponseRepository !== null) {
               try {
