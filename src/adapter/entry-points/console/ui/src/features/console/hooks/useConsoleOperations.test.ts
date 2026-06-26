@@ -133,7 +133,7 @@ describe('useConsoleOperations', () => {
     });
   });
 
-  it('does not mark done on snooze outside the todo-by-human tab', async () => {
+  it('marks done on snooze outside the todo-by-human tab so the item disappears immediately', async () => {
     captureFetch();
     const { result } = setup();
     await act(async () => {
@@ -145,7 +145,7 @@ describe('useConsoleOperations', () => {
     const stored = JSON.parse(
       localStorage.getItem(overlayStorageKey('umino')) ?? '{}',
     );
-    expect(stored[issueItem.projectItemId]?.done).toBeUndefined();
+    expect(stored[issueItem.projectItemId].done).toBe(true);
   });
 
   it('marks done on snooze in the todo-by-human tab so the item is skipped', async () => {
