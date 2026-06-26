@@ -1,3 +1,10 @@
+## [1.101.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.101.7...v1.101.8) (2026-06-26)
+
+
+### Bug Fixes
+
+* **console:** surface action errors instead of swallowing them ([#974](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/974)) ([47ae3f5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/47ae3f5b798903ca228eb05ebd12186613c0cc67)), closes [#973](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/973)
+
 ## [1.101.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.101.6...v1.101.7) (2026-06-26)
 
 

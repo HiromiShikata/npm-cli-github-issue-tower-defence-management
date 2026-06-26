@@ -301,17 +301,13 @@ const handleReadApi = async (options, requestPath, searchParams) => {
             return null;
     }
 };
-const handleOperationApi = async (options, requestPath, body) => {
-    const issueRepository = options.issueRepository ?? null;
-    const resolveProject = options.resolveProject ?? null;
-    if (issueRepository === null || resolveProject === null) {
-        return null;
+const operationErrorMessage = (error) => {
+    if (error instanceof Error && error.message.length > 0) {
+        return error.message;
     }
-    const context = {
-        issueRepository,
-        resolveProject,
-        consoleDataOutputDir: options.consoleDataOutputDir,
-    };
+    return String(error);
+};
+const dispatchOperation = (context, requestPath, body) => {
     switch (requestPath) {
         case '/api/review':
             return (0, consoleOperationApi_1.handleReview)(context, body);
@@ -323,6 +319,32 @@ const handleOperationApi = async (options, requestPath, body) => {
             return (0, consoleOperationApi_1.handleComment)(context, body);
         default:
             return null;
+    }
+};
+const handleOperationApi = async (options, requestPath, body) => {
+    const issueRepository = options.issueRepository ?? null;
+    const resolveProject = options.resolveProject ?? null;
+    if (issueRepository === null || resolveProject === null) {
+        return null;
+    }
+    const context = {
+        issueRepository,
+        resolveProject,
+        consoleDataOutputDir: options.consoleDataOutputDir,
+    };
+    const dispatched = dispatchOperation(context, requestPath, body);
+    if (dispatched === null) {
+        return null;
+    }
+    try {
+        return await dispatched;
+    }
+    catch (error) {
+        console.error('console operation failed', error);
+        return {
+            statusCode: 502,
+            body: { error: operationErrorMessage(error) },
+        };
     }
 };
 const handleTokenedRequest = async (options, request, response, requestPath, searchParams) => {
