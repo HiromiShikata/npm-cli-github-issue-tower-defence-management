@@ -1,3 +1,10 @@
+## [1.104.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.104.3...v1.104.4) (2026-06-26)
+
+
+### Performance Improvements
+
+* **schedule:** replace fetchProjectItems blanket 5s page sleep with reactive rate-limit backoff ([#993](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/993)) ([b8077a6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b8077a606ff0a589a2163e0bb611382c5ccaecca)), closes [#992](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/992)
+
 ## [1.104.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.104.2...v1.104.3) (2026-06-26)
 
 

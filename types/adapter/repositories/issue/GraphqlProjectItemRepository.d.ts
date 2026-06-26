@@ -19,9 +19,14 @@ export type ProjectItem = {
         value: string | null;
     }[];
 };
-export declare const PAGINATION_DELAY_MS = 5000;
+export declare const PAGINATION_DELAY_MS = 500;
 export declare const FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE = 100;
 export declare const FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH = 4000;
+export declare const RATE_LIMIT_MAX_RETRIES = 6;
+export declare const RATE_LIMIT_MIN_BACKOFF_MS = 1000;
+export declare const RATE_LIMIT_DEFAULT_BACKOFF_MS = 60000;
+export declare const RATE_LIMIT_MAX_BACKOFF_MS = 300000;
+export declare const callWithRateLimitRetry: <T>(request: () => Promise<T>) => Promise<T>;
 export declare class GraphqlProjectItemRepository extends BaseGitHubRepository {
     fetchItemId: (projectId: string, owner: string, repositoryName: string, issueNumber: number) => Promise<string | undefined>;
     fetchProjectItems: (projectId: string) => Promise<ProjectItem[]>;

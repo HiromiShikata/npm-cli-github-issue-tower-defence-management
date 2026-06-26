@@ -1,14 +1,95 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.GraphqlProjectItemRepository = exports.FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH = exports.FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE = exports.PAGINATION_DELAY_MS = void 0;
-const ky_1 = __importDefault(require("ky"));
+exports.GraphqlProjectItemRepository = exports.callWithRateLimitRetry = exports.RATE_LIMIT_MAX_BACKOFF_MS = exports.RATE_LIMIT_DEFAULT_BACKOFF_MS = exports.RATE_LIMIT_MIN_BACKOFF_MS = exports.RATE_LIMIT_MAX_RETRIES = exports.FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH = exports.FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE = exports.PAGINATION_DELAY_MS = void 0;
+const ky_1 = __importStar(require("ky"));
 const BaseGitHubRepository_1 = require("../BaseGitHubRepository");
-exports.PAGINATION_DELAY_MS = 5000;
+exports.PAGINATION_DELAY_MS = 500;
 exports.FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE = 100;
 exports.FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH = 4000;
+exports.RATE_LIMIT_MAX_RETRIES = 6;
+exports.RATE_LIMIT_MIN_BACKOFF_MS = 1000;
+exports.RATE_LIMIT_DEFAULT_BACKOFF_MS = 60000;
+exports.RATE_LIMIT_MAX_BACKOFF_MS = 300000;
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const parseNonNegativeIntegerHeader = (value) => {
+    if (value === null) {
+        return null;
+    }
+    const trimmed = value.trim();
+    if (!/^\d+$/.test(trimmed)) {
+        return null;
+    }
+    const parsed = Number.parseInt(trimmed, 10);
+    return Number.isFinite(parsed) ? parsed : null;
+};
+const computeRateLimitBackoffMs = (headers, attempt, nowMs) => {
+    const exponentialMs = Math.min(exports.RATE_LIMIT_MAX_BACKOFF_MS, exports.RATE_LIMIT_DEFAULT_BACKOFF_MS * Math.pow(2, attempt));
+    const retryAfterSeconds = parseNonNegativeIntegerHeader(headers?.get('retry-after') ?? null);
+    if (retryAfterSeconds !== null) {
+        return Math.min(exports.RATE_LIMIT_MAX_BACKOFF_MS, Math.max(exports.RATE_LIMIT_MIN_BACKOFF_MS, retryAfterSeconds * 1000));
+    }
+    const remaining = parseNonNegativeIntegerHeader(headers?.get('x-ratelimit-remaining') ?? null);
+    const resetEpochSeconds = parseNonNegativeIntegerHeader(headers?.get('x-ratelimit-reset') ?? null);
+    if (remaining === 0 && resetEpochSeconds !== null) {
+        const waitMs = resetEpochSeconds * 1000 - nowMs;
+        return Math.min(exports.RATE_LIMIT_MAX_BACKOFF_MS, Math.max(exports.RATE_LIMIT_MIN_BACKOFF_MS, waitMs));
+    }
+    return Math.max(exports.RATE_LIMIT_MIN_BACKOFF_MS, exponentialMs);
+};
+const isRateLimitStatus = (status) => status === 429 || status === 403;
+const callWithRateLimitRetry = async (request) => {
+    let attempt = 0;
+    for (;;) {
+        try {
+            return await request();
+        }
+        catch (error) {
+            if (!(error instanceof ky_1.HTTPError) ||
+                !isRateLimitStatus(error.response.status) ||
+                attempt >= exports.RATE_LIMIT_MAX_RETRIES) {
+                throw error;
+            }
+            const backoffMs = computeRateLimitBackoffMs(error.response.headers, attempt, Date.now());
+            console.log(`fetchProjectItems: GitHub returned ${error.response.status} (rate limit). Backing off ${backoffMs}ms before retry ${attempt + 1}/${exports.RATE_LIMIT_MAX_RETRIES}.`);
+            await sleep(backoffMs);
+            attempt++;
+        }
+    }
+};
+exports.callWithRateLimitRetry = callWithRateLimitRetry;
 const stringifyGraphqlErrorsForLog = (errors) => {
     const serialized = JSON.stringify(errors);
     if (serialized.length <= exports.FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH) {
@@ -192,14 +273,14 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!) {
                         first: first,
                     },
                 };
-                const response = await ky_1.default
+                const response = await (0, exports.callWithRateLimitRetry)(() => ky_1.default
                     .post('https://api.github.com/graphql', {
                     json: graphqlQuery,
                     headers: {
                         Authorization: `Bearer ${this.ghToken}`,
                     },
                 })
-                    .json();
+                    .json());
                 if (response.errors && response.errors.length > 0) {
                     throw new Error(`GitHub GraphQL errors: ${stringifyGraphqlErrorsForLog(response.errors)}`);
                 }
@@ -222,6 +303,10 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!) {
                     }
                     catch (error) {
                         lastError = error;
+                        if (error instanceof ky_1.HTTPError &&
+                            isRateLimitStatus(error.response.status)) {
+                            throw error;
+                        }
                         if (attemptFirst === 1) {
                             throw error;
                         }
