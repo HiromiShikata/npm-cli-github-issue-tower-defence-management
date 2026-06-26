@@ -1,15 +1,25 @@
 import { useState } from 'react';
 import { fileStatusBadge } from '../../logic/fileStatus';
 import type { ConsoleChangedFile } from '../../logic/types';
-import { ConsoleFileDiff } from './ConsoleFileDiff';
+import {
+  type ConsoleAddInlineComment,
+  ConsoleFileDiff,
+} from './ConsoleFileDiff';
 
 export type ConsoleChangedFileListProps = {
   files: ConsoleChangedFile[];
   isLoading: boolean;
   error: string | null;
+  onAddInlineComment?: ConsoleAddInlineComment;
 };
 
-const ConsoleChangedFileRow = ({ file }: { file: ConsoleChangedFile }) => {
+const ConsoleChangedFileRow = ({
+  file,
+  onAddInlineComment,
+}: {
+  file: ConsoleChangedFile;
+  onAddInlineComment?: ConsoleAddInlineComment;
+}) => {
   const [expanded, setExpanded] = useState<boolean>(false);
   const badge = fileStatusBadge(file.status);
   return (
@@ -35,7 +45,13 @@ const ConsoleChangedFileRow = ({ file }: { file: ConsoleChangedFile }) => {
           -{file.deletions}
         </span>
       </button>
-      {expanded && <ConsoleFileDiff patch={file.patch} />}
+      {expanded && (
+        <ConsoleFileDiff
+          patch={file.patch}
+          path={file.path}
+          onAddInlineComment={onAddInlineComment}
+        />
+      )}
     </li>
   );
 };
@@ -44,6 +60,7 @@ export const ConsoleChangedFileList = ({
   files,
   isLoading,
   error,
+  onAddInlineComment,
 }: ConsoleChangedFileListProps) => {
   if (error !== null) {
     return (
@@ -64,7 +81,11 @@ export const ConsoleChangedFileList = ({
   return (
     <ul className="console-files">
       {files.map((file) => (
-        <ConsoleChangedFileRow key={file.path} file={file} />
+        <ConsoleChangedFileRow
+          key={file.path}
+          file={file}
+          onAddInlineComment={onAddInlineComment}
+        />
       ))}
     </ul>
   );

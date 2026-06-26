@@ -214,6 +214,29 @@ describe('useConsoleOperations', () => {
     });
   });
 
+  it('posts a line-anchored inline review comment to the reviewcomment endpoint', async () => {
+    const fetchMock = captureFetch();
+    const { result } = setup();
+    await act(async () => {
+      await result.current.operations.addInlineReviewComment(
+        prItem.url,
+        'src/index.ts',
+        42,
+        'RIGHT',
+        'Consider extracting this into a helper.',
+      );
+    });
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/reviewcomment?k=token');
+    expect(lastBody(fetchMock)).toEqual({
+      pjcode: 'umino',
+      url: prItem.url,
+      path: 'src/index.ts',
+      line: 42,
+      side: 'RIGHT',
+      body: 'Consider extracting this into a helper.',
+    });
+  });
+
   it('rejects an operation and posts nothing when no pjcode is available', async () => {
     const fetchMock = captureFetch();
     localStorage.clear();

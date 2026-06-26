@@ -22,6 +22,7 @@ import {
   handleComment,
   handleIntmux,
   handleReview,
+  handleReviewComment,
   handleTriage,
 } from './consoleOperationApi';
 import { ImageFetcher, fetchProxiedImage } from './consoleImageProxy';
@@ -393,6 +394,8 @@ const dispatchOperation = (
       return handleIntmux(context, body);
     case '/api/comment':
       return handleComment(context, body);
+    case '/api/reviewcomment':
+      return handleReviewComment(context, body);
     default:
       return null;
   }

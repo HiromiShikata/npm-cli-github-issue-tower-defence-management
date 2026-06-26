@@ -41,6 +41,17 @@ export type ConsoleIntmuxRequest = {
   projectItemId: string;
 };
 
+export type ConsoleReviewCommentSide = 'LEFT' | 'RIGHT';
+
+export type ConsoleReviewCommentRequest = {
+  pjcode: string;
+  url: string;
+  path: string;
+  line: number;
+  side: ConsoleReviewCommentSide;
+  body: string;
+};
+
 type AppendToken = (url: string) => string;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -236,4 +247,20 @@ export const postConsoleComment = async (
     throw new Error(`HTTP ${response.status}`);
   }
   return parsePostedComment(await response.json());
+};
+
+export const REVIEW_COMMENT_OPERATION_PATH = '/api/reviewcomment';
+
+export const postConsoleReviewComment = async (
+  appendToken: AppendToken,
+  request: ConsoleReviewCommentRequest,
+): Promise<void> => {
+  const response = await fetch(appendToken(REVIEW_COMMENT_OPERATION_PATH), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    throw new Error(await readOperationErrorReason(response));
+  }
 };

@@ -519,6 +519,112 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('createPullRequestReviewComment', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should fetch the head commit and POST a line-anchored review comment', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ head: { sha: 'abc123' } }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ id: 5 }), {
+            status: 201,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await repository.createPullRequestReviewComment(
+        'https://github.com/HiromiShikata/test-repository/pull/42',
+        'src/index.ts',
+        17,
+        'RIGHT',
+        'Please rename this variable.',
+      );
+
+      expect(fetchSpy).toHaveBeenNthCalledWith(
+        1,
+        'https://api.github.com/repos/HiromiShikata/test-repository/pulls/42',
+        expect.objectContaining({ method: 'GET' }),
+      );
+      expect(fetchSpy).toHaveBeenNthCalledWith(
+        2,
+        'https://api.github.com/repos/HiromiShikata/test-repository/pulls/42/comments',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            body: 'Please rename this variable.',
+            commit_id: 'abc123',
+            path: 'src/index.ts',
+            line: 17,
+            side: 'RIGHT',
+          }),
+        }),
+      );
+    });
+
+    it('should surface the GitHub error message when the comment POST fails', async () => {
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ head: { sha: 'abc123' } }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              message: 'Validation Failed',
+              errors: [{ message: 'line must be part of the diff' }],
+            }),
+            {
+              status: 422,
+              headers: { 'Content-Type': 'application/json' },
+            },
+          ),
+        );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.createPullRequestReviewComment(
+          'https://github.com/HiromiShikata/test-repository/pull/42',
+          'src/index.ts',
+          17,
+          'RIGHT',
+          'Please rename this variable.',
+        ),
+      ).rejects.toThrow('Validation Failed: line must be part of the diff');
+    });
+
+    it('should throw when the head commit cannot be fetched', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response('Not Found', {
+          status: 404,
+          statusText: 'Not Found',
+        }),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.createPullRequestReviewComment(
+          'https://github.com/HiromiShikata/test-repository/pull/42',
+          'src/index.ts',
+          17,
+          'RIGHT',
+          'Please rename this variable.',
+        ),
+      ).rejects.toThrow('404');
+    });
+  });
+
   describe('getIssueOrPullRequestBody', () => {
     afterEach(() => {
       jest.restoreAllMocks();

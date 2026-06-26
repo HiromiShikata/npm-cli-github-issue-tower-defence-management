@@ -1,4 +1,8 @@
-import { createConsoleApiClient, postConsoleOperation } from './consoleApi';
+import {
+  createConsoleApiClient,
+  postConsoleOperation,
+  postConsoleReviewComment,
+} from './consoleApi';
 
 const appendToken = (url: string): string =>
   url.includes('?') ? `${url}&k=token` : `${url}?k=token`;
@@ -206,5 +210,50 @@ describe('postConsoleOperation', () => {
   it('falls back to the status code when the error body is empty', async () => {
     mockFetchFailureOnce(500, '');
     await expect(failingReview()).rejects.toThrow('HTTP 500');
+  });
+});
+
+describe('postConsoleReviewComment', () => {
+  it('posts the inline review comment body to the reviewcomment endpoint', async () => {
+    const fetchMock = mockFetchOnce({ ok: true });
+    await postConsoleReviewComment(appendToken, {
+      pjcode: 'umino',
+      url: 'https://github.com/o/r/pull/1',
+      path: 'src/index.ts',
+      line: 42,
+      side: 'RIGHT',
+      body: 'Consider extracting this into a helper.',
+    });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('/api/reviewcomment?k=token');
+    expect(init).toMatchObject({ method: 'POST' });
+    expect(JSON.parse((init as { body: string }).body)).toEqual({
+      pjcode: 'umino',
+      url: 'https://github.com/o/r/pull/1',
+      path: 'src/index.ts',
+      line: 42,
+      side: 'RIGHT',
+      body: 'Consider extracting this into a helper.',
+    });
+  });
+
+  it('throws the GitHub error reason surfaced by the server', async () => {
+    mockFetchFailureOnce(
+      502,
+      JSON.stringify({
+        error:
+          'Failed to create review comment on PR https://github.com/o/r/pull/1: line must be part of the diff',
+      }),
+    );
+    await expect(
+      postConsoleReviewComment(appendToken, {
+        pjcode: 'umino',
+        url: 'https://github.com/o/r/pull/1',
+        path: 'src/index.ts',
+        line: 42,
+        side: 'RIGHT',
+        body: 'Consider extracting this into a helper.',
+      }),
+    ).rejects.toThrow('line must be part of the diff');
   });
 });

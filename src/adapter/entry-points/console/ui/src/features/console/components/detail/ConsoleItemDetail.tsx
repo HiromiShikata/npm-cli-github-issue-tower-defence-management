@@ -20,6 +20,7 @@ import { ConsolePanel } from '../layout/ConsolePanel';
 import { ConsoleChangedFileList } from './ConsoleChangedFileList';
 import { ConsoleCommentList } from './ConsoleCommentList';
 import { ConsoleCommitList } from './ConsoleCommitList';
+import type { ConsoleAddInlineComment } from './ConsoleFileDiff';
 import { ConsoleItemIcon } from './ConsoleItemIcon';
 import { ConsolePullRequestDetail } from './ConsolePullRequestDetail';
 
@@ -56,6 +57,7 @@ export type ConsoleItemDetailProps = {
   commentComposer: ReactNode;
   operationBar: ReactNode;
   buildImageProxyUrl?: ImageProxyUrlBuilder;
+  onAddInlineComment?: ConsoleAddInlineComment;
 };
 
 export const ConsoleItemDetail = ({
@@ -81,6 +83,7 @@ export const ConsoleItemDetail = ({
   commentComposer,
   operationBar,
   buildImageProxyUrl,
+  onAddInlineComment,
 }: ConsoleItemDetailProps) => {
   const resolvedState = state?.state ?? 'open';
   const merged = state?.merged ?? false;
@@ -208,6 +211,7 @@ export const ConsoleItemDetail = ({
             files={files}
             isLoading={filesAreLoading}
             error={filesError}
+            onAddInlineComment={onAddInlineComment}
           />
         </ConsolePanel>
       )}

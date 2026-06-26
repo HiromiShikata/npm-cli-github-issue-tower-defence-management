@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleIntmux = exports.handleComment = exports.handleTriage = exports.handleReview = exports.IN_TMUX_BY_HUMAN_STATUS_NAME = exports.AWAITING_WORKSPACE_STATUS_NAME = void 0;
+exports.handleIntmux = exports.handleReviewComment = exports.handleComment = exports.handleTriage = exports.handleReview = exports.IN_TMUX_BY_HUMAN_STATUS_NAME = exports.AWAITING_WORKSPACE_STATUS_NAME = void 0;
 const consoleDoneStore_1 = require("./consoleDoneStore");
 exports.AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
 exports.IN_TMUX_BY_HUMAN_STATUS_NAME = 'in tmux by human';
@@ -12,7 +12,13 @@ const badRequest = (message) => ({
     statusCode: 400,
     body: { error: message },
 });
+const badGateway = (message) => ({
+    statusCode: 502,
+    body: { error: message },
+});
 const isNonEmptyString = (value) => typeof value === 'string' && value.length > 0;
+const isReviewCommentSide = (value) => value === 'LEFT' || value === 'RIGHT';
+const isPositiveInteger = (value) => typeof value === 'number' && Number.isInteger(value) && value > 0;
 const resolveStatusId = (project, statusName) => {
     const lower = statusName.toLowerCase();
     const match = project.status.statuses.find((option) => option.name.toLowerCase() === lower);
@@ -200,6 +206,36 @@ const handleComment = async (context, body) => {
     };
 };
 exports.handleComment = handleComment;
+const handleReviewComment = async (context, body) => {
+    const url = body.url;
+    const path = body.path;
+    const line = body.line;
+    const side = body.side;
+    const commentBody = body.body;
+    if (!isNonEmptyString(url)) {
+        return badRequest('url is required');
+    }
+    if (!isNonEmptyString(path)) {
+        return badRequest('path is required');
+    }
+    if (!isPositiveInteger(line)) {
+        return badRequest('line must be a positive integer');
+    }
+    if (!isReviewCommentSide(side)) {
+        return badRequest('side must be "LEFT" or "RIGHT"');
+    }
+    if (!isNonEmptyString(commentBody)) {
+        return badRequest('body is required');
+    }
+    try {
+        await context.issueRepository.createPullRequestReviewComment(url, path, line, side, commentBody);
+    }
+    catch (error) {
+        return badGateway(error instanceof Error ? error.message : 'unknown error');
+    }
+    return ok();
+};
+exports.handleReviewComment = handleReviewComment;
 const handleIntmux = async (context, body) => {
     const action = body.action;
     const issueUrl = body.issueUrl;
