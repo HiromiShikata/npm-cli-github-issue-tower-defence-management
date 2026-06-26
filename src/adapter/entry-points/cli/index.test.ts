@@ -1329,6 +1329,9 @@ mysteryKey: 'value'
         .mockResolvedValueOnce({ kill: mockKill });
 
       const processOnceSpy = jest.spyOn(process, 'once');
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => undefined as never);
 
       writeConfig({ ...defaultConfig, consoleAccessToken: 'test-key-sigterm' });
 
@@ -1361,8 +1364,12 @@ mysteryKey: 'value'
       }
       rawSigtermHandler();
       expect(mockKill).toHaveBeenCalledTimes(1);
+      expect(processExitSpy).toHaveBeenCalledWith(0);
       rawSigintHandler();
       expect(mockKill).toHaveBeenCalledTimes(2);
+      expect(processExitSpy).toHaveBeenCalledTimes(2);
+
+      processExitSpy.mockRestore();
     });
   });
 

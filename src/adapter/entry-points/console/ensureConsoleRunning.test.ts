@@ -85,14 +85,14 @@ describe('ensureConsoleRunning', () => {
     expect(unrefMock).toHaveBeenCalledTimes(1);
   });
 
-  it('should return an object with a kill method when the port is unresponsive', async () => {
+  it('should return an object with a kill method that delegates to the child process', async () => {
     const unusedPort = await findFreePort();
     const result = await ensureConsoleRunning(
       '/path/to/config.yaml',
       unusedPort,
     );
     expect(result).not.toBeNull();
-    expect(result).toHaveProperty('kill');
-    expect(typeof result?.kill).toBe('function');
+    result?.kill();
+    expect(killMock).toHaveBeenCalledTimes(1);
   });
 });
