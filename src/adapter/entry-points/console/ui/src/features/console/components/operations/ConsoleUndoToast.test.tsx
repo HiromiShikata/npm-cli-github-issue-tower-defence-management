@@ -57,11 +57,11 @@ describe('ConsoleErrorToast', () => {
   it('shows the failure message with the error modifier class and alert role', () => {
     const { getByText, container, getByRole } = render(
       <ConsoleErrorToast
-        message="操作に失敗しました: HTTP 422"
+        message="Operation failed: HTTP 422"
         onDismiss={() => {}}
       />,
     );
-    expect(getByText('操作に失敗しました: HTTP 422')).toBeInTheDocument();
+    expect(getByText('Operation failed: HTTP 422')).toBeInTheDocument();
     expect(
       container.querySelector('.console-undo-toast-error'),
     ).toBeInTheDocument();
@@ -71,7 +71,7 @@ describe('ConsoleErrorToast', () => {
   it('does not render a countdown or progress bar', () => {
     const { container } = render(
       <ConsoleErrorToast
-        message="操作に失敗しました: boom"
+        message="Operation failed: boom"
         onDismiss={() => {}}
       />,
     );
@@ -87,7 +87,7 @@ describe('ConsoleErrorToast', () => {
     const onDismiss = jest.fn();
     const { getByText } = render(
       <ConsoleErrorToast
-        message="操作に失敗しました: boom"
+        message="Operation failed: boom"
         onDismiss={onDismiss}
       />,
     );

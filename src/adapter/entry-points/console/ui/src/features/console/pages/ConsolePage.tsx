@@ -208,7 +208,7 @@ export const ConsolePage = () => {
       )}
       {actionQueue.error !== null && (
         <ConsoleErrorToast
-          message={`操作に失敗しました: ${actionQueue.error.reason}`}
+          message={`Operation failed: ${actionQueue.error.reason}`}
           onDismiss={actionQueue.dismissError}
         />
       )}
