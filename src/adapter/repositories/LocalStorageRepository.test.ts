@@ -15,6 +15,7 @@ describe('LocalStorageRepository', () => {
   let mockReaddirSync: jest.SpyInstance;
   let mockMkdirSync: jest.SpyInstance;
   let mockExistsSync: jest.SpyInstance;
+  let mockRenameSync: jest.SpyInstance;
 
   beforeEach(() => {
     repository = new LocalStorageRepository();
@@ -23,6 +24,7 @@ describe('LocalStorageRepository', () => {
     mockReaddirSync = jest.spyOn(fs, 'readdirSync').mockImplementation();
     mockMkdirSync = jest.spyOn(fs, 'mkdirSync').mockImplementation();
     mockExistsSync = jest.spyOn(fs, 'existsSync').mockImplementation();
+    mockRenameSync = jest.spyOn(fs, 'renameSync').mockImplementation();
   });
 
   afterEach(() => {
@@ -56,6 +58,16 @@ describe('LocalStorageRepository', () => {
           'utf8',
         );
       });
+    });
+  });
+
+  describe('rename', () => {
+    test('renames a file from the old path to the new path', () => {
+      repository.rename('/path/to/file.txt.tmp', '/path/to/file.txt');
+      expect(mockRenameSync).toHaveBeenCalledWith(
+        '/path/to/file.txt.tmp',
+        '/path/to/file.txt',
+      );
     });
   });
 

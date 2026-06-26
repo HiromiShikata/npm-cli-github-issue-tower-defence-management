@@ -98,13 +98,18 @@ describe('GetStoryObjectMapUseCaseHandler', () => {
     await handler.handle('config.yml', false);
 
     for (const MockedClass of [
-      MockedGraphqlProjectRepository,
       MockedApiV3IssueRepository,
       MockedRestIssueRepository,
       MockedGraphqlProjectItemRepository,
     ]) {
       expect(MockedClass).toHaveBeenCalledWith(expect.anything(), 'test-token');
     }
+
+    expect(MockedGraphqlProjectRepository).toHaveBeenCalledWith(
+      expect.anything(),
+      'test-token',
+      expect.anything(),
+    );
 
     expect(MockedApiV3CheerioRestIssueRepository).toHaveBeenCalledWith(
       expect.anything(),

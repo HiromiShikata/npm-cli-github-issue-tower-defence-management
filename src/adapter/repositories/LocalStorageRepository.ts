@@ -9,6 +9,9 @@ export class LocalStorageRepository {
   read = (path: string): string | null => {
     return fs.readFileSync(path, 'utf8');
   };
+  rename = (oldPath: string, newPath: string) => {
+    fs.renameSync(oldPath, newPath);
+  };
   listFiles = (dirPath: string): string[] => {
     if (!fs.existsSync(dirPath)) {
       return [];

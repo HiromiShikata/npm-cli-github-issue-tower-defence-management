@@ -53,7 +53,10 @@ export class GetStoryObjectMapUseCaseHandler {
       typeof BaseGitHubRepository
     > = [localStorageRepository, input.credentials.bot.github.token];
     const projectRepository = {
-      ...new GraphqlProjectRepository(...githubRepositoryParams),
+      ...new GraphqlProjectRepository(
+        ...githubRepositoryParams,
+        localStorageCacheRepository,
+      ),
     };
     const apiV3IssueRepository = new ApiV3IssueRepository(
       ...githubRepositoryParams,
