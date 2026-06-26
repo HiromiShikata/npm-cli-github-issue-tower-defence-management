@@ -59,7 +59,7 @@ describe('ensureConsoleRunning', () => {
     expect(result).toBeNull();
   });
 
-  it('should spawn serveConsole when the port is unresponsive', async () => {
+  it('should spawn serveWeb when the port is unresponsive', async () => {
     const unusedPort = await findFreePort();
     await ensureConsoleRunning('/path/to/config.yaml', unusedPort);
 
@@ -70,7 +70,7 @@ describe('ensureConsoleRunning', () => {
       throw new Error('Expected spawn args to be an array');
     }
     expect(args[0]).toMatch(/cli\/index\.js$/);
-    expect(args[1]).toBe('serveConsole');
+    expect(args[1]).toBe('serveWeb');
     expect(args[2]).toBe('--configFilePath');
     expect(args[3]).toBe('/path/to/config.yaml');
     expect(args[4]).toBe('--port');

@@ -39,7 +39,7 @@ export const ensureConsoleRunning = async (
     process.execPath,
     [
       cliEntry,
-      'serveConsole',
+      'serveWeb',
       '--configFilePath',
       configFilePath,
       '--port',
