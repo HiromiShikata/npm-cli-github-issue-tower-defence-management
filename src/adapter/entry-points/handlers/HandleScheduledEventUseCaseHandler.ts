@@ -67,7 +67,11 @@ export class HandleScheduledEventUseCaseHandler {
   } | null> => {
     const configFileContent = fs.readFileSync(configFilePath, 'utf8');
     const input: unknown = YAML.parse(configFileContent);
-    type inputType = Parameters<HandleScheduledEventUseCase['run']>[0] & {
+    type inputType = Omit<
+      Parameters<HandleScheduledEventUseCase['run']>[0],
+      'allowedIssueAuthors'
+    > & {
+      allowedIssueAuthors?: string | string[] | null;
       claudeCodeOauthTokenListJsonPath?: string;
       consoleDataOutputDir?: string;
       workflowBlockerStoryName?: string;
@@ -111,8 +115,26 @@ export class HandleScheduledEventUseCaseHandler {
       ? parseProjectReadmeConfig(readme, input.projectUrl)
       : {};
 
+    const normalizeAllowedIssueAuthors = (
+      value: string | string[] | null | undefined,
+    ): string[] | null => {
+      if (value === null || value === undefined) {
+        return null;
+      }
+      if (Array.isArray(value)) {
+        return value;
+      }
+      return value
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+    };
+
     const mergedInput = {
       ...input,
+      allowedIssueAuthors: normalizeAllowedIssueAuthors(
+        input.allowedIssueAuthors,
+      ),
       allowIssueCacheMinutes:
         readmeConfig.allowIssueCacheMinutes ?? input.allowIssueCacheMinutes,
       claudeCodeOauthTokenListJsonPath:
