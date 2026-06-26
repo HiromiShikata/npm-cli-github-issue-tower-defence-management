@@ -240,7 +240,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                             createdAt: createdAt,
                         };
                     });
-                    if (typia_1.default.is(issues)) {
+                    if ((() => { const _io0 = input => "string" === typeof input.nameWithOwner && "number" === typeof input.number && "string" === typeof input.title && ("OPEN" === input.state || "CLOSED" === input.state || "MERGED" === input.state) && (null === input.status || "string" === typeof input.status) && (null === input.story || "string" === typeof input.story) && (null === input.nextActionDate || input.nextActionDate instanceof Date) && (null === input.nextActionHour || "number" === typeof input.nextActionHour) && (null === input.estimationMinutes || "number" === typeof input.estimationMinutes) && (Array.isArray(input.dependedIssueUrls) && input.dependedIssueUrls.every(elem => "string" === typeof elem)) && (null === input.completionDate50PercentConfidence || input.completionDate50PercentConfidence instanceof Date) && "string" === typeof input.url && (Array.isArray(input.assignees) && input.assignees.every(elem => "string" === typeof elem)) && (Array.isArray(input.labels) && input.labels.every(elem => "string" === typeof elem)) && "string" === typeof input.org && "string" === typeof input.repo && "string" === typeof input.body && "string" === typeof input.itemId && "boolean" === typeof input.isPr && "boolean" === typeof input.isInProgress && "boolean" === typeof input.isClosed && input.createdAt instanceof Date && "string" === typeof input.author; return input => Array.isArray(input) && input.every(elem => "object" === typeof elem && null !== elem && _io0(elem)); })()(issues)) {
                         return issues;
                     }
                 }
@@ -856,7 +856,9 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             }
         };
         this.fetchPullRequestHeadSha = async (owner, repo, prNumber, prUrl) => {
-            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`, {
+            const ownerSegment = encodeURIComponent(owner);
+            const repoSegment = encodeURIComponent(repo);
+            const response = await fetch(`https://api.github.com/repos/${ownerSegment}/${repoSegment}/pulls/${prNumber}`, {
                 method: 'GET',
                 headers: {
                     Authorization: `Bearer ${this.ghToken}`,
@@ -877,7 +879,9 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         this.createPullRequestReviewComment = async (prUrl, path, line, side, commentBody) => {
             const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
             const commitId = await this.fetchPullRequestHeadSha(owner, repo, prNumber, prUrl);
-            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/comments`, {
+            const ownerSegment = encodeURIComponent(owner);
+            const repoSegment = encodeURIComponent(repo);
+            const response = await fetch(`https://api.github.com/repos/${ownerSegment}/${repoSegment}/pulls/${prNumber}/comments`, {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${this.ghToken}`,

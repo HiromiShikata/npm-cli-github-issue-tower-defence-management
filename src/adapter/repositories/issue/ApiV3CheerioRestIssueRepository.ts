@@ -1457,8 +1457,10 @@ export class ApiV3CheerioRestIssueRepository
     prNumber: number,
     prUrl: string,
   ): Promise<string> => {
+    const ownerSegment = encodeURIComponent(owner);
+    const repoSegment = encodeURIComponent(repo);
     const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
+      `https://api.github.com/repos/${ownerSegment}/${repoSegment}/pulls/${prNumber}`,
       {
         method: 'GET',
         headers: {
@@ -1499,8 +1501,10 @@ export class ApiV3CheerioRestIssueRepository
       prNumber,
       prUrl,
     );
+    const ownerSegment = encodeURIComponent(owner);
+    const repoSegment = encodeURIComponent(repo);
     const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/comments`,
+      `https://api.github.com/repos/${ownerSegment}/${repoSegment}/pulls/${prNumber}/comments`,
       {
         method: 'POST',
         headers: {
