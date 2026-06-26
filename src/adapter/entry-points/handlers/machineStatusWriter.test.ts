@@ -25,7 +25,18 @@ const buildHostMetricsRepository = (
   const sleep = async (): Promise<void> => {
     fs.writeFileSync(statPath, 'cpu  660 0 0 440 0 0 0 0 0 0\n');
   };
-  return { repository: new ProcHostMetricsRepository(procDirectory, sleep) };
+  const readDiskBlocks = (): {
+    blocks: number;
+    bfree: number;
+    bavail: number;
+  } => ({ blocks: 1100, bfree: 200, bavail: 100 });
+  return {
+    repository: new ProcHostMetricsRepository(
+      procDirectory,
+      sleep,
+      readDiskBlocks,
+    ),
+  };
 };
 
 describe('writeMachineStatus', () => {
@@ -42,7 +53,7 @@ describe('writeMachineStatus', () => {
     fs.rmSync(procDirectory, { recursive: true, force: true });
   });
 
-  it('writes machine-status.json with mem, cpu, load and cycle minutes', async () => {
+  it('writes machine-status.json with mem, cpu, disk, load and cycle minutes', async () => {
     const { repository } = buildHostMetricsRepository(procDirectory);
     const cacheDir = path.join(dir, 'allIssues-PVT');
     fs.mkdirSync(cacheDir, { recursive: true });
@@ -65,6 +76,7 @@ describe('writeMachineStatus', () => {
     const expected: MachineStatusFile = {
       memPct: 55,
       cpuPct: 60,
+      diskPct: 90,
       load: [1.5, 0.8, 0.4],
       cycleMinutes: 15,
       capturedAt: '2026-06-26T12:00:00.000Z',

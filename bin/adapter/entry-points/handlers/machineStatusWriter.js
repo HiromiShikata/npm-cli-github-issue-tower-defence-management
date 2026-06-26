@@ -43,6 +43,7 @@ const writeMachineStatus = async (params) => {
     const hostMetricsRepository = params.hostMetricsRepository ?? new ProcHostMetricsRepository_1.ProcHostMetricsRepository();
     const memPct = hostMetricsRepository.readMemoryUsedPercent();
     const cpuPct = await hostMetricsRepository.readCpuUsedPercent();
+    const diskPct = hostMetricsRepository.readDiskUsedPercent();
     const load = hostMetricsRepository.readLoadAverages();
     const cycleMinutes = allIssuesCacheDir
         ? (0, ProcHostMetricsRepository_1.cycleMinutesFromMtimes)(cacheFileMtimesDescending(allIssuesCacheDir))
@@ -50,6 +51,7 @@ const writeMachineStatus = async (params) => {
     const file = {
         memPct,
         cpuPct,
+        diskPct,
         load: [load.oneMinute, load.fiveMinute, load.fifteenMinute],
         cycleMinutes,
         capturedAt: (params.now ?? new Date()).toISOString(),

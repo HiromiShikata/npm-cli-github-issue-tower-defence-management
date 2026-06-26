@@ -8,6 +8,7 @@ export type ComposeDashboardProject = {
 export type ComposeDashboardMachineStatus = {
     memPct: number | null;
     cpuPct: number | null;
+    diskPct: number | null;
     load: [number, number, number] | null;
     cycleMinutes: number | null;
 };
@@ -18,7 +19,7 @@ export type ComposeDashboardInput = {
 };
 export declare const roundHalfToEven: (value: number) => number;
 export declare const formatResetCountdown: (totalSeconds: number) => string;
-export declare const formatMachineStatusLine: (machineStatus: ComposeDashboardMachineStatus | null) => string;
+export declare const formatMachineStatusLines: (machineStatus: ComposeDashboardMachineStatus | null) => [string, string];
 export declare const formatProjectHeaderLine: () => string;
 export declare const formatProjectRowLine: (project: ComposeDashboardProject) => string;
 export declare const formatTokenRowLine: (token: TokenStatus) => string;

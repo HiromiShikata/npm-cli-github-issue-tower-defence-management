@@ -2,10 +2,12 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import {
+  DiskBlocks,
   ProcHostMetricsRepository,
   cpuUsedPercentFromSamples,
   cycleMinutesFromMtimes,
   parseCpuSample,
+  parseDiskUsedPercent,
   parseLoadAverages,
   parseMemoryUsedPercent,
 } from './ProcHostMetricsRepository';
@@ -72,6 +74,20 @@ describe('parseLoadAverages', () => {
   });
 });
 
+describe('parseDiskUsedPercent', () => {
+  it('excludes root-reserved blocks from the denominator like df', () => {
+    expect(parseDiskUsedPercent(1100, 200, 100)).toBe(90);
+  });
+
+  it('matches df when there is no root reservation (bfree equals bavail)', () => {
+    expect(parseDiskUsedPercent(1000, 100, 100)).toBe(90);
+  });
+
+  it('throws when the disk total is not positive', () => {
+    expect(() => parseDiskUsedPercent(100, 200, 0)).toThrow();
+  });
+});
+
 describe('cycleMinutesFromMtimes', () => {
   it('rounds the gap between the two newest generations to whole minutes', () => {
     expect(cycleMinutesFromMtimes([1782469254.0, 1782468443.0])).toBe(14);
@@ -118,6 +134,16 @@ describe('ProcHostMetricsRepository', () => {
       fiveMinute: 1.0,
       fifteenMinute: 0.5,
     });
+  });
+
+  it('reads the df-style disk used percent from the root filesystem statfs', () => {
+    const diskBlocks: DiskBlocks = { blocks: 1100, bfree: 200, bavail: 100 };
+    const repository = new ProcHostMetricsRepository(
+      procDirectory,
+      async () => {},
+      () => diskBlocks,
+    );
+    expect(repository.readDiskUsedPercent()).toBe(90);
   });
 
   it('samples /proc/stat twice and computes the busy percent', async () => {

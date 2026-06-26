@@ -11,6 +11,7 @@ export type ComposeDashboardProject = {
 export type ComposeDashboardMachineStatus = {
   memPct: number | null;
   cpuPct: number | null;
+  diskPct: number | null;
   load: [number, number, number] | null;
   cycleMinutes: number | null;
 };
@@ -97,9 +98,9 @@ export const formatResetCountdown = (totalSeconds: number): string => {
   )}`;
 };
 
-export const formatMachineStatusLine = (
+export const formatMachineStatusLines = (
   machineStatus: ComposeDashboardMachineStatus | null,
-): string => {
+): [string, string] => {
   const memText =
     machineStatus !== null && machineStatus.memPct !== null
       ? `${machineStatus.memPct}%`
@@ -107,6 +108,10 @@ export const formatMachineStatusLine = (
   const cpuText =
     machineStatus !== null && machineStatus.cpuPct !== null
       ? `${machineStatus.cpuPct}%`
+      : '?%';
+  const diskText =
+    machineStatus !== null && machineStatus.diskPct !== null
+      ? `${machineStatus.diskPct}%`
       : '?%';
   const load = machineStatus !== null ? machineStatus.load : null;
   const oneMinute = load === null ? '?' : String(roundHalfToEven(load[0]));
@@ -116,7 +121,10 @@ export const formatMachineStatusLine = (
     machineStatus !== null && machineStatus.cycleMinutes !== null
       ? `cy${machineStatus.cycleMinutes}`
       : 'cy-';
-  return `M${memText} C${cpuText} LA ${oneMinute} ${fiveMinute} ${fifteenMinute} ${cycle}`;
+  return [
+    `M${memText} C${cpuText} D${diskText} ${cycle}`,
+    `LA ${oneMinute} ${fiveMinute} ${fifteenMinute}`,
+  ];
 };
 
 const capThreeDigits = (value: number): string =>
@@ -206,7 +214,7 @@ const wrapLine = (line: string): string =>
 
 export class ComposeDashboardUseCase {
   run = (input: ComposeDashboardInput): string => {
-    const statsLine = formatMachineStatusLine(input.machineStatus);
+    const statsLines = formatMachineStatusLines(input.machineStatus);
     const projectLines = [
       formatProjectHeaderLine(),
       ...input.projects.map((project) => formatProjectRowLine(project)),
@@ -214,7 +222,7 @@ export class ComposeDashboardUseCase {
     const tokenLines = sortTokens(input.tokens).map((token) =>
       formatTokenRowLine(token),
     );
-    const lines = [statsLine, ...projectLines, '', ...tokenLines];
+    const lines = [...statsLines, ...projectLines, '', ...tokenLines];
     return lines.map((line) => wrapLine(line)).join('\n') + '\n';
   };
 }

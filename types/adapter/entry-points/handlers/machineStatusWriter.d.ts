@@ -8,6 +8,7 @@ export type MachineStatusWriterParams = {
 export type MachineStatusFile = {
     memPct: number;
     cpuPct: number;
+    diskPct: number;
     load: [number, number, number];
     cycleMinutes: number | null;
     capturedAt: string;

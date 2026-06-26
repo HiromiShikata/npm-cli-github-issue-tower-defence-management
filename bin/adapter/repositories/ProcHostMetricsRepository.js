@@ -33,10 +33,11 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ProcHostMetricsRepository = exports.cycleMinutesFromMtimes = exports.parseLoadAverages = exports.cpuUsedPercentFromSamples = exports.parseCpuSample = exports.parseMemoryUsedPercent = void 0;
+exports.ProcHostMetricsRepository = exports.cycleMinutesFromMtimes = exports.parseLoadAverages = exports.parseDiskUsedPercent = exports.cpuUsedPercentFromSamples = exports.parseCpuSample = exports.parseMemoryUsedPercent = void 0;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const DEFAULT_PROC_DIRECTORY = '/proc';
+const DEFAULT_ROOT_PATH = '/';
 const CPU_SAMPLE_INTERVAL_MS = 400;
 const parseMemoryUsedPercent = (meminfoText) => {
     const fields = new Map();
@@ -96,6 +97,15 @@ const cpuUsedPercentFromSamples = (first, second) => {
     return Math.round((busyDelta / totalDelta) * 100);
 };
 exports.cpuUsedPercentFromSamples = cpuUsedPercentFromSamples;
+const parseDiskUsedPercent = (blocks, bfree, bavail) => {
+    const total = blocks - bfree + bavail;
+    if (total <= 0) {
+        throw new Error('disk total must be positive');
+    }
+    const used = blocks - bfree;
+    return Math.round((used / total) * 100);
+};
+exports.parseDiskUsedPercent = parseDiskUsedPercent;
 const parseLoadAverages = (loadavgText) => {
     const parts = loadavgText.trim().split(/\s+/);
     const oneMinute = Number(parts[0]);
@@ -119,9 +129,18 @@ exports.cycleMinutesFromMtimes = cycleMinutesFromMtimes;
 class ProcHostMetricsRepository {
     constructor(procDirectory = DEFAULT_PROC_DIRECTORY, sleep = (milliseconds) => new Promise((resolve) => {
         setTimeout(resolve, milliseconds);
-    })) {
+    }), readDiskBlocks = (rootPath) => {
+        const stats = fs.statfsSync(rootPath);
+        return {
+            blocks: Number(stats.blocks),
+            bfree: Number(stats.bfree),
+            bavail: Number(stats.bavail),
+        };
+    }, rootPath = DEFAULT_ROOT_PATH) {
         this.procDirectory = procDirectory;
         this.sleep = sleep;
+        this.readDiskBlocks = readDiskBlocks;
+        this.rootPath = rootPath;
         this.readMemoryUsedPercent = () => (0, exports.parseMemoryUsedPercent)(fs.readFileSync(path.join(this.procDirectory, 'meminfo'), 'utf8'));
         this.readCpuUsedPercent = async () => {
             const first = (0, exports.parseCpuSample)(fs.readFileSync(path.join(this.procDirectory, 'stat'), 'utf8'));
@@ -130,6 +149,10 @@ class ProcHostMetricsRepository {
             return (0, exports.cpuUsedPercentFromSamples)(first, second);
         };
         this.readLoadAverages = () => (0, exports.parseLoadAverages)(fs.readFileSync(path.join(this.procDirectory, 'loadavg'), 'utf8'));
+        this.readDiskUsedPercent = () => {
+            const { blocks, bfree, bavail } = this.readDiskBlocks(this.rootPath);
+            return (0, exports.parseDiskUsedPercent)(blocks, bfree, bavail);
+        };
     }
 }
 exports.ProcHostMetricsRepository = ProcHostMetricsRepository;
