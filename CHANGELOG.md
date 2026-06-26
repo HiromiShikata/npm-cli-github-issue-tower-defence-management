@@ -1,3 +1,10 @@
+# [1.108.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.107.0...v1.108.0) (2026-06-26)
+
+
+### Features
+
+* **dashboard:** add disk usage and 2-line host metrics to the CLI composer ([#1004](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1004)) ([13b1ba0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/13b1ba07577300fc88a0e51523c9778d6e9e82bf)), closes [#1002](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1002)
+
 # [1.107.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.106.0...v1.107.0) (2026-06-26)
 
 
