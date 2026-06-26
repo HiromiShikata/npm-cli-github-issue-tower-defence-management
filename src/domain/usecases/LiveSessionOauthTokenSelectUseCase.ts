@@ -84,16 +84,16 @@ export class LiveSessionOauthTokenSelectUseCase {
   private liveSessionCountByToken = (
     liveSessions: ClaudeLiveSession[],
   ): Map<string, number> => {
-    const sessionIdsByToken = new Map<string, Set<string>>();
+    const sessionKeysByToken = new Map<string, Set<string>>();
     for (const liveSession of liveSessions) {
-      const sessionIds =
-        sessionIdsByToken.get(liveSession.token) ?? new Set<string>();
-      sessionIds.add(liveSession.sessionId);
-      sessionIdsByToken.set(liveSession.token, sessionIds);
+      const sessionKeys =
+        sessionKeysByToken.get(liveSession.token) ?? new Set<string>();
+      sessionKeys.add(liveSession.sessionKey);
+      sessionKeysByToken.set(liveSession.token, sessionKeys);
     }
     const countByToken = new Map<string, number>();
-    for (const [token, sessionIds] of sessionIdsByToken.entries()) {
-      countByToken.set(token, sessionIds.size);
+    for (const [token, sessionKeys] of sessionKeysByToken.entries()) {
+      countByToken.set(token, sessionKeys.size);
     }
     return countByToken;
   };
