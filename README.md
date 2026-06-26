@@ -277,7 +277,7 @@ claudeCodeOauthTokenListJsonPath?: string # Optional: Path to a JSON file listin
 awLogDirectoryPath?: string # Optional: Directory path where aw log files named {org}_{repo}_{number}_* are written. Used with awLogStaleThresholdMinutes to detect zombie-wrapper orphans
 awLogStaleThresholdMinutes?: number # Optional: Minutes since last aw log mtime after which a Preparation issue is considered orphaned even when pgrep still returns 0. Requires awLogDirectoryPath
 labelsAsLlmAgentName?: string[] # Optional: List of issue labels that are themselves agent names. When an issue carries any label that is included in this list, that label name is used as the agent name. Selection precedence is: (1) explicit `llm-agent:` label, (2) labelsAsLlmAgentName entry match, (3) `category:` label, (4) defaultLlmAgentName, (5) defaultAgentName
-consoleAccessToken?: string # Optional: Access token for the Console HTTP server. When set, `startDaemon` TCP-probes port 9981 before the first preparation cycle and, if nothing responds, spawns `serveConsole` as a detached background process on that port. SIGTERM and SIGINT sent to the daemon are forwarded to the console server child before the daemon exits. When unset, no console server is started automatically.
+consoleAccessToken?: string # Optional: Access token for the Console HTTP server. When set, `startDaemon` TCP-probes port 9981 before the first preparation cycle and, if nothing responds, spawns `serveWeb` as a detached background process on that port. SIGTERM and SIGINT sent to the daemon are forwarded to the console server child before the daemon exits. When unset, no console server is started automatically.
 consoleDataOutputDir?: string # Optional: Base output directory for the per-project Console list.json files written each schedule cycle. When unset, Console list generation is skipped
 workflowBlockerStoryName?: string # Optional: Story field name that the Console "workflow-blocker" tab matches (case-insensitive). Every non-closed issue with this story is listed regardless of status or reactivation-trigger fields. When unset, the workflow-blocker list is always empty
 inTmuxDataOutputDir?: string # Optional: Base output directory for the in-tmux-by-human per-project and index JSON files written each schedule cycle. When unset, in-tmux-by-human generation is skipped
@@ -351,9 +351,9 @@ When `claudeCodeOauthTokenListJsonPath` is unset, no proxy is started and `aw` r
 
 ### Console Server Auto-start
 
-When `consoleAccessToken` is set, `startDaemon` automatically starts the console server before the first preparation cycle. The mechanism mirrors the rate-limit proxy: at the start of each `startDaemon` run, the daemon TCP-probes port 9981 (`DEFAULT_CONSOLE_PORT`). If nothing responds, it spawns a detached child process running `serveConsole` on that port, passing the same `--configFilePath` and `--port` arguments. The spawned process is detached from the daemon so it persists across daemon runs. SIGTERM and SIGINT sent to the daemon are forwarded to the console server child process, after which the daemon exits.
+When `consoleAccessToken` is set, `startDaemon` automatically starts the console server before the first preparation cycle. The mechanism mirrors the rate-limit proxy: at the start of each `startDaemon` run, the daemon TCP-probes port 9981 (`DEFAULT_CONSOLE_PORT`). If nothing responds, it spawns a detached child process running `serveWeb` on that port, passing the same `--configFilePath` and `--port` arguments. The spawned process is detached from the daemon so it persists across daemon runs. SIGTERM and SIGINT sent to the daemon are forwarded to the console server child process, after which the daemon exits.
 
-When `consoleAccessToken` is unset, no console server is started automatically; `serveConsole` must be started manually if needed.
+When `consoleAccessToken` is unset, no console server is started automatically; `serveWeb` must be started manually if needed.
 
 ### Slack User Token
 
