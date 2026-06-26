@@ -4,13 +4,12 @@ exports.RevertNotReadyReviewQueueIssueUseCase = void 0;
 const IssueRejectionEvaluator_1 = require("./IssueRejectionEvaluator");
 const ChangeTargetPullRequestApprover_1 = require("./ChangeTargetPullRequestApprover");
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
-const DEPENDENCY_UPDATE_BOT_AUTHORS = ['dependabot[bot]', 'renovate[bot]'];
 const isAuthorAuthorizedForAutoStatusCheck = (author, allowedIssueAuthors) => {
-    if (DEPENDENCY_UPDATE_BOT_AUTHORS.includes(author)) {
-        return true;
+    if (allowedIssueAuthors === null || allowedIssueAuthors === undefined) {
+        return false;
     }
-    if (allowedIssueAuthors === null) {
-        return true;
+    if (allowedIssueAuthors.length === 0) {
+        return false;
     }
     return allowedIssueAuthors.includes(author);
 };

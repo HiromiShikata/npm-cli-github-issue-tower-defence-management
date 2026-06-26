@@ -89,29 +89,57 @@ class HandleScheduledEventUseCaseHandler {
         this.handle = async (configFilePath, _verbose) => {
             const configFileContent = fs_1.default.readFileSync(configFilePath, 'utf8');
             const input = yaml_1.default.parse(configFileContent);
-            if (!(() => { const _io0 = input => "string" === typeof input.projectName && "string" === typeof input.org && "string" === typeof input.projectUrl && "string" === typeof input.manager && ("object" === typeof input.workingReport && null !== input.workingReport && _io1(input.workingReport)) && "string" === typeof input.urlOfStoryView && "boolean" === typeof input.disabled && "number" === typeof input.allowIssueCacheMinutes && (null === input.labelsAsLlmAgentName || undefined === input.labelsAsLlmAgentName || Array.isArray(input.labelsAsLlmAgentName) && input.labelsAsLlmAgentName.every(elem => "string" === typeof elem)) && (null === input.changeTargetPathAliases || undefined === input.changeTargetPathAliases || "object" === typeof input.changeTargetPathAliases && null !== input.changeTargetPathAliases && false === Array.isArray(input.changeTargetPathAliases) && _io2(input.changeTargetPathAliases)) && (null === input.startPreparation || undefined === input.startPreparation || "object" === typeof input.startPreparation && null !== input.startPreparation && _io3(input.startPreparation)) && (undefined === input.thresholdForAutoReject || "number" === typeof input.thresholdForAutoReject) && (null === input.dailySecurityScan || undefined === input.dailySecurityScan || "object" === typeof input.dailySecurityScan && null !== input.dailySecurityScan && _io4(input.dailySecurityScan)) && (undefined === input.claudeCodeOauthTokenListJsonPath || "string" === typeof input.claudeCodeOauthTokenListJsonPath) && (undefined === input.consoleDataOutputDir || "string" === typeof input.consoleDataOutputDir) && (undefined === input.workflowBlockerStoryName || "string" === typeof input.workflowBlockerStoryName) && (undefined === input.inTmuxDataOutputDir || "string" === typeof input.inTmuxDataOutputDir) && (undefined === input.inTmuxConsoleBaseUrl || "string" === typeof input.inTmuxConsoleBaseUrl) && (undefined === input.inTmuxConsoleToken || "string" === typeof input.inTmuxConsoleToken) && (undefined === input.inTmuxProjectOrder || Array.isArray(input.inTmuxProjectOrder) && input.inTmuxProjectOrder.every(elem => "string" === typeof elem)) && (undefined === input.inTmuxLauncherCommand || "string" === typeof input.inTmuxLauncherCommand) && ("object" === typeof input.credentials && null !== input.credentials && _io5(input.credentials)); const _io1 = input => "string" === typeof input.repo && (Array.isArray(input.members) && input.members.every(elem => "string" === typeof elem)) && "string" === typeof input.spreadsheetUrl; const _io2 = input => Object.keys(input).every(key => {
+            if (!(() => { const _io0 = input => "string" === typeof input.org && "number" === typeof input.allowIssueCacheMinutes && (undefined === input.thresholdForAutoReject || "number" === typeof input.thresholdForAutoReject) && (null === input.changeTargetPathAliases || undefined === input.changeTargetPathAliases || "object" === typeof input.changeTargetPathAliases && null !== input.changeTargetPathAliases && false === Array.isArray(input.changeTargetPathAliases) && _io1(input.changeTargetPathAliases)) && "string" === typeof input.projectUrl && "string" === typeof input.projectName && (null === input.labelsAsLlmAgentName || undefined === input.labelsAsLlmAgentName || Array.isArray(input.labelsAsLlmAgentName) && input.labelsAsLlmAgentName.every(elem => "string" === typeof elem)) && "string" === typeof input.manager && ("object" === typeof input.workingReport && null !== input.workingReport && _io2(input.workingReport)) && "string" === typeof input.urlOfStoryView && "boolean" === typeof input.disabled && (null === input.startPreparation || undefined === input.startPreparation || "object" === typeof input.startPreparation && null !== input.startPreparation && _io3(input.startPreparation)) && (null === input.dailySecurityScan || undefined === input.dailySecurityScan || "object" === typeof input.dailySecurityScan && null !== input.dailySecurityScan && _io4(input.dailySecurityScan)) && (null === input.allowedIssueAuthors || undefined === input.allowedIssueAuthors || "string" === typeof input.allowedIssueAuthors || Array.isArray(input.allowedIssueAuthors) && input.allowedIssueAuthors.every(elem => "string" === typeof elem)) && (undefined === input.claudeCodeOauthTokenListJsonPath || "string" === typeof input.claudeCodeOauthTokenListJsonPath) && (undefined === input.consoleDataOutputDir || "string" === typeof input.consoleDataOutputDir) && (undefined === input.workflowBlockerStoryName || "string" === typeof input.workflowBlockerStoryName) && (undefined === input.inTmuxDataOutputDir || "string" === typeof input.inTmuxDataOutputDir) && (undefined === input.inTmuxConsoleBaseUrl || "string" === typeof input.inTmuxConsoleBaseUrl) && (undefined === input.inTmuxConsoleToken || "string" === typeof input.inTmuxConsoleToken) && (undefined === input.inTmuxProjectOrder || Array.isArray(input.inTmuxProjectOrder) && input.inTmuxProjectOrder.every(elem => "string" === typeof elem)) && (undefined === input.inTmuxLauncherCommand || "string" === typeof input.inTmuxLauncherCommand) && ("object" === typeof input.credentials && null !== input.credentials && _io5(input.credentials)); const _io1 = input => Object.keys(input).every(key => {
                 const value = input[key];
                 if (undefined === value)
                     return true;
                 return "string" === typeof value;
-            }); const _io3 = input => "string" === typeof input.defaultAgentName && (null === input.defaultLlmModelName || undefined === input.defaultLlmModelName || "string" === typeof input.defaultLlmModelName) && (null === input.fallbackLlmModelName || undefined === input.fallbackLlmModelName || "string" === typeof input.fallbackLlmModelName) && (null === input.defaultLlmAgentName || undefined === input.defaultLlmAgentName || "string" === typeof input.defaultLlmAgentName) && "string" === typeof input.configFilePath && (null === input.maximumPreparingIssuesCount || "number" === typeof input.maximumPreparingIssuesCount) && (undefined === input.utilizationPercentageThreshold || "number" === typeof input.utilizationPercentageThreshold) && (null === input.allowedIssueAuthors || undefined === input.allowedIssueAuthors || Array.isArray(input.allowedIssueAuthors) && input.allowedIssueAuthors.every(elem => "string" === typeof elem)) && (undefined === input.preparationProcessCheckCommand || "string" === typeof input.preparationProcessCheckCommand) && (null === input.codexHomeCandidates || undefined === input.codexHomeCandidates || Array.isArray(input.codexHomeCandidates) && input.codexHomeCandidates.every(elem => "string" === typeof elem)) && (undefined === input.awLogDirectoryPath || "string" === typeof input.awLogDirectoryPath) && (undefined === input.awLogStaleThresholdMinutes || "number" === typeof input.awLogStaleThresholdMinutes) && (null === input.awaitingQualityCheckStatus || undefined === input.awaitingQualityCheckStatus || "string" === typeof input.awaitingQualityCheckStatus) && (null === input.labelsAsLlmAgentName || undefined === input.labelsAsLlmAgentName || Array.isArray(input.labelsAsLlmAgentName) && input.labelsAsLlmAgentName.every(elem => "string" === typeof elem)); const _io4 = input => "string" === typeof input.scanBaseDirectory && "number" === typeof input.targetHourUtc && (undefined === input.enableKevNvdReport || "boolean" === typeof input.enableKevNvdReport) && (undefined === input.kevReportRepo || "string" === typeof input.kevReportRepo); const _io5 = input => "object" === typeof input.manager && null !== input.manager && _io6(input.manager) && ("object" === typeof input.bot && null !== input.bot && _io10(input.bot)); const _io6 = input => "object" === typeof input.github && null !== input.github && _io7(input.github) && ("object" === typeof input.slack && null !== input.slack && _io8(input.slack)) && ("object" === typeof input.googleServiceAccount && null !== input.googleServiceAccount && _io9(input.googleServiceAccount)); const _io7 = input => "string" === typeof input.token; const _io8 = input => "string" === typeof input.userToken; const _io9 = input => "string" === typeof input.serviceAccountKey; const _io10 = input => "object" === typeof input.github && null !== input.github && _io11(input.github); const _io11 = input => "string" === typeof input.token; return input => "object" === typeof input && null !== input && _io0(input); })()(input)) {
-                throw new Error(`Invalid input: ${JSON.stringify(input)}\n\n${JSON.stringify((() => { const _io0 = input => "string" === typeof input.projectName && "string" === typeof input.org && "string" === typeof input.projectUrl && "string" === typeof input.manager && ("object" === typeof input.workingReport && null !== input.workingReport && _io1(input.workingReport)) && "string" === typeof input.urlOfStoryView && "boolean" === typeof input.disabled && "number" === typeof input.allowIssueCacheMinutes && (null === input.labelsAsLlmAgentName || undefined === input.labelsAsLlmAgentName || Array.isArray(input.labelsAsLlmAgentName) && input.labelsAsLlmAgentName.every(elem => "string" === typeof elem)) && (null === input.changeTargetPathAliases || undefined === input.changeTargetPathAliases || "object" === typeof input.changeTargetPathAliases && null !== input.changeTargetPathAliases && false === Array.isArray(input.changeTargetPathAliases) && _io2(input.changeTargetPathAliases)) && (null === input.startPreparation || undefined === input.startPreparation || "object" === typeof input.startPreparation && null !== input.startPreparation && _io3(input.startPreparation)) && (undefined === input.thresholdForAutoReject || "number" === typeof input.thresholdForAutoReject) && (null === input.dailySecurityScan || undefined === input.dailySecurityScan || "object" === typeof input.dailySecurityScan && null !== input.dailySecurityScan && _io4(input.dailySecurityScan)) && (undefined === input.claudeCodeOauthTokenListJsonPath || "string" === typeof input.claudeCodeOauthTokenListJsonPath) && (undefined === input.consoleDataOutputDir || "string" === typeof input.consoleDataOutputDir) && (undefined === input.workflowBlockerStoryName || "string" === typeof input.workflowBlockerStoryName) && (undefined === input.inTmuxDataOutputDir || "string" === typeof input.inTmuxDataOutputDir) && (undefined === input.inTmuxConsoleBaseUrl || "string" === typeof input.inTmuxConsoleBaseUrl) && (undefined === input.inTmuxConsoleToken || "string" === typeof input.inTmuxConsoleToken) && (undefined === input.inTmuxProjectOrder || Array.isArray(input.inTmuxProjectOrder) && input.inTmuxProjectOrder.every(elem => "string" === typeof elem)) && (undefined === input.inTmuxLauncherCommand || "string" === typeof input.inTmuxLauncherCommand) && ("object" === typeof input.credentials && null !== input.credentials && _io5(input.credentials)); const _io1 = input => "string" === typeof input.repo && (Array.isArray(input.members) && input.members.every(elem => "string" === typeof elem)) && "string" === typeof input.spreadsheetUrl; const _io2 = input => Object.keys(input).every(key => {
+            }); const _io2 = input => "string" === typeof input.repo && (Array.isArray(input.members) && input.members.every(elem => "string" === typeof elem)) && "string" === typeof input.spreadsheetUrl; const _io3 = input => "string" === typeof input.defaultAgentName && (null === input.defaultLlmModelName || undefined === input.defaultLlmModelName || "string" === typeof input.defaultLlmModelName) && (null === input.fallbackLlmModelName || undefined === input.fallbackLlmModelName || "string" === typeof input.fallbackLlmModelName) && (null === input.defaultLlmAgentName || undefined === input.defaultLlmAgentName || "string" === typeof input.defaultLlmAgentName) && "string" === typeof input.configFilePath && (null === input.maximumPreparingIssuesCount || "number" === typeof input.maximumPreparingIssuesCount) && (undefined === input.utilizationPercentageThreshold || "number" === typeof input.utilizationPercentageThreshold) && (null === input.allowedIssueAuthors || undefined === input.allowedIssueAuthors || Array.isArray(input.allowedIssueAuthors) && input.allowedIssueAuthors.every(elem => "string" === typeof elem)) && (undefined === input.preparationProcessCheckCommand || "string" === typeof input.preparationProcessCheckCommand) && (null === input.codexHomeCandidates || undefined === input.codexHomeCandidates || Array.isArray(input.codexHomeCandidates) && input.codexHomeCandidates.every(elem => "string" === typeof elem)) && (undefined === input.awLogDirectoryPath || "string" === typeof input.awLogDirectoryPath) && (undefined === input.awLogStaleThresholdMinutes || "number" === typeof input.awLogStaleThresholdMinutes) && (null === input.awaitingQualityCheckStatus || undefined === input.awaitingQualityCheckStatus || "string" === typeof input.awaitingQualityCheckStatus) && (null === input.labelsAsLlmAgentName || undefined === input.labelsAsLlmAgentName || Array.isArray(input.labelsAsLlmAgentName) && input.labelsAsLlmAgentName.every(elem => "string" === typeof elem)); const _io4 = input => "string" === typeof input.scanBaseDirectory && "number" === typeof input.targetHourUtc && (undefined === input.enableKevNvdReport || "boolean" === typeof input.enableKevNvdReport) && (undefined === input.kevReportRepo || "string" === typeof input.kevReportRepo); const _io5 = input => "object" === typeof input.manager && null !== input.manager && _io6(input.manager) && ("object" === typeof input.bot && null !== input.bot && _io10(input.bot)); const _io6 = input => "object" === typeof input.github && null !== input.github && _io7(input.github) && ("object" === typeof input.slack && null !== input.slack && _io8(input.slack)) && ("object" === typeof input.googleServiceAccount && null !== input.googleServiceAccount && _io9(input.googleServiceAccount)); const _io7 = input => "string" === typeof input.token; const _io8 = input => "string" === typeof input.userToken; const _io9 = input => "string" === typeof input.serviceAccountKey; const _io10 = input => "object" === typeof input.github && null !== input.github && _io11(input.github); const _io11 = input => "string" === typeof input.token; return input => "object" === typeof input && null !== input && _io0(input); })()(input)) {
+                throw new Error(`Invalid input: ${JSON.stringify(input)}\n\n${JSON.stringify((() => { const _io0 = input => "string" === typeof input.org && "number" === typeof input.allowIssueCacheMinutes && (undefined === input.thresholdForAutoReject || "number" === typeof input.thresholdForAutoReject) && (null === input.changeTargetPathAliases || undefined === input.changeTargetPathAliases || "object" === typeof input.changeTargetPathAliases && null !== input.changeTargetPathAliases && false === Array.isArray(input.changeTargetPathAliases) && _io1(input.changeTargetPathAliases)) && "string" === typeof input.projectUrl && "string" === typeof input.projectName && (null === input.labelsAsLlmAgentName || undefined === input.labelsAsLlmAgentName || Array.isArray(input.labelsAsLlmAgentName) && input.labelsAsLlmAgentName.every(elem => "string" === typeof elem)) && "string" === typeof input.manager && ("object" === typeof input.workingReport && null !== input.workingReport && _io2(input.workingReport)) && "string" === typeof input.urlOfStoryView && "boolean" === typeof input.disabled && (null === input.startPreparation || undefined === input.startPreparation || "object" === typeof input.startPreparation && null !== input.startPreparation && _io3(input.startPreparation)) && (null === input.dailySecurityScan || undefined === input.dailySecurityScan || "object" === typeof input.dailySecurityScan && null !== input.dailySecurityScan && _io4(input.dailySecurityScan)) && (null === input.allowedIssueAuthors || undefined === input.allowedIssueAuthors || "string" === typeof input.allowedIssueAuthors || Array.isArray(input.allowedIssueAuthors) && input.allowedIssueAuthors.every(elem => "string" === typeof elem)) && (undefined === input.claudeCodeOauthTokenListJsonPath || "string" === typeof input.claudeCodeOauthTokenListJsonPath) && (undefined === input.consoleDataOutputDir || "string" === typeof input.consoleDataOutputDir) && (undefined === input.workflowBlockerStoryName || "string" === typeof input.workflowBlockerStoryName) && (undefined === input.inTmuxDataOutputDir || "string" === typeof input.inTmuxDataOutputDir) && (undefined === input.inTmuxConsoleBaseUrl || "string" === typeof input.inTmuxConsoleBaseUrl) && (undefined === input.inTmuxConsoleToken || "string" === typeof input.inTmuxConsoleToken) && (undefined === input.inTmuxProjectOrder || Array.isArray(input.inTmuxProjectOrder) && input.inTmuxProjectOrder.every(elem => "string" === typeof elem)) && (undefined === input.inTmuxLauncherCommand || "string" === typeof input.inTmuxLauncherCommand) && ("object" === typeof input.credentials && null !== input.credentials && _io5(input.credentials)); const _io1 = input => Object.keys(input).every(key => {
                     const value = input[key];
                     if (undefined === value)
                         return true;
                     return "string" === typeof value;
-                }); const _io3 = input => "string" === typeof input.defaultAgentName && (null === input.defaultLlmModelName || undefined === input.defaultLlmModelName || "string" === typeof input.defaultLlmModelName) && (null === input.fallbackLlmModelName || undefined === input.fallbackLlmModelName || "string" === typeof input.fallbackLlmModelName) && (null === input.defaultLlmAgentName || undefined === input.defaultLlmAgentName || "string" === typeof input.defaultLlmAgentName) && "string" === typeof input.configFilePath && (null === input.maximumPreparingIssuesCount || "number" === typeof input.maximumPreparingIssuesCount) && (undefined === input.utilizationPercentageThreshold || "number" === typeof input.utilizationPercentageThreshold) && (null === input.allowedIssueAuthors || undefined === input.allowedIssueAuthors || Array.isArray(input.allowedIssueAuthors) && input.allowedIssueAuthors.every(elem => "string" === typeof elem)) && (undefined === input.preparationProcessCheckCommand || "string" === typeof input.preparationProcessCheckCommand) && (null === input.codexHomeCandidates || undefined === input.codexHomeCandidates || Array.isArray(input.codexHomeCandidates) && input.codexHomeCandidates.every(elem => "string" === typeof elem)) && (undefined === input.awLogDirectoryPath || "string" === typeof input.awLogDirectoryPath) && (undefined === input.awLogStaleThresholdMinutes || "number" === typeof input.awLogStaleThresholdMinutes) && (null === input.awaitingQualityCheckStatus || undefined === input.awaitingQualityCheckStatus || "string" === typeof input.awaitingQualityCheckStatus) && (null === input.labelsAsLlmAgentName || undefined === input.labelsAsLlmAgentName || Array.isArray(input.labelsAsLlmAgentName) && input.labelsAsLlmAgentName.every(elem => "string" === typeof elem)); const _io4 = input => "string" === typeof input.scanBaseDirectory && "number" === typeof input.targetHourUtc && (undefined === input.enableKevNvdReport || "boolean" === typeof input.enableKevNvdReport) && (undefined === input.kevReportRepo || "string" === typeof input.kevReportRepo); const _io5 = input => "object" === typeof input.manager && null !== input.manager && _io6(input.manager) && ("object" === typeof input.bot && null !== input.bot && _io10(input.bot)); const _io6 = input => "object" === typeof input.github && null !== input.github && _io7(input.github) && ("object" === typeof input.slack && null !== input.slack && _io8(input.slack)) && ("object" === typeof input.googleServiceAccount && null !== input.googleServiceAccount && _io9(input.googleServiceAccount)); const _io7 = input => "string" === typeof input.token; const _io8 = input => "string" === typeof input.userToken; const _io9 = input => "string" === typeof input.serviceAccountKey; const _io10 = input => "object" === typeof input.github && null !== input.github && _io11(input.github); const _io11 = input => "string" === typeof input.token; const _vo0 = (input, _path, _exceptionable = true) => ["string" === typeof input.projectName || _report(_exceptionable, {
-                        path: _path + ".projectName",
-                        expected: "string",
-                        value: input.projectName
-                    }), "string" === typeof input.org || _report(_exceptionable, {
+                }); const _io2 = input => "string" === typeof input.repo && (Array.isArray(input.members) && input.members.every(elem => "string" === typeof elem)) && "string" === typeof input.spreadsheetUrl; const _io3 = input => "string" === typeof input.defaultAgentName && (null === input.defaultLlmModelName || undefined === input.defaultLlmModelName || "string" === typeof input.defaultLlmModelName) && (null === input.fallbackLlmModelName || undefined === input.fallbackLlmModelName || "string" === typeof input.fallbackLlmModelName) && (null === input.defaultLlmAgentName || undefined === input.defaultLlmAgentName || "string" === typeof input.defaultLlmAgentName) && "string" === typeof input.configFilePath && (null === input.maximumPreparingIssuesCount || "number" === typeof input.maximumPreparingIssuesCount) && (undefined === input.utilizationPercentageThreshold || "number" === typeof input.utilizationPercentageThreshold) && (null === input.allowedIssueAuthors || undefined === input.allowedIssueAuthors || Array.isArray(input.allowedIssueAuthors) && input.allowedIssueAuthors.every(elem => "string" === typeof elem)) && (undefined === input.preparationProcessCheckCommand || "string" === typeof input.preparationProcessCheckCommand) && (null === input.codexHomeCandidates || undefined === input.codexHomeCandidates || Array.isArray(input.codexHomeCandidates) && input.codexHomeCandidates.every(elem => "string" === typeof elem)) && (undefined === input.awLogDirectoryPath || "string" === typeof input.awLogDirectoryPath) && (undefined === input.awLogStaleThresholdMinutes || "number" === typeof input.awLogStaleThresholdMinutes) && (null === input.awaitingQualityCheckStatus || undefined === input.awaitingQualityCheckStatus || "string" === typeof input.awaitingQualityCheckStatus) && (null === input.labelsAsLlmAgentName || undefined === input.labelsAsLlmAgentName || Array.isArray(input.labelsAsLlmAgentName) && input.labelsAsLlmAgentName.every(elem => "string" === typeof elem)); const _io4 = input => "string" === typeof input.scanBaseDirectory && "number" === typeof input.targetHourUtc && (undefined === input.enableKevNvdReport || "boolean" === typeof input.enableKevNvdReport) && (undefined === input.kevReportRepo || "string" === typeof input.kevReportRepo); const _io5 = input => "object" === typeof input.manager && null !== input.manager && _io6(input.manager) && ("object" === typeof input.bot && null !== input.bot && _io10(input.bot)); const _io6 = input => "object" === typeof input.github && null !== input.github && _io7(input.github) && ("object" === typeof input.slack && null !== input.slack && _io8(input.slack)) && ("object" === typeof input.googleServiceAccount && null !== input.googleServiceAccount && _io9(input.googleServiceAccount)); const _io7 = input => "string" === typeof input.token; const _io8 = input => "string" === typeof input.userToken; const _io9 = input => "string" === typeof input.serviceAccountKey; const _io10 = input => "object" === typeof input.github && null !== input.github && _io11(input.github); const _io11 = input => "string" === typeof input.token; const _vo0 = (input, _path, _exceptionable = true) => ["string" === typeof input.org || _report(_exceptionable, {
                         path: _path + ".org",
                         expected: "string",
                         value: input.org
+                    }), "number" === typeof input.allowIssueCacheMinutes || _report(_exceptionable, {
+                        path: _path + ".allowIssueCacheMinutes",
+                        expected: "number",
+                        value: input.allowIssueCacheMinutes
+                    }), undefined === input.thresholdForAutoReject || "number" === typeof input.thresholdForAutoReject || _report(_exceptionable, {
+                        path: _path + ".thresholdForAutoReject",
+                        expected: "(number | undefined)",
+                        value: input.thresholdForAutoReject
+                    }), null === input.changeTargetPathAliases || undefined === input.changeTargetPathAliases || ("object" === typeof input.changeTargetPathAliases && null !== input.changeTargetPathAliases && false === Array.isArray(input.changeTargetPathAliases) || _report(_exceptionable, {
+                        path: _path + ".changeTargetPathAliases",
+                        expected: "(Record<string, string> | null | undefined)",
+                        value: input.changeTargetPathAliases
+                    })) && _vo1(input.changeTargetPathAliases, _path + ".changeTargetPathAliases", true && _exceptionable) || _report(_exceptionable, {
+                        path: _path + ".changeTargetPathAliases",
+                        expected: "(Record<string, string> | null | undefined)",
+                        value: input.changeTargetPathAliases
                     }), "string" === typeof input.projectUrl || _report(_exceptionable, {
                         path: _path + ".projectUrl",
                         expected: "string",
                         value: input.projectUrl
+                    }), "string" === typeof input.projectName || _report(_exceptionable, {
+                        path: _path + ".projectName",
+                        expected: "string",
+                        value: input.projectName
+                    }), null === input.labelsAsLlmAgentName || undefined === input.labelsAsLlmAgentName || (Array.isArray(input.labelsAsLlmAgentName) || _report(_exceptionable, {
+                        path: _path + ".labelsAsLlmAgentName",
+                        expected: "(Array<string> | null | undefined)",
+                        value: input.labelsAsLlmAgentName
+                    })) && input.labelsAsLlmAgentName.map((elem, _index8) => "string" === typeof elem || _report(_exceptionable, {
+                        path: _path + ".labelsAsLlmAgentName[" + _index8 + "]",
+                        expected: "string",
+                        value: elem
+                    })).every(flag => flag) || _report(_exceptionable, {
+                        path: _path + ".labelsAsLlmAgentName",
+                        expected: "(Array<string> | null | undefined)",
+                        value: input.labelsAsLlmAgentName
                     }), "string" === typeof input.manager || _report(_exceptionable, {
                         path: _path + ".manager",
                         expected: "string",
@@ -120,7 +148,7 @@ class HandleScheduledEventUseCaseHandler {
                         path: _path + ".workingReport",
                         expected: "__type",
                         value: input.workingReport
-                    })) && _vo1(input.workingReport, _path + ".workingReport", true && _exceptionable) || _report(_exceptionable, {
+                    })) && _vo2(input.workingReport, _path + ".workingReport", true && _exceptionable) || _report(_exceptionable, {
                         path: _path + ".workingReport",
                         expected: "__type",
                         value: input.workingReport
@@ -132,30 +160,6 @@ class HandleScheduledEventUseCaseHandler {
                         path: _path + ".disabled",
                         expected: "boolean",
                         value: input.disabled
-                    }), "number" === typeof input.allowIssueCacheMinutes || _report(_exceptionable, {
-                        path: _path + ".allowIssueCacheMinutes",
-                        expected: "number",
-                        value: input.allowIssueCacheMinutes
-                    }), null === input.labelsAsLlmAgentName || undefined === input.labelsAsLlmAgentName || (Array.isArray(input.labelsAsLlmAgentName) || _report(_exceptionable, {
-                        path: _path + ".labelsAsLlmAgentName",
-                        expected: "(Array<string> | null | undefined)",
-                        value: input.labelsAsLlmAgentName
-                    })) && input.labelsAsLlmAgentName.map((elem, _index7) => "string" === typeof elem || _report(_exceptionable, {
-                        path: _path + ".labelsAsLlmAgentName[" + _index7 + "]",
-                        expected: "string",
-                        value: elem
-                    })).every(flag => flag) || _report(_exceptionable, {
-                        path: _path + ".labelsAsLlmAgentName",
-                        expected: "(Array<string> | null | undefined)",
-                        value: input.labelsAsLlmAgentName
-                    }), null === input.changeTargetPathAliases || undefined === input.changeTargetPathAliases || ("object" === typeof input.changeTargetPathAliases && null !== input.changeTargetPathAliases && false === Array.isArray(input.changeTargetPathAliases) || _report(_exceptionable, {
-                        path: _path + ".changeTargetPathAliases",
-                        expected: "(Record<string, string> | null | undefined)",
-                        value: input.changeTargetPathAliases
-                    })) && _vo2(input.changeTargetPathAliases, _path + ".changeTargetPathAliases", true && _exceptionable) || _report(_exceptionable, {
-                        path: _path + ".changeTargetPathAliases",
-                        expected: "(Record<string, string> | null | undefined)",
-                        value: input.changeTargetPathAliases
                     }), null === input.startPreparation || undefined === input.startPreparation || ("object" === typeof input.startPreparation && null !== input.startPreparation || _report(_exceptionable, {
                         path: _path + ".startPreparation",
                         expected: "(__type.o1 | null | undefined)",
@@ -164,10 +168,6 @@ class HandleScheduledEventUseCaseHandler {
                         path: _path + ".startPreparation",
                         expected: "(__type.o1 | null | undefined)",
                         value: input.startPreparation
-                    }), undefined === input.thresholdForAutoReject || "number" === typeof input.thresholdForAutoReject || _report(_exceptionable, {
-                        path: _path + ".thresholdForAutoReject",
-                        expected: "(number | undefined)",
-                        value: input.thresholdForAutoReject
                     }), null === input.dailySecurityScan || undefined === input.dailySecurityScan || ("object" === typeof input.dailySecurityScan && null !== input.dailySecurityScan || _report(_exceptionable, {
                         path: _path + ".dailySecurityScan",
                         expected: "(DailySecurityScanConfig | null | undefined)",
@@ -176,6 +176,18 @@ class HandleScheduledEventUseCaseHandler {
                         path: _path + ".dailySecurityScan",
                         expected: "(DailySecurityScanConfig | null | undefined)",
                         value: input.dailySecurityScan
+                    }), null === input.allowedIssueAuthors || undefined === input.allowedIssueAuthors || "string" === typeof input.allowedIssueAuthors || (Array.isArray(input.allowedIssueAuthors) || _report(_exceptionable, {
+                        path: _path + ".allowedIssueAuthors",
+                        expected: "(Array<string> | null | string | undefined)",
+                        value: input.allowedIssueAuthors
+                    })) && input.allowedIssueAuthors.map((elem, _index9) => "string" === typeof elem || _report(_exceptionable, {
+                        path: _path + ".allowedIssueAuthors[" + _index9 + "]",
+                        expected: "string",
+                        value: elem
+                    })).every(flag => flag) || _report(_exceptionable, {
+                        path: _path + ".allowedIssueAuthors",
+                        expected: "(Array<string> | null | string | undefined)",
+                        value: input.allowedIssueAuthors
                     }), undefined === input.claudeCodeOauthTokenListJsonPath || "string" === typeof input.claudeCodeOauthTokenListJsonPath || _report(_exceptionable, {
                         path: _path + ".claudeCodeOauthTokenListJsonPath",
                         expected: "(string | undefined)",
@@ -204,8 +216,8 @@ class HandleScheduledEventUseCaseHandler {
                         path: _path + ".inTmuxProjectOrder",
                         expected: "(Array<string> | undefined)",
                         value: input.inTmuxProjectOrder
-                    })) && input.inTmuxProjectOrder.map((elem, _index8) => "string" === typeof elem || _report(_exceptionable, {
-                        path: _path + ".inTmuxProjectOrder[" + _index8 + "]",
+                    })) && input.inTmuxProjectOrder.map((elem, _index10) => "string" === typeof elem || _report(_exceptionable, {
+                        path: _path + ".inTmuxProjectOrder[" + _index10 + "]",
                         expected: "string",
                         value: elem
                     })).every(flag => flag) || _report(_exceptionable, {
@@ -224,7 +236,16 @@ class HandleScheduledEventUseCaseHandler {
                         path: _path + ".credentials",
                         expected: "__type.o2",
                         value: input.credentials
-                    })].every(flag => flag); const _vo1 = (input, _path, _exceptionable = true) => ["string" === typeof input.repo || _report(_exceptionable, {
+                    })].every(flag => flag); const _vo1 = (input, _path, _exceptionable = true) => [false === _exceptionable || Object.keys(input).map(key => {
+                        const value = input[key];
+                        if (undefined === value)
+                            return true;
+                        return "string" === typeof value || _report(_exceptionable, {
+                            path: _path + __typia_transform__accessExpressionAsString._accessExpressionAsString(key),
+                            expected: "string",
+                            value: value
+                        });
+                    }).every(flag => flag)].every(flag => flag); const _vo2 = (input, _path, _exceptionable = true) => ["string" === typeof input.repo || _report(_exceptionable, {
                         path: _path + ".repo",
                         expected: "string",
                         value: input.repo
@@ -232,8 +253,8 @@ class HandleScheduledEventUseCaseHandler {
                         path: _path + ".members",
                         expected: "Array<string>",
                         value: input.members
-                    })) && input.members.map((elem, _index9) => "string" === typeof elem || _report(_exceptionable, {
-                        path: _path + ".members[" + _index9 + "]",
+                    })) && input.members.map((elem, _index11) => "string" === typeof elem || _report(_exceptionable, {
+                        path: _path + ".members[" + _index11 + "]",
                         expected: "string",
                         value: elem
                     })).every(flag => flag) || _report(_exceptionable, {
@@ -244,16 +265,7 @@ class HandleScheduledEventUseCaseHandler {
                         path: _path + ".spreadsheetUrl",
                         expected: "string",
                         value: input.spreadsheetUrl
-                    })].every(flag => flag); const _vo2 = (input, _path, _exceptionable = true) => [false === _exceptionable || Object.keys(input).map(key => {
-                        const value = input[key];
-                        if (undefined === value)
-                            return true;
-                        return "string" === typeof value || _report(_exceptionable, {
-                            path: _path + __typia_transform__accessExpressionAsString._accessExpressionAsString(key),
-                            expected: "string",
-                            value: value
-                        });
-                    }).every(flag => flag)].every(flag => flag); const _vo3 = (input, _path, _exceptionable = true) => ["string" === typeof input.defaultAgentName || _report(_exceptionable, {
+                    })].every(flag => flag); const _vo3 = (input, _path, _exceptionable = true) => ["string" === typeof input.defaultAgentName || _report(_exceptionable, {
                         path: _path + ".defaultAgentName",
                         expected: "string",
                         value: input.defaultAgentName
@@ -285,8 +297,8 @@ class HandleScheduledEventUseCaseHandler {
                         path: _path + ".allowedIssueAuthors",
                         expected: "(Array<string> | null | undefined)",
                         value: input.allowedIssueAuthors
-                    })) && input.allowedIssueAuthors.map((elem, _index10) => "string" === typeof elem || _report(_exceptionable, {
-                        path: _path + ".allowedIssueAuthors[" + _index10 + "]",
+                    })) && input.allowedIssueAuthors.map((elem, _index12) => "string" === typeof elem || _report(_exceptionable, {
+                        path: _path + ".allowedIssueAuthors[" + _index12 + "]",
                         expected: "string",
                         value: elem
                     })).every(flag => flag) || _report(_exceptionable, {
@@ -301,8 +313,8 @@ class HandleScheduledEventUseCaseHandler {
                         path: _path + ".codexHomeCandidates",
                         expected: "(Array<string> | null | undefined)",
                         value: input.codexHomeCandidates
-                    })) && input.codexHomeCandidates.map((elem, _index11) => "string" === typeof elem || _report(_exceptionable, {
-                        path: _path + ".codexHomeCandidates[" + _index11 + "]",
+                    })) && input.codexHomeCandidates.map((elem, _index13) => "string" === typeof elem || _report(_exceptionable, {
+                        path: _path + ".codexHomeCandidates[" + _index13 + "]",
                         expected: "string",
                         value: elem
                     })).every(flag => flag) || _report(_exceptionable, {
@@ -325,8 +337,8 @@ class HandleScheduledEventUseCaseHandler {
                         path: _path + ".labelsAsLlmAgentName",
                         expected: "(Array<string> | null | undefined)",
                         value: input.labelsAsLlmAgentName
-                    })) && input.labelsAsLlmAgentName.map((elem, _index12) => "string" === typeof elem || _report(_exceptionable, {
-                        path: _path + ".labelsAsLlmAgentName[" + _index12 + "]",
+                    })) && input.labelsAsLlmAgentName.map((elem, _index14) => "string" === typeof elem || _report(_exceptionable, {
+                        path: _path + ".labelsAsLlmAgentName[" + _index14 + "]",
                         expected: "string",
                         value: elem
                     })).every(flag => flag) || _report(_exceptionable, {
@@ -450,8 +462,21 @@ class HandleScheduledEventUseCaseHandler {
             const readmeConfig = readme
                 ? (0, projectConfig_1.parseProjectReadmeConfig)(readme, input.projectUrl)
                 : {};
+            const normalizeAllowedIssueAuthors = (value) => {
+                if (value === null || value === undefined) {
+                    return null;
+                }
+                if (Array.isArray(value)) {
+                    return value;
+                }
+                return value
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean);
+            };
             const mergedInput = {
                 ...input,
+                allowedIssueAuthors: normalizeAllowedIssueAuthors(input.allowedIssueAuthors),
                 allowIssueCacheMinutes: readmeConfig.allowIssueCacheMinutes ?? input.allowIssueCacheMinutes,
                 claudeCodeOauthTokenListJsonPath: readmeConfig.claudeCodeOauthTokenListJsonPath ??
                     input.claudeCodeOauthTokenListJsonPath,

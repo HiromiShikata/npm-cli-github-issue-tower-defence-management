@@ -205,7 +205,8 @@ class StartPreparationUseCase {
                 if (issue.nextActionHour !== null && currentHour < issue.nextActionHour) {
                     continue;
                 }
-                if (params.allowedIssueAuthors !== null &&
+                if (params.allowedIssueAuthors === null ||
+                    params.allowedIssueAuthors.length === 0 ||
                     !params.allowedIssueAuthors.includes(issue.author)) {
                     continue;
                 }

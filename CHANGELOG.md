@@ -1,3 +1,10 @@
+## [1.104.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.104.0...v1.104.1) (2026-06-26)
+
+
+### Bug Fixes
+
+* **security:** make auto status-check author authorization fail-closed and require explicit allowlist membership ([#987](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/987)) ([bb7e206](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bb7e206575da5bc651d386c1c2376fefcac7599c)), closes [#984](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/984)
+
 # [1.104.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.103.1...v1.104.0) (2026-06-26)
 
 

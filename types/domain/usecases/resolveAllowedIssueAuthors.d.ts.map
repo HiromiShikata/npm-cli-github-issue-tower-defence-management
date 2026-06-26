@@ -1,0 +1,1 @@
+{"version":3,"file":"resolveAllowedIssueAuthors.d.ts","sourceRoot":"","sources":["../../../src/domain/usecases/resolveAllowedIssueAuthors.ts"],"names":[],"mappings":"AAAA,eAAO,MAAM,0BAA0B,GAAI,QAAQ;IACjD,QAAQ,CAAC,EAAE,MAAM,EAAE,GAAG,IAAI,CAAC;IAC3B,gBAAgB,CAAC,EAAE,MAAM,EAAE,GAAG,IAAI,CAAC;CACpC,KAAG,MAAM,EAAE,GAAG,IAEd,CAAC"}

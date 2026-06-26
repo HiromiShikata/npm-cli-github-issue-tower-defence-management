@@ -70,6 +70,7 @@ export declare class HandleScheduledEventUseCase {
         allowIssueCacheMinutes: number;
         labelsAsLlmAgentName?: string[] | null;
         changeTargetPathAliases?: Record<string, string> | null;
+        allowedIssueAuthors?: string[] | null;
         startPreparation?: {
             defaultAgentName: string;
             defaultLlmModelName?: string | null;

@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HandleScheduledEventUseCase = exports.ProjectNotFoundError = void 0;
 const resolveLabelsAsLlmAgentName_1 = require("./resolveLabelsAsLlmAgentName");
+const resolveAllowedIssueAuthors_1 = require("./resolveAllowedIssueAuthors");
 class ProjectNotFoundError extends Error {
     constructor(message) {
         super(message);
@@ -138,12 +139,16 @@ ${JSON.stringify(e)}
                 topLevel: input.labelsAsLlmAgentName,
                 startPreparation: input.startPreparation?.labelsAsLlmAgentName,
             });
+            const allowedIssueAuthors = (0, resolveAllowedIssueAuthors_1.resolveAllowedIssueAuthors)({
+                topLevel: input.allowedIssueAuthors,
+                startPreparation: input.startPreparation?.allowedIssueAuthors,
+            });
             await this.revertNotReadyReviewQueueIssueUseCase.run({
                 projectUrl: input.projectUrl,
                 allowIssueCacheMinutes: input.allowIssueCacheMinutes,
                 labelsAsLlmAgentName,
                 changeTargetPathAliases: input.changeTargetPathAliases,
-                allowedIssueAuthors: input.startPreparation?.allowedIssueAuthors ?? null,
+                allowedIssueAuthors,
             });
             if (this.dailySecurityScanUseCase !== null && input.dailySecurityScan) {
                 await this.dailySecurityScanUseCase.run({
@@ -180,7 +185,7 @@ ${JSON.stringify(e)}
                     configFilePath: input.startPreparation.configFilePath,
                     maximumPreparingIssuesCount: input.startPreparation.maximumPreparingIssuesCount,
                     utilizationPercentageThreshold: input.startPreparation.utilizationPercentageThreshold ?? 90,
-                    allowedIssueAuthors: input.startPreparation.allowedIssueAuthors ?? null,
+                    allowedIssueAuthors,
                     codexHomeCandidates: input.startPreparation.codexHomeCandidates ?? null,
                     allowIssueCacheMinutes: input.allowIssueCacheMinutes,
                     labelsAsLlmAgentName,
