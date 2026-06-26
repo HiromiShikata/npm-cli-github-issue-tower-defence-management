@@ -93,7 +93,20 @@ const createMockPullRequest = (overrides: Partial<Issue> = {}): Issue =>
     ...overrides,
   });
 
-const createReadyPr = (url = 'https://github.com/user/repo/pull/1') => ({
+type RelatedPrLike = {
+  url: string;
+  isConflicted: boolean;
+  isPassedAllCiJob: boolean;
+  isCiStateSuccess: boolean;
+  isResolvedAllReviewComments: boolean;
+  isBranchOutOfDate: boolean;
+  missingRequiredCheckNames: string[];
+  isDraft?: boolean;
+};
+
+const createReadyPr = (
+  url = 'https://github.com/user/repo/pull/1',
+): RelatedPrLike => ({
   url,
   isConflicted: false,
   isPassedAllCiJob: true,
@@ -102,6 +115,37 @@ const createReadyPr = (url = 'https://github.com/user/repo/pull/1') => ({
   isBranchOutOfDate: false,
   missingRequiredCheckNames: [],
 });
+
+// Builds the in-memory linkage the production code now relies on instead of the
+// per-issue findRelatedOpenPRs timeline query: each related pull request becomes
+// an open PR project item whose closingIssueReferenceUrls points at the AQC
+// issue, and getOpenPullRequest is routed by URL to return that PR's status.
+// This proves the review-readiness outcome is identical to the previous
+// findRelatedOpenPRs-based path while removing the per-issue timeline call.
+const linkRelatedOpenPrsToIssue = (
+  mockIssueRepository: {
+    getAllIssues: jest.Mock;
+    getOpenPullRequest: jest.Mock;
+  },
+  issue: Issue,
+  relatedPrs: RelatedPrLike[],
+): void => {
+  const prItems = relatedPrs.map((pr, index) =>
+    createMockPullRequest({
+      url: pr.url,
+      number: 1000 + index,
+      closingIssueReferenceUrls: [issue.url],
+    }),
+  );
+  mockIssueRepository.getAllIssues.mockResolvedValue({
+    issues: [issue, ...prItems],
+    cacheUsed: false,
+  });
+  const prByUrl = new Map(relatedPrs.map((pr) => [pr.url, pr]));
+  mockIssueRepository.getOpenPullRequest.mockImplementation((prUrl: string) =>
+    Promise.resolve(prByUrl.get(prUrl) ?? null),
+  );
+};
 
 describe('RevertNotReadyReviewQueueIssueUseCase', () => {
   let mockProjectRepository: {
@@ -206,7 +250,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         issues: [issue],
         cacheUsed: false,
       });
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
@@ -238,7 +281,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         issues: [issue],
         cacheUsed: false,
       });
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
@@ -260,7 +302,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         issues: [issue],
         cacheUsed: false,
       });
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
@@ -282,7 +323,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         issues: [issue],
         cacheUsed: false,
       });
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
@@ -310,7 +350,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         issues: [issue],
         cacheUsed: false,
       });
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
@@ -330,13 +369,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       const issue = createMockIssue({
         status: 'Awaiting Quality Check',
       });
-      mockIssueRepository.getAllIssues.mockResolvedValue({
-        issues: [issue],
-        cacheUsed: false,
-      });
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
-        createReadyPr(),
-      ]);
+      linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [createReadyPr()]);
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
@@ -352,11 +385,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       const issue = createMockIssue({
         status: 'Awaiting Quality Check',
       });
-      mockIssueRepository.getAllIssues.mockResolvedValue({
-        issues: [issue],
-        cacheUsed: false,
-      });
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
         { ...createReadyPr(), isConflicted: true },
       ]);
 
@@ -385,11 +414,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       const issue = createMockIssue({
         status: 'Awaiting Quality Check',
       });
-      mockIssueRepository.getAllIssues.mockResolvedValue({
-        issues: [issue],
-        cacheUsed: false,
-      });
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
         {
           ...createReadyPr(),
           isPassedAllCiJob: false,
@@ -422,11 +447,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       const issue = createMockIssue({
         status: 'Awaiting Quality Check',
       });
-      mockIssueRepository.getAllIssues.mockResolvedValue({
-        issues: [issue],
-        cacheUsed: false,
-      });
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
         { ...createReadyPr(), isResolvedAllReviewComments: false },
       ]);
 
@@ -455,11 +476,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       const issue = createMockIssue({
         status: 'Awaiting Quality Check',
       });
-      mockIssueRepository.getAllIssues.mockResolvedValue({
-        issues: [issue],
-        cacheUsed: false,
-      });
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
         { ...createReadyPr(), isDraft: true },
       ]);
 
@@ -488,11 +505,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       const issue = createMockIssue({
         status: 'Awaiting Quality Check',
       });
-      mockIssueRepository.getAllIssues.mockResolvedValue({
-        issues: [issue],
-        cacheUsed: false,
-      });
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
         createReadyPr('https://github.com/user/repo/pull/1'),
         createReadyPr('https://github.com/user/repo/pull/2'),
       ]);
@@ -522,11 +535,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       const issue = createMockIssue({
         status: 'Awaiting Quality Check',
       });
-      mockIssueRepository.getAllIssues.mockResolvedValue({
-        issues: [issue],
-        cacheUsed: false,
-      });
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
         {
           ...createReadyPr(),
           isPassedAllCiJob: false,
@@ -556,17 +565,151 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
     });
 
+    describe('in-memory related-PR derivation (no per-issue timeline call)', () => {
+      it('should never call findRelatedOpenPRs while sweeping Awaiting Quality Check issues', async () => {
+        const readyIssue = createMockIssue({
+          status: 'Awaiting Quality Check',
+          url: 'https://github.com/user/repo/issues/1',
+        });
+        const notReadyIssue = createMockIssue({
+          status: 'Awaiting Quality Check',
+          number: 2,
+          url: 'https://github.com/user/repo/issues/2',
+        });
+        const readyPrItem = createMockPullRequest({
+          status: 'In Progress',
+          url: 'https://github.com/user/repo/pull/100',
+          number: 100,
+          closingIssueReferenceUrls: ['https://github.com/user/repo/issues/1'],
+        });
+        const conflictedPrItem = createMockPullRequest({
+          status: 'In Progress',
+          url: 'https://github.com/user/repo/pull/200',
+          number: 200,
+          closingIssueReferenceUrls: ['https://github.com/user/repo/issues/2'],
+        });
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [readyIssue, notReadyIssue, readyPrItem, conflictedPrItem],
+          cacheUsed: false,
+        });
+        mockIssueRepository.getOpenPullRequest.mockImplementation(
+          (prUrl: string) => {
+            if (prUrl === 'https://github.com/user/repo/pull/100') {
+              return Promise.resolve(createReadyPr(prUrl));
+            }
+            if (prUrl === 'https://github.com/user/repo/pull/200') {
+              return Promise.resolve({
+                ...createReadyPr(prUrl),
+                isConflicted: true,
+              });
+            }
+            return Promise.resolve(null);
+          },
+        );
+
+        await useCase.run({
+          projectUrl: 'https://github.com/users/user/projects/1',
+          allowIssueCacheMinutes: 10,
+          allowedIssueAuthors: ['owner'],
+        });
+
+        expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+        expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledWith(
+          'https://github.com/user/repo/pull/100',
+        );
+        expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledWith(
+          'https://github.com/user/repo/pull/200',
+        );
+        expect(mockIssueRepository.updateStatus).toHaveBeenCalledTimes(1);
+        expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+          mockProject,
+          notReadyIssue,
+          'awaiting-workspace-id',
+        );
+        expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+          notReadyIssue,
+          expect.stringContaining('PULL_REQUEST_CONFLICTED'),
+        );
+      });
+
+      it('should match a PR to its issue via closingIssueReferenceUrls even when the PR item is listed before the issue', async () => {
+        const issue = createMockIssue({
+          status: 'Awaiting Quality Check',
+          url: 'https://github.com/user/repo/issues/42',
+          number: 42,
+        });
+        const prItem = createMockPullRequest({
+          status: 'In Progress',
+          url: 'https://github.com/user/repo/pull/77',
+          number: 77,
+          closingIssueReferenceUrls: ['https://github.com/user/repo/issues/42'],
+        });
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [prItem, issue],
+          cacheUsed: false,
+        });
+        mockIssueRepository.getOpenPullRequest.mockResolvedValue(
+          createReadyPr('https://github.com/user/repo/pull/77'),
+        );
+
+        await useCase.run({
+          projectUrl: 'https://github.com/users/user/projects/1',
+          allowIssueCacheMinutes: 10,
+          allowedIssueAuthors: ['owner'],
+        });
+
+        expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledWith(
+          'https://github.com/user/repo/pull/77',
+        );
+        expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+        expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+      });
+
+      it('should not match a closed PR even when its closingIssueReferenceUrls points at the issue', async () => {
+        const issue = createMockIssue({
+          status: 'Awaiting Quality Check',
+          url: 'https://github.com/user/repo/issues/9',
+          number: 9,
+        });
+        const closedPrItem = createMockPullRequest({
+          status: 'In Progress',
+          url: 'https://github.com/user/repo/pull/9',
+          number: 9,
+          isClosed: true,
+          state: 'CLOSED',
+          closingIssueReferenceUrls: ['https://github.com/user/repo/issues/9'],
+        });
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [issue, closedPrItem],
+          cacheUsed: false,
+        });
+
+        await useCase.run({
+          projectUrl: 'https://github.com/users/user/projects/1',
+          allowIssueCacheMinutes: 10,
+          allowedIssueAuthors: ['owner'],
+        });
+
+        expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
+        expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+          mockProject,
+          issue,
+          'awaiting-workspace-id',
+        );
+        expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+          issue,
+          expect.stringContaining('PULL_REQUEST_NOT_FOUND'),
+        );
+      });
+    });
+
     describe('change-target label auto-approve', () => {
       const setupReadyIssue = (labels: string[]) => {
         const issue = createMockIssue({
           status: 'Awaiting Quality Check',
           labels,
         });
-        mockIssueRepository.getAllIssues.mockResolvedValue({
-          issues: [issue],
-          cacheUsed: false,
-        });
-        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
           createReadyPr(),
         ]);
         return issue;
@@ -699,11 +842,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           status: 'Awaiting Quality Check',
           labels: ['change-target:src/domain'],
         });
-        mockIssueRepository.getAllIssues.mockResolvedValue({
-          issues: [issue],
-          cacheUsed: false,
-        });
-        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+        linkRelatedOpenPrsToIssue(mockIssueRepository, issue, []);
 
         await runCycle();
 
@@ -723,11 +862,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           status: 'Awaiting Quality Check',
           labels: ['change-target:src/domain'],
         });
-        mockIssueRepository.getAllIssues.mockResolvedValue({
-          issues: [issue],
-          cacheUsed: false,
-        });
-        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
           { ...createReadyPr(), isConflicted: true },
         ]);
 
@@ -749,11 +884,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           status: 'Awaiting Quality Check',
           labels: ['llm-agent', 'change-target:src/domain'],
         });
-        mockIssueRepository.getAllIssues.mockResolvedValue({
-          issues: [issue],
-          cacheUsed: false,
-        });
-        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
           createReadyPr(),
         ]);
 

@@ -18,6 +18,17 @@ export type PrRejectionResult = {
   approvedPrUrl: string | null;
 };
 
+export type EvaluateOptions = {
+  // When provided, the related open pull requests for a non-PR issue are
+  // resolved from these prebuilt URLs via getOpenPullRequest instead of
+  // discovering them with a per-issue findRelatedOpenPRs timeline query.
+  // Callers that already hold the bulk project items (e.g. the per-cycle
+  // review-readiness sweep) derive these URLs in memory from PR items'
+  // closingIssueReferenceUrls, eliminating the per-issue timeline fan-out.
+  // When null or undefined, behaviour is unchanged: findRelatedOpenPRs runs.
+  relatedOpenPrUrls?: string[] | null;
+};
+
 export class IssueRejectionEvaluator {
   constructor(
     private readonly issueRepository: Pick<
@@ -36,6 +47,7 @@ export class IssueRejectionEvaluator {
       isPr: boolean;
     },
     labelsAsLlmAgentName: string[] = [],
+    options: EvaluateOptions = {},
   ): Promise<PrRejectionResult> => {
     const rejections: { type: PrRejectedReasonType; detail: string }[] = [];
     let approvedPrUrl: string | null = null;
@@ -57,7 +69,9 @@ export class IssueRejectionEvaluator {
     ) {
       const prsToCheck = issue.isPr
         ? await this.resolveOpenPrsForPrItem(issue.url)
-        : await this.issueRepository.findRelatedOpenPRs(issue.url);
+        : options.relatedOpenPrUrls != null
+          ? await this.resolveOpenPrsFromUrls(options.relatedOpenPrUrls)
+          : await this.issueRepository.findRelatedOpenPRs(issue.url);
 
       if (prsToCheck.length <= 0) {
         rejections.push({
@@ -158,6 +172,26 @@ export class IssueRejectionEvaluator {
       return [];
     }
     return [pr];
+  };
+
+  // Resolves the status of each prebuilt related PR URL via getOpenPullRequest,
+  // dropping any URL whose PR is not open (getOpenPullRequest returns null).
+  // This mirrors findRelatedOpenPRs, which also returns only OPEN pull requests,
+  // so the resulting set is equivalent while avoiding the per-issue timeline
+  // query. Duplicate URLs are de-duplicated to mirror findRelatedOpenPRs, which
+  // collapses duplicates via its internal Map keyed by PR URL.
+  private resolveOpenPrsFromUrls = async (
+    prUrls: string[],
+  ): Promise<RelatedPullRequest[]> => {
+    const uniquePrUrls = Array.from(new Set(prUrls));
+    const resolvedPrs: RelatedPullRequest[] = [];
+    for (const prUrl of uniquePrUrls) {
+      const pr = await this.issueRepository.getOpenPullRequest(prUrl);
+      if (pr !== null) {
+        resolvedPrs.push(pr);
+      }
+    }
+    return resolvedPrs;
   };
 
   private extractChangeTargetMustPaths = (labels: string[]): string[] => {
