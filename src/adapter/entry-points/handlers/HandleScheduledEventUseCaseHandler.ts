@@ -3,6 +3,9 @@ import TYPIA from 'typia';
 import fs from 'fs';
 import { writeSituationFile } from './situationFileWriter';
 import { writeConsoleLists } from './consoleListsWriter';
+import { writeDashboardRow } from './dashboardRowWriter';
+import { writeMachineStatus } from './machineStatusWriter';
+import { writeTokenStatus } from './tokenStatusWriter';
 import { writeInTmuxByHumanData } from './inTmuxByHumanDataWriter';
 import { reconcileInTmuxByHumanSessions } from './inTmuxByHumanSessionReconciler';
 import { writeRotationOrderFile } from './rotationOrderFileWriter';
@@ -55,6 +58,8 @@ import {
   PREPARATION_STATUS_NAME,
 } from '../../../domain/entities/WorkflowStatus';
 
+const DEFAULT_DASHBOARD_DATA_DIR: string | null = null;
+
 export class HandleScheduledEventUseCaseHandler {
   handle = async (
     configFilePath: string,
@@ -74,6 +79,7 @@ export class HandleScheduledEventUseCaseHandler {
       allowedIssueAuthors?: string | string[] | null;
       claudeCodeOauthTokenListJsonPath?: string;
       consoleDataOutputDir?: string;
+      dashboardDataDir?: string;
       workflowBlockerStoryName?: string;
       inTmuxDataOutputDir?: string;
       inTmuxConsoleBaseUrl?: string;
@@ -411,6 +417,52 @@ export class HandleScheduledEventUseCaseHandler {
       } catch (error) {
         console.error(
           `Failed to write console lists: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+
+      const dashboardDataDir =
+        mergedInput.dashboardDataDir ?? DEFAULT_DASHBOARD_DATA_DIR;
+
+      try {
+        writeDashboardRow({
+          dashboardDataDir,
+          pjcode: input.projectName,
+          assigneeLogin: input.manager,
+          issues: result.issues,
+        });
+      } catch (error) {
+        console.error(
+          `Failed to write dashboard row: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+
+      try {
+        await writeMachineStatus({
+          dashboardDataDir,
+          allIssuesCacheDir: `${cachePath}/allIssues-${result.project.id}`,
+        });
+      } catch (error) {
+        console.error(
+          `Failed to write machine status: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+
+      try {
+        writeTokenStatus({
+          dashboardDataDir,
+          tokenListJsonPath:
+            mergedInput.claudeCodeOauthTokenListJsonPath ?? null,
+          issues: result.issues,
+        });
+      } catch (error) {
+        console.error(
+          `Failed to write token status: ${
             error instanceof Error ? error.message : String(error)
           }`,
         );

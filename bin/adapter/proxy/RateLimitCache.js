@@ -239,6 +239,7 @@ const readRateLimit = (token, baseDir = (0, exports.cacheDir)()) => {
         const status = headers['anthropic-ratelimit-unified-status'];
         const fiveHourStatus = headers['anthropic-ratelimit-unified-5h-status'];
         const sevenDayStatus = headers['anthropic-ratelimit-unified-7d-status'];
+        const overageDisabledReason = headers['anthropic-ratelimit-unified-overage-disabled-reason'];
         const unifiedRejected = status === 'rejected';
         const fiveHourRejected = fiveHourStatus === 'rejected';
         const sevenDayRejected = sevenDayStatus === 'rejected';
@@ -258,6 +259,8 @@ const readRateLimit = (token, baseDir = (0, exports.cacheDir)()) => {
             unifiedRejected,
             fiveHourRejected,
             sevenDayRejected,
+            unifiedStatus: status ?? null,
+            overageDisabledReason: overageDisabledReason ?? null,
             modelWeeklyLimits: {
                 ...(0, exports.parseModelRateLimitsFromHeaders)(headers),
                 ...readModelWeeklyLimits(parsed),

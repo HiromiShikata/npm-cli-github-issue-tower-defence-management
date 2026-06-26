@@ -12,6 +12,8 @@ export interface RateLimitSnapshot {
     unifiedRejected: boolean;
     fiveHourRejected: boolean;
     sevenDayRejected: boolean;
+    unifiedStatus: string | null;
+    overageDisabledReason: string | null;
     modelWeeklyLimits: Record<string, ModelWeeklyLimit>;
     lastUpdatedEpoch: number;
     blockedUntilEpoch: number;
