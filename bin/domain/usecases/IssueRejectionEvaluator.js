@@ -4,7 +4,7 @@ exports.IssueRejectionEvaluator = void 0;
 class IssueRejectionEvaluator {
     constructor(issueRepository) {
         this.issueRepository = issueRepository;
-        this.evaluate = async (issue, labelsAsLlmAgentName = []) => {
+        this.evaluate = async (issue, labelsAsLlmAgentName = [], options = {}) => {
             const rejections = [];
             let approvedPrUrl = null;
             const categoryLabels = issue.labels.filter((label) => label.startsWith('category:'));
@@ -15,7 +15,9 @@ class IssueRejectionEvaluator {
                 (categoryLabels.length <= 0 || categoryLabels.includes('category:e2e'))) {
                 const prsToCheck = issue.isPr
                     ? await this.resolveOpenPrsForPrItem(issue.url)
-                    : await this.issueRepository.findRelatedOpenPRs(issue.url);
+                    : options.relatedOpenPrUrls != null
+                        ? await this.resolveOpenPrsFromUrls(options.relatedOpenPrUrls)
+                        : await this.issueRepository.findRelatedOpenPRs(issue.url);
                 if (prsToCheck.length <= 0) {
                     rejections.push({
                         type: 'PULL_REQUEST_NOT_FOUND',
@@ -99,6 +101,23 @@ class IssueRejectionEvaluator {
                 return [];
             }
             return [pr];
+        };
+        // Resolves the status of each prebuilt related PR URL via getOpenPullRequest,
+        // dropping any URL whose PR is not open (getOpenPullRequest returns null).
+        // This mirrors findRelatedOpenPRs, which also returns only OPEN pull requests,
+        // so the resulting set is equivalent while avoiding the per-issue timeline
+        // query. Duplicate URLs are de-duplicated to mirror findRelatedOpenPRs, which
+        // collapses duplicates via its internal Map keyed by PR URL.
+        this.resolveOpenPrsFromUrls = async (prUrls) => {
+            const uniquePrUrls = Array.from(new Set(prUrls));
+            const resolvedPrs = [];
+            for (const prUrl of uniquePrUrls) {
+                const pr = await this.issueRepository.getOpenPullRequest(prUrl);
+                if (pr !== null) {
+                    resolvedPrs.push(pr);
+                }
+            }
+            return resolvedPrs;
         };
         this.extractChangeTargetMustPaths = (labels) => {
             const prefix = 'change-target-must:';

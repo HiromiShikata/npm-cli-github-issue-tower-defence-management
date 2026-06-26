@@ -15,5 +15,6 @@ export declare class RevertNotReadyReviewQueueIssueUseCase {
         changeTargetPathAliases?: Record<string, string> | null;
         allowedIssueAuthors?: string[] | null;
     }) => Promise<void>;
+    private buildRelatedOpenPrUrlsByIssueUrl;
 }
 //# sourceMappingURL=RevertNotReadyReviewQueueIssueUseCase.d.ts.map

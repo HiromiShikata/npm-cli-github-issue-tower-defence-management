@@ -34,6 +34,7 @@ class RevertNotReadyReviewQueueIssueUseCase {
             }
             const { issues } = await this.issueRepository.getAllIssues(projectId, params.allowIssueCacheMinutes);
             const awaitingQualityCheckIssues = issues.filter((issue) => issue.status === WorkflowStatus_1.AWAITING_QUALITY_CHECK_STATUS_NAME);
+            const relatedOpenPrUrlsByIssueUrl = this.buildRelatedOpenPrUrlsByIssueUrl(issues);
             for (const issue of awaitingQualityCheckIssues) {
                 const hasLlmAgentLabel = issue.labels.some((l) => l === 'llm-agent' || l.startsWith('llm-agent:'));
                 if (hasLlmAgentLabel) {
@@ -42,7 +43,9 @@ class RevertNotReadyReviewQueueIssueUseCase {
                 if (!isAuthorAuthorizedForAutoStatusCheck(issue.author, allowedIssueAuthors)) {
                     continue;
                 }
-                const { rejections, approvedPrUrl } = await this.issueRejectionEvaluator.evaluate(issue, params.labelsAsLlmAgentName ?? []);
+                const { rejections, approvedPrUrl } = await this.issueRejectionEvaluator.evaluate(issue, params.labelsAsLlmAgentName ?? [], {
+                    relatedOpenPrUrls: relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? [],
+                });
                 if (rejections.length > 0) {
                     await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
                     await this.issueCommentRepository.createComment(issue, `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`);
@@ -69,6 +72,34 @@ class RevertNotReadyReviewQueueIssueUseCase {
                     await this.issueCommentRepository.createComment(pullRequest, `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`);
                 }
             }
+        };
+        // Derives, for each issue, the set of open pull request URLs that reference it
+        // via a closing keyword. The linkage is taken from each open PR item's
+        // closingIssueReferenceUrls (populated in bulk by fetchProjectItems), the same
+        // in-memory derivation SetDependedIssueUrlForOpenTaskPRsUseCase uses. This
+        // replaces the per-issue findRelatedOpenPRs timeline query in the
+        // review-readiness sweep with a single in-memory pass over the bulk items.
+        this.buildRelatedOpenPrUrlsByIssueUrl = (issues) => {
+            const openPrUrlsByIssueUrl = new Map();
+            for (const issue of issues) {
+                if (!issue.isPr || issue.isClosed) {
+                    continue;
+                }
+                for (const referencedIssueUrl of issue.closingIssueReferenceUrls) {
+                    const existing = openPrUrlsByIssueUrl.get(referencedIssueUrl);
+                    if (existing) {
+                        existing.add(issue.url);
+                    }
+                    else {
+                        openPrUrlsByIssueUrl.set(referencedIssueUrl, new Set([issue.url]));
+                    }
+                }
+            }
+            const result = new Map();
+            for (const [issueUrl, prUrls] of openPrUrlsByIssueUrl) {
+                result.set(issueUrl, Array.from(prUrls));
+            }
+            return result;
         };
         this.issueRejectionEvaluator = new IssueRejectionEvaluator_1.IssueRejectionEvaluator(issueRepository);
         this.changeTargetPullRequestApprover = new ChangeTargetPullRequestApprover_1.ChangeTargetPullRequestApprover(issueRepository);

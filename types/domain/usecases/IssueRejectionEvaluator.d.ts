@@ -7,6 +7,9 @@ export type PrRejectionResult = {
     }[];
     approvedPrUrl: string | null;
 };
+export type EvaluateOptions = {
+    relatedOpenPrUrls?: string[] | null;
+};
 export declare class IssueRejectionEvaluator {
     private readonly issueRepository;
     constructor(issueRepository: Pick<IssueRepository, 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'getPullRequestChangedFilePaths' | 'requestChangesWithInlineComment'>);
@@ -14,8 +17,9 @@ export declare class IssueRejectionEvaluator {
         url: string;
         labels: string[];
         isPr: boolean;
-    }, labelsAsLlmAgentName?: string[]) => Promise<PrRejectionResult>;
+    }, labelsAsLlmAgentName?: string[], options?: EvaluateOptions) => Promise<PrRejectionResult>;
     private resolveOpenPrsForPrItem;
+    private resolveOpenPrsFromUrls;
     private extractChangeTargetMustPaths;
     private isFilePathUnderPath;
 }

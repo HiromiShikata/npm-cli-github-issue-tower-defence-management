@@ -1,3 +1,10 @@
+## [1.104.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.104.1...v1.104.2) (2026-06-26)
+
+
+### Performance Improvements
+
+* **schedule:** derive review-readiness related open PRs in memory ([#989](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/989)) ([63dba8b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/63dba8b2ddf0b813873337e0e4292e51493383fb)), closes [#988](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/988)
+
 ## [1.104.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.104.0...v1.104.1) (2026-06-26)
 
 
