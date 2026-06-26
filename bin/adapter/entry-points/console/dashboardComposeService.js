@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.composeDashboardText = exports.buildComposeDashboardInput = void 0;
+exports.composeDashboardText = exports.dashboardComposeFilesPresent = exports.buildComposeDashboardInput = void 0;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const ComposeDashboardUseCase_1 = require("../../../domain/usecases/dashboard/ComposeDashboardUseCase");
@@ -153,6 +153,26 @@ const buildComposeDashboardInput = (options) => {
     };
 };
 exports.buildComposeDashboardInput = buildComposeDashboardInput;
+const isExistingFile = (filePath) => {
+    try {
+        return fs.statSync(filePath).isFile();
+    }
+    catch {
+        return false;
+    }
+};
+const dashboardComposeFilesPresent = (options) => {
+    if (options.projectCodes.length === 0) {
+        return false;
+    }
+    const requiredFiles = [
+        path.join(options.dashboardDataDir, 'machine-status.json'),
+        path.join(options.dashboardDataDir, 'token-status.json'),
+        ...options.projectCodes.map((code) => path.join(options.dashboardDataDir, 'projects', `${code}.json`)),
+    ];
+    return requiredFiles.every((filePath) => isExistingFile(filePath));
+};
+exports.dashboardComposeFilesPresent = dashboardComposeFilesPresent;
 const composeDashboardText = (options) => new ComposeDashboardUseCase_1.ComposeDashboardUseCase().run((0, exports.buildComposeDashboardInput)(options));
 exports.composeDashboardText = composeDashboardText;
 //# sourceMappingURL=dashboardComposeService.js.map

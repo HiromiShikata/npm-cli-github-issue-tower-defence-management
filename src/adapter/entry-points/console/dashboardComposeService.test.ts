@@ -4,6 +4,7 @@ import * as path from 'path';
 import {
   buildComposeDashboardInput,
   composeDashboardText,
+  dashboardComposeFilesPresent,
 } from './dashboardComposeService';
 
 const makeDataDir = (): string =>
@@ -297,6 +298,144 @@ describe('composeDashboardText', () => {
           '<tt></tt><br>\n' +
           '<tt>🟢alice&nbsp;&nbsp;10%&nbsp;0d01h00&nbsp;&nbsp;12%&nbsp;5d00h00&nbsp;2&nbsp;1</tt><br>\n',
       );
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('dashboardComposeFilesPresent', () => {
+  const writeMachineAndToken = (dataDir: string): void => {
+    fs.writeFileSync(
+      path.join(dataDir, 'machine-status.json'),
+      JSON.stringify({
+        memPct: 1,
+        cpuPct: 2,
+        load: [0, 0, 0],
+        cycleMinutes: null,
+        capturedAt: 'x',
+      }),
+    );
+    fs.writeFileSync(
+      path.join(dataDir, 'token-status.json'),
+      JSON.stringify({ tokens: [], capturedAt: 'x' }),
+    );
+  };
+
+  const minimalProject = {
+    pjcode: 'um',
+    capturedAt: 'x',
+    unread: 0,
+    todo: 0,
+    qc: 0,
+    fail: 0,
+    pr: 0,
+    ws: 0,
+    dep: 0,
+    blocker: 0,
+  };
+
+  it('is true when machine, token, and every requested project file are present', () => {
+    const dataDir = makeDataDir();
+    try {
+      writeMachineAndToken(dataDir);
+      writeProject(dataDir, 'um', minimalProject);
+      writeProject(dataDir, 'xc', { ...minimalProject, pjcode: 'xc' });
+      expect(
+        dashboardComposeFilesPresent({
+          dashboardDataDir: dataDir,
+          projectCodes: ['um', 'xc'],
+        }),
+      ).toBe(true);
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  });
+
+  it('is false when no data files exist', () => {
+    const dataDir = makeDataDir();
+    try {
+      expect(
+        dashboardComposeFilesPresent({
+          dashboardDataDir: dataDir,
+          projectCodes: ['um'],
+        }),
+      ).toBe(false);
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  });
+
+  it('is false when a requested project file is missing', () => {
+    const dataDir = makeDataDir();
+    try {
+      writeMachineAndToken(dataDir);
+      writeProject(dataDir, 'um', minimalProject);
+      expect(
+        dashboardComposeFilesPresent({
+          dashboardDataDir: dataDir,
+          projectCodes: ['um', 'xc'],
+        }),
+      ).toBe(false);
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  });
+
+  it('is false when machine-status.json is missing', () => {
+    const dataDir = makeDataDir();
+    try {
+      fs.writeFileSync(
+        path.join(dataDir, 'token-status.json'),
+        JSON.stringify({ tokens: [], capturedAt: 'x' }),
+      );
+      writeProject(dataDir, 'um', minimalProject);
+      expect(
+        dashboardComposeFilesPresent({
+          dashboardDataDir: dataDir,
+          projectCodes: ['um'],
+        }),
+      ).toBe(false);
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  });
+
+  it('is false when token-status.json is missing', () => {
+    const dataDir = makeDataDir();
+    try {
+      fs.writeFileSync(
+        path.join(dataDir, 'machine-status.json'),
+        JSON.stringify({
+          memPct: 1,
+          cpuPct: 2,
+          load: [0, 0, 0],
+          cycleMinutes: null,
+          capturedAt: 'x',
+        }),
+      );
+      writeProject(dataDir, 'um', minimalProject);
+      expect(
+        dashboardComposeFilesPresent({
+          dashboardDataDir: dataDir,
+          projectCodes: ['um'],
+        }),
+      ).toBe(false);
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  });
+
+  it('is false when no project codes are requested', () => {
+    const dataDir = makeDataDir();
+    try {
+      writeMachineAndToken(dataDir);
+      expect(
+        dashboardComposeFilesPresent({
+          dashboardDataDir: dataDir,
+          projectCodes: [],
+        }),
+      ).toBe(false);
     } finally {
       fs.rmSync(dataDir, { recursive: true, force: true });
     }

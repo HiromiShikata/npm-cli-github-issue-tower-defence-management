@@ -12,6 +12,7 @@ import {
   isConsoleAppRoute,
   extractProvidedToken,
   resolveFlatInTmuxFilePath,
+  resolveDashboardFilePath,
   startWebServer,
 } from './webServer';
 import type { ImageFetcher } from './consoleImageProxy';
@@ -179,6 +180,7 @@ describe('webServer integration', () => {
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
+      dashboardDir: null,
       dashboardDataDir: null,
       dashboardProjectCodes: [],
       port: 0,
@@ -197,6 +199,7 @@ describe('webServer integration', () => {
       uiDistDir: path.join(tmpDir, 'missing-ui-dist'),
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
+      dashboardDir: null,
       dashboardDataDir: null,
       dashboardProjectCodes: [],
       port: 0,
@@ -224,6 +227,7 @@ describe('webServer integration', () => {
       uiDistDir: path.join(tmpDir, 'missing-ui-dist'),
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
+      dashboardDir: null,
       dashboardDataDir: null,
       dashboardProjectCodes: [],
       port: 0,
@@ -255,6 +259,7 @@ describe('webServer integration', () => {
       uiDistDir,
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
+      dashboardDir: null,
       dashboardDataDir: null,
       dashboardProjectCodes: [],
       port: 0,
@@ -288,6 +293,7 @@ describe('webServer integration', () => {
       uiDistDir,
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
+      dashboardDir: null,
       dashboardDataDir: null,
       dashboardProjectCodes: [],
       port: 0,
@@ -318,6 +324,7 @@ describe('webServer integration', () => {
       uiDistDir: path.join(tmpDir, 'missing-ui-dist'),
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
+      dashboardDir: null,
       dashboardDataDir: null,
       dashboardProjectCodes: [],
       port: 0,
@@ -342,6 +349,7 @@ describe('webServer integration', () => {
       uiDistDir,
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
+      dashboardDir: null,
       dashboardDataDir: null,
       dashboardProjectCodes: [],
       port: 0,
@@ -369,6 +377,7 @@ describe('webServer integration', () => {
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
+      dashboardDir: null,
       dashboardDataDir: null,
       dashboardProjectCodes: [],
       port: 0,
@@ -508,6 +517,7 @@ describe('webServer new routes integration', () => {
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: dataDir,
       inTmuxDataDir: null,
+      dashboardDir: null,
       dashboardDataDir: null,
       dashboardProjectCodes: [],
       port: 0,
@@ -546,6 +556,7 @@ describe('webServer new routes integration', () => {
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
+      dashboardDir: null,
       dashboardDataDir: null,
       dashboardProjectCodes: [],
       issueRepository,
@@ -581,6 +592,7 @@ describe('webServer new routes integration', () => {
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
+      dashboardDir: null,
       dashboardDataDir: null,
       dashboardProjectCodes: [],
       issueRepository,
@@ -631,6 +643,7 @@ describe('webServer new routes integration', () => {
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: dataDir,
       inTmuxDataDir: null,
+      dashboardDir: null,
       dashboardDataDir: null,
       dashboardProjectCodes: [],
       issueRepository,
@@ -678,6 +691,7 @@ describe('webServer new routes integration', () => {
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
+      dashboardDir: null,
       dashboardDataDir: null,
       dashboardProjectCodes: [],
       issueRepository,
@@ -715,6 +729,7 @@ describe('webServer new routes integration', () => {
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
+      dashboardDir: null,
       dashboardDataDir: null,
       dashboardProjectCodes: [],
       issueRepository,
@@ -767,6 +782,7 @@ describe('webServer new routes integration', () => {
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
+      dashboardDir: null,
       dashboardDataDir: null,
       dashboardProjectCodes: [],
       port: 0,
@@ -820,6 +836,23 @@ describe('resolveFlatInTmuxFilePath', () => {
     expect(
       resolveFlatInTmuxFilePath(baseDir, '/in-tmux-by-human/..%2fsecret.json'),
     ).toBeNull();
+  });
+});
+
+describe('resolveDashboardFilePath', () => {
+  const baseDir = path.join(os.tmpdir(), 'dashboard-static');
+
+  it('resolves /tdpm.txt under the dashboard dir', () => {
+    expect(resolveDashboardFilePath(baseDir, '/tdpm.txt')).toBe(
+      path.join(path.resolve(baseDir), 'tdpm.txt'),
+    );
+  });
+
+  it('returns null for any other path', () => {
+    expect(resolveDashboardFilePath(baseDir, '/tdpm.html')).toBeNull();
+    expect(resolveDashboardFilePath(baseDir, '/other.txt')).toBeNull();
+    expect(resolveDashboardFilePath(baseDir, '/')).toBeNull();
+    expect(resolveDashboardFilePath(baseDir, '/sub/tdpm.txt')).toBeNull();
   });
 });
 
@@ -897,6 +930,7 @@ describe('webServer flat in-tmux-by-human route integration', () => {
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
       inTmuxDataDir,
+      dashboardDir: null,
       dashboardDataDir: null,
       dashboardProjectCodes: [],
       port: 0,
@@ -1012,6 +1046,7 @@ describe('webServer flat in-tmux-by-human route integration', () => {
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
+      dashboardDir: null,
       dashboardDataDir: null,
       dashboardProjectCodes: [],
       port: 0,
@@ -1101,6 +1136,21 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
       }),
     );
     fs.writeFileSync(
+      path.join(dataDir, 'projects', 'xc.json'),
+      JSON.stringify({
+        pjcode: 'xc',
+        capturedAt: '2026-06-26T00:00:00.000Z',
+        unread: 0,
+        todo: 0,
+        qc: 0,
+        fail: 0,
+        pr: 0,
+        ws: 2,
+        dep: 0,
+        blocker: 0,
+      }),
+    );
+    fs.writeFileSync(
       path.join(dataDir, 'machine-status.json'),
       JSON.stringify({
         memPct: 55,
@@ -1134,30 +1184,46 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
     '<tt>M55%&nbsp;C62%&nbsp;LA&nbsp;16&nbsp;23&nbsp;40&nbsp;cy14</tt><br>\n' +
     '<tt>pj&nbsp;&nbsp;&nbsp;unr&nbsp;tdo&nbsp;aqc&nbsp;fal&nbsp;prp&nbsp;aws&nbsp;dep</tt><br>\n' +
     '<tt>🟢um&nbsp;&nbsp;&nbsp;3&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;4&nbsp;&nbsp;&nbsp;1</tt><br>\n' +
-    '<tt>&nbsp;&nbsp;xc&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--</tt><br>\n' +
+    '<tt>🟢xc&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;0</tt><br>\n' +
     '<tt></tt><br>\n' +
     '<tt>🟢alice&nbsp;&nbsp;10%&nbsp;0d01h00&nbsp;&nbsp;12%&nbsp;5d00h00&nbsp;2&nbsp;1</tt><br>\n';
 
-  const startWithDataDir = async (
-    dashboardDataDir: string | null,
-  ): Promise<{ server: http.Server; tmpDir: string }> => {
+  const staticDashboardRaw =
+    '<tt>STATIC&nbsp;DASHBOARD</tt><br>\n<tt>pj&nbsp;unr&nbsp;tdo</tt><br>\n';
+
+  const writeStaticDashboard = (staticDir: string): void => {
+    fs.writeFileSync(path.join(staticDir, 'tdpm.txt'), staticDashboardRaw);
+  };
+
+  const startServer = async (overrides: {
+    dashboardDir: string | null;
+    dashboardDataDir: string | null;
+  }): Promise<{ server: http.Server; tmpDir: string }> => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
     const server = await startWebServer({
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
-      dashboardDataDir,
+      dashboardDir: overrides.dashboardDir,
+      dashboardDataDir: overrides.dashboardDataDir,
       dashboardProjectCodes: ['um', 'xc'],
       port: 0,
     });
     return { server, tmpDir };
   };
 
-  it('composes /tdpm.txt from the data files without a token, as text/html with an explicit Content-Length and no chunked encoding', async () => {
+  it('composes /tdpm.txt from the data files when dashboardDataDir is set and every file is present', async () => {
     const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dashboard-data-'));
+    const staticDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'dashboard-static-'),
+    );
     writeDataFiles(dataDir);
-    const { server, tmpDir } = await startWithDataDir(dataDir);
+    writeStaticDashboard(staticDir);
+    const { server, tmpDir } = await startServer({
+      dashboardDir: staticDir,
+      dashboardDataDir: dataDir,
+    });
     try {
       const response = await requestServer(server, '/tdpm.txt');
       expect(response.statusCode).toBe(200);
@@ -1172,31 +1238,112 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
       fs.rmSync(dataDir, { recursive: true, force: true });
+      fs.rmSync(staticDir, { recursive: true, force: true });
     }
   });
 
-  it('renders placeholder rows and host fallbacks when every data file is absent', async () => {
-    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dashboard-data-'));
-    const { server, tmpDir } = await startWithDataDir(dataDir);
+  it('serves the static tdpm.txt unchanged when dashboardDataDir is unset', async () => {
+    const staticDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'dashboard-static-'),
+    );
+    writeStaticDashboard(staticDir);
+    const { server, tmpDir } = await startServer({
+      dashboardDir: staticDir,
+      dashboardDataDir: null,
+    });
     try {
       const response = await requestServer(server, '/tdpm.txt');
       expect(response.statusCode).toBe(200);
-      expect(response.body).toBe(
-        '<tt>M?%&nbsp;C?%&nbsp;LA&nbsp;?&nbsp;?&nbsp;?&nbsp;cy-</tt><br>\n' +
-          '<tt>pj&nbsp;&nbsp;&nbsp;unr&nbsp;tdo&nbsp;aqc&nbsp;fal&nbsp;prp&nbsp;aws&nbsp;dep</tt><br>\n' +
-          '<tt>&nbsp;&nbsp;um&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--</tt><br>\n' +
-          '<tt>&nbsp;&nbsp;xc&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--</tt><br>\n' +
-          '<tt></tt><br>\n',
+      expect(response.body).toBe(staticDashboardRaw);
+      expect(response.contentType).toBe('text/html; charset=utf-8');
+      expect(response.contentLength).toBe(
+        String(Buffer.byteLength(staticDashboardRaw)),
       );
+      expect(response.cacheControl).toBe('no-store');
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+      fs.rmSync(staticDir, { recursive: true, force: true });
+    }
+  });
+
+  it('falls back to the static tdpm.txt when dashboardDataDir is set but the data files are absent', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dashboard-data-'));
+    const staticDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'dashboard-static-'),
+    );
+    writeStaticDashboard(staticDir);
+    const { server, tmpDir } = await startServer({
+      dashboardDir: staticDir,
+      dashboardDataDir: dataDir,
+    });
+    try {
+      const response = await requestServer(server, '/tdpm.txt');
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toBe(staticDashboardRaw);
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
       fs.rmSync(dataDir, { recursive: true, force: true });
+      fs.rmSync(staticDir, { recursive: true, force: true });
     }
   });
 
-  it('returns 404 for /tdpm.txt when dashboardDataDir is null', async () => {
-    const { server, tmpDir } = await startWithDataDir(null);
+  it('falls back to the static tdpm.txt when only some data files are present', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dashboard-data-'));
+    const staticDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'dashboard-static-'),
+    );
+    fs.writeFileSync(
+      path.join(dataDir, 'machine-status.json'),
+      JSON.stringify({
+        memPct: 55,
+        cpuPct: 62,
+        load: [16, 23, 40],
+        cycleMinutes: 14,
+        capturedAt: '2026-06-26T00:00:00.000Z',
+      }),
+    );
+    writeStaticDashboard(staticDir);
+    const { server, tmpDir } = await startServer({
+      dashboardDir: staticDir,
+      dashboardDataDir: dataDir,
+    });
+    try {
+      const response = await requestServer(server, '/tdpm.txt');
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toBe(staticDashboardRaw);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+      fs.rmSync(dataDir, { recursive: true, force: true });
+      fs.rmSync(staticDir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns 404 for /tdpm.txt when the static file is absent and compose mode is inactive', async () => {
+    const staticDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'dashboard-static-'),
+    );
+    const { server, tmpDir } = await startServer({
+      dashboardDir: staticDir,
+      dashboardDataDir: null,
+    });
+    try {
+      const response = await requestServer(server, '/tdpm.txt');
+      expect(response.statusCode).toBe(404);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+      fs.rmSync(staticDir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns 404 for /tdpm.txt when both dashboardDir and dashboardDataDir are null', async () => {
+    const { server, tmpDir } = await startServer({
+      dashboardDir: null,
+      dashboardDataDir: null,
+    });
     try {
       const response = await requestServer(server, '/tdpm.txt');
       expect(response.statusCode).toBe(404);
@@ -1208,8 +1355,15 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
 
   it('rejects a non-GET method on /tdpm.txt with 404', async () => {
     const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dashboard-data-'));
+    const staticDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'dashboard-static-'),
+    );
     writeDataFiles(dataDir);
-    const { server, tmpDir } = await startWithDataDir(dataDir);
+    writeStaticDashboard(staticDir);
+    const { server, tmpDir } = await startServer({
+      dashboardDir: staticDir,
+      dashboardDataDir: dataDir,
+    });
     try {
       const response = await requestServer(server, '/tdpm.txt', 'POST');
       expect(response.statusCode).toBe(404);
@@ -1217,6 +1371,7 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
       fs.rmSync(dataDir, { recursive: true, force: true });
+      fs.rmSync(staticDir, { recursive: true, force: true });
     }
   });
 });
@@ -1293,6 +1448,7 @@ describe('webServer image proxy', () => {
         uiDistDir: path.join(tmpDir, 'ui-dist'),
         consoleDataOutputDir: null,
         inTmuxDataDir: null,
+        dashboardDir: null,
         dashboardDataDir: null,
         dashboardProjectCodes: [],
         githubToken: token,

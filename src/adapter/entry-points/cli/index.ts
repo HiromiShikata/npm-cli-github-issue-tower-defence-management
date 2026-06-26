@@ -79,12 +79,15 @@ type ServeWebOptions = {
   port?: string;
   consoleDataOutputDir?: string;
   inTmuxDataDir?: string;
+  dashboardDir?: string;
   dashboardDataDir?: string;
   dashboardProjectCodes?: string;
 };
 
 const DEFAULT_IN_TMUX_DATA_DIR =
   '/home/hiromi/0_workspaces/workspace1/jsonpub/in-tmux-by-human';
+
+const DEFAULT_DASHBOARD_DIR = '/home/hiromi/0_workspaces/workspace1/jsonpub';
 
 const DEFAULT_DASHBOARD_DATA_DIR: string | null = null;
 
@@ -710,6 +713,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
   const uiDistDir = path.join(__dirname, '..', 'console', 'ui-dist');
   const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
   const inTmuxDataDir = options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR;
+  const dashboardDir = options.dashboardDir ?? DEFAULT_DASHBOARD_DIR;
   const dashboardDataDir =
     options.dashboardDataDir ?? DEFAULT_DASHBOARD_DATA_DIR;
   const dashboardProjectCodes = parseDashboardProjectCodes(
@@ -721,6 +725,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     uiDistDir,
     consoleDataOutputDir,
     inTmuxDataDir,
+    dashboardDir,
     dashboardDataDir,
     dashboardProjectCodes,
     githubToken: token,
@@ -751,8 +756,12 @@ const addServeWebOptions = (command: Command): Command =>
       `Directory containing the flat in-tmux-by-human static JSON files served at /in-tmux-by-human/*.json (default: ${DEFAULT_IN_TMUX_DATA_DIR})`,
     )
     .option(
+      '--dashboardDir <path>',
+      `Directory containing the static dashboard HTML fragment tdpm.txt served at /tdpm.txt when compose mode is not active (default: ${DEFAULT_DASHBOARD_DIR})`,
+    )
+    .option(
       '--dashboardDataDir <path>',
-      'Directory containing the dashboard data files (projects/<pjcode>.json, machine-status.json, token-status.json) the server composes the /tdpm.txt fragment from at request time; defaults to the same location the scheduled run emits them to (unset when not configured)',
+      'Directory containing the dashboard data files (projects/<pjcode>.json, machine-status.json, token-status.json); when set and every required file is present the server composes the /tdpm.txt fragment from them at request time, otherwise it falls back to serving the static tdpm.txt from --dashboardDir (unset when not configured)',
     )
     .option(
       '--dashboardProjectCodes <codes>',

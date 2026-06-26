@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.startWebServer = exports.createWebServer = exports.handleWebRequest = exports.resolveFlatInTmuxFilePath = exports.IMAGE_PROXY_REQUEST_PATH = exports.DASHBOARD_REQUEST_PATH = exports.extractProvidedToken = exports.isTokenValid = exports.isConsoleAppRoute = exports.requiresToken = exports.hasDotSegment = exports.CONSOLE_TOKEN_HEADER = exports.DEFAULT_DASHBOARD_PROJECT_CODES = exports.DEFAULT_WEB_PORT = void 0;
+exports.startWebServer = exports.createWebServer = exports.handleWebRequest = exports.resolveDashboardContent = exports.resolveFlatInTmuxFilePath = exports.resolveDashboardFilePath = exports.IMAGE_PROXY_REQUEST_PATH = exports.DASHBOARD_REQUEST_PATH = exports.extractProvidedToken = exports.isTokenValid = exports.isConsoleAppRoute = exports.requiresToken = exports.hasDotSegment = exports.CONSOLE_TOKEN_HEADER = exports.DEFAULT_DASHBOARD_PROJECT_CODES = exports.DEFAULT_WEB_PORT = void 0;
 const http = __importStar(require("http"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
@@ -152,6 +152,20 @@ const FLAT_IN_TMUX_PREFIX = '/in-tmux-by-human/';
 const FLAT_IN_TMUX_FILE = /^[A-Za-z0-9._-]+\.json$/;
 exports.DASHBOARD_REQUEST_PATH = '/tdpm.txt';
 exports.IMAGE_PROXY_REQUEST_PATH = '/api/img';
+const DASHBOARD_FILE_NAME = 'tdpm.txt';
+const resolveDashboardFilePath = (dashboardDir, requestPath) => {
+    if (requestPath !== exports.DASHBOARD_REQUEST_PATH) {
+        return null;
+    }
+    const candidate = path.join(dashboardDir, DASHBOARD_FILE_NAME);
+    const resolvedRoot = path.resolve(dashboardDir);
+    const resolvedCandidate = path.resolve(candidate);
+    if (resolvedCandidate !== path.join(resolvedRoot, DASHBOARD_FILE_NAME)) {
+        return null;
+    }
+    return resolvedCandidate;
+};
+exports.resolveDashboardFilePath = resolveDashboardFilePath;
 const resolveFlatInTmuxFilePath = (inTmuxDataDir, requestPath) => {
     if (!requestPath.startsWith(FLAT_IN_TMUX_PREFIX)) {
         return null;
@@ -400,6 +414,31 @@ const handleTokenedRequest = async (options, request, response, requestPath, sea
     }
     sendNotFound(response);
 };
+const readStaticDashboardContent = (dashboardDir, requestPath) => {
+    if (dashboardDir === null) {
+        return null;
+    }
+    const dashboardFilePath = (0, exports.resolveDashboardFilePath)(dashboardDir, requestPath);
+    if (dashboardFilePath === null) {
+        return null;
+    }
+    return readStaticFile(dashboardFilePath);
+};
+const resolveDashboardContent = (options, requestPath) => {
+    if (options.dashboardDataDir !== null &&
+        (0, dashboardComposeService_1.dashboardComposeFilesPresent)({
+            dashboardDataDir: options.dashboardDataDir,
+            projectCodes: options.dashboardProjectCodes,
+        })) {
+        const dashboardText = (0, dashboardComposeService_1.composeDashboardText)({
+            dashboardDataDir: options.dashboardDataDir,
+            projectCodes: options.dashboardProjectCodes,
+        });
+        return Buffer.from(dashboardText, 'utf-8');
+    }
+    return readStaticDashboardContent(options.dashboardDir, requestPath);
+};
+exports.resolveDashboardContent = resolveDashboardContent;
 const handleWebRequest = async (options, request, response) => {
     const requestUrl = new URL(request.url ?? '/', 'http://localhost');
     const requestPath = requestUrl.pathname;
@@ -413,15 +452,11 @@ const handleWebRequest = async (options, request, response) => {
             sendNotFound(response);
             return;
         }
-        if (options.dashboardDataDir === null) {
+        const dashboardContent = (0, exports.resolveDashboardContent)(options, requestPath);
+        if (dashboardContent === null) {
             sendNotFound(response);
             return;
         }
-        const dashboardText = (0, dashboardComposeService_1.composeDashboardText)({
-            dashboardDataDir: options.dashboardDataDir,
-            projectCodes: options.dashboardProjectCodes,
-        });
-        const dashboardContent = Buffer.from(dashboardText, 'utf-8');
         response.writeHead(200, {
             'Content-Type': 'text/html; charset=utf-8',
             'Cache-Control': 'no-store',

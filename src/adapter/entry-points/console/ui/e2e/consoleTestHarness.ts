@@ -370,6 +370,7 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
     resolveProject,
     issueTitleStateCache: new IssueTitleStateCache(),
     inTmuxDataDir: null,
+    dashboardDir: null,
     dashboardDataDir: null,
     dashboardProjectCodes: [],
     port: 0,

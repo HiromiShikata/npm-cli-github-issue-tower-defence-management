@@ -170,6 +170,30 @@ export const buildComposeDashboardInput = (
   };
 };
 
+const isExistingFile = (filePath: string): boolean => {
+  try {
+    return fs.statSync(filePath).isFile();
+  } catch {
+    return false;
+  }
+};
+
+export const dashboardComposeFilesPresent = (
+  options: DashboardComposeOptions,
+): boolean => {
+  if (options.projectCodes.length === 0) {
+    return false;
+  }
+  const requiredFiles = [
+    path.join(options.dashboardDataDir, 'machine-status.json'),
+    path.join(options.dashboardDataDir, 'token-status.json'),
+    ...options.projectCodes.map((code) =>
+      path.join(options.dashboardDataDir, 'projects', `${code}.json`),
+    ),
+  ];
+  return requiredFiles.every((filePath) => isExistingFile(filePath));
+};
+
 export const composeDashboardText = (
   options: DashboardComposeOptions,
 ): string =>
