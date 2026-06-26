@@ -1,3 +1,10 @@
+# [1.103.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.102.0...v1.103.0) (2026-06-26)
+
+
+### Features
+
+* **console:** add line-anchored inline review comments on PR diff ([#978](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/978)) ([a596cf4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a596cf4f1dc0482595dd201c24f5f495e9823ab7)), closes [#977](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/977)
+
 # [1.102.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.101.8...v1.102.0) (2026-06-26)
 
 
