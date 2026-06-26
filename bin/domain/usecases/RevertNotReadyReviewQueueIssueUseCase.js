@@ -4,12 +4,23 @@ exports.RevertNotReadyReviewQueueIssueUseCase = void 0;
 const IssueRejectionEvaluator_1 = require("./IssueRejectionEvaluator");
 const ChangeTargetPullRequestApprover_1 = require("./ChangeTargetPullRequestApprover");
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
+const DEPENDENCY_UPDATE_BOT_AUTHORS = ['dependabot[bot]', 'renovate[bot]'];
+const isAuthorAuthorizedForAutoStatusCheck = (author, allowedIssueAuthors) => {
+    if (DEPENDENCY_UPDATE_BOT_AUTHORS.includes(author)) {
+        return true;
+    }
+    if (allowedIssueAuthors === null) {
+        return true;
+    }
+    return allowedIssueAuthors.includes(author);
+};
 class RevertNotReadyReviewQueueIssueUseCase {
     constructor(projectRepository, issueRepository, issueCommentRepository) {
         this.projectRepository = projectRepository;
         this.issueRepository = issueRepository;
         this.issueCommentRepository = issueCommentRepository;
         this.run = async (params) => {
+            const allowedIssueAuthors = params.allowedIssueAuthors ?? null;
             const projectId = await this.projectRepository.findProjectIdByUrl(params.projectUrl);
             if (!projectId) {
                 throw new Error(`Project not found. projectUrl: ${params.projectUrl}`);
@@ -29,6 +40,9 @@ class RevertNotReadyReviewQueueIssueUseCase {
                 if (hasLlmAgentLabel) {
                     continue;
                 }
+                if (!isAuthorAuthorizedForAutoStatusCheck(issue.author, allowedIssueAuthors)) {
+                    continue;
+                }
                 const { rejections, approvedPrUrl } = await this.issueRejectionEvaluator.evaluate(issue, params.labelsAsLlmAgentName ?? []);
                 if (rejections.length > 0) {
                     await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
@@ -42,6 +56,9 @@ class RevertNotReadyReviewQueueIssueUseCase {
             for (const pullRequest of unreadPullRequests) {
                 const hasLlmAgentLabel = pullRequest.labels.some((l) => l === 'llm-agent' || l.startsWith('llm-agent:'));
                 if (hasLlmAgentLabel) {
+                    continue;
+                }
+                if (!isAuthorAuthorizedForAutoStatusCheck(pullRequest.author, allowedIssueAuthors)) {
                     continue;
                 }
                 const { rejections } = await this.issueRejectionEvaluator.evaluate(pullRequest, params.labelsAsLlmAgentName ?? []);

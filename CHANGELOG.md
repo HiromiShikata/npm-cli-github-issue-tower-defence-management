@@ -1,3 +1,10 @@
+## [1.101.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.101.5...v1.101.6) (2026-06-26)
+
+
+### Bug Fixes
+
+* guard auto status-check automation by author and ownership ([#965](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/965)) ([ffc81c0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ffc81c0fea001f2ef286e0a57a08b9f53093fc2f)), closes [#962](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/962)
+
 ## [1.101.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.101.4...v1.101.5) (2026-06-25)
 
 
