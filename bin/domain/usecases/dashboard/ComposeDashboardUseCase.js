@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ComposeDashboardUseCase = exports.formatTokenRowLine = exports.formatProjectRowLine = exports.formatProjectHeaderLine = exports.formatMachineStatusLine = exports.formatResetCountdown = exports.roundHalfToEven = exports.PROJECT_ROW_WIDTH_BUDGET = void 0;
+exports.ComposeDashboardUseCase = exports.formatTokenRowLine = exports.formatProjectRowLine = exports.formatProjectHeaderLine = exports.formatMachineStatusLines = exports.formatResetCountdown = exports.roundHalfToEven = exports.PROJECT_ROW_WIDTH_BUDGET = void 0;
 exports.PROJECT_ROW_WIDTH_BUDGET = 32;
 const PROJECT_COLUMNS = [
     { header: 'unr', key: 'unread' },
@@ -63,12 +63,15 @@ const formatResetCountdown = (totalSeconds) => {
     return `${days}d${padStartZero(String(hours), 2)}h${padStartZero(String(minutes), 2)}`;
 };
 exports.formatResetCountdown = formatResetCountdown;
-const formatMachineStatusLine = (machineStatus) => {
+const formatMachineStatusLines = (machineStatus) => {
     const memText = machineStatus !== null && machineStatus.memPct !== null
         ? `${machineStatus.memPct}%`
         : '?%';
     const cpuText = machineStatus !== null && machineStatus.cpuPct !== null
         ? `${machineStatus.cpuPct}%`
+        : '?%';
+    const diskText = machineStatus !== null && machineStatus.diskPct !== null
+        ? `${machineStatus.diskPct}%`
         : '?%';
     const load = machineStatus !== null ? machineStatus.load : null;
     const oneMinute = load === null ? '?' : String((0, exports.roundHalfToEven)(load[0]));
@@ -77,9 +80,12 @@ const formatMachineStatusLine = (machineStatus) => {
     const cycle = machineStatus !== null && machineStatus.cycleMinutes !== null
         ? `cy${machineStatus.cycleMinutes}`
         : 'cy-';
-    return `M${memText} C${cpuText} LA ${oneMinute} ${fiveMinute} ${fifteenMinute} ${cycle}`;
+    return [
+        `M${memText} C${cpuText} D${diskText} ${cycle}`,
+        `LA ${oneMinute} ${fiveMinute} ${fifteenMinute}`,
+    ];
 };
-exports.formatMachineStatusLine = formatMachineStatusLine;
+exports.formatMachineStatusLines = formatMachineStatusLines;
 const capThreeDigits = (value) => value > 999 ? '999' : String(value);
 const formatProjectHeaderLine = () => {
     const head = padEnd('pj', 4, ' ');
@@ -146,13 +152,13 @@ const wrapLine = (line) => `<tt>${line.replace(/ /g, '&nbsp;')}</tt><br>`;
 class ComposeDashboardUseCase {
     constructor() {
         this.run = (input) => {
-            const statsLine = (0, exports.formatMachineStatusLine)(input.machineStatus);
+            const statsLines = (0, exports.formatMachineStatusLines)(input.machineStatus);
             const projectLines = [
                 (0, exports.formatProjectHeaderLine)(),
                 ...input.projects.map((project) => (0, exports.formatProjectRowLine)(project)),
             ];
             const tokenLines = sortTokens(input.tokens).map((token) => (0, exports.formatTokenRowLine)(token));
-            const lines = [statsLine, ...projectLines, '', ...tokenLines];
+            const lines = [...statsLines, ...projectLines, '', ...tokenLines];
             return lines.map((line) => wrapLine(line)).join('\n') + '\n';
         };
     }

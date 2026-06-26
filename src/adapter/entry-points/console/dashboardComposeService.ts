@@ -100,6 +100,7 @@ const readMachineStatus = (
   return {
     memPct: asFiniteNumber(value.memPct),
     cpuPct: asFiniteNumber(value.cpuPct),
+    diskPct: asFiniteNumber(value.diskPct),
     load: parseLoad(value.load),
     cycleMinutes,
   };

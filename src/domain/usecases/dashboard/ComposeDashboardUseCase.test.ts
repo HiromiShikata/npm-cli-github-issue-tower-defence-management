@@ -2,7 +2,7 @@ import {
   ComposeDashboardInput,
   ComposeDashboardUseCase,
   PROJECT_ROW_WIDTH_BUDGET,
-  formatMachineStatusLine,
+  formatMachineStatusLines,
   formatProjectHeaderLine,
   formatProjectRowLine,
   formatResetCountdown,
@@ -64,53 +64,76 @@ describe('formatResetCountdown', () => {
   });
 });
 
-describe('formatMachineStatusLine', () => {
-  it('renders the host-metrics line from a machine status', () => {
+describe('formatMachineStatusLines', () => {
+  it('renders the host metrics as two lines from a machine status', () => {
     expect(
-      formatMachineStatusLine({
+      formatMachineStatusLines({
         memPct: 55,
         cpuPct: 62,
+        diskPct: 93,
         load: [16, 23, 40],
-        cycleMinutes: 14,
+        cycleMinutes: 13,
       }),
-    ).toBe('M55% C62% LA 16 23 40 cy14');
+    ).toEqual(['M55% C62% D93% cy13', 'LA 16 23 40']);
   });
 
   it('rounds loads with half-to-even and renders integers', () => {
     expect(
-      formatMachineStatusLine({
+      formatMachineStatusLines({
         memPct: 62,
         cpuPct: 31,
+        diskPct: 7,
         load: [1.2, 0.98, 0.75],
         cycleMinutes: 14,
       }),
-    ).toBe('M62% C31% LA 1 1 1 cy14');
+    ).toEqual(['M62% C31% D7% cy14', 'LA 1 1 1']);
   });
 
   it('falls back to placeholders when the machine status is absent', () => {
-    expect(formatMachineStatusLine(null)).toBe('M?% C?% LA ? ? ? cy-');
+    expect(formatMachineStatusLines(null)).toEqual([
+      'M?% C?% D?% cy-',
+      'LA ? ? ?',
+    ]);
   });
 
   it('renders cy- when cycle minutes is null', () => {
     expect(
-      formatMachineStatusLine({
+      formatMachineStatusLines({
         memPct: 1,
         cpuPct: 2,
+        diskPct: 3,
         load: [0, 0, 0],
         cycleMinutes: null,
       }),
-    ).toBe('M1% C2% LA 0 0 0 cy-');
+    ).toEqual(['M1% C2% D3% cy-', 'LA 0 0 0']);
   });
 
-  it('stays within the 32 character width budget at worst case', () => {
-    const line = formatMachineStatusLine({
+  it('renders D?% when only the disk percent is unavailable', () => {
+    expect(
+      formatMachineStatusLines({
+        memPct: 55,
+        cpuPct: 62,
+        diskPct: null,
+        load: [16, 23, 40],
+        cycleMinutes: 13,
+      }),
+    ).toEqual(['M55% C62% D?% cy13', 'LA 16 23 40']);
+  });
+
+  it('keeps both lines within the 32 character width budget at worst case', () => {
+    const lines = formatMachineStatusLines({
       memPct: 100,
       cpuPct: 100,
+      diskPct: 100,
       load: [108.5, 120.25, 95.1],
       cycleMinutes: 999,
     });
-    expect(line).toBe('M100% C100% LA 108 120 95 cy999');
-    expect(codePointLength(line)).toBeLessThanOrEqual(PROJECT_ROW_WIDTH_BUDGET);
+    expect(lines).toEqual(['M100% C100% D100% cy999', 'LA 108 120 95']);
+    for (const line of lines) {
+      expect(codePointLength(line)).toBeLessThanOrEqual(
+        PROJECT_ROW_WIDTH_BUDGET,
+      );
+    }
   });
 });
 
@@ -260,6 +283,7 @@ describe('ComposeDashboardUseCase', () => {
     machineStatus: {
       memPct: 55,
       cpuPct: 62,
+      diskPct: 89,
       load: [16, 23, 40],
       cycleMinutes: 14,
     },
@@ -310,7 +334,8 @@ describe('ComposeDashboardUseCase', () => {
   };
 
   const expectedBody =
-    '<tt>M55%&nbsp;C62%&nbsp;LA&nbsp;16&nbsp;23&nbsp;40&nbsp;cy14</tt><br>\n' +
+    '<tt>M55%&nbsp;C62%&nbsp;D89%&nbsp;cy14</tt><br>\n' +
+    '<tt>LA&nbsp;16&nbsp;23&nbsp;40</tt><br>\n' +
     '<tt>pj&nbsp;&nbsp;&nbsp;unr&nbsp;tdo&nbsp;aqc&nbsp;fal&nbsp;prp&nbsp;aws&nbsp;dep</tt><br>\n' +
     '<tt>🟢um&nbsp;&nbsp;&nbsp;3&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;4&nbsp;&nbsp;&nbsp;1</tt><br>\n' +
     '<tt>🟠xm&nbsp;&nbsp;12&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;16&nbsp;&nbsp;&nbsp;6&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0</tt><br>\n' +
@@ -357,7 +382,8 @@ describe('ComposeDashboardUseCase', () => {
     });
     expect(
       output.startsWith(
-        '<tt>M?%&nbsp;C?%&nbsp;LA&nbsp;?&nbsp;?&nbsp;?&nbsp;cy-</tt><br>\n',
+        '<tt>M?%&nbsp;C?%&nbsp;D?%&nbsp;cy-</tt><br>\n' +
+          '<tt>LA&nbsp;?&nbsp;?&nbsp;?</tt><br>\n',
       ),
     ).toBe(true);
   });
@@ -367,6 +393,7 @@ describe('ComposeDashboardUseCase', () => {
       machineStatus: {
         memPct: 100,
         cpuPct: 100,
+        diskPct: 100,
         load: [108.5, 120.25, 95.1],
         cycleMinutes: 999,
       },

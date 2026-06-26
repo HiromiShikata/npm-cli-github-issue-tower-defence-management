@@ -96,6 +96,7 @@ describe('buildComposeDashboardInput', () => {
         JSON.stringify({
           memPct: 55,
           cpuPct: 62,
+          diskPct: 89,
           load: [16, 23, 40],
           cycleMinutes: 14,
           capturedAt: 'x',
@@ -108,6 +109,7 @@ describe('buildComposeDashboardInput', () => {
       expect(input.machineStatus).toEqual({
         memPct: 55,
         cpuPct: 62,
+        diskPct: 89,
         load: [16, 23, 40],
         cycleMinutes: 14,
       });
@@ -124,6 +126,7 @@ describe('buildComposeDashboardInput', () => {
         JSON.stringify({
           memPct: 1,
           cpuPct: 2,
+          diskPct: 3,
           load: [0, 0, 0],
           cycleMinutes: null,
           capturedAt: 'x',
@@ -262,6 +265,7 @@ describe('composeDashboardText', () => {
         JSON.stringify({
           memPct: 55,
           cpuPct: 62,
+          diskPct: 89,
           load: [16, 23, 40],
           cycleMinutes: 14,
           capturedAt: 'x',
@@ -291,7 +295,8 @@ describe('composeDashboardText', () => {
           projectCodes: ['um', 'xc'],
         }),
       ).toBe(
-        '<tt>M55%&nbsp;C62%&nbsp;LA&nbsp;16&nbsp;23&nbsp;40&nbsp;cy14</tt><br>\n' +
+        '<tt>M55%&nbsp;C62%&nbsp;D89%&nbsp;cy14</tt><br>\n' +
+          '<tt>LA&nbsp;16&nbsp;23&nbsp;40</tt><br>\n' +
           '<tt>pj&nbsp;&nbsp;&nbsp;unr&nbsp;tdo&nbsp;aqc&nbsp;fal&nbsp;prp&nbsp;aws&nbsp;dep</tt><br>\n' +
           '<tt>🟢um&nbsp;&nbsp;&nbsp;3&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;4&nbsp;&nbsp;&nbsp;1</tt><br>\n' +
           '<tt>&nbsp;&nbsp;xc&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--</tt><br>\n' +
@@ -311,6 +316,7 @@ describe('dashboardComposeFilesPresent', () => {
       JSON.stringify({
         memPct: 1,
         cpuPct: 2,
+        diskPct: 3,
         load: [0, 0, 0],
         cycleMinutes: null,
         capturedAt: 'x',
@@ -409,6 +415,7 @@ describe('dashboardComposeFilesPresent', () => {
         JSON.stringify({
           memPct: 1,
           cpuPct: 2,
+          diskPct: 3,
           load: [0, 0, 0],
           cycleMinutes: null,
           capturedAt: 'x',

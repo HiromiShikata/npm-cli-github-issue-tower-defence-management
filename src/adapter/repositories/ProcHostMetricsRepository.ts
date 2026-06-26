@@ -13,7 +13,14 @@ export type LoadAverages = {
 };
 
 const DEFAULT_PROC_DIRECTORY = '/proc';
+const DEFAULT_ROOT_PATH = '/';
 const CPU_SAMPLE_INTERVAL_MS = 400;
+
+export type DiskBlocks = {
+  blocks: number;
+  bfree: number;
+  bavail: number;
+};
 
 export const parseMemoryUsedPercent = (meminfoText: string): number => {
   const fields = new Map<string, number>();
@@ -76,6 +83,19 @@ export const cpuUsedPercentFromSamples = (
   return Math.round((busyDelta / totalDelta) * 100);
 };
 
+export const parseDiskUsedPercent = (
+  blocks: number,
+  bfree: number,
+  bavail: number,
+): number => {
+  const total = blocks - bfree + bavail;
+  if (total <= 0) {
+    throw new Error('disk total must be positive');
+  }
+  const used = blocks - bfree;
+  return Math.round((used / total) * 100);
+};
+
 export const parseLoadAverages = (loadavgText: string): LoadAverages => {
   const parts = loadavgText.trim().split(/\s+/);
   const oneMinute = Number(parts[0]);
@@ -111,6 +131,17 @@ export class ProcHostMetricsRepository {
       new Promise((resolve) => {
         setTimeout(resolve, milliseconds);
       }),
+    private readonly readDiskBlocks: (rootPath: string) => DiskBlocks = (
+      rootPath,
+    ) => {
+      const stats = fs.statfsSync(rootPath);
+      return {
+        blocks: Number(stats.blocks),
+        bfree: Number(stats.bfree),
+        bavail: Number(stats.bavail),
+      };
+    },
+    private readonly rootPath: string = DEFAULT_ROOT_PATH,
   ) {}
 
   readMemoryUsedPercent = (): number =>
@@ -133,4 +164,9 @@ export class ProcHostMetricsRepository {
     parseLoadAverages(
       fs.readFileSync(path.join(this.procDirectory, 'loadavg'), 'utf8'),
     );
+
+  readDiskUsedPercent = (): number => {
+    const { blocks, bfree, bavail } = this.readDiskBlocks(this.rootPath);
+    return parseDiskUsedPercent(blocks, bfree, bavail);
+  };
 }

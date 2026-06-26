@@ -15,6 +15,7 @@ export type MachineStatusWriterParams = {
 export type MachineStatusFile = {
   memPct: number;
   cpuPct: number;
+  diskPct: number;
   load: [number, number, number];
   cycleMinutes: number | null;
   capturedAt: string;
@@ -61,6 +62,7 @@ export const writeMachineStatus = async (
 
   const memPct = hostMetricsRepository.readMemoryUsedPercent();
   const cpuPct = await hostMetricsRepository.readCpuUsedPercent();
+  const diskPct = hostMetricsRepository.readDiskUsedPercent();
   const load = hostMetricsRepository.readLoadAverages();
 
   const cycleMinutes = allIssuesCacheDir
@@ -70,6 +72,7 @@ export const writeMachineStatus = async (
   const file: MachineStatusFile = {
     memPct,
     cpuPct,
+    diskPct,
     load: [load.oneMinute, load.fiveMinute, load.fifteenMinute],
     cycleMinutes,
     capturedAt: (params.now ?? new Date()).toISOString(),
