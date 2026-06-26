@@ -72,6 +72,7 @@ const buildIssue = (overrides: Partial<Issue>): Issue => ({
   isClosed: false,
   createdAt: new Date('2024-01-01'),
   author: 'user',
+  closingIssueReferenceUrls: [],
   ...overrides,
 });
 

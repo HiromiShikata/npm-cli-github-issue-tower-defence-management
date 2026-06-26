@@ -25,6 +25,7 @@ const buildIssue = (url: string): Issue => ({
   isClosed: false,
   createdAt: new Date('2024-01-01T00:00:00Z'),
   author: 'testuser',
+  closingIssueReferenceUrls: [],
 });
 
 const TEST_URL = 'https://github.com/HiromiShikata/test-repo/issues/123';

@@ -36,6 +36,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             assignees: [],
             createdAt: '2024-01-01T00:00:00Z',
             author: 'test-author',
+            closingIssueReferenceUrls: [
+              'https://github.com/HiromiShikata/test-repository/issues/7',
+            ],
             customFields: [
               { name: 'nextActionDate', value: '2000-01-01' },
               { name: 'nextActionHour', value: '1' },
@@ -69,6 +72,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           isClosed: false,
           createdAt: new Date('2024-01-01T00:00:00Z'),
           author: 'test-author',
+          closingIssueReferenceUrls: [
+            'https://github.com/HiromiShikata/test-repository/issues/7',
+          ],
         },
       },
       {
@@ -86,6 +92,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             assignees: [],
             createdAt: '2024-01-01T00:00:00Z',
             author: '',
+            closingIssueReferenceUrls: [],
             customFields: [
               {
                 name: 'DependedIssueUrls',
@@ -122,6 +129,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           isClosed: false,
           createdAt: new Date('2024-01-01T00:00:00Z'),
           author: '',
+          closingIssueReferenceUrls: [],
         },
       },
     ];
@@ -253,6 +261,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         isClosed: false,
         createdAt: new Date('2024-01-01'),
         author: '',
+        closingIssueReferenceUrls: [],
       };
       const statusId = 'new-status-id';
 

@@ -170,6 +170,11 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!) {
               repository {
                 nameWithOwner
               }
+              closingIssuesReferences(first: 50) {
+                nodes {
+                  url
+                }
+              }
             }
           }
         }
@@ -263,6 +268,9 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!) {
                         assignees: item.content.assignees?.nodes?.map((a) => a.login) || [],
                         createdAt: item.content.createdAt || new Date().toISOString(),
                         author: item.content.author?.login || '',
+                        closingIssueReferenceUrls: item.content.closingIssuesReferences?.nodes
+                            ?.map((node) => node.url)
+                            .filter((url) => url.length > 0) || [],
                         customFields: item.fieldValues.nodes
                             .filter((field) => !!field.field)
                             .map((field) => {
@@ -504,6 +512,11 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       repository {
         nameWithOwner
       }
+      closingIssuesReferences(first: 50) {
+        nodes {
+          url
+        }
+      }
       projectItems(first: 10) {
         nodes {
           id
@@ -609,6 +622,9 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
                 assignees: content.assignees?.nodes?.map((a) => a.login) || [],
                 createdAt: content.createdAt || new Date().toISOString(),
                 author: content.author?.login || '',
+                closingIssueReferenceUrls: content.closingIssuesReferences?.nodes
+                    ?.map((node) => node.url)
+                    .filter((url) => url.length > 0) || [],
                 customFields: item.fieldValues.nodes
                     .filter((field) => !!field.field)
                     .map((field) => {

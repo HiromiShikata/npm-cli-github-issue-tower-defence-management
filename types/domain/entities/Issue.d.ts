@@ -24,5 +24,6 @@ export type Issue = {
     isClosed: boolean;
     createdAt: Date;
     author: string;
+    closingIssueReferenceUrls: string[];
 };
 //# sourceMappingURL=Issue.d.ts.map
