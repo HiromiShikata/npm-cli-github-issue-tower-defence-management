@@ -148,7 +148,7 @@ describe('writeInTmuxByHumanData', () => {
     expect(readJson(file('demo.v3.json'))).toEqual({
       version: 3,
       overviewUrl: 'https://github.com/orgs/demo/projects/1',
-      tdpmConsoleUrl: 'https://console.example.test/projects/demo/prs',
+      tdpmConsoleUrl: 'https://console.example.test/projects/demo',
       groups: [
         {
           story: 'Story Alpha',
@@ -166,7 +166,7 @@ describe('writeInTmuxByHumanData', () => {
       version: 4,
       overviewUrl: 'https://github.com/orgs/demo/projects/1',
       tdpmConsoleUrl:
-        'https://console.example.test/projects/demo/prs?k=test-token-value',
+        'https://console.example.test/projects/demo?k=test-token-value',
       newIssueUrl:
         'https://github.com/demo-org/demo-repo/issues/new?assignees=owner-login',
       groups: [
