@@ -1,3 +1,10 @@
+# [1.105.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.104.4...v1.105.0) (2026-06-26)
+
+
+### Features
+
+* **dashboard:** emit per-project row, machine-status, and token-status files in schedule handling ([#998](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/998)) ([be68197](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/be68197fcc1afc7ac72094b84b94afdd83f6c660)), closes [#997](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/997)
+
 ## [Unreleased]
 
 ### Code Refactoring
