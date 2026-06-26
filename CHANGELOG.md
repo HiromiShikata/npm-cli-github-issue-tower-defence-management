@@ -1,3 +1,10 @@
+## [1.101.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.101.6...v1.101.7) (2026-06-26)
+
+
+### Bug Fixes
+
+* **console:** mark snoozed item done on all tabs ([#972](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/972)) ([af23c4c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/af23c4c02035209f2f4929ec4b8369d783b84d35)), closes [#971](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/971)
+
 ## [1.101.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.101.5...v1.101.6) (2026-06-26)
 
 
