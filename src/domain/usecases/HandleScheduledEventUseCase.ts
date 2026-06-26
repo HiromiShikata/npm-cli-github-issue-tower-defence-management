@@ -298,6 +298,7 @@ ${JSON.stringify(e)}
       allowIssueCacheMinutes: input.allowIssueCacheMinutes,
       labelsAsLlmAgentName,
       changeTargetPathAliases: input.changeTargetPathAliases,
+      allowedIssueAuthors: input.startPreparation?.allowedIssueAuthors ?? null,
     });
     if (this.dailySecurityScanUseCase !== null && input.dailySecurityScan) {
       await this.dailySecurityScanUseCase.run({

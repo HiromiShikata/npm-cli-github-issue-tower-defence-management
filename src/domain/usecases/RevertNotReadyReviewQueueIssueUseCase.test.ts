@@ -1159,5 +1159,130 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
+
+    describe('author authorization guard', () => {
+      it('should skip an Unread pull request authored by a non-owner human not in allowedIssueAuthors', async () => {
+        const pullRequest = createMockPullRequest({
+          status: 'Unread',
+          author: 'outside-contributor',
+        });
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [pullRequest],
+          cacheUsed: false,
+        });
+        mockIssueRepository.getOpenPullRequest.mockResolvedValue({
+          ...createReadyPr(),
+          isConflicted: true,
+        });
+
+        await useCase.run({
+          projectUrl: 'https://github.com/users/user/projects/1',
+          allowIssueCacheMinutes: 10,
+          allowedIssueAuthors: ['owner'],
+        });
+
+        expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+        expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+        expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+      });
+
+      it('should act on an Unread pull request authored by an allowed owner', async () => {
+        const pullRequest = createMockPullRequest({
+          status: 'Unread',
+          author: 'owner',
+        });
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [pullRequest],
+          cacheUsed: false,
+        });
+        mockIssueRepository.getOpenPullRequest.mockResolvedValue({
+          ...createReadyPr(),
+          isConflicted: true,
+        });
+
+        await useCase.run({
+          projectUrl: 'https://github.com/users/user/projects/1',
+          allowIssueCacheMinutes: 10,
+          allowedIssueAuthors: ['owner'],
+        });
+
+        expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+          mockProject,
+          pullRequest,
+          'awaiting-workspace-id',
+        );
+        expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 'project-1' }),
+          pullRequest,
+          'workflow-management-story-id',
+        );
+        expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+          pullRequest,
+          expect.stringContaining('Auto Status Check: REJECTED'),
+        );
+      });
+
+      it('should act on an Unread pull request authored by a dependency-update bot not in allowedIssueAuthors', async () => {
+        const pullRequest = createMockPullRequest({
+          status: 'Unread',
+          author: 'dependabot[bot]',
+        });
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [pullRequest],
+          cacheUsed: false,
+        });
+        mockIssueRepository.getOpenPullRequest.mockResolvedValue({
+          ...createReadyPr(),
+          isConflicted: true,
+        });
+
+        await useCase.run({
+          projectUrl: 'https://github.com/users/user/projects/1',
+          allowIssueCacheMinutes: 10,
+          allowedIssueAuthors: ['owner'],
+        });
+
+        expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+          mockProject,
+          pullRequest,
+          'awaiting-workspace-id',
+        );
+        expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+          pullRequest,
+          expect.stringContaining('Auto Status Check: REJECTED'),
+        );
+      });
+
+      it('should act on every author when allowedIssueAuthors is null', async () => {
+        const pullRequest = createMockPullRequest({
+          status: 'Unread',
+          author: 'outside-contributor',
+        });
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [pullRequest],
+          cacheUsed: false,
+        });
+        mockIssueRepository.getOpenPullRequest.mockResolvedValue({
+          ...createReadyPr(),
+          isConflicted: true,
+        });
+
+        await useCase.run({
+          projectUrl: 'https://github.com/users/user/projects/1',
+          allowIssueCacheMinutes: 10,
+          allowedIssueAuthors: null,
+        });
+
+        expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+          mockProject,
+          pullRequest,
+          'awaiting-workspace-id',
+        );
+        expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+          pullRequest,
+          expect.stringContaining('Auto Status Check: REJECTED'),
+        );
+      });
+    });
   });
 });
