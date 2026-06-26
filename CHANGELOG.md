@@ -1,3 +1,10 @@
+## [1.103.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.103.0...v1.103.1) (2026-06-26)
+
+
+### Bug Fixes
+
+* **console:** make error toast and all UI copy English ([#980](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/980)) ([b84cbc1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b84cbc1833420dd5e4f1051325fb1c395fde5988)), closes [#979](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/979)
+
 # [1.103.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.102.0...v1.103.0) (2026-06-26)
 
 
