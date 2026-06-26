@@ -21,6 +21,7 @@ export interface RateLimitSnapshot {
   modelWeeklyLimits: Record<string, ModelWeeklyLimit>;
   lastUpdatedEpoch: number;
   blockedUntilEpoch: number;
+  subscriptionDisabled: boolean;
 }
 
 export const PROXY_PORT = 8787;
@@ -166,6 +167,23 @@ export const writeModelRateLimit = (
   fs.writeFileSync(filePath, JSON.stringify(payload));
 };
 
+export const writeSubscriptionDisabled = (
+  token: string,
+  baseDir: string = cacheDir(),
+): void => {
+  const dir = baseDir;
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  const filePath = path.join(dir, `${hashToken(token)}.json`);
+  const existing = readPayload(filePath);
+  const payload = {
+    ...existing,
+    subscriptionDisabledEpoch: Date.now() / 1000,
+  };
+  fs.writeFileSync(filePath, JSON.stringify(payload));
+};
+
 export const parseModelRateLimitsFromBody = (
   body: string,
 ): Record<string, ModelWeeklyLimit> => {
@@ -260,6 +278,10 @@ export const readRateLimit = (
     const storedBlockedUntil = parsed.blockedUntilEpoch;
     const blockedUntilEpoch =
       typeof storedBlockedUntil === 'number' ? storedBlockedUntil : 0;
+    const storedSubscriptionDisabledEpoch = parsed.subscriptionDisabledEpoch;
+    const subscriptionDisabled =
+      typeof storedSubscriptionDisabledEpoch === 'number' &&
+      storedSubscriptionDisabledEpoch > 0;
     return {
       fiveHourUtilization: num('anthropic-ratelimit-unified-5h-utilization'),
       fiveHourReset: num('anthropic-ratelimit-unified-5h-reset'),
@@ -279,6 +301,7 @@ export const readRateLimit = (
       },
       lastUpdatedEpoch,
       blockedUntilEpoch,
+      subscriptionDisabled,
     };
   } catch {
     return null;

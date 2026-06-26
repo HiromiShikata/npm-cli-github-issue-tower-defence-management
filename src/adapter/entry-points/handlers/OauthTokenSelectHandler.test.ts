@@ -78,6 +78,14 @@ describe('OauthTokenSelectHandler', () => {
     );
   };
 
+  const writeSubscriptionDisabledCache = (token: string): void => {
+    const payload = { subscriptionDisabledEpoch: NOW };
+    fs.writeFileSync(
+      path.join(cacheDirectory, `${hashToken(token)}.json`),
+      JSON.stringify(payload),
+    );
+  };
+
   it('selects the eligible token with the soonest 7d reset', () => {
     writeTokenList([
       { name: 'far', token: 'fake-far' },
@@ -166,6 +174,32 @@ describe('OauthTokenSelectHandler', () => {
 
     expect(output.selectedToken).toBeNull();
     expect(output.diagnostics.join('\n')).toContain('No usable token entries');
+  });
+
+  it('excludes a subscription-disabled token even when rate limits are fully free', () => {
+    writeTokenList([
+      { name: 'disabled', token: 'fake-disabled' },
+      { name: 'active', token: 'fake-active' },
+    ]);
+    writeSubscriptionDisabledCache('fake-disabled');
+    writeCache('fake-active', {
+      fiveHourUtilization: 0.1,
+      fiveHourReset: NOW + HOUR,
+      sevenDayUtilization: 0.1,
+      sevenDayReset: NOW + DAY,
+    });
+
+    const handler = new OauthTokenSelectHandler();
+    const output = handler.handle({
+      tokenListJsonPath: tokenListPath,
+      cacheDirectory,
+      nowEpochSeconds: NOW,
+    });
+
+    expect(output.selectedName).toBe('active');
+    expect(output.diagnostics.join('\n')).toContain(
+      'organization has disabled Claude subscription access for Claude Code',
+    );
   });
 
   describe('resolveTokenListJsonPath', () => {
