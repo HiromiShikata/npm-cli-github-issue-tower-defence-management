@@ -9,17 +9,15 @@ import {
   DEFAULT_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 
-const DEPENDENCY_UPDATE_BOT_AUTHORS = ['dependabot[bot]', 'renovate[bot]'];
-
 const isAuthorAuthorizedForAutoStatusCheck = (
   author: string,
-  allowedIssueAuthors: string[] | null,
+  allowedIssueAuthors: string[] | null | undefined,
 ): boolean => {
-  if (DEPENDENCY_UPDATE_BOT_AUTHORS.includes(author)) {
-    return true;
+  if (allowedIssueAuthors === null || allowedIssueAuthors === undefined) {
+    return false;
   }
-  if (allowedIssueAuthors === null) {
-    return true;
+  if (allowedIssueAuthors.length === 0) {
+    return false;
   }
   return allowedIssueAuthors.includes(author);
 };

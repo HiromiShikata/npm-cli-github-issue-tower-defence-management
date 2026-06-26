@@ -79,7 +79,7 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   isInProgress: false,
   isClosed: false,
   createdAt: new Date(),
-  author: '',
+  author: 'owner',
   closingIssueReferenceUrls: [],
   ...overrides,
 });
@@ -171,6 +171,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
+        allowedIssueAuthors: ['owner'],
       });
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
@@ -190,6 +191,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
+        allowedIssueAuthors: ['owner'],
       });
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
@@ -209,6 +211,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
+        allowedIssueAuthors: ['owner'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -241,6 +244,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
         labelsAsLlmAgentName: ['story', 'chore', 'accounting'],
+        allowedIssueAuthors: ['owner'],
       });
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
@@ -262,6 +266,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
         labelsAsLlmAgentName: ['story', 'chore'],
+        allowedIssueAuthors: ['owner'],
       });
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
@@ -282,6 +287,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
+        allowedIssueAuthors: ['owner'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -310,6 +316,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
         labelsAsLlmAgentName: null,
+        allowedIssueAuthors: ['owner'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -334,6 +341,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
+        allowedIssueAuthors: ['owner'],
       });
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
@@ -355,6 +363,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
+        allowedIssueAuthors: ['owner'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -391,6 +400,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
+        allowedIssueAuthors: ['owner'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -423,6 +433,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
+        allowedIssueAuthors: ['owner'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -455,6 +466,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
+        allowedIssueAuthors: ['owner'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -488,6 +500,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
+        allowedIssueAuthors: ['owner'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -525,6 +538,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
+        allowedIssueAuthors: ['owner'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -562,6 +576,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         useCase.run({
           projectUrl: 'https://github.com/users/user/projects/1',
           allowIssueCacheMinutes: 10,
+          allowedIssueAuthors: ['owner'],
         });
 
       it('should not approve PR when issue has no change-target label', async () => {
@@ -773,6 +788,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         await useCase.run({
           projectUrl: 'https://github.com/users/user/projects/1',
           allowIssueCacheMinutes: 10,
+          allowedIssueAuthors: ['owner'],
           changeTargetPathAliases: {
             adapters: 'src/domain/usecases/adapter-interfaces',
           },
@@ -792,6 +808,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         await useCase.run({
           projectUrl: 'https://github.com/users/user/projects/1',
           allowIssueCacheMinutes: 10,
+          allowedIssueAuthors: ['owner'],
           changeTargetPathAliases: {
             adapters: 'src/domain/usecases/adapter-interfaces',
           },
@@ -815,6 +832,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
+        allowedIssueAuthors: ['owner'],
       });
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
@@ -836,6 +854,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
+        allowedIssueAuthors: ['owner'],
       });
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
@@ -856,6 +875,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
+        allowedIssueAuthors: ['owner'],
       });
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
@@ -876,6 +896,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
+        allowedIssueAuthors: ['owner'],
       });
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
@@ -899,6 +920,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
+        allowedIssueAuthors: ['owner'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -938,6 +960,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
+        allowedIssueAuthors: ['owner'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -972,6 +995,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
+        allowedIssueAuthors: ['owner'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -1008,6 +1032,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
+        allowedIssueAuthors: ['owner'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -1042,6 +1067,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
+        allowedIssueAuthors: ['owner'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -1073,6 +1099,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
+        allowedIssueAuthors: ['owner'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -1110,6 +1137,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
+        allowedIssueAuthors: ['owner'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -1154,6 +1182,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         allowIssueCacheMinutes: 10,
+        allowedIssueAuthors: ['owner'],
       });
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
@@ -1223,7 +1252,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         );
       });
 
-      it('should act on an Unread pull request authored by a dependency-update bot not in allowedIssueAuthors', async () => {
+      it('should skip an Unread pull request authored by a dependency-update bot not in allowedIssueAuthors', async () => {
         const pullRequest = createMockPullRequest({
           status: 'Unread',
           author: 'dependabot[bot]',
@@ -1243,6 +1272,31 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           allowedIssueAuthors: ['owner'],
         });
 
+        expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+        expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+        expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+      });
+
+      it('should act on a dependency-update bot only when it is explicitly listed in allowedIssueAuthors', async () => {
+        const pullRequest = createMockPullRequest({
+          status: 'Unread',
+          author: 'dependabot[bot]',
+        });
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [pullRequest],
+          cacheUsed: false,
+        });
+        mockIssueRepository.getOpenPullRequest.mockResolvedValue({
+          ...createReadyPr(),
+          isConflicted: true,
+        });
+
+        await useCase.run({
+          projectUrl: 'https://github.com/users/user/projects/1',
+          allowIssueCacheMinutes: 10,
+          allowedIssueAuthors: ['owner', 'dependabot[bot]'],
+        });
+
         expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
           mockProject,
           pullRequest,
@@ -1254,7 +1308,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         );
       });
 
-      it('should act on every author when allowedIssueAuthors is null', async () => {
+      it('should process no author when allowedIssueAuthors is null', async () => {
         const pullRequest = createMockPullRequest({
           status: 'Unread',
           author: 'outside-contributor',
@@ -1274,15 +1328,58 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           allowedIssueAuthors: null,
         });
 
-        expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-          mockProject,
-          pullRequest,
-          'awaiting-workspace-id',
-        );
-        expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-          pullRequest,
-          expect.stringContaining('Auto Status Check: REJECTED'),
-        );
+        expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+        expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+        expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+      });
+
+      it('should process no author when allowedIssueAuthors is undefined', async () => {
+        const pullRequest = createMockPullRequest({
+          status: 'Unread',
+          author: 'owner',
+        });
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [pullRequest],
+          cacheUsed: false,
+        });
+        mockIssueRepository.getOpenPullRequest.mockResolvedValue({
+          ...createReadyPr(),
+          isConflicted: true,
+        });
+
+        await useCase.run({
+          projectUrl: 'https://github.com/users/user/projects/1',
+          allowIssueCacheMinutes: 10,
+        });
+
+        expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+        expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+        expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+      });
+
+      it('should process no author when allowedIssueAuthors is an empty list', async () => {
+        const pullRequest = createMockPullRequest({
+          status: 'Unread',
+          author: 'owner',
+        });
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [pullRequest],
+          cacheUsed: false,
+        });
+        mockIssueRepository.getOpenPullRequest.mockResolvedValue({
+          ...createReadyPr(),
+          isConflicted: true,
+        });
+
+        await useCase.run({
+          projectUrl: 'https://github.com/users/user/projects/1',
+          allowIssueCacheMinutes: 10,
+          allowedIssueAuthors: [],
+        });
+
+        expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+        expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+        expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
       });
     });
   });

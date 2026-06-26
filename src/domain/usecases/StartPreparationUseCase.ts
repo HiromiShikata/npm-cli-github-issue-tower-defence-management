@@ -416,7 +416,8 @@ export class StartPreparationUseCase {
         continue;
       }
       if (
-        params.allowedIssueAuthors !== null &&
+        params.allowedIssueAuthors === null ||
+        params.allowedIssueAuthors.length === 0 ||
         !params.allowedIssueAuthors.includes(issue.author)
       ) {
         continue;

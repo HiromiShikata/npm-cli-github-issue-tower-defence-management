@@ -379,6 +379,115 @@ describe('HandleScheduledEventUseCase', () => {
       ).toHaveBeenCalledTimes(1);
     });
 
+    it('should pass a top-level allowedIssueAuthors to revertNotReadyReviewQueueIssueUseCase', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        allowIssueCacheMinutes: 60,
+        allowedIssueAuthors: ['top-level-author'],
+      };
+
+      mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
+      await useCase.run(input);
+
+      expect(
+        mockRevertNotReadyReviewQueueIssueUseCase.run,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          allowedIssueAuthors: ['top-level-author'],
+        }),
+      );
+    });
+
+    it('should prefer a top-level allowedIssueAuthors over the startPreparation one', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        allowIssueCacheMinutes: 60,
+        allowedIssueAuthors: ['top-level-author'],
+        startPreparation: {
+          defaultAgentName: 'agent1',
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+          allowedIssueAuthors: ['nested-author'],
+        },
+      };
+
+      mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
+      mockStartPreparationUseCase.run.mockResolvedValue({
+        rotationOrder: null,
+      });
+      await useCase.run(input);
+
+      expect(
+        mockRevertNotReadyReviewQueueIssueUseCase.run,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          allowedIssueAuthors: ['top-level-author'],
+        }),
+      );
+      expect(mockStartPreparationUseCase.run).toHaveBeenCalledWith(
+        expect.objectContaining({
+          allowedIssueAuthors: ['top-level-author'],
+        }),
+      );
+    });
+
+    it('should fall back to startPreparation allowedIssueAuthors when no top-level value is set', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        allowIssueCacheMinutes: 60,
+        startPreparation: {
+          defaultAgentName: 'agent1',
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+          allowedIssueAuthors: ['nested-author'],
+        },
+      };
+
+      mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
+      mockStartPreparationUseCase.run.mockResolvedValue({
+        rotationOrder: null,
+      });
+      await useCase.run(input);
+
+      expect(
+        mockRevertNotReadyReviewQueueIssueUseCase.run,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          allowedIssueAuthors: ['nested-author'],
+        }),
+      );
+    });
+
     it('should invoke UpdateRateLimitCacheUseCase before StartPreparationUseCase when startPreparation is configured', async () => {
       const callOrder: string[] = [];
       mockUpdateRateLimitCacheUseCase.run.mockImplementation(async () => {
