@@ -15,6 +15,7 @@ export class LocalStorageCacheRepository {
     const dirPath = `${this.cachePath}/${key}`;
     const latestFile = this.localStorageRepository
       .listFiles(dirPath)
+      .filter((fileName) => !fileName.endsWith('.tmp'))
       .sort((a, b) => a.localeCompare(b))
       .reverse()[0];
     if (!latestFile) {
@@ -45,9 +46,9 @@ export class LocalStorageCacheRepository {
     const dirPath = `${this.cachePath}/${key}`;
     this.localStorageRepository.mkdir(dirPath);
     const timestamp = new Date().toISOString();
-    this.localStorageRepository.write(
-      `${dirPath}/${timestamp}.json`,
-      JSON.stringify(value),
-    );
+    const finalPath = `${dirPath}/${timestamp}.json`;
+    const tmpPath = `${finalPath}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`;
+    this.localStorageRepository.write(tmpPath, JSON.stringify(value));
+    this.localStorageRepository.rename(tmpPath, finalPath);
   };
 }

@@ -15,6 +15,7 @@ describe('LocalStorageCacheRepository', () => {
       listFiles: jest.fn(),
       read: jest.fn(),
       write: jest.fn(),
+      rename: jest.fn(),
       mkdir: jest.fn(),
       remove: jest.fn(),
     };
@@ -63,6 +64,19 @@ describe('LocalStorageCacheRepository', () => {
         name: 'returns value when valid JSON exists',
         key: 'test-key',
         files: ['2024-01-01T00:00:00.000Z'],
+        fileContent: '{"test": "value"}',
+        expected: {
+          value: { test: 'value' },
+          timestamp: new Date('2024-01-01T00:00:00.000Z'),
+        },
+      },
+      {
+        name: 'ignores in-progress temp files and reads the latest committed file',
+        key: 'test-key',
+        files: [
+          '2024-01-01T00:00:00.000Z.json',
+          '2024-01-01T00:00:01.000Z.json.1234.abc.tmp',
+        ],
         fileContent: '{"test": "value"}',
         expected: {
           value: { test: 'value' },
@@ -137,11 +151,30 @@ describe('LocalStorageCacheRepository', () => {
         expect(localStorageRepository.mkdir).toHaveBeenCalledWith(
           expectedDirPath,
         );
-        expect(localStorageRepository.write).toHaveBeenCalledWith(
+        const writeArgs = localStorageRepository.write.mock.calls[0];
+        const writtenPath = writeArgs[0];
+        expect(writtenPath.startsWith(`${expectedFilePath}.`)).toBe(true);
+        expect(writtenPath.endsWith('.tmp')).toBe(true);
+        expect(writeArgs[1]).toBe(expectedContent);
+        expect(localStorageRepository.rename).toHaveBeenCalledWith(
+          writtenPath,
           expectedFilePath,
-          expectedContent,
         );
       },
     );
+
+    test('writes to the temp file before renaming it into place', async () => {
+      const callOrder: string[] = [];
+      localStorageRepository.write.mockImplementation(() => {
+        callOrder.push('write');
+      });
+      localStorageRepository.rename.mockImplementation(() => {
+        callOrder.push('rename');
+      });
+
+      await repository.set('ordering-key', { ordered: true });
+
+      expect(callOrder).toEqual(['write', 'rename']);
+    });
   });
 });

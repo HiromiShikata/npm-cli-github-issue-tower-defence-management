@@ -295,6 +295,7 @@ program
     );
     const projectRepository = new GraphqlProjectRepository(
       ...githubRepositoryParams,
+      localStorageCacheRepository,
     );
     const apiV3IssueRepository = new ApiV3IssueRepository(
       ...githubRepositoryParams,
@@ -474,6 +475,7 @@ program
     );
     const projectRepository = new GraphqlProjectRepository(
       ...githubRepositoryParams,
+      localStorageCacheRepository,
     );
     const apiV3IssueRepository = new ApiV3IssueRepository(
       ...githubRepositoryParams,
@@ -667,6 +669,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
   );
   const projectRepository = new GraphqlProjectRepository(
     ...githubRepositoryParams,
+    localStorageCacheRepository,
   );
   const apiV3IssueRepository = new ApiV3IssueRepository(
     ...githubRepositoryParams,
@@ -911,6 +914,7 @@ program
     );
     const projectRepository = new GraphqlProjectRepository(
       ...githubRepositoryParams,
+      localStorageCacheRepository,
     );
     const apiV3IssueRepository = new ApiV3IssueRepository(
       ...githubRepositoryParams,

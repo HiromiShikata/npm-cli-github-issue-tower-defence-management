@@ -246,6 +246,7 @@ export class HandleScheduledEventUseCaseHandler {
     > = [localStorageRepository, input.credentials.bot.github.token];
     const projectRepository = new GraphqlProjectRepository(
       ...githubRepositoryParams,
+      localStorageCacheRepository,
     );
     const apiV3IssueRepository = new ApiV3IssueRepository(
       ...githubRepositoryParams,
