@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
 import { ConsoleItemList } from '../components/list/ConsoleItemList';
-import { ConsoleUndoToast } from '../components/operations/ConsoleUndoToast';
+import {
+  ConsoleErrorToast,
+  ConsoleUndoToast,
+} from '../components/operations/ConsoleUndoToast';
 import { useConsoleActionQueue } from '../hooks/useConsoleActionQueue';
 import { useConsoleCaches } from '../hooks/useConsoleCaches';
 import { useConsoleNavigation } from '../hooks/useConsoleNavigation';
@@ -201,6 +204,12 @@ export const ConsolePage = () => {
           remainingSeconds={actionQueue.pending.remainingSeconds}
           progress={actionQueue.pending.progress}
           onUndo={actionQueue.undo}
+        />
+      )}
+      {actionQueue.error !== null && (
+        <ConsoleErrorToast
+          message={`操作に失敗しました: ${actionQueue.error.reason}`}
+          onDismiss={actionQueue.dismissError}
         />
       )}
       <ConsoleTabList

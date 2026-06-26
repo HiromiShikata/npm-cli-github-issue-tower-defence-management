@@ -171,6 +171,24 @@ export const createConsoleApiClient = (
     parseState(await requestJson(appendToken, '/api/issuetitle', url)),
 });
 
+const readOperationErrorReason = async (
+  response: Response,
+): Promise<string> => {
+  const raw = await response.text().catch(() => '');
+  if (raw.length === 0) {
+    return `HTTP ${response.status}`;
+  }
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (isRecord(parsed) && typeof parsed.error === 'string') {
+      return parsed.error;
+    }
+  } catch {
+    return raw;
+  }
+  return raw;
+};
+
 export const postConsoleOperation = async (
   appendToken: AppendToken,
   apiPath: string,
@@ -182,7 +200,7 @@ export const postConsoleOperation = async (
     body: JSON.stringify(body),
   });
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
+    throw new Error(await readOperationErrorReason(response));
   }
 };
 

@@ -372,6 +372,32 @@ const handleReadApi = async (
   }
 };
 
+const operationErrorMessage = (error: unknown): string => {
+  if (error instanceof Error && error.message.length > 0) {
+    return error.message;
+  }
+  return String(error);
+};
+
+const dispatchOperation = (
+  context: ConsoleOperationContext,
+  requestPath: string,
+  body: Record<string, unknown>,
+): Promise<{ statusCode: number; body: unknown }> | null => {
+  switch (requestPath) {
+    case '/api/review':
+      return handleReview(context, body);
+    case '/api/triage':
+      return handleTriage(context, body);
+    case '/api/intmux':
+      return handleIntmux(context, body);
+    case '/api/comment':
+      return handleComment(context, body);
+    default:
+      return null;
+  }
+};
+
 const handleOperationApi = async (
   options: ConsoleServerOptions,
   requestPath: string,
@@ -387,17 +413,18 @@ const handleOperationApi = async (
     resolveProject,
     consoleDataOutputDir: options.consoleDataOutputDir,
   };
-  switch (requestPath) {
-    case '/api/review':
-      return handleReview(context, body);
-    case '/api/triage':
-      return handleTriage(context, body);
-    case '/api/intmux':
-      return handleIntmux(context, body);
-    case '/api/comment':
-      return handleComment(context, body);
-    default:
-      return null;
+  const dispatched = dispatchOperation(context, requestPath, body);
+  if (dispatched === null) {
+    return null;
+  }
+  try {
+    return await dispatched;
+  } catch (error) {
+    console.error('console operation failed', error);
+    return {
+      statusCode: 502,
+      body: { error: operationErrorMessage(error) },
+    };
   }
 };
 

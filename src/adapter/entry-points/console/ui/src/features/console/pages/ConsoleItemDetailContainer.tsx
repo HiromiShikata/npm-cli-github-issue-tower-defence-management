@@ -22,7 +22,7 @@ import type {
 export type ConsoleQueueActionInput = {
   kind: ConsoleActionKind;
   item: ConsoleListItem;
-  commit: () => void;
+  commit: () => Promise<void>;
 };
 
 export type ConsoleItemDetailContainerProps = {
@@ -68,54 +68,42 @@ export const ConsoleItemDetailContainer = ({
       onQueueAction({
         kind: { type: 'review', action },
         item,
-        commit: () => {
-          void operations.reviewPullRequest(item, prUrl, action);
-        },
+        commit: () => operations.reviewPullRequest(item, prUrl, action),
       });
     },
     onSetNextActionDate: (action) => {
       onQueueAction({
         kind: { type: 'next_action_date', action },
         item,
-        commit: () => {
-          void operations.setNextActionDate(item, action);
-        },
+        commit: () => operations.setNextActionDate(item, action),
       });
     },
     onSetStory: (option: ConsoleFieldOption) => {
       onQueueAction({
         kind: { type: 'set_story', optionName: option.name },
         item,
-        commit: () => {
-          void operations.setStory(item, option);
-        },
+        commit: () => operations.setStory(item, option),
       });
     },
     onSetStatus: (option: ConsoleFieldOption) => {
       onQueueAction({
         kind: { type: 'set_status', optionName: option.name },
         item,
-        commit: () => {
-          void operations.setStatus(item, option);
-        },
+        commit: () => operations.setStatus(item, option),
       });
     },
     onSetInTmuxByHuman: (option: ConsoleFieldOption) => {
       onQueueAction({
         kind: { type: 'set_in_tmux_by_human', optionName: option.name },
         item,
-        commit: () => {
-          void operations.setInTmuxByHuman(item, option);
-        },
+        commit: () => operations.setInTmuxByHuman(item, option),
       });
     },
     onClose: (action) => {
       onQueueAction({
         kind: { type: 'close', action },
         item,
-        commit: () => {
-          void operations.closeIssue(item, action);
-        },
+        commit: () => operations.closeIssue(item, action),
       });
     },
   };

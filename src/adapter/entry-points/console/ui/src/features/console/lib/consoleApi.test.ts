@@ -8,6 +8,17 @@ const mockFetchOnce = (body: unknown, ok = true): jest.Mock => {
     ok,
     status: ok ? 200 : 500,
     json: async () => body,
+    text: async () => (typeof body === 'string' ? body : JSON.stringify(body)),
+  });
+  global.fetch = fetchMock as unknown as typeof fetch;
+  return fetchMock;
+};
+
+const mockFetchFailureOnce = (status: number, rawBody: string): jest.Mock => {
+  const fetchMock = jest.fn().mockResolvedValue({
+    ok: false,
+    status,
+    text: async () => rawBody,
   });
   global.fetch = fetchMock as unknown as typeof fetch;
   return fetchMock;
@@ -169,15 +180,31 @@ describe('postConsoleOperation', () => {
     expect(init).toMatchObject({ method: 'POST' });
   });
 
-  it('throws on a failed operation', async () => {
-    mockFetchOnce({}, false);
-    await expect(
-      postConsoleOperation(appendToken, '/api/review', {
-        pjcode: 'umino',
-        action: 'approve',
-        prUrl: 'https://github.com/o/r/pull/1',
-        projectItemId: 'PVTI_1',
-      }),
-    ).rejects.toThrow('HTTP 500');
+  const failingReview = (): Promise<void> =>
+    postConsoleOperation(appendToken, '/api/review', {
+      pjcode: 'umino',
+      action: 'approve',
+      prUrl: 'https://github.com/o/r/pull/1',
+      projectItemId: 'PVTI_1',
+    });
+
+  it('throws the error reason from a JSON error body', async () => {
+    mockFetchFailureOnce(
+      502,
+      JSON.stringify({ error: 'Failed to approve PR: HTTP 422' }),
+    );
+    await expect(failingReview()).rejects.toThrow(
+      'Failed to approve PR: HTTP 422',
+    );
+  });
+
+  it('throws the raw body when the error body is not JSON', async () => {
+    mockFetchFailureOnce(500, 'Internal Server Error');
+    await expect(failingReview()).rejects.toThrow('Internal Server Error');
+  });
+
+  it('falls back to the status code when the error body is empty', async () => {
+    mockFetchFailureOnce(500, '');
+    await expect(failingReview()).rejects.toThrow('HTTP 500');
   });
 });

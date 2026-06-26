@@ -1,5 +1,5 @@
 import { fireEvent, render } from '@testing-library/react';
-import { ConsoleUndoToast } from './ConsoleUndoToast';
+import { ConsoleErrorToast, ConsoleUndoToast } from './ConsoleUndoToast';
 
 describe('ConsoleUndoToast', () => {
   const baseProps = {
@@ -50,5 +50,48 @@ describe('ConsoleUndoToast', () => {
     );
     fireEvent.click(getByText('Undo'));
     expect(onUndo).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('ConsoleErrorToast', () => {
+  it('shows the failure message with the error modifier class and alert role', () => {
+    const { getByText, container, getByRole } = render(
+      <ConsoleErrorToast
+        message="操作に失敗しました: HTTP 422"
+        onDismiss={() => {}}
+      />,
+    );
+    expect(getByText('操作に失敗しました: HTTP 422')).toBeInTheDocument();
+    expect(
+      container.querySelector('.console-undo-toast-error'),
+    ).toBeInTheDocument();
+    expect(getByRole('alert')).toBeInTheDocument();
+  });
+
+  it('does not render a countdown or progress bar', () => {
+    const { container } = render(
+      <ConsoleErrorToast
+        message="操作に失敗しました: boom"
+        onDismiss={() => {}}
+      />,
+    );
+    expect(
+      container.querySelector('.console-undo-toast-countdown'),
+    ).not.toBeInTheDocument();
+    expect(
+      container.querySelector('.console-undo-toast-bar'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('invokes onDismiss when the Dismiss control is clicked', () => {
+    const onDismiss = jest.fn();
+    const { getByText } = render(
+      <ConsoleErrorToast
+        message="操作に失敗しました: boom"
+        onDismiss={onDismiss}
+      />,
+    );
+    fireEvent.click(getByText('Dismiss'));
+    expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 });
