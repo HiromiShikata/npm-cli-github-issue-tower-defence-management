@@ -44,6 +44,16 @@ describe('renderMarkdownToSafeHtml', () => {
   it('returns an empty string for blank input', () => {
     expect(renderMarkdownToSafeHtml('   ')).toBe('');
   });
+
+  it('renders GitHub emoji shortcodes as Unicode emoji glyphs', () => {
+    const html = renderMarkdownToSafeHtml(':magic_wand: :sparkles: :rocket:');
+    expect(html).toContain('🪄');
+    expect(html).toContain('✨');
+    expect(html).toContain('🚀');
+    expect(html).not.toContain(':magic_wand:');
+    expect(html).not.toContain(':sparkles:');
+    expect(html).not.toContain(':rocket:');
+  });
 });
 
 describe('splitMarkdownSegments', () => {

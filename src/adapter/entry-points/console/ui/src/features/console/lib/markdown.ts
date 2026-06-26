@@ -1,5 +1,14 @@
 import DOMPurify from 'dompurify';
+import { nameToEmoji } from 'gemoji';
 import { marked } from 'marked';
+import { markedEmoji } from 'marked-emoji';
+
+marked.use(
+  markedEmoji({
+    emojis: nameToEmoji,
+    renderer: (token) => token.emoji,
+  }),
+);
 
 export const renderMarkdownToSafeHtml = (source: string): string => {
   const trimmed = source.trim();
