@@ -32,7 +32,11 @@ import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueComm
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import * as path from 'path';
-import { DEFAULT_WEB_PORT, startWebServer } from '../console/webServer';
+import {
+  DEFAULT_DASHBOARD_PROJECT_CODES,
+  DEFAULT_WEB_PORT,
+  startWebServer,
+} from '../console/webServer';
 import { IssueTitleStateCache } from '../console/consoleReadApi';
 import {
   buildPjcodeToProjectUrl,
@@ -75,13 +79,25 @@ type ServeWebOptions = {
   port?: string;
   consoleDataOutputDir?: string;
   inTmuxDataDir?: string;
-  dashboardDir?: string;
+  dashboardDataDir?: string;
+  dashboardProjectCodes?: string;
 };
 
 const DEFAULT_IN_TMUX_DATA_DIR =
   '/home/hiromi/0_workspaces/workspace1/jsonpub/in-tmux-by-human';
 
-const DEFAULT_DASHBOARD_DIR = '/home/hiromi/0_workspaces/workspace1/jsonpub';
+const DEFAULT_DASHBOARD_DATA_DIR: string | null = null;
+
+const parseDashboardProjectCodes = (raw: string | undefined): string[] => {
+  if (raw === undefined) {
+    return DEFAULT_DASHBOARD_PROJECT_CODES;
+  }
+  const codes = raw
+    .split(',')
+    .map((code) => code.trim())
+    .filter((code) => code.length > 0);
+  return codes.length > 0 ? codes : DEFAULT_DASHBOARD_PROJECT_CODES;
+};
 
 type SelectOauthTokenOptions = {
   tokenListJsonPath?: string;
@@ -694,14 +710,19 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
   const uiDistDir = path.join(__dirname, '..', 'console', 'ui-dist');
   const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
   const inTmuxDataDir = options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR;
-  const dashboardDir = options.dashboardDir ?? DEFAULT_DASHBOARD_DIR;
+  const dashboardDataDir =
+    options.dashboardDataDir ?? DEFAULT_DASHBOARD_DATA_DIR;
+  const dashboardProjectCodes = parseDashboardProjectCodes(
+    options.dashboardProjectCodes,
+  );
 
   await startWebServer({
     accessToken,
     uiDistDir,
     consoleDataOutputDir,
     inTmuxDataDir,
-    dashboardDir,
+    dashboardDataDir,
+    dashboardProjectCodes,
     githubToken: token,
     issueRepository,
     resolveProject,
@@ -730,8 +751,12 @@ const addServeWebOptions = (command: Command): Command =>
       `Directory containing the flat in-tmux-by-human static JSON files served at /in-tmux-by-human/*.json (default: ${DEFAULT_IN_TMUX_DATA_DIR})`,
     )
     .option(
-      '--dashboardDir <path>',
-      `Directory containing the dashboard HTML fragment tdpm.txt served unauthenticated at /tdpm.txt (default: ${DEFAULT_DASHBOARD_DIR})`,
+      '--dashboardDataDir <path>',
+      'Directory containing the dashboard data files (projects/<pjcode>.json, machine-status.json, token-status.json) the server composes the /tdpm.txt fragment from at request time; defaults to the same location the scheduled run emits them to (unset when not configured)',
+    )
+    .option(
+      '--dashboardProjectCodes <codes>',
+      `Comma-separated project codes, in display order, for the dashboard project grid (default: ${DEFAULT_DASHBOARD_PROJECT_CODES.join(',')})`,
     );
 
 addServeWebOptions(program.command('serveWeb'))

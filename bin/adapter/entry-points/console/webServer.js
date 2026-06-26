@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.startWebServer = exports.createWebServer = exports.handleWebRequest = exports.resolveFlatInTmuxFilePath = exports.resolveDashboardFilePath = exports.IMAGE_PROXY_REQUEST_PATH = exports.DASHBOARD_REQUEST_PATH = exports.extractProvidedToken = exports.isTokenValid = exports.isConsoleAppRoute = exports.requiresToken = exports.hasDotSegment = exports.CONSOLE_TOKEN_HEADER = exports.DEFAULT_WEB_PORT = void 0;
+exports.startWebServer = exports.createWebServer = exports.handleWebRequest = exports.resolveFlatInTmuxFilePath = exports.IMAGE_PROXY_REQUEST_PATH = exports.DASHBOARD_REQUEST_PATH = exports.extractProvidedToken = exports.isTokenValid = exports.isConsoleAppRoute = exports.requiresToken = exports.hasDotSegment = exports.CONSOLE_TOKEN_HEADER = exports.DEFAULT_DASHBOARD_PROJECT_CODES = exports.DEFAULT_WEB_PORT = void 0;
 const http = __importStar(require("http"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
@@ -41,7 +41,9 @@ const consoleDataDelivery_1 = require("./consoleDataDelivery");
 const consoleReadApi_1 = require("./consoleReadApi");
 const consoleOperationApi_1 = require("./consoleOperationApi");
 const consoleImageProxy_1 = require("./consoleImageProxy");
+const dashboardComposeService_1 = require("./dashboardComposeService");
 exports.DEFAULT_WEB_PORT = 9981;
+exports.DEFAULT_DASHBOARD_PROJECT_CODES = ['um', 'xm', 'xc', 'ut'];
 exports.CONSOLE_TOKEN_HEADER = 'x-pv-token';
 const PLACEHOLDER_INDEX_HTML = `<!DOCTYPE html>
 <html lang="en">
@@ -150,20 +152,6 @@ const FLAT_IN_TMUX_PREFIX = '/in-tmux-by-human/';
 const FLAT_IN_TMUX_FILE = /^[A-Za-z0-9._-]+\.json$/;
 exports.DASHBOARD_REQUEST_PATH = '/tdpm.txt';
 exports.IMAGE_PROXY_REQUEST_PATH = '/api/img';
-const DASHBOARD_FILE_NAME = 'tdpm.txt';
-const resolveDashboardFilePath = (dashboardDir, requestPath) => {
-    if (requestPath !== exports.DASHBOARD_REQUEST_PATH) {
-        return null;
-    }
-    const candidate = path.join(dashboardDir, DASHBOARD_FILE_NAME);
-    const resolvedRoot = path.resolve(dashboardDir);
-    const resolvedCandidate = path.resolve(candidate);
-    if (resolvedCandidate !== path.join(resolvedRoot, DASHBOARD_FILE_NAME)) {
-        return null;
-    }
-    return resolvedCandidate;
-};
-exports.resolveDashboardFilePath = resolveDashboardFilePath;
 const resolveFlatInTmuxFilePath = (inTmuxDataDir, requestPath) => {
     if (!requestPath.startsWith(FLAT_IN_TMUX_PREFIX)) {
         return null;
@@ -425,16 +413,15 @@ const handleWebRequest = async (options, request, response) => {
             sendNotFound(response);
             return;
         }
-        if (options.dashboardDir === null) {
+        if (options.dashboardDataDir === null) {
             sendNotFound(response);
             return;
         }
-        const dashboardFilePath = (0, exports.resolveDashboardFilePath)(options.dashboardDir, requestPath);
-        const dashboardContent = dashboardFilePath === null ? null : readStaticFile(dashboardFilePath);
-        if (dashboardContent === null) {
-            sendNotFound(response);
-            return;
-        }
+        const dashboardText = (0, dashboardComposeService_1.composeDashboardText)({
+            dashboardDataDir: options.dashboardDataDir,
+            projectCodes: options.dashboardProjectCodes,
+        });
+        const dashboardContent = Buffer.from(dashboardText, 'utf-8');
         response.writeHead(200, {
             'Content-Type': 'text/html; charset=utf-8',
             'Cache-Control': 'no-store',

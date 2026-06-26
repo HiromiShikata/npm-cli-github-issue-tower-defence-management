@@ -26,8 +26,11 @@ import {
   handleTriage,
 } from './consoleOperationApi';
 import { ImageFetcher, fetchProxiedImage } from './consoleImageProxy';
+import { composeDashboardText } from './dashboardComposeService';
 
 export const DEFAULT_WEB_PORT = 9981;
+
+export const DEFAULT_DASHBOARD_PROJECT_CODES = ['um', 'xm', 'xc', 'ut'];
 
 export const CONSOLE_TOKEN_HEADER = 'x-pv-token';
 
@@ -157,7 +160,8 @@ export type WebServerOptions = {
   uiDistDir: string;
   consoleDataOutputDir: string | null;
   inTmuxDataDir: string | null;
-  dashboardDir: string | null;
+  dashboardDataDir: string | null;
+  dashboardProjectCodes: string[];
   githubToken?: string | null;
   imageFetcher?: ImageFetcher | null;
   issueRepository?: IssueRepository | null;
@@ -172,24 +176,6 @@ const FLAT_IN_TMUX_FILE = /^[A-Za-z0-9._-]+\.json$/;
 export const DASHBOARD_REQUEST_PATH = '/tdpm.txt';
 
 export const IMAGE_PROXY_REQUEST_PATH = '/api/img';
-
-const DASHBOARD_FILE_NAME = 'tdpm.txt';
-
-export const resolveDashboardFilePath = (
-  dashboardDir: string,
-  requestPath: string,
-): string | null => {
-  if (requestPath !== DASHBOARD_REQUEST_PATH) {
-    return null;
-  }
-  const candidate = path.join(dashboardDir, DASHBOARD_FILE_NAME);
-  const resolvedRoot = path.resolve(dashboardDir);
-  const resolvedCandidate = path.resolve(candidate);
-  if (resolvedCandidate !== path.join(resolvedRoot, DASHBOARD_FILE_NAME)) {
-    return null;
-  }
-  return resolvedCandidate;
-};
 
 export const resolveFlatInTmuxFilePath = (
   inTmuxDataDir: string,
@@ -544,20 +530,15 @@ export const handleWebRequest = async (
       sendNotFound(response);
       return;
     }
-    if (options.dashboardDir === null) {
+    if (options.dashboardDataDir === null) {
       sendNotFound(response);
       return;
     }
-    const dashboardFilePath = resolveDashboardFilePath(
-      options.dashboardDir,
-      requestPath,
-    );
-    const dashboardContent =
-      dashboardFilePath === null ? null : readStaticFile(dashboardFilePath);
-    if (dashboardContent === null) {
-      sendNotFound(response);
-      return;
-    }
+    const dashboardText = composeDashboardText({
+      dashboardDataDir: options.dashboardDataDir,
+      projectCodes: options.dashboardProjectCodes,
+    });
+    const dashboardContent = Buffer.from(dashboardText, 'utf-8');
     response.writeHead(200, {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-store',

@@ -12,7 +12,6 @@ import {
   isConsoleAppRoute,
   extractProvidedToken,
   resolveFlatInTmuxFilePath,
-  resolveDashboardFilePath,
   startWebServer,
 } from './webServer';
 import type { ImageFetcher } from './consoleImageProxy';
@@ -180,7 +179,8 @@ describe('webServer integration', () => {
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
-      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectCodes: [],
       port: 0,
     });
     const address = server.address();
@@ -197,7 +197,8 @@ describe('webServer integration', () => {
       uiDistDir: path.join(tmpDir, 'missing-ui-dist'),
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
-      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectCodes: [],
       port: 0,
     });
     try {
@@ -223,7 +224,8 @@ describe('webServer integration', () => {
       uiDistDir: path.join(tmpDir, 'missing-ui-dist'),
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
-      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectCodes: [],
       port: 0,
     });
     try {
@@ -253,7 +255,8 @@ describe('webServer integration', () => {
       uiDistDir,
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
-      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectCodes: [],
       port: 0,
     });
     try {
@@ -285,7 +288,8 @@ describe('webServer integration', () => {
       uiDistDir,
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
-      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectCodes: [],
       port: 0,
     });
     try {
@@ -314,7 +318,8 @@ describe('webServer integration', () => {
       uiDistDir: path.join(tmpDir, 'missing-ui-dist'),
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
-      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectCodes: [],
       port: 0,
     });
     try {
@@ -337,7 +342,8 @@ describe('webServer integration', () => {
       uiDistDir,
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
-      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectCodes: [],
       port: 0,
     });
     try {
@@ -363,7 +369,8 @@ describe('webServer integration', () => {
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
-      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectCodes: [],
       port: 0,
     });
     try {
@@ -501,7 +508,8 @@ describe('webServer new routes integration', () => {
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: dataDir,
       inTmuxDataDir: null,
-      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectCodes: [],
       port: 0,
     });
     try {
@@ -538,7 +546,8 @@ describe('webServer new routes integration', () => {
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
-      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectCodes: [],
       issueRepository,
       issueTitleStateCache: new IssueTitleStateCache(),
       port: 0,
@@ -572,7 +581,8 @@ describe('webServer new routes integration', () => {
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
-      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectCodes: [],
       issueRepository,
       resolveProject: async (pjcode) =>
         pjcode === 'umino' ? { pjcode, project: buildProject() } : null,
@@ -621,7 +631,8 @@ describe('webServer new routes integration', () => {
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: dataDir,
       inTmuxDataDir: null,
-      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectCodes: [],
       issueRepository,
       resolveProject: async (pjcode) =>
         pjcode === 'umino' ? { pjcode, project: buildProject() } : null,
@@ -667,7 +678,8 @@ describe('webServer new routes integration', () => {
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
-      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectCodes: [],
       issueRepository,
       resolveProject: async (pjcode) =>
         pjcode === 'umino' ? { pjcode, project: buildProject() } : null,
@@ -703,7 +715,8 @@ describe('webServer new routes integration', () => {
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
-      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectCodes: [],
       issueRepository,
       resolveProject: async (pjcode) =>
         pjcode === 'umino' ? { pjcode, project: buildProject() } : null,
@@ -754,7 +767,8 @@ describe('webServer new routes integration', () => {
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
-      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectCodes: [],
       port: 0,
     });
     try {
@@ -883,7 +897,8 @@ describe('webServer flat in-tmux-by-human route integration', () => {
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
       inTmuxDataDir,
-      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectCodes: [],
       port: 0,
     });
     return { server, tmpDir, inTmuxDataDir };
@@ -997,7 +1012,8 @@ describe('webServer flat in-tmux-by-human route integration', () => {
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
-      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectCodes: [],
       port: 0,
     });
     try {
@@ -1010,23 +1026,6 @@ describe('webServer flat in-tmux-by-human route integration', () => {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
-  });
-});
-
-describe('resolveDashboardFilePath', () => {
-  const baseDir = path.join(os.tmpdir(), 'dashboard-data');
-
-  it('resolves /tdpm.txt under the dashboard dir', () => {
-    expect(resolveDashboardFilePath(baseDir, '/tdpm.txt')).toBe(
-      path.join(path.resolve(baseDir), 'tdpm.txt'),
-    );
-  });
-
-  it('returns null for any other path', () => {
-    expect(resolveDashboardFilePath(baseDir, '/tdpm.html')).toBeNull();
-    expect(resolveDashboardFilePath(baseDir, '/other.txt')).toBeNull();
-    expect(resolveDashboardFilePath(baseDir, '/')).toBeNull();
-    expect(resolveDashboardFilePath(baseDir, '/sub/tdpm.txt')).toBeNull();
   });
 });
 
@@ -1084,78 +1083,120 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
       });
     });
 
-  const dashboardRaw =
-    '<tt>MEM&nbsp;30%</tt><br>\n<tt>pj&nbsp;unr&nbsp;tdo</tt><br>\n';
+  const writeDataFiles = (dataDir: string): void => {
+    fs.mkdirSync(path.join(dataDir, 'projects'), { recursive: true });
+    fs.writeFileSync(
+      path.join(dataDir, 'projects', 'um.json'),
+      JSON.stringify({
+        pjcode: 'um',
+        capturedAt: '2026-06-26T00:00:00.000Z',
+        unread: 3,
+        todo: 1,
+        qc: 2,
+        fail: 0,
+        pr: 0,
+        ws: 4,
+        dep: 1,
+        blocker: 0,
+      }),
+    );
+    fs.writeFileSync(
+      path.join(dataDir, 'machine-status.json'),
+      JSON.stringify({
+        memPct: 55,
+        cpuPct: 62,
+        load: [16, 23, 40],
+        cycleMinutes: 14,
+        capturedAt: '2026-06-26T00:00:00.000Z',
+      }),
+    );
+    fs.writeFileSync(
+      path.join(dataDir, 'token-status.json'),
+      JSON.stringify({
+        tokens: [
+          {
+            name: 'alice',
+            fiveHourUtilizationPercent: 10,
+            fiveHourResetSeconds: 3600,
+            sevenDayUtilizationPercent: 12,
+            sevenDayResetSeconds: 432000,
+            color: 'G',
+            prep: 2,
+            hum: 1,
+          },
+        ],
+        capturedAt: '2026-06-26T00:00:00.000Z',
+      }),
+    );
+  };
 
-  const startWithDashboard = async (): Promise<{
-    server: http.Server;
-    tmpDir: string;
-  }> => {
+  const expectedComposed =
+    '<tt>M55%&nbsp;C62%&nbsp;LA&nbsp;16&nbsp;23&nbsp;40&nbsp;cy14</tt><br>\n' +
+    '<tt>pj&nbsp;&nbsp;&nbsp;unr&nbsp;tdo&nbsp;aqc&nbsp;fal&nbsp;prp&nbsp;aws&nbsp;dep</tt><br>\n' +
+    '<tt>🟢um&nbsp;&nbsp;&nbsp;3&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;4&nbsp;&nbsp;&nbsp;1</tt><br>\n' +
+    '<tt>&nbsp;&nbsp;xc&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--</tt><br>\n' +
+    '<tt></tt><br>\n' +
+    '<tt>🟢alice&nbsp;&nbsp;10%&nbsp;0d01h00&nbsp;&nbsp;12%&nbsp;5d00h00&nbsp;2&nbsp;1</tt><br>\n';
+
+  const startWithDataDir = async (
+    dashboardDataDir: string | null,
+  ): Promise<{ server: http.Server; tmpDir: string }> => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
-    fs.writeFileSync(path.join(tmpDir, 'tdpm.txt'), dashboardRaw);
-    fs.writeFileSync(path.join(tmpDir, 'secret.txt'), 'secret content');
     const server = await startWebServer({
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
-      dashboardDir: tmpDir,
+      dashboardDataDir,
+      dashboardProjectCodes: ['um', 'xc'],
       port: 0,
     });
     return { server, tmpDir };
   };
 
-  it('serves /tdpm.txt without a token, byte-identical, as text/html with an explicit Content-Length and no chunked encoding', async () => {
-    const { server, tmpDir } = await startWithDashboard();
+  it('composes /tdpm.txt from the data files without a token, as text/html with an explicit Content-Length and no chunked encoding', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dashboard-data-'));
+    writeDataFiles(dataDir);
+    const { server, tmpDir } = await startWithDataDir(dataDir);
     try {
       const response = await requestServer(server, '/tdpm.txt');
       expect(response.statusCode).toBe(200);
-      expect(response.body).toBe(dashboardRaw);
+      expect(response.body).toBe(expectedComposed);
       expect(response.contentType).toBe('text/html; charset=utf-8');
       expect(response.contentLength).toBe(
-        String(Buffer.byteLength(dashboardRaw)),
+        String(Buffer.byteLength(expectedComposed)),
       );
       expect(response.transferEncoding).toBeUndefined();
       expect(response.cacheControl).toBe('no-store');
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
+      fs.rmSync(dataDir, { recursive: true, force: true });
     }
   });
 
-  it('returns 404 for /tdpm.txt when the file is absent', async () => {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
-    const server = await startWebServer({
-      accessToken: testToken,
-      uiDistDir: path.join(tmpDir, 'ui-dist'),
-      consoleDataOutputDir: null,
-      inTmuxDataDir: null,
-      dashboardDir: tmpDir,
-      port: 0,
-    });
+  it('renders placeholder rows and host fallbacks when every data file is absent', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dashboard-data-'));
+    const { server, tmpDir } = await startWithDataDir(dataDir);
     try {
       const response = await requestServer(server, '/tdpm.txt');
-      expect(response.statusCode).toBe(404);
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toBe(
+        '<tt>M?%&nbsp;C?%&nbsp;LA&nbsp;?&nbsp;?&nbsp;?&nbsp;cy-</tt><br>\n' +
+          '<tt>pj&nbsp;&nbsp;&nbsp;unr&nbsp;tdo&nbsp;aqc&nbsp;fal&nbsp;prp&nbsp;aws&nbsp;dep</tt><br>\n' +
+          '<tt>&nbsp;&nbsp;um&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--</tt><br>\n' +
+          '<tt>&nbsp;&nbsp;xc&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--</tt><br>\n' +
+          '<tt></tt><br>\n',
+      );
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
+      fs.rmSync(dataDir, { recursive: true, force: true });
     }
   });
 
-  it('returns 404 for /tdpm.txt when dashboardDir is null', async () => {
-    const { server, tmpDir } = await (async () => {
-      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
-      fs.writeFileSync(path.join(dir, 'tdpm.txt'), dashboardRaw);
-      const srv = await startWebServer({
-        accessToken: testToken,
-        uiDistDir: path.join(dir, 'ui-dist'),
-        consoleDataOutputDir: null,
-        inTmuxDataDir: null,
-        dashboardDir: null,
-        port: 0,
-      });
-      return { server: srv, tmpDir: dir };
-    })();
+  it('returns 404 for /tdpm.txt when dashboardDataDir is null', async () => {
+    const { server, tmpDir } = await startWithDataDir(null);
     try {
       const response = await requestServer(server, '/tdpm.txt');
       expect(response.statusCode).toBe(404);
@@ -1166,13 +1207,16 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
   });
 
   it('rejects a non-GET method on /tdpm.txt with 404', async () => {
-    const { server, tmpDir } = await startWithDashboard();
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dashboard-data-'));
+    writeDataFiles(dataDir);
+    const { server, tmpDir } = await startWithDataDir(dataDir);
     try {
       const response = await requestServer(server, '/tdpm.txt', 'POST');
       expect(response.statusCode).toBe(404);
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
+      fs.rmSync(dataDir, { recursive: true, force: true });
     }
   });
 });
@@ -1249,7 +1293,8 @@ describe('webServer image proxy', () => {
         uiDistDir: path.join(tmpDir, 'ui-dist'),
         consoleDataOutputDir: null,
         inTmuxDataDir: null,
-        dashboardDir: null,
+        dashboardDataDir: null,
+        dashboardProjectCodes: [],
         githubToken: token,
         imageFetcher: fetcher,
         port: 0,
