@@ -18,6 +18,8 @@ export interface RateLimitSnapshot {
   unifiedRejected: boolean;
   fiveHourRejected: boolean;
   sevenDayRejected: boolean;
+  unifiedStatus: string | null;
+  overageDisabledReason: string | null;
   modelWeeklyLimits: Record<string, ModelWeeklyLimit>;
   lastUpdatedEpoch: number;
   blockedUntilEpoch: number;
@@ -252,6 +254,8 @@ export const readRateLimit = (
     const status = headers['anthropic-ratelimit-unified-status'];
     const fiveHourStatus = headers['anthropic-ratelimit-unified-5h-status'];
     const sevenDayStatus = headers['anthropic-ratelimit-unified-7d-status'];
+    const overageDisabledReason =
+      headers['anthropic-ratelimit-unified-overage-disabled-reason'];
     const unifiedRejected = status === 'rejected';
     const fiveHourRejected = fiveHourStatus === 'rejected';
     const sevenDayRejected = sevenDayStatus === 'rejected';
@@ -273,6 +277,8 @@ export const readRateLimit = (
       unifiedRejected,
       fiveHourRejected,
       sevenDayRejected,
+      unifiedStatus: status ?? null,
+      overageDisabledReason: overageDisabledReason ?? null,
       modelWeeklyLimits: {
         ...parseModelRateLimitsFromHeaders(headers),
         ...readModelWeeklyLimits(parsed),

@@ -180,6 +180,38 @@ describe('RateLimitCache', () => {
       expect(snapshot?.sevenDayRejected).toBe(false);
     });
 
+    it('should surface the raw unified status and overage-disabled reason headers', () => {
+      const token = 'unified-status-token';
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-status': 'allowed_warning',
+        'anthropic-ratelimit-unified-overage-disabled-reason': 'out_of_credits',
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': '1700000000',
+        'anthropic-ratelimit-unified-5h-utilization': '50',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '1700100000',
+        'anthropic-ratelimit-unified-7d-utilization': '40',
+      });
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.unifiedStatus).toBe('allowed_warning');
+      expect(snapshot?.overageDisabledReason).toBe('out_of_credits');
+    });
+
+    it('should expose null for the unified status and overage-disabled reason when absent', () => {
+      const token = 'no-unified-status-token';
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': '1700000000',
+        'anthropic-ratelimit-unified-5h-utilization': '50',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '1700100000',
+        'anthropic-ratelimit-unified-7d-utilization': '40',
+      });
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.unifiedStatus).toBeNull();
+      expect(snapshot?.overageDisabledReason).toBeNull();
+    });
+
     it('should return null when file does not exist', () => {
       expect(readRateLimit('never-written-token')).toBeNull();
     });
