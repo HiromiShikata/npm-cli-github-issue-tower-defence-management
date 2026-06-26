@@ -1,3 +1,10 @@
+# [1.109.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.108.0...v1.109.0) (2026-06-26)
+
+
+### Features
+
+* **project-repository:** cache static project metadata to disk across processes ([a8ac43f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a8ac43f67870fe6b96945a555015704f3d4cc78f)), closes [#1003](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1003)
+
 # [1.108.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.107.0...v1.108.0) (2026-06-26)
 
 

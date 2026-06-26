@@ -15,6 +15,9 @@ class LocalStorageRepository {
         this.read = (path) => {
             return fs_1.default.readFileSync(path, 'utf8');
         };
+        this.rename = (oldPath, newPath) => {
+            fs_1.default.renameSync(oldPath, newPath);
+        };
         this.listFiles = (dirPath) => {
             if (!fs_1.default.existsSync(dirPath)) {
                 return [];

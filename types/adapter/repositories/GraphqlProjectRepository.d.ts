@@ -1,10 +1,20 @@
 import { BaseGitHubRepository } from './BaseGitHubRepository';
+import { LocalStorageCacheRepository } from './LocalStorageCacheRepository';
+import { LocalStorageRepository } from './LocalStorageRepository';
 import { ProjectRepository } from '../../domain/usecases/adapter-interfaces/ProjectRepository';
 import { FieldOption, Project } from '../../domain/entities/Project';
+export declare const resolveProjectCacheTtlMs: (rawValue: string | undefined) => number;
 export declare const convertToFieldOptionColor: (color: string) => FieldOption["color"];
 export declare class GraphqlProjectRepository extends BaseGitHubRepository implements Pick<ProjectRepository, 'getProject' | 'findProjectIdByUrl' | 'getByUrl' | 'updateStoryList' | 'updateStatusList'> {
     private readonly projectIdCache;
     private readonly fetchProjectIdFailedAt;
+    private readonly projectCache?;
+    private readonly projectCacheTtlMs;
+    constructor(localStorageRepository: LocalStorageRepository, ghToken?: string, projectCache?: Pick<LocalStorageCacheRepository, 'getLatest' | 'set'>, projectCacheTtlMs?: number);
+    private readProjectIdFromDiskCache;
+    private writeProjectIdToDiskCache;
+    private readProjectFromDiskCache;
+    private writeProjectToDiskCache;
     extractProjectFromUrl: (projectUrl: string) => {
         owner: string;
         projectNumber: number;

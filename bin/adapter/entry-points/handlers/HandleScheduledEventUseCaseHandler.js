@@ -537,7 +537,7 @@ class HandleScheduledEventUseCaseHandler {
             const cachePath = `./tmp/cache/${input.projectName}`;
             const localStorageCacheRepository = new LocalStorageCacheRepository_1.LocalStorageCacheRepository(localStorageRepository, cachePath);
             const githubRepositoryParams = [localStorageRepository, input.credentials.bot.github.token];
-            const projectRepository = new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams);
+            const projectRepository = new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams, localStorageCacheRepository);
             const apiV3IssueRepository = new ApiV3IssueRepository_1.ApiV3IssueRepository(...githubRepositoryParams);
             const restIssueRepository = new RestIssueRepository_1.RestIssueRepository(...githubRepositoryParams);
             const graphqlProjectItemRepository = new GraphqlProjectItemRepository_1.GraphqlProjectItemRepository(...githubRepositoryParams);
