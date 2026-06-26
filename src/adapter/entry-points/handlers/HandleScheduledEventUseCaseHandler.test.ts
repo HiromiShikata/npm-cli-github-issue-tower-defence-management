@@ -384,6 +384,42 @@ allowedIssueAuthors: 'user1, user2, user3'
         projectUrl: validConfig.projectUrl,
       });
     });
+
+    it('should accept a top-level allowedIssueAuthors from the YAML config and pass it through', async () => {
+      mockFetchReturningReadme(null);
+      const configWithTopLevelAllowedIssueAuthors = {
+        ...validConfig,
+        allowedIssueAuthors: ['owner', 'dependabot[bot]'],
+      };
+      jest
+        .mocked(fs.readFileSync)
+        .mockReturnValue(YAML.stringify(configWithTopLevelAllowedIssueAuthors));
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(capturedRunInputs[0][0]).toMatchObject({
+        allowedIssueAuthors: ['owner', 'dependabot[bot]'],
+      });
+    });
+
+    it('should split a comma-separated top-level allowedIssueAuthors string from the YAML config', async () => {
+      mockFetchReturningReadme(null);
+      const configWithCommaSeparatedAuthors = {
+        ...validConfig,
+        allowedIssueAuthors: 'owner, umino-bot ,dependabot[bot]',
+      };
+      jest
+        .mocked(fs.readFileSync)
+        .mockReturnValue(YAML.stringify(configWithCommaSeparatedAuthors));
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(capturedRunInputs[0][0]).toMatchObject({
+        allowedIssueAuthors: ['owner', 'umino-bot', 'dependabot[bot]'],
+      });
+    });
   });
 
   describe('Claude OAuth token rotation wiring', () => {

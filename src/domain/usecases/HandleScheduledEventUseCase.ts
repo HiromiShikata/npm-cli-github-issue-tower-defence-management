@@ -27,6 +27,7 @@ import {
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
 import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
 import { resolveLabelsAsLlmAgentName } from './resolveLabelsAsLlmAgentName';
+import { resolveAllowedIssueAuthors } from './resolveAllowedIssueAuthors';
 import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
 import { UpdateRateLimitCacheUseCase } from './UpdateRateLimitCacheUseCase';
 import {
@@ -86,6 +87,7 @@ export class HandleScheduledEventUseCase {
     allowIssueCacheMinutes: number;
     labelsAsLlmAgentName?: string[] | null;
     changeTargetPathAliases?: Record<string, string> | null;
+    allowedIssueAuthors?: string[] | null;
     startPreparation?: {
       defaultAgentName: string;
       defaultLlmModelName?: string | null;
@@ -293,12 +295,16 @@ ${JSON.stringify(e)}
       topLevel: input.labelsAsLlmAgentName,
       startPreparation: input.startPreparation?.labelsAsLlmAgentName,
     });
+    const allowedIssueAuthors = resolveAllowedIssueAuthors({
+      topLevel: input.allowedIssueAuthors,
+      startPreparation: input.startPreparation?.allowedIssueAuthors,
+    });
     await this.revertNotReadyReviewQueueIssueUseCase.run({
       projectUrl: input.projectUrl,
       allowIssueCacheMinutes: input.allowIssueCacheMinutes,
       labelsAsLlmAgentName,
       changeTargetPathAliases: input.changeTargetPathAliases,
-      allowedIssueAuthors: input.startPreparation?.allowedIssueAuthors ?? null,
+      allowedIssueAuthors,
     });
     if (this.dailySecurityScanUseCase !== null && input.dailySecurityScan) {
       await this.dailySecurityScanUseCase.run({
@@ -341,7 +347,7 @@ ${JSON.stringify(e)}
           input.startPreparation.maximumPreparingIssuesCount,
         utilizationPercentageThreshold:
           input.startPreparation.utilizationPercentageThreshold ?? 90,
-        allowedIssueAuthors: input.startPreparation.allowedIssueAuthors ?? null,
+        allowedIssueAuthors,
         codexHomeCandidates: input.startPreparation.codexHomeCandidates ?? null,
         allowIssueCacheMinutes: input.allowIssueCacheMinutes,
         labelsAsLlmAgentName,
