@@ -50,6 +50,7 @@ export class InTmuxByHumanSessionTokenCountHandler {
         name,
         token,
         snapshot: null,
+        subscriptionDisabled: false,
       }),
     );
 
