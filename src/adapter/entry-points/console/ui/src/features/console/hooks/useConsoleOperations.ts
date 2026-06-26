@@ -146,11 +146,9 @@ export const useConsoleOperations = (
         projectItemId: item.projectItemId,
       };
       await postConsoleOperation(appendToken, TRIAGE_OPERATION_PATH, request);
-      if (mode === 'todo-by-human') {
-        markDone(item);
-      }
+      markDone(item);
     },
-    [pjcode, appendToken, markDone, mode],
+    [pjcode, appendToken, markDone],
   );
 
   const setStory = useCallback(
