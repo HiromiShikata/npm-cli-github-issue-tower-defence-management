@@ -1,5 +1,6 @@
 import { LocalCommandRunner } from '../../domain/usecases/adapter-interfaces/LocalCommandRunner';
 import { TmuxSessionRepository } from '../../domain/usecases/adapter-interfaces/TmuxSessionRepository';
+import { LiveTmuxSession } from '../../domain/entities/LiveTmuxSession';
 
 export class NodeTmuxSessionRepository implements TmuxSessionRepository {
   constructor(private readonly localCommandRunner: LocalCommandRunner) {}
@@ -16,6 +17,26 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
       .split('\n')
       .map((line) => line.trim())
       .filter((line) => line.length > 0);
+  };
+
+  listLiveSessionsWithActivity = async (): Promise<LiveTmuxSession[]> => {
+    const { stdout, exitCode } = await this.localCommandRunner.runCommand(
+      'tmux',
+      ['list-sessions', '-F', '#{session_name} #{session_activity}'],
+    );
+    if (exitCode !== 0) {
+      return [];
+    }
+    return stdout
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .map((line) => {
+        const separatorIndex = line.lastIndexOf(' ');
+        const sessionName = line.slice(0, separatorIndex);
+        const activityEpochSeconds = Number(line.slice(separatorIndex + 1));
+        return { sessionName, activityEpochSeconds };
+      });
   };
 
   listInteractiveProcessCommandLines = async (): Promise<string[]> => {
@@ -50,5 +71,19 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
       launcherCommand,
       issueUrl,
     ]);
+  };
+
+  killSession = async (sessionName: string): Promise<void> => {
+    const { stderr, exitCode } = await this.localCommandRunner.runCommand(
+      'tmux',
+      ['kill-session', '-t', sessionName],
+    );
+    if (exitCode !== 0) {
+      throw new Error(
+        `Failed to kill tmux session "${sessionName}": exit code ${exitCode}${
+          stderr ? `: ${stderr}` : ''
+        }`,
+      );
+    }
   };
 }
