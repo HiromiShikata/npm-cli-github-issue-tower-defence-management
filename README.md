@@ -508,7 +508,7 @@ The index files list every project in `inTmuxProjectOrder` whose `{name}.json` a
 ### Field Descriptions
 
 - `overviewUrl`: The GitHub Project board URL, taken from the project `url`.
-- `tdpmConsoleUrl`: `{inTmuxConsoleBaseUrl}/projects/{pjcode}/prs`. The v4 variant appends `?k={token}`. The v3 and v4 files are skipped when `inTmuxConsoleBaseUrl` is unset.
+- `tdpmConsoleUrl`: `{inTmuxConsoleBaseUrl}/projects/{pjcode}`. The v4 variant appends `?k={token}`. The v3 and v4 files are skipped when `inTmuxConsoleBaseUrl` is unset.
 - `newIssueUrl` (v4 only): `https://github.com/{org}/{workingReport.repo}/issues/new?assignees={manager}`, derived from existing config values.
 - `groups`: Story groups. The v3 `groups` carry a `urls` array using the v2 `{ url, title }` entry shape. The v4 `groups` use tmux terminology: each group carries a `sessions` array and each session is `{ name, description }` where `name` is the GitHub issue URL and `description` is the issue title.
 - Token handling: The v4 per-project file and `index.v4.json` are skipped when `inTmuxConsoleToken` is unset. The token value is never written to source code, tests, or documentation; it is supplied through configuration only.

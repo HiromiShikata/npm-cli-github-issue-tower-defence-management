@@ -79,7 +79,6 @@ export class GenerateInTmuxByHumanDataUseCase {
       repo,
       consoleBaseUrl,
       consoleToken,
-      now,
     } = input;
 
     const storyOrder = project.story
@@ -87,7 +86,7 @@ export class GenerateInTmuxByHumanDataUseCase {
       : [];
 
     const selectedIssues = issues.filter((issue) =>
-      this.isInTmuxByHuman(issue, assigneeLogin, now),
+      this.isInTmuxByHuman(issue, assigneeLogin),
     );
 
     const groups = this.groupByStoryOrder(selectedIssues, storyOrder);
@@ -115,7 +114,7 @@ export class GenerateInTmuxByHumanDataUseCase {
 
     const overviewUrl = project.url;
     const tdpmConsoleUrl = consoleBaseUrl
-      ? `${consoleBaseUrl}/projects/${pjcode}/prs`
+      ? `${consoleBaseUrl}/projects/${pjcode}`
       : null;
 
     const v3: InTmuxByHumanV3 | null = tdpmConsoleUrl
@@ -141,16 +140,12 @@ export class GenerateInTmuxByHumanDataUseCase {
     return { v1, v2, v3, v4 };
   };
 
-  private isInTmuxByHuman = (
-    issue: Issue,
-    assigneeLogin: string,
-    now: Date,
-  ): boolean =>
+  private isInTmuxByHuman = (issue: Issue, assigneeLogin: string): boolean =>
     issue.status === IN_TMUX_BY_HUMAN_STATUS_NAME &&
     issue.isClosed === false &&
     issue.assignees.includes(assigneeLogin) &&
-    (issue.nextActionDate === null ||
-      issue.nextActionDate.getTime() <= now.getTime()) &&
+    issue.dependedIssueUrls.length === 0 &&
+    issue.nextActionDate === null &&
     issue.nextActionHour === null;
 
   private groupByStoryOrder = (

@@ -160,19 +160,24 @@ describe('GenerateInTmuxByHumanDataUseCase', () => {
       expect(result.v1).toEqual([]);
     });
 
-    it('keeps issues whose next action date is in the past and is now due', () => {
+    it('rejects issues whose next action date is in the past', () => {
       const result = run([
         makeIssue({
           story: 'Story Alpha',
           nextActionDate: new Date(NOW.getTime() - 24 * 60 * 60 * 1000),
         }),
       ]);
-      expect(result.v1).toEqual([
-        {
+      expect(result.v1).toEqual([]);
+    });
+
+    it('rejects issues whose depended issue urls are non-empty', () => {
+      const result = run([
+        makeIssue({
           story: 'Story Alpha',
-          urls: ['https://github.com/demo/repo/issues/1'],
-        },
+          dependedIssueUrls: ['https://github.com/demo/repo/issues/42'],
+        }),
       ]);
+      expect(result.v1).toEqual([]);
     });
   });
 
@@ -237,7 +242,7 @@ describe('GenerateInTmuxByHumanDataUseCase', () => {
       expect(result.v3).toEqual({
         version: 3,
         overviewUrl: 'https://github.com/orgs/demo/projects/1',
-        tdpmConsoleUrl: 'https://console.example.test/projects/demo/prs',
+        tdpmConsoleUrl: 'https://console.example.test/projects/demo',
         groups: result.v2,
       });
     });
@@ -270,7 +275,7 @@ describe('GenerateInTmuxByHumanDataUseCase', () => {
         version: 4,
         overviewUrl: 'https://github.com/orgs/demo/projects/1',
         tdpmConsoleUrl:
-          'https://console.example.test/projects/demo/prs?k=test-token-value',
+          'https://console.example.test/projects/demo?k=test-token-value',
         newIssueUrl:
           'https://github.com/demo-org/demo-repo/issues/new?assignees=owner-login',
         groups: [
