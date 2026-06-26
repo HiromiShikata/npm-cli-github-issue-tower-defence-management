@@ -57,8 +57,22 @@ module.exports = {
             },
           },
         ],
+        '^.+\\.js$': [
+          'ts-jest',
+          {
+            tsconfig: {
+              allowJs: true,
+              esModuleInterop: true,
+              module: 'CommonJS',
+              moduleResolution: 'Node',
+              verbatimModuleSyntax: false,
+            },
+          },
+        ],
       },
-      transformIgnorePatterns: ['/node_modules/(?!(marked)/)'],
+      transformIgnorePatterns: [
+        '/node_modules/(?!(marked|marked-emoji|gemoji)/)',
+      ],
       moduleNameMapper: {
         '\\.(css|less|scss)$': '<rootDir>/jest.styleMock.js',
         '^@/(.*)$': '<rootDir>/src/$1',
