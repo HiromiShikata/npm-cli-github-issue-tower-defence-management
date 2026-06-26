@@ -49,6 +49,7 @@ const machineStatusWriter_1 = require("./machineStatusWriter");
 const tokenStatusWriter_1 = require("./tokenStatusWriter");
 const inTmuxByHumanDataWriter_1 = require("./inTmuxByHumanDataWriter");
 const inTmuxByHumanSessionReconciler_1 = require("./inTmuxByHumanSessionReconciler");
+const staleTmuxSessionCleaner_1 = require("./staleTmuxSessionCleaner");
 const rotationOrderFileWriter_1 = require("./rotationOrderFileWriter");
 const projectConfig_1 = require("../cli/projectConfig");
 const SystemDateRepository_1 = require("../../repositories/SystemDateRepository");
@@ -668,6 +669,18 @@ class HandleScheduledEventUseCaseHandler {
                 }
                 catch (error) {
                     console.error(`Failed to reconcile in-tmux-by-human sessions: ${error instanceof Error ? error.message : String(error)}`);
+                }
+                try {
+                    await (0, staleTmuxSessionCleaner_1.cleanStaleTmuxSessions)({
+                        project: result.project,
+                        allowCacheMinutes: mergedInput.allowIssueCacheMinutes,
+                        issueRepository,
+                        localCommandRunner: nodeLocalCommandRunner,
+                        now: inTmuxNow,
+                    });
+                }
+                catch (error) {
+                    console.error(`Failed to clean stale tmux sessions: ${error instanceof Error ? error.message : String(error)}`);
                 }
             }
             return result;

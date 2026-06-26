@@ -14,6 +14,22 @@ class NodeTmuxSessionRepository {
                 .map((line) => line.trim())
                 .filter((line) => line.length > 0);
         };
+        this.listLiveSessionsWithActivity = async () => {
+            const { stdout, exitCode } = await this.localCommandRunner.runCommand('tmux', ['list-sessions', '-F', '#{session_name} #{session_activity}']);
+            if (exitCode !== 0) {
+                return [];
+            }
+            return stdout
+                .split('\n')
+                .map((line) => line.trim())
+                .filter((line) => line.length > 0)
+                .map((line) => {
+                const separatorIndex = line.lastIndexOf(' ');
+                const sessionName = line.slice(0, separatorIndex);
+                const activityEpochSeconds = Number(line.slice(separatorIndex + 1));
+                return { sessionName, activityEpochSeconds };
+            });
+        };
         this.listInteractiveProcessCommandLines = async () => {
             const { stdout, exitCode } = await this.localCommandRunner.runCommand('ps', ['-eo', 'args=']);
             if (exitCode !== 0) {
@@ -38,6 +54,12 @@ class NodeTmuxSessionRepository {
                 launcherCommand,
                 issueUrl,
             ]);
+        };
+        this.killSession = async (sessionName) => {
+            const { stderr, exitCode } = await this.localCommandRunner.runCommand('tmux', ['kill-session', '-t', sessionName]);
+            if (exitCode !== 0) {
+                throw new Error(`Failed to kill tmux session "${sessionName}": exit code ${exitCode}${stderr ? `: ${stderr}` : ''}`);
+            }
         };
     }
 }

@@ -60,10 +60,16 @@ const createFakeTmuxSessionRepository = (state: {
   return {
     launches,
     listLiveSessionNames: async () => state.liveSessionNames,
+    listLiveSessionsWithActivity: async () =>
+      state.liveSessionNames.map((sessionName) => ({
+        sessionName,
+        activityEpochSeconds: 0,
+      })),
     listInteractiveProcessCommandLines: async () => state.processCommandLines,
     launchDetachedSession: async (sessionName, launcherCommand, issueUrl) => {
       launches.push({ sessionName, launcherCommand, issueUrl });
     },
+    killSession: async () => undefined,
   };
 };
 

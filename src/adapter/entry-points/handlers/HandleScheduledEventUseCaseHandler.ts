@@ -8,6 +8,7 @@ import { writeMachineStatus } from './machineStatusWriter';
 import { writeTokenStatus } from './tokenStatusWriter';
 import { writeInTmuxByHumanData } from './inTmuxByHumanDataWriter';
 import { reconcileInTmuxByHumanSessions } from './inTmuxByHumanSessionReconciler';
+import { cleanStaleTmuxSessions } from './staleTmuxSessionCleaner';
 import { writeRotationOrderFile } from './rotationOrderFileWriter';
 import {
   fetchProjectReadme,
@@ -503,6 +504,22 @@ export class HandleScheduledEventUseCaseHandler {
       } catch (error) {
         console.error(
           `Failed to reconcile in-tmux-by-human sessions: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+
+      try {
+        await cleanStaleTmuxSessions({
+          project: result.project,
+          allowCacheMinutes: mergedInput.allowIssueCacheMinutes,
+          issueRepository,
+          localCommandRunner: nodeLocalCommandRunner,
+          now: inTmuxNow,
+        });
+      } catch (error) {
+        console.error(
+          `Failed to clean stale tmux sessions: ${
             error instanceof Error ? error.message : String(error)
           }`,
         );
