@@ -27,7 +27,7 @@ import {
 } from './consoleOperationApi';
 import { ImageFetcher, fetchProxiedImage } from './consoleImageProxy';
 
-export const DEFAULT_CONSOLE_PORT = 9981;
+export const DEFAULT_WEB_PORT = 9981;
 
 export const CONSOLE_TOKEN_HEADER = 'x-pv-token';
 
@@ -152,7 +152,7 @@ const readStaticFile = (filePath: string): Buffer | null => {
   }
 };
 
-export type ConsoleServerOptions = {
+export type WebServerOptions = {
   accessToken: string;
   uiDistDir: string;
   consoleDataOutputDir: string | null;
@@ -236,7 +236,7 @@ const serveBootstrapIndex = (response: http.ServerResponse): void => {
 };
 
 const serveIndexHtml = (
-  options: ConsoleServerOptions,
+  options: WebServerOptions,
   response: http.ServerResponse,
 ): void => {
   const indexFilePath = resolveStaticFilePath(options.uiDistDir, '/index.html');
@@ -279,7 +279,7 @@ const sendImage = (
 };
 
 const handleImageProxy = async (
-  options: ConsoleServerOptions,
+  options: WebServerOptions,
   response: http.ServerResponse,
   searchParams: URLSearchParams,
 ): Promise<void> => {
@@ -342,7 +342,7 @@ const parseRequestBody = (raw: string): Record<string, unknown> | null => {
 };
 
 const handleReadApi = async (
-  options: ConsoleServerOptions,
+  options: WebServerOptions,
   requestPath: string,
   searchParams: URLSearchParams,
 ): Promise<{ statusCode: number; body: unknown } | null> => {
@@ -402,7 +402,7 @@ const dispatchOperation = (
 };
 
 const handleOperationApi = async (
-  options: ConsoleServerOptions,
+  options: WebServerOptions,
   requestPath: string,
   body: Record<string, unknown>,
 ): Promise<{ statusCode: number; body: unknown } | null> => {
@@ -432,7 +432,7 @@ const handleOperationApi = async (
 };
 
 const handleTokenedRequest = async (
-  options: ConsoleServerOptions,
+  options: WebServerOptions,
   request: http.IncomingMessage,
   response: http.ServerResponse,
   requestPath: string,
@@ -525,8 +525,8 @@ const handleTokenedRequest = async (
   sendNotFound(response);
 };
 
-export const handleConsoleRequest = async (
-  options: ConsoleServerOptions,
+export const handleWebRequest = async (
+  options: WebServerOptions,
   request: http.IncomingMessage,
   response: http.ServerResponse,
 ): Promise<void> => {
@@ -624,25 +624,23 @@ const sendInternalServerError = (response: http.ServerResponse): void => {
   response.end('Internal Server Error');
 };
 
-export const createConsoleServer = (
-  options: ConsoleServerOptions,
-): http.Server =>
+export const createWebServer = (options: WebServerOptions): http.Server =>
   http.createServer((request, response) => {
-    handleConsoleRequest(options, request, response).catch((error) => {
+    handleWebRequest(options, request, response).catch((error) => {
       console.error('console request failed', error);
       sendInternalServerError(response);
     });
   });
 
-export type StartConsoleServerOptions = ConsoleServerOptions & {
+export type StartWebServerOptions = WebServerOptions & {
   port: number;
 };
 
-export const startConsoleServer = (
-  options: StartConsoleServerOptions,
+export const startWebServer = (
+  options: StartWebServerOptions,
 ): Promise<http.Server> =>
   new Promise((resolve, reject) => {
-    const server = createConsoleServer(options);
+    const server = createWebServer(options);
     server.once('error', reject);
     server.listen(options.port, () => {
       server.removeListener('error', reject);

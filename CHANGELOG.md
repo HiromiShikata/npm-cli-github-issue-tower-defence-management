@@ -1,3 +1,9 @@
+## [Unreleased]
+
+### Code Refactoring
+
+- **server:** rename the `serveConsole` subcommand to `serveWeb` and rename the `consoleServer` module to `webServer`, reflecting that the local web server now serves the console tabs, the dashboard, and the in-tmux-by-human session list. `serveConsole` is kept as a deprecated transitional alias that routes to the same handler, so existing invokers keep working during rollout. This is a behavior-preserving rename: every existing route, output, and default port (9981) is unchanged. ([#995](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/995))
+
 ## [1.104.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.104.3...v1.104.4) (2026-06-26)
 
 

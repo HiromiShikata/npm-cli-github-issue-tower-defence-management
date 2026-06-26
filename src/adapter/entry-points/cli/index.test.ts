@@ -73,23 +73,22 @@ jest.mock('../handlers/HandleScheduledEventUseCaseHandler', () => ({
     handle: jest.fn().mockResolvedValue(null),
   })),
 }));
-import type { StartConsoleServerOptions } from '../console/consoleServer';
+import type { StartWebServerOptions } from '../console/webServer';
 
-const mockStartConsoleServer = jest
-  .fn<Promise<unknown>, [StartConsoleServerOptions]>()
+const mockStartWebServer = jest
+  .fn<Promise<unknown>, [StartWebServerOptions]>()
   .mockResolvedValue({
     close: jest.fn(),
     address: jest.fn().mockReturnValue({ port: 9981 }),
   });
-jest.mock('../console/consoleServer', () => {
+jest.mock('../console/webServer', () => {
   const actual: Record<string, unknown> = jest.requireActual(
-    '../console/consoleServer',
+    '../console/webServer',
   );
   return {
     ...actual,
-    startConsoleServer: (
-      options: StartConsoleServerOptions,
-    ): Promise<unknown> => mockStartConsoleServer(options),
+    startWebServer: (options: StartWebServerOptions): Promise<unknown> =>
+      mockStartWebServer(options),
   };
 });
 
@@ -1677,10 +1676,10 @@ mysteryKey: 'value'
     });
   });
 
-  describe('serveConsole', () => {
+  describe('serveWeb', () => {
     it('should appear in the CLI help output', () => {
       const helpText = program.helpInformation();
-      expect(helpText).toContain('serveConsole');
+      expect(helpText).toContain('serveWeb');
     });
 
     it('should start the server on the default port 9981 when --port is omitted', async () => {
@@ -1690,13 +1689,13 @@ mysteryKey: 'value'
       await program.parseAsync([
         'node',
         'test',
-        'serveConsole',
+        'serveWeb',
         '--configFilePath',
         configFilePath,
       ]);
 
-      expect(mockStartConsoleServer).toHaveBeenCalledTimes(1);
-      const callArg = mockStartConsoleServer.mock.calls[0][0];
+      expect(mockStartWebServer).toHaveBeenCalledTimes(1);
+      const callArg = mockStartWebServer.mock.calls[0][0];
       expect(callArg.port).toBe(9981);
       expect(callArg.accessToken).toBe('config-token');
       expect(callArg.consoleDataOutputDir).toBeNull();
@@ -1717,7 +1716,7 @@ mysteryKey: 'value'
       await program.parseAsync([
         'node',
         'test',
-        'serveConsole',
+        'serveWeb',
         '--configFilePath',
         configFilePath,
         '--port',
@@ -1726,7 +1725,7 @@ mysteryKey: 'value'
         '/tmp/console-data',
       ]);
 
-      const callArg = mockStartConsoleServer.mock.calls[0][0];
+      const callArg = mockStartWebServer.mock.calls[0][0];
       expect(callArg.port).toBe(12345);
       expect(callArg.consoleDataOutputDir).toBe('/tmp/console-data');
 
@@ -1746,7 +1745,7 @@ mysteryKey: 'value'
         program.parseAsync([
           'node',
           'test',
-          'serveConsole',
+          'serveWeb',
           '--configFilePath',
           configFilePath,
         ]),
@@ -1774,7 +1773,7 @@ mysteryKey: 'value'
         program.parseAsync([
           'node',
           'test',
-          'serveConsole',
+          'serveWeb',
           '--configFilePath',
           configFilePath,
           '--port',
@@ -1795,12 +1794,12 @@ mysteryKey: 'value'
       await program.parseAsync([
         'node',
         'test',
-        'serveConsole',
+        'serveWeb',
         '--configFilePath',
         configFilePath,
       ]);
 
-      const callArg = mockStartConsoleServer.mock.calls[0][0];
+      const callArg = mockStartWebServer.mock.calls[0][0];
       expect(callArg.issueRepository).not.toBeNull();
       expect(callArg.issueTitleStateCache).not.toBeNull();
 
@@ -1833,7 +1832,7 @@ mysteryKey: 'value'
         program.parseAsync([
           'node',
           'test',
-          'serveConsole',
+          'serveWeb',
           '--configFilePath',
           configFilePath,
         ]),
@@ -1865,7 +1864,7 @@ mysteryKey: 'value'
         program.parseAsync([
           'node',
           'test',
-          'serveConsole',
+          'serveWeb',
           '--configFilePath',
           configFilePath,
         ]),
@@ -1877,6 +1876,60 @@ mysteryKey: 'value'
 
       consoleErrorSpy.mockRestore();
       processExitSpy.mockRestore();
+    });
+  });
+
+  describe('serveConsole (deprecated alias)', () => {
+    it('should appear in the CLI help output', () => {
+      const helpText = program.helpInformation();
+      expect(helpText).toContain('serveConsole');
+    });
+
+    it('should route to the same handler as serveWeb on the default port 9981', async () => {
+      writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
+      const logSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'serveConsole',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(mockStartWebServer).toHaveBeenCalledTimes(1);
+      const callArg = mockStartWebServer.mock.calls[0][0];
+      expect(callArg.port).toBe(9981);
+      expect(callArg.accessToken).toBe('config-token');
+      expect(callArg.consoleDataOutputDir).toBeNull();
+      expect(callArg.uiDistDir).toBe(
+        path.join(__dirname, '..', 'console', 'ui-dist'),
+      );
+
+      logSpy.mockRestore();
+    });
+
+    it('should use the provided --port and --consoleDataOutputDir', async () => {
+      writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
+      const logSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'serveConsole',
+        '--configFilePath',
+        configFilePath,
+        '--port',
+        '12345',
+        '--consoleDataOutputDir',
+        '/tmp/console-data',
+      ]);
+
+      const callArg = mockStartWebServer.mock.calls[0][0];
+      expect(callArg.port).toBe(12345);
+      expect(callArg.consoleDataOutputDir).toBe('/tmp/console-data');
+
+      logSpy.mockRestore();
     });
   });
 });

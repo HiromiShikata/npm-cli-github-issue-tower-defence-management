@@ -32,10 +32,7 @@ import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueComm
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import * as path from 'path';
-import {
-  DEFAULT_CONSOLE_PORT,
-  startConsoleServer,
-} from '../console/consoleServer';
+import { DEFAULT_WEB_PORT, startWebServer } from '../console/webServer';
 import { IssueTitleStateCache } from '../console/consoleReadApi';
 import {
   buildPjcodeToProjectUrl,
@@ -73,7 +70,7 @@ type CheckIssueReviewReadinessOptions = {
   configFilePath: string;
 };
 
-type ServeConsoleOptions = {
+type ServeWebOptions = {
   configFilePath: string;
   port?: string;
   consoleDataOutputDir?: string;
@@ -596,146 +593,159 @@ program
     process.stdout.write(`${JSON.stringify(result)}\n`);
   });
 
-program
-  .command('serveConsole')
-  .description('Start the local TDPM Console HTTP server')
-  .requiredOption(
-    '--configFilePath <path>',
-    'Path to config file for tower defence management',
-  )
-  .option(
-    '--port <number>',
-    `Port for the console HTTP server (default: ${DEFAULT_CONSOLE_PORT})`,
-  )
-  .option(
-    '--consoleDataOutputDir <path>',
-    'Directory where console data files are written and served from',
-  )
-  .option(
-    '--inTmuxDataDir <path>',
-    `Directory containing the flat in-tmux-by-human static JSON files served at /in-tmux-by-human/*.json (default: ${DEFAULT_IN_TMUX_DATA_DIR})`,
-  )
-  .option(
-    '--dashboardDir <path>',
-    `Directory containing the dashboard HTML fragment tdpm.txt served unauthenticated at /tdpm.txt (default: ${DEFAULT_DASHBOARD_DIR})`,
-  )
-  .action(async (options: ServeConsoleOptions) => {
-    const config = loadConfigFile(options.configFilePath);
+const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
+  const config = loadConfigFile(options.configFilePath);
 
-    const accessToken = config.consoleAccessToken;
-    if (!accessToken) {
+  const accessToken = config.consoleAccessToken;
+  if (!accessToken) {
+    console.error(
+      'consoleAccessToken is required. Provide it via the config file.',
+    );
+    process.exit(1);
+  }
+
+  let port = DEFAULT_WEB_PORT;
+  if (options.port !== undefined) {
+    const parsedPort = Number(options.port);
+    if (
+      !Number.isFinite(parsedPort) ||
+      !Number.isInteger(parsedPort) ||
+      parsedPort <= 0 ||
+      parsedPort > 65535
+    ) {
       console.error(
-        'consoleAccessToken is required. Provide it via the config file.',
+        'Invalid value for --port. It must be a positive integer between 1 and 65535.',
       );
       process.exit(1);
     }
+    port = parsedPort;
+  }
 
-    let port = DEFAULT_CONSOLE_PORT;
-    if (options.port !== undefined) {
-      const parsedPort = Number(options.port);
-      if (
-        !Number.isFinite(parsedPort) ||
-        !Number.isInteger(parsedPort) ||
-        parsedPort <= 0 ||
-        parsedPort > 65535
-      ) {
-        console.error(
-          'Invalid value for --port. It must be a positive integer between 1 and 65535.',
-        );
-        process.exit(1);
+  const token = process.env.GH_TOKEN;
+  if (!token) {
+    console.error('GH_TOKEN environment variable is required');
+    process.exit(1);
+  }
+
+  const projectUrl = config.projectUrl;
+  if (!projectUrl) {
+    console.error(
+      'projectUrl is required. Provide it via the config file or project README.',
+    );
+    process.exit(1);
+  }
+
+  const projectName = config.projectName ?? 'default';
+  const localStorageRepository = new LocalStorageRepository();
+  const cachePath = `./tmp/cache/${projectName}`;
+  const localStorageCacheRepository = new LocalStorageCacheRepository(
+    localStorageRepository,
+    cachePath,
+  );
+  const githubRepositoryParams = buildGithubRepositoryParams(
+    localStorageRepository,
+    token,
+  );
+  const projectRepository = new GraphqlProjectRepository(
+    ...githubRepositoryParams,
+  );
+  const apiV3IssueRepository = new ApiV3IssueRepository(
+    ...githubRepositoryParams,
+  );
+  const restIssueRepository = new RestIssueRepository(
+    ...githubRepositoryParams,
+  );
+  const graphqlProjectItemRepository = new GraphqlProjectItemRepository(
+    ...githubRepositoryParams,
+  );
+  const issueRepository = new ApiV3CheerioRestIssueRepository(
+    apiV3IssueRepository,
+    restIssueRepository,
+    graphqlProjectItemRepository,
+    localStorageCacheRepository,
+    ...githubRepositoryParams,
+  );
+
+  const pjcodeToProjectUrl = buildPjcodeToProjectUrl(
+    projectName,
+    projectUrl,
+    config.consoleProjects ?? null,
+  );
+  const resolveProject = createConsoleProjectResolver(
+    pjcodeToProjectUrl,
+    async (targetProjectUrl: string) => {
+      const targetProjectId =
+        await projectRepository.findProjectIdByUrl(targetProjectUrl);
+      if (!targetProjectId) {
+        console.error(`No project found for projectUrl ${targetProjectUrl}`);
+        return null;
       }
-      port = parsedPort;
-    }
+      const loadedProject = await projectRepository.getProject(targetProjectId);
+      if (!loadedProject) {
+        console.error(
+          `Failed to load project for projectUrl ${targetProjectUrl}`,
+        );
+        return null;
+      }
+      return loadedProject;
+    },
+  );
 
-    const token = process.env.GH_TOKEN;
-    if (!token) {
-      console.error('GH_TOKEN environment variable is required');
-      process.exit(1);
-    }
+  const uiDistDir = path.join(__dirname, '..', 'console', 'ui-dist');
+  const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
+  const inTmuxDataDir = options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR;
+  const dashboardDir = options.dashboardDir ?? DEFAULT_DASHBOARD_DIR;
 
-    const projectUrl = config.projectUrl;
-    if (!projectUrl) {
-      console.error(
-        'projectUrl is required. Provide it via the config file or project README.',
-      );
-      process.exit(1);
-    }
+  await startWebServer({
+    accessToken,
+    uiDistDir,
+    consoleDataOutputDir,
+    inTmuxDataDir,
+    dashboardDir,
+    githubToken: token,
+    issueRepository,
+    resolveProject,
+    issueTitleStateCache: new IssueTitleStateCache(),
+    port,
+  });
+  console.log(`TDPM web server listening on port ${port}`);
+};
 
-    const projectName = config.projectName ?? 'default';
-    const localStorageRepository = new LocalStorageRepository();
-    const cachePath = `./tmp/cache/${projectName}`;
-    const localStorageCacheRepository = new LocalStorageCacheRepository(
-      localStorageRepository,
-      cachePath,
-    );
-    const githubRepositoryParams = buildGithubRepositoryParams(
-      localStorageRepository,
-      token,
-    );
-    const projectRepository = new GraphqlProjectRepository(
-      ...githubRepositoryParams,
-    );
-    const apiV3IssueRepository = new ApiV3IssueRepository(
-      ...githubRepositoryParams,
-    );
-    const restIssueRepository = new RestIssueRepository(
-      ...githubRepositoryParams,
-    );
-    const graphqlProjectItemRepository = new GraphqlProjectItemRepository(
-      ...githubRepositoryParams,
-    );
-    const issueRepository = new ApiV3CheerioRestIssueRepository(
-      apiV3IssueRepository,
-      restIssueRepository,
-      graphqlProjectItemRepository,
-      localStorageCacheRepository,
-      ...githubRepositoryParams,
-    );
-
-    const pjcodeToProjectUrl = buildPjcodeToProjectUrl(
-      projectName,
-      projectUrl,
-      config.consoleProjects ?? null,
-    );
-    const resolveProject = createConsoleProjectResolver(
-      pjcodeToProjectUrl,
-      async (targetProjectUrl: string) => {
-        const targetProjectId =
-          await projectRepository.findProjectIdByUrl(targetProjectUrl);
-        if (!targetProjectId) {
-          console.error(`No project found for projectUrl ${targetProjectUrl}`);
-          return null;
-        }
-        const loadedProject =
-          await projectRepository.getProject(targetProjectId);
-        if (!loadedProject) {
-          console.error(
-            `Failed to load project for projectUrl ${targetProjectUrl}`,
-          );
-          return null;
-        }
-        return loadedProject;
-      },
+const addServeWebOptions = (command: Command): Command =>
+  command
+    .requiredOption(
+      '--configFilePath <path>',
+      'Path to config file for tower defence management',
+    )
+    .option(
+      '--port <number>',
+      `Port for the web HTTP server (default: ${DEFAULT_WEB_PORT})`,
+    )
+    .option(
+      '--consoleDataOutputDir <path>',
+      'Directory where console data files are written and served from',
+    )
+    .option(
+      '--inTmuxDataDir <path>',
+      `Directory containing the flat in-tmux-by-human static JSON files served at /in-tmux-by-human/*.json (default: ${DEFAULT_IN_TMUX_DATA_DIR})`,
+    )
+    .option(
+      '--dashboardDir <path>',
+      `Directory containing the dashboard HTML fragment tdpm.txt served unauthenticated at /tdpm.txt (default: ${DEFAULT_DASHBOARD_DIR})`,
     );
 
-    const uiDistDir = path.join(__dirname, '..', 'console', 'ui-dist');
-    const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
-    const inTmuxDataDir = options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR;
-    const dashboardDir = options.dashboardDir ?? DEFAULT_DASHBOARD_DIR;
+addServeWebOptions(program.command('serveWeb'))
+  .description(
+    'Start the local TDPM web server (console tabs, dashboard, and in-tmux session list)',
+  )
+  .action(async (options: ServeWebOptions) => {
+    await runServeWeb(options);
+  });
 
-    await startConsoleServer({
-      accessToken,
-      uiDistDir,
-      consoleDataOutputDir,
-      inTmuxDataDir,
-      dashboardDir,
-      githubToken: token,
-      issueRepository,
-      resolveProject,
-      issueTitleStateCache: new IssueTitleStateCache(),
-      port,
-    });
-    console.log(`TDPM Console server listening on port ${port}`);
+addServeWebOptions(program.command('serveConsole'))
+  .description('Deprecated alias for serveWeb. Use serveWeb instead.')
+  .action(async (options: ServeWebOptions) => {
+    await runServeWeb(options);
   });
 
 program

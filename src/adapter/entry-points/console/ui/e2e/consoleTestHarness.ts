@@ -13,7 +13,7 @@ import type {
 } from '../../../../../domain/usecases/adapter-interfaces/IssueRepository';
 import type { ConsoleProjectBinding } from '../../consoleOperationApi';
 import { IssueTitleStateCache } from '../../consoleReadApi';
-import { startConsoleServer } from '../../consoleServer';
+import { startWebServer } from '../../webServer';
 
 export const CONSOLE_E2E_PJCODE = 'umino';
 export const CONSOLE_E2E_TOKEN = 'console-e2e-fixture-token-3f9c1a';
@@ -362,7 +362,7 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
   ): Promise<ConsoleProjectBinding | null> =>
     pjcode === CONSOLE_E2E_PJCODE ? { pjcode, project } : null;
 
-  const server = await startConsoleServer({
+  const server = await startWebServer({
     accessToken: CONSOLE_E2E_TOKEN,
     uiDistDir,
     consoleDataOutputDir,

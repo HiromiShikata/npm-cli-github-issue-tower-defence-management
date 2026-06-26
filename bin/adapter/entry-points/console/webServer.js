@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.startConsoleServer = exports.createConsoleServer = exports.handleConsoleRequest = exports.resolveFlatInTmuxFilePath = exports.resolveDashboardFilePath = exports.IMAGE_PROXY_REQUEST_PATH = exports.DASHBOARD_REQUEST_PATH = exports.extractProvidedToken = exports.isTokenValid = exports.isConsoleAppRoute = exports.requiresToken = exports.hasDotSegment = exports.CONSOLE_TOKEN_HEADER = exports.DEFAULT_CONSOLE_PORT = void 0;
+exports.startWebServer = exports.createWebServer = exports.handleWebRequest = exports.resolveFlatInTmuxFilePath = exports.resolveDashboardFilePath = exports.IMAGE_PROXY_REQUEST_PATH = exports.DASHBOARD_REQUEST_PATH = exports.extractProvidedToken = exports.isTokenValid = exports.isConsoleAppRoute = exports.requiresToken = exports.hasDotSegment = exports.CONSOLE_TOKEN_HEADER = exports.DEFAULT_WEB_PORT = void 0;
 const http = __importStar(require("http"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
@@ -41,7 +41,7 @@ const consoleDataDelivery_1 = require("./consoleDataDelivery");
 const consoleReadApi_1 = require("./consoleReadApi");
 const consoleOperationApi_1 = require("./consoleOperationApi");
 const consoleImageProxy_1 = require("./consoleImageProxy");
-exports.DEFAULT_CONSOLE_PORT = 9981;
+exports.DEFAULT_WEB_PORT = 9981;
 exports.CONSOLE_TOKEN_HEADER = 'x-pv-token';
 const PLACEHOLDER_INDEX_HTML = `<!DOCTYPE html>
 <html lang="en">
@@ -412,7 +412,7 @@ const handleTokenedRequest = async (options, request, response, requestPath, sea
     }
     sendNotFound(response);
 };
-const handleConsoleRequest = async (options, request, response) => {
+const handleWebRequest = async (options, request, response) => {
     const requestUrl = new URL(request.url ?? '/', 'http://localhost');
     const requestPath = requestUrl.pathname;
     if ((0, exports.hasDotSegment)(requestPath)) {
@@ -474,7 +474,7 @@ const handleConsoleRequest = async (options, request, response) => {
     });
     response.end(staticContent);
 };
-exports.handleConsoleRequest = handleConsoleRequest;
+exports.handleWebRequest = handleWebRequest;
 const sendInternalServerError = (response) => {
     if (response.headersSent) {
         response.end();
@@ -486,20 +486,20 @@ const sendInternalServerError = (response) => {
     });
     response.end('Internal Server Error');
 };
-const createConsoleServer = (options) => http.createServer((request, response) => {
-    (0, exports.handleConsoleRequest)(options, request, response).catch((error) => {
+const createWebServer = (options) => http.createServer((request, response) => {
+    (0, exports.handleWebRequest)(options, request, response).catch((error) => {
         console.error('console request failed', error);
         sendInternalServerError(response);
     });
 });
-exports.createConsoleServer = createConsoleServer;
-const startConsoleServer = (options) => new Promise((resolve, reject) => {
-    const server = (0, exports.createConsoleServer)(options);
+exports.createWebServer = createWebServer;
+const startWebServer = (options) => new Promise((resolve, reject) => {
+    const server = (0, exports.createWebServer)(options);
     server.once('error', reject);
     server.listen(options.port, () => {
         server.removeListener('error', reject);
         resolve(server);
     });
 });
-exports.startConsoleServer = startConsoleServer;
-//# sourceMappingURL=consoleServer.js.map
+exports.startWebServer = startWebServer;
+//# sourceMappingURL=webServer.js.map
