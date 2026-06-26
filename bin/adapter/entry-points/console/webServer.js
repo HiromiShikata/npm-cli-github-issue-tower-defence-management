@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.startWebServer = exports.createWebServer = exports.handleWebRequest = exports.resolveFlatInTmuxFilePath = exports.resolveDashboardFilePath = exports.IMAGE_PROXY_REQUEST_PATH = exports.DASHBOARD_REQUEST_PATH = exports.extractProvidedToken = exports.isTokenValid = exports.isConsoleAppRoute = exports.requiresToken = exports.hasDotSegment = exports.CONSOLE_TOKEN_HEADER = exports.DEFAULT_WEB_PORT = void 0;
+exports.startWebServer = exports.createWebServer = exports.handleWebRequest = exports.resolveDashboardContent = exports.resolveFlatInTmuxFilePath = exports.resolveDashboardFilePath = exports.IMAGE_PROXY_REQUEST_PATH = exports.DASHBOARD_REQUEST_PATH = exports.extractProvidedToken = exports.isTokenValid = exports.isConsoleAppRoute = exports.requiresToken = exports.hasDotSegment = exports.CONSOLE_TOKEN_HEADER = exports.DEFAULT_DASHBOARD_PROJECT_CODES = exports.DEFAULT_WEB_PORT = void 0;
 const http = __importStar(require("http"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
@@ -41,7 +41,9 @@ const consoleDataDelivery_1 = require("./consoleDataDelivery");
 const consoleReadApi_1 = require("./consoleReadApi");
 const consoleOperationApi_1 = require("./consoleOperationApi");
 const consoleImageProxy_1 = require("./consoleImageProxy");
+const dashboardComposeService_1 = require("./dashboardComposeService");
 exports.DEFAULT_WEB_PORT = 9981;
+exports.DEFAULT_DASHBOARD_PROJECT_CODES = ['um', 'xm', 'xc', 'ut'];
 exports.CONSOLE_TOKEN_HEADER = 'x-pv-token';
 const PLACEHOLDER_INDEX_HTML = `<!DOCTYPE html>
 <html lang="en">
@@ -412,6 +414,31 @@ const handleTokenedRequest = async (options, request, response, requestPath, sea
     }
     sendNotFound(response);
 };
+const readStaticDashboardContent = (dashboardDir, requestPath) => {
+    if (dashboardDir === null) {
+        return null;
+    }
+    const dashboardFilePath = (0, exports.resolveDashboardFilePath)(dashboardDir, requestPath);
+    if (dashboardFilePath === null) {
+        return null;
+    }
+    return readStaticFile(dashboardFilePath);
+};
+const resolveDashboardContent = (options, requestPath) => {
+    if (options.dashboardDataDir !== null &&
+        (0, dashboardComposeService_1.dashboardComposeFilesPresent)({
+            dashboardDataDir: options.dashboardDataDir,
+            projectCodes: options.dashboardProjectCodes,
+        })) {
+        const dashboardText = (0, dashboardComposeService_1.composeDashboardText)({
+            dashboardDataDir: options.dashboardDataDir,
+            projectCodes: options.dashboardProjectCodes,
+        });
+        return Buffer.from(dashboardText, 'utf-8');
+    }
+    return readStaticDashboardContent(options.dashboardDir, requestPath);
+};
+exports.resolveDashboardContent = resolveDashboardContent;
 const handleWebRequest = async (options, request, response) => {
     const requestUrl = new URL(request.url ?? '/', 'http://localhost');
     const requestPath = requestUrl.pathname;
@@ -425,12 +452,7 @@ const handleWebRequest = async (options, request, response) => {
             sendNotFound(response);
             return;
         }
-        if (options.dashboardDir === null) {
-            sendNotFound(response);
-            return;
-        }
-        const dashboardFilePath = (0, exports.resolveDashboardFilePath)(options.dashboardDir, requestPath);
-        const dashboardContent = dashboardFilePath === null ? null : readStaticFile(dashboardFilePath);
+        const dashboardContent = (0, exports.resolveDashboardContent)(options, requestPath);
         if (dashboardContent === null) {
             sendNotFound(response);
             return;

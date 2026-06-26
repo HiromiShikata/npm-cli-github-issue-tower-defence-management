@@ -26,8 +26,14 @@ import {
   handleTriage,
 } from './consoleOperationApi';
 import { ImageFetcher, fetchProxiedImage } from './consoleImageProxy';
+import {
+  composeDashboardText,
+  dashboardComposeFilesPresent,
+} from './dashboardComposeService';
 
 export const DEFAULT_WEB_PORT = 9981;
+
+export const DEFAULT_DASHBOARD_PROJECT_CODES = ['um', 'xm', 'xc', 'ut'];
 
 export const CONSOLE_TOKEN_HEADER = 'x-pv-token';
 
@@ -158,6 +164,8 @@ export type WebServerOptions = {
   consoleDataOutputDir: string | null;
   inTmuxDataDir: string | null;
   dashboardDir: string | null;
+  dashboardDataDir: string | null;
+  dashboardProjectCodes: string[];
   githubToken?: string | null;
   imageFetcher?: ImageFetcher | null;
   issueRepository?: IssueRepository | null;
@@ -525,6 +533,40 @@ const handleTokenedRequest = async (
   sendNotFound(response);
 };
 
+const readStaticDashboardContent = (
+  dashboardDir: string | null,
+  requestPath: string,
+): Buffer | null => {
+  if (dashboardDir === null) {
+    return null;
+  }
+  const dashboardFilePath = resolveDashboardFilePath(dashboardDir, requestPath);
+  if (dashboardFilePath === null) {
+    return null;
+  }
+  return readStaticFile(dashboardFilePath);
+};
+
+export const resolveDashboardContent = (
+  options: WebServerOptions,
+  requestPath: string,
+): Buffer | null => {
+  if (
+    options.dashboardDataDir !== null &&
+    dashboardComposeFilesPresent({
+      dashboardDataDir: options.dashboardDataDir,
+      projectCodes: options.dashboardProjectCodes,
+    })
+  ) {
+    const dashboardText = composeDashboardText({
+      dashboardDataDir: options.dashboardDataDir,
+      projectCodes: options.dashboardProjectCodes,
+    });
+    return Buffer.from(dashboardText, 'utf-8');
+  }
+  return readStaticDashboardContent(options.dashboardDir, requestPath);
+};
+
 export const handleWebRequest = async (
   options: WebServerOptions,
   request: http.IncomingMessage,
@@ -544,16 +586,7 @@ export const handleWebRequest = async (
       sendNotFound(response);
       return;
     }
-    if (options.dashboardDir === null) {
-      sendNotFound(response);
-      return;
-    }
-    const dashboardFilePath = resolveDashboardFilePath(
-      options.dashboardDir,
-      requestPath,
-    );
-    const dashboardContent =
-      dashboardFilePath === null ? null : readStaticFile(dashboardFilePath);
+    const dashboardContent = resolveDashboardContent(options, requestPath);
     if (dashboardContent === null) {
       sendNotFound(response);
       return;

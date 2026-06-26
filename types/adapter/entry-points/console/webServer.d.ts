@@ -4,6 +4,7 @@ import { IssueTitleStateCache } from './consoleReadApi';
 import { ConsoleProjectResolver } from './consoleOperationApi';
 import { ImageFetcher } from './consoleImageProxy';
 export declare const DEFAULT_WEB_PORT = 9981;
+export declare const DEFAULT_DASHBOARD_PROJECT_CODES: string[];
 export declare const CONSOLE_TOKEN_HEADER = "x-pv-token";
 export declare const hasDotSegment: (requestPath: string) => boolean;
 export declare const requiresToken: (requestPath: string) => boolean;
@@ -16,6 +17,8 @@ export type WebServerOptions = {
     consoleDataOutputDir: string | null;
     inTmuxDataDir: string | null;
     dashboardDir: string | null;
+    dashboardDataDir: string | null;
+    dashboardProjectCodes: string[];
     githubToken?: string | null;
     imageFetcher?: ImageFetcher | null;
     issueRepository?: IssueRepository | null;
@@ -26,6 +29,7 @@ export declare const DASHBOARD_REQUEST_PATH = "/tdpm.txt";
 export declare const IMAGE_PROXY_REQUEST_PATH = "/api/img";
 export declare const resolveDashboardFilePath: (dashboardDir: string, requestPath: string) => string | null;
 export declare const resolveFlatInTmuxFilePath: (inTmuxDataDir: string, requestPath: string) => string | null;
+export declare const resolveDashboardContent: (options: WebServerOptions, requestPath: string) => Buffer | null;
 export declare const handleWebRequest: (options: WebServerOptions, request: http.IncomingMessage, response: http.ServerResponse) => Promise<void>;
 export declare const createWebServer: (options: WebServerOptions) => http.Server;
 export type StartWebServerOptions = WebServerOptions & {
