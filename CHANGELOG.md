@@ -1,3 +1,10 @@
+# [1.106.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.105.0...v1.106.0) (2026-06-26)
+
+
+### Features
+
+* **schedule:** run stale tmux session cleanup in the scheduled cycle ([#1001](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1001)) ([d6c9759](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d6c975999c9ccee48fc743149e440d4c2e80e7b3))
+
 # [1.105.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.104.4...v1.105.0) (2026-06-26)
 
 
