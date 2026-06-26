@@ -1157,7 +1157,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     const buildGraphqlPrResponse = (
       checkRunNodes: Array<{
         __typename: 'CheckRun';
-        databaseId: number;
+        startedAt: string | null;
         name: string;
         conclusion: string | null;
       }>,
@@ -1202,13 +1202,13 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             buildGraphqlPrResponse([
               {
                 __typename: 'CheckRun',
-                databaseId: 100,
+                startedAt: '2026-06-01T00:00:00Z',
                 name: 'check_pull_requests_to_link_issues',
                 conclusion: 'FAILURE',
               },
               {
                 __typename: 'CheckRun',
-                databaseId: 200,
+                startedAt: '2026-06-02T00:00:00Z',
                 name: 'check_pull_requests_to_link_issues',
                 conclusion: 'SUCCESS',
               },
@@ -1235,13 +1235,13 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             buildGraphqlPrResponse([
               {
                 __typename: 'CheckRun',
-                databaseId: 100,
+                startedAt: '2026-06-01T00:00:00Z',
                 name: 'ci',
                 conclusion: 'SUCCESS',
               },
               {
                 __typename: 'CheckRun',
-                databaseId: 200,
+                startedAt: '2026-06-02T00:00:00Z',
                 name: 'ci',
                 conclusion: 'FAILURE',
               },
@@ -1268,13 +1268,13 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             buildGraphqlPrResponse([
               {
                 __typename: 'CheckRun',
-                databaseId: 100,
+                startedAt: '2026-06-01T00:00:00Z',
                 name: 'ci',
                 conclusion: 'FAILURE',
               },
               {
                 __typename: 'CheckRun',
-                databaseId: 200,
+                startedAt: '2026-06-02T00:00:00Z',
                 name: 'ci',
                 conclusion: null,
               },
@@ -1292,6 +1292,153 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result).not.toBeNull();
       expect(result?.isCiStateSuccess).toBe(false);
       expect(result?.isPassedAllCiJob).toBe(false);
+    });
+
+    it('returns isCiStateSuccess true when CheckRun conclusion is NEUTRAL or SKIPPED', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify(
+            buildGraphqlPrResponse([
+              {
+                __typename: 'CheckRun',
+                startedAt: '2026-06-01T00:00:00Z',
+                name: 'build',
+                conclusion: 'SUCCESS',
+              },
+              {
+                __typename: 'CheckRun',
+                startedAt: '2026-06-01T00:00:00Z',
+                name: 'optional-check',
+                conclusion: 'NEUTRAL',
+              },
+              {
+                __typename: 'CheckRun',
+                startedAt: '2026-06-01T00:00:00Z',
+                name: 'conditional-check',
+                conclusion: 'SKIPPED',
+              },
+            ]),
+          ),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.isCiStateSuccess).toBe(true);
+      expect(result?.isPassedAllCiJob).toBe(true);
+    });
+
+    it('returns isCiStateSuccess true when a stale StatusContext FAILURE is superseded by a later SUCCESS for the same context name', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              repository: {
+                pullRequest: {
+                  url: 'https://github.com/HiromiShikata/test-repository/pull/31',
+                  state: 'OPEN',
+                  isDraft: false,
+                  headRefName: 'feature-branch',
+                  baseRefName: 'main',
+                  mergeable: 'MERGEABLE',
+                  baseRepository: {
+                    branchProtectionRules: { nodes: [] },
+                    defaultBranchRef: { name: 'main' },
+                    rulesets: { nodes: [] },
+                  },
+                  commits: {
+                    nodes: [
+                      {
+                        commit: {
+                          statusCheckRollup: {
+                            contexts: {
+                              nodes: [
+                                {
+                                  __typename: 'StatusContext',
+                                  context: 'external-ci',
+                                  state: 'FAILURE',
+                                },
+                                {
+                                  __typename: 'StatusContext',
+                                  context: 'external-ci',
+                                  state: 'SUCCESS',
+                                },
+                              ],
+                            },
+                          },
+                        },
+                      },
+                    ],
+                  },
+                  reviewThreads: { nodes: [] },
+                },
+              },
+            },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.isCiStateSuccess).toBe(true);
+    });
+
+    it('returns isCiStateSuccess true when no contexts exist and statusCheckRollup state is SUCCESS', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              repository: {
+                pullRequest: {
+                  url: 'https://github.com/HiromiShikata/test-repository/pull/31',
+                  state: 'OPEN',
+                  isDraft: false,
+                  headRefName: 'feature-branch',
+                  baseRefName: 'main',
+                  mergeable: 'MERGEABLE',
+                  baseRepository: {
+                    branchProtectionRules: { nodes: [] },
+                    defaultBranchRef: { name: 'main' },
+                    rulesets: { nodes: [] },
+                  },
+                  commits: {
+                    nodes: [
+                      {
+                        commit: {
+                          statusCheckRollup: {
+                            state: 'SUCCESS',
+                            contexts: { nodes: [] },
+                          },
+                        },
+                      },
+                    ],
+                  },
+                  reviewThreads: { nodes: [] },
+                },
+              },
+            },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.isCiStateSuccess).toBe(true);
     });
 
     it('returns isCiStateSuccess false when a StatusContext has FAILURE state', async () => {
