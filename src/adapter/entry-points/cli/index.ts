@@ -371,8 +371,14 @@ program
         DEFAULT_WEB_PORT,
       );
       if (consoleProcess !== null) {
-        process.once('SIGTERM', () => consoleProcess.kill());
-        process.once('SIGINT', () => consoleProcess.kill());
+        process.once('SIGTERM', () => {
+          consoleProcess.kill();
+          process.exit(0);
+        });
+        process.once('SIGINT', () => {
+          consoleProcess.kill();
+          process.exit(0);
+        });
       }
     }
 
