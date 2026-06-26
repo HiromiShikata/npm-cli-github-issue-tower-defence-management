@@ -5,7 +5,7 @@ const meta: Meta<typeof ConsoleErrorToast> = {
   title: 'Console/ConsoleErrorToast',
   component: ConsoleErrorToast,
   args: {
-    message: '操作に失敗しました: HTTP 422 Review cannot be requested',
+    message: 'Operation failed: HTTP 422 Review cannot be requested',
     onDismiss: () => {},
   },
 };
@@ -18,6 +18,6 @@ export const ReviewRejectedByGitHub: Story = {};
 
 export const NetworkFailure: Story = {
   args: {
-    message: '操作に失敗しました: network down',
+    message: 'Operation failed: network down',
   },
 };

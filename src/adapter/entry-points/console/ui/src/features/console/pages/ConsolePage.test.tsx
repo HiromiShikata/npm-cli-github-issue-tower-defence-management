@@ -254,6 +254,61 @@ describe('ConsolePage', () => {
     expect(queryByText('TDPM Console')).toBeNull();
     expect(queryByText('project: umino')).toBeNull();
   });
+
+  it('renders the failure toast in English without any Japanese characters', async () => {
+    const fetchMock = jest.fn(
+      async (url: string, init?: { method?: string }) => {
+        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+        if (listMatch !== null) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => listPayload(listMatch[1]),
+          };
+        }
+        if (init?.method === 'POST') {
+          return {
+            ok: false,
+            status: 422,
+            text: async () =>
+              JSON.stringify({ error: 'HTTP 422 Review cannot be requested' }),
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ body: '# body' }),
+        };
+      },
+    );
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    jest.useFakeTimers();
+    try {
+      const { getByText, findByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Add serveConsole subcommand'));
+      fireEvent.click(await findByText('Approve'));
+
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      const toast = getByText(/^Operation failed:/);
+      expect(toast.textContent).toBe(
+        'Operation failed: HTTP 422 Review cannot be requested',
+      );
+      expect(toast.textContent).not.toMatch(
+        /[\u{3040}-\u{309F}\u{30A0}-\u{30FF}\u{4E00}-\u{9FFF}]/u,
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });
 
 const twoItemPrPayload = () => ({
