@@ -7,7 +7,7 @@ import {
 export type ConsoleQueuedAction = {
   message: string;
   color: ConsoleToastColor;
-  commit: () => void;
+  commit: () => Promise<void>;
   advance: () => void;
 };
 
@@ -16,6 +16,18 @@ export type ConsolePendingActionView = {
   color: ConsoleToastColor;
   remainingSeconds: number;
   progress: number;
+};
+
+export type ConsoleActionError = {
+  message: string;
+  reason: string;
+};
+
+const errorReason = (error: unknown): string => {
+  if (error instanceof Error && error.message.length > 0) {
+    return error.message;
+  }
+  return String(error);
 };
 
 const COUNTDOWN_TICK_MS = 100;
@@ -28,12 +40,15 @@ const computeProgress = (elapsedMs: number): number =>
 
 export type ConsoleActionQueue = {
   pending: ConsolePendingActionView | null;
+  error: ConsoleActionError | null;
   enqueue: (action: ConsoleQueuedAction) => void;
   undo: () => void;
+  dismissError: () => void;
 };
 
 export const useConsoleActionQueue = (): ConsoleActionQueue => {
   const [pending, setPending] = useState<ConsolePendingActionView | null>(null);
+  const [error, setError] = useState<ConsoleActionError | null>(null);
   const actionRef = useRef<ConsoleQueuedAction | null>(null);
   const startRef = useRef<number>(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -46,6 +61,12 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
     }
   }, []);
 
+  const runCommit = useCallback((action: ConsoleQueuedAction): void => {
+    action.commit().catch((cause: unknown) => {
+      setError({ message: action.message, reason: errorReason(cause) });
+    });
+  }, []);
+
   const commitPending = useCallback((): void => {
     const action = actionRef.current;
     clearTimer();
@@ -53,9 +74,9 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
     setPending(null);
     if (action !== null && !committedRef.current) {
       committedRef.current = true;
-      action.commit();
+      runCommit(action);
     }
-  }, [clearTimer]);
+  }, [clearTimer, runCommit]);
 
   const undo = useCallback((): void => {
     clearTimer();
@@ -64,13 +85,17 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
     setPending(null);
   }, [clearTimer]);
 
+  const dismissError = useCallback((): void => {
+    setError(null);
+  }, []);
+
   const enqueue = useCallback(
     (action: ConsoleQueuedAction): void => {
       if (actionRef.current !== null && !committedRef.current) {
         const previous = actionRef.current;
         clearTimer();
         committedRef.current = true;
-        previous.commit();
+        runCommit(previous);
       }
       committedRef.current = false;
       actionRef.current = action;
@@ -96,10 +121,10 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
         });
       }, COUNTDOWN_TICK_MS);
     },
-    [clearTimer, commitPending],
+    [clearTimer, commitPending, runCommit],
   );
 
   useEffect(() => clearTimer, [clearTimer]);
 
-  return { pending, enqueue, undo };
+  return { pending, error, enqueue, undo, dismissError };
 };

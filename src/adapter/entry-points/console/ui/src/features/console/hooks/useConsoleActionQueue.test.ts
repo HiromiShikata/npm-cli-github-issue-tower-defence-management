@@ -8,10 +8,13 @@ const makeAction = (
 ) => ({
   message: 'Approved — PR #851',
   color: 'green' as const,
-  commit: jest.fn(),
+  commit: jest.fn<Promise<void>, []>().mockResolvedValue(undefined),
   advance: jest.fn(),
   ...overrides,
 });
+
+const flushMicrotasks = (): Promise<void> =>
+  Promise.resolve().then(() => undefined);
 
 describe('useConsoleActionQueue', () => {
   beforeEach(() => {
@@ -113,5 +116,85 @@ describe('useConsoleActionQueue', () => {
     });
     expect(first.commit).toHaveBeenCalledTimes(1);
     expect(second.commit).toHaveBeenCalledTimes(1);
+  });
+
+  it('surfaces the failure reason when the timer commit rejects', async () => {
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const action = makeAction({
+      commit: jest
+        .fn<Promise<void>, []>()
+        .mockRejectedValue(new Error('HTTP 422 review cannot be requested')),
+    });
+    act(() => {
+      result.current.enqueue(action);
+    });
+    expect(result.current.error).toBeNull();
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+      await flushMicrotasks();
+    });
+    expect(action.commit).toHaveBeenCalledTimes(1);
+    expect(result.current.error).toEqual({
+      message: 'Approved — PR #851',
+      reason: 'HTTP 422 review cannot be requested',
+    });
+  });
+
+  it('surfaces the failure reason when the previous action commit rejects on enqueue', async () => {
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const first = makeAction({
+      commit: jest
+        .fn<Promise<void>, []>()
+        .mockRejectedValue(new Error('network down')),
+    });
+    const second = makeAction({
+      message: 'Rejected — PR #853',
+      color: 'amber',
+    });
+    act(() => {
+      result.current.enqueue(first);
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+      result.current.enqueue(second);
+      await flushMicrotasks();
+    });
+    expect(first.commit).toHaveBeenCalledTimes(1);
+    expect(result.current.error).toEqual({
+      message: 'Approved — PR #851',
+      reason: 'network down',
+    });
+  });
+
+  it('clears the surfaced error when dismissError is called', async () => {
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const action = makeAction({
+      commit: jest.fn<Promise<void>, []>().mockRejectedValue(new Error('boom')),
+    });
+    act(() => {
+      result.current.enqueue(action);
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+      await flushMicrotasks();
+    });
+    expect(result.current.error).not.toBeNull();
+    act(() => {
+      result.current.dismissError();
+    });
+    expect(result.current.error).toBeNull();
+  });
+
+  it('does not surface an error when the commit resolves', async () => {
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const action = makeAction();
+    act(() => {
+      result.current.enqueue(action);
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+      await flushMicrotasks();
+    });
+    expect(result.current.error).toBeNull();
   });
 });

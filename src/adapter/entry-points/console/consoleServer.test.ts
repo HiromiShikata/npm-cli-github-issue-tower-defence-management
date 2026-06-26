@@ -652,6 +652,49 @@ describe('consoleServer new routes integration', () => {
     }
   });
 
+  it('returns 502 with the underlying error message when an operation rejects', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const issueRepository = mock<IssueRepository>();
+    issueRepository.get.mockResolvedValue({
+      ...mock<Issue>(),
+      itemId: 'PVTI_loaded',
+    });
+    issueRepository.approvePullRequest.mockRejectedValue(
+      new Error('Failed to approve PR https://github.com/o/r/pull/1: HTTP 422'),
+    );
+    const server = await startConsoleServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      issueRepository,
+      resolveProject: async (pjcode) =>
+        pjcode === 'umino' ? { pjcode, project: buildProject() } : null,
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'POST',
+        `/api/review?k=${testToken}`,
+        {
+          pjcode: 'umino',
+          action: 'approve',
+          prUrl: 'https://github.com/o/r/pull/1',
+          projectItemId: 'PVTI_op',
+        },
+      );
+      expect(response.statusCode).toBe(502);
+      expect(JSON.parse(response.body)).toEqual({
+        error: 'Failed to approve PR https://github.com/o/r/pull/1: HTTP 422',
+      });
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   it('rejects an operation api with a malformed json body', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
     const issueRepository = mock<IssueRepository>();
