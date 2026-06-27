@@ -81,7 +81,7 @@
     "eslint-plugin-import-x": "^4.0.0",
     "eslint-plugin-unused-imports": "^4.0.0",
     "jest": "^30.4.2",
-    "jest-environment-jsdom": "29.7.0",
+    "jest-environment-jsdom": "30.4.1",
     "jest-html-reporter": "^4.4.0",
     "jest-junit": "^17.0.0",
     "jest-mock-extended": "^4.0.0-beta1",
