@@ -201,7 +201,7 @@ class StartPreparationUseCase {
                     continue;
                 }
                 if (runningIssueUrls.has(issue.url)) {
-                    console.log(`Skipping ${issue.url}: worker already running.`);
+                    console.warn(`Skipping ${issue.url}: worker already running.`);
                     continue;
                 }
                 if (issue.nextActionDate !== null &&
