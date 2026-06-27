@@ -119,7 +119,7 @@ describe('writeTokenStatus', () => {
       interactiveSessionRepository: {
         listInteractiveSessions: () => interactiveSessions,
       },
-      spawnRepository: { listSpawns: () => spawns },
+      spawnRepository: { listSpawns: () => spawns, listRunningIssueUrls: () => [] },
     });
 
     const written = readJson(path.join(dir, 'token-status.json'));
@@ -169,7 +169,7 @@ describe('writeTokenStatus', () => {
       interactiveSessionRepository: {
         listInteractiveSessions: () => interactiveSessions,
       },
-      spawnRepository: { listSpawns: () => [] },
+      spawnRepository: { listSpawns: () => [], listRunningIssueUrls: () => [] },
     };
 
     writeTokenStatus({
@@ -236,7 +236,7 @@ describe('writeTokenStatus', () => {
       issues: [],
       readSnapshot: () => null,
       interactiveSessionRepository: { listInteractiveSessions: () => [] },
-      spawnRepository: { listSpawns: () => [] },
+      spawnRepository: { listSpawns: () => [], listRunningIssueUrls: () => [] },
     });
     expect(fs.existsSync(path.join(dir, 'token-status.json'))).toBe(false);
   });
@@ -248,7 +248,7 @@ describe('writeTokenStatus', () => {
       issues: [],
       readSnapshot: () => null,
       interactiveSessionRepository: { listInteractiveSessions: () => [] },
-      spawnRepository: { listSpawns: () => [] },
+      spawnRepository: { listSpawns: () => [], listRunningIssueUrls: () => [] },
     });
     expect(fs.existsSync(path.join(dir, 'token-status.json'))).toBe(false);
   });
