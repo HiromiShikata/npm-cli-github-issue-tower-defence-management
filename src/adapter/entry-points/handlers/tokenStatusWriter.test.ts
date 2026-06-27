@@ -119,7 +119,10 @@ describe('writeTokenStatus', () => {
       interactiveSessionRepository: {
         listInteractiveSessions: () => interactiveSessions,
       },
-      spawnRepository: { listSpawns: () => spawns, listRunningIssueUrls: () => [] },
+      spawnRepository: {
+        listSpawns: () => spawns,
+        listRunningIssueUrls: () => [],
+      },
     });
 
     const written = readJson(path.join(dir, 'token-status.json'));
