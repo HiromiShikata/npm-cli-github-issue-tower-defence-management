@@ -1,3 +1,10 @@
+## [1.109.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.109.1...v1.109.2) (2026-06-27)
+
+
+### Bug Fixes
+
+* **dashboard:** use full project code as the per-project file key (display abbreviation is display-only) ([#1019](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1019)) ([65dcef6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/65dcef61fc1a227bad808c5d84856c7a848763b2)), closes [#1015](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1015)
+
 ## [1.109.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.109.0...v1.109.1) (2026-06-27)
 
 
