@@ -36,7 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.GraphqlProjectItemRepository = exports.callWithRateLimitRetry = exports.RATE_LIMIT_MAX_BACKOFF_MS = exports.RATE_LIMIT_DEFAULT_BACKOFF_MS = exports.RATE_LIMIT_MIN_BACKOFF_MS = exports.RATE_LIMIT_MAX_RETRIES = exports.FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH = exports.FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE = exports.PAGINATION_DELAY_MS = void 0;
 const ky_1 = __importStar(require("ky"));
 const BaseGitHubRepository_1 = require("../BaseGitHubRepository");
-exports.PAGINATION_DELAY_MS = 500;
+exports.PAGINATION_DELAY_MS = 5000;
 exports.FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE = 100;
 exports.FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH = 4000;
 exports.RATE_LIMIT_MAX_RETRIES = 6;
