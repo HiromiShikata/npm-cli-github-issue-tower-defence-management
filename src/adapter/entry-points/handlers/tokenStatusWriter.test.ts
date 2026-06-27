@@ -8,7 +8,7 @@ import { RateLimitSnapshot } from '../../proxy/RateLimitCache';
 import { TokenStatusFile, writeTokenStatus } from './tokenStatusWriter';
 
 const readJson = (filePath: string): unknown =>
-  JSON.parse(fs.readFileSync(filePath, 'utf8')) as unknown;
+  JSON.parse(fs.readFileSync(filePath, 'utf8'));
 
 const ASSIGNEE = 'HiromiShikata';
 
