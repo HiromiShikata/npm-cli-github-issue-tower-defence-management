@@ -1,34 +1,33 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.NotifySilentLiveSessionsUseCase = exports.DEFAULT_NOTIFICATION_STAGGER_SECONDS = exports.DEFAULT_NOTIFICATION_COOLDOWN_SECONDS = exports.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = exports.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = exports.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = exports.DEFAULT_MONITORED_STATUS = void 0;
-const WorkflowStatus_1 = require("../entities/WorkflowStatus");
-const InTmuxByHumanSessionReconcileUseCase_1 = require("./intmux/InTmuxByHumanSessionReconcileUseCase");
-exports.DEFAULT_MONITORED_STATUS = WorkflowStatus_1.IN_TMUX_STATUS_NAME;
+exports.NotifySilentLiveSessionsUseCase = exports.DEFAULT_NOTIFICATION_STAGGER_SECONDS = exports.DEFAULT_NOTIFICATION_COOLDOWN_SECONDS = exports.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = exports.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = exports.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = void 0;
+const ResolveInteractiveLiveSessionsUseCase_1 = require("./ResolveInteractiveLiveSessionsUseCase");
 exports.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = 10 * 60;
 exports.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = 5 * 60;
 exports.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = 15 * 60;
 exports.DEFAULT_NOTIFICATION_COOLDOWN_SECONDS = 30 * 60;
 exports.DEFAULT_NOTIFICATION_STAGGER_SECONDS = 25;
 class NotifySilentLiveSessionsUseCase {
-    constructor(issueRepository, tmuxSessionRepository, sessionOutputActivityRepository, subAgentActivityRepository, ownerCallStatusProvider, notificationRepository, messageComposer, sleeper) {
-        this.issueRepository = issueRepository;
-        this.tmuxSessionRepository = tmuxSessionRepository;
+    constructor(liveSessionProcessSnapshotProvider, interactiveLiveSessionTranscriptResolver, sessionOutputActivityRepository, subAgentActivityRepository, ownerCallStatusProvider, notificationRepository, messageComposer, sleeper) {
+        this.liveSessionProcessSnapshotProvider = liveSessionProcessSnapshotProvider;
+        this.interactiveLiveSessionTranscriptResolver = interactiveLiveSessionTranscriptResolver;
         this.sessionOutputActivityRepository = sessionOutputActivityRepository;
         this.subAgentActivityRepository = subAgentActivityRepository;
         this.ownerCallStatusProvider = ownerCallStatusProvider;
         this.notificationRepository = notificationRepository;
         this.messageComposer = messageComposer;
         this.sleeper = sleeper;
+        this.resolveInteractiveLiveSessions = new ResolveInteractiveLiveSessionsUseCase_1.ResolveInteractiveLiveSessionsUseCase();
         this.run = async (params) => {
-            const liveSessionNames = new Set(await this.tmuxSessionRepository.listLiveSessionNames());
-            const openIssues = await this.issueRepository.getAllOpened(params.project, params.allowCacheMinutes);
-            const monitoredSessionNames = this.selectMonitoredSessionNames(openIssues, liveSessionNames, params.monitoredStatus);
-            const snapshots = await this.collectSnapshots(monitoredSessionNames, params.now);
+            const snapshot = await this.liveSessionProcessSnapshotProvider.getSnapshot();
+            const interactiveSessions = this.resolveInteractiveLiveSessions.resolve(snapshot);
+            const transcriptPathBySessionName = this.interactiveLiveSessionTranscriptResolver.resolveTranscriptPaths(interactiveSessions);
+            const snapshots = await this.collectSnapshots(interactiveSessions, transcriptPathBySessionName, params.now);
             const candidates = [];
-            for (const snapshot of snapshots) {
-                const message = this.composeMessage(snapshot, params);
+            for (const sessionSnapshot of snapshots) {
+                const message = this.composeMessage(sessionSnapshot, params);
                 if (message !== null) {
-                    candidates.push({ sessionName: snapshot.sessionName, message });
+                    candidates.push({ sessionName: sessionSnapshot.sessionName, message });
                 }
             }
             candidates.sort((left, right) => left.sessionName < right.sessionName
@@ -36,7 +35,7 @@ class NotifySilentLiveSessionsUseCase {
                 : left.sessionName > right.sessionName
                     ? 1
                     : 0);
-            console.log(`Silent live session notification: ${candidates.length} candidate(s) of ${monitoredSessionNames.length} monitored session(s).`);
+            console.log(`Silent live session notification: ${candidates.length} candidate(s) of ${interactiveSessions.length} interactive session(s).`);
             const nowEpochSeconds = Math.floor(params.now.getTime() / 1000);
             let sentCount = 0;
             for (const candidate of candidates) {
@@ -55,16 +54,17 @@ class NotifySilentLiveSessionsUseCase {
                 console.log(`Notified ${candidate.sessionName}.`);
             }
         };
-        this.collectSnapshots = async (monitoredSessionNames, now) => {
-            const activities = await this.sessionOutputActivityRepository.listSessionOutputActivities(monitoredSessionNames);
+        this.collectSnapshots = async (interactiveSessions, transcriptPathBySessionName, now) => {
+            const sessionNames = interactiveSessions.map((session) => session.sessionName);
+            const activities = await this.sessionOutputActivityRepository.listSessionOutputActivities(transcriptPathBySessionName);
             const lastOutputBySessionName = new Map();
             for (const activity of activities) {
                 lastOutputBySessionName.set(activity.sessionName, activity.lastOutputEpochSeconds);
             }
-            const subAgentsBySessionName = await this.subAgentActivityRepository.listSubAgentActivitiesBySessionName(monitoredSessionNames);
-            const sessionNamesWithUnansweredOwnerCall = await this.ownerCallStatusProvider.listSessionNamesWithUnansweredOwnerCall(monitoredSessionNames);
+            const subAgentsBySessionName = await this.subAgentActivityRepository.listSubAgentActivitiesBySessionName(sessionNames);
+            const sessionNamesWithUnansweredOwnerCall = await this.ownerCallStatusProvider.listSessionNamesWithUnansweredOwnerCall(transcriptPathBySessionName);
             const nowEpochSeconds = Math.floor(now.getTime() / 1000);
-            return monitoredSessionNames.map((sessionName) => {
+            return sessionNames.map((sessionName) => {
                 const lastOutputEpochSeconds = lastOutputBySessionName.get(sessionName);
                 const mainSilentSeconds = lastOutputEpochSeconds === undefined
                     ? null
@@ -93,19 +93,6 @@ class NotifySilentLiveSessionsUseCase {
                 return null;
             }
             return sections.join('\n\n');
-        };
-        this.selectMonitoredSessionNames = (openIssues, liveSessionNames, monitoredStatus) => {
-            const monitoredSessionNames = [];
-            for (const issue of openIssues) {
-                if (issue.status !== monitoredStatus) {
-                    continue;
-                }
-                const sessionName = (0, InTmuxByHumanSessionReconcileUseCase_1.toTmuxSessionName)(issue.url);
-                if (liveSessionNames.has(sessionName)) {
-                    monitoredSessionNames.push(sessionName);
-                }
-            }
-            return monitoredSessionNames;
         };
     }
 }

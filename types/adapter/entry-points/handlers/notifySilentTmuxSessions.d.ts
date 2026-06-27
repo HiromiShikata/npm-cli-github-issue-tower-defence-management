@@ -1,16 +1,12 @@
-import { Project } from '../../../domain/entities/Project';
 import { LocalCommandRunner } from '../../../domain/usecases/adapter-interfaces/LocalCommandRunner';
-import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+import { ProcessEnvironReader } from '../../../domain/usecases/adapter-interfaces/ProcessEnvironReader';
 import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
 import { SilentSessionMessageTemplates } from '../../repositories/ConfigurableSilentSessionMessageComposer';
 export type NotifySilentTmuxSessionsParams = {
-    project: Project;
-    allowCacheMinutes: number;
-    issueRepository: Pick<IssueRepository, 'getAllOpened'>;
+    enabled: boolean;
     localCommandRunner: LocalCommandRunner;
+    processEnvironReader?: ProcessEnvironReader;
     cacheRepository: Pick<LocalStorageCacheRepository, 'getLatest' | 'set'>;
-    sessionOutputRootDirectory: string | null;
-    sessionTranscriptRootDirectory: string | null;
     ownerCallMarker: string | null;
     subAgentOutputRootDirectory: string | null;
     subAgentProcessMatchPattern: string | null;

@@ -35,7 +35,6 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TranscriptOwnerCallStatusProvider = void 0;
 const fs = __importStar(require("fs"));
-const path = __importStar(require("path"));
 const isRecord = (value) => typeof value === 'object' && value !== null;
 const readString = (value, key) => {
     const candidate = value[key];
@@ -76,31 +75,25 @@ const hasOwnerTextReply = (content) => {
     return content.some((block) => isRecord(block) && block.type === 'text');
 };
 class TranscriptOwnerCallStatusProvider {
-    constructor(rootDirectory, ownerCallMarker) {
-        this.rootDirectory = rootDirectory;
+    constructor(ownerCallMarker) {
         this.ownerCallMarker = ownerCallMarker;
-        this.listSessionNamesWithUnansweredOwnerCall = async (sessionNames) => {
+        this.listSessionNamesWithUnansweredOwnerCall = async (transcriptPathBySessionName) => {
             const waiting = new Set();
-            if (this.rootDirectory === null ||
-                this.ownerCallMarker === null ||
-                this.ownerCallMarker.length === 0) {
+            if (this.ownerCallMarker === null || this.ownerCallMarker.length === 0) {
                 return waiting;
             }
-            for (const sessionName of sessionNames) {
-                if (this.isWaitingForOwnerReply(sessionName, this.ownerCallMarker)) {
+            const marker = this.ownerCallMarker;
+            for (const [sessionName, transcriptPath] of transcriptPathBySessionName) {
+                if (this.isWaitingForOwnerReply(transcriptPath, marker)) {
                     waiting.add(sessionName);
                 }
             }
             return waiting;
         };
-        this.isWaitingForOwnerReply = (sessionName, marker) => {
-            if (this.rootDirectory === null) {
-                return false;
-            }
-            const filePath = path.join(this.rootDirectory, this.toTranscriptFileName(sessionName));
+        this.isWaitingForOwnerReply = (transcriptPath, marker) => {
             let content;
             try {
-                content = fs.readFileSync(filePath, 'utf8');
+                content = fs.readFileSync(transcriptPath, 'utf8');
             }
             catch {
                 return false;
@@ -143,7 +136,6 @@ class TranscriptOwnerCallStatusProvider {
             return (lastOwnerReplyEpochMs === null ||
                 lastOwnerCallEpochMs > lastOwnerReplyEpochMs);
         };
-        this.toTranscriptFileName = (sessionName) => `${sessionName.replace(/\//g, '_')}.jsonl`;
     }
 }
 exports.TranscriptOwnerCallStatusProvider = TranscriptOwnerCallStatusProvider;

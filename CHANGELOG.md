@@ -1,3 +1,10 @@
+# [1.111.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.110.1...v1.111.0) (2026-06-27)
+
+
+### Features
+
+* **schedule:** monitor all live interactive sessions for silent self-check ([#1025](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1025)) ([4c4b540](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4c4b540c9e38eee1befd3e6d0060f99f997efa8a)), closes [#1024](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1024) [#actions](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/actions)
+
 ## [1.110.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.110.0...v1.110.1) (2026-06-27)
 
 

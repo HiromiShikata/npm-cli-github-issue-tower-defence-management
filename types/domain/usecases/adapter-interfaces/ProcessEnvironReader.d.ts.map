@@ -1,0 +1,1 @@
+{"version":3,"file":"ProcessEnvironReader.d.ts","sourceRoot":"","sources":["../../../../src/domain/usecases/adapter-interfaces/ProcessEnvironReader.ts"],"names":[],"mappings":"AAAA,MAAM,WAAW,oBAAoB;IACnC,WAAW,EAAE,CAAC,GAAG,EAAE,MAAM,KAAK,MAAM,CAAC,MAAM,EAAE,MAAM,CAAC,GAAG,IAAI,CAAC;CAC7D"}
