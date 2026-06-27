@@ -144,7 +144,9 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       sendSelfCheckNotification: jest.fn().mockResolvedValue(undefined),
     };
     mockMessageComposer = {
-      composeMainStalledSection: jest.fn().mockReturnValue(MAIN_STALLED_SECTION),
+      composeMainStalledSection: jest
+        .fn()
+        .mockReturnValue(MAIN_STALLED_SECTION),
       composeSubAgentSection: jest.fn().mockReturnValue(SUBAGENT_SECTION),
     };
     mockSleeper = {
@@ -162,8 +164,13 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     );
   });
 
-  const setupLiveMonitoredSession = (overrides: Partial<Issue> = {}): string => {
-    const issue = createMockIssue({ status: IN_TMUX_STATUS_NAME, ...overrides });
+  const setupLiveMonitoredSession = (
+    overrides: Partial<Issue> = {},
+  ): string => {
+    const issue = createMockIssue({
+      status: IN_TMUX_STATUS_NAME,
+      ...overrides,
+    });
     const sessionName = toTmuxSessionName(issue.url);
     mockIssueRepository.getAllOpened.mockResolvedValue([issue]);
     mockTmuxSessionRepository.listLiveSessionNames.mockResolvedValue([
@@ -222,7 +229,9 @@ describe('NotifySilentLiveSessionsUseCase', () => {
 
     await useCase.run(runParams());
 
-    expect(mockMessageComposer.composeMainStalledSection).not.toHaveBeenCalled();
+    expect(
+      mockMessageComposer.composeMainStalledSection,
+    ).not.toHaveBeenCalled();
     expect(
       mockNotificationRepository.sendSelfCheckNotification,
     ).not.toHaveBeenCalled();
@@ -270,7 +279,9 @@ describe('NotifySilentLiveSessionsUseCase', () => {
 
     await useCase.run(runParams());
 
-    expect(mockMessageComposer.composeMainStalledSection).not.toHaveBeenCalled();
+    expect(
+      mockMessageComposer.composeMainStalledSection,
+    ).not.toHaveBeenCalled();
     expect(mockMessageComposer.composeSubAgentSection).toHaveBeenCalledWith(
       subAgents,
     );

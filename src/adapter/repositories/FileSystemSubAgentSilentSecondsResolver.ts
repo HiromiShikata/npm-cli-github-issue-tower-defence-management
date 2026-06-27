@@ -2,9 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { SubAgentSilentSecondsResolver } from '../../domain/usecases/adapter-interfaces/SubAgentSilentSecondsResolver';
 
-export class FileSystemSubAgentSilentSecondsResolver
-  implements SubAgentSilentSecondsResolver
-{
+export class FileSystemSubAgentSilentSecondsResolver implements SubAgentSilentSecondsResolver {
   constructor(
     private readonly rootDirectory: string | null,
     private readonly now: Date,

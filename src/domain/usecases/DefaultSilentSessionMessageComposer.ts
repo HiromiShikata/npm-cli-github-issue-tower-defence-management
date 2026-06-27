@@ -6,9 +6,7 @@ const formatMinutes = (seconds: number): string => {
   return `${minutes}m`;
 };
 
-export class DefaultSilentSessionMessageComposer
-  implements SilentSessionMessageComposer
-{
+export class DefaultSilentSessionMessageComposer implements SilentSessionMessageComposer {
   composeMainStalledSection = (mainSilentSeconds: number): string => {
     return [
       `Main session has produced no output for ${formatMinutes(

@@ -12,9 +12,7 @@ const formatMinutes = (seconds: number): string => {
   return `${minutes}m`;
 };
 
-export class ConfigurableSilentSessionMessageComposer
-  implements SilentSessionMessageComposer
-{
+export class ConfigurableSilentSessionMessageComposer implements SilentSessionMessageComposer {
   constructor(
     private readonly templates: SilentSessionMessageTemplates,
     private readonly fallback: SilentSessionMessageComposer,

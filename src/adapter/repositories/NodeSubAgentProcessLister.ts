@@ -8,10 +8,10 @@ export class NodeSubAgentProcessLister implements SubAgentProcessLister {
   constructor(private readonly localCommandRunner: LocalCommandRunner) {}
 
   listProcesses = async (): Promise<SubAgentProcess[]> => {
-    const { stdout, exitCode } = await this.localCommandRunner.runCommand('ps', [
-      '-eo',
-      'etimes=,args=',
-    ]);
+    const { stdout, exitCode } = await this.localCommandRunner.runCommand(
+      'ps',
+      ['-eo', 'etimes=,args='],
+    );
     if (exitCode !== 0) {
       return [];
     }

@@ -20,7 +20,9 @@ describe('ProcessListSessionSubAgentActivityRepository', () => {
   it('returns an empty map when the match pattern is not configured', async () => {
     const repository = new ProcessListSessionSubAgentActivityRepository(
       null,
-      createLister([{ commandLine: 'anything session=s1', elapsedSeconds: 10 }]),
+      createLister([
+        { commandLine: 'anything session=s1', elapsedSeconds: 10 },
+      ]),
       createResolver(0),
     );
     const result = await repository.listSubAgentActivitiesBySessionName(['s1']);
@@ -30,7 +32,9 @@ describe('ProcessListSessionSubAgentActivityRepository', () => {
   it('returns an empty map when the match pattern is an empty string', async () => {
     const repository = new ProcessListSessionSubAgentActivityRepository(
       '',
-      createLister([{ commandLine: 'anything session=s1', elapsedSeconds: 10 }]),
+      createLister([
+        { commandLine: 'anything session=s1', elapsedSeconds: 10 },
+      ]),
       createResolver(0),
     );
     const result = await repository.listSubAgentActivitiesBySessionName(['s1']);

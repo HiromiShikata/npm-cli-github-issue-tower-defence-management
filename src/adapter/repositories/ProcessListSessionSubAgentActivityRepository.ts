@@ -3,9 +3,7 @@ import { SessionSubAgentActivityRepository } from '../../domain/usecases/adapter
 import { SubAgentProcessLister } from '../../domain/usecases/adapter-interfaces/SubAgentProcessLister';
 import { SubAgentSilentSecondsResolver } from '../../domain/usecases/adapter-interfaces/SubAgentSilentSecondsResolver';
 
-export class ProcessListSessionSubAgentActivityRepository
-  implements SessionSubAgentActivityRepository
-{
+export class ProcessListSessionSubAgentActivityRepository implements SessionSubAgentActivityRepository {
   private readonly matchRegExp: RegExp | null;
 
   constructor(
@@ -34,7 +32,10 @@ export class ProcessListSessionSubAgentActivityRepository
         continue;
       }
       const sessionName = match.groups.session;
-      if (sessionName === undefined || !monitoredSessionNames.has(sessionName)) {
+      if (
+        sessionName === undefined ||
+        !monitoredSessionNames.has(sessionName)
+      ) {
         continue;
       }
       const label = match.groups.label ?? sessionName;
