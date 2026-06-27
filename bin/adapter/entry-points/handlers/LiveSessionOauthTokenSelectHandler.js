@@ -46,6 +46,8 @@ class LiveSessionOauthTokenSelectHandler {
                             sevenDayUtilization: snapshot.sevenDayUtilization,
                             sevenDayReset: snapshot.sevenDayReset,
                         },
+                    subscriptionDisabled: snapshot?.subscriptionDisabled ?? false,
+                    unifiedRejected: snapshot?.unifiedRejected ?? false,
                 };
             });
             const liveSessions = this.liveSessionRepository.listLiveSessions();

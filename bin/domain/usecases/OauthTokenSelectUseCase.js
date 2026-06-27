@@ -26,7 +26,7 @@ class OauthTokenSelectUseCase {
             const fiveHourFreeRatio = this.fiveHourFreeRatio(candidate.snapshot, nowEpochSeconds);
             const sevenDayFreeRatio = this.sevenDayFreeRatio(candidate.snapshot, nowEpochSeconds);
             const sevenDayEndEpoch = this.sevenDayEndEpoch(candidate.snapshot, nowEpochSeconds);
-            const exclusionReason = this.exclusionReason(fiveHourFreeRatio, sevenDayFreeRatio);
+            const exclusionReason = this.exclusionReason(candidate.subscriptionDisabled, candidate.unifiedRejected, fiveHourFreeRatio, sevenDayFreeRatio);
             return {
                 name: candidate.name,
                 fiveHourFreeRatio,
@@ -36,7 +36,13 @@ class OauthTokenSelectUseCase {
                 exclusionReason,
             };
         };
-        this.exclusionReason = (fiveHourFreeRatio, sevenDayFreeRatio) => {
+        this.exclusionReason = (subscriptionDisabled, unifiedRejected, fiveHourFreeRatio, sevenDayFreeRatio) => {
+            if (subscriptionDisabled) {
+                return 'organization has disabled Claude subscription access for Claude Code';
+            }
+            if (unifiedRejected) {
+                return 'token request was rejected (anthropic-ratelimit-unified-status: rejected)';
+            }
             if (fiveHourFreeRatio < exports.FIVE_HOUR_MIN_FREE_RATIO) {
                 return `5h window only ${this.toPercent(fiveHourFreeRatio)}% free (requires >= ${this.toPercent(exports.FIVE_HOUR_MIN_FREE_RATIO)}%)`;
             }

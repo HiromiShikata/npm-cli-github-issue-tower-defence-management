@@ -78,6 +78,8 @@ const writeTokenStatus = (params) => {
         name: entry.name,
         token: entry.token,
         snapshot: null,
+        subscriptionDisabled: false,
+        unifiedRejected: false,
     }));
     const humResult = new InTmuxByHumanSessionTokenCountUseCase_1.InTmuxByHumanSessionTokenCountUseCase().run(candidates, interactiveSessionRepository.listInteractiveSessions(), issues);
     const humCountByToken = new Map(humResult.counts.map((count) => [count.token, count.count]));

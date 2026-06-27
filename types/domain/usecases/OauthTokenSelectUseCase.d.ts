@@ -8,6 +8,8 @@ export type OauthTokenCandidate = {
     name: string;
     token: string;
     snapshot: OauthTokenWindowSnapshot | null;
+    subscriptionDisabled: boolean;
+    unifiedRejected: boolean;
 };
 export type OauthTokenCandidateMetrics = {
     name: string;

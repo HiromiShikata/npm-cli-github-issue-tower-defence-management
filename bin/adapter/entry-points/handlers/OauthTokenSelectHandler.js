@@ -66,6 +66,8 @@ class OauthTokenSelectHandler {
                             sevenDayUtilization: snapshot.sevenDayUtilization,
                             sevenDayReset: snapshot.sevenDayReset,
                         },
+                    subscriptionDisabled: snapshot?.subscriptionDisabled ?? false,
+                    unifiedRejected: snapshot?.unifiedRejected ?? false,
                 };
             });
             const result = this.useCase.run(candidates, input.nowEpochSeconds);

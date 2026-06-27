@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.readRateLimit = exports.parseModelRateLimitsFromHeaders = exports.parseModelRateLimitsFromBody = exports.writeModelRateLimit = exports.writeRateLimit = exports.cachePathForToken = exports.hashToken = exports.cacheDir = exports.HEADERLESS_429_MAX_COOLDOWN_SECONDS = exports.HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS = exports.PROXY_PORT = void 0;
+exports.readRateLimit = exports.parseModelRateLimitsFromHeaders = exports.parseModelRateLimitsFromBody = exports.writeSubscriptionDisabled = exports.writeModelRateLimit = exports.writeRateLimit = exports.cachePathForToken = exports.hashToken = exports.cacheDir = exports.PERMISSION_DISABLED_COOLDOWN_SECONDS = exports.HEADERLESS_429_MAX_COOLDOWN_SECONDS = exports.HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS = exports.PROXY_PORT = void 0;
 const crypto = __importStar(require("crypto"));
 const fs = __importStar(require("fs"));
 const os = __importStar(require("os"));
@@ -42,6 +42,7 @@ exports.PROXY_PORT = 8787;
 const HASH_ALGORITHM = 'sha256';
 exports.HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS = 90;
 exports.HEADERLESS_429_MAX_COOLDOWN_SECONDS = 600;
+exports.PERMISSION_DISABLED_COOLDOWN_SECONDS = 3600;
 const cacheDir = () => {
     const base = process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), '.cache');
     return path.join(base, 'tdpm', 'ratelimit');
@@ -157,6 +158,20 @@ const writeModelRateLimit = (token, limits) => {
     fs.writeFileSync(filePath, JSON.stringify(payload));
 };
 exports.writeModelRateLimit = writeModelRateLimit;
+const writeSubscriptionDisabled = (token, baseDir = (0, exports.cacheDir)()) => {
+    const dir = baseDir;
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
+    const filePath = path.join(dir, `${(0, exports.hashToken)(token)}.json`);
+    const existing = readPayload(filePath);
+    const payload = {
+        ...existing,
+        subscriptionDisabledEpoch: Date.now() / 1000,
+    };
+    fs.writeFileSync(filePath, JSON.stringify(payload));
+};
+exports.writeSubscriptionDisabled = writeSubscriptionDisabled;
 const parseModelRateLimitsFromBody = (body) => {
     const result = {};
     const matches = body.match(/\{[^{}]*"rateLimitType"[^{}]*\}|\{[^{}]*"resetsAt"[^{}]*"rateLimitType"[^{}]*\}/g);
@@ -247,6 +262,14 @@ const readRateLimit = (token, baseDir = (0, exports.cacheDir)()) => {
         const lastUpdatedEpoch = typeof storedTs === 'number' ? storedTs : 0;
         const storedBlockedUntil = parsed.blockedUntilEpoch;
         const blockedUntilEpoch = typeof storedBlockedUntil === 'number' ? storedBlockedUntil : 0;
+        const storedSubscriptionDisabledEpoch = parsed.subscriptionDisabledEpoch;
+        const subscriptionDisabledEpoch = typeof storedSubscriptionDisabledEpoch === 'number'
+            ? storedSubscriptionDisabledEpoch
+            : 0;
+        const nowEpochSeconds = Date.now() / 1000;
+        const subscriptionDisabled = subscriptionDisabledEpoch > 0 &&
+            nowEpochSeconds - subscriptionDisabledEpoch <
+                exports.PERMISSION_DISABLED_COOLDOWN_SECONDS;
         return {
             fiveHourUtilization: num('anthropic-ratelimit-unified-5h-utilization'),
             fiveHourReset: num('anthropic-ratelimit-unified-5h-reset'),
@@ -267,6 +290,7 @@ const readRateLimit = (token, baseDir = (0, exports.cacheDir)()) => {
             },
             lastUpdatedEpoch,
             blockedUntilEpoch,
+            subscriptionDisabled,
         };
     }
     catch {
