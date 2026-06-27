@@ -466,7 +466,7 @@ describe('GraphqlProjectItemRepository', () => {
       expect(requestedFirstSeries).toEqual([100, 50, 25, 12, 6, 3, 1]);
     });
 
-    it('should not sleep the legacy 5000ms blanket delay between pages', async () => {
+    it('should sleep the 5000ms blanket delay between pages', async () => {
       const localStorageRepository = new LocalStorageRepository();
       const repository = new GraphqlProjectItemRepository(
         localStorageRepository,
@@ -483,11 +483,8 @@ describe('GraphqlProjectItemRepository', () => {
       const result = await resultPromise;
 
       expect(result).toHaveLength(2);
-      expect(PAGINATION_DELAY_MS).toBeLessThanOrEqual(500);
-      expect(setTimeoutSpy).not.toHaveBeenCalledWith(
-        expect.any(Function),
-        5000,
-      );
+      expect(PAGINATION_DELAY_MS).toBe(5000);
+      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 5000);
       setTimeoutSpy.mockRestore();
     });
 
