@@ -12,10 +12,10 @@ export const DEFAULT_SILENT_THRESHOLD_SECONDS = 10 * 60;
 export const DEFAULT_NOTIFICATION_COOLDOWN_SECONDS = 30 * 60;
 
 export const SELF_CHECK_NOTIFICATION_MESSAGE = [
-  '出力が一定時間止まっています。次の3点を自己点検してください。',
-  '1. オーナーから受けた依頼がすべてセッションのタスクとして登録されているか、そしてその進め方が最速になっているか（独立作業の並列化・委譲・不要な直列化の排除）を再点検する。',
-  '2. 子プロセス・サブ作業が一定時間（5分）出力を出していないことを検知する監視が設定されているかを確認する。',
-  '3. オーナーへの呼び出し（確認・質問・判断依頼）が必要なのに行えていない状態になっていないかを確認し、必要なら呼び出す。',
+  'No output for a while. Please run the following three self-checks.',
+  '1. Re-check that every request you received is tracked as a session task and that your plan is the fastest possible (parallelize independent work, delegate, and remove needless serialization).',
+  '2. Confirm a monitor is in place that detects when a subprocess or subtask produces no output for 5 minutes.',
+  '3. Confirm whether a call to the owner (a confirmation, question, or decision request) is needed but not yet made, and make it if so.',
 ].join('\n');
 
 type NotifyCandidate = {
