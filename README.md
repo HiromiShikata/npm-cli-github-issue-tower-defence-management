@@ -350,17 +350,16 @@ When `claudeCodeOauthTokenListJsonPath` is unset, no proxy is started and `aw` r
 - files:write
 - files:read
 
-## Project Metadata Cache
+## Project ID Cache
 
-The static GitHub Project metadata that `GraphqlProjectRepository` resolves — the project node ID (`fetchProjectId`) and the project's fields, single-select status options, and iteration configuration (`getProject`) — is cached on disk so it is shared across processes. Because every TDPM invocation is a fresh process, an in-memory cache alone would re-resolve this metadata over GraphQL on every loop and every worker start; the on-disk cache eliminates that repeated GraphQL traffic. The cache reuses the same `./tmp/cache/{projectName}/` directory convention as the issue cache and writes each entry atomically (to a `.tmp` file then renamed) so concurrent processes never corrupt or read a partial file.
+The mapping from `owner/projectNumber` to the immutable GitHub Project node ID that `GraphqlProjectRepository.fetchProjectId` resolves is cached on disk so it is shared across processes. Because every TDPM invocation is a fresh process, an in-memory cache alone would re-resolve this mapping over GraphQL on every loop and every worker start; the on-disk cache eliminates that repeated GraphQL traffic. The cache reuses the same `./tmp/cache/{projectName}/` directory convention as the issue cache and writes each entry atomically (to a `.tmp` file then renamed) so concurrent processes never corrupt or read a partial file.
 
 ```
 ./tmp/cache/{projectName}/projectId-{owner}:{projectNumber}/{timestamp}.json
-./tmp/cache/{projectName}/project-{projectId}/{timestamp}.json
 ```
 
 - The `projectId` mapping (`owner/projectNumber` to project node ID) is permanently static, so it is reused with no time-to-live.
-- The `project` entry is reused only within a time-to-live, because it can change when the project schema is edited. The time-to-live defaults to 30 minutes and is configurable in milliseconds via the `TDPM_PROJECT_CACHE_TTL_MS` environment variable. On a cache hit within the time-to-live the project is returned with zero GraphQL calls; on a miss or expiry it is re-fetched and the cache is rewritten.
+- Only the immutable project node ID is cached. Project metadata that can change — the project's fields and single-select status and story options resolved by `getProject` — is intentionally not cached on disk and is fetched fresh from GraphQL on every call, so newly created status and story options are never missed.
 - A malformed or absent cache file falls back to a live GraphQL fetch and never crashes.
 
 ## Per-Project Situation Snapshot

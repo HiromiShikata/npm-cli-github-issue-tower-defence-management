@@ -1,5 +1,4 @@
 import ky from 'ky';
-import typia from 'typia';
 import { BaseGitHubRepository } from './BaseGitHubRepository';
 import { LocalStorageCacheRepository } from './LocalStorageCacheRepository';
 import { LocalStorageRepository } from './LocalStorageRepository';
@@ -9,23 +8,7 @@ import { normalizeFieldName } from './utils';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
-const DEFAULT_PROJECT_CACHE_TTL_MS = 30 * 60 * 1000;
-
-export const resolveProjectCacheTtlMs = (
-  rawValue: string | undefined,
-): number => {
-  if (rawValue === undefined) {
-    return DEFAULT_PROJECT_CACHE_TTL_MS;
-  }
-  const parsed = Number(rawValue);
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    return DEFAULT_PROJECT_CACHE_TTL_MS;
-  }
-  return parsed;
-};
-
 const PROJECT_ID_DISK_CACHE_KEY_PREFIX = 'projectId';
-const PROJECT_DISK_CACHE_KEY_PREFIX = 'project';
 
 export const convertToFieldOptionColor = (
   color: string,
@@ -63,19 +46,14 @@ export class GraphqlProjectRepository
     LocalStorageCacheRepository,
     'getLatest' | 'set'
   >;
-  private readonly projectCacheTtlMs: number;
 
   constructor(
     localStorageRepository: LocalStorageRepository,
     ghToken: string = process.env.GH_TOKEN || 'dummy',
     projectCache?: Pick<LocalStorageCacheRepository, 'getLatest' | 'set'>,
-    projectCacheTtlMs: number = resolveProjectCacheTtlMs(
-      process.env.TDPM_PROJECT_CACHE_TTL_MS,
-    ),
   ) {
     super(localStorageRepository, ghToken);
     this.projectCache = projectCache;
-    this.projectCacheTtlMs = projectCacheTtlMs;
   }
 
   private readProjectIdFromDiskCache = async (
@@ -115,50 +93,6 @@ export class GraphqlProjectRepository
       await this.projectCache.set(
         `${PROJECT_ID_DISK_CACHE_KEY_PREFIX}-${cacheKey}`,
         { projectId },
-      );
-    } catch (error) {
-      return;
-    }
-  };
-
-  private readProjectFromDiskCache = async (
-    projectId: string,
-  ): Promise<Project | null> => {
-    if (!this.projectCache) {
-      return null;
-    }
-    let cache: { value: object; timestamp: Date } | null;
-    try {
-      cache = await this.projectCache.getLatest(
-        `${PROJECT_DISK_CACHE_KEY_PREFIX}-${projectId}`,
-      );
-    } catch (error) {
-      return null;
-    }
-    if (!cache) {
-      return null;
-    }
-    const age = Date.now() - cache.timestamp.getTime();
-    if (age >= this.projectCacheTtlMs) {
-      return null;
-    }
-    if (!typia.is<Project>(cache.value)) {
-      return null;
-    }
-    return cache.value;
-  };
-
-  private writeProjectToDiskCache = async (
-    projectId: string,
-    project: Project,
-  ): Promise<void> => {
-    if (!this.projectCache) {
-      return;
-    }
-    try {
-      await this.projectCache.set(
-        `${PROJECT_DISK_CACHE_KEY_PREFIX}-${projectId}`,
-        project,
       );
     } catch (error) {
       return;
@@ -280,10 +214,6 @@ export class GraphqlProjectRepository
     return await this.fetchProjectId(owner, projectNumber);
   };
   getProject = async (projectId: Project['id']): Promise<Project | null> => {
-    const diskCached = await this.readProjectFromDiskCache(projectId);
-    if (diskCached) {
-      return diskCached;
-    }
     const query = `query GetProjectV2($projectId: ID!) {
   node(id: $projectId) {
     ... on ProjectV2 {
@@ -428,7 +358,7 @@ export class GraphqlProjectRepository
     const completionDate50PercentConfidence = project.fields.nodes.find(
       (field) => normalizeFieldName(field.name).startsWith('completiondate'),
     );
-    const result: Project = {
+    return {
       id: project.id,
       url: project.url,
       databaseId: project.databaseId,
@@ -489,8 +419,6 @@ export class GraphqlProjectRepository
           }
         : null,
     };
-    await this.writeProjectToDiskCache(projectId, result);
-    return result;
   };
   getByUrl = async (url: string): Promise<Project> => {
     const projectId = await this.findProjectIdByUrl(url);
