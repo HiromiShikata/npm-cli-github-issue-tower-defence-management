@@ -16,76 +16,114 @@ describe('FileSystemSessionOutputActivityRepository', () => {
     fs.rmSync(rootDirectory, { force: true, recursive: true });
   });
 
-  const writeOutputFileWithMtime = (
-    sessionName: string,
-    epochSeconds: number,
-  ): void => {
-    const fileName = sessionName.replace(/\//g, '_');
+  const assistantEntry = (timestamp: string): object => ({
+    type: 'assistant',
+    timestamp,
+    message: {
+      role: 'assistant',
+      content: [{ type: 'text', text: 'progress update' }],
+    },
+  });
+
+  const userEntry = (timestamp: string): object => ({
+    type: 'user',
+    timestamp,
+    message: { role: 'user', content: 'go ahead' },
+  });
+
+  const writeTranscript = (fileName: string, lines: object[]): string => {
     const filePath = path.join(rootDirectory, fileName);
-    fs.writeFileSync(filePath, 'output', 'utf8');
-    fs.utimesSync(filePath, epochSeconds, epochSeconds);
+    fs.writeFileSync(
+      filePath,
+      lines.map((line) => JSON.stringify(line)).join('\n'),
+      'utf8',
+    );
+    return filePath;
   };
 
-  it('returns the latest output epoch derived from each session output file mtime', async () => {
-    const sessionName = 'https_//github_com/owner/repo/issues/9';
-    writeOutputFileWithMtime(sessionName, 1700000000);
-    const repository = new FileSystemSessionOutputActivityRepository(
-      rootDirectory,
+  it('returns the latest assistant entry timestamp as the last output epoch', async () => {
+    const transcriptPath = writeTranscript('workbench.jsonl', [
+      assistantEntry('2026-06-27T10:00:00.000Z'),
+      userEntry('2026-06-27T10:30:00.000Z'),
+      assistantEntry('2026-06-27T10:05:00.000Z'),
+    ]);
+    const repository = new FileSystemSessionOutputActivityRepository();
+
+    const result = await repository.listSessionOutputActivities(
+      new Map([['workbench', transcriptPath]]),
     );
 
-    const result = await repository.listSessionOutputActivities([sessionName]);
-
     expect(result).toEqual([
-      { sessionName, lastOutputEpochSeconds: 1700000000 },
+      {
+        sessionName: 'workbench',
+        lastOutputEpochSeconds: Math.floor(
+          Date.parse('2026-06-27T10:05:00.000Z') / 1000,
+        ),
+      },
     ]);
   });
 
-  it('omits sessions that have no output file', async () => {
-    const presentSessionName = 'https_//github_com/owner/repo/issues/9';
-    const missingSessionName = 'https_//github_com/owner/repo/issues/10';
-    writeOutputFileWithMtime(presentSessionName, 1700000000);
-    const repository = new FileSystemSessionOutputActivityRepository(
-      rootDirectory,
+  it('ignores user entries when computing the last output epoch', async () => {
+    const transcriptPath = writeTranscript('workbench.jsonl', [
+      assistantEntry('2026-06-27T10:00:00.000Z'),
+      userEntry('2026-06-27T11:00:00.000Z'),
+    ]);
+    const repository = new FileSystemSessionOutputActivityRepository();
+
+    const result = await repository.listSessionOutputActivities(
+      new Map([['workbench', transcriptPath]]),
     );
 
-    const result = await repository.listSessionOutputActivities([
-      presentSessionName,
-      missingSessionName,
-    ]);
-
     expect(result).toEqual([
-      { sessionName: presentSessionName, lastOutputEpochSeconds: 1700000000 },
+      {
+        sessionName: 'workbench',
+        lastOutputEpochSeconds: Math.floor(
+          Date.parse('2026-06-27T10:00:00.000Z') / 1000,
+        ),
+      },
     ]);
   });
 
-  it('returns an empty list when the root directory does not exist', async () => {
-    const repository = new FileSystemSessionOutputActivityRepository(
-      path.join(rootDirectory, 'does-not-exist'),
+  it('omits sessions whose transcript file is missing', async () => {
+    const presentPath = writeTranscript('present.jsonl', [
+      assistantEntry('2026-06-27T10:00:00.000Z'),
+    ]);
+    const repository = new FileSystemSessionOutputActivityRepository();
+
+    const result = await repository.listSessionOutputActivities(
+      new Map([
+        ['present', presentPath],
+        ['missing', path.join(rootDirectory, 'missing.jsonl')],
+      ]),
     );
 
-    const result = await repository.listSessionOutputActivities([
-      'https_//github_com/owner/repo/issues/9',
+    expect(result).toEqual([
+      {
+        sessionName: 'present',
+        lastOutputEpochSeconds: Math.floor(
+          Date.parse('2026-06-27T10:00:00.000Z') / 1000,
+        ),
+      },
     ]);
+  });
+
+  it('omits sessions whose transcript has no assistant entry', async () => {
+    const transcriptPath = writeTranscript('workbench.jsonl', [
+      userEntry('2026-06-27T10:00:00.000Z'),
+    ]);
+    const repository = new FileSystemSessionOutputActivityRepository();
+
+    const result = await repository.listSessionOutputActivities(
+      new Map([['workbench', transcriptPath]]),
+    );
 
     expect(result).toEqual([]);
   });
 
-  it('returns an empty list when the root directory is null', async () => {
-    const repository = new FileSystemSessionOutputActivityRepository(null);
+  it('returns an empty list when no sessions are requested', async () => {
+    const repository = new FileSystemSessionOutputActivityRepository();
 
-    const result = await repository.listSessionOutputActivities([
-      'https_//github_com/owner/repo/issues/9',
-    ]);
-
-    expect(result).toEqual([]);
-  });
-
-  it('returns an empty list when no session names are requested', async () => {
-    const repository = new FileSystemSessionOutputActivityRepository(
-      rootDirectory,
-    );
-
-    const result = await repository.listSessionOutputActivities([]);
+    const result = await repository.listSessionOutputActivities(new Map());
 
     expect(result).toEqual([]);
   });

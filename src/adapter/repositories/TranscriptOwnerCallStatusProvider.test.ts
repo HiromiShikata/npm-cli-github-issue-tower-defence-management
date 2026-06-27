@@ -16,14 +16,14 @@ describe('TranscriptOwnerCallStatusProvider', () => {
     fs.rmSync(rootDirectory, { force: true, recursive: true });
   });
 
-  const writeTranscript = (sessionName: string, lines: object[]): void => {
-    const fileName = `${sessionName.replace(/\//g, '_')}.jsonl`;
+  const writeTranscript = (fileName: string, lines: object[]): string => {
     const filePath = path.join(rootDirectory, fileName);
     fs.writeFileSync(
       filePath,
       lines.map((line) => JSON.stringify(line)).join('\n'),
       'utf8',
     );
+    return filePath;
   };
 
   const assistantWithMarker = (timestamp: string): object => ({
@@ -63,141 +63,104 @@ describe('TranscriptOwnerCallStatusProvider', () => {
     },
   });
 
+  const sessionName = 'workbench';
+
   it('reports a session as waiting when the last owner call is newer than the last owner reply', async () => {
-    const sessionName = 'https_//github_com/owner/repo/issues/9';
-    writeTranscript(sessionName, [
+    const transcriptPath = writeTranscript('workbench.jsonl', [
       ownerReply('2026-06-27T10:00:00.000Z'),
       assistantWithMarker('2026-06-27T10:05:00.000Z'),
     ]);
-    const provider = new TranscriptOwnerCallStatusProvider(
-      rootDirectory,
-      '<<OWNER_CALL>>',
-    );
+    const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
 
-    const result = await provider.listSessionNamesWithUnansweredOwnerCall([
-      sessionName,
-    ]);
+    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
+      new Map([[sessionName, transcriptPath]]),
+    );
 
     expect(result.has(sessionName)).toBe(true);
   });
 
   it('does not report a session as waiting when a later owner reply followed the call', async () => {
-    const sessionName = 'https_//github_com/owner/repo/issues/9';
-    writeTranscript(sessionName, [
+    const transcriptPath = writeTranscript('workbench.jsonl', [
       assistantWithMarker('2026-06-27T10:00:00.000Z'),
       ownerReply('2026-06-27T10:05:00.000Z'),
     ]);
-    const provider = new TranscriptOwnerCallStatusProvider(
-      rootDirectory,
-      '<<OWNER_CALL>>',
-    );
+    const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
 
-    const result = await provider.listSessionNamesWithUnansweredOwnerCall([
-      sessionName,
-    ]);
+    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
+      new Map([[sessionName, transcriptPath]]),
+    );
 
     expect(result.has(sessionName)).toBe(false);
   });
 
   it('compares full datetimes rather than only the time of day', async () => {
-    const sessionName = 'https_//github_com/owner/repo/issues/9';
-    writeTranscript(sessionName, [
+    const transcriptPath = writeTranscript('workbench.jsonl', [
       assistantWithMarker('2026-06-27T23:00:00.000Z'),
       ownerReply('2026-06-28T01:00:00.000Z'),
     ]);
-    const provider = new TranscriptOwnerCallStatusProvider(
-      rootDirectory,
-      '<<OWNER_CALL>>',
-    );
+    const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
 
-    const result = await provider.listSessionNamesWithUnansweredOwnerCall([
-      sessionName,
-    ]);
+    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
+      new Map([[sessionName, transcriptPath]]),
+    );
 
     expect(result.has(sessionName)).toBe(false);
   });
 
   it('treats tool results as not being owner replies', async () => {
-    const sessionName = 'https_//github_com/owner/repo/issues/9';
-    writeTranscript(sessionName, [
+    const transcriptPath = writeTranscript('workbench.jsonl', [
       assistantWithMarker('2026-06-27T10:00:00.000Z'),
       toolResult('2026-06-27T10:05:00.000Z'),
     ]);
-    const provider = new TranscriptOwnerCallStatusProvider(
-      rootDirectory,
-      '<<OWNER_CALL>>',
-    );
+    const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
 
-    const result = await provider.listSessionNamesWithUnansweredOwnerCall([
-      sessionName,
-    ]);
+    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
+      new Map([[sessionName, transcriptPath]]),
+    );
 
     expect(result.has(sessionName)).toBe(true);
   });
 
   it('does not report a session that never raised an owner call', async () => {
-    const sessionName = 'https_//github_com/owner/repo/issues/9';
-    writeTranscript(sessionName, [
+    const transcriptPath = writeTranscript('workbench.jsonl', [
       assistantPlain('2026-06-27T10:00:00.000Z'),
       ownerReply('2026-06-27T10:05:00.000Z'),
     ]);
-    const provider = new TranscriptOwnerCallStatusProvider(
-      rootDirectory,
-      '<<OWNER_CALL>>',
-    );
+    const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
 
-    const result = await provider.listSessionNamesWithUnansweredOwnerCall([
-      sessionName,
-    ]);
+    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
+      new Map([[sessionName, transcriptPath]]),
+    );
 
     expect(result.has(sessionName)).toBe(false);
   });
 
-  it('returns an empty set when the root directory is null', async () => {
-    const provider = new TranscriptOwnerCallStatusProvider(
-      null,
-      '<<OWNER_CALL>>',
-    );
-
-    const result = await provider.listSessionNamesWithUnansweredOwnerCall([
-      'https_//github_com/owner/repo/issues/9',
-    ]);
-
-    expect(result.size).toBe(0);
-  });
-
   it('returns an empty set when the marker is null', async () => {
-    const sessionName = 'https_//github_com/owner/repo/issues/9';
-    writeTranscript(sessionName, [
+    const transcriptPath = writeTranscript('workbench.jsonl', [
       ownerReply('2026-06-27T10:00:00.000Z'),
       assistantWithMarker('2026-06-27T10:05:00.000Z'),
     ]);
-    const provider = new TranscriptOwnerCallStatusProvider(rootDirectory, null);
+    const provider = new TranscriptOwnerCallStatusProvider(null);
 
-    const result = await provider.listSessionNamesWithUnansweredOwnerCall([
-      sessionName,
-    ]);
+    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
+      new Map([[sessionName, transcriptPath]]),
+    );
 
     expect(result.size).toBe(0);
   });
 
   it('ignores a session whose transcript file is missing', async () => {
-    const provider = new TranscriptOwnerCallStatusProvider(
-      rootDirectory,
-      '<<OWNER_CALL>>',
-    );
+    const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
 
-    const result = await provider.listSessionNamesWithUnansweredOwnerCall([
-      'https_//github_com/owner/repo/issues/9',
-    ]);
+    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
+      new Map([[sessionName, path.join(rootDirectory, 'missing.jsonl')]]),
+    );
 
     expect(result.size).toBe(0);
   });
 
   it('ignores malformed transcript lines', async () => {
-    const sessionName = 'https_//github_com/owner/repo/issues/9';
-    const fileName = `${sessionName.replace(/\//g, '_')}.jsonl`;
-    const filePath = path.join(rootDirectory, fileName);
+    const filePath = path.join(rootDirectory, 'workbench.jsonl');
     fs.writeFileSync(
       filePath,
       [
@@ -206,14 +169,31 @@ describe('TranscriptOwnerCallStatusProvider', () => {
       ].join('\n'),
       'utf8',
     );
-    const provider = new TranscriptOwnerCallStatusProvider(
-      rootDirectory,
-      '<<OWNER_CALL>>',
+    const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
+
+    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
+      new Map([[sessionName, filePath]]),
     );
 
-    const result = await provider.listSessionNamesWithUnansweredOwnerCall([
-      sessionName,
+    expect(result.has(sessionName)).toBe(true);
+  });
+
+  it('uses the canonical call-to-user marker string', async () => {
+    const transcriptPath = writeTranscript('workbench.jsonl', [
+      {
+        type: 'assistant',
+        timestamp: '2026-06-27T10:05:00.000Z',
+        message: {
+          role: 'assistant',
+          content: [{ type: 'text', text: 'Please decide <call-to-user>' }],
+        },
+      },
     ]);
+    const provider = new TranscriptOwnerCallStatusProvider('<call-to-user>');
+
+    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
+      new Map([[sessionName, transcriptPath]]),
+    );
 
     expect(result.has(sessionName)).toBe(true);
   });

@@ -1,11 +1,9 @@
-import { Project } from '../../../domain/entities/Project';
 import { LocalCommandRunner } from '../../../domain/usecases/adapter-interfaces/LocalCommandRunner';
-import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { SessionSubAgentActivityRepository } from '../../../domain/usecases/adapter-interfaces/SessionSubAgentActivityRepository';
 import { OwnerCallStatusProvider } from '../../../domain/usecases/adapter-interfaces/OwnerCallStatusProvider';
+import { ProcessEnvironReader } from '../../../domain/usecases/adapter-interfaces/ProcessEnvironReader';
 import {
   NotifySilentLiveSessionsUseCase,
-  DEFAULT_MONITORED_STATUS,
   DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
   DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
   DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
@@ -13,7 +11,9 @@ import {
   DEFAULT_NOTIFICATION_STAGGER_SECONDS,
 } from '../../../domain/usecases/NotifySilentLiveSessionsUseCase';
 import { DefaultSilentSessionMessageComposer } from '../../../domain/usecases/DefaultSilentSessionMessageComposer';
-import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRepository';
+import { LocalProcessLiveSessionProcessSnapshotProvider } from '../../repositories/LocalProcessLiveSessionProcessSnapshotProvider';
+import { ProcFsProcessEnvironReader } from '../../repositories/ProcFsProcessEnvironReader';
+import { FileSystemInteractiveLiveSessionTranscriptResolver } from '../../repositories/FileSystemInteractiveLiveSessionTranscriptResolver';
 import { FileSystemSessionOutputActivityRepository } from '../../repositories/FileSystemSessionOutputActivityRepository';
 import { TmuxSilentSessionNotificationRepository } from '../../repositories/TmuxSilentSessionNotificationRepository';
 import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
@@ -31,13 +31,10 @@ import {
 import { RealSleeper } from '../../repositories/RealSleeper';
 
 export type NotifySilentTmuxSessionsParams = {
-  project: Project;
-  allowCacheMinutes: number;
-  issueRepository: Pick<IssueRepository, 'getAllOpened'>;
+  enabled: boolean;
   localCommandRunner: LocalCommandRunner;
+  processEnvironReader?: ProcessEnvironReader;
   cacheRepository: Pick<LocalStorageCacheRepository, 'getLatest' | 'set'>;
-  sessionOutputRootDirectory: string | null;
-  sessionTranscriptRootDirectory: string | null;
   ownerCallMarker: string | null;
   subAgentOutputRootDirectory: string | null;
   subAgentProcessMatchPattern: string | null;
@@ -52,18 +49,10 @@ export type NotifySilentTmuxSessionsParams = {
 };
 
 const createOwnerCallStatusProvider = (
-  sessionTranscriptRootDirectory: string | null,
   ownerCallMarker: string | null,
 ): OwnerCallStatusProvider => {
-  if (
-    sessionTranscriptRootDirectory !== null &&
-    ownerCallMarker !== null &&
-    ownerCallMarker.length > 0
-  ) {
-    return new TranscriptOwnerCallStatusProvider(
-      sessionTranscriptRootDirectory,
-      ownerCallMarker,
-    );
+  if (ownerCallMarker !== null && ownerCallMarker.length > 0) {
+    return new TranscriptOwnerCallStatusProvider(ownerCallMarker);
   }
   return new NoUnansweredOwnerCallStatusProvider();
 };
@@ -97,13 +86,10 @@ export const notifySilentTmuxSessions = async (
   params: NotifySilentTmuxSessionsParams,
 ): Promise<void> => {
   const {
-    project,
-    allowCacheMinutes,
-    issueRepository,
+    enabled,
     localCommandRunner,
+    processEnvironReader,
     cacheRepository,
-    sessionOutputRootDirectory,
-    sessionTranscriptRootDirectory,
     ownerCallMarker,
     subAgentOutputRootDirectory,
     subAgentProcessMatchPattern,
@@ -116,13 +102,9 @@ export const notifySilentTmuxSessions = async (
     messageTemplates,
     now,
   } = params;
-  if (
-    sessionOutputRootDirectory === null &&
-    subAgentProcessMatchPattern === null &&
-    subAgentTranscriptRootDirectory === null
-  ) {
+  if (!enabled) {
     console.log(
-      'Silent live session notification skipped: no session output root directory, sub-agent process match pattern, or sub-agent transcript root directory is configured.',
+      'Silent live session notification skipped: not enabled (set silentNotificationEnabled or TDPM_SILENT_NOTIFICATION_ENABLED=true to enable).',
     );
     return;
   }
@@ -131,9 +113,12 @@ export const notifySilentTmuxSessions = async (
     new DefaultSilentSessionMessageComposer(),
   );
   const useCase = new NotifySilentLiveSessionsUseCase(
-    issueRepository,
-    new NodeTmuxSessionRepository(localCommandRunner),
-    new FileSystemSessionOutputActivityRepository(sessionOutputRootDirectory),
+    new LocalProcessLiveSessionProcessSnapshotProvider(
+      localCommandRunner,
+      processEnvironReader ?? new ProcFsProcessEnvironReader(),
+    ),
+    new FileSystemInteractiveLiveSessionTranscriptResolver(),
+    new FileSystemSessionOutputActivityRepository(),
     createSubAgentActivityRepository(
       subAgentTranscriptRootDirectory,
       subAgentProcessMatchPattern,
@@ -141,10 +126,7 @@ export const notifySilentTmuxSessions = async (
       localCommandRunner,
       now,
     ),
-    createOwnerCallStatusProvider(
-      sessionTranscriptRootDirectory,
-      ownerCallMarker,
-    ),
+    createOwnerCallStatusProvider(ownerCallMarker),
     new TmuxSilentSessionNotificationRepository(
       localCommandRunner,
       cacheRepository,
@@ -153,9 +135,6 @@ export const notifySilentTmuxSessions = async (
     new RealSleeper(),
   );
   await useCase.run({
-    project,
-    allowCacheMinutes,
-    monitoredStatus: DEFAULT_MONITORED_STATUS,
     mainSilentThresholdSeconds,
     subAgentSilentThresholdSeconds,
     subAgentRunningThresholdSeconds,
