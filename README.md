@@ -305,6 +305,10 @@ silentSubAgentIdleMessageHeader?: string # Optional: Overrides the line shown ab
 silentSubAgentIdleMessageFooter?: string # Optional: Overrides the line shown below the sub-process list in the idle (no-output) sub-process message. When unset, a generic built-in line is used
 silentSubAgentLongRunningMessageHeader?: string # Optional: Overrides the line shown above the sub-process list in the long-running sub-process message. When unset, a generic built-in line is used
 silentSubAgentLongRunningMessageFooter?: string # Optional: Overrides the line shown below the sub-process list in the long-running sub-process message. When unset, a generic built-in line is used
+tokenExhaustionHandoverEnabled?: boolean # Optional: When true, actually sends the handover message and kills exhausted sessions. When false (default), runs in dry-run mode (logs what would happen but takes no action)
+tokenExhaustionHandoverMessage?: string # Optional: Overrides the message sent to an exhausted session via tmux send-keys. When unset, a built-in message is used
+tokenRateLimitSnapshotBaseDir?: string # Optional: Overrides the directory from which per-token rate-limit cache snapshots are read. When unset, the default cache directory is used
+tokenExhaustionGracePeriodSeconds?: number # Optional: Seconds to wait after sending the handover message before killing the tmux session. Default 180
 changeTargetPathAliases?: # Optional: Map of short alias keys to full repository-root-relative directory paths. Allows `change-target:<alias>` labels to reference deeply nested paths that exceed GitHub's 50-character label limit. When a `change-target:` label's value matches a key in this map, it is expanded to the corresponding full path before confinement checking. Values with leading or trailing slashes are normalized automatically. Example below
   adapter-interfaces: src/domain/usecases/adapter-interfaces
 ```
