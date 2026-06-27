@@ -81,6 +81,13 @@ const readModelWeeklyLimits = (payload) => {
     }
     return result;
 };
+const readSubscriptionDisabledEpoch = (payload) => {
+    const stored = payload.subscriptionDisabledEpoch;
+    if (typeof stored === 'number') {
+        return { subscriptionDisabledEpoch: stored };
+    }
+    return {};
+};
 const cooldownEndFromRetryAfter = (retryAfterSeconds, nowEpochSeconds) => {
     const cooldownSeconds = retryAfterSeconds !== null && retryAfterSeconds > 0
         ? Math.min(retryAfterSeconds, exports.HEADERLESS_429_MAX_COOLDOWN_SECONDS)
@@ -130,6 +137,7 @@ const writeRateLimit = (token, headers, statusCode = null) => {
     }
     const existing = readPayload(filePath);
     const payload = {
+        ...readSubscriptionDisabledEpoch(existing),
         ts: Date.now() / 1000,
         headers: rateLimitHeaders,
         modelWeeklyLimits: readModelWeeklyLimits(existing),

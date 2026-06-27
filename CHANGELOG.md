@@ -1,3 +1,10 @@
+## [1.110.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.110.0...v1.110.1) (2026-06-27)
+
+
+### Bug Fixes
+
+* **token-selection:** preserve subscriptionDisabledEpoch across rate-limit cache writes ([#1031](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1031)) ([44d5d0f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/44d5d0feee97305d361fbe6dfd7b733bd6e6c993))
+
 # [1.110.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.109.2...v1.110.0) (2026-06-27)
 
 
