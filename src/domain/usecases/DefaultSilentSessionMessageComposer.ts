@@ -6,15 +6,21 @@ const formatMinutes = (seconds: number): string => {
   return `${minutes}m`;
 };
 
+const composeMainStalledMessage = (mainSilentSeconds: number): string => {
+  const minutes = Math.floor(mainSilentSeconds / 60);
+  return [
+    `You have produced no output for ${minutes} minutes. Idle waiting wastes this live session and is unacceptable. Always work proactively and stay ahead of the work: anticipate the next steps and, at every point, choose the fastest path so the whole task finishes as early as possible; never wait passively. Finish every task in the shortest possible time — but "fastest" means correct and incident-free, not merely quick: a fast but wrong result is worthless and causes incidents, so be fast without breaking things. Use parallel execution and your whole team of sub-agents to minimize total wall-clock time. Your goal is to drive every task to completion and have the owner confirm that all tasks are done. Do NOT close this session on your own — it is closed only after the owner has verified completion and tells you to close it. Self-check now:`,
+    `1. Every request from the owner is registered as a session task and your task list is kept current (mark tasks completed when done); verify nothing is missing or stale.`,
+    `2. Your plan is the fastest correct path: parallelize independent work across sub-agents, delegate, and remove needless serialization. Choose the fastest safe method, not the easiest.`,
+    `3. A monitor is in place that detects when any sub-agent produces no output for 5 minutes.`,
+    `4. If you are blocked on an owner decision — or once you believe all tasks are complete — do not wait passively: the owner is not notified of passive waiting and will not reply unless you raise a new call-to-user, so raise one now (to get the decision, or to ask the owner to verify completion). If no owner input is needed yet, resume immediately and drive all remaining tasks to completion.`,
+    `Also, in your next output, report an estimate of how many minutes you expect to need to finish all remaining tasks.`,
+  ].join('\n');
+};
+
 export class DefaultSilentSessionMessageComposer implements SilentSessionMessageComposer {
   composeMainStalledSection = (mainSilentSeconds: number): string => {
-    return [
-      `Main session has produced no output for ${formatMinutes(
-        mainSilentSeconds,
-      )}.`,
-      '1. Re-check that every request you received is tracked as a session task and that your plan is the fastest possible (parallelize independent work, delegate, and remove needless serialization).',
-      '2. Confirm there is no unanswered item waiting for the owner; only contact the owner when a confirmation, question, or decision is genuinely required, and do so carefully because contacting the owner interrupts their work.',
-    ].join('\n');
+    return composeMainStalledMessage(mainSilentSeconds);
   };
 
   composeSubAgentSection = (subAgents: SubAgentActivity[]): string => {

@@ -126,8 +126,11 @@ describe('notifySilentTmuxSessions', () => {
     localCommandRunner: runner,
     cacheRepository: makeCacheRepository(),
     sessionOutputRootDirectory: outputDirectory,
+    sessionTranscriptRootDirectory: null,
+    ownerCallMarker: null,
     subAgentOutputRootDirectory: null,
     subAgentProcessMatchPattern: null,
+    subAgentTranscriptRootDirectory: null,
     messageTemplates: EMPTY_TEMPLATES,
     now: NOW,
     ...DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS,
@@ -154,7 +157,7 @@ describe('notifySilentTmuxSessions', () => {
       (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
     );
     expect(sendCall?.[1][2]).toBe(SESSION_NAME);
-    expect(sendCall?.[1][4]).toContain('Main session has produced no output');
+    expect(sendCall?.[1][4]).toContain('You have produced no output for');
   });
 
   it('does nothing when neither output root nor sub-agent pattern is configured', async () => {
@@ -217,6 +220,97 @@ describe('notifySilentTmuxSessions', () => {
       (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
     );
     expect(sendCall?.[1][4]).toBe('CUSTOM_MAIN_TEMPLATE');
+  });
+
+  it('suppresses the main stalled notification when the transcript shows an unanswered owner call', async () => {
+    writeSilentOutputFile(SESSION_NAME);
+    const transcriptDirectory = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'silent-transcript-'),
+    );
+    const transcriptPath = path.join(
+      transcriptDirectory,
+      `${SESSION_NAME.replace(/\//g, '_')}.jsonl`,
+    );
+    fs.writeFileSync(
+      transcriptPath,
+      [
+        JSON.stringify({
+          type: 'user',
+          timestamp: '2026-06-25T23:00:00.000Z',
+          message: { role: 'user', content: 'go ahead' },
+        }),
+        JSON.stringify({
+          type: 'assistant',
+          timestamp: '2026-06-25T23:50:00.000Z',
+          message: {
+            role: 'assistant',
+            stop_reason: 'end_turn',
+            content: [
+              { type: 'text', text: 'waiting <<OWNER_CALL>> please decide' },
+            ],
+          },
+        }),
+      ].join('\n'),
+      'utf8',
+    );
+    const runner = listSessionsRunner();
+
+    await notifySilentTmuxSessions({
+      ...baseParams(runner),
+      sessionTranscriptRootDirectory: transcriptDirectory,
+      ownerCallMarker: '<<OWNER_CALL>>',
+    });
+
+    const sendCall = runner.runCommand.mock.calls.find(
+      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
+    );
+    expect(sendCall).toBeUndefined();
+    fs.rmSync(transcriptDirectory, { force: true, recursive: true });
+  });
+
+  it('sends a sub-agent notification driven by a running transcript even when the main session is not silent', async () => {
+    const transcriptRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'silent-subagent-tx-'),
+    );
+    const subAgentsDir = path.join(
+      transcriptRoot,
+      SESSION_NAME.replace(/\//g, '_'),
+      'subagents',
+    );
+    fs.mkdirSync(subAgentsDir, { recursive: true });
+    const agentPath = path.join(subAgentsDir, 'agent-running1.jsonl');
+    fs.writeFileSync(
+      agentPath,
+      [
+        JSON.stringify({
+          type: 'user',
+          timestamp: '2026-06-25T23:30:00.000Z',
+          message: { role: 'user' },
+        }),
+        JSON.stringify({
+          type: 'assistant',
+          timestamp: '2026-06-25T23:40:00.000Z',
+          message: { role: 'assistant', stop_reason: 'tool_use' },
+        }),
+      ].join('\n'),
+      'utf8',
+    );
+    const silentEpoch = NOW_EPOCH_SECONDS - 6 * 60;
+    fs.utimesSync(agentPath, silentEpoch, silentEpoch);
+    const runner = listSessionsRunner();
+
+    await notifySilentTmuxSessions({
+      ...baseParams(runner),
+      sessionOutputRootDirectory: null,
+      subAgentTranscriptRootDirectory: transcriptRoot,
+    });
+
+    const sendCall = runner.runCommand.mock.calls.find(
+      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
+    );
+    expect(sendCall?.[1][2]).toBe(SESSION_NAME);
+    expect(sendCall?.[1][4]).toContain('agent-running1');
+    fs.rmSync(transcriptRoot, { force: true, recursive: true });
   });
 
   it('does not re-notify the same silent session on the next cycle within cooldown', async () => {
