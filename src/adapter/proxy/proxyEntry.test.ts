@@ -355,4 +355,72 @@ describe('startProxy', () => {
     expect(writeSubscriptionDisabledSpy).toHaveBeenCalledWith(TOKEN);
     writeSubscriptionDisabledSpy.mockRestore();
   });
+
+  it('should call writeSubscriptionDisabled when a 403 response body is a permission_error', async () => {
+    const writeSubscriptionDisabledSpy = jest
+      .spyOn(RateLimitCache, 'writeSubscriptionDisabled')
+      .mockImplementation(() => undefined);
+
+    upstreamHandler = (_request, response) => {
+      response.writeHead(403, { 'content-type': 'application/json' });
+      response.end(
+        JSON.stringify({
+          type: 'error',
+          error: {
+            type: 'permission_error',
+            message:
+              'OAuth authentication is currently not allowed for this organization',
+          },
+        }),
+      );
+    };
+
+    await requestThroughProxy('POST', '/v1/messages', null);
+
+    expect(writeSubscriptionDisabledSpy).toHaveBeenCalledTimes(1);
+    expect(writeSubscriptionDisabledSpy).toHaveBeenCalledWith(TOKEN);
+    writeSubscriptionDisabledSpy.mockRestore();
+  });
+
+  it('should not call writeSubscriptionDisabled when a permission_error body has a non-403 status', async () => {
+    const writeSubscriptionDisabledSpy = jest
+      .spyOn(RateLimitCache, 'writeSubscriptionDisabled')
+      .mockImplementation(() => undefined);
+
+    upstreamHandler = (_request, response) => {
+      response.writeHead(200, { 'content-type': 'application/json' });
+      response.end(
+        JSON.stringify({
+          type: 'error',
+          error: { type: 'permission_error', message: 'noise' },
+        }),
+      );
+    };
+
+    await requestThroughProxy('POST', '/v1/messages', null);
+
+    expect(writeSubscriptionDisabledSpy).not.toHaveBeenCalled();
+    writeSubscriptionDisabledSpy.mockRestore();
+  });
+
+  it('should not call writeSubscriptionDisabled when a 403 body is not a permission_error', async () => {
+    const writeSubscriptionDisabledSpy = jest
+      .spyOn(RateLimitCache, 'writeSubscriptionDisabled')
+      .mockImplementation(() => undefined);
+
+    upstreamHandler = (_request, response) => {
+      response.writeHead(403, { 'content-type': 'application/json' });
+      response.end(
+        JSON.stringify({
+          type: 'error',
+          error: { type: 'authentication_error', message: 'bad token' },
+        }),
+      );
+    };
+
+    await requestThroughProxy('POST', '/v1/messages', null);
+
+    expect(writeSubscriptionDisabledSpy).not.toHaveBeenCalled();
+    writeSubscriptionDisabledSpy.mockRestore();
+  });
 });

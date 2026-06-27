@@ -9,11 +9,27 @@ import {
   HEADERLESS_429_MAX_COOLDOWN_SECONDS,
   parseModelRateLimitsFromBody,
   parseModelRateLimitsFromHeaders,
+  PERMISSION_DISABLED_COOLDOWN_SECONDS,
   readRateLimit,
   writeModelRateLimit,
   writeRateLimit,
   writeSubscriptionDisabled,
 } from './RateLimitCache';
+
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  v !== null && typeof v === 'object' && !Array.isArray(v);
+
+const writeSubscriptionDisabledEpoch = (
+  token: string,
+  epochSeconds: number,
+): void => {
+  const filePath = cachePathForToken(token);
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(
+    filePath,
+    JSON.stringify({ subscriptionDisabledEpoch: epochSeconds }),
+  );
+};
 
 describe('RateLimitCache', () => {
   let tempDir: string;
@@ -781,8 +797,6 @@ describe('RateLimitCache', () => {
       const token = 'sub-disabled-token';
       writeSubscriptionDisabled(token);
       const filePath = cachePathForToken(token);
-      const isRecord = (v: unknown): v is Record<string, unknown> =>
-        v !== null && typeof v === 'object' && !Array.isArray(v);
       const raw: unknown = JSON.parse(fs.readFileSync(filePath, 'utf8'));
       const epoch = isRecord(raw) ? raw.subscriptionDisabledEpoch : undefined;
       expect(typeof epoch).toBe('number');
@@ -823,6 +837,28 @@ describe('RateLimitCache', () => {
         'anthropic-ratelimit-unified-7d-reset': '2000200',
         'anthropic-ratelimit-unified-7d-utilization': '0.1',
       });
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.subscriptionDisabled).toBe(false);
+    });
+
+    it('returns subscriptionDisabled: true while within the cooldown window', () => {
+      const token = 'sub-disabled-within-cooldown-token';
+      const nowEpochSeconds = Date.now() / 1000;
+      writeSubscriptionDisabledEpoch(
+        token,
+        nowEpochSeconds - (PERMISSION_DISABLED_COOLDOWN_SECONDS - 60),
+      );
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.subscriptionDisabled).toBe(true);
+    });
+
+    it('returns subscriptionDisabled: false once the cooldown window has elapsed', () => {
+      const token = 'sub-disabled-cooldown-elapsed-token';
+      const nowEpochSeconds = Date.now() / 1000;
+      writeSubscriptionDisabledEpoch(
+        token,
+        nowEpochSeconds - (PERMISSION_DISABLED_COOLDOWN_SECONDS + 60),
+      );
       const snapshot = readRateLimit(token);
       expect(snapshot?.subscriptionDisabled).toBe(false);
     });

@@ -29,6 +29,7 @@ const baseSnapshot = (
   modelWeeklyLimits: {},
   lastUpdatedEpoch: 0,
   blockedUntilEpoch: 0,
+  subscriptionDisabled: false,
   ...overrides,
 });
 

@@ -112,6 +112,8 @@ export const writeTokenStatus = (params: TokenStatusWriterParams): void => {
     name: entry.name,
     token: entry.token,
     snapshot: null,
+    subscriptionDisabled: false,
+    unifiedRejected: false,
   }));
   const humResult = new InTmuxByHumanSessionTokenCountUseCase().run(
     candidates,

@@ -76,6 +76,7 @@ export class LiveSessionOauthTokenSelectHandler {
                 sevenDayReset: snapshot.sevenDayReset,
               },
         subscriptionDisabled: snapshot?.subscriptionDisabled ?? false,
+        unifiedRejected: snapshot?.unifiedRejected ?? false,
       };
     });
 

@@ -34,6 +34,8 @@ export const HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS = 90;
 
 export const HEADERLESS_429_MAX_COOLDOWN_SECONDS = 600;
 
+export const PERMISSION_DISABLED_COOLDOWN_SECONDS = 3600;
+
 export const cacheDir = (): string => {
   const base = process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), '.cache');
   return path.join(base, 'tdpm', 'ratelimit');
@@ -283,9 +285,15 @@ export const readRateLimit = (
     const blockedUntilEpoch =
       typeof storedBlockedUntil === 'number' ? storedBlockedUntil : 0;
     const storedSubscriptionDisabledEpoch = parsed.subscriptionDisabledEpoch;
+    const subscriptionDisabledEpoch =
+      typeof storedSubscriptionDisabledEpoch === 'number'
+        ? storedSubscriptionDisabledEpoch
+        : 0;
+    const nowEpochSeconds = Date.now() / 1000;
     const subscriptionDisabled =
-      typeof storedSubscriptionDisabledEpoch === 'number' &&
-      storedSubscriptionDisabledEpoch > 0;
+      subscriptionDisabledEpoch > 0 &&
+      nowEpochSeconds - subscriptionDisabledEpoch <
+        PERMISSION_DISABLED_COOLDOWN_SECONDS;
     return {
       fiveHourUtilization: num('anthropic-ratelimit-unified-5h-utilization'),
       fiveHourReset: num('anthropic-ratelimit-unified-5h-reset'),

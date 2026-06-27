@@ -22,11 +22,13 @@ const candidate = (
   name: string,
   snapshotValue: OauthTokenWindowSnapshot | null,
   subscriptionDisabled = false,
+  unifiedRejected = false,
 ): OauthTokenCandidate => ({
   name,
   token: `fake-token-${name}`,
   snapshot: snapshotValue,
   subscriptionDisabled,
+  unifiedRejected,
 });
 
 describe('OauthTokenSelectUseCase', () => {
@@ -194,5 +196,20 @@ describe('OauthTokenSelectUseCase', () => {
     expect(disabled?.exclusionReason).toContain(
       'organization has disabled Claude subscription access for Claude Code',
     );
+  });
+
+  it('excludes a unified-rejected token even when rate-limit windows are fully free', () => {
+    const result = useCase.run(
+      [
+        candidate('rejected', snapshot({}), false, true),
+        candidate('active', snapshot({}), false, false),
+      ],
+      NOW,
+    );
+
+    expect(result.selected?.name).toBe('active');
+    const rejected = result.metrics.find((m) => m.name === 'rejected');
+    expect(rejected?.eligible).toBe(false);
+    expect(rejected?.exclusionReason).toContain('rejected');
   });
 });

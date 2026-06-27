@@ -94,6 +94,7 @@ export class OauthTokenSelectHandler {
                 sevenDayReset: snapshot.sevenDayReset,
               },
         subscriptionDisabled: snapshot?.subscriptionDisabled ?? false,
+        unifiedRejected: snapshot?.unifiedRejected ?? false,
       };
     });
 

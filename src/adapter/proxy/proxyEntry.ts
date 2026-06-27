@@ -30,6 +30,22 @@ const extractToken = (
   return token.length > 0 ? token : null;
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+
+const isPermissionError = (body: string): boolean => {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return false;
+  }
+  if (!isRecord(parsed)) return false;
+  const error = parsed.error;
+  if (!isRecord(error)) return false;
+  return error.type === 'permission_error';
+};
+
 const startProxy = (
   port: number,
   claudeMessageResponseRepository: ClaudeMessageResponseRepository | null = null,
@@ -77,7 +93,8 @@ const startProxy = (
             if (
               body.includes(
                 'Your organization has disabled Claude subscription access for Claude Code',
-              )
+              ) ||
+              (upstreamResponse.statusCode === 403 && isPermissionError(body))
             ) {
               try {
                 writeSubscriptionDisabled(token);
