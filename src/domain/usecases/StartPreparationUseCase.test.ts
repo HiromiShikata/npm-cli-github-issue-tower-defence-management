@@ -6009,7 +6009,10 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
     mockIssueRepositoryForRotation,
     mockLocalCommandRunnerForRotation,
     mockClaudeTokenUsageRepositoryForRotation,
-    { listSpawns: jest.fn().mockReturnValue([]), listRunningIssueUrls: jest.fn().mockReturnValue([]) },
+    {
+      listSpawns: jest.fn().mockReturnValue([]),
+      listRunningIssueUrls: jest.fn().mockReturnValue([]),
+    },
   );
 
   it('lists selected tokens first in ascending 7-day reset deadline order then excluded tokens', () => {
@@ -6299,7 +6302,10 @@ describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
         getTokenInFlightCounts: jest.fn(),
         proxyBaseUrl: jest.fn(),
       },
-      { listSpawns: jest.fn().mockReturnValue([]), listRunningIssueUrls: jest.fn().mockReturnValue([]) },
+      {
+        listSpawns: jest.fn().mockReturnValue([]),
+        listRunningIssueUrls: jest.fn().mockReturnValue([]),
+      },
     );
   });
 

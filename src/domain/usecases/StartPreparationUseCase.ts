@@ -432,9 +432,7 @@ export class StartPreparationUseCase {
         continue;
       }
       if (runningIssueUrls.has(issue.url)) {
-        console.log(
-          `Skipping ${issue.url}: worker already running.`,
-        );
+        console.log(`Skipping ${issue.url}: worker already running.`);
         continue;
       }
       if (
