@@ -372,7 +372,7 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
     inTmuxDataDir: null,
     dashboardDir: null,
     dashboardDataDir: null,
-    dashboardProjectCodes: [],
+    dashboardProjectNames: [],
     port: 0,
   });
 

@@ -33,7 +33,7 @@ import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepositor
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import * as path from 'path';
 import {
-  DEFAULT_DASHBOARD_PROJECT_CODES,
+  DEFAULT_DASHBOARD_PROJECT_NAMES,
   DEFAULT_WEB_PORT,
   startWebServer,
 } from '../console/webServer';
@@ -81,7 +81,7 @@ type ServeWebOptions = {
   inTmuxDataDir?: string;
   dashboardDir?: string;
   dashboardDataDir?: string;
-  dashboardProjectCodes?: string;
+  dashboardProjectNames?: string;
 };
 
 const DEFAULT_IN_TMUX_DATA_DIR =
@@ -91,15 +91,15 @@ const DEFAULT_DASHBOARD_DIR = '/home/hiromi/0_workspaces/workspace1/jsonpub';
 
 const DEFAULT_DASHBOARD_DATA_DIR: string | null = null;
 
-const parseDashboardProjectCodes = (raw: string | undefined): string[] => {
+const parseDashboardProjectNames = (raw: string | undefined): string[] => {
   if (raw === undefined) {
-    return DEFAULT_DASHBOARD_PROJECT_CODES;
+    return DEFAULT_DASHBOARD_PROJECT_NAMES;
   }
-  const codes = raw
+  const names = raw
     .split(',')
-    .map((code) => code.trim())
-    .filter((code) => code.length > 0);
-  return codes.length > 0 ? codes : DEFAULT_DASHBOARD_PROJECT_CODES;
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0);
+  return names.length > 0 ? names : DEFAULT_DASHBOARD_PROJECT_NAMES;
 };
 
 type SelectOauthTokenOptions = {
@@ -719,8 +719,8 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
   const dashboardDir = options.dashboardDir ?? DEFAULT_DASHBOARD_DIR;
   const dashboardDataDir =
     options.dashboardDataDir ?? DEFAULT_DASHBOARD_DATA_DIR;
-  const dashboardProjectCodes = parseDashboardProjectCodes(
-    options.dashboardProjectCodes,
+  const dashboardProjectNames = parseDashboardProjectNames(
+    options.dashboardProjectNames,
   );
 
   await startWebServer({
@@ -730,7 +730,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     inTmuxDataDir,
     dashboardDir,
     dashboardDataDir,
-    dashboardProjectCodes,
+    dashboardProjectNames,
     githubToken: token,
     issueRepository,
     resolveProject,
@@ -764,11 +764,11 @@ const addServeWebOptions = (command: Command): Command =>
     )
     .option(
       '--dashboardDataDir <path>',
-      'Directory containing the dashboard data files (projects/<pjcode>.json, machine-status.json, token-status.json); when set and every required file is present the server composes the /tdpm.txt fragment from them at request time, otherwise it falls back to serving the static tdpm.txt from --dashboardDir (unset when not configured)',
+      'Directory containing the dashboard data files (projects/<projectName>.json, machine-status.json, token-status.json); when set and every required file is present the server composes the /tdpm.txt fragment from them at request time, otherwise it falls back to serving the static tdpm.txt from --dashboardDir (unset when not configured)',
     )
     .option(
-      '--dashboardProjectCodes <codes>',
-      `Comma-separated project codes, in display order, for the dashboard project grid (default: ${DEFAULT_DASHBOARD_PROJECT_CODES.join(',')})`,
+      '--dashboardProjectNames <names>',
+      `Comma-separated project names, in display order, for the dashboard project grid (default: ${DEFAULT_DASHBOARD_PROJECT_NAMES.join(',')})`,
     );
 
 addServeWebOptions(program.command('serveWeb'))

@@ -30,10 +30,11 @@ import {
   composeDashboardText,
   dashboardComposeFilesPresent,
 } from './dashboardComposeService';
+import { DASHBOARD_PROJECT_NAMES } from '../../../domain/usecases/dashboard/DashboardProjectCode';
 
 export const DEFAULT_WEB_PORT = 9981;
 
-export const DEFAULT_DASHBOARD_PROJECT_CODES = ['um', 'xm', 'xc', 'ut'];
+export const DEFAULT_DASHBOARD_PROJECT_NAMES = DASHBOARD_PROJECT_NAMES;
 
 export const CONSOLE_TOKEN_HEADER = 'x-pv-token';
 
@@ -165,7 +166,7 @@ export type WebServerOptions = {
   inTmuxDataDir: string | null;
   dashboardDir: string | null;
   dashboardDataDir: string | null;
-  dashboardProjectCodes: string[];
+  dashboardProjectNames: string[];
   githubToken?: string | null;
   imageFetcher?: ImageFetcher | null;
   issueRepository?: IssueRepository | null;
@@ -555,12 +556,12 @@ export const resolveDashboardContent = (
     options.dashboardDataDir !== null &&
     dashboardComposeFilesPresent({
       dashboardDataDir: options.dashboardDataDir,
-      projectCodes: options.dashboardProjectCodes,
+      projectNames: options.dashboardProjectNames,
     })
   ) {
     const dashboardText = composeDashboardText({
       dashboardDataDir: options.dashboardDataDir,
-      projectCodes: options.dashboardProjectCodes,
+      projectNames: options.dashboardProjectNames,
     });
     return Buffer.from(dashboardText, 'utf-8');
   }

@@ -68,15 +68,15 @@ const InTmuxByHumanSessionTokenCountHandler_1 = require("../handlers/InTmuxByHum
 const DEFAULT_IN_TMUX_DATA_DIR = '/home/hiromi/0_workspaces/workspace1/jsonpub/in-tmux-by-human';
 const DEFAULT_DASHBOARD_DIR = '/home/hiromi/0_workspaces/workspace1/jsonpub';
 const DEFAULT_DASHBOARD_DATA_DIR = null;
-const parseDashboardProjectCodes = (raw) => {
+const parseDashboardProjectNames = (raw) => {
     if (raw === undefined) {
-        return webServer_1.DEFAULT_DASHBOARD_PROJECT_CODES;
+        return webServer_1.DEFAULT_DASHBOARD_PROJECT_NAMES;
     }
-    const codes = raw
+    const names = raw
         .split(',')
-        .map((code) => code.trim())
-        .filter((code) => code.length > 0);
-    return codes.length > 0 ? codes : webServer_1.DEFAULT_DASHBOARD_PROJECT_CODES;
+        .map((name) => name.trim())
+        .filter((name) => name.length > 0);
+    return names.length > 0 ? names : webServer_1.DEFAULT_DASHBOARD_PROJECT_NAMES;
 };
 const buildGithubRepositoryParams = (localStorageRepository, token) => [
     localStorageRepository,
@@ -418,7 +418,7 @@ const runServeWeb = async (options) => {
     const inTmuxDataDir = options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR;
     const dashboardDir = options.dashboardDir ?? DEFAULT_DASHBOARD_DIR;
     const dashboardDataDir = options.dashboardDataDir ?? DEFAULT_DASHBOARD_DATA_DIR;
-    const dashboardProjectCodes = parseDashboardProjectCodes(options.dashboardProjectCodes);
+    const dashboardProjectNames = parseDashboardProjectNames(options.dashboardProjectNames);
     await (0, webServer_1.startWebServer)({
         accessToken,
         uiDistDir,
@@ -426,7 +426,7 @@ const runServeWeb = async (options) => {
         inTmuxDataDir,
         dashboardDir,
         dashboardDataDir,
-        dashboardProjectCodes,
+        dashboardProjectNames,
         githubToken: token,
         issueRepository,
         resolveProject,
@@ -441,8 +441,8 @@ const addServeWebOptions = (command) => command
     .option('--consoleDataOutputDir <path>', 'Directory where console data files are written and served from')
     .option('--inTmuxDataDir <path>', `Directory containing the flat in-tmux-by-human static JSON files served at /in-tmux-by-human/*.json (default: ${DEFAULT_IN_TMUX_DATA_DIR})`)
     .option('--dashboardDir <path>', `Directory containing the static dashboard HTML fragment tdpm.txt served at /tdpm.txt when compose mode is not active (default: ${DEFAULT_DASHBOARD_DIR})`)
-    .option('--dashboardDataDir <path>', 'Directory containing the dashboard data files (projects/<pjcode>.json, machine-status.json, token-status.json); when set and every required file is present the server composes the /tdpm.txt fragment from them at request time, otherwise it falls back to serving the static tdpm.txt from --dashboardDir (unset when not configured)')
-    .option('--dashboardProjectCodes <codes>', `Comma-separated project codes, in display order, for the dashboard project grid (default: ${webServer_1.DEFAULT_DASHBOARD_PROJECT_CODES.join(',')})`);
+    .option('--dashboardDataDir <path>', 'Directory containing the dashboard data files (projects/<projectName>.json, machine-status.json, token-status.json); when set and every required file is present the server composes the /tdpm.txt fragment from them at request time, otherwise it falls back to serving the static tdpm.txt from --dashboardDir (unset when not configured)')
+    .option('--dashboardProjectNames <names>', `Comma-separated project names, in display order, for the dashboard project grid (default: ${webServer_1.DEFAULT_DASHBOARD_PROJECT_NAMES.join(',')})`);
 addServeWebOptions(exports.program.command('serveWeb'))
     .description('Start the local TDPM web server (console tabs, dashboard, and in-tmux session list)')
     .action(async (options) => {

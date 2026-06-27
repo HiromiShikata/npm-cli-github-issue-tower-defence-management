@@ -182,7 +182,7 @@ describe('webServer integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       port: 0,
     });
     const address = server.address();
@@ -201,7 +201,7 @@ describe('webServer integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       port: 0,
     });
     try {
@@ -229,7 +229,7 @@ describe('webServer integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       port: 0,
     });
     try {
@@ -261,7 +261,7 @@ describe('webServer integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       port: 0,
     });
     try {
@@ -295,7 +295,7 @@ describe('webServer integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       port: 0,
     });
     try {
@@ -326,7 +326,7 @@ describe('webServer integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       port: 0,
     });
     try {
@@ -351,7 +351,7 @@ describe('webServer integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       port: 0,
     });
     try {
@@ -379,7 +379,7 @@ describe('webServer integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       port: 0,
     });
     try {
@@ -519,7 +519,7 @@ describe('webServer new routes integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       port: 0,
     });
     try {
@@ -558,7 +558,7 @@ describe('webServer new routes integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       issueRepository,
       issueTitleStateCache: new IssueTitleStateCache(),
       port: 0,
@@ -594,7 +594,7 @@ describe('webServer new routes integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       issueRepository,
       resolveProject: async (pjcode) =>
         pjcode === 'umino' ? { pjcode, project: buildProject() } : null,
@@ -645,7 +645,7 @@ describe('webServer new routes integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       issueRepository,
       resolveProject: async (pjcode) =>
         pjcode === 'umino' ? { pjcode, project: buildProject() } : null,
@@ -693,7 +693,7 @@ describe('webServer new routes integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       issueRepository,
       resolveProject: async (pjcode) =>
         pjcode === 'umino' ? { pjcode, project: buildProject() } : null,
@@ -731,7 +731,7 @@ describe('webServer new routes integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       issueRepository,
       resolveProject: async (pjcode) =>
         pjcode === 'umino' ? { pjcode, project: buildProject() } : null,
@@ -784,7 +784,7 @@ describe('webServer new routes integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       port: 0,
     });
     try {
@@ -932,7 +932,7 @@ describe('webServer flat in-tmux-by-human route integration', () => {
       inTmuxDataDir,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       port: 0,
     });
     return { server, tmpDir, inTmuxDataDir };
@@ -1048,7 +1048,7 @@ describe('webServer flat in-tmux-by-human route integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       port: 0,
     });
     try {
@@ -1121,9 +1121,9 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
   const writeDataFiles = (dataDir: string): void => {
     fs.mkdirSync(path.join(dataDir, 'projects'), { recursive: true });
     fs.writeFileSync(
-      path.join(dataDir, 'projects', 'um.json'),
+      path.join(dataDir, 'projects', 'umino.json'),
       JSON.stringify({
-        pjcode: 'um',
+        pjcode: 'umino',
         capturedAt: '2026-06-26T00:00:00.000Z',
         unread: 3,
         todo: 1,
@@ -1136,9 +1136,9 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
       }),
     );
     fs.writeFileSync(
-      path.join(dataDir, 'projects', 'xc.json'),
+      path.join(dataDir, 'projects', 'xcare.json'),
       JSON.stringify({
-        pjcode: 'xc',
+        pjcode: 'xcare',
         capturedAt: '2026-06-26T00:00:00.000Z',
         unread: 0,
         todo: 0,
@@ -1209,7 +1209,7 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
       inTmuxDataDir: null,
       dashboardDir: overrides.dashboardDir,
       dashboardDataDir: overrides.dashboardDataDir,
-      dashboardProjectCodes: ['um', 'xc'],
+      dashboardProjectNames: ['umino', 'xcare'],
       port: 0,
     });
     return { server, tmpDir };
@@ -1453,7 +1453,7 @@ describe('webServer image proxy', () => {
         inTmuxDataDir: null,
         dashboardDir: null,
         dashboardDataDir: null,
-        dashboardProjectCodes: [],
+        dashboardProjectNames: [],
         githubToken: token,
         imageFetcher: fetcher,
         port: 0,
