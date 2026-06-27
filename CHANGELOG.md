@@ -1,3 +1,15 @@
+# [1.110.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.109.2...v1.110.0) (2026-06-27)
+
+
+### Bug Fixes
+
+* aggregate in-tmux-by-human sessions across all projects for token-status counts ([#1028](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1028)) ([e90671c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e90671c4f1c3dd68bc7c96bd1d3b2680766363b6))
+
+
+### Features
+
+* add one-click copy button for item URL in console detail header ([#1029](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1029)) ([b16d7bd](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b16d7bd999438d82a85587160a41d34d96c9c384))
+
 ## [1.109.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.109.1...v1.109.2) (2026-06-27)
 
 
