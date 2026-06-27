@@ -11,6 +11,8 @@ const candidate = (name: string): OauthTokenCandidate => ({
   name,
   token: `fake-token-${name}`,
   snapshot: null,
+  subscriptionDisabled: false,
+  unifiedRejected: false,
 });
 
 const session = (

@@ -78,6 +78,28 @@ describe('OauthTokenSelectHandler', () => {
     );
   };
 
+  const writeSubscriptionDisabledCache = (
+    token: string,
+    epochSeconds: number = Date.now() / 1000,
+  ): void => {
+    const payload = { subscriptionDisabledEpoch: epochSeconds };
+    fs.writeFileSync(
+      path.join(cacheDirectory, `${hashToken(token)}.json`),
+      JSON.stringify(payload),
+    );
+  };
+
+  const writeCacheWithHeaders = (
+    token: string,
+    headers: Record<string, string>,
+  ): void => {
+    const payload = { ts: NOW, headers, modelWeeklyLimits: {} };
+    fs.writeFileSync(
+      path.join(cacheDirectory, `${hashToken(token)}.json`),
+      JSON.stringify(payload),
+    );
+  };
+
   it('selects the eligible token with the soonest 7d reset', () => {
     writeTokenList([
       { name: 'far', token: 'fake-far' },
@@ -166,6 +188,115 @@ describe('OauthTokenSelectHandler', () => {
 
     expect(output.selectedToken).toBeNull();
     expect(output.diagnostics.join('\n')).toContain('No usable token entries');
+  });
+
+  it('excludes a subscription-disabled token even when rate limits are fully free', () => {
+    writeTokenList([
+      { name: 'disabled', token: 'fake-disabled' },
+      { name: 'active', token: 'fake-active' },
+    ]);
+    writeSubscriptionDisabledCache('fake-disabled');
+    writeCache('fake-active', {
+      fiveHourUtilization: 0.1,
+      fiveHourReset: NOW + HOUR,
+      sevenDayUtilization: 0.1,
+      sevenDayReset: NOW + DAY,
+    });
+
+    const handler = new OauthTokenSelectHandler();
+    const output = handler.handle({
+      tokenListJsonPath: tokenListPath,
+      cacheDirectory,
+      nowEpochSeconds: NOW,
+    });
+
+    expect(output.selectedName).toBe('active');
+    expect(output.diagnostics.join('\n')).toContain(
+      'organization has disabled Claude subscription access for Claude Code',
+    );
+  });
+
+  it('excludes a unified-rejected token even when rate limits are fully free', () => {
+    writeTokenList([
+      { name: 'rejected', token: 'fake-rejected' },
+      { name: 'active', token: 'fake-active' },
+    ]);
+    writeCacheWithHeaders('fake-rejected', {
+      'anthropic-ratelimit-unified-status': 'rejected',
+      'anthropic-ratelimit-unified-5h-status': 'allowed',
+      'anthropic-ratelimit-unified-5h-reset': String(NOW + HOUR),
+      'anthropic-ratelimit-unified-5h-utilization': '0.1',
+      'anthropic-ratelimit-unified-7d-status': 'allowed',
+      'anthropic-ratelimit-unified-7d-reset': String(NOW + DAY),
+      'anthropic-ratelimit-unified-7d-utilization': '0.1',
+    });
+    writeCache('fake-active', {
+      fiveHourUtilization: 0.1,
+      fiveHourReset: NOW + HOUR,
+      sevenDayUtilization: 0.1,
+      sevenDayReset: NOW + DAY,
+    });
+
+    const handler = new OauthTokenSelectHandler();
+    const output = handler.handle({
+      tokenListJsonPath: tokenListPath,
+      cacheDirectory,
+      nowEpochSeconds: NOW,
+    });
+
+    expect(output.selectedName).toBe('active');
+    expect(output.diagnostics.join('\n')).toContain('rejected');
+  });
+
+  it('does not exclude a token solely because overage is disabled', () => {
+    writeTokenList([{ name: 'overage', token: 'fake-overage' }]);
+    writeCacheWithHeaders('fake-overage', {
+      'anthropic-ratelimit-unified-status': 'allowed',
+      'anthropic-ratelimit-unified-overage-disabled-reason': 'org_disabled',
+      'anthropic-ratelimit-unified-5h-status': 'allowed',
+      'anthropic-ratelimit-unified-5h-reset': String(NOW + HOUR),
+      'anthropic-ratelimit-unified-5h-utilization': '0.1',
+      'anthropic-ratelimit-unified-7d-status': 'allowed',
+      'anthropic-ratelimit-unified-7d-reset': String(NOW + DAY),
+      'anthropic-ratelimit-unified-7d-utilization': '0.1',
+    });
+
+    const handler = new OauthTokenSelectHandler();
+    const output = handler.handle({
+      tokenListJsonPath: tokenListPath,
+      cacheDirectory,
+      nowEpochSeconds: NOW,
+    });
+
+    expect(output.selectedName).toBe('overage');
+    expect(output.selectedToken).toBe('fake-overage');
+  });
+
+  it('returns null when every token is unusable (subscription-disabled or rejected)', () => {
+    writeTokenList([
+      { name: 'disabled', token: 'fake-disabled' },
+      { name: 'rejected', token: 'fake-rejected' },
+    ]);
+    writeSubscriptionDisabledCache('fake-disabled');
+    writeCacheWithHeaders('fake-rejected', {
+      'anthropic-ratelimit-unified-status': 'rejected',
+      'anthropic-ratelimit-unified-5h-status': 'allowed',
+      'anthropic-ratelimit-unified-5h-reset': String(NOW + HOUR),
+      'anthropic-ratelimit-unified-5h-utilization': '0.1',
+      'anthropic-ratelimit-unified-7d-status': 'allowed',
+      'anthropic-ratelimit-unified-7d-reset': String(NOW + DAY),
+      'anthropic-ratelimit-unified-7d-utilization': '0.1',
+    });
+
+    const handler = new OauthTokenSelectHandler();
+    const output = handler.handle({
+      tokenListJsonPath: tokenListPath,
+      cacheDirectory,
+      nowEpochSeconds: NOW,
+    });
+
+    expect(output.selectedToken).toBeNull();
+    expect(output.selectedName).toBeNull();
   });
 
   describe('resolveTokenListJsonPath', () => {

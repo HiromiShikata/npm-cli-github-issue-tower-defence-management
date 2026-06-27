@@ -6,6 +6,7 @@ import {
   parseModelRateLimitsFromBody,
   writeModelRateLimit,
   writeRateLimit,
+  writeSubscriptionDisabled,
 } from './RateLimitCache';
 import { ClaudeMessageResponseRepository } from '../../domain/usecases/adapter-interfaces/ClaudeMessageResponseRepository';
 import { parseClaudeMessageResponse } from './ClaudeMessageResponseParser';
@@ -27,6 +28,22 @@ const extractToken = (
     return null;
   const token = value.slice(BEARER_PREFIX.length).trim();
   return token.length > 0 ? token : null;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+
+const isPermissionError = (body: string): boolean => {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return false;
+  }
+  if (!isRecord(parsed)) return false;
+  const error = parsed.error;
+  if (!isRecord(error)) return false;
+  return error.type === 'permission_error';
 };
 
 const startProxy = (
@@ -72,6 +89,21 @@ const startProxy = (
               writeModelRateLimit(token, limits);
             } catch (error) {
               console.error('Failed to write model rate limit cache:', error);
+            }
+            if (
+              body.includes(
+                'Your organization has disabled Claude subscription access for Claude Code',
+              ) ||
+              (upstreamResponse.statusCode === 403 && isPermissionError(body))
+            ) {
+              try {
+                writeSubscriptionDisabled(token);
+              } catch (error) {
+                console.error(
+                  'Failed to write subscription disabled cache:',
+                  error,
+                );
+              }
             }
             if (claudeMessageResponseRepository !== null) {
               try {

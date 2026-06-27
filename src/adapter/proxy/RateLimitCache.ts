@@ -23,6 +23,7 @@ export interface RateLimitSnapshot {
   modelWeeklyLimits: Record<string, ModelWeeklyLimit>;
   lastUpdatedEpoch: number;
   blockedUntilEpoch: number;
+  subscriptionDisabled: boolean;
 }
 
 export const PROXY_PORT = 8787;
@@ -32,6 +33,8 @@ const HASH_ALGORITHM = 'sha256';
 export const HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS = 90;
 
 export const HEADERLESS_429_MAX_COOLDOWN_SECONDS = 600;
+
+export const PERMISSION_DISABLED_COOLDOWN_SECONDS = 3600;
 
 export const cacheDir = (): string => {
   const base = process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), '.cache');
@@ -168,6 +171,23 @@ export const writeModelRateLimit = (
   fs.writeFileSync(filePath, JSON.stringify(payload));
 };
 
+export const writeSubscriptionDisabled = (
+  token: string,
+  baseDir: string = cacheDir(),
+): void => {
+  const dir = baseDir;
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  const filePath = path.join(dir, `${hashToken(token)}.json`);
+  const existing = readPayload(filePath);
+  const payload = {
+    ...existing,
+    subscriptionDisabledEpoch: Date.now() / 1000,
+  };
+  fs.writeFileSync(filePath, JSON.stringify(payload));
+};
+
 export const parseModelRateLimitsFromBody = (
   body: string,
 ): Record<string, ModelWeeklyLimit> => {
@@ -264,6 +284,16 @@ export const readRateLimit = (
     const storedBlockedUntil = parsed.blockedUntilEpoch;
     const blockedUntilEpoch =
       typeof storedBlockedUntil === 'number' ? storedBlockedUntil : 0;
+    const storedSubscriptionDisabledEpoch = parsed.subscriptionDisabledEpoch;
+    const subscriptionDisabledEpoch =
+      typeof storedSubscriptionDisabledEpoch === 'number'
+        ? storedSubscriptionDisabledEpoch
+        : 0;
+    const nowEpochSeconds = Date.now() / 1000;
+    const subscriptionDisabled =
+      subscriptionDisabledEpoch > 0 &&
+      nowEpochSeconds - subscriptionDisabledEpoch <
+        PERMISSION_DISABLED_COOLDOWN_SECONDS;
     return {
       fiveHourUtilization: num('anthropic-ratelimit-unified-5h-utilization'),
       fiveHourReset: num('anthropic-ratelimit-unified-5h-reset'),
@@ -285,6 +315,7 @@ export const readRateLimit = (
       },
       lastUpdatedEpoch,
       blockedUntilEpoch,
+      subscriptionDisabled,
     };
   } catch {
     return null;
