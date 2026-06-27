@@ -2,7 +2,7 @@ import { OwnerCallStatusProvider } from '../../domain/usecases/adapter-interface
 
 export class NoUnansweredOwnerCallStatusProvider implements OwnerCallStatusProvider {
   listSessionNamesWithUnansweredOwnerCall = (
-    _sessionNames: string[],
+    _transcriptPathBySessionName: Map<string, string>,
   ): Promise<Set<string>> => {
     return Promise.resolve(new Set<string>());
   };

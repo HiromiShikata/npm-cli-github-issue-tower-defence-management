@@ -108,8 +108,7 @@ export class HandleScheduledEventUseCaseHandler {
       inTmuxConsoleToken?: string;
       inTmuxProjectOrder?: string[];
       inTmuxLauncherCommand?: string;
-      sessionOutputRootDirectory?: string;
-      sessionTranscriptRootDirectory?: string;
+      silentNotificationEnabled?: boolean;
       ownerCallMarker?: string;
       subAgentOutputRootDirectory?: string;
       subAgentProcessMatchPattern?: string;
@@ -563,10 +562,9 @@ export class HandleScheduledEventUseCaseHandler {
       }
 
       try {
-        const sessionOutputRootDirectory =
-          mergedInput.sessionOutputRootDirectory ??
-          process.env.TDPM_SESSION_OUTPUT_ROOT_DIRECTORY ??
-          null;
+        const silentNotificationEnabled =
+          mergedInput.silentNotificationEnabled ??
+          process.env.TDPM_SILENT_NOTIFICATION_ENABLED === 'true';
         const subAgentOutputRootDirectory =
           mergedInput.subAgentOutputRootDirectory ??
           process.env.TDPM_SUBAGENT_OUTPUT_ROOT_DIRECTORY ??
@@ -574,10 +572,6 @@ export class HandleScheduledEventUseCaseHandler {
         const subAgentProcessMatchPattern =
           mergedInput.subAgentProcessMatchPattern ??
           process.env.TDPM_SUBAGENT_PROCESS_MATCH_PATTERN ??
-          null;
-        const sessionTranscriptRootDirectory =
-          mergedInput.sessionTranscriptRootDirectory ??
-          process.env.TDPM_SESSION_TRANSCRIPT_ROOT_DIRECTORY ??
           null;
         const ownerCallMarker =
           mergedInput.ownerCallMarker ??
@@ -588,13 +582,9 @@ export class HandleScheduledEventUseCaseHandler {
           process.env.TDPM_SUBAGENT_TRANSCRIPT_ROOT_DIRECTORY ??
           null;
         await notifySilentTmuxSessions({
-          project: result.project,
-          allowCacheMinutes: mergedInput.allowIssueCacheMinutes,
-          issueRepository,
+          enabled: silentNotificationEnabled,
           localCommandRunner: nodeLocalCommandRunner,
           cacheRepository: localStorageCacheRepository,
-          sessionOutputRootDirectory,
-          sessionTranscriptRootDirectory,
           ownerCallMarker,
           subAgentOutputRootDirectory,
           subAgentProcessMatchPattern,

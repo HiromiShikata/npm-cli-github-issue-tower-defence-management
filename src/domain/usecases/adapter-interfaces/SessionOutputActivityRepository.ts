@@ -2,6 +2,6 @@ import { LiveSessionOutputActivity } from '../../entities/LiveSessionOutputActiv
 
 export interface SessionOutputActivityRepository {
   listSessionOutputActivities: (
-    sessionNames: string[],
+    transcriptPathBySessionName: Map<string, string>,
   ) => Promise<LiveSessionOutputActivity[]>;
 }

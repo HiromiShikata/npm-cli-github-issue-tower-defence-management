@@ -1,5 +1,4 @@
 import * as fs from 'fs';
-import * as path from 'path';
 import { OwnerCallStatusProvider } from '../../domain/usecases/adapter-interfaces/OwnerCallStatusProvider';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -51,24 +50,18 @@ const hasOwnerTextReply = (content: unknown): boolean => {
 };
 
 export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvider {
-  constructor(
-    private readonly rootDirectory: string | null,
-    private readonly ownerCallMarker: string | null,
-  ) {}
+  constructor(private readonly ownerCallMarker: string | null) {}
 
   listSessionNamesWithUnansweredOwnerCall = async (
-    sessionNames: string[],
+    transcriptPathBySessionName: Map<string, string>,
   ): Promise<Set<string>> => {
     const waiting = new Set<string>();
-    if (
-      this.rootDirectory === null ||
-      this.ownerCallMarker === null ||
-      this.ownerCallMarker.length === 0
-    ) {
+    if (this.ownerCallMarker === null || this.ownerCallMarker.length === 0) {
       return waiting;
     }
-    for (const sessionName of sessionNames) {
-      if (this.isWaitingForOwnerReply(sessionName, this.ownerCallMarker)) {
+    const marker = this.ownerCallMarker;
+    for (const [sessionName, transcriptPath] of transcriptPathBySessionName) {
+      if (this.isWaitingForOwnerReply(transcriptPath, marker)) {
         waiting.add(sessionName);
       }
     }
@@ -76,19 +69,12 @@ export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvide
   };
 
   private isWaitingForOwnerReply = (
-    sessionName: string,
+    transcriptPath: string,
     marker: string,
   ): boolean => {
-    if (this.rootDirectory === null) {
-      return false;
-    }
-    const filePath = path.join(
-      this.rootDirectory,
-      this.toTranscriptFileName(sessionName),
-    );
     let content: string;
     try {
-      content = fs.readFileSync(filePath, 'utf8');
+      content = fs.readFileSync(transcriptPath, 'utf8');
     } catch {
       return false;
     }
@@ -133,7 +119,4 @@ export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvide
       lastOwnerCallEpochMs > lastOwnerReplyEpochMs
     );
   };
-
-  private toTranscriptFileName = (sessionName: string): string =>
-    `${sessionName.replace(/\//g, '_')}.jsonl`;
 }
