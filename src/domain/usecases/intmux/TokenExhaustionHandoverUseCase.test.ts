@@ -115,7 +115,8 @@ describe('TokenExhaustionHandoverUseCase', () => {
     const calls: TmuxCalls = { sentKeys: [], killedSessions: [] };
     const staleSnapshot = makeSnapshot({
       fiveHourUtilization: 0.95,
-      lastUpdatedEpoch: NOW_EPOCH - DEFAULT_RATE_LIMIT_STALE_THRESHOLD_SECONDS - 1,
+      lastUpdatedEpoch:
+        NOW_EPOCH - DEFAULT_RATE_LIMIT_STALE_THRESHOLD_SECONDS - 1,
     });
     const useCase = new TokenExhaustionHandoverUseCase(
       createFakeSessionRepository([makeSession()]),
@@ -160,9 +161,7 @@ describe('TokenExhaustionHandoverUseCase', () => {
     );
     const sentHandoverTimestamps = new Map<string, number>();
 
-    const result = await useCase.run(
-      defaultInput({ sentHandoverTimestamps }),
-    );
+    const result = await useCase.run(defaultInput({ sentHandoverTimestamps }));
 
     expect(result.handoverInitiatedIssueUrls).toEqual([ISSUE_URL]);
     expect(calls.sentKeys).toEqual([
@@ -184,9 +183,7 @@ describe('TokenExhaustionHandoverUseCase', () => {
     );
     const sentHandoverTimestamps = new Map<string, number>();
 
-    const result = await useCase.run(
-      defaultInput({ sentHandoverTimestamps }),
-    );
+    const result = await useCase.run(defaultInput({ sentHandoverTimestamps }));
 
     expect(result.handoverInitiatedIssueUrls).toEqual([ISSUE_URL]);
     expect(calls.sentKeys).toHaveLength(1);
@@ -250,9 +247,7 @@ describe('TokenExhaustionHandoverUseCase', () => {
       [ISSUE_URL, NOW_EPOCH - DEFAULT_GRACE_PERIOD_SECONDS + 10],
     ]);
 
-    const result = await useCase.run(
-      defaultInput({ sentHandoverTimestamps }),
-    );
+    const result = await useCase.run(defaultInput({ sentHandoverTimestamps }));
 
     expect(result.handoverInitiatedIssueUrls).toEqual([]);
     expect(result.killedIssueUrls).toEqual([]);
@@ -272,9 +267,7 @@ describe('TokenExhaustionHandoverUseCase', () => {
       [ISSUE_URL, NOW_EPOCH - DEFAULT_GRACE_PERIOD_SECONDS],
     ]);
 
-    const result = await useCase.run(
-      defaultInput({ sentHandoverTimestamps }),
-    );
+    const result = await useCase.run(defaultInput({ sentHandoverTimestamps }));
 
     expect(result.killedIssueUrls).toEqual([ISSUE_URL]);
     expect(calls.killedSessions).toEqual([toTmuxSessionName(ISSUE_URL)]);

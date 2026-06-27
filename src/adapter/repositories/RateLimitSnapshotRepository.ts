@@ -2,9 +2,7 @@ import { TokenRateLimitSnapshotRepository } from '../../domain/usecases/adapter-
 import { TokenRateLimitSnapshot } from '../../domain/usecases/adapter-interfaces/TokenRateLimitSnapshotRepository';
 import { cacheDir, readRateLimit } from '../proxy/RateLimitCache';
 
-export class RateLimitSnapshotRepository
-  implements TokenRateLimitSnapshotRepository
-{
+export class RateLimitSnapshotRepository implements TokenRateLimitSnapshotRepository {
   constructor(private readonly baseDir: string = cacheDir()) {}
 
   getSnapshot = (token: string): TokenRateLimitSnapshot | null => {
