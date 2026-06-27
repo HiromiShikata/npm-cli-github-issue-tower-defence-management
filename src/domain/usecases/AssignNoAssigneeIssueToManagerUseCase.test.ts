@@ -185,9 +185,9 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
         ...basicIssue,
         url: 'https://github.com/testOrg/testRepo/issues/44',
       };
+      const nonErrorValue: unknown = 'string-failure';
       mockIssueRepository.updateAssigneeList.mockImplementationOnce(() => {
-        const nonError: unknown = 'string-failure';
-        throw nonError;
+        throw nonErrorValue;
       });
 
       await expect(
