@@ -67,7 +67,7 @@ export class GraphqlProjectRepository
       cache = await this.projectCache.getLatest(
         `${PROJECT_ID_DISK_CACHE_KEY_PREFIX}-${cacheKey}`,
       );
-    } catch (error) {
+    } catch {
       return null;
     }
     if (!cache) {
@@ -94,7 +94,7 @@ export class GraphqlProjectRepository
         `${PROJECT_ID_DISK_CACHE_KEY_PREFIX}-${cacheKey}`,
         { projectId },
       );
-    } catch (error) {
+    } catch {
       return;
     }
   };
