@@ -37,4 +37,22 @@ describe('ConsolePullRequestDetail', () => {
     expect(getByText('+1184')).toBeInTheDocument();
     expect(getByText('27 files')).toBeInTheDocument();
   });
+
+  it('renders a copy URL button for the pull request url', () => {
+    const { getByRole } = render(
+      <ConsolePullRequestDetail
+        pullRequest={pullRequest}
+        body={pullRequest.summary?.body ?? ''}
+        bodyIsLoading={false}
+        files={consoleChangedFilesFixture}
+        filesAreLoading={false}
+        filesError={null}
+        commits={consoleCommitsFixture}
+        commitsAreLoading={false}
+        commitsError={null}
+        now={now}
+      />,
+    );
+    expect(getByRole('button', { name: 'Copy PR URL' })).toBeInTheDocument();
+  });
 });

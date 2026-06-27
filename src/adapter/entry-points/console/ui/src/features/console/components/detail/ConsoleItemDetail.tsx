@@ -20,6 +20,7 @@ import { ConsolePanel } from '../layout/ConsolePanel';
 import { ConsoleChangedFileList } from './ConsoleChangedFileList';
 import { ConsoleCommentList } from './ConsoleCommentList';
 import { ConsoleCommitList } from './ConsoleCommitList';
+import { ConsoleCopyUrlButton } from './ConsoleCopyUrlButton';
 import type { ConsoleAddInlineComment } from './ConsoleFileDiff';
 import { ConsoleItemIcon } from './ConsoleItemIcon';
 import { ConsolePullRequestDetail } from './ConsolePullRequestDetail';
@@ -159,6 +160,7 @@ export const ConsoleItemDetail = ({
         <span className="console-detail-pill">
           {item.isPr ? 'PR' : 'Issue'}
         </span>
+        <ConsoleCopyUrlButton url={item.url} />
       </div>
 
       {item.labels.length > 0 && (

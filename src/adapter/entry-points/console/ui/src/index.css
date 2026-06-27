@@ -302,6 +302,20 @@ body {
   color: #8b949e;
 }
 
+.console-copy-url-button {
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #c9d1d9;
+  font-size: 12px;
+}
+
+.console-copy-url-button:hover {
+  background-color: #21262d;
+  color: #e6edf3;
+}
+
 .console-detail-pill,
 .console-label-chip,
 .console-detail-status-chip {

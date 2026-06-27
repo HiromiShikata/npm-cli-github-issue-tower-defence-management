@@ -85,6 +85,13 @@ describe('ConsoleItemDetail', () => {
     expect(queryByText('Commits')).toBeNull();
   });
 
+  it('renders a copy URL button for the item url in the sub bar', () => {
+    const { getByRole } = render(
+      <ConsoleItemDetail item={prItem} {...baseProps} />,
+    );
+    expect(getByRole('button', { name: 'Copy URL' })).toBeInTheDocument();
+  });
+
   it('renders the overlay status chip when set', () => {
     const { getByText } = render(
       <ConsoleItemDetail
