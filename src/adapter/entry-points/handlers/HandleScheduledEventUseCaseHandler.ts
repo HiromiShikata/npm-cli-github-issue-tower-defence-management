@@ -9,6 +9,7 @@ import { writeTokenStatus } from './tokenStatusWriter';
 import { writeInTmuxByHumanData } from './inTmuxByHumanDataWriter';
 import { reconcileInTmuxByHumanSessions } from './inTmuxByHumanSessionReconciler';
 import { cleanStaleTmuxSessions } from './staleTmuxSessionCleaner';
+import { notifySilentTmuxSessions } from './notifySilentTmuxSessions';
 import { writeRotationOrderFile } from './rotationOrderFileWriter';
 import {
   fetchProjectReadme,
@@ -87,6 +88,7 @@ export class HandleScheduledEventUseCaseHandler {
       inTmuxConsoleToken?: string;
       inTmuxProjectOrder?: string[];
       inTmuxLauncherCommand?: string;
+      sessionOutputRootDirectory?: string;
       credentials: {
         manager: {
           github: {
@@ -521,6 +523,28 @@ export class HandleScheduledEventUseCaseHandler {
       } catch (error) {
         console.error(
           `Failed to clean stale tmux sessions: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+
+      try {
+        const sessionOutputRootDirectory =
+          mergedInput.sessionOutputRootDirectory ??
+          process.env.TDPM_SESSION_OUTPUT_ROOT_DIRECTORY ??
+          null;
+        await notifySilentTmuxSessions({
+          project: result.project,
+          allowCacheMinutes: mergedInput.allowIssueCacheMinutes,
+          issueRepository,
+          localCommandRunner: nodeLocalCommandRunner,
+          cacheRepository: localStorageCacheRepository,
+          sessionOutputRootDirectory,
+          now: inTmuxNow,
+        });
+      } catch (error) {
+        console.error(
+          `Failed to notify silent tmux sessions: ${
             error instanceof Error ? error.message : String(error)
           }`,
         );
