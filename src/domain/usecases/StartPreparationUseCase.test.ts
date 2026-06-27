@@ -223,7 +223,7 @@ describe('StartPreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
-    expect(mockLocalCommandRunner.runCommand).not.toHaveBeenCalled();
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
   });
 
   it('should pass --branch to aw command when issue has an existing linked PR', async () => {
