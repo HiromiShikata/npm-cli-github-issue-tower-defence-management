@@ -8,6 +8,7 @@ import { ConsoleMarkdownContent } from '../content/ConsoleMarkdownContent';
 import { ConsolePanel } from '../layout/ConsolePanel';
 import { ConsoleChangedFileList } from './ConsoleChangedFileList';
 import { ConsoleCommitList } from './ConsoleCommitList';
+import { ConsoleCopyUrlButton } from './ConsoleCopyUrlButton';
 
 export type ConsolePullRequestSectionProps = {
   pullRequest: ConsoleRelatedPullRequest;
@@ -55,6 +56,7 @@ export const ConsolePullRequestDetail = ({
         {pullRequest.isDraft && (
           <span className="console-pr-section-state">draft</span>
         )}
+        <ConsoleCopyUrlButton url={pullRequest.url} label="Copy PR URL" />
         <div className="console-pr-statbar">
           {pullRequest.branchName !== null && (
             <span className="console-pr-branch">{pullRequest.branchName}</span>
