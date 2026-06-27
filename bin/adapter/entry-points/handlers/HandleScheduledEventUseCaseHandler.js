@@ -50,6 +50,7 @@ const tokenStatusWriter_1 = require("./tokenStatusWriter");
 const inTmuxByHumanDataWriter_1 = require("./inTmuxByHumanDataWriter");
 const inTmuxByHumanSessionReconciler_1 = require("./inTmuxByHumanSessionReconciler");
 const staleTmuxSessionCleaner_1 = require("./staleTmuxSessionCleaner");
+const notifySilentTmuxSessions_1 = require("./notifySilentTmuxSessions");
 const rotationOrderFileWriter_1 = require("./rotationOrderFileWriter");
 const projectConfig_1 = require("../cli/projectConfig");
 const SystemDateRepository_1 = require("../../repositories/SystemDateRepository");
@@ -89,18 +90,30 @@ const DailySecurityScanUseCase_1 = require("../../../domain/usecases/DailySecuri
 const KyHttpRepository_1 = require("../../repositories/KyHttpRepository");
 const WorkflowStatus_1 = require("../../../domain/entities/WorkflowStatus");
 const DEFAULT_DASHBOARD_DATA_DIR = null;
+const readSilentSeconds = (configValue, envValue, defaultValue) => {
+    if (configValue !== undefined) {
+        return configValue;
+    }
+    if (envValue !== undefined) {
+        const parsed = Number(envValue);
+        if (Number.isFinite(parsed)) {
+            return parsed;
+        }
+    }
+    return defaultValue;
+};
 class HandleScheduledEventUseCaseHandler {
     constructor() {
         this.handle = async (configFilePath, _verbose) => {
             const configFileContent = fs_1.default.readFileSync(configFilePath, 'utf8');
             const input = yaml_1.default.parse(configFileContent);
-            if (!(() => { const _io0 = input => "string" === typeof input.org && "number" === typeof input.allowIssueCacheMinutes && (undefined === input.thresholdForAutoReject || "number" === typeof input.thresholdForAutoReject) && (null === input.changeTargetPathAliases || undefined === input.changeTargetPathAliases || "object" === typeof input.changeTargetPathAliases && null !== input.changeTargetPathAliases && false === Array.isArray(input.changeTargetPathAliases) && _io1(input.changeTargetPathAliases)) && "string" === typeof input.projectUrl && "string" === typeof input.projectName && (null === input.labelsAsLlmAgentName || undefined === input.labelsAsLlmAgentName || Array.isArray(input.labelsAsLlmAgentName) && input.labelsAsLlmAgentName.every(elem => "string" === typeof elem)) && "string" === typeof input.manager && ("object" === typeof input.workingReport && null !== input.workingReport && _io2(input.workingReport)) && "string" === typeof input.urlOfStoryView && "boolean" === typeof input.disabled && (null === input.startPreparation || undefined === input.startPreparation || "object" === typeof input.startPreparation && null !== input.startPreparation && _io3(input.startPreparation)) && (null === input.dailySecurityScan || undefined === input.dailySecurityScan || "object" === typeof input.dailySecurityScan && null !== input.dailySecurityScan && _io4(input.dailySecurityScan)) && (null === input.allowedIssueAuthors || undefined === input.allowedIssueAuthors || "string" === typeof input.allowedIssueAuthors || Array.isArray(input.allowedIssueAuthors) && input.allowedIssueAuthors.every(elem => "string" === typeof elem)) && (undefined === input.claudeCodeOauthTokenListJsonPath || "string" === typeof input.claudeCodeOauthTokenListJsonPath) && (undefined === input.consoleDataOutputDir || "string" === typeof input.consoleDataOutputDir) && (undefined === input.dashboardDataDir || "string" === typeof input.dashboardDataDir) && (undefined === input.workflowBlockerStoryName || "string" === typeof input.workflowBlockerStoryName) && (undefined === input.inTmuxDataOutputDir || "string" === typeof input.inTmuxDataOutputDir) && (undefined === input.inTmuxConsoleBaseUrl || "string" === typeof input.inTmuxConsoleBaseUrl) && (undefined === input.inTmuxConsoleToken || "string" === typeof input.inTmuxConsoleToken) && (undefined === input.inTmuxProjectOrder || Array.isArray(input.inTmuxProjectOrder) && input.inTmuxProjectOrder.every(elem => "string" === typeof elem)) && (undefined === input.inTmuxLauncherCommand || "string" === typeof input.inTmuxLauncherCommand) && ("object" === typeof input.credentials && null !== input.credentials && _io5(input.credentials)); const _io1 = input => Object.keys(input).every(key => {
+            if (!(() => { const _io0 = input => "string" === typeof input.org && "number" === typeof input.allowIssueCacheMinutes && (undefined === input.thresholdForAutoReject || "number" === typeof input.thresholdForAutoReject) && (null === input.changeTargetPathAliases || undefined === input.changeTargetPathAliases || "object" === typeof input.changeTargetPathAliases && null !== input.changeTargetPathAliases && false === Array.isArray(input.changeTargetPathAliases) && _io1(input.changeTargetPathAliases)) && "string" === typeof input.projectUrl && "string" === typeof input.projectName && (null === input.labelsAsLlmAgentName || undefined === input.labelsAsLlmAgentName || Array.isArray(input.labelsAsLlmAgentName) && input.labelsAsLlmAgentName.every(elem => "string" === typeof elem)) && "string" === typeof input.manager && ("object" === typeof input.workingReport && null !== input.workingReport && _io2(input.workingReport)) && "string" === typeof input.urlOfStoryView && "boolean" === typeof input.disabled && (null === input.startPreparation || undefined === input.startPreparation || "object" === typeof input.startPreparation && null !== input.startPreparation && _io3(input.startPreparation)) && (null === input.dailySecurityScan || undefined === input.dailySecurityScan || "object" === typeof input.dailySecurityScan && null !== input.dailySecurityScan && _io4(input.dailySecurityScan)) && (null === input.allowedIssueAuthors || undefined === input.allowedIssueAuthors || "string" === typeof input.allowedIssueAuthors || Array.isArray(input.allowedIssueAuthors) && input.allowedIssueAuthors.every(elem => "string" === typeof elem)) && (undefined === input.claudeCodeOauthTokenListJsonPath || "string" === typeof input.claudeCodeOauthTokenListJsonPath) && (undefined === input.consoleDataOutputDir || "string" === typeof input.consoleDataOutputDir) && (undefined === input.dashboardDataDir || "string" === typeof input.dashboardDataDir) && (undefined === input.workflowBlockerStoryName || "string" === typeof input.workflowBlockerStoryName) && (undefined === input.inTmuxDataOutputDir || "string" === typeof input.inTmuxDataOutputDir) && (undefined === input.inTmuxConsoleBaseUrl || "string" === typeof input.inTmuxConsoleBaseUrl) && (undefined === input.inTmuxConsoleToken || "string" === typeof input.inTmuxConsoleToken) && (undefined === input.inTmuxProjectOrder || Array.isArray(input.inTmuxProjectOrder) && input.inTmuxProjectOrder.every(elem => "string" === typeof elem)) && (undefined === input.inTmuxLauncherCommand || "string" === typeof input.inTmuxLauncherCommand) && (undefined === input.sessionOutputRootDirectory || "string" === typeof input.sessionOutputRootDirectory) && (undefined === input.sessionTranscriptRootDirectory || "string" === typeof input.sessionTranscriptRootDirectory) && (undefined === input.ownerCallMarker || "string" === typeof input.ownerCallMarker) && (undefined === input.subAgentOutputRootDirectory || "string" === typeof input.subAgentOutputRootDirectory) && (undefined === input.subAgentProcessMatchPattern || "string" === typeof input.subAgentProcessMatchPattern) && (undefined === input.subAgentTranscriptRootDirectory || "string" === typeof input.subAgentTranscriptRootDirectory) && (undefined === input.mainSilentThresholdSeconds || "number" === typeof input.mainSilentThresholdSeconds) && (undefined === input.subAgentSilentThresholdSeconds || "number" === typeof input.subAgentSilentThresholdSeconds) && (undefined === input.subAgentRunningThresholdSeconds || "number" === typeof input.subAgentRunningThresholdSeconds) && (undefined === input.silentNotificationCooldownSeconds || "number" === typeof input.silentNotificationCooldownSeconds) && (undefined === input.silentNotificationStaggerSeconds || "number" === typeof input.silentNotificationStaggerSeconds) && (undefined === input.silentMainStalledMessage || "string" === typeof input.silentMainStalledMessage) && (undefined === input.silentSubAgentMessageHeader || "string" === typeof input.silentSubAgentMessageHeader) && (undefined === input.silentSubAgentMessageFooter || "string" === typeof input.silentSubAgentMessageFooter) && ("object" === typeof input.credentials && null !== input.credentials && _io5(input.credentials)); const _io1 = input => Object.keys(input).every(key => {
                 const value = input[key];
                 if (undefined === value)
                     return true;
                 return "string" === typeof value;
             }); const _io2 = input => "string" === typeof input.repo && (Array.isArray(input.members) && input.members.every(elem => "string" === typeof elem)) && "string" === typeof input.spreadsheetUrl; const _io3 = input => "string" === typeof input.defaultAgentName && (null === input.defaultLlmModelName || undefined === input.defaultLlmModelName || "string" === typeof input.defaultLlmModelName) && (null === input.fallbackLlmModelName || undefined === input.fallbackLlmModelName || "string" === typeof input.fallbackLlmModelName) && (null === input.defaultLlmAgentName || undefined === input.defaultLlmAgentName || "string" === typeof input.defaultLlmAgentName) && "string" === typeof input.configFilePath && (null === input.maximumPreparingIssuesCount || "number" === typeof input.maximumPreparingIssuesCount) && (undefined === input.utilizationPercentageThreshold || "number" === typeof input.utilizationPercentageThreshold) && (null === input.allowedIssueAuthors || undefined === input.allowedIssueAuthors || Array.isArray(input.allowedIssueAuthors) && input.allowedIssueAuthors.every(elem => "string" === typeof elem)) && (undefined === input.preparationProcessCheckCommand || "string" === typeof input.preparationProcessCheckCommand) && (null === input.codexHomeCandidates || undefined === input.codexHomeCandidates || Array.isArray(input.codexHomeCandidates) && input.codexHomeCandidates.every(elem => "string" === typeof elem)) && (undefined === input.awLogDirectoryPath || "string" === typeof input.awLogDirectoryPath) && (undefined === input.awLogStaleThresholdMinutes || "number" === typeof input.awLogStaleThresholdMinutes) && (null === input.awaitingQualityCheckStatus || undefined === input.awaitingQualityCheckStatus || "string" === typeof input.awaitingQualityCheckStatus) && (null === input.labelsAsLlmAgentName || undefined === input.labelsAsLlmAgentName || Array.isArray(input.labelsAsLlmAgentName) && input.labelsAsLlmAgentName.every(elem => "string" === typeof elem)); const _io4 = input => "string" === typeof input.scanBaseDirectory && "number" === typeof input.targetHourUtc && (undefined === input.enableKevNvdReport || "boolean" === typeof input.enableKevNvdReport) && (undefined === input.kevReportRepo || "string" === typeof input.kevReportRepo); const _io5 = input => "object" === typeof input.manager && null !== input.manager && _io6(input.manager) && ("object" === typeof input.bot && null !== input.bot && _io10(input.bot)); const _io6 = input => "object" === typeof input.github && null !== input.github && _io7(input.github) && ("object" === typeof input.slack && null !== input.slack && _io8(input.slack)) && ("object" === typeof input.googleServiceAccount && null !== input.googleServiceAccount && _io9(input.googleServiceAccount)); const _io7 = input => "string" === typeof input.token; const _io8 = input => "string" === typeof input.userToken; const _io9 = input => "string" === typeof input.serviceAccountKey; const _io10 = input => "object" === typeof input.github && null !== input.github && _io11(input.github); const _io11 = input => "string" === typeof input.token; return input => "object" === typeof input && null !== input && _io0(input); })()(input)) {
-                throw new Error(`Invalid input: ${JSON.stringify(input)}\n\n${JSON.stringify((() => { const _io0 = input => "string" === typeof input.org && "number" === typeof input.allowIssueCacheMinutes && (undefined === input.thresholdForAutoReject || "number" === typeof input.thresholdForAutoReject) && (null === input.changeTargetPathAliases || undefined === input.changeTargetPathAliases || "object" === typeof input.changeTargetPathAliases && null !== input.changeTargetPathAliases && false === Array.isArray(input.changeTargetPathAliases) && _io1(input.changeTargetPathAliases)) && "string" === typeof input.projectUrl && "string" === typeof input.projectName && (null === input.labelsAsLlmAgentName || undefined === input.labelsAsLlmAgentName || Array.isArray(input.labelsAsLlmAgentName) && input.labelsAsLlmAgentName.every(elem => "string" === typeof elem)) && "string" === typeof input.manager && ("object" === typeof input.workingReport && null !== input.workingReport && _io2(input.workingReport)) && "string" === typeof input.urlOfStoryView && "boolean" === typeof input.disabled && (null === input.startPreparation || undefined === input.startPreparation || "object" === typeof input.startPreparation && null !== input.startPreparation && _io3(input.startPreparation)) && (null === input.dailySecurityScan || undefined === input.dailySecurityScan || "object" === typeof input.dailySecurityScan && null !== input.dailySecurityScan && _io4(input.dailySecurityScan)) && (null === input.allowedIssueAuthors || undefined === input.allowedIssueAuthors || "string" === typeof input.allowedIssueAuthors || Array.isArray(input.allowedIssueAuthors) && input.allowedIssueAuthors.every(elem => "string" === typeof elem)) && (undefined === input.claudeCodeOauthTokenListJsonPath || "string" === typeof input.claudeCodeOauthTokenListJsonPath) && (undefined === input.consoleDataOutputDir || "string" === typeof input.consoleDataOutputDir) && (undefined === input.dashboardDataDir || "string" === typeof input.dashboardDataDir) && (undefined === input.workflowBlockerStoryName || "string" === typeof input.workflowBlockerStoryName) && (undefined === input.inTmuxDataOutputDir || "string" === typeof input.inTmuxDataOutputDir) && (undefined === input.inTmuxConsoleBaseUrl || "string" === typeof input.inTmuxConsoleBaseUrl) && (undefined === input.inTmuxConsoleToken || "string" === typeof input.inTmuxConsoleToken) && (undefined === input.inTmuxProjectOrder || Array.isArray(input.inTmuxProjectOrder) && input.inTmuxProjectOrder.every(elem => "string" === typeof elem)) && (undefined === input.inTmuxLauncherCommand || "string" === typeof input.inTmuxLauncherCommand) && ("object" === typeof input.credentials && null !== input.credentials && _io5(input.credentials)); const _io1 = input => Object.keys(input).every(key => {
+                throw new Error(`Invalid input: ${JSON.stringify(input)}\n\n${JSON.stringify((() => { const _io0 = input => "string" === typeof input.org && "number" === typeof input.allowIssueCacheMinutes && (undefined === input.thresholdForAutoReject || "number" === typeof input.thresholdForAutoReject) && (null === input.changeTargetPathAliases || undefined === input.changeTargetPathAliases || "object" === typeof input.changeTargetPathAliases && null !== input.changeTargetPathAliases && false === Array.isArray(input.changeTargetPathAliases) && _io1(input.changeTargetPathAliases)) && "string" === typeof input.projectUrl && "string" === typeof input.projectName && (null === input.labelsAsLlmAgentName || undefined === input.labelsAsLlmAgentName || Array.isArray(input.labelsAsLlmAgentName) && input.labelsAsLlmAgentName.every(elem => "string" === typeof elem)) && "string" === typeof input.manager && ("object" === typeof input.workingReport && null !== input.workingReport && _io2(input.workingReport)) && "string" === typeof input.urlOfStoryView && "boolean" === typeof input.disabled && (null === input.startPreparation || undefined === input.startPreparation || "object" === typeof input.startPreparation && null !== input.startPreparation && _io3(input.startPreparation)) && (null === input.dailySecurityScan || undefined === input.dailySecurityScan || "object" === typeof input.dailySecurityScan && null !== input.dailySecurityScan && _io4(input.dailySecurityScan)) && (null === input.allowedIssueAuthors || undefined === input.allowedIssueAuthors || "string" === typeof input.allowedIssueAuthors || Array.isArray(input.allowedIssueAuthors) && input.allowedIssueAuthors.every(elem => "string" === typeof elem)) && (undefined === input.claudeCodeOauthTokenListJsonPath || "string" === typeof input.claudeCodeOauthTokenListJsonPath) && (undefined === input.consoleDataOutputDir || "string" === typeof input.consoleDataOutputDir) && (undefined === input.dashboardDataDir || "string" === typeof input.dashboardDataDir) && (undefined === input.workflowBlockerStoryName || "string" === typeof input.workflowBlockerStoryName) && (undefined === input.inTmuxDataOutputDir || "string" === typeof input.inTmuxDataOutputDir) && (undefined === input.inTmuxConsoleBaseUrl || "string" === typeof input.inTmuxConsoleBaseUrl) && (undefined === input.inTmuxConsoleToken || "string" === typeof input.inTmuxConsoleToken) && (undefined === input.inTmuxProjectOrder || Array.isArray(input.inTmuxProjectOrder) && input.inTmuxProjectOrder.every(elem => "string" === typeof elem)) && (undefined === input.inTmuxLauncherCommand || "string" === typeof input.inTmuxLauncherCommand) && (undefined === input.sessionOutputRootDirectory || "string" === typeof input.sessionOutputRootDirectory) && (undefined === input.sessionTranscriptRootDirectory || "string" === typeof input.sessionTranscriptRootDirectory) && (undefined === input.ownerCallMarker || "string" === typeof input.ownerCallMarker) && (undefined === input.subAgentOutputRootDirectory || "string" === typeof input.subAgentOutputRootDirectory) && (undefined === input.subAgentProcessMatchPattern || "string" === typeof input.subAgentProcessMatchPattern) && (undefined === input.subAgentTranscriptRootDirectory || "string" === typeof input.subAgentTranscriptRootDirectory) && (undefined === input.mainSilentThresholdSeconds || "number" === typeof input.mainSilentThresholdSeconds) && (undefined === input.subAgentSilentThresholdSeconds || "number" === typeof input.subAgentSilentThresholdSeconds) && (undefined === input.subAgentRunningThresholdSeconds || "number" === typeof input.subAgentRunningThresholdSeconds) && (undefined === input.silentNotificationCooldownSeconds || "number" === typeof input.silentNotificationCooldownSeconds) && (undefined === input.silentNotificationStaggerSeconds || "number" === typeof input.silentNotificationStaggerSeconds) && (undefined === input.silentMainStalledMessage || "string" === typeof input.silentMainStalledMessage) && (undefined === input.silentSubAgentMessageHeader || "string" === typeof input.silentSubAgentMessageHeader) && (undefined === input.silentSubAgentMessageFooter || "string" === typeof input.silentSubAgentMessageFooter) && ("object" === typeof input.credentials && null !== input.credentials && _io5(input.credentials)); const _io1 = input => Object.keys(input).every(key => {
                     const value = input[key];
                     if (undefined === value)
                         return true;
@@ -237,6 +250,62 @@ class HandleScheduledEventUseCaseHandler {
                         path: _path + ".inTmuxLauncherCommand",
                         expected: "(string | undefined)",
                         value: input.inTmuxLauncherCommand
+                    }), undefined === input.sessionOutputRootDirectory || "string" === typeof input.sessionOutputRootDirectory || _report(_exceptionable, {
+                        path: _path + ".sessionOutputRootDirectory",
+                        expected: "(string | undefined)",
+                        value: input.sessionOutputRootDirectory
+                    }), undefined === input.sessionTranscriptRootDirectory || "string" === typeof input.sessionTranscriptRootDirectory || _report(_exceptionable, {
+                        path: _path + ".sessionTranscriptRootDirectory",
+                        expected: "(string | undefined)",
+                        value: input.sessionTranscriptRootDirectory
+                    }), undefined === input.ownerCallMarker || "string" === typeof input.ownerCallMarker || _report(_exceptionable, {
+                        path: _path + ".ownerCallMarker",
+                        expected: "(string | undefined)",
+                        value: input.ownerCallMarker
+                    }), undefined === input.subAgentOutputRootDirectory || "string" === typeof input.subAgentOutputRootDirectory || _report(_exceptionable, {
+                        path: _path + ".subAgentOutputRootDirectory",
+                        expected: "(string | undefined)",
+                        value: input.subAgentOutputRootDirectory
+                    }), undefined === input.subAgentProcessMatchPattern || "string" === typeof input.subAgentProcessMatchPattern || _report(_exceptionable, {
+                        path: _path + ".subAgentProcessMatchPattern",
+                        expected: "(string | undefined)",
+                        value: input.subAgentProcessMatchPattern
+                    }), undefined === input.subAgentTranscriptRootDirectory || "string" === typeof input.subAgentTranscriptRootDirectory || _report(_exceptionable, {
+                        path: _path + ".subAgentTranscriptRootDirectory",
+                        expected: "(string | undefined)",
+                        value: input.subAgentTranscriptRootDirectory
+                    }), undefined === input.mainSilentThresholdSeconds || "number" === typeof input.mainSilentThresholdSeconds || _report(_exceptionable, {
+                        path: _path + ".mainSilentThresholdSeconds",
+                        expected: "(number | undefined)",
+                        value: input.mainSilentThresholdSeconds
+                    }), undefined === input.subAgentSilentThresholdSeconds || "number" === typeof input.subAgentSilentThresholdSeconds || _report(_exceptionable, {
+                        path: _path + ".subAgentSilentThresholdSeconds",
+                        expected: "(number | undefined)",
+                        value: input.subAgentSilentThresholdSeconds
+                    }), undefined === input.subAgentRunningThresholdSeconds || "number" === typeof input.subAgentRunningThresholdSeconds || _report(_exceptionable, {
+                        path: _path + ".subAgentRunningThresholdSeconds",
+                        expected: "(number | undefined)",
+                        value: input.subAgentRunningThresholdSeconds
+                    }), undefined === input.silentNotificationCooldownSeconds || "number" === typeof input.silentNotificationCooldownSeconds || _report(_exceptionable, {
+                        path: _path + ".silentNotificationCooldownSeconds",
+                        expected: "(number | undefined)",
+                        value: input.silentNotificationCooldownSeconds
+                    }), undefined === input.silentNotificationStaggerSeconds || "number" === typeof input.silentNotificationStaggerSeconds || _report(_exceptionable, {
+                        path: _path + ".silentNotificationStaggerSeconds",
+                        expected: "(number | undefined)",
+                        value: input.silentNotificationStaggerSeconds
+                    }), undefined === input.silentMainStalledMessage || "string" === typeof input.silentMainStalledMessage || _report(_exceptionable, {
+                        path: _path + ".silentMainStalledMessage",
+                        expected: "(string | undefined)",
+                        value: input.silentMainStalledMessage
+                    }), undefined === input.silentSubAgentMessageHeader || "string" === typeof input.silentSubAgentMessageHeader || _report(_exceptionable, {
+                        path: _path + ".silentSubAgentMessageHeader",
+                        expected: "(string | undefined)",
+                        value: input.silentSubAgentMessageHeader
+                    }), undefined === input.silentSubAgentMessageFooter || "string" === typeof input.silentSubAgentMessageFooter || _report(_exceptionable, {
+                        path: _path + ".silentSubAgentMessageFooter",
+                        expected: "(string | undefined)",
+                        value: input.silentSubAgentMessageFooter
                     }), ("object" === typeof input.credentials && null !== input.credentials || _report(_exceptionable, {
                         path: _path + ".credentials",
                         expected: "__type.o2",
@@ -681,6 +750,59 @@ class HandleScheduledEventUseCaseHandler {
                 }
                 catch (error) {
                     console.error(`Failed to clean stale tmux sessions: ${error instanceof Error ? error.message : String(error)}`);
+                }
+                try {
+                    const sessionOutputRootDirectory = mergedInput.sessionOutputRootDirectory ??
+                        process.env.TDPM_SESSION_OUTPUT_ROOT_DIRECTORY ??
+                        null;
+                    const subAgentOutputRootDirectory = mergedInput.subAgentOutputRootDirectory ??
+                        process.env.TDPM_SUBAGENT_OUTPUT_ROOT_DIRECTORY ??
+                        null;
+                    const subAgentProcessMatchPattern = mergedInput.subAgentProcessMatchPattern ??
+                        process.env.TDPM_SUBAGENT_PROCESS_MATCH_PATTERN ??
+                        null;
+                    const sessionTranscriptRootDirectory = mergedInput.sessionTranscriptRootDirectory ??
+                        process.env.TDPM_SESSION_TRANSCRIPT_ROOT_DIRECTORY ??
+                        null;
+                    const ownerCallMarker = mergedInput.ownerCallMarker ??
+                        process.env.TDPM_SILENT_OWNER_CALL_MARKER ??
+                        null;
+                    const subAgentTranscriptRootDirectory = mergedInput.subAgentTranscriptRootDirectory ??
+                        process.env.TDPM_SUBAGENT_TRANSCRIPT_ROOT_DIRECTORY ??
+                        null;
+                    await (0, notifySilentTmuxSessions_1.notifySilentTmuxSessions)({
+                        project: result.project,
+                        allowCacheMinutes: mergedInput.allowIssueCacheMinutes,
+                        issueRepository,
+                        localCommandRunner: nodeLocalCommandRunner,
+                        cacheRepository: localStorageCacheRepository,
+                        sessionOutputRootDirectory,
+                        sessionTranscriptRootDirectory,
+                        ownerCallMarker,
+                        subAgentOutputRootDirectory,
+                        subAgentProcessMatchPattern,
+                        subAgentTranscriptRootDirectory,
+                        mainSilentThresholdSeconds: readSilentSeconds(mergedInput.mainSilentThresholdSeconds, process.env.TDPM_MAIN_SILENT_THRESHOLD_SECONDS, notifySilentTmuxSessions_1.DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.mainSilentThresholdSeconds),
+                        subAgentSilentThresholdSeconds: readSilentSeconds(mergedInput.subAgentSilentThresholdSeconds, process.env.TDPM_SUBAGENT_SILENT_THRESHOLD_SECONDS, notifySilentTmuxSessions_1.DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.subAgentSilentThresholdSeconds),
+                        subAgentRunningThresholdSeconds: readSilentSeconds(mergedInput.subAgentRunningThresholdSeconds, process.env.TDPM_SUBAGENT_RUNNING_THRESHOLD_SECONDS, notifySilentTmuxSessions_1.DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.subAgentRunningThresholdSeconds),
+                        cooldownSeconds: readSilentSeconds(mergedInput.silentNotificationCooldownSeconds, process.env.TDPM_SILENT_NOTIFICATION_COOLDOWN_SECONDS, notifySilentTmuxSessions_1.DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.cooldownSeconds),
+                        staggerSeconds: readSilentSeconds(mergedInput.silentNotificationStaggerSeconds, process.env.TDPM_SILENT_NOTIFICATION_STAGGER_SECONDS, notifySilentTmuxSessions_1.DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.staggerSeconds),
+                        messageTemplates: {
+                            mainStalledMessage: mergedInput.silentMainStalledMessage ??
+                                process.env.TDPM_SILENT_MAIN_STALLED_MESSAGE ??
+                                null,
+                            subAgentMessageHeader: mergedInput.silentSubAgentMessageHeader ??
+                                process.env.TDPM_SILENT_SUBAGENT_MESSAGE_HEADER ??
+                                null,
+                            subAgentMessageFooter: mergedInput.silentSubAgentMessageFooter ??
+                                process.env.TDPM_SILENT_SUBAGENT_MESSAGE_FOOTER ??
+                                null,
+                        },
+                        now: inTmuxNow,
+                    });
+                }
+                catch (error) {
+                    console.error(`Failed to notify silent tmux sessions: ${error instanceof Error ? error.message : String(error)}`);
                 }
             }
             return result;

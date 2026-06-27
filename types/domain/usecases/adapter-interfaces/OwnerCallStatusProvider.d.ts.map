@@ -1,0 +1,1 @@
+{"version":3,"file":"OwnerCallStatusProvider.d.ts","sourceRoot":"","sources":["../../../../src/domain/usecases/adapter-interfaces/OwnerCallStatusProvider.ts"],"names":[],"mappings":"AAAA,MAAM,WAAW,uBAAuB;IACtC,uCAAuC,EAAE,CACvC,YAAY,EAAE,MAAM,EAAE,KACnB,OAAO,CAAC,GAAG,CAAC,MAAM,CAAC,CAAC,CAAC;CAC3B"}
