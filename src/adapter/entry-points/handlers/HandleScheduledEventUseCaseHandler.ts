@@ -496,6 +496,7 @@ export class HandleScheduledEventUseCaseHandler {
           tokenListJsonPath:
             mergedInput.claudeCodeOauthTokenListJsonPath ?? null,
           issues: result.issues,
+          pjcode: input.projectName,
         });
       } catch (error) {
         console.error(
