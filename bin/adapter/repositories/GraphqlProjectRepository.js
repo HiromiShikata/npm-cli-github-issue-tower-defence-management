@@ -3,26 +3,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.GraphqlProjectRepository = exports.convertToFieldOptionColor = exports.resolveProjectCacheTtlMs = void 0;
+exports.GraphqlProjectRepository = exports.convertToFieldOptionColor = void 0;
 const ky_1 = __importDefault(require("ky"));
-const typia_1 = __importDefault(require("typia"));
 const BaseGitHubRepository_1 = require("./BaseGitHubRepository");
 const utils_1 = require("./utils");
 const ONE_HOUR_MS = 60 * 60 * 1000;
-const DEFAULT_PROJECT_CACHE_TTL_MS = 30 * 60 * 1000;
-const resolveProjectCacheTtlMs = (rawValue) => {
-    if (rawValue === undefined) {
-        return DEFAULT_PROJECT_CACHE_TTL_MS;
-    }
-    const parsed = Number(rawValue);
-    if (!Number.isFinite(parsed) || parsed < 0) {
-        return DEFAULT_PROJECT_CACHE_TTL_MS;
-    }
-    return parsed;
-};
-exports.resolveProjectCacheTtlMs = resolveProjectCacheTtlMs;
 const PROJECT_ID_DISK_CACHE_KEY_PREFIX = 'projectId';
-const PROJECT_DISK_CACHE_KEY_PREFIX = 'project';
 const convertToFieldOptionColor = (color) => {
     switch (color) {
         case 'RED':
@@ -40,7 +26,7 @@ const convertToFieldOptionColor = (color) => {
 };
 exports.convertToFieldOptionColor = convertToFieldOptionColor;
 class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
-    constructor(localStorageRepository, ghToken = process.env.GH_TOKEN || 'dummy', projectCache, projectCacheTtlMs = (0, exports.resolveProjectCacheTtlMs)(process.env.TDPM_PROJECT_CACHE_TTL_MS)) {
+    constructor(localStorageRepository, ghToken = process.env.GH_TOKEN || 'dummy', projectCache) {
         super(localStorageRepository, ghToken);
         this.projectIdCache = new Map();
         this.fetchProjectIdFailedAt = new Map();
@@ -70,40 +56,6 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             }
             try {
                 await this.projectCache.set(`${PROJECT_ID_DISK_CACHE_KEY_PREFIX}-${cacheKey}`, { projectId });
-            }
-            catch (error) {
-                return;
-            }
-        };
-        this.readProjectFromDiskCache = async (projectId) => {
-            if (!this.projectCache) {
-                return null;
-            }
-            let cache;
-            try {
-                cache = await this.projectCache.getLatest(`${PROJECT_DISK_CACHE_KEY_PREFIX}-${projectId}`);
-            }
-            catch (error) {
-                return null;
-            }
-            if (!cache) {
-                return null;
-            }
-            const age = Date.now() - cache.timestamp.getTime();
-            if (age >= this.projectCacheTtlMs) {
-                return null;
-            }
-            if (!(() => { const _io0 = input => "string" === typeof input.id && "string" === typeof input.url && "number" === typeof input.databaseId && "string" === typeof input.name && ("object" === typeof input.status && null !== input.status && _io1(input.status)) && (null === input.nextActionDate || "object" === typeof input.nextActionDate && null !== input.nextActionDate && _io3(input.nextActionDate)) && (null === input.nextActionHour || "object" === typeof input.nextActionHour && null !== input.nextActionHour && _io4(input.nextActionHour)) && (null === input.story || "object" === typeof input.story && null !== input.story && _io5(input.story)) && (null === input.remainingEstimationMinutes || "object" === typeof input.remainingEstimationMinutes && null !== input.remainingEstimationMinutes && _io7(input.remainingEstimationMinutes)) && (null === input.dependedIssueUrlSeparatedByComma || "object" === typeof input.dependedIssueUrlSeparatedByComma && null !== input.dependedIssueUrlSeparatedByComma && _io8(input.dependedIssueUrlSeparatedByComma)) && (null === input.completionDate50PercentConfidence || "object" === typeof input.completionDate50PercentConfidence && null !== input.completionDate50PercentConfidence && _io9(input.completionDate50PercentConfidence)); const _io1 = input => "string" === typeof input.name && "string" === typeof input.fieldId && (Array.isArray(input.statuses) && input.statuses.every(elem => "object" === typeof elem && null !== elem && _io2(elem))); const _io2 = input => "string" === typeof input.id && "string" === typeof input.name && ("GRAY" === input.color || "BLUE" === input.color || "GREEN" === input.color || "YELLOW" === input.color || "ORANGE" === input.color || "RED" === input.color || "PINK" === input.color || "PURPLE" === input.color) && "string" === typeof input.description; const _io3 = input => "string" === typeof input.name && "string" === typeof input.fieldId; const _io4 = input => "string" === typeof input.name && "string" === typeof input.fieldId; const _io5 = input => "string" === typeof input.name && "string" === typeof input.fieldId && "number" === typeof input.databaseId && (Array.isArray(input.stories) && input.stories.every(elem => "object" === typeof elem && null !== elem && _io2(elem))) && ("object" === typeof input.workflowManagementStory && null !== input.workflowManagementStory && _io6(input.workflowManagementStory)); const _io6 = input => "string" === typeof input.id && "string" === typeof input.name; const _io7 = input => "string" === typeof input.name && "string" === typeof input.fieldId; const _io8 = input => "string" === typeof input.name && "string" === typeof input.fieldId; const _io9 = input => "string" === typeof input.name && "string" === typeof input.fieldId; return input => "object" === typeof input && null !== input && _io0(input); })()(cache.value)) {
-                return null;
-            }
-            return cache.value;
-        };
-        this.writeProjectToDiskCache = async (projectId, project) => {
-            if (!this.projectCache) {
-                return;
-            }
-            try {
-                await this.projectCache.set(`${PROJECT_DISK_CACHE_KEY_PREFIX}-${projectId}`, project);
             }
             catch (error) {
                 return;
@@ -188,10 +140,6 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             return await this.fetchProjectId(owner, projectNumber);
         };
         this.getProject = async (projectId) => {
-            const diskCached = await this.readProjectFromDiskCache(projectId);
-            if (diskCached) {
-                return diskCached;
-            }
             const query = `query GetProjectV2($projectId: ID!) {
   node(id: $projectId) {
     ... on ProjectV2 {
@@ -277,7 +225,7 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             const remainignEstimationMinutes = project.fields.nodes.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'remainingestimationminutes');
             const dependedIssueUrlSeparatedByComma = project.fields.nodes.find((field) => (0, utils_1.normalizeFieldName)(field.name).startsWith('dependedissueurlseparatedbycomma'));
             const completionDate50PercentConfidence = project.fields.nodes.find((field) => (0, utils_1.normalizeFieldName)(field.name).startsWith('completiondate'));
-            const result = {
+            return {
                 id: project.id,
                 url: project.url,
                 databaseId: project.databaseId,
@@ -337,8 +285,6 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
                     }
                     : null,
             };
-            await this.writeProjectToDiskCache(projectId, result);
-            return result;
         };
         this.getByUrl = async (url) => {
             const projectId = await this.findProjectIdByUrl(url);
@@ -429,7 +375,6 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             return response.data.updateProjectV2Field.projectV2Field.options;
         };
         this.projectCache = projectCache;
-        this.projectCacheTtlMs = projectCacheTtlMs;
     }
 }
 exports.GraphqlProjectRepository = GraphqlProjectRepository;

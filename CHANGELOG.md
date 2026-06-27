@@ -1,3 +1,15 @@
+## [1.109.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.109.0...v1.109.1) (2026-06-27)
+
+
+### Bug Fixes
+
+* **project-repository:** remove project-metadata disk cache, keep immutable project ID cache ([#1018](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1018)) ([c272a5a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c272a5a4dfa831a8ea602bae55eeba60e69082fb))
+
+
+### Reverts
+
+* **schedule:** restore PAGINATION_DELAY_MS to 5000 to prevent loop overrun ([#1014](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1014)) ([be7de71](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/be7de719f07cb32703aac140178ec8aa8a7c87b9))
+
 # [1.109.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.108.0...v1.109.0) (2026-06-26)
 
 
