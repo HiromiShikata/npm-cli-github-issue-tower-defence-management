@@ -9,5 +9,6 @@ export declare class NodeTmuxSessionRepository implements TmuxSessionRepository 
     listInteractiveProcessCommandLines: () => Promise<string[]>;
     launchDetachedSession: (sessionName: string, launcherCommand: string, issueUrl: string) => Promise<void>;
     killSession: (sessionName: string) => Promise<void>;
+    sendKeys: (sessionName: string, literalText: string) => Promise<void>;
 }
 //# sourceMappingURL=NodeTmuxSessionRepository.d.ts.map
