@@ -1588,8 +1588,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             buildTimelineResponse([
               buildCrossReferencedEventNode({
                 willCloseTarget: true,
-                prUrl:
-                  'https://github.com/HiromiShikata/secretary/pull/100',
+                prUrl: 'https://github.com/HiromiShikata/secretary/pull/100',
                 prState: 'OPEN',
               }),
             ]),
