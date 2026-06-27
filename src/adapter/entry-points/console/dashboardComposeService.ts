@@ -70,7 +70,9 @@ const readProjectRow = (
   projectName: string,
 ): DashboardRow | null =>
   parseDashboardRow(
-    readJsonFile(path.join(dashboardDataDir, 'projects', `${projectName}.json`)),
+    readJsonFile(
+      path.join(dashboardDataDir, 'projects', `${projectName}.json`),
+    ),
   );
 
 const parseLoad = (value: unknown): [number, number, number] | null => {

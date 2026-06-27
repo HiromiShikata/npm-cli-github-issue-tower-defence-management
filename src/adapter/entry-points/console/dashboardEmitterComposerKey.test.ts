@@ -155,9 +155,15 @@ describe('dashboard emitter filename matches composer lookup key', () => {
         wrap('M55% C62% D93% cy13'),
         wrap('LA 16 23 40'),
         wrap('pj   unr tdo aqc fal prp aws dep'),
-        wrap(`🟢${toDashboardDisplayLabel('umino')}   2   0   0   0   0   0   0`),
-        wrap(`🟢${toDashboardDisplayLabel('xmile')}   0   0   1   0   0   0   0`),
-        wrap(`🟢${toDashboardDisplayLabel('xcare')}   0   0   0   0   0   1   0`),
+        wrap(
+          `🟢${toDashboardDisplayLabel('umino')}   2   0   0   0   0   0   0`,
+        ),
+        wrap(
+          `🟢${toDashboardDisplayLabel('xmile')}   0   0   1   0   0   0   0`,
+        ),
+        wrap(
+          `🟢${toDashboardDisplayLabel('xcare')}   0   0   0   0   0   1   0`,
+        ),
         wrap(
           `🟢${toDashboardDisplayLabel('utage3')}   0   1   0   0   0   0   0`,
         ),
