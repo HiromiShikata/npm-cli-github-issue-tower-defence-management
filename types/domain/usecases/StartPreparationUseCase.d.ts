@@ -2,6 +2,7 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsageRepository';
+import { TakeOwnershipSpawnRepository } from './adapter-interfaces/TakeOwnershipSpawnRepository';
 import { ClaudeTokenUsage } from '../entities/ClaudeTokenUsage';
 export declare const DEFAULT_FALLBACK_LLM_MODEL_NAME = "claude-opus-4-8";
 export type RotationOrderEntry = {
@@ -17,7 +18,8 @@ export declare class StartPreparationUseCase {
     private readonly issueRepository;
     private readonly localCommandRunner;
     private readonly claudeTokenUsageRepository;
-    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl'>, issueRepository: Pick<IssueRepository, 'getStoryObjectMap' | 'getAllOpened' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'closePullRequest' | 'deletePullRequestBranch' | 'createCommentByUrl'>, localCommandRunner: LocalCommandRunner, claudeTokenUsageRepository: ClaudeTokenUsageRepository);
+    private readonly takeOwnershipSpawnRepository;
+    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl'>, issueRepository: Pick<IssueRepository, 'getStoryObjectMap' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'closePullRequest' | 'deletePullRequestBranch' | 'createCommentByUrl'>, localCommandRunner: LocalCommandRunner, claudeTokenUsageRepository: ClaudeTokenUsageRepository, takeOwnershipSpawnRepository: TakeOwnershipSpawnRepository);
     private weeklyLimitTypeForModel;
     private isWithinCooldown;
     private isModelWeeklyLimitRejected;
@@ -38,8 +40,8 @@ export declare class StartPreparationUseCase {
         maximumPreparingIssuesCount: number | null;
         utilizationPercentageThreshold: number;
         allowedIssueAuthors: string[] | null;
-        manager: string;
         codexHomeCandidates: string[] | null;
+        allowIssueCacheMinutes: number;
         labelsAsLlmAgentName: string[] | null;
     }) => Promise<{
         rotationOrder: RotationOrderEntry[] | null;

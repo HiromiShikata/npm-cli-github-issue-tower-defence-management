@@ -30,6 +30,7 @@ import { SystemDateRepository } from '../../repositories/SystemDateRepository';
 import { BaseGitHubRepository } from '../../repositories/BaseGitHubRepository';
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
 import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRepository';
+import { ProcTakeOwnershipSpawnRepository } from '../../repositories/ProcTakeOwnershipSpawnRepository';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
@@ -381,6 +382,7 @@ program
       issueRepository,
       localCommandRunner,
       claudeTokenUsageRepository,
+      new ProcTakeOwnershipSpawnRepository(),
     );
 
     const rawAllowedIssueAuthors = config.allowedIssueAuthors;
