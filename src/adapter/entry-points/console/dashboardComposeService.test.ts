@@ -22,8 +22,8 @@ describe('buildComposeDashboardInput', () => {
   it('reads every requested project code in order and yields null for absent files', () => {
     const dataDir = makeDataDir();
     try {
-      writeProject(dataDir, 'um', {
-        pjcode: 'um',
+      writeProject(dataDir, 'umino', {
+        pjcode: 'umino',
         capturedAt: 'x',
         unread: 3,
         todo: 1,
@@ -36,7 +36,7 @@ describe('buildComposeDashboardInput', () => {
       });
       const input = buildComposeDashboardInput({
         dashboardDataDir: dataDir,
-        projectCodes: ['um', 'xc'],
+        projectNames: ['umino', 'xcare'],
       });
       expect(input.projects).toEqual([
         {
@@ -62,10 +62,10 @@ describe('buildComposeDashboardInput', () => {
   it('treats a project file with a missing field as an absent row', () => {
     const dataDir = makeDataDir();
     try {
-      writeProject(dataDir, 'um', { unread: 1, todo: 1 });
+      writeProject(dataDir, 'umino', { unread: 1, todo: 1 });
       const input = buildComposeDashboardInput({
         dashboardDataDir: dataDir,
-        projectCodes: ['um'],
+        projectNames: ['umino'],
       });
       expect(input.projects[0].row).toBeNull();
     } finally {
@@ -77,10 +77,13 @@ describe('buildComposeDashboardInput', () => {
     const dataDir = makeDataDir();
     try {
       fs.mkdirSync(path.join(dataDir, 'projects'), { recursive: true });
-      fs.writeFileSync(path.join(dataDir, 'projects', 'um.json'), 'not json');
+      fs.writeFileSync(
+        path.join(dataDir, 'projects', 'umino.json'),
+        'not json',
+      );
       const input = buildComposeDashboardInput({
         dashboardDataDir: dataDir,
-        projectCodes: ['um'],
+        projectNames: ['umino'],
       });
       expect(input.projects[0].row).toBeNull();
     } finally {
@@ -104,7 +107,7 @@ describe('buildComposeDashboardInput', () => {
       );
       const input = buildComposeDashboardInput({
         dashboardDataDir: dataDir,
-        projectCodes: [],
+        projectNames: [],
       });
       expect(input.machineStatus).toEqual({
         memPct: 55,
@@ -134,7 +137,7 @@ describe('buildComposeDashboardInput', () => {
       );
       const input = buildComposeDashboardInput({
         dashboardDataDir: dataDir,
-        projectCodes: [],
+        projectNames: [],
       });
       expect(input.machineStatus?.cycleMinutes).toBeNull();
     } finally {
@@ -147,7 +150,7 @@ describe('buildComposeDashboardInput', () => {
     try {
       const input = buildComposeDashboardInput({
         dashboardDataDir: dataDir,
-        projectCodes: [],
+        projectNames: [],
       });
       expect(input.machineStatus).toBeNull();
     } finally {
@@ -179,7 +182,7 @@ describe('buildComposeDashboardInput', () => {
       );
       const input = buildComposeDashboardInput({
         dashboardDataDir: dataDir,
-        projectCodes: [],
+        projectNames: [],
       });
       expect(input.tokens).toEqual([
         {
@@ -221,7 +224,7 @@ describe('buildComposeDashboardInput', () => {
       );
       const input = buildComposeDashboardInput({
         dashboardDataDir: dataDir,
-        projectCodes: [],
+        projectNames: [],
       });
       expect(input.tokens[0].color).toBe('Y');
       expect(input.tokens[0].fiveHourUtilizationPercent).toBeNull();
@@ -235,7 +238,7 @@ describe('buildComposeDashboardInput', () => {
     try {
       const input = buildComposeDashboardInput({
         dashboardDataDir: dataDir,
-        projectCodes: [],
+        projectNames: [],
       });
       expect(input.tokens).toEqual([]);
     } finally {
@@ -248,8 +251,8 @@ describe('composeDashboardText', () => {
   it('composes the full byte-identical dashboard text from the data files', () => {
     const dataDir = makeDataDir();
     try {
-      writeProject(dataDir, 'um', {
-        pjcode: 'um',
+      writeProject(dataDir, 'umino', {
+        pjcode: 'umino',
         capturedAt: 'x',
         unread: 3,
         todo: 1,
@@ -292,7 +295,7 @@ describe('composeDashboardText', () => {
       expect(
         composeDashboardText({
           dashboardDataDir: dataDir,
-          projectCodes: ['um', 'xc'],
+          projectNames: ['umino', 'xcare'],
         }),
       ).toBe(
         '<tt>M55%&nbsp;C62%&nbsp;D89%&nbsp;cy14</tt><br>\n' +
@@ -329,7 +332,7 @@ describe('dashboardComposeFilesPresent', () => {
   };
 
   const minimalProject = {
-    pjcode: 'um',
+    pjcode: 'umino',
     capturedAt: 'x',
     unread: 0,
     todo: 0,
@@ -345,12 +348,12 @@ describe('dashboardComposeFilesPresent', () => {
     const dataDir = makeDataDir();
     try {
       writeMachineAndToken(dataDir);
-      writeProject(dataDir, 'um', minimalProject);
-      writeProject(dataDir, 'xc', { ...minimalProject, pjcode: 'xc' });
+      writeProject(dataDir, 'umino', minimalProject);
+      writeProject(dataDir, 'xcare', { ...minimalProject, pjcode: 'xcare' });
       expect(
         dashboardComposeFilesPresent({
           dashboardDataDir: dataDir,
-          projectCodes: ['um', 'xc'],
+          projectNames: ['umino', 'xcare'],
         }),
       ).toBe(true);
     } finally {
@@ -364,7 +367,7 @@ describe('dashboardComposeFilesPresent', () => {
       expect(
         dashboardComposeFilesPresent({
           dashboardDataDir: dataDir,
-          projectCodes: ['um'],
+          projectNames: ['umino'],
         }),
       ).toBe(false);
     } finally {
@@ -376,11 +379,11 @@ describe('dashboardComposeFilesPresent', () => {
     const dataDir = makeDataDir();
     try {
       writeMachineAndToken(dataDir);
-      writeProject(dataDir, 'um', minimalProject);
+      writeProject(dataDir, 'umino', minimalProject);
       expect(
         dashboardComposeFilesPresent({
           dashboardDataDir: dataDir,
-          projectCodes: ['um', 'xc'],
+          projectNames: ['umino', 'xcare'],
         }),
       ).toBe(false);
     } finally {
@@ -395,11 +398,11 @@ describe('dashboardComposeFilesPresent', () => {
         path.join(dataDir, 'token-status.json'),
         JSON.stringify({ tokens: [], capturedAt: 'x' }),
       );
-      writeProject(dataDir, 'um', minimalProject);
+      writeProject(dataDir, 'umino', minimalProject);
       expect(
         dashboardComposeFilesPresent({
           dashboardDataDir: dataDir,
-          projectCodes: ['um'],
+          projectNames: ['umino'],
         }),
       ).toBe(false);
     } finally {
@@ -421,11 +424,11 @@ describe('dashboardComposeFilesPresent', () => {
           capturedAt: 'x',
         }),
       );
-      writeProject(dataDir, 'um', minimalProject);
+      writeProject(dataDir, 'umino', minimalProject);
       expect(
         dashboardComposeFilesPresent({
           dashboardDataDir: dataDir,
-          projectCodes: ['um'],
+          projectNames: ['umino'],
         }),
       ).toBe(false);
     } finally {
@@ -440,7 +443,7 @@ describe('dashboardComposeFilesPresent', () => {
       expect(
         dashboardComposeFilesPresent({
           dashboardDataDir: dataDir,
-          projectCodes: [],
+          projectNames: [],
         }),
       ).toBe(false);
     } finally {

@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.startWebServer = exports.createWebServer = exports.handleWebRequest = exports.resolveDashboardContent = exports.resolveFlatInTmuxFilePath = exports.resolveDashboardFilePath = exports.IMAGE_PROXY_REQUEST_PATH = exports.DASHBOARD_REQUEST_PATH = exports.extractProvidedToken = exports.isTokenValid = exports.isConsoleAppRoute = exports.requiresToken = exports.hasDotSegment = exports.CONSOLE_TOKEN_HEADER = exports.DEFAULT_DASHBOARD_PROJECT_CODES = exports.DEFAULT_WEB_PORT = void 0;
+exports.startWebServer = exports.createWebServer = exports.handleWebRequest = exports.resolveDashboardContent = exports.resolveFlatInTmuxFilePath = exports.resolveDashboardFilePath = exports.IMAGE_PROXY_REQUEST_PATH = exports.DASHBOARD_REQUEST_PATH = exports.extractProvidedToken = exports.isTokenValid = exports.isConsoleAppRoute = exports.requiresToken = exports.hasDotSegment = exports.CONSOLE_TOKEN_HEADER = exports.DEFAULT_DASHBOARD_PROJECT_NAMES = exports.DEFAULT_WEB_PORT = void 0;
 const http = __importStar(require("http"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
@@ -42,8 +42,9 @@ const consoleReadApi_1 = require("./consoleReadApi");
 const consoleOperationApi_1 = require("./consoleOperationApi");
 const consoleImageProxy_1 = require("./consoleImageProxy");
 const dashboardComposeService_1 = require("./dashboardComposeService");
+const DashboardProjectCode_1 = require("../../../domain/usecases/dashboard/DashboardProjectCode");
 exports.DEFAULT_WEB_PORT = 9981;
-exports.DEFAULT_DASHBOARD_PROJECT_CODES = ['um', 'xm', 'xc', 'ut'];
+exports.DEFAULT_DASHBOARD_PROJECT_NAMES = DashboardProjectCode_1.DASHBOARD_PROJECT_NAMES;
 exports.CONSOLE_TOKEN_HEADER = 'x-pv-token';
 const PLACEHOLDER_INDEX_HTML = `<!DOCTYPE html>
 <html lang="en">
@@ -428,11 +429,11 @@ const resolveDashboardContent = (options, requestPath) => {
     if (options.dashboardDataDir !== null &&
         (0, dashboardComposeService_1.dashboardComposeFilesPresent)({
             dashboardDataDir: options.dashboardDataDir,
-            projectCodes: options.dashboardProjectCodes,
+            projectNames: options.dashboardProjectNames,
         })) {
         const dashboardText = (0, dashboardComposeService_1.composeDashboardText)({
             dashboardDataDir: options.dashboardDataDir,
-            projectCodes: options.dashboardProjectCodes,
+            projectNames: options.dashboardProjectNames,
         });
         return Buffer.from(dashboardText, 'utf-8');
     }

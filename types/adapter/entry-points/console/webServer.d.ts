@@ -4,7 +4,7 @@ import { IssueTitleStateCache } from './consoleReadApi';
 import { ConsoleProjectResolver } from './consoleOperationApi';
 import { ImageFetcher } from './consoleImageProxy';
 export declare const DEFAULT_WEB_PORT = 9981;
-export declare const DEFAULT_DASHBOARD_PROJECT_CODES: string[];
+export declare const DEFAULT_DASHBOARD_PROJECT_NAMES: string[];
 export declare const CONSOLE_TOKEN_HEADER = "x-pv-token";
 export declare const hasDotSegment: (requestPath: string) => boolean;
 export declare const requiresToken: (requestPath: string) => boolean;
@@ -18,7 +18,7 @@ export type WebServerOptions = {
     inTmuxDataDir: string | null;
     dashboardDir: string | null;
     dashboardDataDir: string | null;
-    dashboardProjectCodes: string[];
+    dashboardProjectNames: string[];
     githubToken?: string | null;
     imageFetcher?: ImageFetcher | null;
     issueRepository?: IssueRepository | null;

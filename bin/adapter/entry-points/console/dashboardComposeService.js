@@ -37,6 +37,7 @@ exports.composeDashboardText = exports.dashboardComposeFilesPresent = exports.bu
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const ComposeDashboardUseCase_1 = require("../../../domain/usecases/dashboard/ComposeDashboardUseCase");
+const DashboardProjectCode_1 = require("../../../domain/usecases/dashboard/DashboardProjectCode");
 const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const readJsonFile = (filePath) => {
     let raw;
@@ -78,7 +79,7 @@ const parseDashboardRow = (value) => {
     }
     return { unread, todo, qc, fail, pr, ws, dep, blocker };
 };
-const readProjectRow = (dashboardDataDir, code) => parseDashboardRow(readJsonFile(path.join(dashboardDataDir, 'projects', `${code}.json`)));
+const readProjectRow = (dashboardDataDir, projectName) => parseDashboardRow(readJsonFile(path.join(dashboardDataDir, 'projects', `${projectName}.json`)));
 const parseLoad = (value) => {
     if (!Array.isArray(value) || value.length !== 3) {
         return null;
@@ -143,9 +144,9 @@ const readTokenStatuses = (dashboardDataDir) => {
     return tokens;
 };
 const buildComposeDashboardInput = (options) => {
-    const projects = options.projectCodes.map((code) => ({
-        code,
-        row: readProjectRow(options.dashboardDataDir, code),
+    const projects = options.projectNames.map((projectName) => ({
+        code: (0, DashboardProjectCode_1.toDashboardDisplayLabel)(projectName),
+        row: readProjectRow(options.dashboardDataDir, projectName),
     }));
     return {
         projects,
@@ -163,13 +164,13 @@ const isExistingFile = (filePath) => {
     }
 };
 const dashboardComposeFilesPresent = (options) => {
-    if (options.projectCodes.length === 0) {
+    if (options.projectNames.length === 0) {
         return false;
     }
     const requiredFiles = [
         path.join(options.dashboardDataDir, 'machine-status.json'),
         path.join(options.dashboardDataDir, 'token-status.json'),
-        ...options.projectCodes.map((code) => path.join(options.dashboardDataDir, 'projects', `${code}.json`)),
+        ...options.projectNames.map((projectName) => path.join(options.dashboardDataDir, 'projects', `${projectName}.json`)),
     ];
     return requiredFiles.every((filePath) => isExistingFile(filePath));
 };
