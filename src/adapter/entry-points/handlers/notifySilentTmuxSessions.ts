@@ -3,7 +3,7 @@ import { LocalCommandRunner } from '../../../domain/usecases/adapter-interfaces/
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import {
   NotifySilentLiveSessionsUseCase,
-  DEFAULT_EXCLUDED_STATUS,
+  DEFAULT_MONITORED_STATUS,
   DEFAULT_SILENT_THRESHOLD_SECONDS,
   DEFAULT_NOTIFICATION_COOLDOWN_SECONDS,
 } from '../../../domain/usecases/NotifySilentLiveSessionsUseCase';
@@ -52,7 +52,7 @@ export const notifySilentTmuxSessions = async (
   await useCase.run({
     project,
     allowCacheMinutes,
-    excludedStatus: DEFAULT_EXCLUDED_STATUS,
+    monitoredStatus: DEFAULT_MONITORED_STATUS,
     silentThresholdSeconds: DEFAULT_SILENT_THRESHOLD_SECONDS,
     cooldownSeconds: DEFAULT_NOTIFICATION_COOLDOWN_SECONDS,
     now,

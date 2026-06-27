@@ -7,7 +7,7 @@ import { SilentSessionNotificationRepository } from './adapter-interfaces/Silent
 import { TmuxSessionRepository } from './adapter-interfaces/TmuxSessionRepository';
 import { toTmuxSessionName } from './intmux/InTmuxByHumanSessionReconcileUseCase';
 
-export const DEFAULT_EXCLUDED_STATUS = IN_TMUX_STATUS_NAME;
+export const DEFAULT_MONITORED_STATUS = IN_TMUX_STATUS_NAME;
 export const DEFAULT_SILENT_THRESHOLD_SECONDS = 10 * 60;
 export const DEFAULT_NOTIFICATION_COOLDOWN_SECONDS = 30 * 60;
 
@@ -37,7 +37,7 @@ export class NotifySilentLiveSessionsUseCase {
   run = async (params: {
     project: Project;
     allowCacheMinutes: number;
-    excludedStatus: string;
+    monitoredStatus: string;
     silentThresholdSeconds: number;
     cooldownSeconds: number;
     now: Date;
@@ -52,7 +52,7 @@ export class NotifySilentLiveSessionsUseCase {
     const monitoredSessionNames = this.selectMonitoredSessionNames(
       openIssues,
       liveSessionNames,
-      params.excludedStatus,
+      params.monitoredStatus,
     );
 
     const activities =
@@ -117,11 +117,11 @@ export class NotifySilentLiveSessionsUseCase {
   private selectMonitoredSessionNames = (
     openIssues: Issue[],
     liveSessionNames: Set<string>,
-    excludedStatus: string,
+    monitoredStatus: string,
   ): string[] => {
     const monitoredSessionNames: string[] = [];
     for (const issue of openIssues) {
-      if (issue.status !== excludedStatus) {
+      if (issue.status !== monitoredStatus) {
         continue;
       }
       const sessionName = toTmuxSessionName(issue.url);

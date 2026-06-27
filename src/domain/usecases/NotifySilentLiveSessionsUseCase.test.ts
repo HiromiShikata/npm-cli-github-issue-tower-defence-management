@@ -1,6 +1,6 @@
 import {
   NotifySilentLiveSessionsUseCase,
-  DEFAULT_EXCLUDED_STATUS,
+  DEFAULT_MONITORED_STATUS,
   DEFAULT_SILENT_THRESHOLD_SECONDS,
   DEFAULT_NOTIFICATION_COOLDOWN_SECONDS,
   SELF_CHECK_NOTIFICATION_MESSAGE,
@@ -82,14 +82,14 @@ describe('NotifySilentLiveSessionsUseCase', () => {
   const runParams = (): {
     project: Project;
     allowCacheMinutes: number;
-    excludedStatus: string;
+    monitoredStatus: string;
     silentThresholdSeconds: number;
     cooldownSeconds: number;
     now: Date;
   } => ({
     project: mockProject,
     allowCacheMinutes,
-    excludedStatus: DEFAULT_EXCLUDED_STATUS,
+    monitoredStatus: DEFAULT_MONITORED_STATUS,
     silentThresholdSeconds: DEFAULT_SILENT_THRESHOLD_SECONDS,
     cooldownSeconds: DEFAULT_NOTIFICATION_COOLDOWN_SECONDS,
     now,
@@ -122,8 +122,8 @@ describe('NotifySilentLiveSessionsUseCase', () => {
   });
 
   it('exposes the excluded status, default threshold and cooldown as named constants', () => {
-    expect(DEFAULT_EXCLUDED_STATUS).toBe('In Tmux by human');
-    expect(DEFAULT_EXCLUDED_STATUS).toBe(IN_TMUX_STATUS_NAME);
+    expect(DEFAULT_MONITORED_STATUS).toBe('In Tmux by human');
+    expect(DEFAULT_MONITORED_STATUS).toBe(IN_TMUX_STATUS_NAME);
     expect(DEFAULT_SILENT_THRESHOLD_SECONDS).toBe(600);
     expect(DEFAULT_NOTIFICATION_COOLDOWN_SECONDS).toBe(30 * 60);
   });
