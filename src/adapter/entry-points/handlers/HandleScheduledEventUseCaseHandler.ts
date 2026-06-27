@@ -8,6 +8,7 @@ import { writeMachineStatus } from './machineStatusWriter';
 import { writeTokenStatus } from './tokenStatusWriter';
 import { writeInTmuxByHumanData } from './inTmuxByHumanDataWriter';
 import { reconcileInTmuxByHumanSessions } from './inTmuxByHumanSessionReconciler';
+import { notifySilentLiveSessions } from './silentLiveSessionNotifier';
 import { cleanStaleTmuxSessions } from './staleTmuxSessionCleaner';
 import { writeRotationOrderFile } from './rotationOrderFileWriter';
 import {
@@ -505,6 +506,21 @@ export class HandleScheduledEventUseCaseHandler {
       } catch (error) {
         console.error(
           `Failed to reconcile in-tmux-by-human sessions: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+
+      try {
+        await notifySilentLiveSessions({
+          assigneeLogin: input.manager,
+          issues: result.issues,
+          localCommandRunner: nodeLocalCommandRunner,
+          now: inTmuxNow,
+        });
+      } catch (error) {
+        console.error(
+          `Failed to notify silent live sessions: ${
             error instanceof Error ? error.message : String(error)
           }`,
         );
