@@ -1505,6 +1505,311 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('findRelatedOpenPRs', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    const buildTimelineResponse = (nodes: unknown[]) => ({
+      data: {
+        repository: {
+          issue: {
+            timelineItems: {
+              pageInfo: { endCursor: null, hasNextPage: false },
+              nodes,
+            },
+          },
+        },
+      },
+    });
+
+    const buildCrossReferencedEventNode = (overrides: {
+      willCloseTarget: boolean;
+      prUrl: string;
+      prState: string;
+      prBody?: string | null;
+      headRefName?: string;
+      baseRefName?: string;
+    }) => ({
+      __typename: 'CrossReferencedEvent',
+      willCloseTarget: overrides.willCloseTarget,
+      source: {
+        __typename: 'PullRequest',
+        url: overrides.prUrl,
+        number: 427,
+        body: overrides.prBody ?? null,
+        state: overrides.prState,
+        createdAt: '2024-01-01T00:00:00Z',
+        isDraft: false,
+        mergeable: 'MERGEABLE',
+        headRefName: overrides.headRefName ?? 'feature-branch',
+        baseRefName: overrides.baseRefName ?? 'main',
+        baseRepository: {
+          branchProtectionRules: { nodes: [] },
+          defaultBranchRef: { name: 'main' },
+          rulesets: { nodes: [] },
+        },
+        commits: {
+          nodes: [
+            {
+              commit: {
+                statusCheckRollup: {
+                  contexts: { nodes: [] },
+                },
+              },
+            },
+          ],
+        },
+        reviewThreads: { nodes: [] },
+        baseRef: { name: 'main' },
+      },
+    });
+
+    it('returns an empty array when no cross-referenced events exist', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify(buildTimelineResponse([])), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/secretary/issues/2380',
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('returns the PR when willCloseTarget is true (same-repo PR, standard behavior)', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify(
+            buildTimelineResponse([
+              buildCrossReferencedEventNode({
+                willCloseTarget: true,
+                prUrl:
+                  'https://github.com/HiromiShikata/secretary/pull/100',
+                prState: 'OPEN',
+              }),
+            ]),
+          ),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/secretary/issues/2380',
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].url).toBe(
+        'https://github.com/HiromiShikata/secretary/pull/100',
+      );
+    });
+
+    it('excludes the PR when willCloseTarget is false and the PR body does not contain a closing keyword referencing the issue URL', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify(
+            buildTimelineResponse([
+              buildCrossReferencedEventNode({
+                willCloseTarget: false,
+                prUrl:
+                  'https://github.com/HiromiShikata/repositories-management/pull/427',
+                prState: 'OPEN',
+                prBody: 'This PR fixes something unrelated.',
+              }),
+            ]),
+          ),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/secretary/issues/2380',
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('includes the cross-repo PR when willCloseTarget is false but the PR body contains "Closes {issueUrl}"', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify(
+            buildTimelineResponse([
+              buildCrossReferencedEventNode({
+                willCloseTarget: false,
+                prUrl:
+                  'https://github.com/HiromiShikata/repositories-management/pull/427',
+                prState: 'OPEN',
+                prBody:
+                  'Closes https://github.com/HiromiShikata/secretary/issues/2380',
+              }),
+            ]),
+          ),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/secretary/issues/2380',
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].url).toBe(
+        'https://github.com/HiromiShikata/repositories-management/pull/427',
+      );
+    });
+
+    it('includes the cross-repo PR when willCloseTarget is false but the PR body contains "Fixes {issueUrl}" (case-insensitive)', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify(
+            buildTimelineResponse([
+              buildCrossReferencedEventNode({
+                willCloseTarget: false,
+                prUrl:
+                  'https://github.com/HiromiShikata/repositories-management/pull/427',
+                prState: 'OPEN',
+                prBody:
+                  'FIXES https://github.com/HiromiShikata/secretary/issues/2380',
+              }),
+            ]),
+          ),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/secretary/issues/2380',
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].url).toBe(
+        'https://github.com/HiromiShikata/repositories-management/pull/427',
+      );
+    });
+
+    it('includes the cross-repo PR when willCloseTarget is false but the PR body contains "Resolves {issueUrl}"', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify(
+            buildTimelineResponse([
+              buildCrossReferencedEventNode({
+                willCloseTarget: false,
+                prUrl:
+                  'https://github.com/HiromiShikata/repositories-management/pull/427',
+                prState: 'OPEN',
+                prBody:
+                  'Resolves https://github.com/HiromiShikata/secretary/issues/2380',
+              }),
+            ]),
+          ),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/secretary/issues/2380',
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].url).toBe(
+        'https://github.com/HiromiShikata/repositories-management/pull/427',
+      );
+    });
+
+    it('excludes the PR when willCloseTarget is false, the body has a closing keyword, but the URL references a different issue', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify(
+            buildTimelineResponse([
+              buildCrossReferencedEventNode({
+                willCloseTarget: false,
+                prUrl:
+                  'https://github.com/HiromiShikata/repositories-management/pull/427',
+                prState: 'OPEN',
+                prBody:
+                  'Closes https://github.com/HiromiShikata/secretary/issues/9999',
+              }),
+            ]),
+          ),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/secretary/issues/2380',
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('excludes the cross-repo PR when it is not in OPEN state even if the body contains a closing keyword', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify(
+            buildTimelineResponse([
+              buildCrossReferencedEventNode({
+                willCloseTarget: false,
+                prUrl:
+                  'https://github.com/HiromiShikata/repositories-management/pull/427',
+                prState: 'MERGED',
+                prBody:
+                  'Closes https://github.com/HiromiShikata/secretary/issues/2380',
+              }),
+            ]),
+          ),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/secretary/issues/2380',
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('includes the cross-repo PR when willCloseTarget is false but the PR body contains "closes" followed by the issue URL with a trailing slash', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify(
+            buildTimelineResponse([
+              buildCrossReferencedEventNode({
+                willCloseTarget: false,
+                prUrl:
+                  'https://github.com/HiromiShikata/repositories-management/pull/427',
+                prState: 'OPEN',
+                prBody:
+                  'closes https://github.com/HiromiShikata/secretary/issues/2380/',
+              }),
+            ]),
+          ),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/secretary/issues/2380',
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].url).toBe(
+        'https://github.com/HiromiShikata/repositories-management/pull/427',
+      );
+    });
+  });
+
   const createApiV3CheerioRestIssueRepository = () => {
     const apiV3IssueRepository = mock<ApiV3IssueRepository>();
     const restIssueRepository = mock<RestIssueRepository>();
