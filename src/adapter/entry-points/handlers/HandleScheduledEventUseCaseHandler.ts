@@ -10,6 +10,10 @@ import { writeInTmuxByHumanData } from './inTmuxByHumanDataWriter';
 import { reconcileInTmuxByHumanSessions } from './inTmuxByHumanSessionReconciler';
 import { cleanStaleTmuxSessions } from './staleTmuxSessionCleaner';
 import {
+  handleTokenExhaustionHandover,
+  DEFAULT_HANDLE_TOKEN_EXHAUSTION_HANDOVER_PARAMS,
+} from './tokenExhaustionHandover';
+import {
   notifySilentTmuxSessions,
   DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS,
 } from './notifySilentTmuxSessions';
@@ -131,6 +135,10 @@ export class HandleScheduledEventUseCaseHandler {
       silentSubAgentIdleMessageFooter?: string;
       silentSubAgentLongRunningMessageHeader?: string;
       silentSubAgentLongRunningMessageFooter?: string;
+      tokenExhaustionHandoverEnabled?: boolean;
+      tokenExhaustionHandoverMessage?: string;
+      tokenRateLimitSnapshotBaseDir?: string;
+      tokenExhaustionGracePeriodSeconds?: number;
       credentials: {
         manager: {
           github: {
@@ -537,6 +545,30 @@ export class HandleScheduledEventUseCaseHandler {
       } catch (error) {
         console.error(
           `Failed to write in-tmux-by-human data: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+
+      try {
+        await handleTokenExhaustionHandover({
+          enabled: mergedInput.tokenExhaustionHandoverEnabled ?? false,
+          localCommandRunner: nodeLocalCommandRunner,
+          handoverMessageText:
+            mergedInput.tokenExhaustionHandoverMessage ??
+            DEFAULT_HANDLE_TOKEN_EXHAUSTION_HANDOVER_PARAMS.handoverMessageText,
+          gracePeriodSeconds:
+            mergedInput.tokenExhaustionGracePeriodSeconds ??
+            DEFAULT_HANDLE_TOKEN_EXHAUSTION_HANDOVER_PARAMS.gracePeriodSeconds,
+          rateLimitStaleThresholdSeconds:
+            DEFAULT_HANDLE_TOKEN_EXHAUSTION_HANDOVER_PARAMS.rateLimitStaleThresholdSeconds,
+          tokenRateLimitSnapshotBaseDir:
+            mergedInput.tokenRateLimitSnapshotBaseDir ?? null,
+          nowEpochSeconds: inTmuxNow.getTime() / 1000,
+        });
+      } catch (error) {
+        console.error(
+          `Failed to handle token exhaustion handover: ${
             error instanceof Error ? error.message : String(error)
           }`,
         );
