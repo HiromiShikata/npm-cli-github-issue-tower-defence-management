@@ -9,6 +9,10 @@ import { writeTokenStatus } from './tokenStatusWriter';
 import { writeInTmuxByHumanData } from './inTmuxByHumanDataWriter';
 import { reconcileInTmuxByHumanSessions } from './inTmuxByHumanSessionReconciler';
 import { cleanStaleTmuxSessions } from './staleTmuxSessionCleaner';
+import {
+  notifySilentTmuxSessions,
+  DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS,
+} from './notifySilentTmuxSessions';
 import { writeRotationOrderFile } from './rotationOrderFileWriter';
 import {
   fetchProjectReadme,
@@ -61,6 +65,23 @@ import {
 
 const DEFAULT_DASHBOARD_DATA_DIR: string | null = null;
 
+const readSilentSeconds = (
+  configValue: number | undefined,
+  envValue: string | undefined,
+  defaultValue: number,
+): number => {
+  if (configValue !== undefined) {
+    return configValue;
+  }
+  if (envValue !== undefined) {
+    const parsed = Number(envValue);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return defaultValue;
+};
+
 export class HandleScheduledEventUseCaseHandler {
   handle = async (
     configFilePath: string,
@@ -87,6 +108,20 @@ export class HandleScheduledEventUseCaseHandler {
       inTmuxConsoleToken?: string;
       inTmuxProjectOrder?: string[];
       inTmuxLauncherCommand?: string;
+      sessionOutputRootDirectory?: string;
+      sessionTranscriptRootDirectory?: string;
+      ownerCallMarker?: string;
+      subAgentOutputRootDirectory?: string;
+      subAgentProcessMatchPattern?: string;
+      subAgentTranscriptRootDirectory?: string;
+      mainSilentThresholdSeconds?: number;
+      subAgentSilentThresholdSeconds?: number;
+      subAgentRunningThresholdSeconds?: number;
+      silentNotificationCooldownSeconds?: number;
+      silentNotificationStaggerSeconds?: number;
+      silentMainStalledMessage?: string;
+      silentSubAgentMessageHeader?: string;
+      silentSubAgentMessageFooter?: string;
       credentials: {
         manager: {
           github: {
@@ -521,6 +556,92 @@ export class HandleScheduledEventUseCaseHandler {
       } catch (error) {
         console.error(
           `Failed to clean stale tmux sessions: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+
+      try {
+        const sessionOutputRootDirectory =
+          mergedInput.sessionOutputRootDirectory ??
+          process.env.TDPM_SESSION_OUTPUT_ROOT_DIRECTORY ??
+          null;
+        const subAgentOutputRootDirectory =
+          mergedInput.subAgentOutputRootDirectory ??
+          process.env.TDPM_SUBAGENT_OUTPUT_ROOT_DIRECTORY ??
+          null;
+        const subAgentProcessMatchPattern =
+          mergedInput.subAgentProcessMatchPattern ??
+          process.env.TDPM_SUBAGENT_PROCESS_MATCH_PATTERN ??
+          null;
+        const sessionTranscriptRootDirectory =
+          mergedInput.sessionTranscriptRootDirectory ??
+          process.env.TDPM_SESSION_TRANSCRIPT_ROOT_DIRECTORY ??
+          null;
+        const ownerCallMarker =
+          mergedInput.ownerCallMarker ??
+          process.env.TDPM_SILENT_OWNER_CALL_MARKER ??
+          null;
+        const subAgentTranscriptRootDirectory =
+          mergedInput.subAgentTranscriptRootDirectory ??
+          process.env.TDPM_SUBAGENT_TRANSCRIPT_ROOT_DIRECTORY ??
+          null;
+        await notifySilentTmuxSessions({
+          project: result.project,
+          allowCacheMinutes: mergedInput.allowIssueCacheMinutes,
+          issueRepository,
+          localCommandRunner: nodeLocalCommandRunner,
+          cacheRepository: localStorageCacheRepository,
+          sessionOutputRootDirectory,
+          sessionTranscriptRootDirectory,
+          ownerCallMarker,
+          subAgentOutputRootDirectory,
+          subAgentProcessMatchPattern,
+          subAgentTranscriptRootDirectory,
+          mainSilentThresholdSeconds: readSilentSeconds(
+            mergedInput.mainSilentThresholdSeconds,
+            process.env.TDPM_MAIN_SILENT_THRESHOLD_SECONDS,
+            DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.mainSilentThresholdSeconds,
+          ),
+          subAgentSilentThresholdSeconds: readSilentSeconds(
+            mergedInput.subAgentSilentThresholdSeconds,
+            process.env.TDPM_SUBAGENT_SILENT_THRESHOLD_SECONDS,
+            DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.subAgentSilentThresholdSeconds,
+          ),
+          subAgentRunningThresholdSeconds: readSilentSeconds(
+            mergedInput.subAgentRunningThresholdSeconds,
+            process.env.TDPM_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
+            DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.subAgentRunningThresholdSeconds,
+          ),
+          cooldownSeconds: readSilentSeconds(
+            mergedInput.silentNotificationCooldownSeconds,
+            process.env.TDPM_SILENT_NOTIFICATION_COOLDOWN_SECONDS,
+            DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.cooldownSeconds,
+          ),
+          staggerSeconds: readSilentSeconds(
+            mergedInput.silentNotificationStaggerSeconds,
+            process.env.TDPM_SILENT_NOTIFICATION_STAGGER_SECONDS,
+            DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.staggerSeconds,
+          ),
+          messageTemplates: {
+            mainStalledMessage:
+              mergedInput.silentMainStalledMessage ??
+              process.env.TDPM_SILENT_MAIN_STALLED_MESSAGE ??
+              null,
+            subAgentMessageHeader:
+              mergedInput.silentSubAgentMessageHeader ??
+              process.env.TDPM_SILENT_SUBAGENT_MESSAGE_HEADER ??
+              null,
+            subAgentMessageFooter:
+              mergedInput.silentSubAgentMessageFooter ??
+              process.env.TDPM_SILENT_SUBAGENT_MESSAGE_FOOTER ??
+              null,
+          },
+          now: inTmuxNow,
+        });
+      } catch (error) {
+        console.error(
+          `Failed to notify silent tmux sessions: ${
             error instanceof Error ? error.message : String(error)
           }`,
         );
