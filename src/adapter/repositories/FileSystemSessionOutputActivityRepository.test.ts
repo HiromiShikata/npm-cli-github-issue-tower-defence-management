@@ -70,6 +70,16 @@ describe('FileSystemSessionOutputActivityRepository', () => {
     expect(result).toEqual([]);
   });
 
+  it('returns an empty list when the root directory is null', async () => {
+    const repository = new FileSystemSessionOutputActivityRepository(null);
+
+    const result = await repository.listSessionOutputActivities([
+      'https_//github_com/owner/repo/issues/9',
+    ]);
+
+    expect(result).toEqual([]);
+  });
+
   it('returns an empty list when no session names are requested', async () => {
     const repository = new FileSystemSessionOutputActivityRepository(
       rootDirectory,

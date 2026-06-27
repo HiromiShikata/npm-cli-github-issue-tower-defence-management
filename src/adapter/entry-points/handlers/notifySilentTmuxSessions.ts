@@ -79,9 +79,7 @@ export const notifySilentTmuxSessions = async (
   const useCase = new NotifySilentLiveSessionsUseCase(
     issueRepository,
     new NodeTmuxSessionRepository(localCommandRunner),
-    new FileSystemSessionOutputActivityRepository(
-      sessionOutputRootDirectory ?? '',
-    ),
+    new FileSystemSessionOutputActivityRepository(sessionOutputRootDirectory),
     new ProcessListSessionSubAgentActivityRepository(
       subAgentProcessMatchPattern,
       new NodeSubAgentProcessLister(localCommandRunner),
