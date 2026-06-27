@@ -47,6 +47,7 @@ import { AssignNoAssigneeIssueToManagerUseCase } from '../../../domain/usecases/
 import { UpdateIssueStatusByLabelUseCase } from '../../../domain/usecases/UpdateIssueStatusByLabelUseCase';
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
+import { ProcTakeOwnershipSpawnRepository } from '../../repositories/ProcTakeOwnershipSpawnRepository';
 import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
 import { ProxyRateLimitCacheRepository } from '../../repositories/ProxyRateLimitCacheRepository';
 import { UpdateRateLimitCacheUseCase } from '../../../domain/usecases/UpdateRateLimitCacheUseCase';
@@ -354,6 +355,7 @@ export class HandleScheduledEventUseCaseHandler {
       issueRepository,
       nodeLocalCommandRunner,
       claudeTokenUsageRepository,
+      new ProcTakeOwnershipSpawnRepository(),
     );
     const proxyRateLimitCacheRepository = new ProxyRateLimitCacheRepository(
       mergedInput.claudeCodeOauthTokenListJsonPath ?? null,
