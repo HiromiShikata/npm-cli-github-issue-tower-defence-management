@@ -80,6 +80,16 @@ const readModelWeeklyLimits = (
   return result;
 };
 
+const readSubscriptionDisabledEpoch = (
+  payload: Record<string, unknown>,
+): { subscriptionDisabledEpoch: number } | Record<string, never> => {
+  const stored = payload.subscriptionDisabledEpoch;
+  if (typeof stored === 'number') {
+    return { subscriptionDisabledEpoch: stored };
+  }
+  return {};
+};
+
 const cooldownEndFromRetryAfter = (
   retryAfterSeconds: number | null,
   nowEpochSeconds: number,
@@ -141,6 +151,7 @@ export const writeRateLimit = (
   }
   const existing = readPayload(filePath);
   const payload = {
+    ...readSubscriptionDisabledEpoch(existing),
     ts: Date.now() / 1000,
     headers: rateLimitHeaders,
     modelWeeklyLimits: readModelWeeklyLimits(existing),

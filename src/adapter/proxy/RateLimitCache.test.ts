@@ -15,6 +15,7 @@ import {
   writeRateLimit,
   writeSubscriptionDisabled,
 } from './RateLimitCache';
+import { OauthTokenSelectUseCase } from '../../domain/usecases/OauthTokenSelectUseCase';
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -861,6 +862,68 @@ describe('RateLimitCache', () => {
       );
       const snapshot = readRateLimit(token);
       expect(snapshot?.subscriptionDisabled).toBe(false);
+    });
+  });
+
+  describe('writeRateLimit preserves subscriptionDisabledEpoch across header writes', () => {
+    const headerBearingResponse: Record<string, string> = {
+      'anthropic-ratelimit-unified-status': 'allowed',
+      'anthropic-ratelimit-unified-5h-status': 'allowed',
+      'anthropic-ratelimit-unified-5h-reset': '2000100',
+      'anthropic-ratelimit-unified-5h-utilization': '0.1',
+      'anthropic-ratelimit-unified-7d-status': 'allowed',
+      'anthropic-ratelimit-unified-7d-reset': '2000200',
+      'anthropic-ratelimit-unified-7d-utilization': '0.1',
+    };
+
+    it('keeps subscriptionDisabled: true after a later header-bearing 200 response', () => {
+      const token = 'sub-disabled-then-200-token';
+      writeSubscriptionDisabled(token);
+      writeRateLimit(token, headerBearingResponse, 200);
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.subscriptionDisabled).toBe(true);
+      expect(snapshot?.fiveHourReset).toBe(2000100);
+    });
+
+    it('keeps subscriptionDisabled: true after a later header-bearing 429 response', () => {
+      const token = 'sub-disabled-then-429-token';
+      writeSubscriptionDisabled(token);
+      writeRateLimit(token, headerBearingResponse, 429);
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.subscriptionDisabled).toBe(true);
+    });
+
+    it('still excludes the token from selection after a header-bearing response', () => {
+      const token = 'sub-disabled-then-200-selection-token';
+      writeSubscriptionDisabled(token);
+      writeRateLimit(token, headerBearingResponse, 200);
+      const snapshot = readRateLimit(token);
+      const useCase = new OauthTokenSelectUseCase();
+      const result = useCase.run(
+        [
+          {
+            name: 'disabled-token',
+            token,
+            snapshot:
+              snapshot === null
+                ? null
+                : {
+                    fiveHourUtilization: snapshot.fiveHourUtilization,
+                    fiveHourReset: snapshot.fiveHourReset,
+                    sevenDayUtilization: snapshot.sevenDayUtilization,
+                    sevenDayReset: snapshot.sevenDayReset,
+                  },
+            subscriptionDisabled: snapshot?.subscriptionDisabled ?? false,
+            unifiedRejected: snapshot?.unifiedRejected ?? false,
+          },
+        ],
+        Date.now() / 1000,
+      );
+      expect(result.selected).toBeNull();
+      expect(result.metrics[0]?.eligible).toBe(false);
+      expect(result.metrics[0]?.exclusionReason).toBe(
+        'organization has disabled Claude subscription access for Claude Code',
+      );
     });
   });
 });
