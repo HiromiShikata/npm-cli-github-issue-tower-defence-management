@@ -28,6 +28,7 @@ import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3C
 import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
 import { BaseGitHubRepository } from '../../repositories/BaseGitHubRepository';
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
+import { ProcTakeOwnershipSpawnRepository } from '../../repositories/ProcTakeOwnershipSpawnRepository';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
@@ -346,6 +347,7 @@ program
       issueRepository,
       localCommandRunner,
       claudeTokenUsageRepository,
+      new ProcTakeOwnershipSpawnRepository(),
     );
 
     const rawAllowedIssueAuthors = config.allowedIssueAuthors;

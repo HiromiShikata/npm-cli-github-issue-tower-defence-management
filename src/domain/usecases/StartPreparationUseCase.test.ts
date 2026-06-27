@@ -6,6 +6,7 @@ import {
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsageRepository';
+import { TakeOwnershipSpawnRepository } from './adapter-interfaces/TakeOwnershipSpawnRepository';
 import { ClaudeTokenUsage } from '../entities/ClaudeTokenUsage';
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
@@ -94,6 +95,7 @@ describe('StartPreparationUseCase', () => {
   >;
   let mockLocalCommandRunner: Mocked<LocalCommandRunner>;
   let mockClaudeTokenUsageRepository: Mocked<ClaudeTokenUsageRepository>;
+  let mockTakeOwnershipSpawnRepository: Mocked<TakeOwnershipSpawnRepository>;
   let mockProject: Project;
   beforeEach(() => {
     jest.resetAllMocks();
@@ -119,11 +121,16 @@ describe('StartPreparationUseCase', () => {
       getTokenInFlightCounts: jest.fn().mockResolvedValue({}),
       proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
     };
+    mockTakeOwnershipSpawnRepository = {
+      listSpawns: jest.fn().mockReturnValue([]),
+      listRunningIssueUrls: jest.fn().mockReturnValue([]),
+    };
     useCase = new StartPreparationUseCase(
       mockProjectRepository,
       mockIssueRepository,
       mockLocalCommandRunner,
       mockClaudeTokenUsageRepository,
+      mockTakeOwnershipSpawnRepository,
     );
   });
   it('should run aw command for awaiting workspace issues', async () => {
@@ -179,6 +186,45 @@ describe('StartPreparationUseCase', () => {
       ],
     ]);
   });
+
+  it('skips an issue whose URL is already in the running worker list', async () => {
+    const runningUrl = 'https://github.com/user/repo/issues/1';
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: runningUrl,
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        author: 'testuser',
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockTakeOwnershipSpawnRepository.listRunningIssueUrls.mockReturnValue([
+      runningUrl,
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      codexHomeCandidates: null,
+      allowIssueCacheMinutes: 0,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    expect(mockLocalCommandRunner.runCommand).not.toHaveBeenCalled();
+  });
+
   it('should pass --branch to aw command when issue has an existing linked PR', async () => {
     const awaitingIssues: Issue[] = [
       createMockIssue({
@@ -5804,6 +5850,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
     mockIssueRepositoryForRotation,
     mockLocalCommandRunnerForRotation,
     mockClaudeTokenUsageRepositoryForRotation,
+    { listSpawns: jest.fn().mockReturnValue([]), listRunningIssueUrls: jest.fn().mockReturnValue([]) },
   );
 
   it('lists selected tokens first in ascending 7-day reset deadline order then excluded tokens', () => {
@@ -6092,6 +6139,7 @@ describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
         getTokenInFlightCounts: jest.fn(),
         proxyBaseUrl: jest.fn(),
       },
+      { listSpawns: jest.fn().mockReturnValue([]), listRunningIssueUrls: jest.fn().mockReturnValue([]) },
     );
   });
 
