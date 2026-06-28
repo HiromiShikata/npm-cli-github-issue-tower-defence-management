@@ -1,3 +1,10 @@
+# [1.112.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.111.3...v1.112.0) (2026-06-28)
+
+
+### Features
+
+* **schedule:** re-notify owner instead of staying silent on unanswered owner call ([#1044](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1044)) ([05d83fe](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/05d83fee818548acfaa3fbcc878c8e14528b7e23)), closes [#1042](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1042)
+
 ## [1.111.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.111.2...v1.111.3) (2026-06-28)
 
 
