@@ -67,6 +67,15 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     },
   ];
 
+  const stopSequenceFinishedEntries = (startTimestamp: string): object[] => [
+    { type: 'user', timestamp: startTimestamp, message: { role: 'user' } },
+    {
+      type: 'assistant',
+      timestamp: startTimestamp,
+      message: { role: 'assistant', stop_reason: 'stop_sequence' },
+    },
+  ];
+
   it('reports a running sub-agent with silent seconds from the file mtime and running seconds from the first entry', async () => {
     const sessionName = 'https_//github_com/owner/repo/issues/9';
     const startTimestamp = '2026-06-27T11:45:00.000Z';
@@ -96,6 +105,26 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
       sessionName,
       'done1',
       finishedEntries('2026-06-27T11:00:00.000Z'),
+      nowEpochSeconds - 30,
+    );
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      now,
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName([
+      sessionName,
+    ]);
+
+    expect(result.size).toBe(0);
+  });
+
+  it('excludes a finished sub-agent whose last entry stop_reason is stop_sequence', async () => {
+    const sessionName = 'https_//github_com/owner/repo/issues/9';
+    writeAgentTranscript(
+      sessionName,
+      'done2',
+      stopSequenceFinishedEntries('2026-06-27T11:00:00.000Z'),
       nowEpochSeconds - 30,
     );
     const repository = new TranscriptSessionSubAgentActivityRepository(
