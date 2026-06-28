@@ -1,3 +1,10 @@
+## [1.115.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.115.0...v1.115.1) (2026-06-28)
+
+
+### Bug Fixes
+
+* **silent-notify:** assert no cooldown suppression on repeated cycles to publish removal ([#1070](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1070)) ([3c31987](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3c319873d7d09a4ca58ba89efaaaa7a14aed8e39))
+
 # [1.115.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.114.2...v1.115.0) (2026-06-28)
 
 
