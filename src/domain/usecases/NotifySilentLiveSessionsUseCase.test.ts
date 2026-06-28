@@ -21,6 +21,7 @@ import { InteractiveLiveSession } from '../entities/InteractiveLiveSession';
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
 const MAIN_STALLED_SECTION = 'MAIN_STALLED_SECTION';
+const OWNER_RENOTIFICATION_SECTION = 'OWNER_RENOTIFICATION_SECTION';
 const SUBAGENT_SECTION = 'SUBAGENT_SECTION';
 
 describe('NotifySilentLiveSessionsUseCase', () => {
@@ -124,6 +125,9 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       composeMainStalledSection: jest
         .fn()
         .mockReturnValue(MAIN_STALLED_SECTION),
+      composeOwnerReNotificationSection: jest
+        .fn()
+        .mockReturnValue(OWNER_RENOTIFICATION_SECTION),
       composeSubAgentSection: jest.fn().mockReturnValue(SUBAGENT_SECTION),
     };
     mockSleeper = {
@@ -197,7 +201,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     ).toHaveBeenCalledWith(['workbench']);
   });
 
-  it('does not send the main stalled section when an owner call is pending', async () => {
+  it('sends the owner-re-notification section instead of the stalled section when an owner call is pending past the threshold', async () => {
     setupLiveInteractiveSession('workbench');
     mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
       [
@@ -218,8 +222,89 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       mockMessageComposer.composeMainStalledSection,
     ).not.toHaveBeenCalled();
     expect(
+      mockMessageComposer.composeOwnerReNotificationSection,
+    ).toHaveBeenCalledWith(DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS);
+    expect(
+      mockNotificationRepository.sendSelfCheckNotification,
+    ).toHaveBeenCalledWith('workbench', OWNER_RENOTIFICATION_SECTION);
+  });
+
+  it('does not send the owner-re-notification section when the owner-call wait is within the threshold', async () => {
+    setupLiveInteractiveSession('workbench');
+    mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
+      [
+        {
+          sessionName: 'workbench',
+          lastOutputEpochSeconds:
+            nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS + 1,
+        },
+      ],
+    );
+    mockOwnerCallStatusProvider.listSessionNamesWithUnansweredOwnerCall.mockResolvedValue(
+      new Set(['workbench']),
+    );
+
+    await useCase.run(runParams());
+
+    expect(
+      mockMessageComposer.composeOwnerReNotificationSection,
+    ).not.toHaveBeenCalled();
+    expect(
       mockNotificationRepository.sendSelfCheckNotification,
     ).not.toHaveBeenCalled();
+  });
+
+  it('does not re-notify the owner within the cooldown window while still waiting on the owner', async () => {
+    setupLiveInteractiveSession('workbench');
+    mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
+      [
+        {
+          sessionName: 'workbench',
+          lastOutputEpochSeconds:
+            nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+        },
+      ],
+    );
+    mockOwnerCallStatusProvider.listSessionNamesWithUnansweredOwnerCall.mockResolvedValue(
+      new Set(['workbench']),
+    );
+    mockNotificationRepository.getLastNotifiedEpochSeconds.mockResolvedValue(
+      nowEpochSeconds - DEFAULT_NOTIFICATION_COOLDOWN_SECONDS + 1,
+    );
+
+    await useCase.run(runParams());
+
+    expect(
+      mockNotificationRepository.sendSelfCheckNotification,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('stops re-notifying the owner once a genuine owner reply clears the unanswered call', async () => {
+    setupLiveInteractiveSession('workbench');
+    mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
+      [
+        {
+          sessionName: 'workbench',
+          lastOutputEpochSeconds:
+            nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+        },
+      ],
+    );
+    mockOwnerCallStatusProvider.listSessionNamesWithUnansweredOwnerCall.mockResolvedValue(
+      new Set<string>(),
+    );
+
+    await useCase.run(runParams());
+
+    expect(
+      mockMessageComposer.composeOwnerReNotificationSection,
+    ).not.toHaveBeenCalled();
+    expect(mockMessageComposer.composeMainStalledSection).toHaveBeenCalledWith(
+      DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+    );
+    expect(
+      mockNotificationRepository.sendSelfCheckNotification,
+    ).toHaveBeenCalledWith('workbench', MAIN_STALLED_SECTION);
   });
 
   it('does not send the main stalled section when output is within the threshold', async () => {
