@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ConfigurableSilentSessionMessageComposer = void 0;
+const silentSessionReminderSentinel_1 = require("../../domain/usecases/silentSessionReminderSentinel");
+const withReminderSentinel = (message) => message.includes(silentSessionReminderSentinel_1.SILENT_SESSION_REMINDER_SENTINEL)
+    ? message
+    : `${silentSessionReminderSentinel_1.SILENT_SESSION_REMINDER_SENTINEL} ${message}`;
 const formatMinutes = (seconds) => {
     const minutes = Math.floor(seconds / 60);
     return `${minutes}m`;
@@ -13,7 +17,7 @@ class ConfigurableSilentSessionMessageComposer {
             if (this.templates.mainStalledMessage === null) {
                 return this.fallback.composeMainStalledSection(mainSilentSeconds);
             }
-            return this.templates.mainStalledMessage;
+            return withReminderSentinel(this.templates.mainStalledMessage);
         };
         this.composeSubAgentSection = (subAgents) => {
             if (this.templates.subAgentMessageHeader === null &&
@@ -29,7 +33,7 @@ class ConfigurableSilentSessionMessageComposer {
             if (this.templates.subAgentMessageFooter !== null) {
                 sections.push(this.templates.subAgentMessageFooter);
             }
-            return sections.join('\n');
+            return withReminderSentinel(sections.join('\n'));
         };
     }
 }

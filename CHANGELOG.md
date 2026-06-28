@@ -1,3 +1,10 @@
+## [1.111.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.111.1...v1.111.2) (2026-06-28)
+
+
+### Bug Fixes
+
+* **schedule:** do not count monitor-injected reminders as owner replies ([#1036](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1036)) ([b1e667c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b1e667c4e8c6a798f86bff3765dfba03246bce1c)), closes [#1035](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1035)
+
 ## [1.111.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.111.0...v1.111.1) (2026-06-28)
 
 
