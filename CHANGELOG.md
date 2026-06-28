@@ -1,3 +1,10 @@
+## [1.112.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.112.3...v1.112.4) (2026-06-28)
+
+
+### Bug Fixes
+
+* **console:** halve desktop font, full-box commit expand click, status in header ([#1052](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1052)) ([291d9ba](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/291d9baea2d61273eebebdcc5119f9c7110dcb76)), closes [#1050](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1050)
+
 ## [1.112.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.112.2...v1.112.3) (2026-06-28)
 
 
