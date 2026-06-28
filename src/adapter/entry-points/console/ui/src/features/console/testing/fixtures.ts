@@ -155,6 +155,45 @@ console bundle and the token-protected \`/api\` endpoints.
 - [x] Token validation via \`?k=\` and the \`x-pv-token\` header
 `;
 
+export const consoleMarkdownReferenceBodyFixture = `## Related work
+
+The console scaffold landed in
+https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/851
+and follow-up work continues in
+https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/845.
+
+For context see the documentation site task at
+https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/692.
+
+External references such as https://example.com/spec stay as plain links.
+`;
+
+export const consoleReferenceStatesFixture: Record<string, ConsoleIssueState> =
+  {
+    'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/851':
+      {
+        state: 'closed',
+        merged: true,
+        isPullRequest: true,
+        title: 'Add serveConsole subcommand under entry-points',
+      },
+    'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/845':
+      {
+        state: 'open',
+        merged: false,
+        isPullRequest: false,
+        title:
+          'Scaffold React console UI under entry-points with build bundling',
+      },
+    'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/692':
+      {
+        state: 'closed',
+        merged: false,
+        isPullRequest: false,
+        title: 'Publish the generated documentation site to GitHub Pages',
+      },
+  };
+
 export const consoleMarkdownImageBodyFixture = `## Screenshot
 
 The failing screen is attached below.
@@ -323,4 +362,5 @@ export const consoleIssueStateFixture: ConsoleIssueState = {
   state: 'open',
   merged: false,
   isPullRequest: true,
+  title: 'Add serveConsole subcommand under entry-points',
 };

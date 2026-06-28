@@ -4,6 +4,7 @@ import type {
   ConsoleCommit,
   ConsoleRelatedPullRequest,
 } from '../../logic/types';
+import type { ConsoleReferenceLinkRenderer } from '../content/ConsoleMarkdownContent';
 import { ConsoleMarkdownContent } from '../content/ConsoleMarkdownContent';
 import { ConsolePanel } from '../layout/ConsolePanel';
 import { ConsoleChangedFileList } from './ConsoleChangedFileList';
@@ -24,6 +25,7 @@ export type ConsolePullRequestSectionProps = {
   commitsError: string | null;
   now: number;
   buildImageProxyUrl?: ImageProxyUrlBuilder;
+  renderReferenceLink?: ConsoleReferenceLinkRenderer;
   onAddInlineComment?: ConsoleAddInlineComment;
 };
 
@@ -39,6 +41,7 @@ export const ConsolePullRequestDetail = ({
   commitsError,
   now,
   buildImageProxyUrl,
+  renderReferenceLink,
   onAddInlineComment,
 }: ConsolePullRequestSectionProps) => {
   const summary = pullRequest.summary;
@@ -90,6 +93,7 @@ export const ConsolePullRequestDetail = ({
           <ConsoleMarkdownContent
             body={summary?.body ?? body}
             buildImageProxyUrl={buildImageProxyUrl}
+            renderReferenceLink={renderReferenceLink}
           />
         )}
       </ConsolePanel>

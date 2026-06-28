@@ -39,6 +39,7 @@ const buildCaches = (overrides: CachesOverrides = {}): ConsoleCaches => {
       state: 'open',
       merged: false,
       isPullRequest: true,
+      title: 'Container fixture title',
     }),
     fetchPullRequestStatus: async () => ({
       found: true,

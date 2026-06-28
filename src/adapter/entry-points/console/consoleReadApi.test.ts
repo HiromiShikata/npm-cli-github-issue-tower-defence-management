@@ -1,5 +1,33 @@
 import { mock } from 'jest-mock-extended';
+import { Issue } from '../../../domain/entities/Issue';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+
+const buildIssueFixture = (title: string): Issue => ({
+  nameWithOwner: 'o/r',
+  number: 1,
+  title,
+  state: 'OPEN',
+  status: null,
+  story: null,
+  nextActionDate: null,
+  nextActionHour: null,
+  estimationMinutes: null,
+  dependedIssueUrls: [],
+  completionDate50PercentConfidence: null,
+  url: 'https://github.com/o/r/issues/1',
+  assignees: [],
+  labels: [],
+  org: 'o',
+  repo: 'r',
+  body: '',
+  itemId: 'itemId',
+  isPr: false,
+  isInProgress: false,
+  isClosed: false,
+  createdAt: new Date('2026-01-01T00:00:00Z'),
+  author: 'octocat',
+  closingIssueReferenceUrls: [],
+});
 import {
   ISSUE_TITLE_CACHE_TTL_MS,
   IssueTitleStateCache,
@@ -241,6 +269,9 @@ describe('consoleReadApi', () => {
         merged: false,
         isPullRequest: false,
       });
+      issueRepository.getIssueByUrl.mockResolvedValue(
+        buildIssueFixture('Issue title from repository'),
+      );
       const cache = new IssueTitleStateCache(() => 0);
       const url = 'https://github.com/o/r/issues/1';
       const first = await handleIssueTitle(issueRepository, cache, url);
@@ -248,12 +279,63 @@ describe('consoleReadApi', () => {
         state: 'OPEN',
         merged: false,
         isPullRequest: false,
+        title: 'Issue title from repository',
       });
       const second = await handleIssueTitle(issueRepository, cache, url);
       expect(second.body).toEqual(first.body);
       expect(issueRepository.getIssueOrPullRequestState).toHaveBeenCalledTimes(
         1,
       );
+      expect(issueRepository.getIssueByUrl).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns the pull request title from the summary for pull request urls', async () => {
+      const issueRepository = mock<IssueRepository>();
+      issueRepository.getIssueOrPullRequestState.mockResolvedValue({
+        state: 'CLOSED',
+        merged: true,
+        isPullRequest: true,
+      });
+      issueRepository.getPullRequestSummary.mockResolvedValue({
+        title: 'Pull request title from summary',
+        body: 'body',
+        additions: 1,
+        deletions: 0,
+        changedFiles: 1,
+      });
+      const cache = new IssueTitleStateCache(() => 0);
+      const url = 'https://github.com/o/r/pull/2';
+      const response = await handleIssueTitle(issueRepository, cache, url);
+      expect(response.body).toEqual({
+        state: 'CLOSED',
+        merged: true,
+        isPullRequest: true,
+        title: 'Pull request title from summary',
+      });
+      expect(issueRepository.getPullRequestSummary).toHaveBeenCalledWith(url);
+      expect(issueRepository.getIssueByUrl).not.toHaveBeenCalled();
+    });
+
+    it('falls back to an empty title when the title source returns nothing', async () => {
+      const issueRepository = mock<IssueRepository>();
+      issueRepository.getIssueOrPullRequestState.mockResolvedValue({
+        state: 'OPEN',
+        merged: false,
+        isPullRequest: false,
+      });
+      issueRepository.getIssueByUrl.mockResolvedValue(null);
+      const cache = new IssueTitleStateCache(() => 0);
+      const response = await handleIssueTitle(
+        issueRepository,
+        cache,
+        'https://github.com/o/r/issues/3',
+      );
+      expect(response.body).toEqual({
+        state: 'OPEN',
+        merged: false,
+        isPullRequest: false,
+        title: '',
+      });
     });
 
     it('re-fetches a non-merged result after the TTL elapses', async () => {

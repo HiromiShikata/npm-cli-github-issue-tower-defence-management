@@ -4,9 +4,12 @@ import {
   consoleCodeFenceBodyFixture,
   consoleMarkdownBodyFixture,
   consoleMarkdownImageBodyFixture,
+  consoleMarkdownReferenceBodyFixture,
   consoleMermaidBodyFixture,
+  consoleReferenceStatesFixture,
 } from '../../testing/fixtures';
 import { ConsoleMarkdownContent } from './ConsoleMarkdownContent';
+import { ConsoleReferenceLink } from './ConsoleReferenceLink';
 
 const meta: Meta<typeof ConsoleMarkdownContent> = {
   title: 'Console/ConsoleMarkdownContent',
@@ -34,6 +37,19 @@ export const WithProxiedGitHubImages: Story = {
     body: consoleMarkdownImageBodyFixture,
     buildImageProxyUrl: (src) =>
       buildImageProxyUrl(src, 'console-token-fixture'),
+  },
+};
+
+export const WithDecoratedReferenceLinks: Story = {
+  args: {
+    body: consoleMarkdownReferenceBodyFixture,
+    renderReferenceLink: (href, fallbackText) => (
+      <ConsoleReferenceLink
+        href={href}
+        fallbackText={fallbackText}
+        state={consoleReferenceStatesFixture[href] ?? null}
+      />
+    ),
   },
 };
 

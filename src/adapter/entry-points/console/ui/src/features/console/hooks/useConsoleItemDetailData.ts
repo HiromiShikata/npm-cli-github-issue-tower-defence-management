@@ -20,6 +20,7 @@ const DEFAULT_STATE: ConsoleIssueState = {
   state: 'open',
   merged: false,
   isPullRequest: false,
+  title: '',
 };
 const DEFAULT_PR_STATUS: ConsolePullRequestStatus = {
   found: false,

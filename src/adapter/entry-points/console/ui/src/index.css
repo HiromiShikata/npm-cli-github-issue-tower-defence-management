@@ -514,6 +514,29 @@ body {
   text-decoration: underline;
 }
 
+.console-markdown-reference-host {
+  display: inline;
+}
+
+.console-markdown-reference {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25em;
+  vertical-align: baseline;
+}
+
+.console-markdown-reference .console-item-icon {
+  flex-shrink: 0;
+}
+
+.console-markdown-reference-title {
+  text-decoration: none;
+}
+
+.console-markdown-reference:hover .console-markdown-reference-title {
+  text-decoration: underline;
+}
+
 .console-markdown hr {
   border: none;
   border-top: 1px solid #30363d;

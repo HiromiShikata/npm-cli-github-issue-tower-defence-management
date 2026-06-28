@@ -12,6 +12,7 @@ export type IssueOrPullRequestState = {
   state: string;
   merged: boolean;
   isPullRequest: boolean;
+  title: string;
 };
 
 export type PullRequestStatus = {
@@ -215,6 +216,19 @@ export const handleRelatedPrs = async (
   return ok({ relatedPullRequests: withSummaries });
 };
 
+const resolveIssueOrPullRequestTitle = async (
+  issueRepository: IssueRepository,
+  url: string,
+  isPullRequest: boolean,
+): Promise<string> => {
+  if (isPullRequest) {
+    const summary = await issueRepository.getPullRequestSummary(url);
+    return summary?.title ?? '';
+  }
+  const issue = await issueRepository.getIssueByUrl(url);
+  return issue?.title ?? '';
+};
+
 export const handleIssueTitle = async (
   issueRepository: IssueRepository,
   cache: IssueTitleStateCache,
@@ -227,7 +241,13 @@ export const handleIssueTitle = async (
   if (cached !== null) {
     return ok(cached);
   }
-  const state = await issueRepository.getIssueOrPullRequestState(url);
+  const baseState = await issueRepository.getIssueOrPullRequestState(url);
+  const title = await resolveIssueOrPullRequestTitle(
+    issueRepository,
+    url,
+    baseState.isPullRequest,
+  );
+  const state: IssueOrPullRequestState = { ...baseState, title };
   cache.set(url, state);
   return ok(state);
 };

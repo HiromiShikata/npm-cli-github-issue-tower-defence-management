@@ -124,6 +124,14 @@ const handleRelatedPrs = async (issueRepository, url) => {
     return ok({ relatedPullRequests: withSummaries });
 };
 exports.handleRelatedPrs = handleRelatedPrs;
+const resolveIssueOrPullRequestTitle = async (issueRepository, url, isPullRequest) => {
+    if (isPullRequest) {
+        const summary = await issueRepository.getPullRequestSummary(url);
+        return summary?.title ?? '';
+    }
+    const issue = await issueRepository.getIssueByUrl(url);
+    return issue?.title ?? '';
+};
 const handleIssueTitle = async (issueRepository, cache, url) => {
     if (!url) {
         return badRequest('url query parameter is required');
@@ -132,7 +140,9 @@ const handleIssueTitle = async (issueRepository, cache, url) => {
     if (cached !== null) {
         return ok(cached);
     }
-    const state = await issueRepository.getIssueOrPullRequestState(url);
+    const baseState = await issueRepository.getIssueOrPullRequestState(url);
+    const title = await resolveIssueOrPullRequestTitle(issueRepository, url, baseState.isPullRequest);
+    const state = { ...baseState, title };
     cache.set(url, state);
     return ok(state);
 };
