@@ -105,11 +105,34 @@ describe('createConsoleApiClient', () => {
   });
 
   it('parses the issue state', async () => {
-    mockFetchOnce({ state: 'closed', merged: true, isPullRequest: true });
+    mockFetchOnce({
+      state: 'closed',
+      merged: true,
+      isPullRequest: true,
+      title: 'Decorate PR links',
+    });
     const client = createConsoleApiClient(appendToken);
     expect(
       await client.fetchIssueState('https://github.com/o/r/pull/1'),
-    ).toEqual({ state: 'closed', merged: true, isPullRequest: true });
+    ).toEqual({
+      state: 'closed',
+      merged: true,
+      isPullRequest: true,
+      title: 'Decorate PR links',
+    });
+  });
+
+  it('defaults the title to an empty string when absent', async () => {
+    mockFetchOnce({ state: 'open', merged: false, isPullRequest: false });
+    const client = createConsoleApiClient(appendToken);
+    expect(
+      await client.fetchIssueState('https://github.com/o/r/issues/1'),
+    ).toEqual({
+      state: 'open',
+      merged: false,
+      isPullRequest: false,
+      title: '',
+    });
   });
 
   it('parses pull request commits', async () => {

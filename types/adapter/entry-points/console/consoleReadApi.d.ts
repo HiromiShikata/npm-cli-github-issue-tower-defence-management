@@ -5,6 +5,7 @@ export type IssueOrPullRequestState = {
     state: string;
     merged: boolean;
     isPullRequest: boolean;
+    title: string;
 };
 export type PullRequestStatus = {
     isConflicted: boolean;

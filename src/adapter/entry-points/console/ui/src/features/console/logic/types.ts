@@ -61,6 +61,7 @@ export type ConsoleIssueState = {
   state: string;
   merged: boolean;
   isPullRequest: boolean;
+  title: string;
 };
 
 export type ConsolePullRequestStatus = {

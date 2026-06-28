@@ -16,6 +16,7 @@ import type {
   ConsolePullRequestStatus,
   ConsoleRelatedPullRequest,
 } from '../../logic/types';
+import type { ConsoleReferenceLinkRenderer } from '../content/ConsoleMarkdownContent';
 import { ConsoleMarkdownContent } from '../content/ConsoleMarkdownContent';
 import { ConsolePanel } from '../layout/ConsolePanel';
 import { ConsoleChangedFileList } from './ConsoleChangedFileList';
@@ -61,6 +62,7 @@ export type ConsoleItemDetailProps = {
   commentComposer: ReactNode;
   operationBar: ReactNode;
   buildImageProxyUrl?: ImageProxyUrlBuilder;
+  renderReferenceLink?: ConsoleReferenceLinkRenderer;
   onAddInlineComment?: ConsoleAddInlineComment;
   buildAddInlineComment?: (prUrl: string) => ConsoleAddInlineComment;
 };
@@ -89,6 +91,7 @@ export const ConsoleItemDetail = ({
   commentComposer,
   operationBar,
   buildImageProxyUrl,
+  renderReferenceLink,
   onAddInlineComment,
   buildAddInlineComment,
 }: ConsoleItemDetailProps) => {
@@ -219,6 +222,7 @@ export const ConsoleItemDetail = ({
           <ConsoleMarkdownContent
             body={body}
             buildImageProxyUrl={buildImageProxyUrl}
+            renderReferenceLink={renderReferenceLink}
           />
         )}
       </ConsolePanel>
@@ -245,6 +249,7 @@ export const ConsoleItemDetail = ({
           error={commentsError}
           now={now}
           buildImageProxyUrl={buildImageProxyUrl}
+          renderReferenceLink={renderReferenceLink}
         />
       </ConsolePanel>
 
@@ -274,6 +279,7 @@ export const ConsoleItemDetail = ({
             commitsError={related.commitsError}
             now={now}
             buildImageProxyUrl={buildImageProxyUrl}
+            renderReferenceLink={renderReferenceLink}
             onAddInlineComment={
               buildAddInlineComment
                 ? buildAddInlineComment(related.pullRequest.url)

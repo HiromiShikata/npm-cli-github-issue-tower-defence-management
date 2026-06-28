@@ -19,6 +19,7 @@ import type {
   ConsoleStoryColorSource,
   ConsoleTabName,
 } from '../logic/types';
+import { ConsoleReferenceLinkContainer } from './ConsoleReferenceLinkContainer';
 
 export type ConsoleQueueActionInput = {
   kind: ConsoleActionKind;
@@ -58,6 +59,16 @@ export const ConsoleItemDetailContainer = ({
   const resolveImageProxyUrl = useCallback(
     (src: string): string => buildImageProxyUrl(src, token),
     [token],
+  );
+  const renderReferenceLink = useCallback(
+    (href: string, fallbackText: string) => (
+      <ConsoleReferenceLinkContainer
+        cache={caches.state}
+        href={href}
+        fallbackText={fallbackText}
+      />
+    ),
+    [caches.state],
   );
   const hasPullRequest = item.isPr || detail.relatedPullRequests.length > 0;
   const buildAddInlineComment = useCallback(
@@ -154,6 +165,7 @@ export const ConsoleItemDetailContainer = ({
       relatedPullRequests={detail.relatedPullRequests}
       now={now}
       buildImageProxyUrl={resolveImageProxyUrl}
+      renderReferenceLink={renderReferenceLink}
       onAddInlineComment={item.isPr ? addInlineComment : undefined}
       buildAddInlineComment={buildAddInlineComment}
       commentComposer={

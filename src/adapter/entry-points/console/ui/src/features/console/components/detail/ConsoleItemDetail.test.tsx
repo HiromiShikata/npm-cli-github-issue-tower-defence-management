@@ -19,7 +19,7 @@ const baseProps = {
   storyName: 'TDPM Console port',
   storyColorEnum: 'BLUE' as const,
   overlayStatus: null,
-  state: { state: 'open', merged: false, isPullRequest: true },
+  state: { state: 'open', merged: false, isPullRequest: true, title: '' },
   body: '## Body heading',
   bodyIsLoading: false,
   bodyError: null,
@@ -79,7 +79,7 @@ describe('ConsoleItemDetail', () => {
       <ConsoleItemDetail
         item={issueItem}
         {...baseProps}
-        state={{ state: 'open', merged: false, isPullRequest: false }}
+        state={{ state: 'open', merged: false, isPullRequest: false, title: '' }}
       />,
     );
     expect(queryByText('Changed files')).toBeNull();
@@ -164,7 +164,7 @@ describe('ConsoleItemDetail', () => {
       <ConsoleItemDetail
         item={issueItem}
         {...baseProps}
-        state={{ state: 'open', merged: false, isPullRequest: false }}
+        state={{ state: 'open', merged: false, isPullRequest: false, title: '' }}
         pullRequestStatus={null}
       />,
     );

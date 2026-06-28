@@ -63,6 +63,7 @@ const buildCaches = (related: ConsoleRelatedPullRequest[]): ConsoleCaches => {
       state: 'open',
       merged: false,
       isPullRequest: true,
+      title: 'Console item detail fixture title',
     }),
     fetchPullRequestStatus: async (): Promise<ConsolePullRequestStatus> => ({
       found: true,
