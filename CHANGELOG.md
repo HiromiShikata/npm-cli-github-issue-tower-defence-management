@@ -1,3 +1,10 @@
+## [1.111.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.111.2...v1.111.3) (2026-06-28)
+
+
+### Bug Fixes
+
+* **console:** keep the workflow-blocker tab visible regardless of the localStorage done overlay ([#1040](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1040)) ([83213bc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/83213bc075a02fbcd3cfca894c7e6cbbe503bff1)), closes [#1038](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1038)
+
 ## [1.111.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.111.1...v1.111.2) (2026-06-28)
 
 
