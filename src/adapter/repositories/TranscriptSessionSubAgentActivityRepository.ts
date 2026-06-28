@@ -126,7 +126,10 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
       return null;
     }
     const transcript = parseTranscript(content);
-    if (transcript.lastStopReason === 'end_turn') {
+    if (
+      transcript.lastStopReason === 'end_turn' ||
+      transcript.lastStopReason === 'stop_sequence'
+    ) {
       return null;
     }
     const silentSeconds = clampToZero(
