@@ -6,6 +6,7 @@ import { ProcessEnvironReader } from '../../../domain/usecases/adapter-interface
 import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
 import { LocalStorageRepository } from '../../repositories/LocalStorageRepository';
 import { SilentSessionMessageTemplates } from '../../repositories/ConfigurableSilentSessionMessageComposer';
+import { SILENT_SESSION_REMINDER_SENTINEL } from '../../../domain/usecases/silentSessionReminderSentinel';
 import {
   notifySilentTmuxSessions,
   DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS,
@@ -170,7 +171,9 @@ describe('notifySilentTmuxSessions', () => {
     const sendCall = runner.runCommand.mock.calls.find(
       (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
     );
-    expect(sendCall?.[1][4]).toBe('CUSTOM_MAIN_TEMPLATE');
+    expect(sendCall?.[1][4]).toBe(
+      `${SILENT_SESSION_REMINDER_SENTINEL} CUSTOM_MAIN_TEMPLATE`,
+    );
   });
 
   it('suppresses the main stalled notification when the transcript shows an unanswered owner call', async () => {
