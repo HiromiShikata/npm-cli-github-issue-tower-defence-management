@@ -120,6 +120,13 @@ export const ConsolePage = () => {
     );
   }, [selectedItemKey, activeSnapshot]);
 
+  useEffect(() => {
+    if (selectedItemKey === null) {
+      return;
+    }
+    window.scrollTo({ top: 0 });
+  }, [selectedItemKey]);
+
   const activeCount = counts[activeTab];
   const previousActiveTabCountRef = useRef<{
     tab: ConsoleTabName;
@@ -238,6 +245,7 @@ export const ConsolePage = () => {
       ) : (
         <div className="console-detail-screen" ref={detailScreenRef}>
           <ConsoleItemDetailContainer
+            key={selectedItem.projectItemId}
             tab={activeTab}
             item={selectedItem}
             caches={caches}

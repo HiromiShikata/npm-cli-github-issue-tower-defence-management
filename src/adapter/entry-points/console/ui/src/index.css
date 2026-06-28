@@ -404,6 +404,91 @@ body {
   background: #161b22;
 }
 
+.console-markdown h1,
+.console-markdown h2,
+.console-markdown h3,
+.console-markdown h4,
+.console-markdown h5,
+.console-markdown h6 {
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 1em 0 0.5em;
+}
+
+.console-markdown h1 {
+  font-size: 1.6em;
+}
+
+.console-markdown h2 {
+  font-size: 1.4em;
+}
+
+.console-markdown h3 {
+  font-size: 1.2em;
+}
+
+.console-markdown h4 {
+  font-size: 1.05em;
+}
+
+.console-markdown h5 {
+  font-size: 0.95em;
+}
+
+.console-markdown h6 {
+  font-size: 0.9em;
+  color: #8b949e;
+}
+
+.console-markdown pre {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 12px;
+  margin: 0.5em 0;
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.console-markdown code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+  background: rgba(110, 118, 129, 0.4);
+  border-radius: 4px;
+  padding: 0.15em 0.4em;
+}
+
+.console-markdown pre code {
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  font-size: inherit;
+}
+
+.console-markdown blockquote {
+  border-left: 3px solid #30363d;
+  padding: 0 1em;
+  margin: 0.5em 0;
+  color: #8b949e;
+}
+
+.console-markdown a {
+  color: #4493f8;
+  text-decoration: none;
+}
+
+.console-markdown a:hover {
+  text-decoration: underline;
+}
+
+.console-markdown hr {
+  border: none;
+  border-top: 1px solid #30363d;
+  margin: 1em 0;
+}
+
 .console-mermaid-error {
   color: #f85149;
   font-size: 13px;
@@ -477,14 +562,13 @@ body {
 }
 
 .console-actionbar {
-  position: fixed;
+  position: sticky;
   bottom: 0;
-  left: 0;
-  right: 0;
   z-index: 100;
   background: #161b22;
   border-top: 2px solid #30363d;
   padding: 10px 16px;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom));
 }
 
 .console-operation-bar {
@@ -575,7 +659,7 @@ body {
 }
 
 .console-detail-screen {
-  padding-bottom: 140px;
+  padding-bottom: 8px;
 }
 
 .console-panel-open-link {
