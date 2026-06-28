@@ -108,23 +108,23 @@ describe('ConsoleItemDetailContainer', () => {
     const relatedPullRequest = consoleRelatedPullRequestsFixture[0];
     const { container, findByRole, getAllByRole, getByPlaceholderText } =
       render(
-      <ConsoleItemDetailContainer
-        tab="unread"
-        item={issueItem}
-        caches={buildCaches({
-          relatedPrs: [relatedPullRequest],
-          prFiles: consoleChangedFilesFixture,
-        })}
-        operations={operations}
-        statusOptions={consoleStatusOptionsFixture}
-        storyOptions={consoleStoryOptionsFixture}
-        storyColors={consoleStoryColorsFixture}
-        storyName="TDPM Console port"
-        overlayStatus={null}
-        now={Date.parse('2026-06-19T12:00:00.000Z')}
-        onQueueAction={jest.fn()}
-      />,
-    );
+        <ConsoleItemDetailContainer
+          tab="unread"
+          item={issueItem}
+          caches={buildCaches({
+            relatedPrs: [relatedPullRequest],
+            prFiles: consoleChangedFilesFixture,
+          })}
+          operations={operations}
+          statusOptions={consoleStatusOptionsFixture}
+          storyOptions={consoleStoryOptionsFixture}
+          storyColors={consoleStoryColorsFixture}
+          storyName="TDPM Console port"
+          overlayStatus={null}
+          now={Date.parse('2026-06-19T12:00:00.000Z')}
+          onQueueAction={jest.fn()}
+        />,
+      );
 
     const fileRow = await findByRole('button', {
       name: new RegExp(consoleChangedFilesFixture[0].path),
