@@ -1,49 +1,8 @@
 import { SilentSessionNotificationRepository } from '../../domain/usecases/adapter-interfaces/SilentSessionNotificationRepository';
 import { LocalCommandRunner } from '../../domain/usecases/adapter-interfaces/LocalCommandRunner';
-import { LocalStorageCacheRepository } from './LocalStorageCacheRepository';
-
-const CACHE_KEY_PREFIX = 'silent-session-notification';
-
-const readEpochSeconds = (value: object): number | null => {
-  if (!('epochSeconds' in value)) {
-    return null;
-  }
-  const candidate = value.epochSeconds;
-  if (typeof candidate !== 'number') {
-    return null;
-  }
-  return candidate;
-};
 
 export class TmuxSilentSessionNotificationRepository implements SilentSessionNotificationRepository {
-  constructor(
-    private readonly localCommandRunner: LocalCommandRunner,
-    private readonly cacheRepository: Pick<
-      LocalStorageCacheRepository,
-      'getLatest' | 'set'
-    >,
-  ) {}
-
-  getLastNotifiedEpochSeconds = async (
-    sessionName: string,
-  ): Promise<number | null> => {
-    const cached = await this.cacheRepository.getLatest(
-      this.toCacheKey(sessionName),
-    );
-    if (cached === null) {
-      return null;
-    }
-    return readEpochSeconds(cached.value);
-  };
-
-  setLastNotifiedEpochSeconds = async (
-    sessionName: string,
-    epochSeconds: number,
-  ): Promise<void> => {
-    await this.cacheRepository.set(this.toCacheKey(sessionName), {
-      epochSeconds,
-    });
-  };
+  constructor(private readonly localCommandRunner: LocalCommandRunner) {}
 
   sendSelfCheckNotification = async (
     sessionName: string,
@@ -77,7 +36,4 @@ export class TmuxSilentSessionNotificationRepository implements SilentSessionNot
       );
     }
   };
-
-  private toCacheKey = (sessionName: string): string =>
-    `${CACHE_KEY_PREFIX}/${sessionName.replace(/\//g, '_')}`;
 }

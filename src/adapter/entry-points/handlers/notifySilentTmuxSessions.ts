@@ -8,7 +8,6 @@ import {
   DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
   DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
   DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
-  DEFAULT_NOTIFICATION_COOLDOWN_SECONDS,
   DEFAULT_NOTIFICATION_STAGGER_SECONDS,
 } from '../../../domain/usecases/NotifySilentLiveSessionsUseCase';
 import { DefaultSilentSessionMessageComposer } from '../../../domain/usecases/DefaultSilentSessionMessageComposer';
@@ -17,7 +16,6 @@ import { ProcFsProcessEnvironReader } from '../../repositories/ProcFsProcessEnvi
 import { FileSystemInteractiveLiveSessionTranscriptResolver } from '../../repositories/FileSystemInteractiveLiveSessionTranscriptResolver';
 import { FileSystemSessionOutputActivityRepository } from '../../repositories/FileSystemSessionOutputActivityRepository';
 import { TmuxSilentSessionNotificationRepository } from '../../repositories/TmuxSilentSessionNotificationRepository';
-import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
 import { NoUnansweredOwnerCallStatusProvider } from '../../repositories/NoUnansweredOwnerCallStatusProvider';
 import { TranscriptOwnerCallStatusProvider } from '../../repositories/TranscriptOwnerCallStatusProvider';
 import { ProcessListSessionSubAgentActivityRepository } from '../../repositories/ProcessListSessionSubAgentActivityRepository';
@@ -35,7 +33,6 @@ export type NotifySilentTmuxSessionsParams = {
   enabled: boolean;
   localCommandRunner: LocalCommandRunner;
   processEnvironReader?: ProcessEnvironReader;
-  cacheRepository: Pick<LocalStorageCacheRepository, 'getLatest' | 'set'>;
   ownerCallMarker: string | null;
   subAgentOutputRootDirectory: string | null;
   subAgentProcessMatchPattern: string | null;
@@ -43,7 +40,6 @@ export type NotifySilentTmuxSessionsParams = {
   mainSilentThresholdSeconds: number;
   subAgentSilentThresholdSeconds: number;
   subAgentRunningThresholdSeconds: number;
-  cooldownSeconds: number;
   staggerSeconds: number;
   activeHubTaskStatus: string | null;
   hubTaskStatusResolver: HubTaskStatusResolver | null;
@@ -92,7 +88,6 @@ export const notifySilentTmuxSessions = async (
     enabled,
     localCommandRunner,
     processEnvironReader,
-    cacheRepository,
     ownerCallMarker,
     subAgentOutputRootDirectory,
     subAgentProcessMatchPattern,
@@ -100,7 +95,6 @@ export const notifySilentTmuxSessions = async (
     mainSilentThresholdSeconds,
     subAgentSilentThresholdSeconds,
     subAgentRunningThresholdSeconds,
-    cooldownSeconds,
     staggerSeconds,
     activeHubTaskStatus,
     hubTaskStatusResolver,
@@ -132,10 +126,7 @@ export const notifySilentTmuxSessions = async (
       now,
     ),
     createOwnerCallStatusProvider(ownerCallMarker),
-    new TmuxSilentSessionNotificationRepository(
-      localCommandRunner,
-      cacheRepository,
-    ),
+    new TmuxSilentSessionNotificationRepository(localCommandRunner),
     messageComposer,
     new RealSleeper(),
     hubTaskStatusResolver,
@@ -144,7 +135,6 @@ export const notifySilentTmuxSessions = async (
     mainSilentThresholdSeconds,
     subAgentSilentThresholdSeconds,
     subAgentRunningThresholdSeconds,
-    cooldownSeconds,
     staggerSeconds,
     activeHubTaskStatus,
     now,
@@ -155,6 +145,5 @@ export const DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS = {
   mainSilentThresholdSeconds: DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
   subAgentSilentThresholdSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
   subAgentRunningThresholdSeconds: DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
-  cooldownSeconds: DEFAULT_NOTIFICATION_COOLDOWN_SECONDS,
   staggerSeconds: DEFAULT_NOTIFICATION_STAGGER_SECONDS,
 } as const;
