@@ -115,20 +115,19 @@ export const ConsoleItemDetail = ({
         </div>
       )}
 
-      {overlayStatus !== null && statusPalette !== null && (
-        <span
-          className="console-detail-status-chip"
-          style={{
-            color: statusPalette.fg,
-            borderColor: statusPalette.border,
-            backgroundColor: statusPalette.bg,
-          }}
-        >
-          {overlayStatus.name}
-        </span>
-      )}
-
       <h2 className="console-detail-title">
+        {overlayStatus !== null && statusPalette !== null && (
+          <span
+            className="console-detail-status-chip"
+            style={{
+              color: statusPalette.fg,
+              borderColor: statusPalette.border,
+              backgroundColor: statusPalette.bg,
+            }}
+          >
+            {overlayStatus.name}
+          </span>
+        )}
         <ConsoleItemIcon
           isPr={item.isPr}
           state={resolvedState}

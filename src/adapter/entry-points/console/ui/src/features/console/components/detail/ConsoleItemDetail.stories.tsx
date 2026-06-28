@@ -67,7 +67,7 @@ export const PullRequestItem: Story = {
     item: consoleListItemsFixture[0],
     storyName: 'TDPM Console port',
     storyColorEnum: 'BLUE',
-    overlayStatus: null,
+    overlayStatus: { name: 'Awaiting Workspace', color: 'BLUE' },
     state: { state: 'open', merged: false, isPullRequest: true },
     body: consoleMermaidBodyFixture,
     bodyIsLoading: false,

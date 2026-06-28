@@ -102,4 +102,17 @@ describe('ConsoleItemDetail', () => {
     );
     expect(getByText('Awaiting Workspace')).toBeInTheDocument();
   });
+
+  it('renders the overlay status chip inside the title header', () => {
+    const { getByText, container } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        overlayStatus={{ name: 'Awaiting Workspace', color: 'BLUE' }}
+      />,
+    );
+    const title = container.querySelector('.console-detail-title');
+    expect(title).not.toBeNull();
+    expect(title?.contains(getByText('Awaiting Workspace'))).toBe(true);
+  });
 });
