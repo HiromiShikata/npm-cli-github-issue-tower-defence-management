@@ -960,10 +960,12 @@ body {
   color: #6e7681;
   font-size: 0.875rem;
   cursor: pointer;
-  opacity: 0;
+  opacity: 0.6;
+  border-color: #30363d;
 }
 
 .console-diff-row:hover .console-diff-comment-button,
+.console-diff-comment-button:focus-visible,
 .console-diff-comment-button[aria-expanded="true"] {
   opacity: 1;
   border-color: #2f81f7;

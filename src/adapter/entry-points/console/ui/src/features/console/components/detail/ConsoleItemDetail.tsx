@@ -59,6 +59,7 @@ export type ConsoleItemDetailProps = {
   operationBar: ReactNode;
   buildImageProxyUrl?: ImageProxyUrlBuilder;
   onAddInlineComment?: ConsoleAddInlineComment;
+  buildAddInlineComment?: (prUrl: string) => ConsoleAddInlineComment;
 };
 
 export const ConsoleItemDetail = ({
@@ -85,6 +86,7 @@ export const ConsoleItemDetail = ({
   operationBar,
   buildImageProxyUrl,
   onAddInlineComment,
+  buildAddInlineComment,
 }: ConsoleItemDetailProps) => {
   const resolvedState = state?.state ?? 'open';
   const merged = state?.merged ?? false;
@@ -257,6 +259,11 @@ export const ConsoleItemDetail = ({
             commitsError={related.commitsError}
             now={now}
             buildImageProxyUrl={buildImageProxyUrl}
+            onAddInlineComment={
+              buildAddInlineComment
+                ? buildAddInlineComment(related.pullRequest.url)
+                : undefined
+            }
           />
         ))}
 

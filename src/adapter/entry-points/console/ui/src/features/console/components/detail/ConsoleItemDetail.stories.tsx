@@ -148,5 +148,8 @@ export const IssueWithLinkedPullRequest: Story = {
         commitsError: null,
       },
     ],
+    buildAddInlineComment: (prUrl) => async (path, line, side, body) => {
+      window.alert(`comment on ${prUrl} ${path}:${line} (${side})\n${body}`);
+    },
   },
 };

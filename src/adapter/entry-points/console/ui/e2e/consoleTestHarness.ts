@@ -9,6 +9,7 @@ import type {
   IssueRepository,
   PullRequestCommit,
   PullRequestDetail,
+  PullRequestFile,
   RelatedPullRequest,
 } from '../../../../../domain/usecases/adapter-interfaces/IssueRepository';
 import type { ConsoleProjectBinding } from '../../consoleOperationApi';
@@ -17,6 +18,14 @@ import { startWebServer } from '../../webServer';
 
 export const CONSOLE_E2E_PJCODE = 'umino';
 export const CONSOLE_E2E_TOKEN = 'console-e2e-fixture-token-3f9c1a';
+
+export type ConsoleE2eReviewCommentCall = {
+  url: string;
+  path: string;
+  line: number;
+  side: string;
+  body: string;
+};
 
 type ConsoleFixtureListItem = {
   number: number;
@@ -53,6 +62,25 @@ type ConsoleFixtureSnapshot = {
 
 const REPO_NAME_WITH_OWNER =
   'HiromiShikata/npm-cli-github-issue-tower-defence-management';
+
+export const CONSOLE_E2E_INLINE_COMMENT_ISSUE_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/issues/911`;
+export const CONSOLE_E2E_INLINE_COMMENT_PR_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/pull/912`;
+
+const INLINE_COMMENT_PR_FILE: PullRequestFile = {
+  filename: 'src/adapter/entry-points/console/ui/src/index.css',
+  status: 'modified',
+  additions: 3,
+  deletions: 1,
+  patch: `@@ -959,7 +959,9 @@
+   background: transparent;
+   color: #6e7681;
+   font-size: 0.875rem;
+   cursor: pointer;
+-  opacity: 0;
++  opacity: 0.6;
++  border-color: #30363d;
+ }`,
+};
 
 const AWAITING_WORKSPACE_OPTION: ConsoleFixtureFieldOption = {
   id: 'd1c19cce',
@@ -198,7 +226,15 @@ export const CONSOLE_E2E_TAB_ITEMS: Record<string, ConsoleFixtureListItem[]> = {
       '2026-06-17T05:48:09.000Z',
     ),
   ],
-  'failed-preparation': [],
+  'failed-preparation': [
+    issueItem(
+      911,
+      'Add inline review comments on the related pull request diff',
+      'FPR00911',
+      'TDPM Console port',
+      '2026-06-18T03:12:00.000Z',
+    ),
+  ],
   'todo-by-human': [
     issueItem(
       869,
@@ -286,7 +322,36 @@ const notImplemented = (method: string): never => {
   throw new Error(`console E2E stub does not implement ${method}`);
 };
 
-const createStubIssueRepository = (): IssueRepository => ({
+const inlineCommentRelatedPullRequest: RelatedPullRequest = {
+  url: CONSOLE_E2E_INLINE_COMMENT_PR_URL,
+  branchName: 'feature/911-related-pr-inline-comments',
+  createdAt: new Date('2026-06-18T03:30:00.000Z'),
+  isDraft: false,
+  isConflicted: false,
+  isPassedAllCiJob: true,
+  isCiStateSuccess: true,
+  isResolvedAllReviewComments: true,
+  isBranchOutOfDate: false,
+  missingRequiredCheckNames: [],
+};
+
+const inlineCommentPullRequestDetail: PullRequestDetail = {
+  title: 'Add inline review comments on the related pull request diff',
+  state: 'open',
+  merged: false,
+  isDraft: false,
+  additions: 3,
+  deletions: 1,
+  changedFiles: 1,
+  headRefName: 'feature/911-related-pr-inline-comments',
+  baseRefName: 'main',
+  author: 'HiromiShikata',
+  files: [INLINE_COMMENT_PR_FILE],
+};
+
+const createStubIssueRepository = (
+  reviewCommentCalls: ConsoleE2eReviewCommentCall[],
+): IssueRepository => ({
   getAllIssues: () => notImplemented('getAllIssues'),
   getIssueByUrl: async (url: string): Promise<Issue | null> =>
     buildIssueForUrl(url),
@@ -306,12 +371,29 @@ const createStubIssueRepository = (): IssueRepository => ({
   get: async (issueUrl: string): Promise<Issue | null> =>
     buildIssueForUrl(issueUrl),
   update: () => notImplemented('update'),
-  findRelatedOpenPRs: async (): Promise<RelatedPullRequest[]> => [],
+  findRelatedOpenPRs: async (url: string): Promise<RelatedPullRequest[]> =>
+    url === CONSOLE_E2E_INLINE_COMMENT_ISSUE_URL
+      ? [inlineCommentRelatedPullRequest]
+      : [],
   getOpenPullRequest: async (): Promise<RelatedPullRequest | null> => null,
   getPullRequestChangedFilePaths: async (): Promise<string[]> => [],
   approvePullRequest: async (): Promise<void> => undefined,
   requestChangesWithInlineComment: async (): Promise<void> => undefined,
-  createPullRequestReviewComment: async (): Promise<void> => undefined,
+  createPullRequestReviewComment: async (
+    prUrl: string,
+    filePath: string,
+    line: number,
+    side: string,
+    commentBody: string,
+  ): Promise<void> => {
+    reviewCommentCalls.push({
+      url: prUrl,
+      path: filePath,
+      line,
+      side,
+      body: commentBody,
+    });
+  },
   closePullRequest: async (): Promise<void> => undefined,
   closeIssueByUrl: async (): Promise<void> => undefined,
   deletePullRequestBranch: () => notImplemented('deletePullRequestBranch'),
@@ -323,7 +405,12 @@ const createStubIssueRepository = (): IssueRepository => ({
   getIssueOrPullRequestBody: async (): Promise<string> =>
     '## Console E2E fixture\n\nThis body is served by the isolated E2E stub.',
   getIssueOrPullRequestComments: async (): Promise<IssueComment[]> => [],
-  getPullRequestDetail: async (): Promise<PullRequestDetail | null> => null,
+  getPullRequestDetail: async (
+    url: string,
+  ): Promise<PullRequestDetail | null> =>
+    url === CONSOLE_E2E_INLINE_COMMENT_PR_URL
+      ? inlineCommentPullRequestDetail
+      : null,
   getPullRequestCommits: async (): Promise<PullRequestCommit[]> => [],
   getIssueOrPullRequestState: async (
     url: string,
@@ -332,13 +419,24 @@ const createStubIssueRepository = (): IssueRepository => ({
     merged: false,
     isPullRequest: url.includes('/pull/'),
   }),
-  getPullRequestSummary: async (): Promise<{
+  getPullRequestSummary: async (
+    url: string,
+  ): Promise<{
     title: string;
     body: string;
     additions: number;
     deletions: number;
     changedFiles: number;
-  } | null> => null,
+  } | null> =>
+    url === CONSOLE_E2E_INLINE_COMMENT_PR_URL
+      ? {
+          title: 'Add inline review comments on the related pull request diff',
+          body: 'Wires the add-comment handler on the related pull request diff path.',
+          additions: 3,
+          deletions: 1,
+          changedFiles: 1,
+        }
+      : null,
 });
 
 export type ConsoleE2eHarness = {
@@ -346,6 +444,7 @@ export type ConsoleE2eHarness = {
   appUrl: string;
   appRootUrl: string;
   consoleDataOutputDir: string;
+  reviewCommentCalls: ConsoleE2eReviewCommentCall[];
   stop: () => Promise<void>;
 };
 
@@ -362,11 +461,13 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
   ): Promise<ConsoleProjectBinding | null> =>
     pjcode === CONSOLE_E2E_PJCODE ? { pjcode, project } : null;
 
+  const reviewCommentCalls: ConsoleE2eReviewCommentCall[] = [];
+
   const server = await startWebServer({
     accessToken: CONSOLE_E2E_TOKEN,
     uiDistDir,
     consoleDataOutputDir,
-    issueRepository: createStubIssueRepository(),
+    issueRepository: createStubIssueRepository(reviewCommentCalls),
     resolveProject,
     issueTitleStateCache: new IssueTitleStateCache(),
     inTmuxDataDir: null,
@@ -391,6 +492,7 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
     appUrl,
     appRootUrl,
     consoleDataOutputDir,
+    reviewCommentCalls,
     stop: async (): Promise<void> => {
       await closeServer(server);
       fs.rmSync(tmpRoot, { recursive: true, force: true });
