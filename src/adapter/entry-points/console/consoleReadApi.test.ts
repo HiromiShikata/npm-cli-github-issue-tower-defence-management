@@ -3,11 +3,14 @@ import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/Iss
 import {
   ISSUE_TITLE_CACHE_TTL_MS,
   IssueTitleStateCache,
+  PULL_REQUEST_STATUS_CACHE_TTL_MS,
+  PullRequestStatusCache,
   handleComments,
   handleIssueTitle,
   handleItemBody,
   handlePrCommits,
   handlePrFiles,
+  handlePullRequestStatus,
   handleRelatedPrs,
 } from './consoleReadApi';
 
@@ -292,6 +295,92 @@ describe('consoleReadApi', () => {
       expect(issueRepository.getIssueOrPullRequestState).toHaveBeenCalledTimes(
         1,
       );
+    });
+  });
+
+  describe('handlePullRequestStatus with the TTL cache', () => {
+    const openPullRequest = {
+      url: 'https://github.com/o/r/pull/1',
+      branchName: 'feature',
+      createdAt: new Date('2026-01-02T03:04:05Z'),
+      isDraft: false,
+      isConflicted: true,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isResolvedAllReviewComments: false,
+      isBranchOutOfDate: true,
+      missingRequiredCheckNames: ['build', 'test'],
+    };
+
+    it('returns 400 when url is missing', async () => {
+      const issueRepository = mock<IssueRepository>();
+      const cache = new PullRequestStatusCache();
+      const response = await handlePullRequestStatus(
+        issueRepository,
+        cache,
+        null,
+      );
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('serializes the open pull request status fields', async () => {
+      const issueRepository = mock<IssueRepository>();
+      issueRepository.getOpenPullRequest.mockResolvedValue(openPullRequest);
+      const cache = new PullRequestStatusCache(() => 0);
+      const response = await handlePullRequestStatus(
+        issueRepository,
+        cache,
+        openPullRequest.url,
+      );
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toEqual({
+        found: true,
+        status: {
+          isConflicted: true,
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+          isBranchOutOfDate: true,
+          missingRequiredCheckNames: ['build', 'test'],
+        },
+      });
+    });
+
+    it('reports not found when the repository returns no open pull request', async () => {
+      const issueRepository = mock<IssueRepository>();
+      issueRepository.getOpenPullRequest.mockResolvedValue(null);
+      const cache = new PullRequestStatusCache(() => 0);
+      const response = await handlePullRequestStatus(
+        issueRepository,
+        cache,
+        'https://github.com/o/r/pull/9',
+      );
+      expect(response.body).toEqual({ found: false, status: null });
+    });
+
+    it('caches within the TTL and re-fetches after the TTL elapses', async () => {
+      const issueRepository = mock<IssueRepository>();
+      issueRepository.getOpenPullRequest.mockResolvedValue(openPullRequest);
+      let now = 0;
+      const cache = new PullRequestStatusCache(() => now);
+      await handlePullRequestStatus(
+        issueRepository,
+        cache,
+        openPullRequest.url,
+      );
+      now = PULL_REQUEST_STATUS_CACHE_TTL_MS - 1;
+      await handlePullRequestStatus(
+        issueRepository,
+        cache,
+        openPullRequest.url,
+      );
+      expect(issueRepository.getOpenPullRequest).toHaveBeenCalledTimes(1);
+      now = PULL_REQUEST_STATUS_CACHE_TTL_MS;
+      await handlePullRequestStatus(
+        issueRepository,
+        cache,
+        openPullRequest.url,
+      );
+      expect(issueRepository.getOpenPullRequest).toHaveBeenCalledTimes(2);
     });
   });
 });

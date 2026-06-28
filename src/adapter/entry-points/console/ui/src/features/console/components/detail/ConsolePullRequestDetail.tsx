@@ -10,6 +10,7 @@ import { ConsoleChangedFileList } from './ConsoleChangedFileList';
 import { ConsoleCommitList } from './ConsoleCommitList';
 import { ConsoleCopyUrlButton } from './ConsoleCopyUrlButton';
 import type { ConsoleAddInlineComment } from './ConsoleFileDiff';
+import { ConsolePullRequestStatusBadges } from './ConsolePullRequestStatusBadges';
 
 export type ConsolePullRequestSectionProps = {
   pullRequest: ConsoleRelatedPullRequest;
@@ -59,6 +60,13 @@ export const ConsolePullRequestDetail = ({
         {pullRequest.isDraft && (
           <span className="console-pr-section-state">draft</span>
         )}
+        <ConsolePullRequestStatusBadges
+          isConflicted={pullRequest.isConflicted}
+          isPassedAllCiJob={pullRequest.isPassedAllCiJob}
+          isCiStateSuccess={pullRequest.isCiStateSuccess}
+          isBranchOutOfDate={pullRequest.isBranchOutOfDate}
+          missingRequiredCheckNames={pullRequest.missingRequiredCheckNames}
+        />
         <ConsoleCopyUrlButton url={pullRequest.url} label="Copy PR URL" />
         <div className="console-pr-statbar">
           {pullRequest.branchName !== null && (

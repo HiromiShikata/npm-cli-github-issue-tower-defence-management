@@ -335,6 +335,18 @@ body {
   font-size: 0.75rem;
 }
 
+.console-detail-pr-status {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.console-detail-ci-missing {
+  font-weight: 400;
+  opacity: 0.85;
+}
+
 .console-detail-labels {
   display: flex;
   flex-wrap: wrap;

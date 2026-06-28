@@ -40,6 +40,14 @@ const buildCaches = (overrides: CachesOverrides = {}): ConsoleCaches => {
       merged: false,
       isPullRequest: true,
     }),
+    fetchPullRequestStatus: async () => ({
+      found: true,
+      isConflicted: false,
+      isPassedAllCiJob: true,
+      isCiStateSuccess: true,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+    }),
   };
   return {
     client,
@@ -49,6 +57,7 @@ const buildCaches = (overrides: CachesOverrides = {}): ConsoleCaches => {
     commits: new ResourceCache(client.fetchPrCommits),
     relatedPrs: new ResourceCache(client.fetchRelatedPrs),
     state: new ResourceCache(client.fetchIssueState),
+    prStatus: new ResourceCache(client.fetchPullRequestStatus),
   };
 };
 

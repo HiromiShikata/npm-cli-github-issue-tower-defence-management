@@ -9,11 +9,13 @@ import {
 } from './consoleDataDelivery';
 import {
   IssueTitleStateCache,
+  PullRequestStatusCache,
   handleComments,
   handleIssueTitle,
   handleItemBody,
   handlePrCommits,
   handlePrFiles,
+  handlePullRequestStatus,
   handleRelatedPrs,
 } from './consoleReadApi';
 import {
@@ -172,6 +174,7 @@ export type WebServerOptions = {
   issueRepository?: IssueRepository | null;
   resolveProject?: ConsoleProjectResolver | null;
   issueTitleStateCache?: IssueTitleStateCache | null;
+  pullRequestStatusCache?: PullRequestStatusCache | null;
 };
 
 const FLAT_IN_TMUX_PREFIX = '/in-tmux-by-human/';
@@ -360,6 +363,7 @@ const handleReadApi = async (
     return null;
   }
   const cache = options.issueTitleStateCache ?? null;
+  const pullRequestStatusCache = options.pullRequestStatusCache ?? null;
   const url = searchParams.get('url');
   switch (requestPath) {
     case '/api/itembody':
@@ -377,6 +381,15 @@ const handleReadApi = async (
         return null;
       }
       return handleIssueTitle(issueRepository, cache, url);
+    case '/api/pullrequeststatus':
+      if (pullRequestStatusCache === null) {
+        return null;
+      }
+      return handlePullRequestStatus(
+        issueRepository,
+        pullRequestStatusCache,
+        url,
+      );
     default:
       return null;
   }

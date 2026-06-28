@@ -16,7 +16,7 @@ import {
   startWebServer,
 } from './webServer';
 import type { ImageFetcher } from './consoleImageProxy';
-import { IssueTitleStateCache } from './consoleReadApi';
+import { IssueTitleStateCache, PullRequestStatusCache } from './consoleReadApi';
 import { readDoneProjectItemIds } from './consoleDoneStore';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Project } from '../../../domain/entities/Project';
@@ -571,6 +571,57 @@ describe('webServer new routes integration', () => {
       );
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.body)).toEqual({ body: 'body text' });
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('serves the pull request status read api when a status cache is injected', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const issueRepository = mock<IssueRepository>();
+    issueRepository.getOpenPullRequest.mockResolvedValue({
+      url: 'https://github.com/o/r/pull/1',
+      branchName: 'feature',
+      createdAt: new Date('2026-06-18T03:21:00.000Z'),
+      isDraft: false,
+      isConflicted: true,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isResolvedAllReviewComments: false,
+      isBranchOutOfDate: true,
+      missingRequiredCheckNames: ['build'],
+    });
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      issueRepository,
+      issueTitleStateCache: new IssueTitleStateCache(),
+      pullRequestStatusCache: new PullRequestStatusCache(),
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'GET',
+        `/api/pullrequeststatus?k=${testToken}&url=https://github.com/o/r/pull/1`,
+      );
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toEqual({
+        found: true,
+        status: {
+          isConflicted: true,
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+          isBranchOutOfDate: true,
+          missingRequiredCheckNames: ['build'],
+        },
+      });
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });

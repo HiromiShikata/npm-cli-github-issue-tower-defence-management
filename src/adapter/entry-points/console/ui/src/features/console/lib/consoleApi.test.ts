@@ -48,6 +48,7 @@ describe('createConsoleApiClient', () => {
     readers.push((url) => client.fetchPrCommits(url));
     readers.push((url) => client.fetchRelatedPrs(url));
     readers.push((url) => client.fetchIssueState(url));
+    readers.push((url) => client.fetchPullRequestStatus(url));
     const expectedPaths = [
       '/api/itembody',
       '/api/comments',
@@ -55,6 +56,7 @@ describe('createConsoleApiClient', () => {
       '/api/prcommits',
       '/api/relatedprs',
       '/api/issuetitle',
+      '/api/pullrequeststatus',
     ];
     for (let index = 0; index < readers.length; index += 1) {
       const fetchMock = mockFetchOnce({});
@@ -159,6 +161,45 @@ describe('createConsoleApiClient', () => {
     expect(related[0].url).toBe('https://github.com/o/r/pull/9');
     expect(related[0].summary?.changedFiles).toBe(3);
     expect(related[0].missingRequiredCheckNames).toEqual(['build']);
+  });
+
+  it('parses the pull request status when found', async () => {
+    mockFetchOnce({
+      found: true,
+      status: {
+        isConflicted: true,
+        isPassedAllCiJob: false,
+        isCiStateSuccess: false,
+        isBranchOutOfDate: true,
+        missingRequiredCheckNames: ['build', 'test'],
+      },
+    });
+    const client = createConsoleApiClient(appendToken);
+    expect(
+      await client.fetchPullRequestStatus('https://github.com/o/r/pull/1'),
+    ).toEqual({
+      found: true,
+      isConflicted: true,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isBranchOutOfDate: true,
+      missingRequiredCheckNames: ['build', 'test'],
+    });
+  });
+
+  it('returns a not-found pull request status when the server reports none', async () => {
+    mockFetchOnce({ found: false, status: null });
+    const client = createConsoleApiClient(appendToken);
+    expect(
+      await client.fetchPullRequestStatus('https://github.com/o/r/pull/1'),
+    ).toEqual({
+      found: false,
+      isConflicted: false,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+    });
   });
 
   it('throws on a non-ok response', async () => {

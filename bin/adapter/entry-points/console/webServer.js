@@ -283,6 +283,7 @@ const handleReadApi = async (options, requestPath, searchParams) => {
         return null;
     }
     const cache = options.issueTitleStateCache ?? null;
+    const pullRequestStatusCache = options.pullRequestStatusCache ?? null;
     const url = searchParams.get('url');
     switch (requestPath) {
         case '/api/itembody':
@@ -300,6 +301,11 @@ const handleReadApi = async (options, requestPath, searchParams) => {
                 return null;
             }
             return (0, consoleReadApi_1.handleIssueTitle)(issueRepository, cache, url);
+        case '/api/pullrequeststatus':
+            if (pullRequestStatusCache === null) {
+                return null;
+            }
+            return (0, consoleReadApi_1.handlePullRequestStatus)(issueRepository, pullRequestStatusCache, url);
         default:
             return null;
     }

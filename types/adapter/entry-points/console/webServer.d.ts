@@ -1,6 +1,6 @@
 import * as http from 'http';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
-import { IssueTitleStateCache } from './consoleReadApi';
+import { IssueTitleStateCache, PullRequestStatusCache } from './consoleReadApi';
 import { ConsoleProjectResolver } from './consoleOperationApi';
 import { ImageFetcher } from './consoleImageProxy';
 export declare const DEFAULT_WEB_PORT = 9981;
@@ -24,6 +24,7 @@ export type WebServerOptions = {
     issueRepository?: IssueRepository | null;
     resolveProject?: ConsoleProjectResolver | null;
     issueTitleStateCache?: IssueTitleStateCache | null;
+    pullRequestStatusCache?: PullRequestStatusCache | null;
 };
 export declare const DASHBOARD_REQUEST_PATH = "/tdpm.txt";
 export declare const IMAGE_PROXY_REQUEST_PATH = "/api/img";

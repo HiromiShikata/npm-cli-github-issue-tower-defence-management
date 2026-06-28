@@ -81,6 +81,45 @@ export const PullRequestItem: Story = {
     commits: consoleCommitsFixture,
     commitsAreLoading: false,
     commitsError: null,
+    pullRequestStatus: {
+      found: true,
+      isConflicted: false,
+      isPassedAllCiJob: true,
+      isCiStateSuccess: true,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+    },
+    relatedPullRequests: [],
+  },
+};
+
+export const PullRequestItemFailingCiWithConflict: Story = {
+  args: {
+    item: consoleListItemsFixture[0],
+    storyName: 'TDPM Console port',
+    storyColorEnum: 'BLUE',
+    overlayStatus: { name: 'Awaiting Quality Check', color: 'YELLOW' },
+    state: { state: 'open', merged: false, isPullRequest: true },
+    body: consoleMermaidBodyFixture,
+    bodyIsLoading: false,
+    bodyError: null,
+    comments: consoleCommentsFixture,
+    commentsAreLoading: false,
+    commentsError: null,
+    files: consoleChangedFilesFixture,
+    filesAreLoading: false,
+    filesError: null,
+    commits: consoleCommitsFixture,
+    commitsAreLoading: false,
+    commitsError: null,
+    pullRequestStatus: {
+      found: true,
+      isConflicted: true,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isBranchOutOfDate: true,
+      missingRequiredCheckNames: ['build', 'test'],
+    },
     relatedPullRequests: [],
   },
 };
@@ -104,6 +143,7 @@ export const IssueWithRichMarkdownBody: Story = {
     commits: [],
     commitsAreLoading: false,
     commitsError: null,
+    pullRequestStatus: null,
     relatedPullRequests: [],
     operationBar: (
       <ConsoleOperationMenu
@@ -137,6 +177,7 @@ export const IssueWithLinkedPullRequest: Story = {
     commits: [],
     commitsAreLoading: false,
     commitsError: null,
+    pullRequestStatus: null,
     relatedPullRequests: [
       {
         pullRequest: consoleRelatedPullRequestsFixture[0],

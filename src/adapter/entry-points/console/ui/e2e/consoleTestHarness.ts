@@ -13,7 +13,10 @@ import type {
   RelatedPullRequest,
 } from '../../../../../domain/usecases/adapter-interfaces/IssueRepository';
 import type { ConsoleProjectBinding } from '../../consoleOperationApi';
-import { IssueTitleStateCache } from '../../consoleReadApi';
+import {
+  IssueTitleStateCache,
+  PullRequestStatusCache,
+} from '../../consoleReadApi';
 import { startWebServer } from '../../webServer';
 
 export const CONSOLE_E2E_PJCODE = 'umino';
@@ -63,6 +66,7 @@ type ConsoleFixtureSnapshot = {
 const REPO_NAME_WITH_OWNER =
   'HiromiShikata/npm-cli-github-issue-tower-defence-management';
 
+export const CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/pull/867`;
 export const CONSOLE_E2E_INLINE_COMMENT_ISSUE_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/issues/911`;
 export const CONSOLE_E2E_INLINE_COMMENT_PR_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/pull/912`;
 
@@ -327,12 +331,25 @@ const inlineCommentRelatedPullRequest: RelatedPullRequest = {
   branchName: 'feature/911-related-pr-inline-comments',
   createdAt: new Date('2026-06-18T03:30:00.000Z'),
   isDraft: false,
-  isConflicted: false,
-  isPassedAllCiJob: true,
-  isCiStateSuccess: true,
-  isResolvedAllReviewComments: true,
-  isBranchOutOfDate: false,
-  missingRequiredCheckNames: [],
+  isConflicted: true,
+  isPassedAllCiJob: false,
+  isCiStateSuccess: false,
+  isResolvedAllReviewComments: false,
+  isBranchOutOfDate: true,
+  missingRequiredCheckNames: ['build', 'test'],
+};
+
+const awaitingQualityCheckPullRequest: RelatedPullRequest = {
+  url: CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL,
+  branchName: 'i867-serve-committed-console-ui-bundle',
+  createdAt: new Date('2026-06-17T23:41:08.000Z'),
+  isDraft: false,
+  isConflicted: true,
+  isPassedAllCiJob: false,
+  isCiStateSuccess: false,
+  isResolvedAllReviewComments: false,
+  isBranchOutOfDate: true,
+  missingRequiredCheckNames: ['build', 'test'],
 };
 
 const inlineCommentPullRequestDetail: PullRequestDetail = {
@@ -375,7 +392,12 @@ const createStubIssueRepository = (
     url === CONSOLE_E2E_INLINE_COMMENT_ISSUE_URL
       ? [inlineCommentRelatedPullRequest]
       : [],
-  getOpenPullRequest: async (): Promise<RelatedPullRequest | null> => null,
+  getOpenPullRequest: async (
+    url: string,
+  ): Promise<RelatedPullRequest | null> =>
+    url === CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL
+      ? awaitingQualityCheckPullRequest
+      : null,
   getPullRequestChangedFilePaths: async (): Promise<string[]> => [],
   approvePullRequest: async (): Promise<void> => undefined,
   requestChangesWithInlineComment: async (): Promise<void> => undefined,
@@ -470,6 +492,7 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
     issueRepository: createStubIssueRepository(reviewCommentCalls),
     resolveProject,
     issueTitleStateCache: new IssueTitleStateCache(),
+    pullRequestStatusCache: new PullRequestStatusCache(),
     inTmuxDataDir: null,
     dashboardDir: null,
     dashboardDataDir: null,

@@ -6,14 +6,34 @@ import {
 
 export const ISSUE_TITLE_CACHE_TTL_MS = 300 * 1000;
 
+export const PULL_REQUEST_STATUS_CACHE_TTL_MS = 30 * 1000;
+
 export type IssueOrPullRequestState = {
   state: string;
   merged: boolean;
   isPullRequest: boolean;
 };
 
+export type PullRequestStatus = {
+  isConflicted: boolean;
+  isPassedAllCiJob: boolean;
+  isCiStateSuccess: boolean;
+  isBranchOutOfDate: boolean;
+  missingRequiredCheckNames: string[];
+};
+
+export type PullRequestStatusResponse = {
+  found: boolean;
+  status: PullRequestStatus | null;
+};
+
 type IssueTitleCacheEntry = {
   state: IssueOrPullRequestState;
+  fetchedAtMs: number;
+};
+
+type PullRequestStatusCacheEntry = {
+  status: PullRequestStatusResponse;
   fetchedAtMs: number;
 };
 
@@ -38,6 +58,27 @@ export class IssueTitleStateCache {
 
   set = (url: string, state: IssueOrPullRequestState): void => {
     this.entries.set(url, { state, fetchedAtMs: this.nowMs() });
+  };
+}
+
+export class PullRequestStatusCache {
+  private readonly entries = new Map<string, PullRequestStatusCacheEntry>();
+
+  constructor(private readonly nowMs: () => number = () => Date.now()) {}
+
+  get = (url: string): PullRequestStatusResponse | null => {
+    const entry = this.entries.get(url);
+    if (!entry) {
+      return null;
+    }
+    if (this.nowMs() - entry.fetchedAtMs >= PULL_REQUEST_STATUS_CACHE_TTL_MS) {
+      return null;
+    }
+    return entry.status;
+  };
+
+  set = (url: string, status: PullRequestStatusResponse): void => {
+    this.entries.set(url, { status, fetchedAtMs: this.nowMs() });
   };
 }
 
@@ -189,4 +230,34 @@ export const handleIssueTitle = async (
   const state = await issueRepository.getIssueOrPullRequestState(url);
   cache.set(url, state);
   return ok(state);
+};
+
+export const handlePullRequestStatus = async (
+  issueRepository: IssueRepository,
+  cache: PullRequestStatusCache,
+  url: string | null,
+): Promise<ConsoleReadApiResponse> => {
+  if (!url) {
+    return badRequest('url query parameter is required');
+  }
+  const cached = cache.get(url);
+  if (cached !== null) {
+    return ok(cached);
+  }
+  const pullRequest = await issueRepository.getOpenPullRequest(url);
+  const response: PullRequestStatusResponse =
+    pullRequest === null
+      ? { found: false, status: null }
+      : {
+          found: true,
+          status: {
+            isConflicted: pullRequest.isConflicted,
+            isPassedAllCiJob: pullRequest.isPassedAllCiJob,
+            isCiStateSuccess: pullRequest.isCiStateSuccess,
+            isBranchOutOfDate: pullRequest.isBranchOutOfDate,
+            missingRequiredCheckNames: pullRequest.missingRequiredCheckNames,
+          },
+        };
+  cache.set(url, response);
+  return ok(response);
 };

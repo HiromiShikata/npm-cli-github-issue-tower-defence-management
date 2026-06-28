@@ -150,6 +150,7 @@ export const ConsoleItemDetailContainer = ({
       commits={detail.commits}
       commitsAreLoading={detail.commitsAreLoading}
       commitsError={detail.commitsError}
+      pullRequestStatus={detail.pullRequestStatus}
       relatedPullRequests={detail.relatedPullRequests}
       now={now}
       buildImageProxyUrl={resolveImageProxyUrl}
