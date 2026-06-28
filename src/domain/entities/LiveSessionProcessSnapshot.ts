@@ -8,6 +8,7 @@ export type LiveSessionProcessInfo = {
   ppid: number;
   commandLine: string;
   sessionId: string | null;
+  currentSessionId: string | null;
   configDir: string | null;
 };
 

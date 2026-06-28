@@ -69,10 +69,29 @@ export class ResolveInteractiveLiveSessionsUseCase {
       sessions.push({
         sessionName: session.sessionName,
         sessionId: interactiveProcess.sessionId,
+        candidateSessionIds:
+          this.collectCandidateSessionIds(interactiveProcess),
         configDir: interactiveProcess.configDir,
       });
     }
     return sessions;
+  };
+
+  private collectCandidateSessionIds = (
+    interactiveProcess: LiveSessionProcessInfo,
+  ): string[] => {
+    const candidateSessionIds: string[] = [];
+    const seenSessionIds = new Set<string>();
+    for (const sessionId of [
+      interactiveProcess.currentSessionId,
+      interactiveProcess.sessionId,
+    ]) {
+      if (sessionId !== null && !seenSessionIds.has(sessionId)) {
+        seenSessionIds.add(sessionId);
+        candidateSessionIds.push(sessionId);
+      }
+    }
+    return candidateSessionIds;
   };
 
   private findInteractiveProcess = (

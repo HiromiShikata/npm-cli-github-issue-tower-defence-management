@@ -60,6 +60,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
   const sessionFor = (sessionName: string): InteractiveLiveSession => ({
     sessionName,
     sessionId: `${sessionName}-uuid`,
+    candidateSessionIds: [`${sessionName}-uuid`],
     configDir: `/config/${sessionName}`,
   });
 
@@ -80,6 +81,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       ppid: 100 + index * 10,
       commandLine: `claude --name ${sessionName}`,
       sessionId: `${sessionName}-uuid`,
+      currentSessionId: `${sessionName}-uuid`,
       configDir: `/config/${sessionName}`,
     }));
     return { sessions, processes };
@@ -299,6 +301,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
           commandLine:
             'claude --verbose -p Take ownership of https://example.com/issues/1 and finish it',
           sessionId: 'aw-uuid',
+          currentSessionId: 'aw-uuid',
           configDir: '/config/aw',
         },
       ],
@@ -407,6 +410,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     expect(sessionFor('workbench')).toEqual({
       sessionName: 'workbench',
       sessionId: 'workbench-uuid',
+      candidateSessionIds: ['workbench-uuid'],
       configDir: '/config/workbench',
     });
   });

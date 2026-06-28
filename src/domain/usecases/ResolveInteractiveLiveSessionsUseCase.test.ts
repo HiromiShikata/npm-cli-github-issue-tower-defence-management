@@ -1,8 +1,21 @@
 import { ResolveInteractiveLiveSessionsUseCase } from './ResolveInteractiveLiveSessionsUseCase';
-import { LiveSessionProcessSnapshot } from '../entities/LiveSessionProcessSnapshot';
+import {
+  LiveSessionProcessInfo,
+  LiveSessionProcessSnapshot,
+} from '../entities/LiveSessionProcessSnapshot';
 
 describe('ResolveInteractiveLiveSessionsUseCase', () => {
   const useCase = new ResolveInteractiveLiveSessionsUseCase();
+
+  const processInfo = (
+    overrides: Partial<LiveSessionProcessInfo> &
+      Pick<LiveSessionProcessInfo, 'pid' | 'ppid' | 'commandLine'>,
+  ): LiveSessionProcessInfo => ({
+    sessionId: null,
+    currentSessionId: null,
+    configDir: null,
+    ...overrides,
+  });
 
   it('resolves an issue-url-named session through its pane child process', () => {
     const snapshot: LiveSessionProcessSnapshot = {
@@ -13,20 +26,14 @@ describe('ResolveInteractiveLiveSessionsUseCase', () => {
         },
       ],
       processes: [
-        {
-          pid: 100,
-          ppid: 1,
-          commandLine: 'tmux pane shell',
-          sessionId: null,
-          configDir: null,
-        },
-        {
+        processInfo({ pid: 100, ppid: 1, commandLine: 'tmux pane shell' }),
+        processInfo({
           pid: 101,
           ppid: 100,
           commandLine: 'claude --model opus --resume abc',
           sessionId: 'abc',
           configDir: '/config/issues-9',
-        },
+        }),
       ],
     };
 
@@ -36,29 +43,51 @@ describe('ResolveInteractiveLiveSessionsUseCase', () => {
       {
         sessionName: 'https_//github_com/owner/repo/issues/9',
         sessionId: 'abc',
+        candidateSessionIds: ['abc'],
         configDir: '/config/issues-9',
       },
     ]);
   });
 
-  it('resolves a plain-named session such as workbench', () => {
+  it('puts the rotated current session id before the launch env id', () => {
     const snapshot: LiveSessionProcessSnapshot = {
       sessions: [{ sessionName: 'workbench', panePids: [200] }],
       processes: [
-        {
-          pid: 200,
-          ppid: 1,
-          commandLine: 'shell',
-          sessionId: null,
-          configDir: null,
-        },
-        {
+        processInfo({
+          pid: 201,
+          ppid: 200,
+          commandLine: 'claude --name workbench',
+          sessionId: 'launch-uuid',
+          currentSessionId: 'rotated-uuid',
+          configDir: '/config/workbench',
+        }),
+      ],
+    };
+
+    const result = useCase.resolve(snapshot);
+
+    expect(result).toEqual([
+      {
+        sessionName: 'workbench',
+        sessionId: 'launch-uuid',
+        candidateSessionIds: ['rotated-uuid', 'launch-uuid'],
+        configDir: '/config/workbench',
+      },
+    ]);
+  });
+
+  it('keeps a single candidate id when the current id equals the launch id', () => {
+    const snapshot: LiveSessionProcessSnapshot = {
+      sessions: [{ sessionName: 'workbench', panePids: [200] }],
+      processes: [
+        processInfo({
           pid: 201,
           ppid: 200,
           commandLine: 'claude --model opus --name workbench',
           sessionId: 'wb-uuid',
+          currentSessionId: 'wb-uuid',
           configDir: '/config/workbench',
-        },
+        }),
       ],
     };
 
@@ -68,6 +97,7 @@ describe('ResolveInteractiveLiveSessionsUseCase', () => {
       {
         sessionName: 'workbench',
         sessionId: 'wb-uuid',
+        candidateSessionIds: ['wb-uuid'],
         configDir: '/config/workbench',
       },
     ]);
@@ -77,27 +107,15 @@ describe('ResolveInteractiveLiveSessionsUseCase', () => {
     const snapshot: LiveSessionProcessSnapshot = {
       sessions: [{ sessionName: 'control-room', panePids: [300] }],
       processes: [
-        {
-          pid: 300,
-          ppid: 1,
-          commandLine: 'shell',
-          sessionId: null,
-          configDir: null,
-        },
-        {
-          pid: 301,
-          ppid: 300,
-          commandLine: 'node wrapper',
-          sessionId: null,
-          configDir: null,
-        },
-        {
+        processInfo({ pid: 300, ppid: 1, commandLine: 'shell' }),
+        processInfo({ pid: 301, ppid: 300, commandLine: 'node wrapper' }),
+        processInfo({
           pid: 302,
           ppid: 301,
           commandLine: 'claude --name control-room',
           sessionId: 'cr-uuid',
           configDir: '/config/control-room',
-        },
+        }),
       ],
     };
 
@@ -107,6 +125,7 @@ describe('ResolveInteractiveLiveSessionsUseCase', () => {
       {
         sessionName: 'control-room',
         sessionId: 'cr-uuid',
+        candidateSessionIds: ['cr-uuid'],
         configDir: '/config/control-room',
       },
     ]);
@@ -116,21 +135,15 @@ describe('ResolveInteractiveLiveSessionsUseCase', () => {
     const snapshot: LiveSessionProcessSnapshot = {
       sessions: [{ sessionName: 'aw-host', panePids: [400] }],
       processes: [
-        {
-          pid: 400,
-          ppid: 1,
-          commandLine: 'shell',
-          sessionId: null,
-          configDir: null,
-        },
-        {
+        processInfo({ pid: 400, ppid: 1, commandLine: 'shell' }),
+        processInfo({
           pid: 401,
           ppid: 400,
           commandLine:
             'claude --verbose -p Take ownership of https://example.com/issues/1 and finish it',
           sessionId: 'aw-uuid',
           configDir: '/config/aw',
-        },
+        }),
       ],
     };
 
@@ -143,13 +156,12 @@ describe('ResolveInteractiveLiveSessionsUseCase', () => {
     const snapshot: LiveSessionProcessSnapshot = {
       sessions: [{ sessionName: 'partial', panePids: [500] }],
       processes: [
-        {
+        processInfo({
           pid: 501,
           ppid: 500,
           commandLine: 'claude --model opus',
-          sessionId: null,
           configDir: '/config/partial',
-        },
+        }),
       ],
     };
 
@@ -162,13 +174,13 @@ describe('ResolveInteractiveLiveSessionsUseCase', () => {
     const snapshot: LiveSessionProcessSnapshot = {
       sessions: [{ sessionName: 'monitored', panePids: [600] }],
       processes: [
-        {
+        processInfo({
           pid: 601,
           ppid: 600,
           commandLine: 'node monitor.js',
           sessionId: 'mon-uuid',
           configDir: '/config/monitor',
-        },
+        }),
       ],
     };
 
@@ -184,20 +196,14 @@ describe('ResolveInteractiveLiveSessionsUseCase', () => {
         { sessionName: 'empty', panePids: [800] },
       ],
       processes: [
-        {
+        processInfo({
           pid: 701,
           ppid: 700,
           commandLine: 'claude --name workbench',
           sessionId: 'wb-uuid',
           configDir: '/config/workbench',
-        },
-        {
-          pid: 801,
-          ppid: 800,
-          commandLine: 'bash idle',
-          sessionId: null,
-          configDir: null,
-        },
+        }),
+        processInfo({ pid: 801, ppid: 800, commandLine: 'bash idle' }),
       ],
     };
 
@@ -207,6 +213,7 @@ describe('ResolveInteractiveLiveSessionsUseCase', () => {
       {
         sessionName: 'workbench',
         sessionId: 'wb-uuid',
+        candidateSessionIds: ['wb-uuid'],
         configDir: '/config/workbench',
       },
     ]);

@@ -1,11 +1,13 @@
 import { LocalCommandRunner } from '../../domain/usecases/adapter-interfaces/LocalCommandRunner';
 import { LiveSessionProcessSnapshotProvider } from '../../domain/usecases/adapter-interfaces/LiveSessionProcessSnapshotProvider';
 import { ProcessEnvironReader } from '../../domain/usecases/adapter-interfaces/ProcessEnvironReader';
+import { SessionRecordReader } from '../../domain/usecases/adapter-interfaces/SessionRecordReader';
 import {
   LiveSessionPaneProcess,
   LiveSessionProcessInfo,
   LiveSessionProcessSnapshot,
 } from '../../domain/entities/LiveSessionProcessSnapshot';
+import { FileSystemSessionRecordReader } from './FileSystemSessionRecordReader';
 
 const SESSION_ID_ENV_KEY = 'CLAUDE_CODE_SESSION_ID';
 const CONFIG_DIR_ENV_KEY = 'CLAUDE_CONFIG_DIR';
@@ -21,6 +23,7 @@ export class LocalProcessLiveSessionProcessSnapshotProvider implements LiveSessi
   constructor(
     private readonly localCommandRunner: LocalCommandRunner,
     private readonly environReader: ProcessEnvironReader,
+    private readonly sessionRecordReader: SessionRecordReader = new FileSystemSessionRecordReader(),
   ) {}
 
   getSnapshot = async (): Promise<LiveSessionProcessSnapshot> => {
@@ -80,12 +83,18 @@ export class LocalProcessLiveSessionProcessSnapshotProvider implements LiveSessi
       const ppid = Number(match[2]);
       const commandLine = match[3].trim();
       const environ = this.environReader.readEnviron(pid);
+      const configDir = environ?.[CONFIG_DIR_ENV_KEY] ?? null;
+      const currentSessionId =
+        configDir === null
+          ? null
+          : this.sessionRecordReader.readCurrentSessionId(configDir, pid);
       processes.push({
         pid,
         ppid,
         commandLine,
         sessionId: environ?.[SESSION_ID_ENV_KEY] ?? null,
-        configDir: environ?.[CONFIG_DIR_ENV_KEY] ?? null,
+        currentSessionId,
+        configDir,
       });
     }
     return processes;
