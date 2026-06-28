@@ -1,3 +1,10 @@
+## [1.112.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.112.0...v1.112.1) (2026-06-28)
+
+
+### Bug Fixes
+
+* **console:** action-bar overlap, comment state leak, markdown styling, scroll reset ([#1041](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1041)) ([c91a050](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c91a050082e561983d0a4d6f77f0324f72dd85da))
+
 # [1.112.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.111.3...v1.112.0) (2026-06-28)
 
 
