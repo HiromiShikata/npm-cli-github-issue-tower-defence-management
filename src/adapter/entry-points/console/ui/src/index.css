@@ -21,6 +21,16 @@
   --radius: 0.5rem;
 }
 
+html {
+  font-size: 16px;
+}
+
+@media (min-width: 1024px) {
+  html {
+    font-size: 8px;
+  }
+}
+
 body {
   margin: 0;
   background-color: #0d1117;
@@ -59,7 +69,7 @@ body {
   margin-bottom: -2px;
   background: transparent;
   color: #8b949e;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 500;
   line-height: 1.2;
   white-space: nowrap;
@@ -84,7 +94,7 @@ body {
   background: #484f58;
   color: #e6edf3;
   padding: 1px 7px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 700;
   line-height: 1.5;
 }
@@ -99,14 +109,14 @@ body {
   align-self: center;
   padding: 0 8px;
   color: #8b949e;
-  font-size: 11.5px;
+  font-size: 0.7188rem;
 }
 
 .console-tab-geninfo {
   align-self: center;
   padding: 0 4px;
   color: #8b949e;
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 
 .console-list {
@@ -137,7 +147,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 700;
 }
 
@@ -150,7 +160,7 @@ body {
 
 .console-group-count {
   color: #8b949e;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .console-item-row {
@@ -186,14 +196,14 @@ body {
 .console-item-title {
   display: block;
   font-weight: 600;
-  font-size: 14.5px;
+  font-size: 0.9063rem;
 }
 
 .console-item-sub {
   display: block;
   margin-top: 3px;
   color: #8b949e;
-  font-size: 12.5px;
+  font-size: 0.7813rem;
 }
 
 .console-item-pill {
@@ -201,7 +211,7 @@ body {
   border: 1px solid #30363d;
   border-radius: 20px;
   padding: 1px 8px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: #8b949e;
   margin-right: 6px;
 }
@@ -216,7 +226,7 @@ body {
   flex-wrap: wrap;
   gap: 4px 10px;
   margin-top: 4px;
-  font-size: 11.5px;
+  font-size: 0.7188rem;
   color: #adbac7;
 }
 
@@ -230,7 +240,7 @@ body {
 
 .console-item-field-label {
   color: #6e7681;
-  font-size: 10px;
+  font-size: 0.625rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -238,14 +248,14 @@ body {
 .console-list-message {
   padding: 16px;
   color: #8b949e;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .console-list-empty {
   padding: 40px;
   text-align: center;
   color: #8b949e;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .console-list-error,
@@ -267,7 +277,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 20px;
+  font-size: 1.25rem;
   margin: 0;
 }
 
@@ -282,14 +292,14 @@ body {
 
 .console-detail-closed-label {
   color: #a371f7;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .console-detail-subbar {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .console-detail-link {
@@ -307,7 +317,7 @@ body {
   border: 1px solid #30363d;
   border-radius: 6px;
   color: #c9d1d9;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .console-copy-url-button:hover {
@@ -322,7 +332,7 @@ body {
   padding: 2px 8px;
   border-radius: 999px;
   border: 1px solid #30363d;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .console-detail-labels {
@@ -333,7 +343,7 @@ body {
 
 .console-detail-createdat {
   color: #8b949e;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .console-panel {
@@ -347,19 +357,29 @@ body {
   align-items: center;
   justify-content: space-between;
   background: #161b22;
-  padding: 6px 12px;
 }
 
 .console-panel-toggle {
-  display: inline-flex;
+  display: flex;
+  flex: 1;
   align-items: center;
   gap: 8px;
+  padding: 6px 12px;
   background: transparent;
   border: none;
   color: #e6edf3;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
+  text-align: left;
   cursor: pointer;
+}
+
+.console-panel-toggle:hover {
+  background: #1a2029;
+}
+
+.console-panel-action {
+  padding: 6px 12px;
 }
 
 .console-panel-body {
@@ -367,7 +387,7 @@ body {
 }
 
 .console-markdown {
-  font-size: 14px;
+  font-size: 0.875rem;
   line-height: 1.5;
   word-break: break-word;
 }
@@ -447,7 +467,7 @@ body {
   margin: 0.5em 0;
   overflow-x: auto;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.45;
 }
 
@@ -490,7 +510,7 @@ body {
 
 .console-mermaid-error {
   color: #f85149;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .console-comment {
@@ -501,7 +521,7 @@ body {
 .console-comment-header {
   display: flex;
   gap: 8px;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: #8b949e;
 }
 
@@ -522,13 +542,13 @@ body {
   align-items: center;
   gap: 8px;
   padding: 4px 0;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .console-file {
   display: flex;
   flex-direction: column;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .console-file-badge {
@@ -536,7 +556,7 @@ body {
   text-align: center;
   border: 1px solid;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 
 .console-file-path,
@@ -600,7 +620,7 @@ body {
   border-radius: 6px;
   background: #21262d;
   color: #e6edf3;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
@@ -652,7 +672,7 @@ body {
 .console-pr-statbar {
   display: flex;
   gap: 12px;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: #8b949e;
 }
 
@@ -663,7 +683,7 @@ body {
 .console-panel-open-link {
   color: #4493f8;
   font-weight: 400;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .console-composer {
@@ -674,7 +694,7 @@ body {
   background: none;
   border: none;
   color: #8b949e;
-  font-size: 12.5px;
+  font-size: 0.7813rem;
   padding: 2px 0;
   cursor: pointer;
 }
@@ -702,7 +722,7 @@ body {
   border-radius: 6px;
   color: #e6edf3;
   font: inherit;
-  font-size: 14px;
+  font-size: 0.875rem;
   padding: 8px;
   resize: vertical;
 }
@@ -720,7 +740,7 @@ body {
   border-radius: 6px;
   background: #238636;
   color: #ffffff;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
 }
@@ -731,7 +751,7 @@ body {
 }
 
 .console-composer-status {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: #8b949e;
 }
 
@@ -751,7 +771,7 @@ body {
   gap: 12px;
   padding: 12px 18px;
   border-radius: 10px;
-  font-size: 13.5px;
+  font-size: 0.8438rem;
   white-space: nowrap;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
 }
@@ -807,7 +827,7 @@ body {
   border-radius: 6px;
   padding: 4px 12px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: inherit;
 }
 
@@ -817,7 +837,7 @@ body {
 
 .console-undo-toast-countdown {
   flex: 0 0 auto;
-  font-size: 11px;
+  font-size: 0.6875rem;
   opacity: 0.7;
 }
 
@@ -842,7 +862,7 @@ body {
   border: none;
   color: inherit;
   font: inherit;
-  font-size: 13px;
+  font-size: 0.8125rem;
   text-align: left;
   cursor: pointer;
 }
@@ -862,7 +882,7 @@ body {
   border-collapse: collapse;
   margin: 4px 0 8px;
   font:
-    13px / 1.6 ui-monospace,
+    0.8125rem / 1.6 ui-monospace,
     SFMono-Regular,
     Menlo,
     monospace;
@@ -919,7 +939,7 @@ body {
 .console-file-diff-empty {
   padding: 8px 14px;
   color: #8b949e;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .console-diff-comment-cell {
@@ -938,7 +958,7 @@ body {
   border-radius: 4px;
   background: transparent;
   color: #6e7681;
-  font-size: 14px;
+  font-size: 0.875rem;
   cursor: pointer;
   opacity: 0;
 }
@@ -967,7 +987,7 @@ body {
 }
 
 .console-diff-composer-anchor {
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: #8b949e;
 }
 
@@ -1012,7 +1032,7 @@ body {
 }
 
 .console-diff-composer-status {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: #8b949e;
 }
 
@@ -1022,7 +1042,7 @@ body {
 
 .console-diff-composer-posted {
   margin: 0;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: #3fb950;
 }
 
@@ -1037,13 +1057,13 @@ body {
 .console-pr-section-title {
   color: #e6edf3;
   font-weight: 600;
-  font-size: 15px;
+  font-size: 0.9375rem;
 }
 
 .console-pr-section-state {
   border: 1px solid #6e7681;
   border-radius: 999px;
   padding: 1px 8px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: #8b949e;
 }
