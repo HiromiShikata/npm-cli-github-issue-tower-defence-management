@@ -1,3 +1,10 @@
+## [1.112.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.112.4...v1.112.5) (2026-06-28)
+
+
+### Bug Fixes
+
+* **console:** preserve regular fenced code blocks in markdown splitter ([#1053](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1053)) ([c5cdd72](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c5cdd72c2599f73f8b989e71c51df70cd4f9fbcf))
+
 ## [1.112.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.112.3...v1.112.4) (2026-06-28)
 
 
