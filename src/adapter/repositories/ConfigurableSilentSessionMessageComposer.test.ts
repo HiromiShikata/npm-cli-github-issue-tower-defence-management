@@ -1,5 +1,6 @@
 import { ConfigurableSilentSessionMessageComposer } from './ConfigurableSilentSessionMessageComposer';
 import { SilentSessionMessageComposer } from '../../domain/usecases/adapter-interfaces/SilentSessionMessageComposer';
+import { SILENT_SESSION_REMINDER_SENTINEL } from '../../domain/usecases/silentSessionReminderSentinel';
 
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
@@ -33,7 +34,9 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
       },
       fallback,
     );
-    expect(composer.composeMainStalledSection(600)).toBe('CUSTOM_MAIN');
+    const section = composer.composeMainStalledSection(600);
+    expect(section).toContain('CUSTOM_MAIN');
+    expect(section).toContain(SILENT_SESSION_REMINDER_SENTINEL);
     expect(fallback.composeMainStalledSection).not.toHaveBeenCalled();
   });
 
@@ -72,6 +75,21 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
     expect(section).toContain('silent for 6m');
     expect(section).toContain('running for 20m');
     expect(section).toContain('FOOTER');
+    expect(section).toContain(SILENT_SESSION_REMINDER_SENTINEL);
     expect(fallback.composeSubAgentSection).not.toHaveBeenCalled();
+  });
+
+  it('does not double-prepend the sentinel when the template already carries it', () => {
+    const fallback = createFallback();
+    const composer = new ConfigurableSilentSessionMessageComposer(
+      {
+        mainStalledMessage: `${SILENT_SESSION_REMINDER_SENTINEL} CUSTOM_MAIN`,
+        subAgentMessageHeader: null,
+        subAgentMessageFooter: null,
+      },
+      fallback,
+    );
+    const section = composer.composeMainStalledSection(600);
+    expect(section).toBe(`${SILENT_SESSION_REMINDER_SENTINEL} CUSTOM_MAIN`);
   });
 });

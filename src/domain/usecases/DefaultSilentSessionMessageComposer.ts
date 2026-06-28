@@ -1,5 +1,6 @@
 import { SubAgentActivity } from '../entities/LiveSessionActivitySnapshot';
 import { SilentSessionMessageComposer } from './adapter-interfaces/SilentSessionMessageComposer';
+import { SILENT_SESSION_REMINDER_SENTINEL } from './silentSessionReminderSentinel';
 
 const formatMinutes = (seconds: number): string => {
   const minutes = Math.floor(seconds / 60);
@@ -9,7 +10,7 @@ const formatMinutes = (seconds: number): string => {
 const composeMainStalledMessage = (mainSilentSeconds: number): string => {
   const minutes = Math.floor(mainSilentSeconds / 60);
   return [
-    `You have produced no output for ${minutes} minutes. Idle waiting wastes this live session and is unacceptable. Always work proactively and stay ahead of the work: anticipate the next steps and, at every point, choose the fastest path so the whole task finishes as early as possible; never wait passively. Finish every task in the shortest possible time — but "fastest" means correct and incident-free, not merely quick: a fast but wrong result is worthless and causes incidents, so be fast without breaking things. Use parallel execution and your whole team of sub-agents to minimize total wall-clock time. Your goal is to drive every task to completion and have the owner confirm that all tasks are done. Do NOT close this session on your own — it is closed only after the owner has verified completion and tells you to close it. Self-check now:`,
+    `${SILENT_SESSION_REMINDER_SENTINEL} You have produced no output for ${minutes} minutes. Idle waiting wastes this live session and is unacceptable. Always work proactively and stay ahead of the work: anticipate the next steps and, at every point, choose the fastest path so the whole task finishes as early as possible; never wait passively. Finish every task in the shortest possible time — but "fastest" means correct and incident-free, not merely quick: a fast but wrong result is worthless and causes incidents, so be fast without breaking things. Use parallel execution and your whole team of sub-agents to minimize total wall-clock time. Your goal is to drive every task to completion and have the owner confirm that all tasks are done. Do NOT close this session on your own — it is closed only after the owner has verified completion and tells you to close it. Self-check now:`,
     `1. Every request from the owner is registered as a session task and your task list is kept current (mark tasks completed when done); verify nothing is missing or stale.`,
     `2. Your plan is the fastest correct path: parallelize independent work across sub-agents, delegate, and remove needless serialization. Choose the fastest safe method, not the easiest.`,
     `3. A monitor is in place that detects when any sub-agent produces no output for 5 minutes.`,
@@ -31,7 +32,7 @@ export class DefaultSilentSessionMessageComposer implements SilentSessionMessage
         )}, running for ${formatMinutes(subAgent.runningSeconds)}`,
     );
     return [
-      'The following sub-processes have been silent or running for a long time:',
+      `${SILENT_SESSION_REMINDER_SENTINEL} The following sub-processes have been silent or running for a long time:`,
       ...lines,
       'If a sub-process is stalled, take action (restart, hand off, or replace it). If it is legitimately waiting on an external dependency (continuous integration, an external API, or another process), let it continue.',
     ].join('\n');
