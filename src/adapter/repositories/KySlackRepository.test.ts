@@ -12,16 +12,17 @@ const TEST_USER_NAME = 'shikata.hiromi_test2';
 const TEST_IMAGE_URL = 'https://i.imgur.com/Zi3qToQ.jpeg';
 const TEST_IMAGE_PATH = './tmp/test/fixtures/test-image.png';
 
-if (!SLACK_USER_TOKEN) {
-  throw new Error('SLACK_USER_TOKEN is required');
-}
+const describeWhenCredentials = SLACK_USER_TOKEN ? describe : describe.skip;
 
-describe('KySlackRepository Integration Tests', () => {
+describeWhenCredentials('KySlackRepository Integration Tests', () => {
   jest.setTimeout(60 * 1000);
   jest.retryTimes(3, { logErrorsBeforeRetry: true });
   let slackRepository: KySlackRepository;
 
   beforeAll(() => {
+    if (!SLACK_USER_TOKEN) {
+      return;
+    }
     slackRepository = new KySlackRepository(SLACK_USER_TOKEN);
   });
   beforeEach(async () => {

@@ -6,11 +6,11 @@ dotenv.config();
 
 const GOOGLE_SERVICE_ACCOUNT_KEY = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
 
-if (!GOOGLE_SERVICE_ACCOUNT_KEY) {
-  throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY is required');
-}
+const describeWhenCredentials = GOOGLE_SERVICE_ACCOUNT_KEY
+  ? describe
+  : describe.skip;
 
-describe('GoogleSpreadsheetRepository integration tests', () => {
+describeWhenCredentials('GoogleSpreadsheetRepository integration tests', () => {
   jest.setTimeout(60 * 1000);
   jest.retryTimes(3, { logErrorsBeforeRetry: true });
 
