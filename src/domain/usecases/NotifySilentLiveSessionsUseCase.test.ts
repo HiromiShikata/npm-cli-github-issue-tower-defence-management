@@ -1,11 +1,14 @@
 import {
   NotifySilentLiveSessionsUseCase,
+  HubTaskStatusResolver,
+  parseHubTaskIssueUrlFromSessionName,
   DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
   DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
   DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
   DEFAULT_NOTIFICATION_COOLDOWN_SECONDS,
   DEFAULT_NOTIFICATION_STAGGER_SECONDS,
 } from './NotifySilentLiveSessionsUseCase';
+import { Issue } from '../entities/Issue';
 import { LiveSessionProcessSnapshotProvider } from './adapter-interfaces/LiveSessionProcessSnapshotProvider';
 import { InteractiveLiveSessionTranscriptResolver } from './adapter-interfaces/InteractiveLiveSessionTranscriptResolver';
 import { SessionOutputActivityRepository } from './adapter-interfaces/SessionOutputActivityRepository';
@@ -33,15 +36,19 @@ describe('NotifySilentLiveSessionsUseCase', () => {
   let mockNotificationRepository: Mocked<SilentSessionNotificationRepository>;
   let mockMessageComposer: Mocked<SilentSessionMessageComposer>;
   let mockSleeper: Mocked<Sleeper>;
+  let mockHubTaskStatusResolver: Mocked<HubTaskStatusResolver>;
   const now = new Date('2026-06-26T00:00:00Z');
   const nowEpochSeconds = Math.floor(now.getTime() / 1000);
 
-  const runParams = (): {
+  const runParams = (
+    overrides?: Partial<{ activeHubTaskStatus: string | null }>,
+  ): {
     mainSilentThresholdSeconds: number;
     subAgentSilentThresholdSeconds: number;
     subAgentRunningThresholdSeconds: number;
     cooldownSeconds: number;
     staggerSeconds: number;
+    activeHubTaskStatus: string | null;
     now: Date;
   } => ({
     mainSilentThresholdSeconds: DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
@@ -49,7 +56,9 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     subAgentRunningThresholdSeconds: DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
     cooldownSeconds: DEFAULT_NOTIFICATION_COOLDOWN_SECONDS,
     staggerSeconds: DEFAULT_NOTIFICATION_STAGGER_SECONDS,
+    activeHubTaskStatus: null,
     now,
+    ...overrides,
   });
 
   const emptySnapshot: LiveSessionProcessSnapshot = {
@@ -131,6 +140,9 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     mockSleeper = {
       sleep: jest.fn().mockResolvedValue(undefined),
     };
+    mockHubTaskStatusResolver = {
+      getIssueByUrl: jest.fn().mockResolvedValue(null),
+    };
     useCase = new NotifySilentLiveSessionsUseCase(
       mockSnapshotProvider,
       mockTranscriptResolver,
@@ -140,8 +152,50 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       mockNotificationRepository,
       mockMessageComposer,
       mockSleeper,
+      mockHubTaskStatusResolver,
     );
   });
+
+  const issueFor = (overrides: Partial<Issue>): Issue => ({
+    nameWithOwner: 'HiromiShikata/repo',
+    number: 42,
+    title: 'Hub task',
+    state: 'OPEN',
+    status: 'In tmux',
+    story: null,
+    nextActionDate: null,
+    nextActionHour: null,
+    estimationMinutes: null,
+    dependedIssueUrls: [],
+    completionDate50PercentConfidence: null,
+    url: 'https://github.com/HiromiShikata/repo/issues/42',
+    assignees: [],
+    labels: [],
+    org: 'HiromiShikata',
+    repo: 'repo',
+    body: '',
+    itemId: 'item-id',
+    isPr: false,
+    isInProgress: false,
+    isClosed: false,
+    createdAt: now,
+    author: 'HiromiShikata',
+    closingIssueReferenceUrls: [],
+    ...overrides,
+  });
+
+  const setupSilentMainSession = (sessionName: string): void => {
+    setupLiveInteractiveSession(sessionName);
+    mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
+      [
+        {
+          sessionName,
+          lastOutputEpochSeconds:
+            nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+        },
+      ],
+    );
+  };
 
   const setupLiveInteractiveSession = (sessionName: string): void => {
     mockSnapshotProvider.getSnapshot.mockResolvedValue(
@@ -404,6 +458,139 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     );
 
     await expect(useCase.run(runParams())).rejects.toThrow('send-keys failed');
+  });
+
+  describe('hub-task active-status pre-send gate', () => {
+    const HUB_TASK_SESSION = 'https://github.com/HiromiShikata/repo/issues/42';
+    const ACTIVE_STATUS = 'In tmux';
+
+    it('sends when the hub task is open and in the active status', async () => {
+      setupSilentMainSession(HUB_TASK_SESSION);
+      mockHubTaskStatusResolver.getIssueByUrl.mockResolvedValue(
+        issueFor({
+          url: HUB_TASK_SESSION,
+          state: 'OPEN',
+          status: ACTIVE_STATUS,
+        }),
+      );
+
+      await useCase.run(runParams({ activeHubTaskStatus: ACTIVE_STATUS }));
+
+      expect(mockHubTaskStatusResolver.getIssueByUrl).toHaveBeenCalledWith(
+        HUB_TASK_SESSION,
+      );
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledWith(HUB_TASK_SESSION, MAIN_STALLED_SECTION);
+    });
+
+    it('skips when the hub task status differs from the active status', async () => {
+      setupSilentMainSession(HUB_TASK_SESSION);
+      mockHubTaskStatusResolver.getIssueByUrl.mockResolvedValue(
+        issueFor({ url: HUB_TASK_SESSION, state: 'OPEN', status: 'Todo' }),
+      );
+
+      await useCase.run(runParams({ activeHubTaskStatus: ACTIVE_STATUS }));
+
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('skips when the hub task issue is closed', async () => {
+      setupSilentMainSession(HUB_TASK_SESSION);
+      mockHubTaskStatusResolver.getIssueByUrl.mockResolvedValue(
+        issueFor({
+          url: HUB_TASK_SESSION,
+          state: 'CLOSED',
+          status: ACTIVE_STATUS,
+          isClosed: true,
+        }),
+      );
+
+      await useCase.run(runParams({ activeHubTaskStatus: ACTIVE_STATUS }));
+
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('leaves a non-URL session name unchecked and sends as before', async () => {
+      setupSilentMainSession('workbench');
+
+      await useCase.run(runParams({ activeHubTaskStatus: ACTIVE_STATUS }));
+
+      expect(mockHubTaskStatusResolver.getIssueByUrl).not.toHaveBeenCalled();
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledWith('workbench', MAIN_STALLED_SECTION);
+    });
+
+    it('does not call the resolver at all when the active status is unconfigured', async () => {
+      setupSilentMainSession(HUB_TASK_SESSION);
+
+      await useCase.run(runParams({ activeHubTaskStatus: null }));
+
+      expect(mockHubTaskStatusResolver.getIssueByUrl).not.toHaveBeenCalled();
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledWith(HUB_TASK_SESSION, MAIN_STALLED_SECTION);
+    });
+
+    it('fails open and logs a warning when status resolution throws', async () => {
+      setupSilentMainSession(HUB_TASK_SESSION);
+      const warnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      mockHubTaskStatusResolver.getIssueByUrl.mockRejectedValue(
+        new Error('GitHub API timeout'),
+      );
+
+      await useCase.run(runParams({ activeHubTaskStatus: ACTIVE_STATUS }));
+
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledWith(HUB_TASK_SESSION, MAIN_STALLED_SECTION);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('fail-open'),
+      );
+      warnSpy.mockRestore();
+    });
+
+    it('fails open and logs a warning when the hub task cannot be resolved', async () => {
+      setupSilentMainSession(HUB_TASK_SESSION);
+      const warnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      mockHubTaskStatusResolver.getIssueByUrl.mockResolvedValue(null);
+
+      await useCase.run(runParams({ activeHubTaskStatus: ACTIVE_STATUS }));
+
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledWith(HUB_TASK_SESSION, MAIN_STALLED_SECTION);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('fail-open'),
+      );
+      warnSpy.mockRestore();
+    });
+
+    it('parses a github.com issue URL session name and rejects other names', () => {
+      expect(parseHubTaskIssueUrlFromSessionName(HUB_TASK_SESSION)).toBe(
+        HUB_TASK_SESSION,
+      );
+      expect(parseHubTaskIssueUrlFromSessionName('workbench')).toBeNull();
+      expect(
+        parseHubTaskIssueUrlFromSessionName(
+          'https://github.com/HiromiShikata/repo/pull/42',
+        ),
+      ).toBeNull();
+      expect(
+        parseHubTaskIssueUrlFromSessionName(
+          'https://example.com/HiromiShikata/repo/issues/42',
+        ),
+      ).toBeNull();
+    });
   });
 
   it('uses the session entity helper for type completeness', () => {

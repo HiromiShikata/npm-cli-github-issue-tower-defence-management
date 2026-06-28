@@ -6,6 +6,7 @@ import { ProcessEnvironReader } from '../../../domain/usecases/adapter-interface
 import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
 import { LocalStorageRepository } from '../../repositories/LocalStorageRepository';
 import { SilentSessionMessageTemplates } from '../../repositories/ConfigurableSilentSessionMessageComposer';
+import { Issue } from '../../../domain/entities/Issue';
 import { SILENT_SESSION_REMINDER_SENTINEL } from '../../../domain/usecases/silentSessionReminderSentinel';
 import {
   notifySilentTmuxSessions,
@@ -130,6 +131,8 @@ describe('notifySilentTmuxSessions', () => {
     subAgentOutputRootDirectory: null,
     subAgentProcessMatchPattern: null,
     subAgentTranscriptRootDirectory: null,
+    activeHubTaskStatus: null,
+    hubTaskStatusResolver: null,
     messageTemplates: EMPTY_TEMPLATES,
     now: NOW,
     ...DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS,
@@ -264,6 +267,123 @@ describe('notifySilentTmuxSessions', () => {
       (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
     );
     expect(secondSendCall).toBeUndefined();
+  });
+
+  const HUB_TASK_SESSION_NAME =
+    'https://github.com/HiromiShikata/repo/issues/42';
+
+  const writeUrlSessionTranscript = (): void => {
+    const projectDirectory = path.join(configDir, 'projects', '-home-user');
+    fs.mkdirSync(projectDirectory, { recursive: true });
+    const silentTimestamp = new Date(
+      (NOW_EPOCH_SECONDS - 11 * 60) * 1000,
+    ).toISOString();
+    fs.writeFileSync(
+      path.join(projectDirectory, `${SESSION_ID}.jsonl`),
+      JSON.stringify({
+        type: 'assistant',
+        timestamp: silentTimestamp,
+        message: {
+          role: 'assistant',
+          content: [{ type: 'text', text: 'progress update' }],
+        },
+      }),
+      'utf8',
+    );
+  };
+
+  const urlSessionRunner = (): Mocked<LocalCommandRunner> => {
+    const runner = createMockRunner();
+    runner.runCommand.mockImplementation(async (program, args) => {
+      if (program === 'tmux' && args[0] === 'list-sessions') {
+        return {
+          stdout: `${HUB_TASK_SESSION_NAME}\n`,
+          stderr: '',
+          exitCode: 0,
+        };
+      }
+      if (program === 'tmux' && args[0] === 'list-panes') {
+        return { stdout: `${PANE_PID}\n`, stderr: '', exitCode: 0 };
+      }
+      if (program === 'ps') {
+        return {
+          stdout: `  ${PANE_PID}       1 shell\n  ${CLAUDE_PID}     ${PANE_PID} claude --name ${HUB_TASK_SESSION_NAME}\n`,
+          stderr: '',
+          exitCode: 0,
+        };
+      }
+      return { stdout: '', stderr: '', exitCode: 0 };
+    });
+    return runner;
+  };
+
+  const makeIssue = (overrides: {
+    state: Issue['state'];
+    status: string | null;
+  }): Issue => ({
+    nameWithOwner: 'HiromiShikata/repo',
+    number: 42,
+    title: 'Hub task',
+    state: overrides.state,
+    status: overrides.status,
+    story: null,
+    nextActionDate: null,
+    nextActionHour: null,
+    estimationMinutes: null,
+    dependedIssueUrls: [],
+    completionDate50PercentConfidence: null,
+    url: HUB_TASK_SESSION_NAME,
+    assignees: [],
+    labels: [],
+    org: 'HiromiShikata',
+    repo: 'repo',
+    body: '',
+    itemId: 'item-id',
+    isPr: false,
+    isInProgress: false,
+    isClosed: overrides.state !== 'OPEN',
+    createdAt: NOW,
+    author: 'HiromiShikata',
+    closingIssueReferenceUrls: [],
+  });
+
+  it('skips a URL-named session whose hub task is no longer in the active status', async () => {
+    writeUrlSessionTranscript();
+    const runner = urlSessionRunner();
+    const getIssueByUrl = jest
+      .fn()
+      .mockResolvedValue(makeIssue({ state: 'OPEN', status: 'Todo' }));
+
+    await notifySilentTmuxSessions({
+      ...baseParams(runner),
+      activeHubTaskStatus: 'In tmux',
+      hubTaskStatusResolver: { getIssueByUrl },
+    });
+
+    expect(getIssueByUrl).toHaveBeenCalledWith(HUB_TASK_SESSION_NAME);
+    const sendCall = runner.runCommand.mock.calls.find(
+      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
+    );
+    expect(sendCall).toBeUndefined();
+  });
+
+  it('sends to a URL-named session whose hub task is in the active status', async () => {
+    writeUrlSessionTranscript();
+    const runner = urlSessionRunner();
+    const getIssueByUrl = jest
+      .fn()
+      .mockResolvedValue(makeIssue({ state: 'OPEN', status: 'In tmux' }));
+
+    await notifySilentTmuxSessions({
+      ...baseParams(runner),
+      activeHubTaskStatus: 'In tmux',
+      hubTaskStatusResolver: { getIssueByUrl },
+    });
+
+    const sendCall = runner.runCommand.mock.calls.find(
+      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
+    );
+    expect(sendCall?.[1][2]).toBe(HUB_TASK_SESSION_NAME);
   });
 
   it('re-sends within the cooldown window when each project pass uses its own cache scope', async () => {

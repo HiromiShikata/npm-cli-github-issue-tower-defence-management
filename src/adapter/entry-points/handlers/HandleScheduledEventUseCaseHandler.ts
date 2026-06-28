@@ -127,6 +127,7 @@ export class HandleScheduledEventUseCaseHandler {
       subAgentRunningThresholdSeconds?: number;
       silentNotificationCooldownSeconds?: number;
       silentNotificationStaggerSeconds?: number;
+      activeHubTaskStatus?: string;
       silentMainStalledMessage?: string;
       silentSubAgentMessageHeader?: string;
       silentSubAgentMessageFooter?: string;
@@ -628,6 +629,11 @@ export class HandleScheduledEventUseCaseHandler {
             process.env.TDPM_SILENT_NOTIFICATION_STAGGER_SECONDS,
             DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.staggerSeconds,
           ),
+          activeHubTaskStatus:
+            mergedInput.activeHubTaskStatus ??
+            process.env.TDPM_ACTIVE_HUB_TASK_STATUS ??
+            null,
+          hubTaskStatusResolver: issueRepository,
           messageTemplates: {
             mainStalledMessage:
               mergedInput.silentMainStalledMessage ??
