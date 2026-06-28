@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { ConsoleOperationHandlers } from '../../logic/operations';
 import {
   consoleChangedFilesFixture,
   consoleCommentsFixture,
@@ -6,8 +7,46 @@ import {
   consoleListItemsFixture,
   consoleMermaidBodyFixture,
   consoleRelatedPullRequestsFixture,
+  consoleStatusOptionsFixture,
+  consoleStoryOptionsFixture,
 } from '../../testing/fixtures';
+import { ConsoleOperationMenu } from '../operations/ConsoleOperationMenu';
 import { ConsoleItemDetail } from './ConsoleItemDetail';
+
+const noopOperationHandlers: ConsoleOperationHandlers = {
+  onReview: () => {},
+  onSetNextActionDate: () => {},
+  onSetStory: () => {},
+  onSetStatus: () => {},
+  onSetInTmuxByHuman: () => {},
+  onClose: () => {},
+};
+
+const richMarkdownBody = [
+  '# Console review screen',
+  '',
+  'Heading levels and code blocks must render with styles.',
+  '',
+  '## Acceptance criteria',
+  '### Action bar',
+  '#### Markdown styling',
+  '##### Scroll reset',
+  '###### Comment isolation',
+  '',
+  'Run the build with `npm run build:console-ui` before committing.',
+  '',
+  '```ts',
+  'export const renderMarkdownToSafeHtml = (source: string): string => {',
+  '  marked.setOptions({ gfm: true, breaks: true });',
+  '  return DOMPurify.sanitize(marked.parse(source, { async: false }));',
+  '};',
+  '```',
+  '',
+  '> The action bar stays in document flow and never overlaps content.',
+  '',
+  '- Headings use a font-size scale',
+  '- Code blocks scroll horizontally',
+].join('\n');
 
 const meta: Meta<typeof ConsoleItemDetail> = {
   title: 'Console/ConsoleItemDetail',
@@ -43,6 +82,39 @@ export const PullRequestItem: Story = {
     commitsAreLoading: false,
     commitsError: null,
     relatedPullRequests: [],
+  },
+};
+
+export const IssueWithRichMarkdownBody: Story = {
+  args: {
+    item: consoleListItemsFixture[2],
+    storyName: 'TDPM Console port',
+    storyColorEnum: 'BLUE',
+    overlayStatus: null,
+    state: { state: 'open', merged: false, isPullRequest: false },
+    body: richMarkdownBody,
+    bodyIsLoading: false,
+    bodyError: null,
+    comments: consoleCommentsFixture,
+    commentsAreLoading: false,
+    commentsError: null,
+    files: [],
+    filesAreLoading: false,
+    filesError: null,
+    commits: [],
+    commitsAreLoading: false,
+    commitsError: null,
+    relatedPullRequests: [],
+    operationBar: (
+      <ConsoleOperationMenu
+        tab="triage"
+        item={consoleListItemsFixture[2]}
+        hasPullRequest={false}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        handlers={noopOperationHandlers}
+      />
+    ),
   },
 };
 
