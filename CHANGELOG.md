@@ -1,3 +1,10 @@
+# [1.114.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.113.0...v1.114.0) (2026-06-28)
+
+
+### Features
+
+* **console:** decorate rendered markdown PR/issue links with state icon and title ([#1066](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1066)) ([9b57d16](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9b57d16923e766666e9714c1fe209fb842b14013)), closes [#1062](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1062)
+
 # [1.113.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.112.6...v1.113.0) (2026-06-28)
 
 
