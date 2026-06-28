@@ -1,3 +1,10 @@
+## [1.112.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.112.1...v1.112.2) (2026-06-28)
+
+
+### Bug Fixes
+
+* **console:** make review screen full-width on desktop and mobile ([#1046](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1046)) ([2f7baec](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2f7baec707574df40530778e5c119528544cbc82))
+
 ## [1.112.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.112.0...v1.112.1) (2026-06-28)
 
 
