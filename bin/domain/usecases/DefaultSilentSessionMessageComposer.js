@@ -17,10 +17,19 @@ const composeMainStalledMessage = (mainSilentSeconds) => {
         `Also, in your next output, report an estimate of how many minutes you expect to need to finish all remaining tasks.`,
     ].join('\n');
 };
+const composeOwnerReNotificationMessage = (waitingSeconds) => {
+    const minutes = Math.floor(waitingSeconds / 60);
+    return [
+        `${silentSessionReminderSentinel_1.SILENT_SESSION_REMINDER_SENTINEL} This is an automated monitor reminder, NOT the owner replying. Do NOT treat this message as an owner answer to your outstanding call-to-user; your pending question is still unanswered. You have been waiting on the owner for ${minutes} minutes and the owner has not yet replied. The owner is only notified when a fresh call-to-user is raised, so a single past call-to-user that has gone quiet will never reach them. Re-raise your pending call-to-user to the owner now: re-emit it so a new call-to-user marker fires and the owner is notified again. Keep your question and proposed options unchanged unless you have new information. You are correctly waiting on the owner — you are not stalled or idle — so do not abandon the wait and do not invent an owner decision yourself; simply re-surface the same request so the owner sees it.`,
+    ].join('\n');
+};
 class DefaultSilentSessionMessageComposer {
     constructor() {
         this.composeMainStalledSection = (mainSilentSeconds) => {
             return composeMainStalledMessage(mainSilentSeconds);
+        };
+        this.composeOwnerReNotificationSection = (waitingSeconds) => {
+            return composeOwnerReNotificationMessage(waitingSeconds);
         };
         this.composeSubAgentSection = (subAgents) => {
             const lines = subAgents.map((subAgent) => `- ${subAgent.label}: silent for ${formatMinutes(subAgent.silentSeconds)}, running for ${formatMinutes(subAgent.runningSeconds)}`);

@@ -21,6 +21,7 @@ const CLAUDE_PID = 201;
 
 const EMPTY_TEMPLATES: SilentSessionMessageTemplates = {
   mainStalledMessage: null,
+  ownerReNotificationMessage: null,
   subAgentMessageHeader: null,
   subAgentMessageFooter: null,
 };
@@ -82,6 +83,11 @@ describe('notifySilentTmuxSessions', () => {
       new LocalStorageRepository(),
       cacheDirectory,
     );
+
+  const makeCacheRepositoryAt = (
+    basePath: string,
+  ): LocalStorageCacheRepository =>
+    new LocalStorageCacheRepository(new LocalStorageRepository(), basePath);
 
   const makeEnvironReader = (): ProcessEnvironReader => ({
     readEnviron: (pid: number) =>
@@ -163,6 +169,7 @@ describe('notifySilentTmuxSessions', () => {
       ...baseParams(runner),
       messageTemplates: {
         mainStalledMessage: 'CUSTOM_MAIN_TEMPLATE',
+        ownerReNotificationMessage: null,
         subAgentMessageHeader: null,
         subAgentMessageFooter: null,
       },
@@ -176,7 +183,10 @@ describe('notifySilentTmuxSessions', () => {
     );
   });
 
-  it('suppresses the main stalled notification when the transcript shows an unanswered owner call', async () => {
+  it('sends no notification while an owner call is unanswered and the wait is within the threshold', async () => {
+    const recentOwnerCall = new Date(
+      (NOW_EPOCH_SECONDS - 5 * 60) * 1000,
+    ).toISOString();
     writeTranscript([
       {
         type: 'user',
@@ -185,7 +195,7 @@ describe('notifySilentTmuxSessions', () => {
       },
       {
         type: 'assistant',
-        timestamp: '2026-06-25T23:50:00.000Z',
+        timestamp: recentOwnerCall,
         message: {
           role: 'assistant',
           stop_reason: 'end_turn',
@@ -206,6 +216,44 @@ describe('notifySilentTmuxSessions', () => {
       (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
     );
     expect(sendCall).toBeUndefined();
+  });
+
+  it('re-notifies the owner when an owner call has been unanswered past the threshold', async () => {
+    const stalePendingOwnerCall = new Date(
+      (NOW_EPOCH_SECONDS - 11 * 60) * 1000,
+    ).toISOString();
+    writeTranscript([
+      {
+        type: 'user',
+        timestamp: '2026-06-25T23:00:00.000Z',
+        message: { role: 'user', content: 'go ahead' },
+      },
+      {
+        type: 'assistant',
+        timestamp: stalePendingOwnerCall,
+        message: {
+          role: 'assistant',
+          stop_reason: 'end_turn',
+          content: [
+            { type: 'text', text: 'waiting <<OWNER_CALL>> please decide' },
+          ],
+        },
+      },
+    ]);
+    const runner = liveSessionRunner();
+
+    await notifySilentTmuxSessions({
+      ...baseParams(runner),
+      ownerCallMarker: '<<OWNER_CALL>>',
+    });
+
+    const sendCall = runner.runCommand.mock.calls.find(
+      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
+    );
+    expect(sendCall?.[1][2]).toBe(SESSION_NAME);
+    expect(sendCall?.[1][4]).toContain(SILENT_SESSION_REMINDER_SENTINEL);
+    expect(sendCall?.[1][4]).toContain('Re-raise your pending call-to-user');
+    expect(sendCall?.[1][4]).not.toContain('You have produced no output for');
   });
 
   it('does not re-notify the same silent session on the next cycle within cooldown', async () => {
@@ -229,5 +277,56 @@ describe('notifySilentTmuxSessions', () => {
       (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
     );
     expect(secondSendCall).toBeUndefined();
+  });
+
+  it('shares the cooldown across project passes when a single project-independent cache scope is used', async () => {
+    silentAssistantTranscript();
+    // The handler runs once per project over the same global set of tmux
+    // sessions. When the silent-session cooldown lives in one shared cache
+    // scope, a second per-project pass for the same session within the cooldown
+    // window must NOT re-send, even though it is a different project pass.
+    const sharedCacheBasePath = path.join(cacheDirectory, 'shared');
+    const firstRunner = liveSessionRunner();
+
+    await notifySilentTmuxSessions({
+      ...baseParams(firstRunner),
+      cacheRepository: makeCacheRepositoryAt(sharedCacheBasePath),
+    });
+
+    const secondRunner = liveSessionRunner();
+    await notifySilentTmuxSessions({
+      ...baseParams(secondRunner),
+      cacheRepository: makeCacheRepositoryAt(sharedCacheBasePath),
+      now: new Date(NOW.getTime() + 60 * 1000),
+    });
+
+    const secondSendCall = secondRunner.runCommand.mock.calls.find(
+      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
+    );
+    expect(secondSendCall).toBeUndefined();
+  });
+
+  it('re-sends within the cooldown window when each project pass uses its own cache scope', async () => {
+    silentAssistantTranscript();
+    // This reproduces the per-project cooldown defect: when each project pass
+    // stores its cooldown under its own project-scoped cache path, the same
+    // session is notified once per project within the cooldown window.
+    const firstRunner = liveSessionRunner();
+    await notifySilentTmuxSessions({
+      ...baseParams(firstRunner),
+      cacheRepository: makeCacheRepositoryAt(path.join(cacheDirectory, 'umino')),
+    });
+
+    const secondRunner = liveSessionRunner();
+    await notifySilentTmuxSessions({
+      ...baseParams(secondRunner),
+      cacheRepository: makeCacheRepositoryAt(path.join(cacheDirectory, 'xmile')),
+      now: new Date(NOW.getTime() + 60 * 1000),
+    });
+
+    const secondSendCall = secondRunner.runCommand.mock.calls.find(
+      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
+    );
+    expect(secondSendCall?.[1][2]).toBe(SESSION_NAME);
   });
 });

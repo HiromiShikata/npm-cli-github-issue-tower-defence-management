@@ -65,6 +65,15 @@ import {
 
 const DEFAULT_DASHBOARD_DATA_DIR: string | null = null;
 
+// The silent-session notification inspects the single, global set of live tmux
+// sessions, but the scheduled handler runs once per project. If its cooldown
+// were stored in the per-project cache (`./tmp/cache/<projectName>`), the same
+// session would get an independent cooldown record per project and be notified
+// once per enabled project within a single cooldown window. The cooldown must
+// therefore live in a single project-independent cache scope so it is shared
+// across every per-project pass.
+const SILENT_SESSION_NOTIFICATION_CACHE_PATH = './tmp/cache/shared';
+
 const readSilentSeconds = (
   configValue: number | undefined,
   envValue: string | undefined,
@@ -119,6 +128,7 @@ export class HandleScheduledEventUseCaseHandler {
       silentNotificationCooldownSeconds?: number;
       silentNotificationStaggerSeconds?: number;
       silentMainStalledMessage?: string;
+      silentOwnerReNotificationMessage?: string;
       silentSubAgentMessageHeader?: string;
       silentSubAgentMessageFooter?: string;
       credentials: {
@@ -581,10 +591,15 @@ export class HandleScheduledEventUseCaseHandler {
           mergedInput.subAgentTranscriptRootDirectory ??
           process.env.TDPM_SUBAGENT_TRANSCRIPT_ROOT_DIRECTORY ??
           null;
+        const silentSessionNotificationCacheRepository =
+          new LocalStorageCacheRepository(
+            localStorageRepository,
+            SILENT_SESSION_NOTIFICATION_CACHE_PATH,
+          );
         await notifySilentTmuxSessions({
           enabled: silentNotificationEnabled,
           localCommandRunner: nodeLocalCommandRunner,
-          cacheRepository: localStorageCacheRepository,
+          cacheRepository: silentSessionNotificationCacheRepository,
           ownerCallMarker,
           subAgentOutputRootDirectory,
           subAgentProcessMatchPattern,
@@ -618,6 +633,10 @@ export class HandleScheduledEventUseCaseHandler {
             mainStalledMessage:
               mergedInput.silentMainStalledMessage ??
               process.env.TDPM_SILENT_MAIN_STALLED_MESSAGE ??
+              null,
+            ownerReNotificationMessage:
+              mergedInput.silentOwnerReNotificationMessage ??
+              process.env.TDPM_SILENT_OWNER_RE_NOTIFICATION_MESSAGE ??
               null,
             subAgentMessageHeader:
               mergedInput.silentSubAgentMessageHeader ??

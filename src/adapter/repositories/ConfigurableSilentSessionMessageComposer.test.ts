@@ -6,6 +6,9 @@ type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
 const createFallback = (): Mocked<SilentSessionMessageComposer> => ({
   composeMainStalledSection: jest.fn().mockReturnValue('FALLBACK_MAIN'),
+  composeOwnerReNotificationSection: jest
+    .fn()
+    .mockReturnValue('FALLBACK_OWNER'),
   composeSubAgentSection: jest.fn().mockReturnValue('FALLBACK_SUB'),
 });
 
@@ -15,6 +18,7 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
     const composer = new ConfigurableSilentSessionMessageComposer(
       {
         mainStalledMessage: null,
+        ownerReNotificationMessage: null,
         subAgentMessageHeader: null,
         subAgentMessageFooter: null,
       },
@@ -29,6 +33,7 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
     const composer = new ConfigurableSilentSessionMessageComposer(
       {
         mainStalledMessage: 'CUSTOM_MAIN',
+        ownerReNotificationMessage: null,
         subAgentMessageHeader: null,
         subAgentMessageFooter: null,
       },
@@ -45,6 +50,7 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
     const composer = new ConfigurableSilentSessionMessageComposer(
       {
         mainStalledMessage: null,
+        ownerReNotificationMessage: null,
         subAgentMessageHeader: null,
         subAgentMessageFooter: null,
       },
@@ -62,6 +68,7 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
     const composer = new ConfigurableSilentSessionMessageComposer(
       {
         mainStalledMessage: null,
+        ownerReNotificationMessage: null,
         subAgentMessageHeader: 'HEADER',
         subAgentMessageFooter: 'FOOTER',
       },
@@ -79,11 +86,46 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
     expect(fallback.composeSubAgentSection).not.toHaveBeenCalled();
   });
 
+  it('uses the fallback owner-re-notification section when no template is configured', () => {
+    const fallback = createFallback();
+    const composer = new ConfigurableSilentSessionMessageComposer(
+      {
+        mainStalledMessage: null,
+        ownerReNotificationMessage: null,
+        subAgentMessageHeader: null,
+        subAgentMessageFooter: null,
+      },
+      fallback,
+    );
+    expect(composer.composeOwnerReNotificationSection(600)).toBe(
+      'FALLBACK_OWNER',
+    );
+    expect(fallback.composeOwnerReNotificationSection).toHaveBeenCalledWith(600);
+  });
+
+  it('uses the configured owner-re-notification template when provided', () => {
+    const fallback = createFallback();
+    const composer = new ConfigurableSilentSessionMessageComposer(
+      {
+        mainStalledMessage: null,
+        ownerReNotificationMessage: 'CUSTOM_OWNER',
+        subAgentMessageHeader: null,
+        subAgentMessageFooter: null,
+      },
+      fallback,
+    );
+    const section = composer.composeOwnerReNotificationSection(600);
+    expect(section).toContain('CUSTOM_OWNER');
+    expect(section).toContain(SILENT_SESSION_REMINDER_SENTINEL);
+    expect(fallback.composeOwnerReNotificationSection).not.toHaveBeenCalled();
+  });
+
   it('does not double-prepend the sentinel when the template already carries it', () => {
     const fallback = createFallback();
     const composer = new ConfigurableSilentSessionMessageComposer(
       {
         mainStalledMessage: `${SILENT_SESSION_REMINDER_SENTINEL} CUSTOM_MAIN`,
+        ownerReNotificationMessage: null,
         subAgentMessageHeader: null,
         subAgentMessageFooter: null,
       },
