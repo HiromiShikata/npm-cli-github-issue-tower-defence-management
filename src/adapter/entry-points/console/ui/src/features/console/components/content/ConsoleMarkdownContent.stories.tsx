@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { buildImageProxyUrl } from '../../lib/imageProxy';
 import {
+  consoleCodeFenceBodyFixture,
   consoleMarkdownBodyFixture,
   consoleMarkdownImageBodyFixture,
   consoleMermaidBodyFixture,
@@ -22,6 +23,10 @@ export const RichMarkdown: Story = {
 
 export const WithMermaidFence: Story = {
   args: { body: consoleMermaidBodyFixture },
+};
+
+export const WithCodeFence: Story = {
+  args: { body: consoleCodeFenceBodyFixture },
 };
 
 export const WithProxiedGitHubImages: Story = {

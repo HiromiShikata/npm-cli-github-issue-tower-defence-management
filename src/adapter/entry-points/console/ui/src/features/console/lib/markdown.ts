@@ -27,6 +27,14 @@ export type ConsoleMarkdownSegment =
 
 const MERMAID_FENCE = /^```mermaid[^\n]*\n([\s\S]*?)\n```$/;
 
+const isMermaidFenceOpen = (line: string): boolean =>
+  /^```mermaid\s*$/.test(line.trim());
+
+const isCodeFenceOpen = (line: string): boolean =>
+  /^```/.test(line.trim()) && !isMermaidFenceOpen(line);
+
+const isFenceClose = (line: string): boolean => line.trim() === '```';
+
 export const splitMarkdownSegments = (
   source: string,
 ): ConsoleMarkdownSegment[] => {
@@ -34,6 +42,7 @@ export const splitMarkdownSegments = (
   const segments: ConsoleMarkdownSegment[] = [];
   let markdownBuffer: string[] = [];
   let mermaidBuffer: string[] | null = null;
+  let insideCodeFence = false;
   let sequence = 0;
 
   const flushMarkdown = (): void => {
@@ -49,13 +58,20 @@ export const splitMarkdownSegments = (
   };
 
   for (const line of lines) {
-    if (mermaidBuffer === null && /^```mermaid\s*$/.test(line.trim())) {
+    if (insideCodeFence) {
+      markdownBuffer.push(line);
+      if (isFenceClose(line)) {
+        insideCodeFence = false;
+      }
+      continue;
+    }
+    if (mermaidBuffer === null && isMermaidFenceOpen(line)) {
       flushMarkdown();
       mermaidBuffer = [];
       continue;
     }
     if (mermaidBuffer !== null) {
-      if (line.trim() === '```') {
+      if (isFenceClose(line)) {
         segments.push({
           kind: 'mermaid',
           key: `mermaid:${sequence}`,
@@ -66,6 +82,11 @@ export const splitMarkdownSegments = (
         continue;
       }
       mermaidBuffer.push(line);
+      continue;
+    }
+    if (isCodeFenceOpen(line)) {
+      markdownBuffer.push(line);
+      insideCodeFence = true;
       continue;
     }
     markdownBuffer.push(line);
