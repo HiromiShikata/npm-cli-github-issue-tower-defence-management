@@ -1,3 +1,10 @@
+# [1.113.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.112.6...v1.113.0) (2026-06-28)
+
+
+### Features
+
+* **console:** show PR CI status and merge-conflict status in the detail header ([#1059](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1059)) ([4f825d9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4f825d98fe4be2477788b731cc7608c69f034c4d))
+
 ## [1.112.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.112.5...v1.112.6) (2026-06-28)
 
 
