@@ -65,15 +65,6 @@ import {
 
 const DEFAULT_DASHBOARD_DATA_DIR: string | null = null;
 
-// The silent-session notification inspects the single, global set of live tmux
-// sessions, but the scheduled handler runs once per project. If its cooldown
-// were stored in the per-project cache (`./tmp/cache/<projectName>`), the same
-// session would get an independent cooldown record per project and be notified
-// once per enabled project within a single cooldown window. The cooldown must
-// therefore live in a single project-independent cache scope so it is shared
-// across every per-project pass.
-const SILENT_SESSION_NOTIFICATION_CACHE_PATH = './tmp/cache/shared';
-
 const readSilentSeconds = (
   configValue: number | undefined,
   envValue: string | undefined,
@@ -125,7 +116,6 @@ export class HandleScheduledEventUseCaseHandler {
       mainSilentThresholdSeconds?: number;
       subAgentSilentThresholdSeconds?: number;
       subAgentRunningThresholdSeconds?: number;
-      silentNotificationCooldownSeconds?: number;
       silentNotificationStaggerSeconds?: number;
       activeHubTaskStatus?: string;
       silentMainStalledMessage?: string;
@@ -591,15 +581,9 @@ export class HandleScheduledEventUseCaseHandler {
           mergedInput.subAgentTranscriptRootDirectory ??
           process.env.TDPM_SUBAGENT_TRANSCRIPT_ROOT_DIRECTORY ??
           null;
-        const silentSessionNotificationCacheRepository =
-          new LocalStorageCacheRepository(
-            localStorageRepository,
-            SILENT_SESSION_NOTIFICATION_CACHE_PATH,
-          );
         await notifySilentTmuxSessions({
           enabled: silentNotificationEnabled,
           localCommandRunner: nodeLocalCommandRunner,
-          cacheRepository: silentSessionNotificationCacheRepository,
           ownerCallMarker,
           subAgentOutputRootDirectory,
           subAgentProcessMatchPattern,
@@ -618,11 +602,6 @@ export class HandleScheduledEventUseCaseHandler {
             mergedInput.subAgentRunningThresholdSeconds,
             process.env.TDPM_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
             DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.subAgentRunningThresholdSeconds,
-          ),
-          cooldownSeconds: readSilentSeconds(
-            mergedInput.silentNotificationCooldownSeconds,
-            process.env.TDPM_SILENT_NOTIFICATION_COOLDOWN_SECONDS,
-            DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.cooldownSeconds,
           ),
           staggerSeconds: readSilentSeconds(
             mergedInput.silentNotificationStaggerSeconds,

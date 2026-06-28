@@ -5,7 +5,6 @@ import {
   DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
   DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
   DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
-  DEFAULT_NOTIFICATION_COOLDOWN_SECONDS,
   DEFAULT_NOTIFICATION_STAGGER_SECONDS,
 } from './NotifySilentLiveSessionsUseCase';
 import { Issue } from '../entities/Issue';
@@ -46,7 +45,6 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     mainSilentThresholdSeconds: number;
     subAgentSilentThresholdSeconds: number;
     subAgentRunningThresholdSeconds: number;
-    cooldownSeconds: number;
     staggerSeconds: number;
     activeHubTaskStatus: string | null;
     now: Date;
@@ -54,7 +52,6 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     mainSilentThresholdSeconds: DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
     subAgentSilentThresholdSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
     subAgentRunningThresholdSeconds: DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
-    cooldownSeconds: DEFAULT_NOTIFICATION_COOLDOWN_SECONDS,
     staggerSeconds: DEFAULT_NOTIFICATION_STAGGER_SECONDS,
     activeHubTaskStatus: null,
     now,
@@ -127,8 +124,6 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         .mockResolvedValue(new Set<string>()),
     };
     mockNotificationRepository = {
-      getLastNotifiedEpochSeconds: jest.fn().mockResolvedValue(null),
-      setLastNotifiedEpochSeconds: jest.fn().mockResolvedValue(undefined),
       sendSelfCheckNotification: jest.fn().mockResolvedValue(undefined),
     };
     mockMessageComposer = {
@@ -210,7 +205,6 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     expect(DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS).toBe(600);
     expect(DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS).toBe(300);
     expect(DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS).toBe(900);
-    expect(DEFAULT_NOTIFICATION_COOLDOWN_SECONDS).toBe(30 * 60);
     expect(DEFAULT_NOTIFICATION_STAGGER_SECONDS).toBe(25);
   });
 
@@ -379,7 +373,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     ).not.toHaveBeenCalled();
   });
 
-  it('does not re-notify a session within the cooldown window', async () => {
+  it('re-notifies a session on every consecutive cycle while it remains a valid silent target', async () => {
     setupLiveInteractiveSession('workbench');
     mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
       [
@@ -390,15 +384,19 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         },
       ],
     );
-    mockNotificationRepository.getLastNotifiedEpochSeconds.mockResolvedValue(
-      nowEpochSeconds - DEFAULT_NOTIFICATION_COOLDOWN_SECONDS + 1,
-    );
 
+    await useCase.run(runParams());
     await useCase.run(runParams());
 
     expect(
       mockNotificationRepository.sendSelfCheckNotification,
-    ).not.toHaveBeenCalled();
+    ).toHaveBeenCalledTimes(2);
+    expect(
+      mockNotificationRepository.sendSelfCheckNotification,
+    ).toHaveBeenNthCalledWith(1, 'workbench', MAIN_STALLED_SECTION);
+    expect(
+      mockNotificationRepository.sendSelfCheckNotification,
+    ).toHaveBeenNthCalledWith(2, 'workbench', MAIN_STALLED_SECTION);
   });
 
   it('sends to multiple sessions sequentially with a stagger delay between sends', async () => {

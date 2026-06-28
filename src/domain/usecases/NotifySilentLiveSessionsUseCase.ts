@@ -14,7 +14,6 @@ import { ResolveInteractiveLiveSessionsUseCase } from './ResolveInteractiveLiveS
 export const DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = 10 * 60;
 export const DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = 5 * 60;
 export const DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = 15 * 60;
-export const DEFAULT_NOTIFICATION_COOLDOWN_SECONDS = 30 * 60;
 export const DEFAULT_NOTIFICATION_STAGGER_SECONDS = 25;
 
 const GITHUB_ISSUE_URL_PATTERN =
@@ -53,7 +52,6 @@ export class NotifySilentLiveSessionsUseCase {
     mainSilentThresholdSeconds: number;
     subAgentSilentThresholdSeconds: number;
     subAgentRunningThresholdSeconds: number;
-    cooldownSeconds: number;
     staggerSeconds: number;
     activeHubTaskStatus: string | null;
     now: Date;
@@ -92,24 +90,8 @@ export class NotifySilentLiveSessionsUseCase {
       `Silent live session notification: ${candidates.length} candidate(s) of ${interactiveSessions.length} interactive session(s).`,
     );
 
-    const nowEpochSeconds = Math.floor(params.now.getTime() / 1000);
     let sentCount = 0;
     for (const candidate of candidates) {
-      const lastNotifiedEpochSeconds =
-        await this.notificationRepository.getLastNotifiedEpochSeconds(
-          candidate.sessionName,
-        );
-      if (
-        lastNotifiedEpochSeconds !== null &&
-        nowEpochSeconds - lastNotifiedEpochSeconds < params.cooldownSeconds
-      ) {
-        console.log(
-          `Skipping ${candidate.sessionName}: notified ${
-            nowEpochSeconds - lastNotifiedEpochSeconds
-          } seconds ago, within cooldown ${params.cooldownSeconds} seconds.`,
-        );
-        continue;
-      }
       if (
         !(await this.isHubTaskActive(
           candidate.sessionName,
@@ -124,10 +106,6 @@ export class NotifySilentLiveSessionsUseCase {
       await this.notificationRepository.sendSelfCheckNotification(
         candidate.sessionName,
         candidate.message,
-      );
-      await this.notificationRepository.setLastNotifiedEpochSeconds(
-        candidate.sessionName,
-        nowEpochSeconds,
       );
       sentCount += 1;
       console.log(`Notified ${candidate.sessionName}.`);

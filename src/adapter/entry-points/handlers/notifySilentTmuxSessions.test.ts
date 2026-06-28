@@ -3,8 +3,6 @@ import * as os from 'os';
 import * as path from 'path';
 import { LocalCommandRunner } from '../../../domain/usecases/adapter-interfaces/LocalCommandRunner';
 import { ProcessEnvironReader } from '../../../domain/usecases/adapter-interfaces/ProcessEnvironReader';
-import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
-import { LocalStorageRepository } from '../../repositories/LocalStorageRepository';
 import { SilentSessionMessageTemplates } from '../../repositories/ConfigurableSilentSessionMessageComposer';
 import { Issue } from '../../../domain/entities/Issue';
 import { SILENT_SESSION_REMINDER_SENTINEL } from '../../../domain/usecases/silentSessionReminderSentinel';
@@ -38,18 +36,15 @@ const createMockRunner = (): Mocked<LocalCommandRunner> => ({
 
 describe('notifySilentTmuxSessions', () => {
   let configDir: string;
-  let cacheDirectory: string;
 
   beforeEach(() => {
     jest.spyOn(console, 'log').mockImplementation(() => undefined);
     configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'silent-config-'));
-    cacheDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'silent-cache-'));
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
     fs.rmSync(configDir, { force: true, recursive: true });
-    fs.rmSync(cacheDirectory, { force: true, recursive: true });
   });
 
   const writeTranscript = (lines: object[]): void => {
@@ -77,17 +72,6 @@ describe('notifySilentTmuxSessions', () => {
       },
     ]);
   };
-
-  const makeCacheRepository = (): LocalStorageCacheRepository =>
-    new LocalStorageCacheRepository(
-      new LocalStorageRepository(),
-      cacheDirectory,
-    );
-
-  const makeCacheRepositoryAt = (
-    basePath: string,
-  ): LocalStorageCacheRepository =>
-    new LocalStorageCacheRepository(new LocalStorageRepository(), basePath);
 
   const makeEnvironReader = (): ProcessEnvironReader => ({
     readEnviron: (pid: number) =>
@@ -126,7 +110,6 @@ describe('notifySilentTmuxSessions', () => {
     enabled: true,
     localCommandRunner: runner,
     processEnvironReader: makeEnvironReader(),
-    cacheRepository: makeCacheRepository(),
     ownerCallMarker: null,
     subAgentOutputRootDirectory: null,
     subAgentProcessMatchPattern: null,
@@ -219,54 +202,27 @@ describe('notifySilentTmuxSessions', () => {
     expect(sendCall).toBeUndefined();
   });
 
-  it('does not re-notify the same silent session on the next cycle within cooldown', async () => {
+  it('re-notifies the same silent session on the next cycle with no cooldown suppression', async () => {
     silentAssistantTranscript();
-    const cacheRepository = makeCacheRepository();
     const firstRunner = liveSessionRunner();
 
-    await notifySilentTmuxSessions({
-      ...baseParams(firstRunner),
-      cacheRepository,
-    });
+    await notifySilentTmuxSessions(baseParams(firstRunner));
+
+    const firstSendCall = firstRunner.runCommand.mock.calls.find(
+      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
+    );
+    expect(firstSendCall?.[1][2]).toBe(SESSION_NAME);
 
     const secondRunner = liveSessionRunner();
     await notifySilentTmuxSessions({
       ...baseParams(secondRunner),
-      cacheRepository,
       now: new Date(NOW.getTime() + 60 * 1000),
     });
 
     const secondSendCall = secondRunner.runCommand.mock.calls.find(
       (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
     );
-    expect(secondSendCall).toBeUndefined();
-  });
-
-  it('shares the cooldown across project passes when a single project-independent cache scope is used', async () => {
-    silentAssistantTranscript();
-    // The handler runs once per project over the same global set of tmux
-    // sessions. When the silent-session cooldown lives in one shared cache
-    // scope, a second per-project pass for the same session within the cooldown
-    // window must NOT re-send, even though it is a different project pass.
-    const sharedCacheBasePath = path.join(cacheDirectory, 'shared');
-    const firstRunner = liveSessionRunner();
-
-    await notifySilentTmuxSessions({
-      ...baseParams(firstRunner),
-      cacheRepository: makeCacheRepositoryAt(sharedCacheBasePath),
-    });
-
-    const secondRunner = liveSessionRunner();
-    await notifySilentTmuxSessions({
-      ...baseParams(secondRunner),
-      cacheRepository: makeCacheRepositoryAt(sharedCacheBasePath),
-      now: new Date(NOW.getTime() + 60 * 1000),
-    });
-
-    const secondSendCall = secondRunner.runCommand.mock.calls.find(
-      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
-    );
-    expect(secondSendCall).toBeUndefined();
+    expect(secondSendCall?.[1][2]).toBe(SESSION_NAME);
   });
 
   const HUB_TASK_SESSION_NAME =
@@ -384,33 +340,5 @@ describe('notifySilentTmuxSessions', () => {
       (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
     );
     expect(sendCall?.[1][2]).toBe(HUB_TASK_SESSION_NAME);
-  });
-
-  it('re-sends within the cooldown window when each project pass uses its own cache scope', async () => {
-    silentAssistantTranscript();
-    // This reproduces the per-project cooldown defect: when each project pass
-    // stores its cooldown under its own project-scoped cache path, the same
-    // session is notified once per project within the cooldown window.
-    const firstRunner = liveSessionRunner();
-    await notifySilentTmuxSessions({
-      ...baseParams(firstRunner),
-      cacheRepository: makeCacheRepositoryAt(
-        path.join(cacheDirectory, 'umino'),
-      ),
-    });
-
-    const secondRunner = liveSessionRunner();
-    await notifySilentTmuxSessions({
-      ...baseParams(secondRunner),
-      cacheRepository: makeCacheRepositoryAt(
-        path.join(cacheDirectory, 'xmile'),
-      ),
-      now: new Date(NOW.getTime() + 60 * 1000),
-    });
-
-    const secondSendCall = secondRunner.runCommand.mock.calls.find(
-      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
-    );
-    expect(secondSendCall?.[1][2]).toBe(SESSION_NAME);
   });
 });
