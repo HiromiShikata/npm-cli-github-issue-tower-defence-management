@@ -8,6 +8,7 @@ import { SessionSubAgentActivityRepository } from './adapter-interfaces/SessionS
 import { SilentSessionMessageComposer } from './adapter-interfaces/SilentSessionMessageComposer';
 import { SilentSessionNotificationRepository } from './adapter-interfaces/SilentSessionNotificationRepository';
 import { Sleeper } from './adapter-interfaces/Sleeper';
+import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ResolveInteractiveLiveSessionsUseCase } from './ResolveInteractiveLiveSessionsUseCase';
 
 export const DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = 10 * 60;
@@ -15,6 +16,17 @@ export const DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = 5 * 60;
 export const DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = 15 * 60;
 export const DEFAULT_NOTIFICATION_COOLDOWN_SECONDS = 30 * 60;
 export const DEFAULT_NOTIFICATION_STAGGER_SECONDS = 25;
+
+const GITHUB_ISSUE_URL_PATTERN =
+  /^https:\/\/github\.com\/[^/]+\/[^/]+\/issues\/\d+$/;
+
+export const parseHubTaskIssueUrlFromSessionName = (
+  sessionName: string,
+): string | null => {
+  return GITHUB_ISSUE_URL_PATTERN.test(sessionName) ? sessionName : null;
+};
+
+export type HubTaskStatusResolver = Pick<IssueRepository, 'getIssueByUrl'>;
 
 type NotifyCandidate = {
   sessionName: string;
@@ -34,6 +46,7 @@ export class NotifySilentLiveSessionsUseCase {
     private readonly notificationRepository: SilentSessionNotificationRepository,
     private readonly messageComposer: SilentSessionMessageComposer,
     private readonly sleeper: Sleeper,
+    private readonly hubTaskStatusResolver: HubTaskStatusResolver | null = null,
   ) {}
 
   run = async (params: {
@@ -42,6 +55,7 @@ export class NotifySilentLiveSessionsUseCase {
     subAgentRunningThresholdSeconds: number;
     cooldownSeconds: number;
     staggerSeconds: number;
+    activeHubTaskStatus: string | null;
     now: Date;
   }): Promise<void> => {
     const snapshot =
@@ -96,6 +110,14 @@ export class NotifySilentLiveSessionsUseCase {
         );
         continue;
       }
+      if (
+        !(await this.isHubTaskActive(
+          candidate.sessionName,
+          params.activeHubTaskStatus,
+        ))
+      ) {
+        continue;
+      }
       if (sentCount > 0) {
         await this.sleeper.sleep(params.staggerSeconds * 1000);
       }
@@ -109,6 +131,43 @@ export class NotifySilentLiveSessionsUseCase {
       );
       sentCount += 1;
       console.log(`Notified ${candidate.sessionName}.`);
+    }
+  };
+
+  private isHubTaskActive = async (
+    sessionName: string,
+    activeHubTaskStatus: string | null,
+  ): Promise<boolean> => {
+    if (activeHubTaskStatus === null || this.hubTaskStatusResolver === null) {
+      return true;
+    }
+    const hubTaskIssueUrl = parseHubTaskIssueUrlFromSessionName(sessionName);
+    if (hubTaskIssueUrl === null) {
+      return true;
+    }
+    try {
+      const issue =
+        await this.hubTaskStatusResolver.getIssueByUrl(hubTaskIssueUrl);
+      if (issue === null) {
+        console.warn(
+          `Hub task ${hubTaskIssueUrl} for session ${sessionName} could not be resolved; sending notification (fail-open).`,
+        );
+        return true;
+      }
+      if (issue.state !== 'OPEN' || issue.status !== activeHubTaskStatus) {
+        console.log(
+          `Skipping ${sessionName}: hub task ${hubTaskIssueUrl} is no longer active (state "${issue.state}", status "${issue.status ?? 'null'}", active status "${activeHubTaskStatus}").`,
+        );
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.warn(
+        `Failed to resolve hub task status for session ${sessionName} (${hubTaskIssueUrl}); sending notification (fail-open): ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return true;
     }
   };
 

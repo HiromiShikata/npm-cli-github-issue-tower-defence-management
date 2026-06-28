@@ -4,6 +4,7 @@ import { OwnerCallStatusProvider } from '../../../domain/usecases/adapter-interf
 import { ProcessEnvironReader } from '../../../domain/usecases/adapter-interfaces/ProcessEnvironReader';
 import {
   NotifySilentLiveSessionsUseCase,
+  HubTaskStatusResolver,
   DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
   DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
   DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
@@ -44,6 +45,8 @@ export type NotifySilentTmuxSessionsParams = {
   subAgentRunningThresholdSeconds: number;
   cooldownSeconds: number;
   staggerSeconds: number;
+  activeHubTaskStatus: string | null;
+  hubTaskStatusResolver: HubTaskStatusResolver | null;
   messageTemplates: SilentSessionMessageTemplates;
   now: Date;
 };
@@ -99,6 +102,8 @@ export const notifySilentTmuxSessions = async (
     subAgentRunningThresholdSeconds,
     cooldownSeconds,
     staggerSeconds,
+    activeHubTaskStatus,
+    hubTaskStatusResolver,
     messageTemplates,
     now,
   } = params;
@@ -133,6 +138,7 @@ export const notifySilentTmuxSessions = async (
     ),
     messageComposer,
     new RealSleeper(),
+    hubTaskStatusResolver,
   );
   await useCase.run({
     mainSilentThresholdSeconds,
@@ -140,6 +146,7 @@ export const notifySilentTmuxSessions = async (
     subAgentRunningThresholdSeconds,
     cooldownSeconds,
     staggerSeconds,
+    activeHubTaskStatus,
     now,
   });
 };
