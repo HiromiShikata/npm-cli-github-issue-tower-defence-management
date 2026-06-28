@@ -120,3 +120,57 @@ test('renders the Workflow Blocker tab leftmost and shows its detail operations'
     page.locator('.console-op-button', { hasText: '+1 day' }),
   ).toBeVisible();
 });
+
+test('adds an inline review comment on a related pull request diff without hover on a touch viewport', async ({
+  browser,
+}) => {
+  const touchContext = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+    isMobile: true,
+  });
+  const page = await touchContext.newPage();
+
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Failed Preparation').click();
+  await itemRowByText(
+    page,
+    'Add inline review comments on the related pull request diff',
+  ).click();
+
+  const changedFile = page
+    .locator('.console-file-row', {
+      hasText: 'src/adapter/entry-points/console/ui/src/index.css',
+    })
+    .first();
+  await expect(changedFile).toBeVisible();
+  await changedFile.click();
+
+  const commentButton = page.locator('.console-diff-comment-button').first();
+  await expect(commentButton).toBeVisible();
+  const opacity = await commentButton.evaluate(
+    (element) => window.getComputedStyle(element).opacity,
+  );
+  expect(Number(opacity)).toBeGreaterThan(0);
+
+  await commentButton.click();
+  await page
+    .locator('.console-diff-composer-input')
+    .fill('Please verify this opacity change on touch devices.');
+  await page.locator('.console-diff-composer-submit').click();
+
+  await expect(page.locator('.console-diff-composer-posted')).toHaveText(
+    'Comment posted.',
+  );
+
+  expect(harness.reviewCommentCalls).toHaveLength(1);
+  expect(harness.reviewCommentCalls[0].url).toBe(
+    'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/912',
+  );
+  expect(harness.reviewCommentCalls[0].body).toBe(
+    'Please verify this opacity change on touch devices.',
+  );
+
+  await touchContext.close();
+});

@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { ConsoleCommentComposer } from '../components/detail/ConsoleCommentComposer';
 import { ConsoleItemDetail } from '../components/detail/ConsoleItemDetail';
 import { ConsoleOperationMenu } from '../components/operations/ConsoleOperationMenu';
@@ -60,14 +60,20 @@ export const ConsoleItemDetailContainer = ({
     [token],
   );
   const hasPullRequest = item.isPr || detail.relatedPullRequests.length > 0;
-  const addInlineComment = useCallback(
-    (
-      path: string,
-      line: number,
-      side: ConsoleReviewCommentSide,
-      body: string,
-    ) => operations.addInlineReviewComment(item.url, path, line, side, body),
-    [operations, item.url],
+  const buildAddInlineComment = useCallback(
+    (prUrl: string) =>
+      (
+        path: string,
+        line: number,
+        side: ConsoleReviewCommentSide,
+        body: string,
+      ) =>
+        operations.addInlineReviewComment(prUrl, path, line, side, body),
+    [operations],
+  );
+  const addInlineComment = useMemo(
+    () => buildAddInlineComment(item.url),
+    [buildAddInlineComment, item.url],
   );
 
   const handlers: ConsoleOperationHandlers = {
@@ -148,6 +154,7 @@ export const ConsoleItemDetailContainer = ({
       now={now}
       buildImageProxyUrl={resolveImageProxyUrl}
       onAddInlineComment={item.isPr ? addInlineComment : undefined}
+      buildAddInlineComment={buildAddInlineComment}
       commentComposer={
         <ConsoleCommentComposer
           isPr={item.isPr}

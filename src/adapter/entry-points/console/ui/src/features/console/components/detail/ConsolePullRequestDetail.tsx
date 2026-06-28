@@ -9,6 +9,7 @@ import { ConsolePanel } from '../layout/ConsolePanel';
 import { ConsoleChangedFileList } from './ConsoleChangedFileList';
 import { ConsoleCommitList } from './ConsoleCommitList';
 import { ConsoleCopyUrlButton } from './ConsoleCopyUrlButton';
+import type { ConsoleAddInlineComment } from './ConsoleFileDiff';
 
 export type ConsolePullRequestSectionProps = {
   pullRequest: ConsoleRelatedPullRequest;
@@ -22,6 +23,7 @@ export type ConsolePullRequestSectionProps = {
   commitsError: string | null;
   now: number;
   buildImageProxyUrl?: ImageProxyUrlBuilder;
+  onAddInlineComment?: ConsoleAddInlineComment;
 };
 
 export const ConsolePullRequestDetail = ({
@@ -36,6 +38,7 @@ export const ConsolePullRequestDetail = ({
   commitsError,
   now,
   buildImageProxyUrl,
+  onAddInlineComment,
 }: ConsolePullRequestSectionProps) => {
   const summary = pullRequest.summary;
   const filesCount =
@@ -87,6 +90,7 @@ export const ConsolePullRequestDetail = ({
           files={files}
           isLoading={filesAreLoading}
           error={filesError}
+          onAddInlineComment={onAddInlineComment}
         />
       </ConsolePanel>
       <ConsolePanel title="Commits" count={commitsCount} defaultCollapsed>
