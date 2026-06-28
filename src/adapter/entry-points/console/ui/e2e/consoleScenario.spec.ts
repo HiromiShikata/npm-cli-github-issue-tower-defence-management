@@ -36,6 +36,28 @@ const processSelectedItemViaStatus = async (page: Page): Promise<void> => {
   await statusButton.click();
 };
 
+test('shows CI and conflict badges in the directly opened PR detail header', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Awaiting Quality Check').click();
+  await itemRowByText(
+    page,
+    'Serve the committed console UI bundle from serveConsole',
+  ).click();
+
+  const title = page.locator('.console-detail-title');
+  await expect(title.getByText('CI failing')).toBeVisible();
+  await expect(title.getByText(/missing: build, test/)).toBeVisible();
+  await expect(title.getByText('Conflict')).toBeVisible();
+  await expect(title.getByText('Out of date')).toBeVisible();
+
+  await title.screenshot({
+    path: '/tmp/after-pr-detail-header.png',
+  });
+});
+
 test('processing tabs drives auto-advance and keeps emptied badges at zero', async ({
   page,
 }) => {
@@ -173,4 +195,26 @@ test('adds an inline review comment on a related pull request diff without hover
   );
 
   await touchContext.close();
+});
+
+test('shows CI, conflict and out-of-date badges in the related PR header', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Failed Preparation').click();
+  await itemRowByText(
+    page,
+    'Add inline review comments on the related pull request diff',
+  ).click();
+
+  const prHeader = page.locator('.console-pr-header').first();
+  await expect(prHeader.getByText('CI failing')).toBeVisible();
+  await expect(prHeader.getByText(/missing: build, test/)).toBeVisible();
+  await expect(prHeader.getByText('Conflict')).toBeVisible();
+  await expect(prHeader.getByText('Out of date')).toBeVisible();
+
+  await prHeader.screenshot({
+    path: '/tmp/after-related-pr-header.png',
+  });
 });

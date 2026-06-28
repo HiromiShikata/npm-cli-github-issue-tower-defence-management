@@ -6,6 +6,7 @@ import type {
   ConsoleCommit,
   ConsoleIssueState,
   ConsoleListItem,
+  ConsolePullRequestStatus,
   ConsoleRelatedPullRequest,
 } from '../logic/types';
 import type { ConsoleCaches } from './useConsoleCaches';
@@ -63,6 +64,14 @@ const buildCaches = (related: ConsoleRelatedPullRequest[]): ConsoleCaches => {
       merged: false,
       isPullRequest: true,
     }),
+    fetchPullRequestStatus: async (): Promise<ConsolePullRequestStatus> => ({
+      found: true,
+      isConflicted: true,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isBranchOutOfDate: true,
+      missingRequiredCheckNames: ['build'],
+    }),
   };
   return {
     client,
@@ -72,6 +81,7 @@ const buildCaches = (related: ConsoleRelatedPullRequest[]): ConsoleCaches => {
     commits: new ResourceCache(client.fetchPrCommits),
     relatedPrs: new ResourceCache(client.fetchRelatedPrs),
     state: new ResourceCache(client.fetchIssueState),
+    prStatus: new ResourceCache(client.fetchPullRequestStatus),
   };
 };
 
@@ -85,7 +95,17 @@ describe('useConsoleItemDetailData', () => {
       expect(result.current.body).toBe('body');
       expect(result.current.files.length).toBe(1);
       expect(result.current.commits.length).toBe(1);
+      expect(result.current.pullRequestStatus?.found).toBe(true);
+      expect(result.current.pullRequestStatus?.isConflicted).toBe(true);
     });
+  });
+
+  it('does not expose pull request status for an issue item', () => {
+    const caches = buildCaches([]);
+    const { result } = renderHook(() =>
+      useConsoleItemDetailData(caches, issueItem),
+    );
+    expect(result.current.pullRequestStatus).toBeNull();
   });
 
   it('loads related pull request views for an issue item', async () => {

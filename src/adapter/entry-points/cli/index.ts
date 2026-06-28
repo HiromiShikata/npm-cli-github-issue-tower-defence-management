@@ -37,7 +37,10 @@ import {
   DEFAULT_WEB_PORT,
   startWebServer,
 } from '../console/webServer';
-import { IssueTitleStateCache } from '../console/consoleReadApi';
+import {
+  IssueTitleStateCache,
+  PullRequestStatusCache,
+} from '../console/consoleReadApi';
 import {
   buildPjcodeToProjectUrl,
   createConsoleProjectResolver,
@@ -735,6 +738,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     issueRepository,
     resolveProject,
     issueTitleStateCache: new IssueTitleStateCache(),
+    pullRequestStatusCache: new PullRequestStatusCache(),
     port,
   });
   console.log(`TDPM web server listening on port ${port}`);

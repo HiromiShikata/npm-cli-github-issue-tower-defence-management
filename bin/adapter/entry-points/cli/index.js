@@ -431,6 +431,7 @@ const runServeWeb = async (options) => {
         issueRepository,
         resolveProject,
         issueTitleStateCache: new consoleReadApi_1.IssueTitleStateCache(),
+        pullRequestStatusCache: new consoleReadApi_1.PullRequestStatusCache(),
         port,
     });
     console.log(`TDPM web server listening on port ${port}`);

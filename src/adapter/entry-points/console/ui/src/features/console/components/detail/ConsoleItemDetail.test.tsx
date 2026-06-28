@@ -32,6 +32,7 @@ const baseProps = {
   commits: consoleCommitsFixture,
   commitsAreLoading: false,
   commitsError: null,
+  pullRequestStatus: null,
   relatedPullRequests: [],
   now,
   commentComposer: <div>comment-composer</div>,
@@ -114,5 +115,60 @@ describe('ConsoleItemDetail', () => {
     const title = container.querySelector('.console-detail-title');
     expect(title).not.toBeNull();
     expect(title?.contains(getByText('Awaiting Workspace'))).toBe(true);
+  });
+
+  it('renders failing CI, missing checks, and conflict badges in the PR header', () => {
+    const { getByText, container } = render(
+      <ConsoleItemDetail
+        item={prItem}
+        {...baseProps}
+        pullRequestStatus={{
+          found: true,
+          isConflicted: true,
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+          isBranchOutOfDate: true,
+          missingRequiredCheckNames: ['build', 'test'],
+        }}
+      />,
+    );
+    const title = container.querySelector('.console-detail-title');
+    expect(title?.contains(getByText('CI failing'))).toBe(true);
+    expect(getByText(/missing: build, test/)).toBeInTheDocument();
+    expect(getByText('Conflict')).toBeInTheDocument();
+    expect(getByText('Out of date')).toBeInTheDocument();
+  });
+
+  it('renders a passing CI badge and no conflict badge when the PR is healthy', () => {
+    const { getByText, queryByText } = render(
+      <ConsoleItemDetail
+        item={prItem}
+        {...baseProps}
+        pullRequestStatus={{
+          found: true,
+          isConflicted: false,
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        }}
+      />,
+    );
+    expect(getByText('CI passing')).toBeInTheDocument();
+    expect(queryByText('Conflict')).toBeNull();
+    expect(queryByText('Out of date')).toBeNull();
+  });
+
+  it('does not render PR status badges for an issue item', () => {
+    const { queryByText } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        state={{ state: 'open', merged: false, isPullRequest: false }}
+        pullRequestStatus={null}
+      />,
+    );
+    expect(queryByText('CI passing')).toBeNull();
+    expect(queryByText('CI failing')).toBeNull();
   });
 });

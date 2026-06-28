@@ -6,6 +6,7 @@ import type {
   ConsoleCommit,
   ConsoleIssueState,
   ConsoleListItem,
+  ConsolePullRequestStatus,
   ConsoleRelatedPullRequest,
 } from '../logic/types';
 import type { ConsoleCaches } from './useConsoleCaches';
@@ -19,6 +20,14 @@ const DEFAULT_STATE: ConsoleIssueState = {
   state: 'open',
   merged: false,
   isPullRequest: false,
+};
+const DEFAULT_PR_STATUS: ConsolePullRequestStatus = {
+  found: false,
+  isConflicted: false,
+  isPassedAllCiJob: false,
+  isCiStateSuccess: false,
+  isBranchOutOfDate: false,
+  missingRequiredCheckNames: [],
 };
 
 export type ConsoleItemDetailData = {
@@ -35,6 +44,7 @@ export type ConsoleItemDetailData = {
   commits: ConsoleCommit[];
   commitsAreLoading: boolean;
   commitsError: string | null;
+  pullRequestStatus: ConsolePullRequestStatus | null;
   relatedPullRequests: ConsoleRelatedPullRequestView[];
 };
 
@@ -65,6 +75,12 @@ export const useConsoleItemDetailData = (
     isPr ? key : null,
     isPr ? url : null,
     EMPTY_COMMITS,
+  );
+  const prStatus = useConsoleResource(
+    caches.prStatus,
+    isPr ? key : null,
+    isPr ? url : null,
+    DEFAULT_PR_STATUS,
   );
   const relatedPrs = useConsoleResource(
     caches.relatedPrs,
@@ -162,6 +178,7 @@ export const useConsoleItemDetailData = (
     commits: commits.data,
     commitsAreLoading: commits.isLoading,
     commitsError: commits.error,
+    pullRequestStatus: isPr ? prStatus.data : null,
     relatedPullRequests: relatedViews,
   };
 };

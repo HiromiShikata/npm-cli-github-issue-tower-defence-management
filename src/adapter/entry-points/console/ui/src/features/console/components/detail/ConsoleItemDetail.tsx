@@ -13,6 +13,7 @@ import type {
   ConsoleIssueState,
   ConsoleListItem,
   ConsoleOverlayStatus,
+  ConsolePullRequestStatus,
   ConsoleRelatedPullRequest,
 } from '../../logic/types';
 import { ConsoleMarkdownContent } from '../content/ConsoleMarkdownContent';
@@ -24,6 +25,7 @@ import { ConsoleCopyUrlButton } from './ConsoleCopyUrlButton';
 import type { ConsoleAddInlineComment } from './ConsoleFileDiff';
 import { ConsoleItemIcon } from './ConsoleItemIcon';
 import { ConsolePullRequestDetail } from './ConsolePullRequestDetail';
+import { ConsolePullRequestStatusBadges } from './ConsolePullRequestStatusBadges';
 
 export type ConsoleRelatedPullRequestView = {
   pullRequest: ConsoleRelatedPullRequest;
@@ -53,6 +55,7 @@ export type ConsoleItemDetailProps = {
   commits: ConsoleCommit[];
   commitsAreLoading: boolean;
   commitsError: string | null;
+  pullRequestStatus: ConsolePullRequestStatus | null;
   relatedPullRequests: ConsoleRelatedPullRequestView[];
   now: number;
   commentComposer: ReactNode;
@@ -80,6 +83,7 @@ export const ConsoleItemDetail = ({
   commits,
   commitsAreLoading,
   commitsError,
+  pullRequestStatus,
   relatedPullRequests,
   now,
   commentComposer,
@@ -129,6 +133,17 @@ export const ConsoleItemDetail = ({
           >
             {overlayStatus.name}
           </span>
+        )}
+        {item.isPr && pullRequestStatus?.found && (
+          <ConsolePullRequestStatusBadges
+            isConflicted={pullRequestStatus.isConflicted}
+            isPassedAllCiJob={pullRequestStatus.isPassedAllCiJob}
+            isCiStateSuccess={pullRequestStatus.isCiStateSuccess}
+            isBranchOutOfDate={pullRequestStatus.isBranchOutOfDate}
+            missingRequiredCheckNames={
+              pullRequestStatus.missingRequiredCheckNames
+            }
+          />
         )}
         <ConsoleItemIcon
           isPr={item.isPr}

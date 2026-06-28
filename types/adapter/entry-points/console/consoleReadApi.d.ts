@@ -1,9 +1,21 @@
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 export declare const ISSUE_TITLE_CACHE_TTL_MS: number;
+export declare const PULL_REQUEST_STATUS_CACHE_TTL_MS: number;
 export type IssueOrPullRequestState = {
     state: string;
     merged: boolean;
     isPullRequest: boolean;
+};
+export type PullRequestStatus = {
+    isConflicted: boolean;
+    isPassedAllCiJob: boolean;
+    isCiStateSuccess: boolean;
+    isBranchOutOfDate: boolean;
+    missingRequiredCheckNames: string[];
+};
+export type PullRequestStatusResponse = {
+    found: boolean;
+    status: PullRequestStatus | null;
 };
 export declare class IssueTitleStateCache {
     private readonly nowMs;
@@ -11,6 +23,13 @@ export declare class IssueTitleStateCache {
     constructor(nowMs?: () => number);
     get: (url: string) => IssueOrPullRequestState | null;
     set: (url: string, state: IssueOrPullRequestState) => void;
+}
+export declare class PullRequestStatusCache {
+    private readonly nowMs;
+    private readonly entries;
+    constructor(nowMs?: () => number);
+    get: (url: string) => PullRequestStatusResponse | null;
+    set: (url: string, status: PullRequestStatusResponse) => void;
 }
 export type ConsoleReadApiResponse = {
     statusCode: number;
@@ -41,4 +60,5 @@ export declare const handlePrFiles: (issueRepository: IssueRepository, url: stri
 export declare const handlePrCommits: (issueRepository: IssueRepository, url: string | null) => Promise<ConsoleReadApiResponse>;
 export declare const handleRelatedPrs: (issueRepository: IssueRepository, url: string | null) => Promise<ConsoleReadApiResponse>;
 export declare const handleIssueTitle: (issueRepository: IssueRepository, cache: IssueTitleStateCache, url: string | null) => Promise<ConsoleReadApiResponse>;
+export declare const handlePullRequestStatus: (issueRepository: IssueRepository, cache: PullRequestStatusCache, url: string | null) => Promise<ConsoleReadApiResponse>;
 //# sourceMappingURL=consoleReadApi.d.ts.map

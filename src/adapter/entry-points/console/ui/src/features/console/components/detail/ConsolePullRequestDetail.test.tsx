@@ -38,6 +38,52 @@ describe('ConsolePullRequestDetail', () => {
     expect(getByText('27 files')).toBeInTheDocument();
   });
 
+  it('renders the CI status badge derived from the pull request fields', () => {
+    const { getByText } = render(
+      <ConsolePullRequestDetail
+        pullRequest={pullRequest}
+        body={pullRequest.summary?.body ?? ''}
+        bodyIsLoading={false}
+        files={consoleChangedFilesFixture}
+        filesAreLoading={false}
+        filesError={null}
+        commits={consoleCommitsFixture}
+        commitsAreLoading={false}
+        commitsError={null}
+        now={now}
+      />,
+    );
+    expect(getByText('CI passing')).toBeInTheDocument();
+  });
+
+  it('renders failing CI, conflict and out-of-date badges for an unhealthy pull request', () => {
+    const { getByText } = render(
+      <ConsolePullRequestDetail
+        pullRequest={{
+          ...pullRequest,
+          isConflicted: true,
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+          isBranchOutOfDate: true,
+          missingRequiredCheckNames: ['build'],
+        }}
+        body={pullRequest.summary?.body ?? ''}
+        bodyIsLoading={false}
+        files={consoleChangedFilesFixture}
+        filesAreLoading={false}
+        filesError={null}
+        commits={consoleCommitsFixture}
+        commitsAreLoading={false}
+        commitsError={null}
+        now={now}
+      />,
+    );
+    expect(getByText('CI failing')).toBeInTheDocument();
+    expect(getByText(/missing: build/)).toBeInTheDocument();
+    expect(getByText('Conflict')).toBeInTheDocument();
+    expect(getByText('Out of date')).toBeInTheDocument();
+  });
+
   it('renders a copy URL button for the pull request url', () => {
     const { getByRole } = render(
       <ConsolePullRequestDetail

@@ -63,6 +63,15 @@ export type ConsoleIssueState = {
   isPullRequest: boolean;
 };
 
+export type ConsolePullRequestStatus = {
+  found: boolean;
+  isConflicted: boolean;
+  isPassedAllCiJob: boolean;
+  isCiStateSuccess: boolean;
+  isBranchOutOfDate: boolean;
+  missingRequiredCheckNames: string[];
+};
+
 export type ConsoleComment = {
   author: string;
   body: string;

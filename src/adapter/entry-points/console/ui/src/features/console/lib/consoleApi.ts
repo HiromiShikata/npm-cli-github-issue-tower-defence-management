@@ -3,6 +3,7 @@ import type {
   ConsoleComment,
   ConsoleCommit,
   ConsoleIssueState,
+  ConsolePullRequestStatus,
   ConsoleRelatedPullRequest,
 } from '../logic/types';
 
@@ -13,6 +14,7 @@ export type ConsoleApiClient = {
   fetchPrCommits: (url: string) => Promise<ConsoleCommit[]>;
   fetchRelatedPrs: (url: string) => Promise<ConsoleRelatedPullRequest[]>;
   fetchIssueState: (url: string) => Promise<ConsoleIssueState>;
+  fetchPullRequestStatus: (url: string) => Promise<ConsolePullRequestStatus>;
 };
 
 export type ConsoleReviewRequest = {
@@ -129,6 +131,11 @@ const parseSummary = (value: unknown): ConsoleRelatedPullRequest['summary'] => {
   };
 };
 
+const parseStringArray = (value: unknown): string[] =>
+  Array.isArray(value)
+    ? value.filter((name): name is string => typeof name === 'string')
+    : [];
+
 const parseRelatedPrs = (payload: unknown): ConsoleRelatedPullRequest[] => {
   if (!isRecord(payload) || !Array.isArray(payload.relatedPullRequests)) {
     return [];
@@ -143,13 +150,33 @@ const parseRelatedPrs = (payload: unknown): ConsoleRelatedPullRequest[] => {
     isCiStateSuccess: getBoolean(pr.isCiStateSuccess),
     isResolvedAllReviewComments: getBoolean(pr.isResolvedAllReviewComments),
     isBranchOutOfDate: getBoolean(pr.isBranchOutOfDate),
-    missingRequiredCheckNames: Array.isArray(pr.missingRequiredCheckNames)
-      ? pr.missingRequiredCheckNames.filter(
-          (name): name is string => typeof name === 'string',
-        )
-      : [],
+    missingRequiredCheckNames: parseStringArray(pr.missingRequiredCheckNames),
     summary: parseSummary(pr.summary),
   }));
+};
+
+const parsePullRequestStatus = (payload: unknown): ConsolePullRequestStatus => {
+  if (!isRecord(payload) || !isRecord(payload.status)) {
+    return {
+      found: false,
+      isConflicted: false,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+    };
+  }
+  const status = payload.status;
+  return {
+    found: true,
+    isConflicted: getBoolean(status.isConflicted),
+    isPassedAllCiJob: getBoolean(status.isPassedAllCiJob),
+    isCiStateSuccess: getBoolean(status.isCiStateSuccess),
+    isBranchOutOfDate: getBoolean(status.isBranchOutOfDate),
+    missingRequiredCheckNames: parseStringArray(
+      status.missingRequiredCheckNames,
+    ),
+  };
 };
 
 const parseState = (payload: unknown): ConsoleIssueState => {
@@ -180,6 +207,10 @@ export const createConsoleApiClient = (
     parseRelatedPrs(await requestJson(appendToken, '/api/relatedprs', url)),
   fetchIssueState: async (url) =>
     parseState(await requestJson(appendToken, '/api/issuetitle', url)),
+  fetchPullRequestStatus: async (url) =>
+    parsePullRequestStatus(
+      await requestJson(appendToken, '/api/pullrequeststatus', url),
+    ),
 });
 
 const readOperationErrorReason = async (

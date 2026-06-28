@@ -9,6 +9,7 @@ import type {
   ConsoleComment,
   ConsoleCommit,
   ConsoleIssueState,
+  ConsolePullRequestStatus,
   ConsoleRelatedPullRequest,
 } from '../logic/types';
 import { useConsoleToken } from './useConsoleToken';
@@ -20,6 +21,7 @@ export type ConsoleCaches = {
   commits: ResourceCache<ConsoleCommit[]>;
   relatedPrs: ResourceCache<ConsoleRelatedPullRequest[]>;
   state: ResourceCache<ConsoleIssueState>;
+  prStatus: ResourceCache<ConsolePullRequestStatus>;
   client: ConsoleApiClient;
 };
 
@@ -37,6 +39,9 @@ export const useConsoleCaches = (): ConsoleCaches => {
         client.fetchRelatedPrs,
       ),
       state: new ResourceCache<ConsoleIssueState>(client.fetchIssueState),
+      prStatus: new ResourceCache<ConsolePullRequestStatus>(
+        client.fetchPullRequestStatus,
+      ),
     };
   }, [appendToken]);
 };
