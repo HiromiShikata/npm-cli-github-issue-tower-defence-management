@@ -399,6 +399,31 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     ).toHaveBeenNthCalledWith(2, 'workbench', MAIN_STALLED_SECTION);
   });
 
+  it('notifies on every repeated cycle at the same instant without reading any cooldown state', async () => {
+    setupLiveInteractiveSession('workbench');
+    mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
+      [
+        {
+          sessionName: 'workbench',
+          lastOutputEpochSeconds:
+            nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+        },
+      ],
+    );
+
+    await useCase.run(runParams());
+    await useCase.run(runParams());
+    await useCase.run(runParams());
+
+    expect(
+      mockNotificationRepository.sendSelfCheckNotification,
+    ).toHaveBeenCalledTimes(3);
+    expect(Object.keys(mockNotificationRepository)).toEqual([
+      'sendSelfCheckNotification',
+    ]);
+    expect(runParams()).not.toHaveProperty('cooldownSeconds');
+  });
+
   it('sends to multiple sessions sequentially with a stagger delay between sends', async () => {
     mockSnapshotProvider.getSnapshot.mockResolvedValue(
       snapshotWithSessions(['alpha', 'bravo']),
