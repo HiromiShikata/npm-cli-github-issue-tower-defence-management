@@ -1,3 +1,10 @@
+# [1.115.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.114.2...v1.115.0) (2026-06-28)
+
+
+### Features
+
+* **silent-notify:** skip notification when hub task is no longer active ([#1063](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1063)) ([0a45b7f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0a45b7fb8e13814422bc2a52f303bfebf10ab102))
+
 ## [1.114.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.114.1...v1.114.2) (2026-06-28)
 
 

@@ -1,5 +1,6 @@
 import { LocalCommandRunner } from '../../../domain/usecases/adapter-interfaces/LocalCommandRunner';
 import { ProcessEnvironReader } from '../../../domain/usecases/adapter-interfaces/ProcessEnvironReader';
+import { HubTaskStatusResolver } from '../../../domain/usecases/NotifySilentLiveSessionsUseCase';
 import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
 import { SilentSessionMessageTemplates } from '../../repositories/ConfigurableSilentSessionMessageComposer';
 export type NotifySilentTmuxSessionsParams = {
@@ -16,6 +17,8 @@ export type NotifySilentTmuxSessionsParams = {
     subAgentRunningThresholdSeconds: number;
     cooldownSeconds: number;
     staggerSeconds: number;
+    activeHubTaskStatus: string | null;
+    hubTaskStatusResolver: HubTaskStatusResolver | null;
     messageTemplates: SilentSessionMessageTemplates;
     now: Date;
 };
