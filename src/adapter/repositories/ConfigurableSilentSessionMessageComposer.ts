@@ -1,5 +1,11 @@
 import { SubAgentActivity } from '../../domain/entities/LiveSessionActivitySnapshot';
 import { SilentSessionMessageComposer } from '../../domain/usecases/adapter-interfaces/SilentSessionMessageComposer';
+import { SILENT_SESSION_REMINDER_SENTINEL } from '../../domain/usecases/silentSessionReminderSentinel';
+
+const withReminderSentinel = (message: string): string =>
+  message.includes(SILENT_SESSION_REMINDER_SENTINEL)
+    ? message
+    : `${SILENT_SESSION_REMINDER_SENTINEL} ${message}`;
 
 export type SilentSessionMessageTemplates = {
   mainStalledMessage: string | null;
@@ -22,7 +28,7 @@ export class ConfigurableSilentSessionMessageComposer implements SilentSessionMe
     if (this.templates.mainStalledMessage === null) {
       return this.fallback.composeMainStalledSection(mainSilentSeconds);
     }
-    return this.templates.mainStalledMessage;
+    return withReminderSentinel(this.templates.mainStalledMessage);
   };
 
   composeSubAgentSection = (subAgents: SubAgentActivity[]): string => {
@@ -46,6 +52,6 @@ export class ConfigurableSilentSessionMessageComposer implements SilentSessionMe
     if (this.templates.subAgentMessageFooter !== null) {
       sections.push(this.templates.subAgentMessageFooter);
     }
-    return sections.join('\n');
+    return withReminderSentinel(sections.join('\n'));
   };
 }

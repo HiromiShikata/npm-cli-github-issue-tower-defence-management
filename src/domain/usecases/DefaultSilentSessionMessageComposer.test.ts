@@ -1,7 +1,20 @@
 import { DefaultSilentSessionMessageComposer } from './DefaultSilentSessionMessageComposer';
+import { SILENT_SESSION_REMINDER_SENTINEL } from './silentSessionReminderSentinel';
 
 describe('DefaultSilentSessionMessageComposer', () => {
   const composer = new DefaultSilentSessionMessageComposer();
+
+  it('embeds the reminder sentinel in the main-stalled section', () => {
+    const section = composer.composeMainStalledSection(600);
+    expect(section).toContain(SILENT_SESSION_REMINDER_SENTINEL);
+  });
+
+  it('embeds the reminder sentinel in the sub-agent section', () => {
+    const section = composer.composeSubAgentSection([
+      { label: 'sub-process-1', silentSeconds: 360, runningSeconds: 1200 },
+    ]);
+    expect(section).toContain(SILENT_SESSION_REMINDER_SENTINEL);
+  });
 
   it('renders the configured main-stalled message with the silent minutes substituted', () => {
     const section = composer.composeMainStalledSection(600);

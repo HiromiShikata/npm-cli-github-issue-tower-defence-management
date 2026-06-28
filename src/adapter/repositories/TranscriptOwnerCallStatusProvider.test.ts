@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { TranscriptOwnerCallStatusProvider } from './TranscriptOwnerCallStatusProvider';
+import { SILENT_SESSION_REMINDER_SENTINEL } from '../../domain/usecases/silentSessionReminderSentinel';
 
 describe('TranscriptOwnerCallStatusProvider', () => {
   let rootDirectory: string;
@@ -63,6 +64,29 @@ describe('TranscriptOwnerCallStatusProvider', () => {
     },
   });
 
+  const injectedReminderStringContent = (timestamp: string): object => ({
+    type: 'user',
+    timestamp,
+    message: {
+      role: 'user',
+      content: `${SILENT_SESSION_REMINDER_SENTINEL} You have produced no output for 10 minutes. Self-check now:`,
+    },
+  });
+
+  const injectedReminderBlockContent = (timestamp: string): object => ({
+    type: 'user',
+    timestamp,
+    message: {
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text: `${SILENT_SESSION_REMINDER_SENTINEL} The following sub-processes have been silent or running for a long time:`,
+        },
+      ],
+    },
+  });
+
   const sessionName = 'workbench';
 
   it('reports a session as waiting when the last owner call is newer than the last owner reply', async () => {
@@ -119,6 +143,49 @@ describe('TranscriptOwnerCallStatusProvider', () => {
     );
 
     expect(result.has(sessionName)).toBe(true);
+  });
+
+  it('does not count a monitor-injected reminder with string content as an owner reply', async () => {
+    const transcriptPath = writeTranscript('workbench.jsonl', [
+      assistantWithMarker('2026-06-27T10:00:00.000Z'),
+      injectedReminderStringContent('2026-06-27T10:10:00.000Z'),
+    ]);
+    const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
+
+    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
+      new Map([[sessionName, transcriptPath]]),
+    );
+
+    expect(result.has(sessionName)).toBe(true);
+  });
+
+  it('does not count a monitor-injected reminder with text-block content as an owner reply', async () => {
+    const transcriptPath = writeTranscript('workbench.jsonl', [
+      assistantWithMarker('2026-06-27T10:00:00.000Z'),
+      injectedReminderBlockContent('2026-06-27T10:10:00.000Z'),
+    ]);
+    const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
+
+    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
+      new Map([[sessionName, transcriptPath]]),
+    );
+
+    expect(result.has(sessionName)).toBe(true);
+  });
+
+  it('still counts a genuine owner reply that arrives after a monitor-injected reminder', async () => {
+    const transcriptPath = writeTranscript('workbench.jsonl', [
+      assistantWithMarker('2026-06-27T10:00:00.000Z'),
+      injectedReminderStringContent('2026-06-27T10:10:00.000Z'),
+      ownerReply('2026-06-27T10:20:00.000Z'),
+    ]);
+    const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
+
+    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
+      new Map([[sessionName, transcriptPath]]),
+    );
+
+    expect(result.has(sessionName)).toBe(false);
   });
 
   it('does not report a session that never raised an owner call', async () => {

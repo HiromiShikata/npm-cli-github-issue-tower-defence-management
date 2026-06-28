@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import { OwnerCallStatusProvider } from '../../domain/usecases/adapter-interfaces/OwnerCallStatusProvider';
+import { SILENT_SESSION_REMINDER_SENTINEL } from '../../domain/usecases/silentSessionReminderSentinel';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -41,12 +42,26 @@ const extractText = (content: unknown): string => {
 
 const hasOwnerTextReply = (content: unknown): boolean => {
   if (typeof content === 'string') {
-    return content.length > 0;
+    if (content.length === 0) {
+      return false;
+    }
+    // A monitor-injected self-check reminder lands in the target session's
+    // transcript as a user text entry. It carries the reminder sentinel, so it
+    // is the monitor talking to the session, not the owner replying. It MUST NOT
+    // advance the last-owner-reply time, otherwise an outstanding call-to-user
+    // is wrongly treated as answered and the session stops being suppressed.
+    return !content.includes(SILENT_SESSION_REMINDER_SENTINEL);
   }
   if (!Array.isArray(content)) {
     return false;
   }
-  return content.some((block) => isRecord(block) && block.type === 'text');
+  const hasTextBlock = content.some(
+    (block) => isRecord(block) && block.type === 'text',
+  );
+  if (!hasTextBlock) {
+    return false;
+  }
+  return !extractText(content).includes(SILENT_SESSION_REMINDER_SENTINEL);
 };
 
 export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvider {
