@@ -166,6 +166,39 @@ For reference, the avatar comes from an external host:
 ![external avatar](https://example.com/avatar.png)
 `;
 
+export const consoleCodeFenceBodyFixture = `## Reproduction
+
+A TypeScript fenced code block MUST render as a styled code box rather than
+literal backticks:
+
+\`\`\`ts
+export const splitMarkdownSegments = (source: string): ConsoleMarkdownSegment[] => {
+  const lines = source.split('\\n');
+  return lines.length > 0 ? parse(lines) : [];
+};
+\`\`\`
+
+A code block that documents a mermaid fence MUST stay literal text and MUST NOT
+be turned into a diagram:
+
+\`\`\`text
+\`\`\`mermaid
+graph TD; A-->B;
+\`\`\`
+
+The diagram below MUST still render as an actual diagram:
+
+\`\`\`mermaid
+sequenceDiagram
+  participant Browser
+  participant ConsoleServer
+  Browser->>ConsoleServer: GET /api/itembody?url=...
+  ConsoleServer-->>Browser: { body }
+\`\`\`
+
+Inline \`code\` spans are unaffected.
+`;
+
 export const consoleMermaidBodyFixture = `Here is the request flow:
 
 \`\`\`mermaid
