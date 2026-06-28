@@ -362,12 +362,24 @@ describe('consoleReadApi', () => {
       issueRepository.getOpenPullRequest.mockResolvedValue(openPullRequest);
       let now = 0;
       const cache = new PullRequestStatusCache(() => now);
-      await handlePullRequestStatus(issueRepository, cache, openPullRequest.url);
+      await handlePullRequestStatus(
+        issueRepository,
+        cache,
+        openPullRequest.url,
+      );
       now = PULL_REQUEST_STATUS_CACHE_TTL_MS - 1;
-      await handlePullRequestStatus(issueRepository, cache, openPullRequest.url);
+      await handlePullRequestStatus(
+        issueRepository,
+        cache,
+        openPullRequest.url,
+      );
       expect(issueRepository.getOpenPullRequest).toHaveBeenCalledTimes(1);
       now = PULL_REQUEST_STATUS_CACHE_TTL_MS;
-      await handlePullRequestStatus(issueRepository, cache, openPullRequest.url);
+      await handlePullRequestStatus(
+        issueRepository,
+        cache,
+        openPullRequest.url,
+      );
       expect(issueRepository.getOpenPullRequest).toHaveBeenCalledTimes(2);
     });
   });

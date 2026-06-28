@@ -16,10 +16,7 @@ import {
   startWebServer,
 } from './webServer';
 import type { ImageFetcher } from './consoleImageProxy';
-import {
-  IssueTitleStateCache,
-  PullRequestStatusCache,
-} from './consoleReadApi';
+import { IssueTitleStateCache, PullRequestStatusCache } from './consoleReadApi';
 import { readDoneProjectItemIds } from './consoleDoneStore';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Project } from '../../../domain/entities/Project';
