@@ -1,3 +1,10 @@
+## [1.111.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.111.0...v1.111.1) (2026-06-28)
+
+
+### Bug Fixes
+
+* **schedule:** treat stop_sequence as a completed sub-agent in stall detection ([#1034](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1034)) ([0318011](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0318011691871b1d8141eed735de911a15866e92)), closes [#1033](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1033)
+
 # [1.111.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.110.1...v1.111.0) (2026-06-27)
 
 
