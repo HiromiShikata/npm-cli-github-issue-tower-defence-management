@@ -2,7 +2,6 @@ import { SubAgentActivity } from '../../domain/entities/LiveSessionActivitySnaps
 import { SilentSessionMessageComposer } from '../../domain/usecases/adapter-interfaces/SilentSessionMessageComposer';
 export type SilentSessionMessageTemplates = {
     mainStalledMessage: string | null;
-    ownerReNotificationMessage: string | null;
     subAgentMessageHeader: string | null;
     subAgentMessageFooter: string | null;
 };
@@ -11,7 +10,6 @@ export declare class ConfigurableSilentSessionMessageComposer implements SilentS
     private readonly fallback;
     constructor(templates: SilentSessionMessageTemplates, fallback: SilentSessionMessageComposer);
     composeMainStalledSection: (mainSilentSeconds: number) => string;
-    composeOwnerReNotificationSection: (waitingSeconds: number) => string;
     composeSubAgentSection: (subAgents: SubAgentActivity[]) => string;
 }
 //# sourceMappingURL=ConfigurableSilentSessionMessageComposer.d.ts.map

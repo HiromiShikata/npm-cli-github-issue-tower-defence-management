@@ -128,7 +128,6 @@ export class HandleScheduledEventUseCaseHandler {
       silentNotificationCooldownSeconds?: number;
       silentNotificationStaggerSeconds?: number;
       silentMainStalledMessage?: string;
-      silentOwnerReNotificationMessage?: string;
       silentSubAgentMessageHeader?: string;
       silentSubAgentMessageFooter?: string;
       credentials: {
@@ -633,10 +632,6 @@ export class HandleScheduledEventUseCaseHandler {
             mainStalledMessage:
               mergedInput.silentMainStalledMessage ??
               process.env.TDPM_SILENT_MAIN_STALLED_MESSAGE ??
-              null,
-            ownerReNotificationMessage:
-              mergedInput.silentOwnerReNotificationMessage ??
-              process.env.TDPM_SILENT_OWNER_RE_NOTIFICATION_MESSAGE ??
               null,
             subAgentMessageHeader:
               mergedInput.silentSubAgentMessageHeader ??

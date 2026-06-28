@@ -19,12 +19,6 @@ class ConfigurableSilentSessionMessageComposer {
             }
             return withReminderSentinel(this.templates.mainStalledMessage);
         };
-        this.composeOwnerReNotificationSection = (waitingSeconds) => {
-            if (this.templates.ownerReNotificationMessage === null) {
-                return this.fallback.composeOwnerReNotificationSection(waitingSeconds);
-            }
-            return withReminderSentinel(this.templates.ownerReNotificationMessage);
-        };
         this.composeSubAgentSection = (subAgents) => {
             if (this.templates.subAgentMessageHeader === null &&
                 this.templates.subAgentMessageFooter === null) {

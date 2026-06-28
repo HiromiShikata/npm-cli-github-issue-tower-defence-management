@@ -9,20 +9,6 @@ describe('DefaultSilentSessionMessageComposer', () => {
     expect(section).toContain(SILENT_SESSION_REMINDER_SENTINEL);
   });
 
-  it('embeds the reminder sentinel in the owner-re-notification section', () => {
-    const section = composer.composeOwnerReNotificationSection(1800);
-    expect(section).toContain(SILENT_SESSION_REMINDER_SENTINEL);
-  });
-
-  it('instructs the agent to re-raise its pending call-to-user without treating the reminder as an owner reply', () => {
-    const section = composer.composeOwnerReNotificationSection(1800);
-    expect(section).toContain('waiting on the owner for 30 minutes');
-    expect(section).toContain('NOT the owner replying');
-    expect(section).toContain('Re-raise your pending call-to-user');
-    expect(section).toContain('you are not stalled or idle');
-    expect(section.toLowerCase()).not.toContain('no output for');
-  });
-
   it('embeds the reminder sentinel in the sub-agent section', () => {
     const section = composer.composeSubAgentSection([
       { label: 'sub-process-1', silentSeconds: 360, runningSeconds: 1200 },
@@ -67,12 +53,10 @@ describe('DefaultSilentSessionMessageComposer', () => {
 
   it('does not contain any host-specific or internal identifiers', () => {
     const mainSection = composer.composeMainStalledSection(600);
-    const ownerSection = composer.composeOwnerReNotificationSection(1800);
     const subSection = composer.composeSubAgentSection([
       { label: 'sub-process-1', silentSeconds: 360, runningSeconds: 1200 },
     ]);
-    const combined =
-      `${mainSection}\n${ownerSection}\n${subSection}`.toLowerCase();
+    const combined = `${mainSection}\n${subSection}`.toLowerCase();
     expect(combined).not.toContain('claude');
     expect(combined).not.toContain('take ownership');
     expect(combined).not.toContain('/home/');

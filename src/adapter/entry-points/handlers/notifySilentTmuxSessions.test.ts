@@ -21,7 +21,6 @@ const CLAUDE_PID = 201;
 
 const EMPTY_TEMPLATES: SilentSessionMessageTemplates = {
   mainStalledMessage: null,
-  ownerReNotificationMessage: null,
   subAgentMessageHeader: null,
   subAgentMessageFooter: null,
 };
@@ -169,7 +168,6 @@ describe('notifySilentTmuxSessions', () => {
       ...baseParams(runner),
       messageTemplates: {
         mainStalledMessage: 'CUSTOM_MAIN_TEMPLATE',
-        ownerReNotificationMessage: null,
         subAgentMessageHeader: null,
         subAgentMessageFooter: null,
       },
@@ -183,42 +181,7 @@ describe('notifySilentTmuxSessions', () => {
     );
   });
 
-  it('sends no notification while an owner call is unanswered and the wait is within the threshold', async () => {
-    const recentOwnerCall = new Date(
-      (NOW_EPOCH_SECONDS - 5 * 60) * 1000,
-    ).toISOString();
-    writeTranscript([
-      {
-        type: 'user',
-        timestamp: '2026-06-25T23:00:00.000Z',
-        message: { role: 'user', content: 'go ahead' },
-      },
-      {
-        type: 'assistant',
-        timestamp: recentOwnerCall,
-        message: {
-          role: 'assistant',
-          stop_reason: 'end_turn',
-          content: [
-            { type: 'text', text: 'waiting <<OWNER_CALL>> please decide' },
-          ],
-        },
-      },
-    ]);
-    const runner = liveSessionRunner();
-
-    await notifySilentTmuxSessions({
-      ...baseParams(runner),
-      ownerCallMarker: '<<OWNER_CALL>>',
-    });
-
-    const sendCall = runner.runCommand.mock.calls.find(
-      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
-    );
-    expect(sendCall).toBeUndefined();
-  });
-
-  it('re-notifies the owner when an owner call has been unanswered past the threshold', async () => {
+  it('suppresses the notification whenever an owner call is unanswered, regardless of how long the session has been silent', async () => {
     const stalePendingOwnerCall = new Date(
       (NOW_EPOCH_SECONDS - 11 * 60) * 1000,
     ).toISOString();
@@ -250,10 +213,7 @@ describe('notifySilentTmuxSessions', () => {
     const sendCall = runner.runCommand.mock.calls.find(
       (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
     );
-    expect(sendCall?.[1][2]).toBe(SESSION_NAME);
-    expect(sendCall?.[1][4]).toContain(SILENT_SESSION_REMINDER_SENTINEL);
-    expect(sendCall?.[1][4]).toContain('Re-raise your pending call-to-user');
-    expect(sendCall?.[1][4]).not.toContain('You have produced no output for');
+    expect(sendCall).toBeUndefined();
   });
 
   it('does not re-notify the same silent session on the next cycle within cooldown', async () => {

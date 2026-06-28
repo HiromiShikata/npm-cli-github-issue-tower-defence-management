@@ -9,7 +9,6 @@ const withReminderSentinel = (message: string): string =>
 
 export type SilentSessionMessageTemplates = {
   mainStalledMessage: string | null;
-  ownerReNotificationMessage: string | null;
   subAgentMessageHeader: string | null;
   subAgentMessageFooter: string | null;
 };
@@ -30,13 +29,6 @@ export class ConfigurableSilentSessionMessageComposer implements SilentSessionMe
       return this.fallback.composeMainStalledSection(mainSilentSeconds);
     }
     return withReminderSentinel(this.templates.mainStalledMessage);
-  };
-
-  composeOwnerReNotificationSection = (waitingSeconds: number): string => {
-    if (this.templates.ownerReNotificationMessage === null) {
-      return this.fallback.composeOwnerReNotificationSection(waitingSeconds);
-    }
-    return withReminderSentinel(this.templates.ownerReNotificationMessage);
   };
 
   composeSubAgentSection = (subAgents: SubAgentActivity[]): string => {
