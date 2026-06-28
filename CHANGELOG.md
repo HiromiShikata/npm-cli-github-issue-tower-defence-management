@@ -1,3 +1,10 @@
+## [1.114.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.114.0...v1.114.1) (2026-06-28)
+
+
+### Bug Fixes
+
+* **silent-notification:** resolve live transcripts via rotated id and shared projects dir ([#1065](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1065)) ([95e491a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/95e491ab813e577c795c5a11d59fb1fab1b035e4)), closes [#1064](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1064)
+
 # [1.114.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.113.0...v1.114.0) (2026-06-28)
 
 

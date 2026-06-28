@@ -18,6 +18,7 @@ export declare const OWNER_HANDOVER_COMMAND_MARKER = "Take ownership of";
  */
 export declare class ResolveInteractiveLiveSessionsUseCase {
     resolve: (snapshot: LiveSessionProcessSnapshot) => InteractiveLiveSession[];
+    private collectCandidateSessionIds;
     private findInteractiveProcess;
 }
 //# sourceMappingURL=ResolveInteractiveLiveSessionsUseCase.d.ts.map

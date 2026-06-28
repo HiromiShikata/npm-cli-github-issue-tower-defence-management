@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.LocalProcessLiveSessionProcessSnapshotProvider = void 0;
+const FileSystemSessionRecordReader_1 = require("./FileSystemSessionRecordReader");
 const SESSION_ID_ENV_KEY = 'CLAUDE_CODE_SESSION_ID';
 const CONFIG_DIR_ENV_KEY = 'CLAUDE_CONFIG_DIR';
 /**
@@ -11,9 +12,10 @@ const CONFIG_DIR_ENV_KEY = 'CLAUDE_CONFIG_DIR';
  * pure resolver, so all host access is contained in this adapter.
  */
 class LocalProcessLiveSessionProcessSnapshotProvider {
-    constructor(localCommandRunner, environReader) {
+    constructor(localCommandRunner, environReader, sessionRecordReader = new FileSystemSessionRecordReader_1.FileSystemSessionRecordReader()) {
         this.localCommandRunner = localCommandRunner;
         this.environReader = environReader;
+        this.sessionRecordReader = sessionRecordReader;
         this.getSnapshot = async () => {
             const sessionNames = await this.listSessionNames();
             const sessions = [];
@@ -59,12 +61,17 @@ class LocalProcessLiveSessionProcessSnapshotProvider {
                 const ppid = Number(match[2]);
                 const commandLine = match[3].trim();
                 const environ = this.environReader.readEnviron(pid);
+                const configDir = environ?.[CONFIG_DIR_ENV_KEY] ?? null;
+                const currentSessionId = configDir === null
+                    ? null
+                    : this.sessionRecordReader.readCurrentSessionId(configDir, pid);
                 processes.push({
                     pid,
                     ppid,
                     commandLine,
                     sessionId: environ?.[SESSION_ID_ENV_KEY] ?? null,
-                    configDir: environ?.[CONFIG_DIR_ENV_KEY] ?? null,
+                    currentSessionId,
+                    configDir,
                 });
             }
             return processes;

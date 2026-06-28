@@ -1,6 +1,7 @@
 import { LocalCommandRunner } from '../../domain/usecases/adapter-interfaces/LocalCommandRunner';
 import { LiveSessionProcessSnapshotProvider } from '../../domain/usecases/adapter-interfaces/LiveSessionProcessSnapshotProvider';
 import { ProcessEnvironReader } from '../../domain/usecases/adapter-interfaces/ProcessEnvironReader';
+import { SessionRecordReader } from '../../domain/usecases/adapter-interfaces/SessionRecordReader';
 import { LiveSessionProcessSnapshot } from '../../domain/entities/LiveSessionProcessSnapshot';
 /**
  * Builds a live-session process snapshot from the local host: it lists the live
@@ -12,7 +13,8 @@ import { LiveSessionProcessSnapshot } from '../../domain/entities/LiveSessionPro
 export declare class LocalProcessLiveSessionProcessSnapshotProvider implements LiveSessionProcessSnapshotProvider {
     private readonly localCommandRunner;
     private readonly environReader;
-    constructor(localCommandRunner: LocalCommandRunner, environReader: ProcessEnvironReader);
+    private readonly sessionRecordReader;
+    constructor(localCommandRunner: LocalCommandRunner, environReader: ProcessEnvironReader, sessionRecordReader?: SessionRecordReader);
     getSnapshot: () => Promise<LiveSessionProcessSnapshot>;
     private listSessionNames;
     private listPanePids;
