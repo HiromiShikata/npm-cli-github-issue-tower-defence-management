@@ -87,6 +87,52 @@ describe('FileSystemInteractiveLiveSessionTranscriptResolver', () => {
     expect(result.get('workbench')).toBe(rotatedPath);
   });
 
+  it('resolves a non-resume session to the descendant id file when the own launch id file is absent', () => {
+    const configDir = path.join(configRoot, 'non-resume');
+    const harnessPath = writeTranscript({
+      projectsDirectory: path.join(configDir, 'projects'),
+      cwdSlug: '-home-user',
+      sessionId: 'harness-id',
+    });
+    const resolver = new FileSystemInteractiveLiveSessionTranscriptResolver(
+      sharedProjectsDirectory,
+    );
+
+    const result = resolver.resolveTranscriptPaths([
+      {
+        sessionName: 'non-resume',
+        sessionId: 'launch-id',
+        candidateSessionIds: ['launch-id', 'harness-id'],
+        configDir,
+      },
+    ]);
+
+    expect(result.get('non-resume')).toBe(harnessPath);
+  });
+
+  it('resolves a resume session to the own id file when descendants share the own id', () => {
+    const configDir = path.join(configRoot, 'resume');
+    const ownPath = writeTranscript({
+      projectsDirectory: path.join(configDir, 'projects'),
+      cwdSlug: '-home-user',
+      sessionId: 'own-id',
+    });
+    const resolver = new FileSystemInteractiveLiveSessionTranscriptResolver(
+      sharedProjectsDirectory,
+    );
+
+    const result = resolver.resolveTranscriptPaths([
+      {
+        sessionName: 'resume',
+        sessionId: 'own-id',
+        candidateSessionIds: ['own-id', 'own-id'],
+        configDir,
+      },
+    ]);
+
+    expect(result.get('resume')).toBe(ownPath);
+  });
+
   it('resolves a transcript that lives under the shared projects directory', () => {
     const configDir = path.join(configRoot, 'workbench');
     const sharedPath = writeTranscript({
