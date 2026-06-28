@@ -40,6 +40,30 @@ const extractText = (content: unknown): string => {
   return texts.join('\n');
 };
 
+// A transcript user entry is only a genuine owner reply when it was actually
+// typed (or queued) by the human owner. Claude Code records the provenance of
+// each user entry on the top-level `origin` and `promptSource` fields. A
+// genuine human prompt is identified by EITHER `origin.kind === 'human'` OR a
+// `promptSource` of `typed`/`queued`; the second condition is required because
+// older-format transcripts record genuine human replies with a `promptSource`
+// of `queued`/`typed` but no `origin` field, and dropping those would leave a
+// real owner reply uncounted and the session waiting forever. Every
+// system-injected user entry, by contrast, uses a `promptSource` of `system`
+// (sub-agent `task-notification` notices, cross-session `peer` messages) or
+// `sdk` (spawn prompts), or has neither field (tool results, skill/meta
+// entries) — none of which match. Only a genuine human entry may clear an
+// outstanding call-to-user; otherwise a system-injected entry would be
+// miscounted as the owner answering and a genuinely waiting session would stop
+// being suppressed.
+const isGenuineHumanEntry = (parsed: Record<string, unknown>): boolean => {
+  const origin = parsed.origin;
+  if (isRecord(origin) && readString(origin, 'kind') === 'human') {
+    return true;
+  }
+  const promptSource = readString(parsed, 'promptSource');
+  return promptSource === 'typed' || promptSource === 'queued';
+};
+
 const hasOwnerTextReply = (content: unknown): boolean => {
   if (typeof content === 'string') {
     if (content.length === 0) {
@@ -122,7 +146,11 @@ export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvide
       ) {
         lastOwnerCallEpochMs = epochMs;
       }
-      if (type === 'user' && hasOwnerTextReply(messageContent)) {
+      if (
+        type === 'user' &&
+        isGenuineHumanEntry(parsed) &&
+        hasOwnerTextReply(messageContent)
+      ) {
         lastOwnerReplyEpochMs = epochMs;
       }
     }
