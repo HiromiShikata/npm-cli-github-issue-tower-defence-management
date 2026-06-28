@@ -100,7 +100,9 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
     expect(composer.composeOwnerReNotificationSection(600)).toBe(
       'FALLBACK_OWNER',
     );
-    expect(fallback.composeOwnerReNotificationSection).toHaveBeenCalledWith(600);
+    expect(fallback.composeOwnerReNotificationSection).toHaveBeenCalledWith(
+      600,
+    );
   });
 
   it('uses the configured owner-re-notification template when provided', () => {

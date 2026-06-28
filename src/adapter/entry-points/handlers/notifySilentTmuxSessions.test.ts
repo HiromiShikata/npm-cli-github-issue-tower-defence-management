@@ -314,13 +314,17 @@ describe('notifySilentTmuxSessions', () => {
     const firstRunner = liveSessionRunner();
     await notifySilentTmuxSessions({
       ...baseParams(firstRunner),
-      cacheRepository: makeCacheRepositoryAt(path.join(cacheDirectory, 'umino')),
+      cacheRepository: makeCacheRepositoryAt(
+        path.join(cacheDirectory, 'umino'),
+      ),
     });
 
     const secondRunner = liveSessionRunner();
     await notifySilentTmuxSessions({
       ...baseParams(secondRunner),
-      cacheRepository: makeCacheRepositoryAt(path.join(cacheDirectory, 'xmile')),
+      cacheRepository: makeCacheRepositoryAt(
+        path.join(cacheDirectory, 'xmile'),
+      ),
       now: new Date(NOW.getTime() + 60 * 1000),
     });
 
