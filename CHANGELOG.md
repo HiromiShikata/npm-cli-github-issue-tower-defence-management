@@ -1,3 +1,10 @@
+## [1.112.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.112.2...v1.112.3) (2026-06-28)
+
+
+### Bug Fixes
+
+* **schedule:** remove owner re-notification path and count only genuine human owner replies ([#1049](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1049)) ([5809680](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/580968033320347badfe3a6f1237f9bbd0f876ad)), closes [#1047](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1047)
+
 ## [1.112.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.112.1...v1.112.2) (2026-06-28)
 
 
