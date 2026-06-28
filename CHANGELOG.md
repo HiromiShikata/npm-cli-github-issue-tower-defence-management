@@ -1,3 +1,10 @@
+## [1.115.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.115.1...v1.115.2) (2026-06-28)
+
+
+### Bug Fixes
+
+* **console:** make root font-size viewport-width-relative so PC view matches readable mobile target ([#1072](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1072)) ([d27ae65](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d27ae659e0592a5af3b3df72a514d95b18eb666e)), closes [#1071](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1071)
+
 ## [1.115.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.115.0...v1.115.1) (2026-06-28)
 
 
