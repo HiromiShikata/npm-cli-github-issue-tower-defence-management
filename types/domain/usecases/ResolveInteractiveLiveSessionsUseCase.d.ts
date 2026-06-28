@@ -18,6 +18,18 @@ export declare const OWNER_HANDOVER_COMMAND_MARKER = "Take ownership of";
  */
 export declare class ResolveInteractiveLiveSessionsUseCase {
     resolve: (snapshot: LiveSessionProcessSnapshot) => InteractiveLiveSession[];
+    /**
+     * Collects the distinct session ids that may name the actively-written
+     * transcript on disk, in priority order. The rotated current session id
+     * recorded for the interactive process is first, because for a resumed or
+     * compacted session the id rotates and the live transcript is named by the
+     * current id. The interactive process's own launch id follows, then the
+     * distinct ids propagated to its descendant processes. For a `--resume`
+     * session these ids coincide, yielding a single id; for a non-resume session
+     * the own (launch) id names no transcript and the live transcript is named by
+     * the descendant-propagated id, which is included here so the resolver can
+     * find the actively-written file.
+     */
     private collectCandidateSessionIds;
     private findInteractiveProcess;
 }

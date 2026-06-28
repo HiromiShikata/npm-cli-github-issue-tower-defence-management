@@ -1,3 +1,10 @@
+## [1.114.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.114.1...v1.114.2) (2026-06-28)
+
+
+### Bug Fixes
+
+* **silent-notification:** count any transcript entry and resolve non-resume transcripts ([#1061](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1061)) ([dbb8bb4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/dbb8bb4171eb4ccd61a9e702a685ce7f9642e43a))
+
 ## [1.114.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.114.0...v1.114.1) (2026-06-28)
 
 
