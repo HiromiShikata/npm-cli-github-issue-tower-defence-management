@@ -1,6 +1,7 @@
 import { LocalProcessLiveSessionProcessSnapshotProvider } from './LocalProcessLiveSessionProcessSnapshotProvider';
 import { LocalCommandRunner } from '../../domain/usecases/adapter-interfaces/LocalCommandRunner';
 import { ProcessEnvironReader } from '../../domain/usecases/adapter-interfaces/ProcessEnvironReader';
+import { SessionRecordReader } from '../../domain/usecases/adapter-interfaces/SessionRecordReader';
 
 describe('LocalProcessLiveSessionProcessSnapshotProvider', () => {
   const makeRunner = (
@@ -27,6 +28,13 @@ describe('LocalProcessLiveSessionProcessSnapshotProvider', () => {
     byPid: Record<number, Record<string, string>>,
   ): ProcessEnvironReader => ({
     readEnviron: (pid: number) => byPid[pid] ?? null,
+  });
+
+  const makeSessionRecordReader = (
+    byPid: Record<number, string>,
+  ): SessionRecordReader => ({
+    readCurrentSessionId: (_configDir: string, pid: number) =>
+      byPid[pid] ?? null,
   });
 
   it('builds a snapshot of sessions, pane pids, and processes with environment', async () => {
@@ -56,9 +64,14 @@ describe('LocalProcessLiveSessionProcessSnapshotProvider', () => {
         CLAUDE_CONFIG_DIR: '/config/workbench',
       },
     });
+    const sessionRecordReader = makeSessionRecordReader({
+      101: 'issue-rotated-uuid',
+      201: 'wb-rotated-uuid',
+    });
     const provider = new LocalProcessLiveSessionProcessSnapshotProvider(
       runner,
       environReader,
+      sessionRecordReader,
     );
 
     const snapshot = await provider.getSnapshot();
@@ -75,6 +88,7 @@ describe('LocalProcessLiveSessionProcessSnapshotProvider', () => {
       ppid: 200,
       commandLine: 'claude --name workbench',
       sessionId: 'wb-uuid',
+      currentSessionId: 'wb-rotated-uuid',
       configDir: '/config/workbench',
     });
     expect(snapshot.processes).toContainEqual({
@@ -82,8 +96,42 @@ describe('LocalProcessLiveSessionProcessSnapshotProvider', () => {
       ppid: 1,
       commandLine: 'shell',
       sessionId: null,
+      currentSessionId: null,
       configDir: null,
     });
+  });
+
+  it('leaves currentSessionId null when the session record is absent', async () => {
+    const runner = makeRunner({
+      'tmux list-sessions -F #{session_name}': { stdout: 'workbench\n' },
+      'tmux list-panes -t workbench -F #{pane_pid}': { stdout: '200\n' },
+      'ps -eo pid=,ppid=,args=': {
+        stdout: '    201     200 claude --name workbench',
+      },
+    });
+    const provider = new LocalProcessLiveSessionProcessSnapshotProvider(
+      runner,
+      makeEnvironReader({
+        201: {
+          CLAUDE_CODE_SESSION_ID: 'wb-uuid',
+          CLAUDE_CONFIG_DIR: '/config/workbench',
+        },
+      }),
+      makeSessionRecordReader({}),
+    );
+
+    const snapshot = await provider.getSnapshot();
+
+    expect(snapshot.processes).toEqual([
+      {
+        pid: 201,
+        ppid: 200,
+        commandLine: 'claude --name workbench',
+        sessionId: 'wb-uuid',
+        currentSessionId: null,
+        configDir: '/config/workbench',
+      },
+    ]);
   });
 
   it('returns an empty snapshot when tmux reports no sessions', async () => {
@@ -94,6 +142,7 @@ describe('LocalProcessLiveSessionProcessSnapshotProvider', () => {
     const provider = new LocalProcessLiveSessionProcessSnapshotProvider(
       runner,
       makeEnvironReader({}),
+      makeSessionRecordReader({}),
     );
 
     const snapshot = await provider.getSnapshot();
@@ -121,6 +170,7 @@ describe('LocalProcessLiveSessionProcessSnapshotProvider', () => {
           CLAUDE_CONFIG_DIR: '/config/workbench',
         },
       }),
+      makeSessionRecordReader({ 201: 'wb-rotated-uuid' }),
     );
 
     const snapshot = await provider.getSnapshot();
@@ -131,6 +181,7 @@ describe('LocalProcessLiveSessionProcessSnapshotProvider', () => {
         ppid: 200,
         commandLine: 'claude --name workbench',
         sessionId: 'wb-uuid',
+        currentSessionId: 'wb-rotated-uuid',
         configDir: '/config/workbench',
       },
     ]);

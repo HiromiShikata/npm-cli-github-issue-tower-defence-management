@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import { InteractiveLiveSession } from '../../domain/entities/InteractiveLiveSession';
 import { InteractiveLiveSessionTranscriptResolver } from '../../domain/usecases/adapter-interfaces/InteractiveLiveSessionTranscriptResolver';
@@ -12,18 +13,14 @@ const modifiedEpochMs = (filePath: string): number | null => {
   }
 };
 
-/**
- * Resolves the real transcript path of an interactive Claude Code session from
- * the session id and config directory taken from the session's process
- * environment. The transcript lives at
- * `<configDir>/projects/<cwd-slug>/<sessionId>.jsonl`; this resolver scans the
- * `projects` subdirectories for a file named `<sessionId>.jsonl` and returns the
- * most recently modified match. Because resolution is keyed on the process
- * session id rather than on a session name or issue URL, a plain-named session
- * (for example one named `workbench`) resolves just as well as an issue-url
- * named one.
- */
+const defaultSharedProjectsDirectory = (): string =>
+  path.join(os.homedir(), '.claude', 'projects');
+
 export class FileSystemInteractiveLiveSessionTranscriptResolver implements InteractiveLiveSessionTranscriptResolver {
+  constructor(
+    private readonly sharedProjectsDirectory: string = defaultSharedProjectsDirectory(),
+  ) {}
+
   resolveTranscriptPaths = (
     sessions: InteractiveLiveSession[],
   ): Map<string, string> => {
@@ -40,36 +37,59 @@ export class FileSystemInteractiveLiveSessionTranscriptResolver implements Inter
   private resolveTranscriptPath = (
     session: InteractiveLiveSession,
   ): string | null => {
-    const projectsDirectory = path.join(session.configDir, 'projects');
+    const projectsDirectories = this.listProjectsDirectories(session.configDir);
+    let latestPath: string | null = null;
+    let latestEpochMs = -Infinity;
+    for (const candidateSessionId of session.candidateSessionIds) {
+      const fileName = `${candidateSessionId}.jsonl`;
+      for (const projectsDirectory of projectsDirectories) {
+        for (const candidate of this.listCandidatePaths(
+          projectsDirectory,
+          fileName,
+        )) {
+          const epochMs = modifiedEpochMs(candidate);
+          if (epochMs === null) {
+            continue;
+          }
+          if (epochMs > latestEpochMs) {
+            latestEpochMs = epochMs;
+            latestPath = candidate;
+          }
+        }
+      }
+    }
+    return latestPath;
+  };
+
+  private listProjectsDirectories = (configDir: string): string[] => {
+    const perSessionProjectsDirectory = path.join(configDir, 'projects');
+    if (perSessionProjectsDirectory === this.sharedProjectsDirectory) {
+      return [perSessionProjectsDirectory];
+    }
+    return [perSessionProjectsDirectory, this.sharedProjectsDirectory];
+  };
+
+  private listCandidatePaths = (
+    projectsDirectory: string,
+    fileName: string,
+  ): string[] => {
     let projectEntries: fs.Dirent[];
     try {
       projectEntries = fs.readdirSync(projectsDirectory, {
         withFileTypes: true,
       });
     } catch {
-      return null;
+      return [];
     }
-    const fileName = `${session.sessionId}.jsonl`;
-    let latestPath: string | null = null;
-    let latestEpochMs = -Infinity;
+    const candidatePaths: string[] = [];
     for (const projectEntry of projectEntries) {
       if (!projectEntry.isDirectory()) {
         continue;
       }
-      const candidate = path.join(
-        projectsDirectory,
-        projectEntry.name,
-        fileName,
+      candidatePaths.push(
+        path.join(projectsDirectory, projectEntry.name, fileName),
       );
-      const epochMs = modifiedEpochMs(candidate);
-      if (epochMs === null) {
-        continue;
-      }
-      if (epochMs > latestEpochMs) {
-        latestEpochMs = epochMs;
-        latestPath = candidate;
-      }
     }
-    return latestPath;
+    return candidatePaths;
   };
 }

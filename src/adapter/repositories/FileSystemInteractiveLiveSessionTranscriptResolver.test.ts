@@ -5,11 +5,13 @@ import { FileSystemInteractiveLiveSessionTranscriptResolver } from './FileSystem
 
 describe('FileSystemInteractiveLiveSessionTranscriptResolver', () => {
   let configRoot: string;
+  let sharedProjectsDirectory: string;
 
   beforeEach(() => {
     configRoot = fs.mkdtempSync(
       path.join(os.tmpdir(), 'interactive-transcript-'),
     );
+    sharedProjectsDirectory = path.join(configRoot, 'shared', 'projects');
   });
 
   afterEach(() => {
@@ -17,14 +19,13 @@ describe('FileSystemInteractiveLiveSessionTranscriptResolver', () => {
   });
 
   const writeTranscript = (params: {
-    configDir: string;
+    projectsDirectory: string;
     cwdSlug: string;
     sessionId: string;
     mtimeEpochSeconds?: number;
   }): string => {
     const projectDirectory = path.join(
-      params.configDir,
-      'projects',
+      params.projectsDirectory,
       params.cwdSlug,
     );
     fs.mkdirSync(projectDirectory, { recursive: true });
@@ -40,40 +41,100 @@ describe('FileSystemInteractiveLiveSessionTranscriptResolver', () => {
     return filePath;
   };
 
-  it('resolves a transcript by config dir and session id for a plain-named session', () => {
+  it('resolves a resume-case transcript by config dir and session id', () => {
     const configDir = path.join(configRoot, 'workbench');
     const filePath = writeTranscript({
-      configDir,
+      projectsDirectory: path.join(configDir, 'projects'),
       cwdSlug: '-home-user',
       sessionId: 'wb-uuid',
     });
-    const resolver = new FileSystemInteractiveLiveSessionTranscriptResolver();
+    const resolver = new FileSystemInteractiveLiveSessionTranscriptResolver(
+      sharedProjectsDirectory,
+    );
 
     const result = resolver.resolveTranscriptPaths([
-      { sessionName: 'workbench', sessionId: 'wb-uuid', configDir },
+      {
+        sessionName: 'workbench',
+        sessionId: 'wb-uuid',
+        candidateSessionIds: ['wb-uuid'],
+        configDir,
+      },
     ]);
 
     expect(result.get('workbench')).toBe(filePath);
   });
 
-  it('chooses the most recently modified match across project directories', () => {
+  it('resolves a rotated-id transcript via a later candidate session id', () => {
+    const configDir = path.join(configRoot, 'workbench');
+    const rotatedPath = writeTranscript({
+      projectsDirectory: path.join(configDir, 'projects'),
+      cwdSlug: '-home-user',
+      sessionId: 'rotated-uuid',
+    });
+    const resolver = new FileSystemInteractiveLiveSessionTranscriptResolver(
+      sharedProjectsDirectory,
+    );
+
+    const result = resolver.resolveTranscriptPaths([
+      {
+        sessionName: 'workbench',
+        sessionId: 'launch-uuid',
+        candidateSessionIds: ['rotated-uuid', 'launch-uuid'],
+        configDir,
+      },
+    ]);
+
+    expect(result.get('workbench')).toBe(rotatedPath);
+  });
+
+  it('resolves a transcript that lives under the shared projects directory', () => {
+    const configDir = path.join(configRoot, 'workbench');
+    const sharedPath = writeTranscript({
+      projectsDirectory: sharedProjectsDirectory,
+      cwdSlug: '-home-user',
+      sessionId: 'rotated-uuid',
+    });
+    const resolver = new FileSystemInteractiveLiveSessionTranscriptResolver(
+      sharedProjectsDirectory,
+    );
+
+    const result = resolver.resolveTranscriptPaths([
+      {
+        sessionName: 'workbench',
+        sessionId: 'launch-uuid',
+        candidateSessionIds: ['rotated-uuid', 'launch-uuid'],
+        configDir,
+      },
+    ]);
+
+    expect(result.get('workbench')).toBe(sharedPath);
+  });
+
+  it('prefers the most recently modified match across both projects roots', () => {
     const configDir = path.join(configRoot, 'workbench');
     writeTranscript({
-      configDir,
-      cwdSlug: '-home-user-old',
-      sessionId: 'wb-uuid',
+      projectsDirectory: path.join(configDir, 'projects'),
+      cwdSlug: '-home-user',
+      sessionId: 'rotated-uuid',
       mtimeEpochSeconds: 1700000000,
     });
     const newerPath = writeTranscript({
-      configDir,
-      cwdSlug: '-home-user-new',
-      sessionId: 'wb-uuid',
+      projectsDirectory: sharedProjectsDirectory,
+      cwdSlug: '-home-user',
+      sessionId: 'rotated-uuid',
       mtimeEpochSeconds: 1700000500,
     });
-    const resolver = new FileSystemInteractiveLiveSessionTranscriptResolver();
+    const resolver = new FileSystemInteractiveLiveSessionTranscriptResolver(
+      sharedProjectsDirectory,
+    );
 
     const result = resolver.resolveTranscriptPaths([
-      { sessionName: 'workbench', sessionId: 'wb-uuid', configDir },
+      {
+        sessionName: 'workbench',
+        sessionId: 'launch-uuid',
+        candidateSessionIds: ['rotated-uuid', 'launch-uuid'],
+        configDir,
+      },
     ]);
 
     expect(result.get('workbench')).toBe(newerPath);
@@ -83,26 +144,30 @@ describe('FileSystemInteractiveLiveSessionTranscriptResolver', () => {
     const workbenchConfig = path.join(configRoot, 'workbench');
     const controlRoomConfig = path.join(configRoot, 'control-room');
     const workbenchPath = writeTranscript({
-      configDir: workbenchConfig,
+      projectsDirectory: path.join(workbenchConfig, 'projects'),
       cwdSlug: '-home-user',
       sessionId: 'wb-uuid',
     });
     const controlRoomPath = writeTranscript({
-      configDir: controlRoomConfig,
+      projectsDirectory: path.join(controlRoomConfig, 'projects'),
       cwdSlug: '-home-user',
       sessionId: 'cr-uuid',
     });
-    const resolver = new FileSystemInteractiveLiveSessionTranscriptResolver();
+    const resolver = new FileSystemInteractiveLiveSessionTranscriptResolver(
+      sharedProjectsDirectory,
+    );
 
     const result = resolver.resolveTranscriptPaths([
       {
         sessionName: 'workbench',
         sessionId: 'wb-uuid',
+        candidateSessionIds: ['wb-uuid'],
         configDir: workbenchConfig,
       },
       {
         sessionName: 'control-room',
         sessionId: 'cr-uuid',
+        candidateSessionIds: ['cr-uuid'],
         configDir: controlRoomConfig,
       },
     ]);
@@ -111,34 +176,50 @@ describe('FileSystemInteractiveLiveSessionTranscriptResolver', () => {
     expect(result.get('control-room')).toBe(controlRoomPath);
   });
 
-  it('omits a session whose transcript file is absent', () => {
+  it('omits a session whose transcript file is absent in both roots', () => {
     const configDir = path.join(configRoot, 'workbench');
     fs.mkdirSync(path.join(configDir, 'projects', '-home-user'), {
       recursive: true,
     });
-    const resolver = new FileSystemInteractiveLiveSessionTranscriptResolver();
+    const resolver = new FileSystemInteractiveLiveSessionTranscriptResolver(
+      sharedProjectsDirectory,
+    );
 
     const result = resolver.resolveTranscriptPaths([
-      { sessionName: 'workbench', sessionId: 'missing-uuid', configDir },
+      {
+        sessionName: 'workbench',
+        sessionId: 'missing-uuid',
+        candidateSessionIds: ['missing-uuid'],
+        configDir,
+      },
     ]);
 
     expect(result.has('workbench')).toBe(false);
   });
 
-  it('omits a session whose config dir has no projects directory', () => {
+  it('omits a session when neither projects directory exists', () => {
     const configDir = path.join(configRoot, 'workbench');
     fs.mkdirSync(configDir, { recursive: true });
-    const resolver = new FileSystemInteractiveLiveSessionTranscriptResolver();
+    const resolver = new FileSystemInteractiveLiveSessionTranscriptResolver(
+      sharedProjectsDirectory,
+    );
 
     const result = resolver.resolveTranscriptPaths([
-      { sessionName: 'workbench', sessionId: 'wb-uuid', configDir },
+      {
+        sessionName: 'workbench',
+        sessionId: 'wb-uuid',
+        candidateSessionIds: ['wb-uuid'],
+        configDir,
+      },
     ]);
 
     expect(result.has('workbench')).toBe(false);
   });
 
   it('returns an empty map for an empty session list', () => {
-    const resolver = new FileSystemInteractiveLiveSessionTranscriptResolver();
+    const resolver = new FileSystemInteractiveLiveSessionTranscriptResolver(
+      sharedProjectsDirectory,
+    );
 
     const result = resolver.resolveTranscriptPaths([]);
 
