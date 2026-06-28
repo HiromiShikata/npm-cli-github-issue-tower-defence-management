@@ -1,3 +1,10 @@
+## [1.112.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.112.5...v1.112.6) (2026-06-28)
+
+
+### Bug Fixes
+
+* **console:** show inline-comment button on touch and wire related-PR diff ([#1056](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1056)) ([de247f7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/de247f7464330a4f7e0bff49f8f43e51e345830d)), closes [#1054](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1054)
+
 ## [1.112.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.112.4...v1.112.5) (2026-06-28)
 
 
