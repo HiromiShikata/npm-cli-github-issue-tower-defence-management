@@ -66,29 +66,60 @@ export class ResolveInteractiveLiveSessionsUseCase {
       ) {
         continue;
       }
+      const candidateSessionIds = this.collectCandidateSessionIds(
+        interactiveProcess,
+        childrenByPpid,
+      );
       sessions.push({
         sessionName: session.sessionName,
         sessionId: interactiveProcess.sessionId,
-        candidateSessionIds:
-          this.collectCandidateSessionIds(interactiveProcess),
+        candidateSessionIds,
         configDir: interactiveProcess.configDir,
       });
     }
     return sessions;
   };
 
+  /**
+   * Collects the distinct session ids that may name the actively-written
+   * transcript on disk, in priority order. The rotated current session id
+   * recorded for the interactive process is first, because for a resumed or
+   * compacted session the id rotates and the live transcript is named by the
+   * current id. The interactive process's own launch id follows, then the
+   * distinct ids propagated to its descendant processes. For a `--resume`
+   * session these ids coincide, yielding a single id; for a non-resume session
+   * the own (launch) id names no transcript and the live transcript is named by
+   * the descendant-propagated id, which is included here so the resolver can
+   * find the actively-written file.
+   */
   private collectCandidateSessionIds = (
     interactiveProcess: LiveSessionProcessInfo,
+    childrenByPpid: Map<number, LiveSessionProcessInfo[]>,
   ): string[] => {
     const candidateSessionIds: string[] = [];
     const seenSessionIds = new Set<string>();
-    for (const sessionId of [
-      interactiveProcess.currentSessionId,
-      interactiveProcess.sessionId,
-    ]) {
+    const pushSessionId = (sessionId: string | null): void => {
       if (sessionId !== null && !seenSessionIds.has(sessionId)) {
         seenSessionIds.add(sessionId);
         candidateSessionIds.push(sessionId);
+      }
+    };
+    pushSessionId(interactiveProcess.currentSessionId);
+    const visitedPids = new Set<number>();
+    const queue: LiveSessionProcessInfo[] = [interactiveProcess];
+    let head = 0;
+    while (head < queue.length) {
+      const process = queue[head];
+      head += 1;
+      if (visitedPids.has(process.pid)) {
+        continue;
+      }
+      visitedPids.add(process.pid);
+      pushSessionId(process.sessionId);
+      for (const child of childrenByPpid.get(process.pid) ?? []) {
+        if (!visitedPids.has(child.pid)) {
+          queue.push(child);
+        }
       }
     }
     return candidateSessionIds;

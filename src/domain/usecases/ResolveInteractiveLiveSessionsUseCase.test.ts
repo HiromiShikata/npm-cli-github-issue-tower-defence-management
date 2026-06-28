@@ -219,6 +219,82 @@ describe('ResolveInteractiveLiveSessionsUseCase', () => {
     ]);
   });
 
+  it('collects the descendant-propagated session id after the own launch id for a non-resume session', () => {
+    const snapshot: LiveSessionProcessSnapshot = {
+      sessions: [{ sessionName: 'non-resume', panePids: [900] }],
+      processes: [
+        processInfo({ pid: 900, ppid: 1, commandLine: 'shell' }),
+        processInfo({
+          pid: 901,
+          ppid: 900,
+          commandLine: 'claude --model opus',
+          sessionId: 'launch-id',
+          configDir: '/config/non-resume',
+        }),
+        processInfo({
+          pid: 902,
+          ppid: 901,
+          commandLine: 'node tool worker',
+          sessionId: 'harness-id',
+          configDir: '/config/non-resume',
+        }),
+        processInfo({
+          pid: 903,
+          ppid: 902,
+          commandLine: 'node nested worker',
+          sessionId: 'harness-id',
+          configDir: '/config/non-resume',
+        }),
+      ],
+    };
+
+    const result = useCase.resolve(snapshot);
+
+    expect(result).toEqual([
+      {
+        sessionName: 'non-resume',
+        sessionId: 'launch-id',
+        candidateSessionIds: ['launch-id', 'harness-id'],
+        configDir: '/config/non-resume',
+      },
+    ]);
+  });
+
+  it('orders the rotated current id, then the launch id, then the descendant id', () => {
+    const snapshot: LiveSessionProcessSnapshot = {
+      sessions: [{ sessionName: 'non-resume', panePids: [910] }],
+      processes: [
+        processInfo({ pid: 910, ppid: 1, commandLine: 'shell' }),
+        processInfo({
+          pid: 911,
+          ppid: 910,
+          commandLine: 'claude --model opus',
+          sessionId: 'launch-id',
+          currentSessionId: 'rotated-id',
+          configDir: '/config/non-resume',
+        }),
+        processInfo({
+          pid: 912,
+          ppid: 911,
+          commandLine: 'node tool worker',
+          sessionId: 'harness-id',
+          configDir: '/config/non-resume',
+        }),
+      ],
+    };
+
+    const result = useCase.resolve(snapshot);
+
+    expect(result).toEqual([
+      {
+        sessionName: 'non-resume',
+        sessionId: 'launch-id',
+        candidateSessionIds: ['rotated-id', 'launch-id', 'harness-id'],
+        configDir: '/config/non-resume',
+      },
+    ]);
+  });
+
   it('returns an empty list when there are no sessions', () => {
     const result = useCase.resolve({ sessions: [], processes: [] });
 
