@@ -52,7 +52,40 @@ describe('TranscriptOwnerCallStatusProvider', () => {
   const ownerReply = (timestamp: string): object => ({
     type: 'user',
     timestamp,
+    origin: { kind: 'human' },
+    promptSource: 'typed',
     message: { role: 'user', content: 'go ahead' },
+  });
+
+  const ownerReplyQueuedNoOrigin = (timestamp: string): object => ({
+    type: 'user',
+    timestamp,
+    promptSource: 'queued',
+    message: { role: 'user', content: 'go ahead' },
+  });
+
+  const taskNotification = (timestamp: string): object => ({
+    type: 'user',
+    timestamp,
+    origin: { kind: 'task-notification' },
+    promptSource: 'system',
+    message: {
+      role: 'user',
+      content:
+        '<task-notification>\n<task-id>abc123</task-id>\nA sub-agent finished.\n</task-notification>',
+    },
+  });
+
+  const peerAgentMessage = (timestamp: string): object => ({
+    type: 'user',
+    timestamp,
+    origin: { kind: 'peer' },
+    promptSource: 'system',
+    isMeta: true,
+    message: {
+      role: 'user',
+      content: 'Another Claude session sent a message: please continue.',
+    },
   });
 
   const toolResult = (timestamp: string): object => ({
@@ -177,6 +210,63 @@ describe('TranscriptOwnerCallStatusProvider', () => {
     const transcriptPath = writeTranscript('workbench.jsonl', [
       assistantWithMarker('2026-06-27T10:00:00.000Z'),
       injectedReminderStringContent('2026-06-27T10:10:00.000Z'),
+      ownerReply('2026-06-27T10:20:00.000Z'),
+    ]);
+    const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
+
+    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
+      new Map([[sessionName, transcriptPath]]),
+    );
+
+    expect(result.has(sessionName)).toBe(false);
+  });
+
+  it('does not count a system-injected task-notification user entry as an owner reply', async () => {
+    const transcriptPath = writeTranscript('workbench.jsonl', [
+      assistantWithMarker('2026-06-27T10:00:00.000Z'),
+      taskNotification('2026-06-27T10:10:00.000Z'),
+    ]);
+    const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
+
+    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
+      new Map([[sessionName, transcriptPath]]),
+    );
+
+    expect(result.has(sessionName)).toBe(true);
+  });
+
+  it('does not count a cross-session peer agent message as an owner reply', async () => {
+    const transcriptPath = writeTranscript('workbench.jsonl', [
+      assistantWithMarker('2026-06-27T10:00:00.000Z'),
+      peerAgentMessage('2026-06-27T10:10:00.000Z'),
+    ]);
+    const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
+
+    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
+      new Map([[sessionName, transcriptPath]]),
+    );
+
+    expect(result.has(sessionName)).toBe(true);
+  });
+
+  it('counts a genuine human reply that has promptSource queued but no origin field', async () => {
+    const transcriptPath = writeTranscript('workbench.jsonl', [
+      assistantWithMarker('2026-06-27T10:00:00.000Z'),
+      ownerReplyQueuedNoOrigin('2026-06-27T10:10:00.000Z'),
+    ]);
+    const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
+
+    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
+      new Map([[sessionName, transcriptPath]]),
+    );
+
+    expect(result.has(sessionName)).toBe(false);
+  });
+
+  it('counts a genuine human-origin reply that arrives after a task-notification', async () => {
+    const transcriptPath = writeTranscript('workbench.jsonl', [
+      assistantWithMarker('2026-06-27T10:00:00.000Z'),
+      taskNotification('2026-06-27T10:10:00.000Z'),
       ownerReply('2026-06-27T10:20:00.000Z'),
     ]);
     const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');

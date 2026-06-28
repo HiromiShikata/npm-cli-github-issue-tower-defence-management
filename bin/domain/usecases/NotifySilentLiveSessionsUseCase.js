@@ -80,19 +80,9 @@ class NotifySilentLiveSessionsUseCase {
         this.composeMessage = (snapshot, thresholds) => {
             const sections = [];
             if (snapshot.mainSilentSeconds !== null &&
-                snapshot.mainSilentSeconds >= thresholds.mainSilentThresholdSeconds) {
-                if (snapshot.hasUnansweredOwnerCall) {
-                    // The session is correctly waiting on the owner, but it has been silent
-                    // long enough that the owner has effectively not been re-notified. Rather
-                    // than suppress, instruct the agent to re-raise its pending call-to-user
-                    // so the owner's marker re-fires. The per-session cooldown applied in
-                    // run() limits this to roughly once per cooldown window, and it stops
-                    // automatically once the owner replies (hasUnansweredOwnerCall clears).
-                    sections.push(this.messageComposer.composeOwnerReNotificationSection(snapshot.mainSilentSeconds));
-                }
-                else {
-                    sections.push(this.messageComposer.composeMainStalledSection(snapshot.mainSilentSeconds));
-                }
+                snapshot.mainSilentSeconds >= thresholds.mainSilentThresholdSeconds &&
+                !snapshot.hasUnansweredOwnerCall) {
+                sections.push(this.messageComposer.composeMainStalledSection(snapshot.mainSilentSeconds));
             }
             const stalledSubAgents = snapshot.subAgents.filter((subAgent) => subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds ||
                 subAgent.runningSeconds >= thresholds.subAgentRunningThresholdSeconds);
