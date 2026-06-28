@@ -1,11 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.NotifySilentLiveSessionsUseCase = exports.parseHubTaskIssueUrlFromSessionName = exports.DEFAULT_NOTIFICATION_STAGGER_SECONDS = exports.DEFAULT_NOTIFICATION_COOLDOWN_SECONDS = exports.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = exports.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = exports.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = void 0;
+exports.NotifySilentLiveSessionsUseCase = exports.parseHubTaskIssueUrlFromSessionName = exports.DEFAULT_NOTIFICATION_STAGGER_SECONDS = exports.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = exports.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = exports.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = void 0;
 const ResolveInteractiveLiveSessionsUseCase_1 = require("./ResolveInteractiveLiveSessionsUseCase");
 exports.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = 10 * 60;
 exports.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = 5 * 60;
 exports.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = 15 * 60;
-exports.DEFAULT_NOTIFICATION_COOLDOWN_SECONDS = 30 * 60;
 exports.DEFAULT_NOTIFICATION_STAGGER_SECONDS = 25;
 const GITHUB_ISSUE_URL_PATTERN = /^https:\/\/github\.com\/[^/]+\/[^/]+\/issues\/\d+$/;
 const parseHubTaskIssueUrlFromSessionName = (sessionName) => {
@@ -42,15 +41,8 @@ class NotifySilentLiveSessionsUseCase {
                     ? 1
                     : 0);
             console.log(`Silent live session notification: ${candidates.length} candidate(s) of ${interactiveSessions.length} interactive session(s).`);
-            const nowEpochSeconds = Math.floor(params.now.getTime() / 1000);
             let sentCount = 0;
             for (const candidate of candidates) {
-                const lastNotifiedEpochSeconds = await this.notificationRepository.getLastNotifiedEpochSeconds(candidate.sessionName);
-                if (lastNotifiedEpochSeconds !== null &&
-                    nowEpochSeconds - lastNotifiedEpochSeconds < params.cooldownSeconds) {
-                    console.log(`Skipping ${candidate.sessionName}: notified ${nowEpochSeconds - lastNotifiedEpochSeconds} seconds ago, within cooldown ${params.cooldownSeconds} seconds.`);
-                    continue;
-                }
                 if (!(await this.isHubTaskActive(candidate.sessionName, params.activeHubTaskStatus))) {
                     continue;
                 }
@@ -58,7 +50,6 @@ class NotifySilentLiveSessionsUseCase {
                     await this.sleeper.sleep(params.staggerSeconds * 1000);
                 }
                 await this.notificationRepository.sendSelfCheckNotification(candidate.sessionName, candidate.message);
-                await this.notificationRepository.setLastNotifiedEpochSeconds(candidate.sessionName, nowEpochSeconds);
                 sentCount += 1;
                 console.log(`Notified ${candidate.sessionName}.`);
             }

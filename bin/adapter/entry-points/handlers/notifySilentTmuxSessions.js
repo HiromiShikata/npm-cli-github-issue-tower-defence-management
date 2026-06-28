@@ -30,18 +30,17 @@ const createSubAgentActivityRepository = (subAgentTranscriptRootDirectory, subAg
     return new ProcessListSessionSubAgentActivityRepository_1.ProcessListSessionSubAgentActivityRepository(subAgentProcessMatchPattern, new NodeSubAgentProcessLister_1.NodeSubAgentProcessLister(localCommandRunner), new FileSystemSubAgentSilentSecondsResolver_1.FileSystemSubAgentSilentSecondsResolver(subAgentOutputRootDirectory, now));
 };
 const notifySilentTmuxSessions = async (params) => {
-    const { enabled, localCommandRunner, processEnvironReader, cacheRepository, ownerCallMarker, subAgentOutputRootDirectory, subAgentProcessMatchPattern, subAgentTranscriptRootDirectory, mainSilentThresholdSeconds, subAgentSilentThresholdSeconds, subAgentRunningThresholdSeconds, cooldownSeconds, staggerSeconds, activeHubTaskStatus, hubTaskStatusResolver, messageTemplates, now, } = params;
+    const { enabled, localCommandRunner, processEnvironReader, ownerCallMarker, subAgentOutputRootDirectory, subAgentProcessMatchPattern, subAgentTranscriptRootDirectory, mainSilentThresholdSeconds, subAgentSilentThresholdSeconds, subAgentRunningThresholdSeconds, staggerSeconds, activeHubTaskStatus, hubTaskStatusResolver, messageTemplates, now, } = params;
     if (!enabled) {
         console.log('Silent live session notification skipped: not enabled (set silentNotificationEnabled or TDPM_SILENT_NOTIFICATION_ENABLED=true to enable).');
         return;
     }
     const messageComposer = new ConfigurableSilentSessionMessageComposer_1.ConfigurableSilentSessionMessageComposer(messageTemplates, new DefaultSilentSessionMessageComposer_1.DefaultSilentSessionMessageComposer());
-    const useCase = new NotifySilentLiveSessionsUseCase_1.NotifySilentLiveSessionsUseCase(new LocalProcessLiveSessionProcessSnapshotProvider_1.LocalProcessLiveSessionProcessSnapshotProvider(localCommandRunner, processEnvironReader ?? new ProcFsProcessEnvironReader_1.ProcFsProcessEnvironReader()), new FileSystemInteractiveLiveSessionTranscriptResolver_1.FileSystemInteractiveLiveSessionTranscriptResolver(), new FileSystemSessionOutputActivityRepository_1.FileSystemSessionOutputActivityRepository(), createSubAgentActivityRepository(subAgentTranscriptRootDirectory, subAgentProcessMatchPattern, subAgentOutputRootDirectory, localCommandRunner, now), createOwnerCallStatusProvider(ownerCallMarker), new TmuxSilentSessionNotificationRepository_1.TmuxSilentSessionNotificationRepository(localCommandRunner, cacheRepository), messageComposer, new RealSleeper_1.RealSleeper(), hubTaskStatusResolver);
+    const useCase = new NotifySilentLiveSessionsUseCase_1.NotifySilentLiveSessionsUseCase(new LocalProcessLiveSessionProcessSnapshotProvider_1.LocalProcessLiveSessionProcessSnapshotProvider(localCommandRunner, processEnvironReader ?? new ProcFsProcessEnvironReader_1.ProcFsProcessEnvironReader()), new FileSystemInteractiveLiveSessionTranscriptResolver_1.FileSystemInteractiveLiveSessionTranscriptResolver(), new FileSystemSessionOutputActivityRepository_1.FileSystemSessionOutputActivityRepository(), createSubAgentActivityRepository(subAgentTranscriptRootDirectory, subAgentProcessMatchPattern, subAgentOutputRootDirectory, localCommandRunner, now), createOwnerCallStatusProvider(ownerCallMarker), new TmuxSilentSessionNotificationRepository_1.TmuxSilentSessionNotificationRepository(localCommandRunner), messageComposer, new RealSleeper_1.RealSleeper(), hubTaskStatusResolver);
     await useCase.run({
         mainSilentThresholdSeconds,
         subAgentSilentThresholdSeconds,
         subAgentRunningThresholdSeconds,
-        cooldownSeconds,
         staggerSeconds,
         activeHubTaskStatus,
         now,
@@ -52,7 +51,6 @@ exports.DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS = {
     mainSilentThresholdSeconds: NotifySilentLiveSessionsUseCase_1.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
     subAgentSilentThresholdSeconds: NotifySilentLiveSessionsUseCase_1.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
     subAgentRunningThresholdSeconds: NotifySilentLiveSessionsUseCase_1.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
-    cooldownSeconds: NotifySilentLiveSessionsUseCase_1.DEFAULT_NOTIFICATION_COOLDOWN_SECONDS,
     staggerSeconds: NotifySilentLiveSessionsUseCase_1.DEFAULT_NOTIFICATION_STAGGER_SECONDS,
 };
 //# sourceMappingURL=notifySilentTmuxSessions.js.map
