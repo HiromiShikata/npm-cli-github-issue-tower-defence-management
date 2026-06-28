@@ -351,7 +351,7 @@ When `claudeCodeOauthTokenListJsonPath` is unset, no proxy is started and `aw` r
 
 ### Console Server Auto-start
 
-When `consoleAccessToken` is set, `startDaemon` automatically starts the console server before the first preparation cycle. The mechanism mirrors the rate-limit proxy: at the start of each `startDaemon` run, the daemon TCP-probes port 9981 (`DEFAULT_CONSOLE_PORT`). If nothing responds, it spawns a detached child process running `serveWeb` on that port, passing the same `--configFilePath` and `--port` arguments. The spawned process is detached from the daemon so it persists across daemon runs. SIGTERM and SIGINT sent to the daemon are forwarded to the console server child process, after which the daemon exits.
+When `consoleAccessToken` is set, `startDaemon` automatically starts the console server before the first preparation cycle. The mechanism mirrors the rate-limit proxy: at the start of each `startDaemon` run, the daemon TCP-probes port 9981 (`DEFAULT_WEB_PORT`). If nothing responds, it spawns a detached child process running `serveWeb` on that port, passing the same `--configFilePath` and `--port` arguments. The spawned process is detached from the daemon so it persists across daemon runs. SIGTERM and SIGINT sent to the daemon are forwarded to the console server child process, after which the daemon exits.
 
 When `consoleAccessToken` is unset, no console server is started automatically; `serveWeb` must be started manually if needed.
 
