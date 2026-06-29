@@ -4,14 +4,20 @@ import { SubAgentTranscriptDirectoryResolver } from '../../domain/usecases/adapt
 export class FileSystemSubAgentTranscriptDirectoryResolver implements SubAgentTranscriptDirectoryResolver {
   constructor(private readonly rootDirectory: string | null) {}
 
-  resolveSubAgentsDirectory = (sessionName: string): string | null => {
+  resolveSubAgentsDirectory = (
+    _sessionName: string,
+    mainTranscriptPath: string | null,
+  ): string | null => {
     if (this.rootDirectory === null) {
       return null;
     }
-    return path.join(
-      this.rootDirectory,
-      sessionName.replace(/\//g, '_'),
-      'subagents',
-    );
+    if (mainTranscriptPath === null) {
+      return null;
+    }
+    const sessionDirectory = mainTranscriptPath.replace(/\.jsonl$/, '');
+    if (sessionDirectory === mainTranscriptPath) {
+      return null;
+    }
+    return path.join(sessionDirectory, 'subagents');
   };
 }

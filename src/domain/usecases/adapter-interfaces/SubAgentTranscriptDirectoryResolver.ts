@@ -1,3 +1,6 @@
 export interface SubAgentTranscriptDirectoryResolver {
-  resolveSubAgentsDirectory: (sessionName: string) => string | null;
+  resolveSubAgentsDirectory: (
+    sessionName: string,
+    mainTranscriptPath: string | null,
+  ) => string | null;
 }

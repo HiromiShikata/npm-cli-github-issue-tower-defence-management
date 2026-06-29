@@ -277,7 +277,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     );
     expect(
       mockSubAgentActivityRepository.listSubAgentActivitiesBySessionName,
-    ).toHaveBeenCalledWith([]);
+    ).toHaveBeenCalledWith([], new Map());
     expect(
       mockMessageComposer.composeMainStalledSection,
     ).not.toHaveBeenCalled();
@@ -335,7 +335,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     ).toHaveBeenCalledWith(expectedMap);
     expect(
       mockSubAgentActivityRepository.listSubAgentActivitiesBySessionName,
-    ).toHaveBeenCalledWith([GITHUB_SESSION]);
+    ).toHaveBeenCalledWith([GITHUB_SESSION], expectedMap);
   });
 
   it('suppresses the stalled section and sends nothing when an owner call is pending past the threshold', async () => {
@@ -693,19 +693,99 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       warnSpy.mockRestore();
     });
 
-    it('parses a github.com issue URL session name and rejects other names', () => {
+    it('gates on the real tmux session-name form by resolving its canonical issue URL', async () => {
+      const REAL_TMUX_SESSION =
+        'https_//github_com/HiromiShikata/repo/issues/2355';
+      const CANONICAL_ISSUE_URL =
+        'https://github.com/HiromiShikata/repo/issues/2355';
+      setupSilentMainSession(REAL_TMUX_SESSION);
+      mockHubTaskStatusResolver.getIssueByUrl.mockResolvedValue(
+        issueFor({
+          url: CANONICAL_ISSUE_URL,
+          state: 'OPEN',
+          status: ACTIVE_STATUS,
+        }),
+      );
+
+      await useCase.run(runParams({ activeHubTaskStatus: ACTIVE_STATUS }));
+
+      expect(mockHubTaskStatusResolver.getIssueByUrl).toHaveBeenCalledWith(
+        CANONICAL_ISSUE_URL,
+      );
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledWith(REAL_TMUX_SESSION, MAIN_STALLED_SECTION);
+    });
+
+    it('skips the real tmux session-name form when its canonical hub task is no longer active', async () => {
+      const REAL_TMUX_SESSION =
+        'https_//github_com/HiromiShikata/repo/issues/2355';
+      const CANONICAL_ISSUE_URL =
+        'https://github.com/HiromiShikata/repo/issues/2355';
+      setupSilentMainSession(REAL_TMUX_SESSION);
+      mockHubTaskStatusResolver.getIssueByUrl.mockResolvedValue(
+        issueFor({
+          url: CANONICAL_ISSUE_URL,
+          state: 'OPEN',
+          status: 'Todo',
+        }),
+      );
+
+      await useCase.run(runParams({ activeHubTaskStatus: ACTIVE_STATUS }));
+
+      expect(mockHubTaskStatusResolver.getIssueByUrl).toHaveBeenCalledWith(
+        CANONICAL_ISSUE_URL,
+      );
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('parses a clean github.com issue URL session name and rejects non-github names', () => {
       expect(parseHubTaskIssueUrlFromSessionName(HUB_TASK_SESSION)).toBe(
         HUB_TASK_SESSION,
       );
       expect(parseHubTaskIssueUrlFromSessionName('workbench')).toBeNull();
       expect(
         parseHubTaskIssueUrlFromSessionName(
+          'https://example.com/HiromiShikata/repo/issues/42',
+        ),
+      ).toBeNull();
+    });
+
+    it('parses the real tmux session-name form produced by toTmuxSessionName for an issue', () => {
+      expect(
+        parseHubTaskIssueUrlFromSessionName(
+          'https_//github_com/HiromiShikata/repo/issues/2355',
+        ),
+      ).toBe('https://github.com/HiromiShikata/repo/issues/2355');
+    });
+
+    it('parses the real tmux session-name form for a pull request', () => {
+      expect(
+        parseHubTaskIssueUrlFromSessionName(
+          'https_//github_com/HiromiShikata/repo/pull/2474',
+        ),
+      ).toBe('https://github.com/HiromiShikata/repo/pull/2474');
+    });
+
+    it('accepts a clean github.com pull URL session name', () => {
+      expect(
+        parseHubTaskIssueUrlFromSessionName(
           'https://github.com/HiromiShikata/repo/pull/42',
+        ),
+      ).toBe('https://github.com/HiromiShikata/repo/pull/42');
+    });
+
+    it('rejects an encoded non-github host or a non-issue/pull path', () => {
+      expect(
+        parseHubTaskIssueUrlFromSessionName(
+          'https_//example_com/HiromiShikata/repo/issues/42',
         ),
       ).toBeNull();
       expect(
         parseHubTaskIssueUrlFromSessionName(
-          'https://example.com/HiromiShikata/repo/issues/42',
+          'https_//github_com/HiromiShikata/repo/discussions/42',
         ),
       ).toBeNull();
     });
