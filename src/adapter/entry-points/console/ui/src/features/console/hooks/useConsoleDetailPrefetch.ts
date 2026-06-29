@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import type { ConsoleListItem } from '../logic/types';
 import type { ConsoleCaches } from './useConsoleCaches';
 
-const PREFETCH_AHEAD_COUNT = 10;
+const PREFETCH_AHEAD_COUNT = 0;
 const PREFETCH_DEFER_MS = 500;
 const PREFETCH_IDLE_TIMEOUT_MS = 2000;
 

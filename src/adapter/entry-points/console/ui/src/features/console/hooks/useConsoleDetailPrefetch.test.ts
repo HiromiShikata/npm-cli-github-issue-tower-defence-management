@@ -53,24 +53,26 @@ describe('useConsoleDetailPrefetch', () => {
     jest.useRealTimers();
   });
 
-  it('prefetches the next items after the idle defer elapses', () => {
+  it('is disabled and schedules no prefetch for issue items', () => {
     const caches = buildCaches();
     const bodyPrefetch = jest.spyOn(caches.body, 'prefetch');
+    const statePrefetch = jest.spyOn(caches.state, 'prefetch');
+    const commentsPrefetch = jest.spyOn(caches.comments, 'prefetch');
     const relatedPrefetch = jest.spyOn(caches.relatedPrs, 'prefetch');
     const items = [makeItem(1), makeItem(2), makeItem(3)];
     renderHook(() => useConsoleDetailPrefetch(caches, items[0], items));
-
-    expect(bodyPrefetch).not.toHaveBeenCalled();
     jest.runAllTimers();
 
-    expect(bodyPrefetch).toHaveBeenCalledWith('o/r#2', items[1].url);
-    expect(bodyPrefetch).toHaveBeenCalledWith('o/r#3', items[2].url);
-    expect(relatedPrefetch).toHaveBeenCalledWith('o/r#2', items[1].url);
+    expect(bodyPrefetch).not.toHaveBeenCalled();
+    expect(statePrefetch).not.toHaveBeenCalled();
+    expect(commentsPrefetch).not.toHaveBeenCalled();
+    expect(relatedPrefetch).not.toHaveBeenCalled();
   });
 
-  it('prefetches PR resources for pull request items', () => {
+  it('is disabled and schedules no prefetch for pull request items', () => {
     const caches = buildCaches();
     const filesPrefetch = jest.spyOn(caches.files, 'prefetch');
+    const commitsPrefetch = jest.spyOn(caches.commits, 'prefetch');
     const prStatusPrefetch = jest.spyOn(caches.prStatus, 'prefetch');
     const items = [
       makeItem(1),
@@ -79,20 +81,9 @@ describe('useConsoleDetailPrefetch', () => {
     renderHook(() => useConsoleDetailPrefetch(caches, items[0], items));
     jest.runAllTimers();
 
-    expect(filesPrefetch).toHaveBeenCalledWith('o/r#2', items[1].url);
-    expect(prStatusPrefetch).toHaveBeenCalledWith('o/r#2', items[1].url);
-  });
-
-  it('limits prefetch to the next ten items', () => {
-    const caches = buildCaches();
-    const bodyPrefetch = jest.spyOn(caches.body, 'prefetch');
-    const items = Array.from({ length: 15 }, (_unused, index) =>
-      makeItem(index + 1),
-    );
-    renderHook(() => useConsoleDetailPrefetch(caches, items[0], items));
-    jest.runAllTimers();
-
-    expect(bodyPrefetch).toHaveBeenCalledTimes(10);
+    expect(filesPrefetch).not.toHaveBeenCalled();
+    expect(commitsPrefetch).not.toHaveBeenCalled();
+    expect(prStatusPrefetch).not.toHaveBeenCalled();
   });
 
   it('does nothing when no item is selected', () => {
