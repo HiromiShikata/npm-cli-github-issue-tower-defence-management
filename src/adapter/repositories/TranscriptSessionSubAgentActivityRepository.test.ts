@@ -9,6 +9,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
   let rootDirectory: string;
   const now = new Date('2026-06-27T12:00:00.000Z');
   const nowEpochSeconds = Math.floor(now.getTime() / 1000);
+  const noOpCeilingSeconds = 365 * 24 * 60 * 60;
 
   beforeEach(() => {
     rootDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'subagent-tx-'));
@@ -109,6 +110,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
       now,
+      noOpCeilingSeconds,
     );
 
     const result = await repository.listSubAgentActivitiesBySessionName(
@@ -132,6 +134,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
       now,
+      noOpCeilingSeconds,
     );
 
     const result = await repository.listSubAgentActivitiesBySessionName(
@@ -153,6 +156,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
       now,
+      noOpCeilingSeconds,
     );
 
     const result = await repository.listSubAgentActivitiesBySessionName(
@@ -182,6 +186,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
       now,
+      noOpCeilingSeconds,
     );
 
     const result = await repository.listSubAgentActivitiesBySessionName(
@@ -199,6 +204,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     const repository = new TranscriptSessionSubAgentActivityRepository(
       { resolveSubAgentsDirectory: () => null },
       now,
+      noOpCeilingSeconds,
     );
 
     const result = await repository.listSubAgentActivitiesBySessionName(
@@ -213,6 +219,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
       now,
+      noOpCeilingSeconds,
     );
 
     const result = await repository.listSubAgentActivitiesBySessionName(
@@ -240,6 +247,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
       now,
+      noOpCeilingSeconds,
     );
 
     const result = await repository.listSubAgentActivitiesBySessionName(
@@ -261,6 +269,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
       now,
+      noOpCeilingSeconds,
     );
 
     const result = await repository.listSubAgentActivitiesBySessionName(
@@ -306,6 +315,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     const repository = new TranscriptSessionSubAgentActivityRepository(
       new FileSystemSubAgentTranscriptDirectoryResolver(projectsRoot),
       now,
+      noOpCeilingSeconds,
     );
 
     const result = await repository.listSubAgentActivitiesBySessionName(
@@ -319,6 +329,114 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
         silentSeconds: 120,
         runningSeconds: 900,
       },
+    ]);
+  });
+
+  it('excludes a long-dead sub-agent whose transcript has been silent beyond the ceiling', async () => {
+    const sessionName = 'https_//github_com/owner/repo/issues/9';
+    const twoDaysSeconds = 2 * 24 * 60 * 60;
+    writeAgentTranscript(
+      sessionName,
+      'deadone',
+      runningEntries('2026-06-25T11:45:00.000Z'),
+      nowEpochSeconds - twoDaysSeconds,
+    );
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      now,
+      60 * 60,
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.size).toBe(0);
+  });
+
+  it('keeps a recently-silent sub-agent whose transcript is within the ceiling', async () => {
+    const sessionName = 'https_//github_com/owner/repo/issues/9';
+    writeAgentTranscript(
+      sessionName,
+      'aliveone',
+      runningEntries('2026-06-27T11:45:00.000Z'),
+      nowEpochSeconds - 360,
+    );
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      now,
+      60 * 60,
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.get(sessionName)).toEqual([
+      { label: 'agent-aliveone', silentSeconds: 360, runningSeconds: 900 },
+    ]);
+  });
+
+  it('keeps a sub-agent silent exactly at the ceiling and excludes one past it', async () => {
+    const sessionName = 'https_//github_com/owner/repo/issues/9';
+    writeAgentTranscript(
+      sessionName,
+      'atceiling',
+      runningEntries('2026-06-27T11:00:00.000Z'),
+      nowEpochSeconds - 3600,
+    );
+    writeAgentTranscript(
+      sessionName,
+      'pastceiling',
+      runningEntries('2026-06-27T11:00:00.000Z'),
+      nowEpochSeconds - 3601,
+    );
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      now,
+      3600,
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.get(sessionName)).toEqual([
+      { label: 'agent-atceiling', silentSeconds: 3600, runningSeconds: 3600 },
+    ]);
+  });
+
+  it('flags only the recently-silent sub-agent when a session holds both a dead and an alive transcript', async () => {
+    const sessionName = 'https_//github_com/owner/repo/issues/9';
+    const twoDaysSeconds = 2 * 24 * 60 * 60;
+    writeAgentTranscript(
+      sessionName,
+      'deadtwo',
+      runningEntries('2026-06-25T11:00:00.000Z'),
+      nowEpochSeconds - twoDaysSeconds,
+    );
+    writeAgentTranscript(
+      sessionName,
+      'alivetwo',
+      runningEntries('2026-06-27T11:45:00.000Z'),
+      nowEpochSeconds - 400,
+    );
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      now,
+      60 * 60,
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.get(sessionName)).toEqual([
+      { label: 'agent-alivetwo', silentSeconds: 400, runningSeconds: 900 },
     ]);
   });
 });
