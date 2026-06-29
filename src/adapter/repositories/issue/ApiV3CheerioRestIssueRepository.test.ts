@@ -593,6 +593,117 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('rate-limit-aware retry on console operations', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('retries a transient 403 rate-limit response and resolves the operation after a success', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ message: 'API rate limit exceeded' }), {
+            status: 403,
+            headers: { 'x-ratelimit-remaining': '0' },
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ state: 'closed' }), { status: 200 }),
+        );
+
+      const { repository, sleep } =
+        createApiV3CheerioRestIssueRepository();
+      await repository.closeIssueByUrl(
+        'https://github.com/HiromiShikata/test-repository/issues/42',
+        'completed',
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(sleep).toHaveBeenCalledTimes(1);
+    });
+
+    it('retries a transient 429 secondary-rate-limit response and resolves the operation after a success', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              message: 'You have exceeded a secondary rate limit',
+            }),
+            { status: 429, headers: { 'retry-after': '1' } },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ state: 'open', merged: false }), {
+            status: 200,
+          }),
+        );
+
+      const { repository, sleep } =
+        createApiV3CheerioRestIssueRepository();
+      const result = await repository.getIssueOrPullRequestState(
+        'https://github.com/HiromiShikata/test-repository/issues/42',
+      );
+
+      expect(result.state).toBe('open');
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(sleep).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not retry a genuine permission 403 and surfaces a clear permission message', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            message: 'Resource not accessible by integration',
+          }),
+          { status: 403, headers: { 'x-ratelimit-remaining': '4999' } },
+        ),
+      );
+
+      const { repository, sleep } =
+        createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.closeIssueByUrl(
+          'https://github.com/HiromiShikata/test-repository/issues/42',
+          'completed',
+        ),
+      ).rejects.toThrow(
+        'Failed to close issue https://github.com/HiromiShikata/test-repository/issues/42: HTTP 403 permission denied, the token cannot perform this operation Resource not accessible by integration',
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(sleep).not.toHaveBeenCalled();
+    });
+
+    it('surfaces a clear rate-limit message including the reset time after the bounded retries are exhausted', async () => {
+      const resetEpochSeconds = 1700000000;
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(
+        new Response(JSON.stringify({ message: 'API rate limit exceeded' }), {
+          status: 403,
+          headers: {
+            'x-ratelimit-remaining': '0',
+            'x-ratelimit-reset': String(resetEpochSeconds),
+          },
+        }),
+      );
+
+      const { repository, sleep } =
+        createApiV3CheerioRestIssueRepository();
+      const expectedResetIso = new Date(resetEpochSeconds * 1000).toISOString();
+      await expect(
+        repository.closeIssueByUrl(
+          'https://github.com/HiromiShikata/test-repository/issues/42',
+          'completed',
+        ),
+      ).rejects.toThrow(
+        `Failed to close issue https://github.com/HiromiShikata/test-repository/issues/42: HTTP 403 GitHub rate limit exceeded, please retry shortly (resets at ${expectedResetIso})`,
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(4);
+      expect(sleep).toHaveBeenCalledTimes(3);
+    });
+  });
+
   describe('requestChangesWithInlineComment', () => {
     afterEach(() => {
       jest.restoreAllMocks();
@@ -1636,6 +1747,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     const graphqlProjectItemRepository = mock<GraphqlProjectItemRepository>();
     const localStorageCacheRepository = mock<LocalStorageCacheRepository>();
     const localStorageRepository = mock<LocalStorageRepository>();
+    const sleep = jest.fn().mockResolvedValue(undefined);
 
     const repository = new ApiV3CheerioRestIssueRepository(
       apiV3IssueRepository,
@@ -1643,6 +1755,8 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       graphqlProjectItemRepository,
       localStorageCacheRepository,
       localStorageRepository,
+      'dummy',
+      sleep,
     );
     restIssueRepository.getIssue.mockResolvedValue({
       labels: [],
@@ -1659,6 +1773,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       restIssueRepository,
       graphqlProjectItemRepository,
       localStorageCacheRepository,
+      sleep,
     };
   };
 });
