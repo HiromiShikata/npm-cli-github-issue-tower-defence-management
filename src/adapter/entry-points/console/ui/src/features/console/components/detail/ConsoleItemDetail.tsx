@@ -137,17 +137,6 @@ export const ConsoleItemDetail = ({
             {overlayStatus.name}
           </span>
         )}
-        {item.isPr && pullRequestStatus?.found && (
-          <ConsolePullRequestStatusBadges
-            isConflicted={pullRequestStatus.isConflicted}
-            isPassedAllCiJob={pullRequestStatus.isPassedAllCiJob}
-            isCiStateSuccess={pullRequestStatus.isCiStateSuccess}
-            isBranchOutOfDate={pullRequestStatus.isBranchOutOfDate}
-            missingRequiredCheckNames={
-              pullRequestStatus.missingRequiredCheckNames
-            }
-          />
-        )}
         <ConsoleItemIcon
           isPr={item.isPr}
           state={resolvedState}
@@ -165,6 +154,20 @@ export const ConsoleItemDetail = ({
           </span>
         )}
       </h2>
+
+      {item.isPr && pullRequestStatus?.found && (
+        <div className="console-detail-pr-status-row">
+          <ConsolePullRequestStatusBadges
+            isConflicted={pullRequestStatus.isConflicted}
+            isPassedAllCiJob={pullRequestStatus.isPassedAllCiJob}
+            isCiStateSuccess={pullRequestStatus.isCiStateSuccess}
+            isBranchOutOfDate={pullRequestStatus.isBranchOutOfDate}
+            missingRequiredCheckNames={
+              pullRequestStatus.missingRequiredCheckNames
+            }
+          />
+        </div>
+      )}
 
       <div className="console-detail-subbar">
         <a

@@ -122,7 +122,7 @@ describe('ConsoleItemDetail', () => {
     expect(title?.contains(getByText('Awaiting Workspace'))).toBe(true);
   });
 
-  it('renders failing CI, missing checks, and conflict badges in the PR header', () => {
+  it('renders failing CI, missing checks, and conflict badges on their own row below the title', () => {
     const { getByText, container } = render(
       <ConsoleItemDetail
         item={prItem}
@@ -138,7 +138,16 @@ describe('ConsoleItemDetail', () => {
       />,
     );
     const title = container.querySelector('.console-detail-title');
-    expect(title?.contains(getByText('CI failing'))).toBe(true);
+    const statusRow = container.querySelector('.console-detail-pr-status-row');
+    if (title === null || statusRow === null) {
+      throw new Error('title and status row must both render');
+    }
+    expect(title.contains(getByText('CI failing'))).toBe(false);
+    expect(statusRow.contains(getByText('CI failing'))).toBe(true);
+    expect(
+      title.compareDocumentPosition(statusRow) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(getByText(/missing: build, test/)).toBeInTheDocument();
     expect(getByText('Conflict')).toBeInTheDocument();
     expect(getByText('Out of date')).toBeInTheDocument();

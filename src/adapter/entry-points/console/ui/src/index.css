@@ -36,6 +36,7 @@ body {
 
 .console-app {
   width: 100%;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -261,10 +262,11 @@ body {
 }
 
 .console-detail {
+  flex: 1 0 auto;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px;
+  padding: 16px 16px 0;
 }
 
 .console-detail-title {
@@ -327,6 +329,14 @@ body {
   border-radius: 999px;
   border: 1px solid #30363d;
   font-size: 0.75rem;
+}
+
+.console-detail-pr-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: -4px;
 }
 
 .console-detail-pr-status {
@@ -610,6 +620,7 @@ body {
 }
 
 .console-actionbar {
+  margin-top: auto;
   position: sticky;
   bottom: 0;
   z-index: 100;
@@ -706,7 +717,9 @@ body {
 }
 
 .console-detail-screen {
-  padding-bottom: 8px;
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .console-panel-open-link {
