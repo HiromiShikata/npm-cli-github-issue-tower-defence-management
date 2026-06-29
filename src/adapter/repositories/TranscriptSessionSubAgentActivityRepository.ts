@@ -25,12 +25,45 @@ const parseEpochSeconds = (timestamp: string | null): number | null => {
 
 type ParsedTranscript = {
   firstEntryEpochSeconds: number | null;
-  lastStopReason: string | null;
+  lastEntryIndicatesCompletion: boolean;
+};
+
+const readContentBlocks = (
+  message: Record<string, unknown>,
+): Record<string, unknown>[] => {
+  const content = message.content;
+  if (!Array.isArray(content)) {
+    return [];
+  }
+  return content.filter(isRecord);
+};
+
+const entryIndicatesCompletion = (entry: Record<string, unknown>): boolean => {
+  const type = readString(entry, 'type');
+  const message = entry.message;
+  if (!isRecord(message)) {
+    return false;
+  }
+  if (type === 'assistant') {
+    const stopReason = readString(message, 'stop_reason');
+    if (stopReason === 'end_turn' || stopReason === 'stop_sequence') {
+      return true;
+    }
+    const blocks = readContentBlocks(message);
+    const lastBlock = blocks[blocks.length - 1];
+    return lastBlock !== undefined && readString(lastBlock, 'type') === 'text';
+  }
+  if (type === 'user') {
+    return readContentBlocks(message).some(
+      (block) => readString(block, 'type') === 'text',
+    );
+  }
+  return false;
 };
 
 const parseTranscript = (content: string): ParsedTranscript => {
   let firstEntryEpochSeconds: number | null = null;
-  let lastStopReason: string | null = null;
+  let lastEntryIndicatesCompletion = false;
   for (const line of content.split('\n')) {
     const trimmed = line.trim();
     if (trimmed.length === 0) {
@@ -49,15 +82,11 @@ const parseTranscript = (content: string): ParsedTranscript => {
     if (firstEntryEpochSeconds === null && epochSeconds !== null) {
       firstEntryEpochSeconds = epochSeconds;
     }
-    const message = parsed.message;
-    if (isRecord(message)) {
-      const stopReason = readString(message, 'stop_reason');
-      if (stopReason !== null) {
-        lastStopReason = stopReason;
-      }
+    if (isRecord(parsed.message)) {
+      lastEntryIndicatesCompletion = entryIndicatesCompletion(parsed);
     }
   }
-  return { firstEntryEpochSeconds, lastStopReason };
+  return { firstEntryEpochSeconds, lastEntryIndicatesCompletion };
 };
 
 const clampToZero = (value: number): number => (value > 0 ? value : 0);
@@ -132,10 +161,7 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
       return null;
     }
     const transcript = parseTranscript(content);
-    if (
-      transcript.lastStopReason === 'end_turn' ||
-      transcript.lastStopReason === 'stop_sequence'
-    ) {
+    if (transcript.lastEntryIndicatesCompletion) {
       return null;
     }
     const silentSeconds = clampToZero(
