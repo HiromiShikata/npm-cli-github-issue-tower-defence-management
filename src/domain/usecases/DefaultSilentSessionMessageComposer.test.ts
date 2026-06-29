@@ -53,6 +53,33 @@ describe('DefaultSilentSessionMessageComposer', () => {
     );
   });
 
+  it('instructs the agent to fire the owner-call when an owner request has been completed or answered', () => {
+    const section = composer.composeMainStalledSection(600);
+    expect(section).toContain(
+      'If you have COMPLETED or ANSWERED a request from the owner in this session, you MUST fire the owner-call to report the RESULT to the owner',
+    );
+    expect(section).toContain(
+      "completing or answering an owner's requested action is itself a reason to fire the owner-call",
+    );
+  });
+
+  it('explains that completing an owner request without an owner-call leaves the owner unnotified', () => {
+    const section = composer.composeMainStalledSection(600);
+    expect(section).toContain(
+      'Completing or answering an owner request WITHOUT firing the owner-call means the owner is NEVER notified',
+    );
+    expect(section).toContain(
+      "the owner's app only surfaces this session when the owner-call fires",
+    );
+  });
+
+  it('states the causal link that the reminder keeps arriving because no owner-call was fired', () => {
+    const section = composer.composeMainStalledSection(600);
+    expect(section).toContain(
+      'If this self-check reminder keeps arriving, it is likely because an owner request was completed or answered without firing the owner-call; fire the owner-call now to report the result to the owner.',
+    );
+  });
+
   it('interpolates the configured owner-call marker into the format guidance when provided', () => {
     const markedComposer = new DefaultSilentSessionMessageComposer(
       '<<OWNER_CALL>>',
