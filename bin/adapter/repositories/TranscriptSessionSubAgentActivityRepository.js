@@ -82,9 +82,10 @@ const parseTranscript = (content) => {
 };
 const clampToZero = (value) => (value > 0 ? value : 0);
 class TranscriptSessionSubAgentActivityRepository {
-    constructor(directoryResolver, now) {
+    constructor(directoryResolver, now, silentCeilingSeconds) {
         this.directoryResolver = directoryResolver;
         this.now = now;
+        this.silentCeilingSeconds = silentCeilingSeconds;
         this.listSubAgentActivitiesBySessionName = async (sessionNames, transcriptPathBySessionName) => {
             const result = new Map();
             const nowEpochSeconds = Math.floor(this.now.getTime() / 1000);
@@ -139,6 +140,9 @@ class TranscriptSessionSubAgentActivityRepository {
                 return null;
             }
             const silentSeconds = clampToZero(nowEpochSeconds - Math.floor(stats.mtimeMs / 1000));
+            if (silentSeconds > this.silentCeilingSeconds) {
+                return null;
+            }
             const runningSeconds = transcript.firstEntryEpochSeconds === null
                 ? 0
                 : clampToZero(nowEpochSeconds - transcript.firstEntryEpochSeconds);

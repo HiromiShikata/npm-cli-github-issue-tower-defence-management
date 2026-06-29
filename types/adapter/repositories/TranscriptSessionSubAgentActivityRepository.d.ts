@@ -4,7 +4,8 @@ import { SubAgentTranscriptDirectoryResolver } from '../../domain/usecases/adapt
 export declare class TranscriptSessionSubAgentActivityRepository implements SessionSubAgentActivityRepository {
     private readonly directoryResolver;
     private readonly now;
-    constructor(directoryResolver: SubAgentTranscriptDirectoryResolver, now: Date);
+    private readonly silentCeilingSeconds;
+    constructor(directoryResolver: SubAgentTranscriptDirectoryResolver, now: Date, silentCeilingSeconds: number);
     listSubAgentActivitiesBySessionName: (sessionNames: string[], transcriptPathBySessionName: Map<string, string>) => Promise<Map<string, SubAgentActivity[]>>;
     private collectActivities;
     private toActivity;

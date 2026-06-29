@@ -1,3 +1,10 @@
+## [1.117.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.1...v1.117.2) (2026-06-29)
+
+
+### Bug Fixes
+
+* exclude long-dead sub-agents from silent-monitor stall flagging ([#1100](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1100)) ([9cfe761](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9cfe761f77121a4eb5183d86dbc36ec6095fbcfa))
+
 ## [1.117.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.0...v1.117.1) (2026-06-29)
 
 
