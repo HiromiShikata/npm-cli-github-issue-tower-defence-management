@@ -1,3 +1,10 @@
+## [1.116.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.116.5...v1.116.6) (2026-06-29)
+
+
+### Bug Fixes
+
+* **console:** keep action bar bottom-attached on short items and move PR status badges below title ([#1085](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1085)) ([637603b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/637603b0bf742cdfeb4f1077bfb390e0201fb23a)), closes [#1083](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1083)
+
 ## [1.116.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.116.4...v1.116.5) (2026-06-29)
 
 
