@@ -13,7 +13,7 @@ import {
 
 const NOW = new Date('2026-06-26T00:00:00.000Z');
 const NOW_EPOCH_SECONDS = Math.floor(NOW.getTime() / 1000);
-const SESSION_NAME = 'workbench';
+const SESSION_NAME = 'https_//github_com/HiromiShikata/repo/issues/9';
 const SESSION_ID = 'wb-uuid';
 const PANE_PID = 200;
 const CLAUDE_PID = 201;
@@ -121,7 +121,7 @@ describe('notifySilentTmuxSessions', () => {
     ...DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS,
   });
 
-  it('sends a main stalled notification to a silent plain-named live session', async () => {
+  it('sends a main stalled notification to a silent github-named live session', async () => {
     silentAssistantTranscript();
     const runner = liveSessionRunner();
 
@@ -132,6 +132,34 @@ describe('notifySilentTmuxSessions', () => {
     );
     expect(sendCall?.[1][2]).toBe(SESSION_NAME);
     expect(sendCall?.[1][4]).toContain('You have produced no output for');
+  });
+
+  it('sends no notification to a silent non-github-named live session', async () => {
+    silentAssistantTranscript();
+    const runner = createMockRunner();
+    runner.runCommand.mockImplementation(async (program, args) => {
+      if (program === 'tmux' && args[0] === 'list-sessions') {
+        return { stdout: 'orchestrator\n', stderr: '', exitCode: 0 };
+      }
+      if (program === 'tmux' && args[0] === 'list-panes') {
+        return { stdout: `${PANE_PID}\n`, stderr: '', exitCode: 0 };
+      }
+      if (program === 'ps') {
+        return {
+          stdout: `  ${PANE_PID}       1 shell\n  ${CLAUDE_PID}     ${PANE_PID} claude --name orchestrator\n`,
+          stderr: '',
+          exitCode: 0,
+        };
+      }
+      return { stdout: '', stderr: '', exitCode: 0 };
+    });
+
+    await notifySilentTmuxSessions(baseParams(runner));
+
+    const sendCall = runner.runCommand.mock.calls.find(
+      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
+    );
+    expect(sendCall).toBeUndefined();
   });
 
   it('does nothing when the step is not enabled', async () => {

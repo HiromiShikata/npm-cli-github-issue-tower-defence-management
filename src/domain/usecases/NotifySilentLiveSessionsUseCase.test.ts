@@ -2,6 +2,7 @@ import {
   NotifySilentLiveSessionsUseCase,
   HubTaskStatusResolver,
   parseHubTaskIssueUrlFromSessionName,
+  isGitHubIssueOrPullRequestSessionName,
   DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
   DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
   DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
@@ -38,6 +39,11 @@ describe('NotifySilentLiveSessionsUseCase', () => {
   let mockHubTaskStatusResolver: Mocked<HubTaskStatusResolver>;
   const now = new Date('2026-06-26T00:00:00Z');
   const nowEpochSeconds = Math.floor(now.getTime() / 1000);
+  const GITHUB_SESSION = 'https_//github_com/HiromiShikata/repo/issues/42';
+  const GITHUB_SESSION_ALPHA =
+    'https_//github_com/HiromiShikata/repo/issues/100';
+  const GITHUB_SESSION_BRAVO =
+    'https_//github_com/HiromiShikata/repo/issues/200';
 
   const runParams = (
     overrides?: Partial<{ activeHubTaskStatus: string | null }>,
@@ -208,12 +214,12 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     expect(DEFAULT_NOTIFICATION_STAGGER_SECONDS).toBe(25);
   });
 
-  it('notifies a plain-named live interactive session independently of any issue', async () => {
-    setupLiveInteractiveSession('workbench');
+  it('notifies a session whose name encodes a github.com issue URL', async () => {
+    setupLiveInteractiveSession(GITHUB_SESSION);
     mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
       [
         {
-          sessionName: 'workbench',
+          sessionName: GITHUB_SESSION,
           lastOutputEpochSeconds:
             nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
         },
@@ -227,28 +233,33 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     );
     expect(
       mockNotificationRepository.sendSelfCheckNotification,
-    ).toHaveBeenCalledWith('workbench', MAIN_STALLED_SECTION);
+    ).toHaveBeenCalledWith(GITHUB_SESSION, MAIN_STALLED_SECTION);
   });
 
-  it('passes the resolved transcript paths to the output and owner-call providers', async () => {
-    setupLiveInteractiveSession('workbench');
+  it('notifies a session whose name encodes a github.com pull-request URL', async () => {
+    const pullRequestSession = 'https_//github_com/HiromiShikata/repo/pull/77';
+    setupLiveInteractiveSession(pullRequestSession);
+    mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
+      [
+        {
+          sessionName: pullRequestSession,
+          lastOutputEpochSeconds:
+            nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+        },
+      ],
+    );
 
     await useCase.run(runParams());
 
-    const expectedMap = transcriptMapFor(['workbench']);
     expect(
-      mockSessionOutputActivityRepository.listSessionOutputActivities,
-    ).toHaveBeenCalledWith(expectedMap);
-    expect(
-      mockOwnerCallStatusProvider.listSessionNamesWithUnansweredOwnerCall,
-    ).toHaveBeenCalledWith(expectedMap);
-    expect(
-      mockSubAgentActivityRepository.listSubAgentActivitiesBySessionName,
-    ).toHaveBeenCalledWith(['workbench']);
+      mockNotificationRepository.sendSelfCheckNotification,
+    ).toHaveBeenCalledWith(pullRequestSession, MAIN_STALLED_SECTION);
   });
 
-  it('suppresses the stalled section and sends nothing when an owner call is pending past the threshold', async () => {
-    setupLiveInteractiveSession('workbench');
+  it('excludes a non-github-named session from selection so it is never notified', async () => {
+    mockSnapshotProvider.getSnapshot.mockResolvedValue(
+      snapshotWithSessions(['workbench']),
+    );
     mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
       [
         {
@@ -258,8 +269,88 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         },
       ],
     );
+
+    await useCase.run(runParams());
+
+    expect(mockTranscriptResolver.resolveTranscriptPaths).toHaveBeenCalledWith(
+      [],
+    );
+    expect(
+      mockSubAgentActivityRepository.listSubAgentActivitiesBySessionName,
+    ).toHaveBeenCalledWith([]);
+    expect(
+      mockMessageComposer.composeMainStalledSection,
+    ).not.toHaveBeenCalled();
+    expect(
+      mockNotificationRepository.sendSelfCheckNotification,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('monitors only the github-named session when mixed with a non-github-named session', async () => {
+    mockSnapshotProvider.getSnapshot.mockResolvedValue(
+      snapshotWithSessions([GITHUB_SESSION, 'orchestrator']),
+    );
+    mockTranscriptResolver.resolveTranscriptPaths.mockReturnValue(
+      transcriptMapFor([GITHUB_SESSION]),
+    );
+    mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
+      [
+        {
+          sessionName: GITHUB_SESSION,
+          lastOutputEpochSeconds:
+            nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+        },
+        {
+          sessionName: 'orchestrator',
+          lastOutputEpochSeconds:
+            nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+        },
+      ],
+    );
+
+    await useCase.run(runParams());
+
+    expect(mockTranscriptResolver.resolveTranscriptPaths).toHaveBeenCalledWith([
+      sessionFor(GITHUB_SESSION),
+    ]);
+    expect(
+      mockNotificationRepository.sendSelfCheckNotification,
+    ).toHaveBeenCalledTimes(1);
+    expect(
+      mockNotificationRepository.sendSelfCheckNotification,
+    ).toHaveBeenCalledWith(GITHUB_SESSION, MAIN_STALLED_SECTION);
+  });
+
+  it('passes the resolved transcript paths to the output and owner-call providers', async () => {
+    setupLiveInteractiveSession(GITHUB_SESSION);
+
+    await useCase.run(runParams());
+
+    const expectedMap = transcriptMapFor([GITHUB_SESSION]);
+    expect(
+      mockSessionOutputActivityRepository.listSessionOutputActivities,
+    ).toHaveBeenCalledWith(expectedMap);
+    expect(
+      mockOwnerCallStatusProvider.listSessionNamesWithUnansweredOwnerCall,
+    ).toHaveBeenCalledWith(expectedMap);
+    expect(
+      mockSubAgentActivityRepository.listSubAgentActivitiesBySessionName,
+    ).toHaveBeenCalledWith([GITHUB_SESSION]);
+  });
+
+  it('suppresses the stalled section and sends nothing when an owner call is pending past the threshold', async () => {
+    setupLiveInteractiveSession(GITHUB_SESSION);
+    mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
+      [
+        {
+          sessionName: GITHUB_SESSION,
+          lastOutputEpochSeconds:
+            nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+        },
+      ],
+    );
     mockOwnerCallStatusProvider.listSessionNamesWithUnansweredOwnerCall.mockResolvedValue(
-      new Set(['workbench']),
+      new Set([GITHUB_SESSION]),
     );
 
     await useCase.run(runParams());
@@ -273,11 +364,11 @@ describe('NotifySilentLiveSessionsUseCase', () => {
   });
 
   it('sends the main stalled section when the session is silent past the threshold and not waiting on the owner', async () => {
-    setupLiveInteractiveSession('workbench');
+    setupLiveInteractiveSession(GITHUB_SESSION);
     mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
       [
         {
-          sessionName: 'workbench',
+          sessionName: GITHUB_SESSION,
           lastOutputEpochSeconds:
             nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
         },
@@ -294,15 +385,15 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     );
     expect(
       mockNotificationRepository.sendSelfCheckNotification,
-    ).toHaveBeenCalledWith('workbench', MAIN_STALLED_SECTION);
+    ).toHaveBeenCalledWith(GITHUB_SESSION, MAIN_STALLED_SECTION);
   });
 
   it('does not send the main stalled section when output is within the threshold', async () => {
-    setupLiveInteractiveSession('workbench');
+    setupLiveInteractiveSession(GITHUB_SESSION);
     mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
       [
         {
-          sessionName: 'workbench',
+          sessionName: GITHUB_SESSION,
           lastOutputEpochSeconds:
             nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS + 1,
         },
@@ -317,7 +408,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
   });
 
   it('sends the sub-agent section when a sub-agent exceeds the silent threshold', async () => {
-    setupLiveInteractiveSession('workbench');
+    setupLiveInteractiveSession(GITHUB_SESSION);
     const subAgents: SubAgentActivity[] = [
       {
         label: 'sub-process-1',
@@ -326,7 +417,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       },
     ];
     mockSubAgentActivityRepository.listSubAgentActivitiesBySessionName.mockResolvedValue(
-      new Map([['workbench', subAgents]]),
+      new Map([[GITHUB_SESSION, subAgents]]),
     );
 
     await useCase.run(runParams());
@@ -336,7 +427,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     );
     expect(
       mockNotificationRepository.sendSelfCheckNotification,
-    ).toHaveBeenCalledWith('workbench', SUBAGENT_SECTION);
+    ).toHaveBeenCalledWith(GITHUB_SESSION, SUBAGENT_SECTION);
   });
 
   it('excludes an owner-handover spawn from selection so no notification is sent', async () => {
@@ -374,11 +465,11 @@ describe('NotifySilentLiveSessionsUseCase', () => {
   });
 
   it('re-notifies a session on every consecutive cycle while it remains a valid silent target', async () => {
-    setupLiveInteractiveSession('workbench');
+    setupLiveInteractiveSession(GITHUB_SESSION);
     mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
       [
         {
-          sessionName: 'workbench',
+          sessionName: GITHUB_SESSION,
           lastOutputEpochSeconds:
             nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
         },
@@ -393,18 +484,18 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     ).toHaveBeenCalledTimes(2);
     expect(
       mockNotificationRepository.sendSelfCheckNotification,
-    ).toHaveBeenNthCalledWith(1, 'workbench', MAIN_STALLED_SECTION);
+    ).toHaveBeenNthCalledWith(1, GITHUB_SESSION, MAIN_STALLED_SECTION);
     expect(
       mockNotificationRepository.sendSelfCheckNotification,
-    ).toHaveBeenNthCalledWith(2, 'workbench', MAIN_STALLED_SECTION);
+    ).toHaveBeenNthCalledWith(2, GITHUB_SESSION, MAIN_STALLED_SECTION);
   });
 
   it('notifies on every repeated cycle at the same instant without reading any cooldown state', async () => {
-    setupLiveInteractiveSession('workbench');
+    setupLiveInteractiveSession(GITHUB_SESSION);
     mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
       [
         {
-          sessionName: 'workbench',
+          sessionName: GITHUB_SESSION,
           lastOutputEpochSeconds:
             nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
         },
@@ -426,20 +517,20 @@ describe('NotifySilentLiveSessionsUseCase', () => {
 
   it('sends to multiple sessions sequentially with a stagger delay between sends', async () => {
     mockSnapshotProvider.getSnapshot.mockResolvedValue(
-      snapshotWithSessions(['alpha', 'bravo']),
+      snapshotWithSessions([GITHUB_SESSION_ALPHA, GITHUB_SESSION_BRAVO]),
     );
     mockTranscriptResolver.resolveTranscriptPaths.mockReturnValue(
-      transcriptMapFor(['alpha', 'bravo']),
+      transcriptMapFor([GITHUB_SESSION_ALPHA, GITHUB_SESSION_BRAVO]),
     );
     mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
       [
         {
-          sessionName: 'alpha',
+          sessionName: GITHUB_SESSION_ALPHA,
           lastOutputEpochSeconds:
             nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
         },
         {
-          sessionName: 'bravo',
+          sessionName: GITHUB_SESSION_BRAVO,
           lastOutputEpochSeconds:
             nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
         },
@@ -458,7 +549,11 @@ describe('NotifySilentLiveSessionsUseCase', () => {
 
     await useCase.run(runParams());
 
-    expect(callOrder).toEqual(['send:alpha', 'sleep', 'send:bravo']);
+    expect(callOrder).toEqual([
+      `send:${GITHUB_SESSION_ALPHA}`,
+      'sleep',
+      `send:${GITHUB_SESSION_BRAVO}`,
+    ]);
     expect(mockSleeper.sleep).toHaveBeenCalledTimes(1);
     expect(mockSleeper.sleep).toHaveBeenCalledWith(
       DEFAULT_NOTIFICATION_STAGGER_SECONDS * 1000,
@@ -466,11 +561,11 @@ describe('NotifySilentLiveSessionsUseCase', () => {
   });
 
   it('does not suppress errors raised while sending a notification', async () => {
-    setupLiveInteractiveSession('workbench');
+    setupLiveInteractiveSession(GITHUB_SESSION);
     mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
       [
         {
-          sessionName: 'workbench',
+          sessionName: GITHUB_SESSION,
           lastOutputEpochSeconds:
             nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
         },
@@ -538,7 +633,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       ).not.toHaveBeenCalled();
     });
 
-    it('leaves a non-URL session name unchecked and sends as before', async () => {
+    it('excludes a non-github-named session before the hub-task gate so the resolver is never consulted', async () => {
       setupSilentMainSession('workbench');
 
       await useCase.run(runParams({ activeHubTaskStatus: ACTIVE_STATUS }));
@@ -546,7 +641,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       expect(mockHubTaskStatusResolver.getIssueByUrl).not.toHaveBeenCalled();
       expect(
         mockNotificationRepository.sendSelfCheckNotification,
-      ).toHaveBeenCalledWith('workbench', MAIN_STALLED_SECTION);
+      ).not.toHaveBeenCalled();
     });
 
     it('does not call the resolver at all when the active status is unconfigured', async () => {
@@ -613,6 +708,72 @@ describe('NotifySilentLiveSessionsUseCase', () => {
           'https://example.com/HiromiShikata/repo/issues/42',
         ),
       ).toBeNull();
+    });
+  });
+
+  describe('isGitHubIssueOrPullRequestSessionName', () => {
+    it('accepts the encoded form of a github.com issue URL session name', () => {
+      expect(
+        isGitHubIssueOrPullRequestSessionName(
+          'https_//github_com/HiromiShikata/repo/issues/42',
+        ),
+      ).toBe(true);
+    });
+
+    it('accepts the encoded form of a github.com pull-request URL session name', () => {
+      expect(
+        isGitHubIssueOrPullRequestSessionName(
+          'https_//github_com/HiromiShikata/repo/pull/77',
+        ),
+      ).toBe(true);
+    });
+
+    it('accepts the raw form of a github.com issue and pull-request URL session name', () => {
+      expect(
+        isGitHubIssueOrPullRequestSessionName(
+          'https://github.com/HiromiShikata/repo/issues/42',
+        ),
+      ).toBe(true);
+      expect(
+        isGitHubIssueOrPullRequestSessionName(
+          'https://github.com/HiromiShikata/repo/pull/77',
+        ),
+      ).toBe(true);
+    });
+
+    it('rejects a plain orchestrator-style session name', () => {
+      expect(isGitHubIssueOrPullRequestSessionName('workbench')).toBe(false);
+      expect(isGitHubIssueOrPullRequestSessionName('orchestrator')).toBe(false);
+      expect(isGitHubIssueOrPullRequestSessionName('aw-host')).toBe(false);
+    });
+
+    it('rejects a non-github host even in the encoded form', () => {
+      expect(
+        isGitHubIssueOrPullRequestSessionName(
+          'https_//example_com/HiromiShikata/repo/issues/42',
+        ),
+      ).toBe(false);
+    });
+
+    it('rejects a github.com session name that is neither an issue nor a pull request', () => {
+      expect(
+        isGitHubIssueOrPullRequestSessionName(
+          'https_//github_com/HiromiShikata/repo',
+        ),
+      ).toBe(false);
+      expect(
+        isGitHubIssueOrPullRequestSessionName(
+          'https_//github_com/HiromiShikata/repo/discussions/42',
+        ),
+      ).toBe(false);
+    });
+
+    it('rejects a github.com issue URL whose trailing segment is not a number', () => {
+      expect(
+        isGitHubIssueOrPullRequestSessionName(
+          'https_//github_com/HiromiShikata/repo/issues/new',
+        ),
+      ).toBe(false);
     });
   });
 
