@@ -45,7 +45,8 @@ class TokenExhaustionHandoverUseCase {
                         try {
                             await this.tmuxSessionRepository.killSession(sessionName);
                         }
-                        catch {
+                        catch (error) {
+                            console.warn(`Token exhaustion handover: killSession failed for "${sessionName}" (session may have already exited): ${error instanceof Error ? error.message : String(error)}`);
                         }
                     }
                     sentHandoverTimestamps.delete(session.issueUrl);
