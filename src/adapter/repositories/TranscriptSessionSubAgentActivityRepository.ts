@@ -54,9 +54,13 @@ const entryIndicatesCompletion = (entry: Record<string, unknown>): boolean => {
     return lastBlock !== undefined && readString(lastBlock, 'type') === 'text';
   }
   if (type === 'user') {
-    return readContentBlocks(message).some(
-      (block) => readString(block, 'type') === 'text',
-    );
+    const blocks = readContentBlocks(message);
+    if (blocks.length === 0) {
+      return true;
+    }
+    const lastBlock = blocks[blocks.length - 1];
+    const lastBlockType = readString(lastBlock, 'type');
+    return lastBlockType === 'text' || lastBlockType === 'tool_result';
   }
   return false;
 };
@@ -95,7 +99,6 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
   constructor(
     private readonly directoryResolver: SubAgentTranscriptDirectoryResolver,
     private readonly now: Date,
-    private readonly silentCeilingSeconds: number,
   ) {}
 
   listSubAgentActivitiesBySessionName = async (
@@ -167,9 +170,6 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
     const silentSeconds = clampToZero(
       nowEpochSeconds - Math.floor(stats.mtimeMs / 1000),
     );
-    if (silentSeconds > this.silentCeilingSeconds) {
-      return null;
-    }
     const runningSeconds =
       transcript.firstEntryEpochSeconds === null
         ? 0

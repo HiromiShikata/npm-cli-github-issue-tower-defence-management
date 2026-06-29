@@ -8,7 +8,6 @@ import {
   DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
   DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
   DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
-  DEFAULT_SUBAGENT_SILENT_CEILING_SECONDS,
   DEFAULT_NOTIFICATION_STAGGER_SECONDS,
 } from '../../../domain/usecases/NotifySilentLiveSessionsUseCase';
 import { DefaultSilentSessionMessageComposer } from '../../../domain/usecases/DefaultSilentSessionMessageComposer';
@@ -41,7 +40,6 @@ export type NotifySilentTmuxSessionsParams = {
   mainSilentThresholdSeconds: number;
   subAgentSilentThresholdSeconds: number;
   subAgentRunningThresholdSeconds: number;
-  subAgentSilentCeilingSeconds: number;
   staggerSeconds: number;
   activeHubTaskStatus: string | null;
   hubTaskStatusResolver: HubTaskStatusResolver | null;
@@ -62,7 +60,6 @@ const createSubAgentActivityRepository = (
   subAgentTranscriptRootDirectory: string | null,
   subAgentProcessMatchPattern: string | null,
   subAgentOutputRootDirectory: string | null,
-  subAgentSilentCeilingSeconds: number,
   localCommandRunner: LocalCommandRunner,
   now: Date,
 ): SessionSubAgentActivityRepository => {
@@ -72,7 +69,6 @@ const createSubAgentActivityRepository = (
         subAgentTranscriptRootDirectory,
       ),
       now,
-      subAgentSilentCeilingSeconds,
     );
   }
   return new ProcessListSessionSubAgentActivityRepository(
@@ -99,7 +95,6 @@ export const notifySilentTmuxSessions = async (
     mainSilentThresholdSeconds,
     subAgentSilentThresholdSeconds,
     subAgentRunningThresholdSeconds,
-    subAgentSilentCeilingSeconds,
     staggerSeconds,
     activeHubTaskStatus,
     hubTaskStatusResolver,
@@ -127,7 +122,6 @@ export const notifySilentTmuxSessions = async (
       subAgentTranscriptRootDirectory,
       subAgentProcessMatchPattern,
       subAgentOutputRootDirectory,
-      subAgentSilentCeilingSeconds,
       localCommandRunner,
       now,
     ),
@@ -151,6 +145,5 @@ export const DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS = {
   mainSilentThresholdSeconds: DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
   subAgentSilentThresholdSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
   subAgentRunningThresholdSeconds: DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
-  subAgentSilentCeilingSeconds: DEFAULT_SUBAGENT_SILENT_CEILING_SECONDS,
   staggerSeconds: DEFAULT_NOTIFICATION_STAGGER_SECONDS,
 } as const;
