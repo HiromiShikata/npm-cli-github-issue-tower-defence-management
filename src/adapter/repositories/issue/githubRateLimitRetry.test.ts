@@ -115,16 +115,14 @@ describe('githubRateLimitRetry', () => {
 
     it('does not retry a genuine permission 403 without rate-limit signals', async () => {
       const sleep = jest.fn().mockResolvedValue(undefined);
-      const request = jest
-        .fn<Promise<Response>, []>()
-        .mockResolvedValue(
-          new Response(
-            JSON.stringify({
-              message: 'Resource not accessible by integration',
-            }),
-            { status: 403, headers: { 'x-ratelimit-remaining': '4999' } },
-          ),
-        );
+      const request = jest.fn<Promise<Response>, []>().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            message: 'Resource not accessible by integration',
+          }),
+          { status: 403, headers: { 'x-ratelimit-remaining': '4999' } },
+        ),
+      );
 
       const response = await fetchWithGitHubRateLimitRetry(request, sleep);
 
