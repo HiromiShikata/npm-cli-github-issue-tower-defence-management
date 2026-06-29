@@ -1,3 +1,10 @@
+# [1.117.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.116.9...v1.117.0) (2026-06-29)
+
+
+### Features
+
+* **console:** prefetch upcoming items, always-visible mergeable badge, taller action buttons ([#1097](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1097)) ([827464c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/827464cd8ad123375b793aa8c5d3f8d944130633)), closes [#1091](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1091)
+
 ## [1.116.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.116.8...v1.116.9) (2026-06-29)
 
 
