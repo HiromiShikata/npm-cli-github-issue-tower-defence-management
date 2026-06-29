@@ -20,7 +20,9 @@ const parseNullableFloat = (value: string | null): number | null => {
 const parseNullableInt = (value: unknown): number | null => {
   if (value === null || value === undefined) return null;
   const parsed =
-    typeof value === 'number' ? value : parseInt(String(value), 10);
+    typeof value === 'number'
+      ? value
+      : parseInt(typeof value === 'string' ? value : JSON.stringify(value), 10);
   return Number.isFinite(parsed) ? parsed : null;
 };
 
