@@ -23,7 +23,7 @@ class LocalStorageCacheRepository {
             try {
                 value = JSON.parse(valueStr);
             }
-            catch (e) {
+            catch {
                 return null;
             }
             if (typeof value !== 'object' || value === null) {

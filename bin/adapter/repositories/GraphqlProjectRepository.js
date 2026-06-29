@@ -38,7 +38,7 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             try {
                 cache = await this.projectCache.getLatest(`${PROJECT_ID_DISK_CACHE_KEY_PREFIX}-${cacheKey}`);
             }
-            catch (error) {
+            catch {
                 return null;
             }
             if (!cache) {
@@ -57,7 +57,7 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             try {
                 await this.projectCache.set(`${PROJECT_ID_DISK_CACHE_KEY_PREFIX}-${cacheKey}`, { projectId });
             }
-            catch (error) {
+            catch {
                 return;
             }
         };
@@ -116,7 +116,7 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             }
             catch (error) {
                 this.fetchProjectIdFailedAt.set(cacheKey, Date.now());
-                throw new Error(`fetchProjectId network error for ${login}/${projectNumber}: ${String(error)}`);
+                throw new Error(`fetchProjectId network error for ${login}/${projectNumber}: ${String(error)}`, { cause: error });
             }
             if (!response.data) {
                 this.fetchProjectIdFailedAt.set(cacheKey, Date.now());

@@ -102,7 +102,7 @@ class HandleScheduledEventUseCase {
             }
             const targetDateTimes = await this.findTargetDateAndUpdateLastExecutionDateTime(input.workingReport.spreadsheetUrl, now, input.org, input.workingReport.repo, input.manager);
             const runSlowSweep = await this.shouldRunSlowSweep(input.workingReport.spreadsheetUrl, now, input.org, input.workingReport.repo, input.manager);
-            let rotationOrder = null;
+            let rotationOrder;
             try {
                 const useCaseResult = await this.runEachUseCases(input, project, issues, cacheUsed, targetDateTimes, storyIssues, runSlowSweep);
                 rotationOrder = useCaseResult.rotationOrder;

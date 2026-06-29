@@ -17,7 +17,11 @@ const parseNullableFloat = (value) => {
 const parseNullableInt = (value) => {
     if (value === null || value === undefined)
         return null;
-    const parsed = typeof value === 'number' ? value : parseInt(String(value), 10);
+    if (typeof value === 'number')
+        return Number.isFinite(value) ? value : null;
+    if (typeof value !== 'string')
+        return null;
+    const parsed = parseInt(value, 10);
     return Number.isFinite(parsed) ? parsed : null;
 };
 const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);

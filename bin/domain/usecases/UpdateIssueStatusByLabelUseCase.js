@@ -32,7 +32,7 @@ class UpdateIssueStatusByLabelUseCase {
                     if (!(e instanceof Error)) {
                         throw e;
                     }
-                    throw new Error(`Failed to remove label ${statusLabel} from issue ${issue.url}: ${e.message}`);
+                    throw new Error(`Failed to remove label ${statusLabel} from issue ${issue.url}: ${e.message}`, { cause: e });
                 }
             }
         };
