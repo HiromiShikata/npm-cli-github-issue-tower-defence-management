@@ -228,7 +228,7 @@ export class HandleScheduledEventUseCase {
       input.manager,
     );
 
-    let rotationOrder: RotationOrderEntry[] | null = null;
+    let rotationOrder: RotationOrderEntry[] | null;
     try {
       const useCaseResult = await this.runEachUseCases(
         input,

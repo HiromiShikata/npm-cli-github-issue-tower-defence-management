@@ -5,7 +5,7 @@ import { ProcHostMetricsRepository } from '../../repositories/ProcHostMetricsRep
 import { MachineStatusFile, writeMachineStatus } from './machineStatusWriter';
 
 const readJson = (filePath: string): unknown =>
-  JSON.parse(fs.readFileSync(filePath, 'utf8')) as unknown;
+  JSON.parse(fs.readFileSync(filePath, 'utf8'));
 
 const buildHostMetricsRepository = (
   procDirectory: string,
