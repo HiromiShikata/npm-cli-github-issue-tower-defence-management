@@ -22,6 +22,13 @@ import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import { normalizeFieldName } from '../utils';
 import { LocalStorageRepository } from '../LocalStorageRepository';
 import { Member } from '../../../domain/entities/Member';
+import {
+  Sleep,
+  realSleep,
+  fetchWithGitHubRateLimitRetry,
+  computeRateLimitResetIso,
+  hasRateLimitSignals,
+} from './githubRateLimitRetry';
 
 type TimelineItem = {
   __typename: string;
@@ -471,9 +478,14 @@ export class ApiV3CheerioRestIssueRepository
     >,
     readonly localStorageRepository: LocalStorageRepository,
     readonly ghToken: string = process.env.GH_TOKEN || 'dummy',
+    readonly sleep: Sleep = realSleep,
   ) {
     super(localStorageRepository, ghToken);
   }
+
+  private fetchWithRateLimitRetry = (
+    request: () => Promise<Response>,
+  ): Promise<Response> => fetchWithGitHubRateLimitRetry(request, this.sleep);
 
   updateStatus: (
     project: Project,
@@ -1106,17 +1118,19 @@ export class ApiV3CheerioRestIssueRepository
     let hasNextPage = true;
 
     while (hasNextPage) {
-      const response = await fetch('https://api.github.com/graphql', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query,
-          variables: { owner, repo, issueNumber, after },
+      const response = await this.fetchWithRateLimitRetry(() =>
+        fetch('https://api.github.com/graphql', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query,
+            variables: { owner, repo, issueNumber, after },
+          }),
         }),
-      });
+      );
 
       if (!response.ok) {
         throw new Error(
@@ -1285,17 +1299,19 @@ export class ApiV3CheerioRestIssueRepository
       }
     `;
 
-    const response = await fetch('https://api.github.com/graphql', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.ghToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query,
-        variables: { owner, repo, prNumber },
+    const response = await this.fetchWithRateLimitRetry(() =>
+      fetch('https://api.github.com/graphql', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.ghToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query,
+          variables: { owner, repo, prNumber },
+        }),
       }),
-    });
+    );
 
     if (!response.ok) {
       throw new Error(
@@ -1322,16 +1338,18 @@ export class ApiV3CheerioRestIssueRepository
 
   closePullRequest = async (prUrl: string): Promise<void> => {
     const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
-      {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          'Content-Type': 'application/json',
+    const response = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ state: 'closed' }),
         },
-        body: JSON.stringify({ state: 'closed' }),
-      },
+      ),
     );
     if (!response.ok) {
       const reason = await this.formatGitHubErrorWithStatus(response);
@@ -1346,21 +1364,22 @@ export class ApiV3CheerioRestIssueRepository
     const { owner, repo, issueNumber } = this.parseIssueUrl(issueUrl);
     const ownerSegment = encodeURIComponent(owner);
     const repoSegment = encodeURIComponent(repo);
-    const response = await fetch(
-      `https://api.github.com/repos/${ownerSegment}/${repoSegment}/issues/${issueNumber}`,
-      {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          'Content-Type': 'application/json',
+    const response = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${ownerSegment}/${repoSegment}/issues/${issueNumber}`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ state: 'closed', state_reason: stateReason }),
         },
-        body: JSON.stringify({ state: 'closed', state_reason: stateReason }),
-      },
+      ),
     );
     if (!response.ok) {
-      throw new Error(
-        `Failed to close issue ${issueUrl}: HTTP ${response.status}`,
-      );
+      const reason = await this.formatGitHubErrorWithStatus(response);
+      throw new Error(`Failed to close issue ${issueUrl}: ${reason}`);
     }
   };
 
@@ -1371,19 +1390,22 @@ export class ApiV3CheerioRestIssueRepository
     let page = 1;
     let hasMore = true;
     while (hasMore) {
-      const response = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=${perPage}&page=${page}`,
-        {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${this.ghToken}`,
-            Accept: 'application/vnd.github+json',
+      const response = await this.fetchWithRateLimitRetry(() =>
+        fetch(
+          `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/files?per_page=${perPage}&page=${page}`,
+          {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${this.ghToken}`,
+              Accept: 'application/vnd.github+json',
+            },
           },
-        },
+        ),
       );
       if (!response.ok) {
+        const reason = await this.formatGitHubErrorWithStatus(response);
         throw new Error(
-          `Failed to fetch changed files for PR ${prUrl}: HTTP ${response.status}`,
+          `Failed to fetch changed files for PR ${prUrl}: ${reason}`,
         );
       }
       const body: unknown = await response.json();
@@ -1406,17 +1428,19 @@ export class ApiV3CheerioRestIssueRepository
 
   approvePullRequest = async (prUrl: string): Promise<void> => {
     const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/vnd.github+json',
+    const response = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/reviews`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/vnd.github+json',
+          },
+          body: JSON.stringify({ event: 'APPROVE' }),
         },
-        body: JSON.stringify({ event: 'APPROVE' }),
-      },
+      ),
     );
     if (!response.ok) {
       const reason = await this.formatGitHubErrorWithStatus(response);
@@ -1444,17 +1468,19 @@ export class ApiV3CheerioRestIssueRepository
         },
       ],
     };
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/vnd.github+json',
+    const response = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/reviews`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/vnd.github+json',
+          },
+          body: JSON.stringify(reviewBody),
         },
-        body: JSON.stringify(reviewBody),
-      },
+      ),
     );
     if (!response.ok) {
       const reason = await this.formatGitHubErrorWithStatus(response);
@@ -1470,20 +1496,21 @@ export class ApiV3CheerioRestIssueRepository
   ): Promise<string> => {
     const ownerSegment = encodeURIComponent(owner);
     const repoSegment = encodeURIComponent(repo);
-    const response = await fetch(
-      `https://api.github.com/repos/${ownerSegment}/${repoSegment}/pulls/${prNumber}`,
-      {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          Accept: 'application/vnd.github+json',
+    const response = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${ownerSegment}/${repoSegment}/pulls/${prNumber}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            Accept: 'application/vnd.github+json',
+          },
         },
-      },
+      ),
     );
     if (!response.ok) {
-      throw new Error(
-        `Failed to fetch head commit for PR ${prUrl}: HTTP ${response.status}`,
-      );
+      const reason = await this.formatGitHubErrorWithStatus(response);
+      throw new Error(`Failed to fetch head commit for PR ${prUrl}: ${reason}`);
     }
     const body: unknown = await response.json();
     if (
@@ -1514,23 +1541,25 @@ export class ApiV3CheerioRestIssueRepository
     );
     const ownerSegment = encodeURIComponent(owner);
     const repoSegment = encodeURIComponent(repo);
-    const response = await fetch(
-      `https://api.github.com/repos/${ownerSegment}/${repoSegment}/pulls/${prNumber}/comments`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/vnd.github+json',
+    const response = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${ownerSegment}/${repoSegment}/pulls/${prNumber}/comments`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/vnd.github+json',
+          },
+          body: JSON.stringify({
+            body: commentBody,
+            commit_id: commitId,
+            path,
+            line,
+            side,
+          }),
         },
-        body: JSON.stringify({
-          body: commentBody,
-          commit_id: commitId,
-          path,
-          line,
-          side,
-        }),
-      },
+      ),
     );
     if (!response.ok) {
       const reason = await this.formatGitHubErrorWithStatus(response);
@@ -1576,7 +1605,17 @@ export class ApiV3CheerioRestIssueRepository
     response: Response,
   ): Promise<string> => {
     const status = `HTTP ${response.status}`;
+    const bodyText = await response.clone().text();
     const reason = await this.readGitHubErrorReason(response);
+    if (hasRateLimitSignals(response.status, response.headers, bodyText)) {
+      const resetIso = computeRateLimitResetIso(response.headers);
+      const resetSuffix = resetIso === null ? '' : ` (resets at ${resetIso})`;
+      return `${status} GitHub rate limit exceeded, please retry shortly${resetSuffix}`;
+    }
+    if (response.status === 403) {
+      const permissionSuffix = reason === null ? '' : ` ${reason}`;
+      return `${status} permission denied, the token cannot perform this operation${permissionSuffix}`;
+    }
     if (reason === null) {
       return status;
     }
@@ -1588,18 +1627,21 @@ export class ApiV3CheerioRestIssueRepository
     branchName: string,
   ): Promise<void> => {
     const { owner, repo } = this.parseIssueUrl(prUrl);
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${encodeURIComponent(branchName)}`,
-      {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
+    const response = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/refs/heads/${encodeURIComponent(branchName)}`,
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+          },
         },
-      },
+      ),
     );
     if (!response.ok && response.status !== 422) {
+      const reason = await this.formatGitHubErrorWithStatus(response);
       throw new Error(
-        `Failed to delete branch ${branchName} for PR ${prUrl}: HTTP ${response.status}`,
+        `Failed to delete branch ${branchName} for PR ${prUrl}: ${reason}`,
       );
     }
   };
@@ -1613,20 +1655,21 @@ export class ApiV3CheerioRestIssueRepository
 
   getIssueOrPullRequestBody = async (url: string): Promise<string> => {
     const { owner, repo, issueNumber } = this.parseIssueUrl(url);
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`,
-      {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          Accept: 'application/vnd.github+json',
+    const response = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            Accept: 'application/vnd.github+json',
+          },
         },
-      },
+      ),
     );
     if (!response.ok) {
-      throw new Error(
-        `Failed to fetch body for ${url}: HTTP ${response.status}`,
-      );
+      const reason = await this.formatGitHubErrorWithStatus(response);
+      throw new Error(`Failed to fetch body for ${url}: ${reason}`);
     }
     const body: unknown = await response.json();
     if (!isIssueOrPullRequestBodyResponse(body)) {
@@ -1646,20 +1689,21 @@ export class ApiV3CheerioRestIssueRepository
     let page = 1;
     let hasMore = true;
     while (hasMore) {
-      const response = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments?per_page=${perPage}&page=${page}`,
-        {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${this.ghToken}`,
-            Accept: 'application/vnd.github+json',
+      const response = await this.fetchWithRateLimitRetry(() =>
+        fetch(
+          `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/comments?per_page=${perPage}&page=${page}`,
+          {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${this.ghToken}`,
+              Accept: 'application/vnd.github+json',
+            },
           },
-        },
+        ),
       );
       if (!response.ok) {
-        throw new Error(
-          `Failed to fetch comments for ${url}: HTTP ${response.status}`,
-        );
+        const reason = await this.formatGitHubErrorWithStatus(response);
+        throw new Error(`Failed to fetch comments for ${url}: ${reason}`);
       }
       const body: unknown = await response.json();
       if (!isIssueCommentsResponse(body)) {
@@ -1695,20 +1739,21 @@ export class ApiV3CheerioRestIssueRepository
     if (!isPr) {
       return null;
     }
-    const detailResponse = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
-      {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          Accept: 'application/vnd.github+json',
+    const detailResponse = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            Accept: 'application/vnd.github+json',
+          },
         },
-      },
+      ),
     );
     if (!detailResponse.ok) {
-      throw new Error(
-        `Failed to fetch detail for PR ${prUrl}: HTTP ${detailResponse.status}`,
-      );
+      const reason = await this.formatGitHubErrorWithStatus(detailResponse);
+      throw new Error(`Failed to fetch detail for PR ${prUrl}: ${reason}`);
     }
     const detailBody: unknown = await detailResponse.json();
     if (!isPullRequestDetailResponse(detailBody)) {
@@ -1748,20 +1793,21 @@ export class ApiV3CheerioRestIssueRepository
     let page = 1;
     let hasMore = true;
     while (hasMore) {
-      const response = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=${perPage}&page=${page}`,
-        {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${this.ghToken}`,
-            Accept: 'application/vnd.github+json',
+      const response = await this.fetchWithRateLimitRetry(() =>
+        fetch(
+          `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/files?per_page=${perPage}&page=${page}`,
+          {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${this.ghToken}`,
+              Accept: 'application/vnd.github+json',
+            },
           },
-        },
+        ),
       );
       if (!response.ok) {
-        throw new Error(
-          `Failed to fetch files for PR ${prUrl}: HTTP ${response.status}`,
-        );
+        const reason = await this.formatGitHubErrorWithStatus(response);
+        throw new Error(`Failed to fetch files for PR ${prUrl}: ${reason}`);
       }
       const body: unknown = await response.json();
       if (!isPullRequestDetailFilesResponse(body)) {
@@ -1804,20 +1850,21 @@ export class ApiV3CheerioRestIssueRepository
     let page = 1;
     let hasMore = true;
     while (hasMore) {
-      const response = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/commits?per_page=${perPage}&page=${page}`,
-        {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${this.ghToken}`,
-            Accept: 'application/vnd.github+json',
+      const response = await this.fetchWithRateLimitRetry(() =>
+        fetch(
+          `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/commits?per_page=${perPage}&page=${page}`,
+          {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${this.ghToken}`,
+              Accept: 'application/vnd.github+json',
+            },
           },
-        },
+        ),
       );
       if (!response.ok) {
-        throw new Error(
-          `Failed to fetch commits for PR ${prUrl}: HTTP ${response.status}`,
-        );
+        const reason = await this.formatGitHubErrorWithStatus(response);
+        throw new Error(`Failed to fetch commits for PR ${prUrl}: ${reason}`);
       }
       const body: unknown = await response.json();
       if (!isPullRequestCommitsResponse(body)) {
@@ -1847,20 +1894,21 @@ export class ApiV3CheerioRestIssueRepository
   ): Promise<{ state: string; merged: boolean; isPullRequest: boolean }> => {
     const { owner, repo, issueNumber, isPr } = this.parseIssueUrl(url);
     if (isPr) {
-      const response = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/pulls/${issueNumber}`,
-        {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${this.ghToken}`,
-            Accept: 'application/vnd.github+json',
+      const response = await this.fetchWithRateLimitRetry(() =>
+        fetch(
+          `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${issueNumber}`,
+          {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${this.ghToken}`,
+              Accept: 'application/vnd.github+json',
+            },
           },
-        },
+        ),
       );
       if (!response.ok) {
-        throw new Error(
-          `Failed to fetch state for ${url}: HTTP ${response.status}`,
-        );
+        const reason = await this.formatGitHubErrorWithStatus(response);
+        throw new Error(`Failed to fetch state for ${url}: ${reason}`);
       }
       const body: unknown = await response.json();
       if (!isPullRequestDetailResponse(body)) {
@@ -1870,20 +1918,21 @@ export class ApiV3CheerioRestIssueRepository
       }
       return { state: body.state, merged: body.merged, isPullRequest: true };
     }
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`,
-      {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          Accept: 'application/vnd.github+json',
+    const response = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            Accept: 'application/vnd.github+json',
+          },
         },
-      },
+      ),
     );
     if (!response.ok) {
-      throw new Error(
-        `Failed to fetch state for ${url}: HTTP ${response.status}`,
-      );
+      const reason = await this.formatGitHubErrorWithStatus(response);
+      throw new Error(`Failed to fetch state for ${url}: ${reason}`);
     }
     const body: unknown = await response.json();
     if (!isIssueOrPullRequestStateResponse(body)) {
@@ -1912,20 +1961,21 @@ export class ApiV3CheerioRestIssueRepository
     if (!isPr) {
       return null;
     }
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
-      {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          Accept: 'application/vnd.github+json',
+    const response = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            Accept: 'application/vnd.github+json',
+          },
         },
-      },
+      ),
     );
     if (!response.ok) {
-      throw new Error(
-        `Failed to fetch summary for PR ${prUrl}: HTTP ${response.status}`,
-      );
+      const reason = await this.formatGitHubErrorWithStatus(response);
+      throw new Error(`Failed to fetch summary for PR ${prUrl}: ${reason}`);
     }
     const body: unknown = await response.json();
     if (!isPullRequestDetailResponse(body)) {
