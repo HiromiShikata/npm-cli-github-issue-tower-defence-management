@@ -85,11 +85,12 @@ class TranscriptSessionSubAgentActivityRepository {
     constructor(directoryResolver, now) {
         this.directoryResolver = directoryResolver;
         this.now = now;
-        this.listSubAgentActivitiesBySessionName = async (sessionNames) => {
+        this.listSubAgentActivitiesBySessionName = async (sessionNames, transcriptPathBySessionName) => {
             const result = new Map();
             const nowEpochSeconds = Math.floor(this.now.getTime() / 1000);
             for (const sessionName of sessionNames) {
-                const directory = this.directoryResolver.resolveSubAgentsDirectory(sessionName);
+                const mainTranscriptPath = transcriptPathBySessionName.get(sessionName) ?? null;
+                const directory = this.directoryResolver.resolveSubAgentsDirectory(sessionName, mainTranscriptPath);
                 if (directory === null) {
                     continue;
                 }

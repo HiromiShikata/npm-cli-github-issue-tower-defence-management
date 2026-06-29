@@ -5,7 +5,7 @@ export declare class TranscriptSessionSubAgentActivityRepository implements Sess
     private readonly directoryResolver;
     private readonly now;
     constructor(directoryResolver: SubAgentTranscriptDirectoryResolver, now: Date);
-    listSubAgentActivitiesBySessionName: (sessionNames: string[]) => Promise<Map<string, SubAgentActivity[]>>;
+    listSubAgentActivitiesBySessionName: (sessionNames: string[], transcriptPathBySessionName: Map<string, string>) => Promise<Map<string, SubAgentActivity[]>>;
     private collectActivities;
     private toActivity;
 }

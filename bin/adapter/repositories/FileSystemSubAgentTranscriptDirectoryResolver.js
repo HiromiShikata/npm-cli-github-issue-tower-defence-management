@@ -38,11 +38,18 @@ const path = __importStar(require("path"));
 class FileSystemSubAgentTranscriptDirectoryResolver {
     constructor(rootDirectory) {
         this.rootDirectory = rootDirectory;
-        this.resolveSubAgentsDirectory = (sessionName) => {
+        this.resolveSubAgentsDirectory = (_sessionName, mainTranscriptPath) => {
             if (this.rootDirectory === null) {
                 return null;
             }
-            return path.join(this.rootDirectory, sessionName.replace(/\//g, '_'), 'subagents');
+            if (mainTranscriptPath === null) {
+                return null;
+            }
+            const sessionDirectory = mainTranscriptPath.replace(/\.jsonl$/, '');
+            if (sessionDirectory === mainTranscriptPath) {
+                return null;
+            }
+            return path.join(sessionDirectory, 'subagents');
         };
     }
 }

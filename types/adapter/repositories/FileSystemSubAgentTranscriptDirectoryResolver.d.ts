@@ -2,6 +2,6 @@ import { SubAgentTranscriptDirectoryResolver } from '../../domain/usecases/adapt
 export declare class FileSystemSubAgentTranscriptDirectoryResolver implements SubAgentTranscriptDirectoryResolver {
     private readonly rootDirectory;
     constructor(rootDirectory: string | null);
-    resolveSubAgentsDirectory: (sessionName: string) => string | null;
+    resolveSubAgentsDirectory: (_sessionName: string, mainTranscriptPath: string | null) => string | null;
 }
 //# sourceMappingURL=FileSystemSubAgentTranscriptDirectoryResolver.d.ts.map

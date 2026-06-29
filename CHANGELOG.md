@@ -1,3 +1,10 @@
+## [1.117.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.0...v1.117.1) (2026-06-29)
+
+
+### Bug Fixes
+
+* **silent-notification:** match real session-name and on-disk sub-agent transcript forms ([#1096](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1096)) ([b705351](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b705351f4991f525ba52507b64edacdaddd7d3e6)), closes [#1095](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1095)
+
 # [1.117.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.116.9...v1.117.0) (2026-06-29)
 
 

@@ -6,9 +6,19 @@ exports.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = 10 * 60;
 exports.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = 5 * 60;
 exports.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = 15 * 60;
 exports.DEFAULT_NOTIFICATION_STAGGER_SECONDS = 25;
-const GITHUB_ISSUE_URL_PATTERN = /^https:\/\/github\.com\/[^/]+\/[^/]+\/issues\/\d+$/;
+const GITHUB_ISSUE_OR_PULL_URL_PATTERN = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/(?:issues|pull)\/(\d+)$/;
+const GITHUB_TMUX_SESSION_NAME_PATTERN = /^https_\/\/github_com\/([^/]+)\/([^/]+)\/(?:issues|pull)\/(\d+)$/;
 const parseHubTaskIssueUrlFromSessionName = (sessionName) => {
-    return GITHUB_ISSUE_URL_PATTERN.test(sessionName) ? sessionName : null;
+    if (GITHUB_ISSUE_OR_PULL_URL_PATTERN.test(sessionName)) {
+        return sessionName;
+    }
+    const tmuxMatch = GITHUB_TMUX_SESSION_NAME_PATTERN.exec(sessionName);
+    if (tmuxMatch === null) {
+        return null;
+    }
+    const [, owner, repo, number] = tmuxMatch;
+    const target = sessionName.includes('/pull/') ? 'pull' : 'issues';
+    return `https://github.com/${owner}/${repo}/${target}/${number}`;
 };
 exports.parseHubTaskIssueUrlFromSessionName = parseHubTaskIssueUrlFromSessionName;
 const GITHUB_ISSUE_OR_PULL_REQUEST_SESSION_NAME_PATTERN = /^https(:\/\/|_\/\/)github(\.com|_com)\/[^/]+\/[^/]+\/(issues|pull)\/\d+$/;
@@ -94,7 +104,7 @@ class NotifySilentLiveSessionsUseCase {
             for (const activity of activities) {
                 lastOutputBySessionName.set(activity.sessionName, activity.lastOutputEpochSeconds);
             }
-            const subAgentsBySessionName = await this.subAgentActivityRepository.listSubAgentActivitiesBySessionName(sessionNames);
+            const subAgentsBySessionName = await this.subAgentActivityRepository.listSubAgentActivitiesBySessionName(sessionNames, transcriptPathBySessionName);
             const sessionNamesWithUnansweredOwnerCall = await this.ownerCallStatusProvider.listSessionNamesWithUnansweredOwnerCall(transcriptPathBySessionName);
             const nowEpochSeconds = Math.floor(now.getTime() / 1000);
             return sessionNames.map((sessionName) => {
