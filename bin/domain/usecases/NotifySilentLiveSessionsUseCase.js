@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.NotifySilentLiveSessionsUseCase = exports.parseHubTaskIssueUrlFromSessionName = exports.DEFAULT_NOTIFICATION_STAGGER_SECONDS = exports.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = exports.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = exports.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = void 0;
+exports.NotifySilentLiveSessionsUseCase = exports.isGitHubIssueOrPullRequestSessionName = exports.parseHubTaskIssueUrlFromSessionName = exports.DEFAULT_NOTIFICATION_STAGGER_SECONDS = exports.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = exports.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = exports.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = void 0;
 const ResolveInteractiveLiveSessionsUseCase_1 = require("./ResolveInteractiveLiveSessionsUseCase");
 exports.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = 10 * 60;
 exports.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = 5 * 60;
@@ -11,6 +11,9 @@ const parseHubTaskIssueUrlFromSessionName = (sessionName) => {
     return GITHUB_ISSUE_URL_PATTERN.test(sessionName) ? sessionName : null;
 };
 exports.parseHubTaskIssueUrlFromSessionName = parseHubTaskIssueUrlFromSessionName;
+const GITHUB_ISSUE_OR_PULL_REQUEST_SESSION_NAME_PATTERN = /^https(:\/\/|_\/\/)github(\.com|_com)\/[^/]+\/[^/]+\/(issues|pull)\/\d+$/;
+const isGitHubIssueOrPullRequestSessionName = (sessionName) => GITHUB_ISSUE_OR_PULL_REQUEST_SESSION_NAME_PATTERN.test(sessionName);
+exports.isGitHubIssueOrPullRequestSessionName = isGitHubIssueOrPullRequestSessionName;
 class NotifySilentLiveSessionsUseCase {
     constructor(liveSessionProcessSnapshotProvider, interactiveLiveSessionTranscriptResolver, sessionOutputActivityRepository, subAgentActivityRepository, ownerCallStatusProvider, notificationRepository, messageComposer, sleeper, hubTaskStatusResolver = null) {
         this.liveSessionProcessSnapshotProvider = liveSessionProcessSnapshotProvider;
@@ -25,7 +28,12 @@ class NotifySilentLiveSessionsUseCase {
         this.resolveInteractiveLiveSessions = new ResolveInteractiveLiveSessionsUseCase_1.ResolveInteractiveLiveSessionsUseCase();
         this.run = async (params) => {
             const snapshot = await this.liveSessionProcessSnapshotProvider.getSnapshot();
-            const interactiveSessions = this.resolveInteractiveLiveSessions.resolve(snapshot);
+            const allInteractiveSessions = this.resolveInteractiveLiveSessions.resolve(snapshot);
+            const interactiveSessions = allInteractiveSessions.filter((session) => (0, exports.isGitHubIssueOrPullRequestSessionName)(session.sessionName));
+            const skippedNonGitHubSessionCount = allInteractiveSessions.length - interactiveSessions.length;
+            if (skippedNonGitHubSessionCount > 0) {
+                console.log(`Silent live session notification: ignoring ${skippedNonGitHubSessionCount} non-github-named interactive session(s); only sessions named after a github.com issue or pull-request URL are monitored.`);
+            }
             const transcriptPathBySessionName = this.interactiveLiveSessionTranscriptResolver.resolveTranscriptPaths(interactiveSessions);
             const snapshots = await this.collectSnapshots(interactiveSessions, transcriptPathBySessionName, params.now);
             const candidates = [];

@@ -1,3 +1,10 @@
+## [1.116.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.116.8...v1.116.9) (2026-06-29)
+
+
+### Bug Fixes
+
+* **silent-notification:** monitor only github.com issue or pull-request named sessions ([#1094](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1094)) ([e7f0fca](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e7f0fca786d93a3cb9dc1899ee0c40bd9f371a2a)), closes [#1093](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1093)
+
 ## [1.116.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.116.7...v1.116.8) (2026-06-29)
 
 

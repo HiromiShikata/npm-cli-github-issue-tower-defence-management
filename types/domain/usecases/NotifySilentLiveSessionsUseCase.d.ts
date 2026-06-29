@@ -12,6 +12,7 @@ export declare const DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS: number;
 export declare const DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS: number;
 export declare const DEFAULT_NOTIFICATION_STAGGER_SECONDS = 25;
 export declare const parseHubTaskIssueUrlFromSessionName: (sessionName: string) => string | null;
+export declare const isGitHubIssueOrPullRequestSessionName: (sessionName: string) => boolean;
 export type HubTaskStatusResolver = Pick<IssueRepository, 'getIssueByUrl'>;
 export declare class NotifySilentLiveSessionsUseCase {
     private readonly liveSessionProcessSnapshotProvider;
