@@ -70,6 +70,7 @@ const createFakeTmuxSessionRepository = (state: {
       launches.push({ sessionName, launcherCommand, issueUrl });
     },
     killSession: async () => undefined,
+    sendKeys: async () => undefined,
   };
 };
 
