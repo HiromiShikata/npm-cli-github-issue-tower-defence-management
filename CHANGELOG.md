@@ -1,3 +1,10 @@
+# [1.116.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.115.3...v1.116.0) (2026-06-29)
+
+
+### Features
+
+* **silent-session:** add when-to-fire guidance to owner-call self-check point ([#1076](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1076)) ([2af11ff](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2af11ffde82ef767b3a4b5062bd7bf399ba43dd0))
+
 ## [1.115.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.115.2...v1.115.3) (2026-06-29)
 
 
