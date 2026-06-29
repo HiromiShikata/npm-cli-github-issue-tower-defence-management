@@ -1,3 +1,10 @@
+## [1.117.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.4...v1.117.5) (2026-06-29)
+
+
+### Bug Fixes
+
+* **silent-monitor:** drop sub-agent recency ceiling and rely on strengthened completion-at-end detection ([#1110](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1110)) ([4de5d72](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4de5d726fa5bb3b15b5901eaebcb5487b7fe4a40)), closes [#1109](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1109)
+
 ## [1.117.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.3...v1.117.4) (2026-06-29)
 
 

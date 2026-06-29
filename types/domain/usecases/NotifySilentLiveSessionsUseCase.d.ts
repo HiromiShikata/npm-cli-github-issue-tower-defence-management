@@ -10,7 +10,6 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 export declare const DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS: number;
 export declare const DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS: number;
 export declare const DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS: number;
-export declare const DEFAULT_SUBAGENT_SILENT_CEILING_SECONDS: number;
 export declare const DEFAULT_NOTIFICATION_STAGGER_SECONDS = 25;
 export declare const parseHubTaskIssueUrlFromSessionName: (sessionName: string) => string | null;
 export declare const isGitHubIssueOrPullRequestSessionName: (sessionName: string) => boolean;

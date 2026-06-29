@@ -71,7 +71,13 @@ const entryIndicatesCompletion = (entry) => {
         return lastBlock !== undefined && readString(lastBlock, 'type') === 'text';
     }
     if (type === 'user') {
-        return readContentBlocks(message).some((block) => readString(block, 'type') === 'text');
+        const blocks = readContentBlocks(message);
+        if (blocks.length === 0) {
+            return true;
+        }
+        const lastBlock = blocks[blocks.length - 1];
+        const lastBlockType = readString(lastBlock, 'type');
+        return lastBlockType === 'text' || lastBlockType === 'tool_result';
     }
     return false;
 };
@@ -105,10 +111,9 @@ const parseTranscript = (content) => {
 };
 const clampToZero = (value) => (value > 0 ? value : 0);
 class TranscriptSessionSubAgentActivityRepository {
-    constructor(directoryResolver, now, silentCeilingSeconds) {
+    constructor(directoryResolver, now) {
         this.directoryResolver = directoryResolver;
         this.now = now;
-        this.silentCeilingSeconds = silentCeilingSeconds;
         this.listSubAgentActivitiesBySessionName = async (sessionNames, transcriptPathBySessionName) => {
             const result = new Map();
             const nowEpochSeconds = Math.floor(this.now.getTime() / 1000);
@@ -162,9 +167,6 @@ class TranscriptSessionSubAgentActivityRepository {
                 return null;
             }
             const silentSeconds = clampToZero(nowEpochSeconds - Math.floor(stats.mtimeMs / 1000));
-            if (silentSeconds > this.silentCeilingSeconds) {
-                return null;
-            }
             const runningSeconds = transcript.firstEntryEpochSeconds === null
                 ? 0
                 : clampToZero(nowEpochSeconds - transcript.firstEntryEpochSeconds);
