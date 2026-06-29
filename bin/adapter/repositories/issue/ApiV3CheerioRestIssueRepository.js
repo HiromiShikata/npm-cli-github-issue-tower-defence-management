@@ -247,7 +247,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                             closingIssueReferenceUrls: closingIssueReferenceUrls,
                         };
                     });
-                    if ((() => { const _io0 = input => "string" === typeof input.nameWithOwner && "number" === typeof input.number && "string" === typeof input.title && ("OPEN" === input.state || "CLOSED" === input.state || "MERGED" === input.state) && (null === input.status || "string" === typeof input.status) && (null === input.story || "string" === typeof input.story) && (null === input.nextActionDate || input.nextActionDate instanceof Date) && (null === input.nextActionHour || "number" === typeof input.nextActionHour) && (null === input.estimationMinutes || "number" === typeof input.estimationMinutes) && (Array.isArray(input.dependedIssueUrls) && input.dependedIssueUrls.every(elem => "string" === typeof elem)) && (null === input.completionDate50PercentConfidence || input.completionDate50PercentConfidence instanceof Date) && "string" === typeof input.url && (Array.isArray(input.assignees) && input.assignees.every(elem => "string" === typeof elem)) && (Array.isArray(input.labels) && input.labels.every(elem => "string" === typeof elem)) && "string" === typeof input.org && "string" === typeof input.repo && "string" === typeof input.body && "string" === typeof input.itemId && "boolean" === typeof input.isPr && "boolean" === typeof input.isInProgress && "boolean" === typeof input.isClosed && input.createdAt instanceof Date && "string" === typeof input.author && (Array.isArray(input.closingIssueReferenceUrls) && input.closingIssueReferenceUrls.every(elem => "string" === typeof elem)); return input => Array.isArray(input) && input.every(elem => "object" === typeof elem && null !== elem && _io0(elem)); })()(issues)) {
+                    if (typia_1.default.is(issues)) {
                         return issues;
                     }
                 }
@@ -766,7 +766,8 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 body: JSON.stringify({ state: 'closed' }),
             });
             if (!response.ok) {
-                throw new Error(`Failed to close PR ${prUrl}: HTTP ${response.status}`);
+                const reason = await this.formatGitHubErrorWithStatus(response);
+                throw new Error(`Failed to close PR ${prUrl}: ${reason}`);
             }
         };
         this.closeIssueByUrl = async (issueUrl, stateReason) => {
@@ -830,7 +831,8 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 body: JSON.stringify({ event: 'APPROVE' }),
             });
             if (!response.ok) {
-                throw new Error(`Failed to approve PR ${prUrl}: HTTP ${response.status}`);
+                const reason = await this.formatGitHubErrorWithStatus(response);
+                throw new Error(`Failed to approve PR ${prUrl}: ${reason}`);
             }
         };
         this.requestChangesWithInlineComment = async (prUrl, changedFilePath, commentBody) => {
@@ -859,7 +861,8 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 body: JSON.stringify(reviewBody),
             });
             if (!response.ok) {
-                throw new Error(`Failed to request changes on PR ${prUrl}: HTTP ${response.status}`);
+                const reason = await this.formatGitHubErrorWithStatus(response);
+                throw new Error(`Failed to request changes on PR ${prUrl}: ${reason}`);
             }
         };
         this.fetchPullRequestHeadSha = async (owner, repo, prNumber, prUrl) => {
@@ -904,27 +907,32 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 }),
             });
             if (!response.ok) {
-                const reason = await this.readGitHubErrorMessage(response);
+                const reason = await this.formatGitHubErrorWithStatus(response);
                 throw new Error(`Failed to create review comment on PR ${prUrl}: ${reason}`);
             }
         };
-        this.readGitHubErrorMessage = async (response) => {
-            const fallback = `HTTP ${response.status}`;
+        this.readGitHubErrorReason = async (response) => {
             let parsed;
             try {
                 parsed = await response.json();
             }
             catch {
-                return fallback;
+                return null;
             }
             if (!isRecord(parsed) || typeof parsed.message !== 'string') {
-                return fallback;
+                return null;
             }
             if (Array.isArray(parsed.errors) && parsed.errors.length > 0) {
                 const details = parsed.errors
-                    .map((error) => isRecord(error) && typeof error.message === 'string'
-                    ? error.message
-                    : '')
+                    .map((error) => {
+                    if (typeof error === 'string') {
+                        return error;
+                    }
+                    if (isRecord(error) && typeof error.message === 'string') {
+                        return error.message;
+                    }
+                    return '';
+                })
                     .filter((detail) => detail.length > 0)
                     .join('; ');
                 if (details.length > 0) {
@@ -932,6 +940,14 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 }
             }
             return parsed.message;
+        };
+        this.formatGitHubErrorWithStatus = async (response) => {
+            const status = `HTTP ${response.status}`;
+            const reason = await this.readGitHubErrorReason(response);
+            if (reason === null) {
+                return status;
+            }
+            return `${status} ${reason}`;
         };
         this.deletePullRequestBranch = async (prUrl, branchName) => {
             const { owner, repo } = this.parseIssueUrl(prUrl);

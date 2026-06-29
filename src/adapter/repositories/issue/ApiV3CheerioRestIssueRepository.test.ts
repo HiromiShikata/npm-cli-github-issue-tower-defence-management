@@ -526,6 +526,129 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         ),
       ).rejects.toThrow('422');
     });
+
+    it("should surface GitHub's reason together with the status when the API rejects the approval", async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            message: 'Review Can not approve your own pull request',
+          }),
+          {
+            status: 422,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.approvePullRequest(
+          'https://github.com/HiromiShikata/test-repository/pull/42',
+        ),
+      ).rejects.toThrow(
+        'Failed to approve PR https://github.com/HiromiShikata/test-repository/pull/42: HTTP 422 Review Can not approve your own pull request',
+      );
+    });
+  });
+
+  describe('closePullRequest', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("should surface GitHub's reason together with the status when the close fails", async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: 'Not Found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.closePullRequest(
+          'https://github.com/HiromiShikata/test-repository/pull/42',
+        ),
+      ).rejects.toThrow(
+        'Failed to close PR https://github.com/HiromiShikata/test-repository/pull/42: HTTP 404 Not Found',
+      );
+    });
+
+    it('should fall back to the status alone when the error body is not JSON', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response('Internal Server Error', {
+          status: 500,
+          statusText: 'Internal Server Error',
+        }),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.closePullRequest(
+          'https://github.com/HiromiShikata/test-repository/pull/42',
+        ),
+      ).rejects.toThrow(
+        'Failed to close PR https://github.com/HiromiShikata/test-repository/pull/42: HTTP 500',
+      );
+    });
+  });
+
+  describe('requestChangesWithInlineComment', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("should surface GitHub's validation reason together with the status when the review POST fails", async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            message: 'Validation Failed',
+            errors: [{ message: 'path must be part of the diff' }],
+          }),
+          {
+            status: 422,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.requestChangesWithInlineComment(
+          'https://github.com/HiromiShikata/test-repository/pull/42',
+          'src/index.ts',
+          'Please address this.',
+        ),
+      ).rejects.toThrow(
+        'Failed to request changes on PR https://github.com/HiromiShikata/test-repository/pull/42: HTTP 422 Validation Failed: path must be part of the diff',
+      );
+    });
+
+    it('should surface string entries in the GitHub errors array', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            message: 'Validation Failed',
+            errors: ['position is required'],
+          }),
+          {
+            status: 422,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.requestChangesWithInlineComment(
+          'https://github.com/HiromiShikata/test-repository/pull/42',
+          'src/index.ts',
+          'Please address this.',
+        ),
+      ).rejects.toThrow(
+        'Failed to request changes on PR https://github.com/HiromiShikata/test-repository/pull/42: HTTP 422 Validation Failed: position is required',
+      );
+    });
   });
 
   describe('createPullRequestReviewComment', () => {
@@ -610,7 +733,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           'RIGHT',
           'Please rename this variable.',
         ),
-      ).rejects.toThrow('Validation Failed: line must be part of the diff');
+      ).rejects.toThrow(
+        'HTTP 422 Validation Failed: line must be part of the diff',
+      );
     });
 
     it('should throw when the head commit cannot be fetched', async () => {
