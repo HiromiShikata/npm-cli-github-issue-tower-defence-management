@@ -1,3 +1,10 @@
+## [1.117.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.2...v1.117.3) (2026-06-29)
+
+
+### Bug Fixes
+
+* disable console detail prefetch to stop GraphQL rate-limit exhaustion ([#1102](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1102)) ([b577193](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b5771933b5a344eec5ed057b03bcf70139e82557))
+
 ## [1.117.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.1...v1.117.2) (2026-06-29)
 
 
