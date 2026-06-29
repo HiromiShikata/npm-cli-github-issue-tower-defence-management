@@ -130,6 +130,7 @@ describe('ConsoleItemDetail', () => {
         pullRequestStatus={{
           found: true,
           isConflicted: true,
+          mergeableStatus: 'CONFLICTING',
           isPassedAllCiJob: false,
           isCiStateSuccess: false,
           isBranchOutOfDate: true,
@@ -161,6 +162,7 @@ describe('ConsoleItemDetail', () => {
         pullRequestStatus={{
           found: true,
           isConflicted: false,
+          mergeableStatus: 'MERGEABLE',
           isPassedAllCiJob: true,
           isCiStateSuccess: true,
           isBranchOutOfDate: false,
@@ -169,7 +171,7 @@ describe('ConsoleItemDetail', () => {
       />,
     );
     expect(getByText('CI passing')).toBeInTheDocument();
-    expect(queryByText('Conflict')).toBeNull();
+    expect(getByText('No conflict')).toBeInTheDocument();
     expect(queryByText('Out of date')).toBeNull();
   });
 

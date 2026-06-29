@@ -15,8 +15,23 @@ export type IssueOrPullRequestState = {
   title: string;
 };
 
+export type MergeableStatus = 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN';
+
+export const deriveMergeableStatus = (
+  mergeable: string | null,
+): MergeableStatus => {
+  if (mergeable === 'MERGEABLE') {
+    return 'MERGEABLE';
+  }
+  if (mergeable === 'CONFLICTING') {
+    return 'CONFLICTING';
+  }
+  return 'UNKNOWN';
+};
+
 export type PullRequestStatus = {
   isConflicted: boolean;
+  mergeableStatus: MergeableStatus;
   isPassedAllCiJob: boolean;
   isCiStateSuccess: boolean;
   isBranchOutOfDate: boolean;
@@ -104,6 +119,7 @@ export type RelatedPullRequestWithSummary = {
   createdAt: string;
   isDraft: boolean;
   isConflicted: boolean;
+  mergeableStatus: MergeableStatus;
   isPassedAllCiJob: boolean;
   isCiStateSuccess: boolean;
   isResolvedAllReviewComments: boolean;
@@ -203,6 +219,7 @@ export const handleRelatedPrs = async (
         createdAt: relatedPullRequest.createdAt.toISOString(),
         isDraft: relatedPullRequest.isDraft,
         isConflicted: relatedPullRequest.isConflicted,
+        mergeableStatus: deriveMergeableStatus(relatedPullRequest.mergeable),
         isPassedAllCiJob: relatedPullRequest.isPassedAllCiJob,
         isCiStateSuccess: relatedPullRequest.isCiStateSuccess,
         isResolvedAllReviewComments:
@@ -272,6 +289,7 @@ export const handlePullRequestStatus = async (
           found: true,
           status: {
             isConflicted: pullRequest.isConflicted,
+            mergeableStatus: deriveMergeableStatus(pullRequest.mergeable),
             isPassedAllCiJob: pullRequest.isPassedAllCiJob,
             isCiStateSuccess: pullRequest.isCiStateSuccess,
             isBranchOutOfDate: pullRequest.isBranchOutOfDate,

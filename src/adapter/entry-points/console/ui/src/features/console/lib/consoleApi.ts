@@ -3,6 +3,7 @@ import type {
   ConsoleComment,
   ConsoleCommit,
   ConsoleIssueState,
+  ConsoleMergeableStatus,
   ConsolePullRequestStatus,
   ConsoleRelatedPullRequest,
 } from '../logic/types';
@@ -136,6 +137,16 @@ const parseStringArray = (value: unknown): string[] =>
     ? value.filter((name): name is string => typeof name === 'string')
     : [];
 
+const parseMergeableStatus = (value: unknown): ConsoleMergeableStatus => {
+  if (value === 'MERGEABLE') {
+    return 'MERGEABLE';
+  }
+  if (value === 'CONFLICTING') {
+    return 'CONFLICTING';
+  }
+  return 'UNKNOWN';
+};
+
 const parseRelatedPrs = (payload: unknown): ConsoleRelatedPullRequest[] => {
   if (!isRecord(payload) || !Array.isArray(payload.relatedPullRequests)) {
     return [];
@@ -146,6 +157,7 @@ const parseRelatedPrs = (payload: unknown): ConsoleRelatedPullRequest[] => {
     createdAt: getString(pr.createdAt),
     isDraft: getBoolean(pr.isDraft),
     isConflicted: getBoolean(pr.isConflicted),
+    mergeableStatus: parseMergeableStatus(pr.mergeableStatus),
     isPassedAllCiJob: getBoolean(pr.isPassedAllCiJob),
     isCiStateSuccess: getBoolean(pr.isCiStateSuccess),
     isResolvedAllReviewComments: getBoolean(pr.isResolvedAllReviewComments),
@@ -160,6 +172,7 @@ const parsePullRequestStatus = (payload: unknown): ConsolePullRequestStatus => {
     return {
       found: false,
       isConflicted: false,
+      mergeableStatus: 'UNKNOWN',
       isPassedAllCiJob: false,
       isCiStateSuccess: false,
       isBranchOutOfDate: false,
@@ -170,6 +183,7 @@ const parsePullRequestStatus = (payload: unknown): ConsolePullRequestStatus => {
   return {
     found: true,
     isConflicted: getBoolean(status.isConflicted),
+    mergeableStatus: parseMergeableStatus(status.mergeableStatus),
     isPassedAllCiJob: getBoolean(status.isPassedAllCiJob),
     isCiStateSuccess: getBoolean(status.isCiStateSuccess),
     isBranchOutOfDate: getBoolean(status.isBranchOutOfDate),

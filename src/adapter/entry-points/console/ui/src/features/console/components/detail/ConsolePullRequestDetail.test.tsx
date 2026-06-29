@@ -62,6 +62,7 @@ describe('ConsolePullRequestDetail', () => {
         pullRequest={{
           ...pullRequest,
           isConflicted: true,
+          mergeableStatus: 'CONFLICTING',
           isPassedAllCiJob: false,
           isCiStateSuccess: false,
           isBranchOutOfDate: true,

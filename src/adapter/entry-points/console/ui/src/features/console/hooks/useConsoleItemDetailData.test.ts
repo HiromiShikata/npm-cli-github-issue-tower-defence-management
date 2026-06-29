@@ -68,6 +68,7 @@ const buildCaches = (related: ConsoleRelatedPullRequest[]): ConsoleCaches => {
     fetchPullRequestStatus: async (): Promise<ConsolePullRequestStatus> => ({
       found: true,
       isConflicted: true,
+      mergeableStatus: 'CONFLICTING',
       isPassedAllCiJob: false,
       isCiStateSuccess: false,
       isBranchOutOfDate: true,
@@ -117,6 +118,7 @@ describe('useConsoleItemDetailData', () => {
         createdAt: '2026-06-10T00:00:00.000Z',
         isDraft: false,
         isConflicted: false,
+        mergeableStatus: 'MERGEABLE',
         isPassedAllCiJob: true,
         isCiStateSuccess: true,
         isResolvedAllReviewComments: true,

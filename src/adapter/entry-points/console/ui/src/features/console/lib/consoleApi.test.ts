@@ -191,6 +191,7 @@ describe('createConsoleApiClient', () => {
       found: true,
       status: {
         isConflicted: true,
+        mergeableStatus: 'CONFLICTING',
         isPassedAllCiJob: false,
         isCiStateSuccess: false,
         isBranchOutOfDate: true,
@@ -203,11 +204,30 @@ describe('createConsoleApiClient', () => {
     ).toEqual({
       found: true,
       isConflicted: true,
+      mergeableStatus: 'CONFLICTING',
       isPassedAllCiJob: false,
       isCiStateSuccess: false,
       isBranchOutOfDate: true,
       missingRequiredCheckNames: ['build', 'test'],
     });
+  });
+
+  it('defaults the mergeable status to unknown when the server omits it', async () => {
+    mockFetchOnce({
+      found: true,
+      status: {
+        isConflicted: false,
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+      },
+    });
+    const client = createConsoleApiClient(appendToken);
+    const status = await client.fetchPullRequestStatus(
+      'https://github.com/o/r/pull/1',
+    );
+    expect(status.mergeableStatus).toBe('UNKNOWN');
   });
 
   it('returns a not-found pull request status when the server reports none', async () => {
@@ -218,6 +238,7 @@ describe('createConsoleApiClient', () => {
     ).toEqual({
       found: false,
       isConflicted: false,
+      mergeableStatus: 'UNKNOWN',
       isPassedAllCiJob: false,
       isCiStateSuccess: false,
       isBranchOutOfDate: false,

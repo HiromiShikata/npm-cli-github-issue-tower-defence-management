@@ -7,6 +7,7 @@ import {
 } from '../components/operations/ConsoleUndoToast';
 import { useConsoleActionQueue } from '../hooks/useConsoleActionQueue';
 import { useConsoleCaches } from '../hooks/useConsoleCaches';
+import { useConsoleDetailPrefetch } from '../hooks/useConsoleDetailPrefetch';
 import { useConsoleNavigation } from '../hooks/useConsoleNavigation';
 import { useConsoleOperations } from '../hooks/useConsoleOperations';
 import { useConsoleOverlay } from '../hooks/useConsoleOverlay';
@@ -78,7 +79,12 @@ export const ConsolePage = () => {
     navigation;
 
   const caches = useConsoleCaches();
-  const operations = useConsoleOperations(pjcode, activeTab, overlayState);
+  const operations = useConsoleOperations(
+    pjcode,
+    activeTab,
+    overlayState,
+    caches,
+  );
   const actionQueue = useConsoleActionQueue();
   const now = Date.now();
 
@@ -119,6 +125,8 @@ export const ConsolePage = () => {
       ) ?? null
     );
   }, [selectedItemKey, activeSnapshot]);
+
+  useConsoleDetailPrefetch(caches, selectedItem, pendingItems);
 
   useEffect(() => {
     if (selectedItemKey === null) {

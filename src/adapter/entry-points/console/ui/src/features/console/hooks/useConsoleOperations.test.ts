@@ -1,14 +1,30 @@
 import { act, renderHook } from '@testing-library/react';
+import { ResourceCache } from '../lib/resourceCache';
 import { overlayStorageKey } from '../logic/overlay';
 import {
   consoleListItemsFixture,
   consoleStatusOptionsFixture,
 } from '../testing/fixtures';
+import type { ConsoleCaches } from './useConsoleCaches';
 import { useConsoleOperations } from './useConsoleOperations';
 import { useConsoleOverlay } from './useConsoleOverlay';
 
 const prItem = consoleListItemsFixture[0];
 const issueItem = consoleListItemsFixture[2];
+
+const buildOperationCaches = (): ConsoleCaches => {
+  const never = () => new Promise<never>(() => {});
+  return {
+    client: {} as ConsoleCaches['client'],
+    body: new ResourceCache<string>(never),
+    comments: new ResourceCache(never),
+    files: new ResourceCache(never),
+    commits: new ResourceCache(never),
+    relatedPrs: new ResourceCache(never),
+    state: new ResourceCache(never),
+    prStatus: new ResourceCache(never),
+  };
+};
 
 const captureFetch = (): jest.Mock => {
   const fetchMock = jest.fn(async () => ({
@@ -254,6 +270,57 @@ describe('useConsoleOperations', () => {
       side: 'RIGHT',
       body: 'Consider extracting this into a helper.',
     });
+  });
+
+  it('invalidates the operated item body and comments cache on a review', async () => {
+    captureFetch();
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/umino/prs?k=token');
+    const caches = buildOperationCaches();
+    const bodyInvalidate = jest.spyOn(caches.body, 'invalidate');
+    const commentsInvalidate = jest.spyOn(caches.comments, 'invalidate');
+    const { result } = renderHook(() => {
+      const overlay = useConsoleOverlay('umino');
+      const operations = useConsoleOperations('umino', 'prs', overlay, caches);
+      return { overlay, operations };
+    });
+    await act(async () => {
+      await result.current.operations.reviewPullRequest(
+        prItem,
+        prItem.url,
+        'approve',
+      );
+    });
+    const key = `${prItem.repo}#${prItem.number}`;
+    expect(bodyInvalidate).toHaveBeenCalledWith(key);
+    expect(commentsInvalidate).toHaveBeenCalledWith(key);
+  });
+
+  it('invalidates the operated item cache after posting a comment', async () => {
+    const fetchMock: jest.Mock = jest.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        ok: true,
+        comment: { author: 'a', body: 'b', createdAt: 'c' },
+      }),
+    }));
+    global.fetch = fetchMock as unknown as typeof fetch;
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/umino/prs?k=token');
+    const caches = buildOperationCaches();
+    const commentsInvalidate = jest.spyOn(caches.comments, 'invalidate');
+    const { result } = renderHook(() => {
+      const overlay = useConsoleOverlay('umino');
+      const operations = useConsoleOperations('umino', 'prs', overlay, caches);
+      return { overlay, operations };
+    });
+    await act(async () => {
+      await result.current.operations.addComment(issueItem, 'hello');
+    });
+    expect(commentsInvalidate).toHaveBeenCalledWith(
+      `${issueItem.repo}#${issueItem.number}`,
+    );
   });
 
   it('rejects an operation and posts nothing when no pjcode is available', async () => {

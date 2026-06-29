@@ -89,6 +89,7 @@ export const PullRequestItem: Story = {
     pullRequestStatus: {
       found: true,
       isConflicted: false,
+      mergeableStatus: 'MERGEABLE',
       isPassedAllCiJob: true,
       isCiStateSuccess: true,
       isBranchOutOfDate: false,
@@ -125,6 +126,7 @@ export const PullRequestItemFailingCiWithConflict: Story = {
     pullRequestStatus: {
       found: true,
       isConflicted: true,
+      mergeableStatus: 'CONFLICTING',
       isPassedAllCiJob: false,
       isCiStateSuccess: false,
       isBranchOutOfDate: true,
