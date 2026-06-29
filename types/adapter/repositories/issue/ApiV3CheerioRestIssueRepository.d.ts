@@ -9,6 +9,7 @@ import { LocalStorageCacheRepository } from '../LocalStorageCacheRepository';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import { LocalStorageRepository } from '../LocalStorageRepository';
 import { Member } from '../../../domain/entities/Member';
+import { Sleep } from './githubRateLimitRetry';
 export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository implements IssueRepository {
     readonly apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>;
     readonly restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'createComment' | 'getIssue' | 'updateLabels' | 'removeLabel' | 'updateAssigneeList'>;
@@ -16,7 +17,9 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     readonly localStorageCacheRepository: Pick<LocalStorageCacheRepository, 'getLatest' | 'set'>;
     readonly localStorageRepository: LocalStorageRepository;
     readonly ghToken: string;
-    constructor(apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>, restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'createComment' | 'getIssue' | 'updateLabels' | 'removeLabel' | 'updateAssigneeList'>, graphqlProjectItemRepository: Pick<GraphqlProjectItemRepository, 'fetchProjectItems' | 'fetchProjectItemByUrl' | 'updateProjectField' | 'clearProjectField' | 'updateProjectTextField' | 'addIssueToProject'>, localStorageCacheRepository: Pick<LocalStorageCacheRepository, 'getLatest' | 'set'>, localStorageRepository: LocalStorageRepository, ghToken?: string);
+    readonly sleep: Sleep;
+    constructor(apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>, restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'createComment' | 'getIssue' | 'updateLabels' | 'removeLabel' | 'updateAssigneeList'>, graphqlProjectItemRepository: Pick<GraphqlProjectItemRepository, 'fetchProjectItems' | 'fetchProjectItemByUrl' | 'updateProjectField' | 'clearProjectField' | 'updateProjectTextField' | 'addIssueToProject'>, localStorageCacheRepository: Pick<LocalStorageCacheRepository, 'getLatest' | 'set'>, localStorageRepository: LocalStorageRepository, ghToken?: string, sleep?: Sleep);
+    private fetchWithRateLimitRetry;
     updateStatus: (project: Project, issue: Issue, statusId: string) => Promise<void>;
     convertProjectItemToIssue: (item: ProjectItem) => Issue;
     getAllIssuesFromCache: (cacheKey: string, allowCacheMinutes: number) => Promise<Issue[] | null>;

@@ -39,6 +39,7 @@ const path = __importStar(require("path"));
 const DEFAULT_PROC_DIRECTORY = '/proc';
 const OAUTH_TOKEN_ENVIRON_KEY = 'CLAUDE_CODE_OAUTH_TOKEN';
 const SESSION_ID_ENVIRON_KEY = 'CLAUDE_CODE_SESSION_ID';
+const CONFIG_DIR_ENVIRON_KEY = 'CLAUDE_CONFIG_DIR';
 const isClaudeProcessCommand = (command) => {
     if (command.length === 0) {
         return false;
@@ -78,17 +79,28 @@ class ProcClaudeLiveSessionRepository {
                 return null;
             }
             const token = environ.get(OAUTH_TOKEN_ENVIRON_KEY);
-            const sessionId = environ.get(SESSION_ID_ENVIRON_KEY);
-            if (token === undefined ||
-                token.length === 0 ||
-                sessionId === undefined ||
-                sessionId.length === 0) {
+            if (token === undefined || token.length === 0) {
+                return null;
+            }
+            const sessionKey = this.deriveSessionKey(environ);
+            if (sessionKey === null) {
                 return null;
             }
             if (!this.isClaudeProcess(processIdDirectory)) {
                 return null;
             }
-            return { token, sessionId };
+            return { token, sessionKey };
+        };
+        this.deriveSessionKey = (environ) => {
+            const configDir = environ.get(CONFIG_DIR_ENVIRON_KEY);
+            if (configDir !== undefined && configDir.length > 0) {
+                return configDir;
+            }
+            const sessionId = environ.get(SESSION_ID_ENVIRON_KEY);
+            if (sessionId !== undefined && sessionId.length > 0) {
+                return sessionId;
+            }
+            return null;
         };
         this.isClaudeProcess = (processIdDirectory) => {
             const basePath = path.join(this.procDirectory, processIdDirectory);

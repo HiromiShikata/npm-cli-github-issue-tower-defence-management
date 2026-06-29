@@ -4,7 +4,7 @@ exports.OauthTokenSelectUseCase = exports.SEVEN_DAY_MIN_FREE_RATIO = exports.FIV
 const SECONDS_PER_DAY = 86400;
 const SEVEN_DAYS_IN_SECONDS = 7 * SECONDS_PER_DAY;
 exports.FIVE_HOUR_MIN_FREE_RATIO = 0.6;
-exports.SEVEN_DAY_MIN_FREE_RATIO = 0.3;
+exports.SEVEN_DAY_MIN_FREE_RATIO = 0.07;
 class OauthTokenSelectUseCase {
     constructor() {
         this.run = (candidates, nowEpochSeconds) => {

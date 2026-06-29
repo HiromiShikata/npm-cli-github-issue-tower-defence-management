@@ -1,3 +1,10 @@
+## [1.116.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.116.3...v1.116.4) (2026-06-29)
+
+
+### Bug Fixes
+
+* **console:** retry transient GitHub rate-limit on item operations with bounded backoff and clear error classification ([#1082](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1082)) ([61657ed](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/61657edb588f7ba381009fb15d7a52960dda8ad6))
+
 ## [1.116.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.116.1...v1.116.2) (2026-06-29)
 
 

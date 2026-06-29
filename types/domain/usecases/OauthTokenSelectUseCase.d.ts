@@ -24,7 +24,7 @@ export type OauthTokenSelectResult = {
     metrics: OauthTokenCandidateMetrics[];
 };
 export declare const FIVE_HOUR_MIN_FREE_RATIO = 0.6;
-export declare const SEVEN_DAY_MIN_FREE_RATIO = 0.3;
+export declare const SEVEN_DAY_MIN_FREE_RATIO = 0.07;
 export declare class OauthTokenSelectUseCase {
     run: (candidates: OauthTokenCandidate[], nowEpochSeconds: number) => OauthTokenSelectResult;
     private evaluate;
