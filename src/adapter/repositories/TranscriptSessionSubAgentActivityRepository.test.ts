@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { SubAgentTranscriptDirectoryResolver } from '../../domain/usecases/adapter-interfaces/SubAgentTranscriptDirectoryResolver';
+import { FileSystemSubAgentTranscriptDirectoryResolver } from './FileSystemSubAgentTranscriptDirectoryResolver';
 import { TranscriptSessionSubAgentActivityRepository } from './TranscriptSessionSubAgentActivityRepository';
 
 describe('TranscriptSessionSubAgentActivityRepository', () => {
@@ -17,10 +18,32 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     fs.rmSync(rootDirectory, { force: true, recursive: true });
   });
 
+  const cwdSlugFor = (sessionName: string): string =>
+    `-home-user-worktrees-${sessionName.replace(/[^a-zA-Z0-9]/g, '-')}`;
+
+  const sessionUuidFor = (sessionName: string): string =>
+    `uuid-${sessionName.replace(/[^a-zA-Z0-9]/g, '-')}`;
+
+  const mainTranscriptPathFor = (sessionName: string): string =>
+    path.join(
+      rootDirectory,
+      cwdSlugFor(sessionName),
+      `${sessionUuidFor(sessionName)}.jsonl`,
+    );
+
+  const transcriptMapFor = (sessionNames: string[]): Map<string, string> =>
+    new Map(
+      sessionNames.map((sessionName) => [
+        sessionName,
+        mainTranscriptPathFor(sessionName),
+      ]),
+    );
+
   const subAgentsDirFor = (sessionName: string): string => {
     const dir = path.join(
       rootDirectory,
-      sessionName.replace(/\//g, '_'),
+      cwdSlugFor(sessionName),
+      sessionUuidFor(sessionName),
       'subagents',
     );
     fs.mkdirSync(dir, { recursive: true });
@@ -44,10 +67,8 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     return filePath;
   };
 
-  const createResolver = (): SubAgentTranscriptDirectoryResolver => ({
-    resolveSubAgentsDirectory: (sessionName) =>
-      path.join(rootDirectory, sessionName.replace(/\//g, '_'), 'subagents'),
-  });
+  const createResolver = (): SubAgentTranscriptDirectoryResolver =>
+    new FileSystemSubAgentTranscriptDirectoryResolver(rootDirectory);
 
   const runningEntries = (startTimestamp: string): object[] => [
     { type: 'user', timestamp: startTimestamp, message: { role: 'user' } },
@@ -90,9 +111,10 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
       now,
     );
 
-    const result = await repository.listSubAgentActivitiesBySessionName([
-      sessionName,
-    ]);
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
 
     expect(result.get(sessionName)).toEqual([
       { label: 'agent-aaa111', silentSeconds: 120, runningSeconds: 900 },
@@ -112,9 +134,10 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
       now,
     );
 
-    const result = await repository.listSubAgentActivitiesBySessionName([
-      sessionName,
-    ]);
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
 
     expect(result.size).toBe(0);
   });
@@ -132,9 +155,10 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
       now,
     );
 
-    const result = await repository.listSubAgentActivitiesBySessionName([
-      sessionName,
-    ]);
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
 
     expect(result.size).toBe(0);
   });
@@ -160,9 +184,10 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
       now,
     );
 
-    const result = await repository.listSubAgentActivitiesBySessionName([
-      sessionName,
-    ]);
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
 
     expect(result.get(sessionName)).toEqual([
       { label: 'agent-link1', silentSeconds: 60, runningSeconds: 600 },
@@ -176,9 +201,10 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
       now,
     );
 
-    const result = await repository.listSubAgentActivitiesBySessionName([
-      'https_//github_com/owner/repo/issues/9',
-    ]);
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      ['https_//github_com/owner/repo/issues/9'],
+      transcriptMapFor(['https_//github_com/owner/repo/issues/9']),
+    );
 
     expect(result.size).toBe(0);
   });
@@ -189,9 +215,10 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
       now,
     );
 
-    const result = await repository.listSubAgentActivitiesBySessionName([
-      'https_//github_com/owner/repo/issues/404',
-    ]);
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      ['https_//github_com/owner/repo/issues/404'],
+      transcriptMapFor(['https_//github_com/owner/repo/issues/404']),
+    );
 
     expect(result.size).toBe(0);
   });
@@ -215,9 +242,10 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
       now,
     );
 
-    const result = await repository.listSubAgentActivitiesBySessionName([
-      sessionName,
-    ]);
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
 
     expect(result.get(sessionName)).toHaveLength(2);
   });
@@ -235,12 +263,62 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
       now,
     );
 
-    const result = await repository.listSubAgentActivitiesBySessionName([
-      sessionName,
-    ]);
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
 
     expect(result.get(sessionName)).toEqual([
       { label: 'agent-future', silentSeconds: 0, runningSeconds: 0 },
+    ]);
+  });
+
+  it('resolves sub-agent transcripts laid out exactly as Claude Code stores them on disk', async () => {
+    const sessionName = 'https_//github_com/HiromiShikata/repo/issues/2355';
+    const projectsRoot = path.join(rootDirectory, 'projects');
+    const cwdSlug =
+      '-home-user-0-workspaces-workspace1-oss-example-repo-worktrees-i2355';
+    const sessionUuid = 'ba0637e1-9ff1-41a8-b13c-f45e6a71efc5';
+    const mainTranscriptPath = path.join(
+      projectsRoot,
+      cwdSlug,
+      `${sessionUuid}.jsonl`,
+    );
+    const subagentsDir = path.join(
+      projectsRoot,
+      cwdSlug,
+      sessionUuid,
+      'subagents',
+    );
+    fs.mkdirSync(subagentsDir, { recursive: true });
+    fs.mkdirSync(path.dirname(mainTranscriptPath), { recursive: true });
+    fs.writeFileSync(mainTranscriptPath, '', 'utf8');
+    const agentFile = path.join(subagentsDir, 'agent-afcbe335fdbec0a28.jsonl');
+    fs.writeFileSync(
+      agentFile,
+      runningEntries('2026-06-27T11:45:00.000Z')
+        .map((entry) => JSON.stringify(entry))
+        .join('\n'),
+      'utf8',
+    );
+    fs.utimesSync(agentFile, nowEpochSeconds - 120, nowEpochSeconds - 120);
+
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      new FileSystemSubAgentTranscriptDirectoryResolver(projectsRoot),
+      now,
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      new Map([[sessionName, mainTranscriptPath]]),
+    );
+
+    expect(result.get(sessionName)).toEqual([
+      {
+        label: 'agent-afcbe335fdbec0a28',
+        silentSeconds: 120,
+        runningSeconds: 900,
+      },
     ]);
   });
 });

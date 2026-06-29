@@ -70,12 +70,17 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
 
   listSubAgentActivitiesBySessionName = async (
     sessionNames: string[],
+    transcriptPathBySessionName: Map<string, string>,
   ): Promise<Map<string, SubAgentActivity[]>> => {
     const result = new Map<string, SubAgentActivity[]>();
     const nowEpochSeconds = Math.floor(this.now.getTime() / 1000);
     for (const sessionName of sessionNames) {
-      const directory =
-        this.directoryResolver.resolveSubAgentsDirectory(sessionName);
+      const mainTranscriptPath =
+        transcriptPathBySessionName.get(sessionName) ?? null;
+      const directory = this.directoryResolver.resolveSubAgentsDirectory(
+        sessionName,
+        mainTranscriptPath,
+      );
       if (directory === null) {
         continue;
       }

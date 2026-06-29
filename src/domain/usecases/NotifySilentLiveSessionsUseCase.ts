@@ -16,13 +16,25 @@ export const DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = 5 * 60;
 export const DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = 15 * 60;
 export const DEFAULT_NOTIFICATION_STAGGER_SECONDS = 25;
 
-const GITHUB_ISSUE_URL_PATTERN =
-  /^https:\/\/github\.com\/[^/]+\/[^/]+\/issues\/\d+$/;
+const GITHUB_ISSUE_OR_PULL_URL_PATTERN =
+  /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/(?:issues|pull)\/(\d+)$/;
+
+const GITHUB_TMUX_SESSION_NAME_PATTERN =
+  /^https_\/\/github_com\/([^/]+)\/([^/]+)\/(?:issues|pull)\/(\d+)$/;
 
 export const parseHubTaskIssueUrlFromSessionName = (
   sessionName: string,
 ): string | null => {
-  return GITHUB_ISSUE_URL_PATTERN.test(sessionName) ? sessionName : null;
+  if (GITHUB_ISSUE_OR_PULL_URL_PATTERN.test(sessionName)) {
+    return sessionName;
+  }
+  const tmuxMatch = GITHUB_TMUX_SESSION_NAME_PATTERN.exec(sessionName);
+  if (tmuxMatch === null) {
+    return null;
+  }
+  const [, owner, repo, number] = tmuxMatch;
+  const target = sessionName.includes('/pull/') ? 'pull' : 'issues';
+  return `https://github.com/${owner}/${repo}/${target}/${number}`;
 };
 
 const GITHUB_ISSUE_OR_PULL_REQUEST_SESSION_NAME_PATTERN =
@@ -191,6 +203,7 @@ export class NotifySilentLiveSessionsUseCase {
     const subAgentsBySessionName =
       await this.subAgentActivityRepository.listSubAgentActivitiesBySessionName(
         sessionNames,
+        transcriptPathBySessionName,
       );
 
     const sessionNamesWithUnansweredOwnerCall =
