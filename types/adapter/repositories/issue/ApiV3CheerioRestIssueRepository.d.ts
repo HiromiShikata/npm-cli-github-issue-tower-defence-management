@@ -71,7 +71,8 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     requestChangesWithInlineComment: (prUrl: string, changedFilePath: string | null, commentBody: string) => Promise<void>;
     private fetchPullRequestHeadSha;
     createPullRequestReviewComment: (prUrl: string, path: string, line: number, side: PullRequestReviewCommentSide, commentBody: string) => Promise<void>;
-    private readGitHubErrorMessage;
+    private readGitHubErrorReason;
+    private formatGitHubErrorWithStatus;
     deletePullRequestBranch: (prUrl: string, branchName: string) => Promise<void>;
     createCommentByUrl: (issueOrPrUrl: string, commentBody: string) => Promise<void>;
     getIssueOrPullRequestBody: (url: string) => Promise<string>;

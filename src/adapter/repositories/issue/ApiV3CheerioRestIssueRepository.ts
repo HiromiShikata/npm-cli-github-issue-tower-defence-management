@@ -1334,7 +1334,8 @@ export class ApiV3CheerioRestIssueRepository
       },
     );
     if (!response.ok) {
-      throw new Error(`Failed to close PR ${prUrl}: HTTP ${response.status}`);
+      const reason = await this.formatGitHubErrorWithStatus(response);
+      throw new Error(`Failed to close PR ${prUrl}: ${reason}`);
     }
   };
 
@@ -1418,7 +1419,8 @@ export class ApiV3CheerioRestIssueRepository
       },
     );
     if (!response.ok) {
-      throw new Error(`Failed to approve PR ${prUrl}: HTTP ${response.status}`);
+      const reason = await this.formatGitHubErrorWithStatus(response);
+      throw new Error(`Failed to approve PR ${prUrl}: ${reason}`);
     }
   };
 
@@ -1455,9 +1457,8 @@ export class ApiV3CheerioRestIssueRepository
       },
     );
     if (!response.ok) {
-      throw new Error(
-        `Failed to request changes on PR ${prUrl}: HTTP ${response.status}`,
-      );
+      const reason = await this.formatGitHubErrorWithStatus(response);
+      throw new Error(`Failed to request changes on PR ${prUrl}: ${reason}`);
     }
   };
 
@@ -1532,33 +1533,36 @@ export class ApiV3CheerioRestIssueRepository
       },
     );
     if (!response.ok) {
-      const reason = await this.readGitHubErrorMessage(response);
+      const reason = await this.formatGitHubErrorWithStatus(response);
       throw new Error(
         `Failed to create review comment on PR ${prUrl}: ${reason}`,
       );
     }
   };
 
-  private readGitHubErrorMessage = async (
+  private readGitHubErrorReason = async (
     response: Response,
-  ): Promise<string> => {
-    const fallback = `HTTP ${response.status}`;
+  ): Promise<string | null> => {
     let parsed: unknown;
     try {
       parsed = await response.json();
     } catch {
-      return fallback;
+      return null;
     }
     if (!isRecord(parsed) || typeof parsed.message !== 'string') {
-      return fallback;
+      return null;
     }
     if (Array.isArray(parsed.errors) && parsed.errors.length > 0) {
       const details = parsed.errors
-        .map((error) =>
-          isRecord(error) && typeof error.message === 'string'
-            ? error.message
-            : '',
-        )
+        .map((error) => {
+          if (typeof error === 'string') {
+            return error;
+          }
+          if (isRecord(error) && typeof error.message === 'string') {
+            return error.message;
+          }
+          return '';
+        })
         .filter((detail) => detail.length > 0)
         .join('; ');
       if (details.length > 0) {
@@ -1566,6 +1570,17 @@ export class ApiV3CheerioRestIssueRepository
       }
     }
     return parsed.message;
+  };
+
+  private formatGitHubErrorWithStatus = async (
+    response: Response,
+  ): Promise<string> => {
+    const status = `HTTP ${response.status}`;
+    const reason = await this.readGitHubErrorReason(response);
+    if (reason === null) {
+      return status;
+    }
+    return `${status} ${reason}`;
   };
 
   deletePullRequestBranch = async (
