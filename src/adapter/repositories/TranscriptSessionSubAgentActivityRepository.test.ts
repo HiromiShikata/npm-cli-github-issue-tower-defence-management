@@ -98,6 +98,72 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     },
   ];
 
+  const finalTextAnswerEntries = (startTimestamp: string): object[] => [
+    { type: 'user', timestamp: startTimestamp, message: { role: 'user' } },
+    {
+      type: 'assistant',
+      timestamp: startTimestamp,
+      message: {
+        role: 'assistant',
+        stop_reason: 'tool_use',
+        content: [{ type: 'tool_use', name: 'Bash', input: {} }],
+      },
+    },
+    {
+      type: 'user',
+      timestamp: startTimestamp,
+      message: { role: 'user', content: [{ type: 'tool_result', content: '' }] },
+    },
+    {
+      type: 'assistant',
+      timestamp: startTimestamp,
+      message: {
+        role: 'assistant',
+        stop_reason: null,
+        content: [{ type: 'text', text: 'All verification complete.' }],
+      },
+    },
+  ];
+
+  const interruptedEntries = (startTimestamp: string): object[] => [
+    { type: 'user', timestamp: startTimestamp, message: { role: 'user' } },
+    {
+      type: 'assistant',
+      timestamp: startTimestamp,
+      message: {
+        role: 'assistant',
+        stop_reason: 'tool_use',
+        content: [{ type: 'tool_use', name: 'Bash', input: {} }],
+      },
+    },
+    {
+      type: 'user',
+      timestamp: startTimestamp,
+      message: {
+        role: 'user',
+        content: [{ type: 'text', text: '[Request interrupted by user]' }],
+      },
+    },
+  ];
+
+  const pendingToolUseEntries = (startTimestamp: string): object[] => [
+    { type: 'user', timestamp: startTimestamp, message: { role: 'user' } },
+    {
+      type: 'user',
+      timestamp: startTimestamp,
+      message: { role: 'user', content: [{ type: 'tool_result', content: '' }] },
+    },
+    {
+      type: 'assistant',
+      timestamp: startTimestamp,
+      message: {
+        role: 'assistant',
+        stop_reason: 'tool_use',
+        content: [{ type: 'tool_use', name: 'Bash', input: {} }],
+      },
+    },
+  ];
+
   it('reports a running sub-agent with silent seconds from the file mtime and running seconds from the first entry', async () => {
     const sessionName = 'https_//github_com/owner/repo/issues/9';
     const startTimestamp = '2026-06-27T11:45:00.000Z';
@@ -165,6 +231,74 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     );
 
     expect(result.size).toBe(0);
+  });
+
+  it('excludes a finished sub-agent whose last entry is a final assistant text answer with a null stop_reason', async () => {
+    const sessionName = 'https_//github_com/owner/repo/issues/9';
+    writeAgentTranscript(
+      sessionName,
+      'finaltext',
+      finalTextAnswerEntries('2026-06-27T11:00:00.000Z'),
+      nowEpochSeconds - 600,
+    );
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      now,
+      noOpCeilingSeconds,
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.size).toBe(0);
+  });
+
+  it('excludes a sub-agent whose transcript ends with a user interruption text entry', async () => {
+    const sessionName = 'https_//github_com/owner/repo/issues/9';
+    writeAgentTranscript(
+      sessionName,
+      'interrupted',
+      interruptedEntries('2026-06-27T11:00:00.000Z'),
+      nowEpochSeconds - 600,
+    );
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      now,
+      noOpCeilingSeconds,
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.size).toBe(0);
+  });
+
+  it('flags a genuinely-active sub-agent whose last entry is a pending tool call', async () => {
+    const sessionName = 'https_//github_com/owner/repo/issues/9';
+    writeAgentTranscript(
+      sessionName,
+      'pending',
+      pendingToolUseEntries('2026-06-27T11:45:00.000Z'),
+      nowEpochSeconds - 600,
+    );
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      now,
+      noOpCeilingSeconds,
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.get(sessionName)).toEqual([
+      { label: 'agent-pending', silentSeconds: 600, runningSeconds: 900 },
+    ]);
   });
 
   it('follows a symlinked transcript when computing silent seconds', async () => {
