@@ -1,3 +1,10 @@
+## [1.116.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.116.4...v1.116.5) (2026-06-29)
+
+
+### Bug Fixes
+
+* **test:** use sessionKey not sessionId on ClaudeLiveSession literals in LiveSessionOauthTokenSelectHandler test ([#1089](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1089)) ([b649c7f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b649c7f9243e09b6c973c3d9d545014c0eb1b7f2))
+
 ## [1.116.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.116.3...v1.116.4) (2026-06-29)
 
 
