@@ -153,8 +153,13 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
       if (directory === null) {
         continue;
       }
-      const killedOrFailedAgentIds = this.loadKilledOrFailedAgentIds(mainTranscriptPath);
-      const activities = this.collectActivities(directory, nowEpochSeconds, killedOrFailedAgentIds);
+      const killedOrFailedAgentIds =
+        this.loadKilledOrFailedAgentIds(mainTranscriptPath);
+      const activities = this.collectActivities(
+        directory,
+        nowEpochSeconds,
+        killedOrFailedAgentIds,
+      );
       if (activities.length > 0) {
         result.set(sessionName, activities);
       }
@@ -162,7 +167,9 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
     return result;
   };
 
-  private loadKilledOrFailedAgentIds = (mainTranscriptPath: string | null): Set<string> => {
+  private loadKilledOrFailedAgentIds = (
+    mainTranscriptPath: string | null,
+  ): Set<string> => {
     if (mainTranscriptPath === null) {
       return new Set();
     }
