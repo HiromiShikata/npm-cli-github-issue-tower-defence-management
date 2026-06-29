@@ -132,7 +132,7 @@ describe('LocalStorageRepository', () => {
     testCases.forEach(({ name, params }) => {
       test(name, () => {
         if (fs.existsSync(params[0])) {
-          fs.rmdirSync(params[0], { recursive: true });
+          fs.rmSync(params[0], { recursive: true });
         }
         repository.mkdir(...params);
         expect(fs.existsSync(params[0])).toBe(true);
