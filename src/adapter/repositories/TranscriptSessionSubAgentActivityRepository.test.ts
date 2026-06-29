@@ -112,7 +112,10 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     {
       type: 'user',
       timestamp: startTimestamp,
-      message: { role: 'user', content: [{ type: 'tool_result', content: '' }] },
+      message: {
+        role: 'user',
+        content: [{ type: 'tool_result', content: '' }],
+      },
     },
     {
       type: 'assistant',
@@ -151,7 +154,10 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     {
       type: 'user',
       timestamp: startTimestamp,
-      message: { role: 'user', content: [{ type: 'tool_result', content: '' }] },
+      message: {
+        role: 'user',
+        content: [{ type: 'tool_result', content: '' }],
+      },
     },
     {
       type: 'assistant',
