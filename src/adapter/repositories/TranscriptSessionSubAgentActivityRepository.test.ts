@@ -9,7 +9,6 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
   let rootDirectory: string;
   const now = new Date('2026-06-27T12:00:00.000Z');
   const nowEpochSeconds = Math.floor(now.getTime() / 1000);
-  const noOpCeilingSeconds = 365 * 24 * 60 * 60;
 
   beforeEach(() => {
     rootDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'subagent-tx-'));
@@ -76,7 +75,11 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     {
       type: 'assistant',
       timestamp: startTimestamp,
-      message: { role: 'assistant', stop_reason: 'tool_use' },
+      message: {
+        role: 'assistant',
+        stop_reason: 'tool_use',
+        content: [{ type: 'tool_use', name: 'Bash', input: {} }],
+      },
     },
   ];
 
@@ -149,6 +152,73 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     },
   ];
 
+  const toolResultTerminalEntries = (startTimestamp: string): object[] => [
+    { type: 'user', timestamp: startTimestamp, message: { role: 'user' } },
+    {
+      type: 'assistant',
+      timestamp: startTimestamp,
+      message: {
+        role: 'assistant',
+        stop_reason: 'tool_use',
+        content: [{ type: 'tool_use', name: 'Bash', input: {} }],
+      },
+    },
+    {
+      type: 'user',
+      timestamp: startTimestamp,
+      message: {
+        role: 'user',
+        content: [{ type: 'tool_result', content: 'command output' }],
+      },
+    },
+  ];
+
+  const structuredOutputTerminalEntries = (
+    startTimestamp: string,
+  ): object[] => [
+    { type: 'user', timestamp: startTimestamp, message: { role: 'user' } },
+    {
+      type: 'assistant',
+      timestamp: startTimestamp,
+      message: {
+        role: 'assistant',
+        stop_reason: 'tool_use',
+        content: [{ type: 'tool_use', name: 'StructuredOutput', input: {} }],
+      },
+    },
+    {
+      type: 'user',
+      timestamp: startTimestamp,
+      message: {
+        role: 'user',
+        content: [
+          {
+            type: 'tool_result',
+            content: 'Structured output provided successfully',
+          },
+        ],
+      },
+    },
+  ];
+
+  const emptyUserTerminalEntries = (startTimestamp: string): object[] => [
+    { type: 'user', timestamp: startTimestamp, message: { role: 'user' } },
+    {
+      type: 'assistant',
+      timestamp: startTimestamp,
+      message: {
+        role: 'assistant',
+        stop_reason: 'tool_use',
+        content: [{ type: 'tool_use', name: 'Bash', input: {} }],
+      },
+    },
+    {
+      type: 'user',
+      timestamp: startTimestamp,
+      message: { role: 'user', content: [] },
+    },
+  ];
+
   const pendingToolUseEntries = (startTimestamp: string): object[] => [
     { type: 'user', timestamp: startTimestamp, message: { role: 'user' } },
     {
@@ -182,7 +252,6 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
       now,
-      noOpCeilingSeconds,
     );
 
     const result = await repository.listSubAgentActivitiesBySessionName(
@@ -206,7 +275,6 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
       now,
-      noOpCeilingSeconds,
     );
 
     const result = await repository.listSubAgentActivitiesBySessionName(
@@ -228,7 +296,6 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
       now,
-      noOpCeilingSeconds,
     );
 
     const result = await repository.listSubAgentActivitiesBySessionName(
@@ -250,7 +317,6 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
       now,
-      noOpCeilingSeconds,
     );
 
     const result = await repository.listSubAgentActivitiesBySessionName(
@@ -272,7 +338,69 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
       now,
-      noOpCeilingSeconds,
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.size).toBe(0);
+  });
+
+  it('excludes a dead sub-agent whose transcript ends with an unconsumed tool result and no following assistant turn', async () => {
+    const sessionName = 'https_//github_com/owner/repo/issues/9';
+    writeAgentTranscript(
+      sessionName,
+      'toolresultend',
+      toolResultTerminalEntries('2026-06-27T11:00:00.000Z'),
+      nowEpochSeconds - 600,
+    );
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      now,
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.size).toBe(0);
+  });
+
+  it('excludes a finished sub-agent whose transcript ends with the final StructuredOutput tool result', async () => {
+    const sessionName = 'https_//github_com/owner/repo/issues/9';
+    writeAgentTranscript(
+      sessionName,
+      'structuredend',
+      structuredOutputTerminalEntries('2026-06-27T11:00:00.000Z'),
+      nowEpochSeconds - 600,
+    );
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      now,
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.size).toBe(0);
+  });
+
+  it('excludes a dead sub-agent whose transcript ends with a user entry that has no content blocks', async () => {
+    const sessionName = 'https_//github_com/owner/repo/issues/9';
+    writeAgentTranscript(
+      sessionName,
+      'emptyuserend',
+      emptyUserTerminalEntries('2026-06-27T11:00:00.000Z'),
+      nowEpochSeconds - 600,
+    );
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      now,
     );
 
     const result = await repository.listSubAgentActivitiesBySessionName(
@@ -294,7 +422,6 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
       now,
-      noOpCeilingSeconds,
     );
 
     const result = await repository.listSubAgentActivitiesBySessionName(
@@ -304,6 +431,34 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
 
     expect(result.get(sessionName)).toEqual([
       { label: 'agent-pending', silentSeconds: 600, runningSeconds: 900 },
+    ]);
+  });
+
+  it('flags a long-silent genuine stall whose last entry is a pending tool call regardless of how old it is', async () => {
+    const sessionName = 'https_//github_com/owner/repo/issues/9';
+    const fourDaysSeconds = 4 * 24 * 60 * 60;
+    writeAgentTranscript(
+      sessionName,
+      'longstall',
+      pendingToolUseEntries('2026-06-23T12:00:00.000Z'),
+      nowEpochSeconds - fourDaysSeconds,
+    );
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      now,
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.get(sessionName)).toEqual([
+      {
+        label: 'agent-longstall',
+        silentSeconds: fourDaysSeconds,
+        runningSeconds: fourDaysSeconds,
+      },
     ]);
   });
 
@@ -326,7 +481,6 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
       now,
-      noOpCeilingSeconds,
     );
 
     const result = await repository.listSubAgentActivitiesBySessionName(
@@ -344,7 +498,6 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     const repository = new TranscriptSessionSubAgentActivityRepository(
       { resolveSubAgentsDirectory: () => null },
       now,
-      noOpCeilingSeconds,
     );
 
     const result = await repository.listSubAgentActivitiesBySessionName(
@@ -359,7 +512,6 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
       now,
-      noOpCeilingSeconds,
     );
 
     const result = await repository.listSubAgentActivitiesBySessionName(
@@ -387,7 +539,6 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
       now,
-      noOpCeilingSeconds,
     );
 
     const result = await repository.listSubAgentActivitiesBySessionName(
@@ -409,7 +560,6 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
       now,
-      noOpCeilingSeconds,
     );
 
     const result = await repository.listSubAgentActivitiesBySessionName(
@@ -455,7 +605,6 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     const repository = new TranscriptSessionSubAgentActivityRepository(
       new FileSystemSubAgentTranscriptDirectoryResolver(projectsRoot),
       now,
-      noOpCeilingSeconds,
     );
 
     const result = await repository.listSubAgentActivitiesBySessionName(
@@ -472,41 +621,24 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     ]);
   });
 
-  it('excludes a long-dead sub-agent whose transcript has been silent beyond the ceiling', async () => {
+  it('flags a marker-less stall and excludes a finished transcript in the same session regardless of their age', async () => {
     const sessionName = 'https_//github_com/owner/repo/issues/9';
     const twoDaysSeconds = 2 * 24 * 60 * 60;
     writeAgentTranscript(
       sessionName,
-      'deadone',
-      runningEntries('2026-06-25T11:45:00.000Z'),
+      'finishedold',
+      finishedEntries('2026-06-25T12:00:00.000Z'),
+      nowEpochSeconds - twoDaysSeconds,
+    );
+    writeAgentTranscript(
+      sessionName,
+      'stalledold',
+      pendingToolUseEntries('2026-06-25T12:00:00.000Z'),
       nowEpochSeconds - twoDaysSeconds,
     );
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
       now,
-      60 * 60,
-    );
-
-    const result = await repository.listSubAgentActivitiesBySessionName(
-      [sessionName],
-      transcriptMapFor([sessionName]),
-    );
-
-    expect(result.size).toBe(0);
-  });
-
-  it('keeps a recently-silent sub-agent whose transcript is within the ceiling', async () => {
-    const sessionName = 'https_//github_com/owner/repo/issues/9';
-    writeAgentTranscript(
-      sessionName,
-      'aliveone',
-      runningEntries('2026-06-27T11:45:00.000Z'),
-      nowEpochSeconds - 360,
-    );
-    const repository = new TranscriptSessionSubAgentActivityRepository(
-      createResolver(),
-      now,
-      60 * 60,
     );
 
     const result = await repository.listSubAgentActivitiesBySessionName(
@@ -515,68 +647,11 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     );
 
     expect(result.get(sessionName)).toEqual([
-      { label: 'agent-aliveone', silentSeconds: 360, runningSeconds: 900 },
-    ]);
-  });
-
-  it('keeps a sub-agent silent exactly at the ceiling and excludes one past it', async () => {
-    const sessionName = 'https_//github_com/owner/repo/issues/9';
-    writeAgentTranscript(
-      sessionName,
-      'atceiling',
-      runningEntries('2026-06-27T11:00:00.000Z'),
-      nowEpochSeconds - 3600,
-    );
-    writeAgentTranscript(
-      sessionName,
-      'pastceiling',
-      runningEntries('2026-06-27T11:00:00.000Z'),
-      nowEpochSeconds - 3601,
-    );
-    const repository = new TranscriptSessionSubAgentActivityRepository(
-      createResolver(),
-      now,
-      3600,
-    );
-
-    const result = await repository.listSubAgentActivitiesBySessionName(
-      [sessionName],
-      transcriptMapFor([sessionName]),
-    );
-
-    expect(result.get(sessionName)).toEqual([
-      { label: 'agent-atceiling', silentSeconds: 3600, runningSeconds: 3600 },
-    ]);
-  });
-
-  it('flags only the recently-silent sub-agent when a session holds both a dead and an alive transcript', async () => {
-    const sessionName = 'https_//github_com/owner/repo/issues/9';
-    const twoDaysSeconds = 2 * 24 * 60 * 60;
-    writeAgentTranscript(
-      sessionName,
-      'deadtwo',
-      runningEntries('2026-06-25T11:00:00.000Z'),
-      nowEpochSeconds - twoDaysSeconds,
-    );
-    writeAgentTranscript(
-      sessionName,
-      'alivetwo',
-      runningEntries('2026-06-27T11:45:00.000Z'),
-      nowEpochSeconds - 400,
-    );
-    const repository = new TranscriptSessionSubAgentActivityRepository(
-      createResolver(),
-      now,
-      60 * 60,
-    );
-
-    const result = await repository.listSubAgentActivitiesBySessionName(
-      [sessionName],
-      transcriptMapFor([sessionName]),
-    );
-
-    expect(result.get(sessionName)).toEqual([
-      { label: 'agent-alivetwo', silentSeconds: 400, runningSeconds: 900 },
+      {
+        label: 'agent-stalledold',
+        silentSeconds: twoDaysSeconds,
+        runningSeconds: twoDaysSeconds,
+      },
     ]);
   });
 });
