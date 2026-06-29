@@ -1,3 +1,10 @@
+## [1.116.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.116.0...v1.116.1) (2026-06-29)
+
+
+### Bug Fixes
+
+* **console:** cap triage story-assignment button area at 33vh with internal scroll ([#1078](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1078)) ([cef441a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cef441ac28c1172e7567cae145ef584a5dacf9ee))
+
 # [1.116.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.115.3...v1.116.0) (2026-06-29)
 
 
