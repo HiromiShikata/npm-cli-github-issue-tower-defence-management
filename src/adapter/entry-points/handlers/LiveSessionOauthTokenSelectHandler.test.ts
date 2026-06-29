@@ -134,7 +134,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     });
 
     const handler = buildHandler([
-      { token: 'fake-busy', sessionId: 'session-a' },
+      { token: 'fake-busy', sessionKey: 'session-a' },
     ]);
     const output = handler.handle({
       tokenListJsonPath: tokenListPath,
@@ -165,8 +165,8 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     });
 
     const handler = buildHandler([
-      { token: 'fake-far', sessionId: 'session-a' },
-      { token: 'fake-soon', sessionId: 'session-b' },
+      { token: 'fake-far', sessionKey: 'session-a' },
+      { token: 'fake-soon', sessionKey: 'session-b' },
     ]);
     const output = handler.handle({
       tokenListJsonPath: tokenListPath,
@@ -196,10 +196,10 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     });
 
     const handler = buildHandler([
-      { token: 'fake-one', sessionId: 'session-a' },
-      { token: 'fake-one', sessionId: 'session-a' },
-      { token: 'fake-two', sessionId: 'session-b' },
-      { token: 'fake-two', sessionId: 'session-c' },
+      { token: 'fake-one', sessionKey: 'session-a' },
+      { token: 'fake-one', sessionKey: 'session-a' },
+      { token: 'fake-two', sessionKey: 'session-b' },
+      { token: 'fake-two', sessionKey: 'session-c' },
     ]);
     const output = handler.handle({
       tokenListJsonPath: tokenListPath,
@@ -229,7 +229,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     });
 
     const handler = buildHandler([
-      { token: 'fake-free', sessionId: 'session-a' },
+      { token: 'fake-free', sessionKey: 'session-a' },
     ]);
     const output = handler.handle({
       tokenListJsonPath: tokenListPath,

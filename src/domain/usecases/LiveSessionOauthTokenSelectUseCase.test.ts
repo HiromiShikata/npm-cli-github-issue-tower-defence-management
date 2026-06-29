@@ -32,9 +32,9 @@ const candidate = (
   unifiedRejected,
 });
 
-const session = (name: string, sessionId: string): ClaudeLiveSession => ({
+const session = (name: string, sessionKey: string): ClaudeLiveSession => ({
   token: `fake-token-${name}`,
-  sessionId,
+  sessionKey,
 });
 
 describe('LiveSessionOauthTokenSelectUseCase', () => {
@@ -98,7 +98,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(blocked?.liveSessionCount).toBe(0);
   });
 
-  it('counts distinct session ids and dedupes child processes sharing one session', () => {
+  it('counts distinct session keys and dedupes child processes sharing one session key', () => {
     const result = useCase.run(
       [
         candidate('oneSession', snapshot({ sevenDayReset: NOW + 2 * DAY })),
@@ -119,6 +119,28 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     const twoSessions = result.metrics.find((m) => m.name === 'twoSessions');
     expect(oneSession?.liveSessionCount).toBe(1);
     expect(twoSessions?.liveSessionCount).toBe(2);
+  });
+
+  it('counts resumed sessions keyed by config dir so they are not under-counted', () => {
+    const result = useCase.run(
+      [
+        candidate('resumedHeavy', snapshot({ sevenDayReset: NOW + 2 * DAY })),
+        candidate('fresh', snapshot({ sevenDayReset: NOW + 6 * DAY })),
+      ],
+      [
+        session('resumedHeavy', '/home/user/.config/claude-1'),
+        session('resumedHeavy', '/home/user/.config/claude-1'),
+        session('resumedHeavy', '/home/user/.config/claude-2'),
+        session('fresh', 'session-fresh'),
+      ],
+      NOW,
+    );
+
+    expect(result.selected?.name).toBe('fresh');
+    const resumedHeavy = result.metrics.find((m) => m.name === 'resumedHeavy');
+    const fresh = result.metrics.find((m) => m.name === 'fresh');
+    expect(resumedHeavy?.liveSessionCount).toBe(2);
+    expect(fresh?.liveSessionCount).toBe(1);
   });
 
   it('returns null selection when no token passes the rate-limit filter', () => {
