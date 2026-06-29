@@ -48,9 +48,36 @@ const parseEpochSeconds = (timestamp) => {
     const parsed = Date.parse(timestamp);
     return Number.isNaN(parsed) ? null : Math.floor(parsed / 1000);
 };
+const readContentBlocks = (message) => {
+    const content = message.content;
+    if (!Array.isArray(content)) {
+        return [];
+    }
+    return content.filter(isRecord);
+};
+const entryIndicatesCompletion = (entry) => {
+    const type = readString(entry, 'type');
+    const message = entry.message;
+    if (!isRecord(message)) {
+        return false;
+    }
+    if (type === 'assistant') {
+        const stopReason = readString(message, 'stop_reason');
+        if (stopReason === 'end_turn' || stopReason === 'stop_sequence') {
+            return true;
+        }
+        const blocks = readContentBlocks(message);
+        const lastBlock = blocks[blocks.length - 1];
+        return lastBlock !== undefined && readString(lastBlock, 'type') === 'text';
+    }
+    if (type === 'user') {
+        return readContentBlocks(message).some((block) => readString(block, 'type') === 'text');
+    }
+    return false;
+};
 const parseTranscript = (content) => {
     let firstEntryEpochSeconds = null;
-    let lastStopReason = null;
+    let lastEntryIndicatesCompletion = false;
     for (const line of content.split('\n')) {
         const trimmed = line.trim();
         if (trimmed.length === 0) {
@@ -70,15 +97,11 @@ const parseTranscript = (content) => {
         if (firstEntryEpochSeconds === null && epochSeconds !== null) {
             firstEntryEpochSeconds = epochSeconds;
         }
-        const message = parsed.message;
-        if (isRecord(message)) {
-            const stopReason = readString(message, 'stop_reason');
-            if (stopReason !== null) {
-                lastStopReason = stopReason;
-            }
+        if (isRecord(parsed.message)) {
+            lastEntryIndicatesCompletion = entryIndicatesCompletion(parsed);
         }
     }
-    return { firstEntryEpochSeconds, lastStopReason };
+    return { firstEntryEpochSeconds, lastEntryIndicatesCompletion };
 };
 const clampToZero = (value) => (value > 0 ? value : 0);
 class TranscriptSessionSubAgentActivityRepository {
@@ -135,8 +158,7 @@ class TranscriptSessionSubAgentActivityRepository {
                 return null;
             }
             const transcript = parseTranscript(content);
-            if (transcript.lastStopReason === 'end_turn' ||
-                transcript.lastStopReason === 'stop_sequence') {
+            if (transcript.lastEntryIndicatesCompletion) {
                 return null;
             }
             const silentSeconds = clampToZero(nowEpochSeconds - Math.floor(stats.mtimeMs / 1000));

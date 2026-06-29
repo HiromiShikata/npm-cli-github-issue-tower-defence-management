@@ -1,3 +1,10 @@
+## [1.117.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.3...v1.117.4) (2026-06-29)
+
+
+### Bug Fixes
+
+* **silent-notification:** exclude completed sub-agents by inspecting the last transcript entry ([#1104](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1104)) ([2bd9e42](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2bd9e42cfab2ece45c273f987c5bffc2b620368d))
+
 ## [1.117.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.2...v1.117.3) (2026-06-29)
 
 
