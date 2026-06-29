@@ -39,6 +39,39 @@ describe('DefaultSilentSessionMessageComposer', () => {
     expect(section).toContain('You have produced no output for 10 minutes.');
   });
 
+  it('instructs the required owner-call notification format with the leading red circle and single-line complete tag', () => {
+    const section = composer.composeMainStalledSection(600);
+    expect(section).toContain('🔴');
+    expect(section).toContain(
+      'The content between the markers MUST begin with the 🔴 emoji immediately, with no space after it.',
+    );
+    expect(section).toContain(
+      'complete matching pair — opening marker, content, then closing marker — on a single line with no newline inside the tag.',
+    );
+    expect(section).toContain(
+      'a malformed tag (a broken or missing closing marker, or a missing leading 🔴) results in only a red indicator with no readable content.',
+    );
+  });
+
+  it('interpolates the configured owner-call marker into the format guidance when provided', () => {
+    const markedComposer = new DefaultSilentSessionMessageComposer(
+      '<<OWNER_CALL>>',
+    );
+    const section = markedComposer.composeMainStalledSection(600);
+    expect(section).toContain(
+      'the configured owner-call marker tag "<<OWNER_CALL>>" as a complete matching pair',
+    );
+    expect(section).toContain('🔴');
+  });
+
+  it('falls back to generic owner-call format guidance when no marker is configured', () => {
+    const section = composer.composeMainStalledSection(600);
+    expect(section).toContain(
+      'Emit the owner-call as the configured owner-call marker tag as a complete matching pair',
+    );
+    expect(section).not.toContain('""');
+  });
+
   it('lists each sub-agent with its silent and running minutes', () => {
     const section = composer.composeSubAgentSection([
       { label: 'sub-process-1', silentSeconds: 360, runningSeconds: 1200 },
