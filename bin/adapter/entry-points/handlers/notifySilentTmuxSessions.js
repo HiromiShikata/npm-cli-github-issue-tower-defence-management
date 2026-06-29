@@ -35,7 +35,7 @@ const notifySilentTmuxSessions = async (params) => {
         console.log('Silent live session notification skipped: not enabled (set silentNotificationEnabled or TDPM_SILENT_NOTIFICATION_ENABLED=true to enable).');
         return;
     }
-    const messageComposer = new ConfigurableSilentSessionMessageComposer_1.ConfigurableSilentSessionMessageComposer(messageTemplates, new DefaultSilentSessionMessageComposer_1.DefaultSilentSessionMessageComposer());
+    const messageComposer = new ConfigurableSilentSessionMessageComposer_1.ConfigurableSilentSessionMessageComposer(messageTemplates, new DefaultSilentSessionMessageComposer_1.DefaultSilentSessionMessageComposer(ownerCallMarker));
     const useCase = new NotifySilentLiveSessionsUseCase_1.NotifySilentLiveSessionsUseCase(new LocalProcessLiveSessionProcessSnapshotProvider_1.LocalProcessLiveSessionProcessSnapshotProvider(localCommandRunner, processEnvironReader ?? new ProcFsProcessEnvironReader_1.ProcFsProcessEnvironReader()), new FileSystemInteractiveLiveSessionTranscriptResolver_1.FileSystemInteractiveLiveSessionTranscriptResolver(), new FileSystemSessionOutputActivityRepository_1.FileSystemSessionOutputActivityRepository(), createSubAgentActivityRepository(subAgentTranscriptRootDirectory, subAgentProcessMatchPattern, subAgentOutputRootDirectory, localCommandRunner, now), createOwnerCallStatusProvider(ownerCallMarker), new TmuxSilentSessionNotificationRepository_1.TmuxSilentSessionNotificationRepository(localCommandRunner), messageComposer, new RealSleeper_1.RealSleeper(), hubTaskStatusResolver);
     await useCase.run({
         mainSilentThresholdSeconds,

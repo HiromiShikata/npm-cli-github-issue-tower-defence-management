@@ -1,3 +1,10 @@
+## [1.115.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.115.2...v1.115.3) (2026-06-29)
+
+
+### Bug Fixes
+
+* **schedule:** instruct silent agents on the required owner-call format ([#1074](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1074)) ([45baaaf](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/45baaaf7906509c6827c2c680ea447de678d74fc))
+
 ## [1.115.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.115.1...v1.115.2) (2026-06-28)
 
 
