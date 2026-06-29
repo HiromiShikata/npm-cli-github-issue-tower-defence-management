@@ -173,7 +173,9 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     },
   ];
 
-  const structuredOutputTerminalEntries = (startTimestamp: string): object[] => [
+  const structuredOutputTerminalEntries = (
+    startTimestamp: string,
+  ): object[] => [
     { type: 'user', timestamp: startTimestamp, message: { role: 'user' } },
     {
       type: 'assistant',
@@ -190,7 +192,10 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
       message: {
         role: 'user',
         content: [
-          { type: 'tool_result', content: 'Structured output provided successfully' },
+          {
+            type: 'tool_result',
+            content: 'Structured output provided successfully',
+          },
         ],
       },
     },
