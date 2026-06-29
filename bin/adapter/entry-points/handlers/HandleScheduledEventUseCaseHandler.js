@@ -337,7 +337,6 @@ class HandleScheduledEventUseCaseHandler {
                         mainSilentThresholdSeconds: readSilentSeconds(mergedInput.mainSilentThresholdSeconds, process.env.TDPM_MAIN_SILENT_THRESHOLD_SECONDS, notifySilentTmuxSessions_1.DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.mainSilentThresholdSeconds),
                         subAgentSilentThresholdSeconds: readSilentSeconds(mergedInput.subAgentSilentThresholdSeconds, process.env.TDPM_SUBAGENT_SILENT_THRESHOLD_SECONDS, notifySilentTmuxSessions_1.DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.subAgentSilentThresholdSeconds),
                         subAgentRunningThresholdSeconds: readSilentSeconds(mergedInput.subAgentRunningThresholdSeconds, process.env.TDPM_SUBAGENT_RUNNING_THRESHOLD_SECONDS, notifySilentTmuxSessions_1.DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.subAgentRunningThresholdSeconds),
-                        subAgentSilentCeilingSeconds: readSilentSeconds(mergedInput.subAgentSilentCeilingSeconds, process.env.TDPM_SUBAGENT_SILENT_CEILING_SECONDS, notifySilentTmuxSessions_1.DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.subAgentSilentCeilingSeconds),
                         staggerSeconds: readSilentSeconds(mergedInput.silentNotificationStaggerSeconds, process.env.TDPM_SILENT_NOTIFICATION_STAGGER_SECONDS, notifySilentTmuxSessions_1.DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.staggerSeconds),
                         activeHubTaskStatus: mergedInput.activeHubTaskStatus ??
                             process.env.TDPM_ACTIVE_HUB_TASK_STATUS ??
