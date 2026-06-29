@@ -38,23 +38,37 @@ export class FileSystemInteractiveLiveSessionTranscriptResolver implements Inter
     session: InteractiveLiveSession,
   ): string | null => {
     const projectsDirectories = this.listProjectsDirectories(session.configDir);
+    for (const candidateSessionId of session.candidateSessionIds) {
+      const transcriptPath = this.resolveCandidateTranscriptPath(
+        candidateSessionId,
+        projectsDirectories,
+      );
+      if (transcriptPath !== null) {
+        return transcriptPath;
+      }
+    }
+    return null;
+  };
+
+  private resolveCandidateTranscriptPath = (
+    candidateSessionId: string,
+    projectsDirectories: string[],
+  ): string | null => {
+    const fileName = `${candidateSessionId}.jsonl`;
     let latestPath: string | null = null;
     let latestEpochMs = -Infinity;
-    for (const candidateSessionId of session.candidateSessionIds) {
-      const fileName = `${candidateSessionId}.jsonl`;
-      for (const projectsDirectory of projectsDirectories) {
-        for (const candidate of this.listCandidatePaths(
-          projectsDirectory,
-          fileName,
-        )) {
-          const epochMs = modifiedEpochMs(candidate);
-          if (epochMs === null) {
-            continue;
-          }
-          if (epochMs > latestEpochMs) {
-            latestEpochMs = epochMs;
-            latestPath = candidate;
-          }
+    for (const projectsDirectory of projectsDirectories) {
+      for (const candidate of this.listCandidatePaths(
+        projectsDirectory,
+        fileName,
+      )) {
+        const epochMs = modifiedEpochMs(candidate);
+        if (epochMs === null) {
+          continue;
+        }
+        if (epochMs > latestEpochMs) {
+          latestEpochMs = epochMs;
+          latestPath = candidate;
         }
       }
     }
