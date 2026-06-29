@@ -25,6 +25,14 @@ export const parseHubTaskIssueUrlFromSessionName = (
   return GITHUB_ISSUE_URL_PATTERN.test(sessionName) ? sessionName : null;
 };
 
+const GITHUB_ISSUE_OR_PULL_REQUEST_SESSION_NAME_PATTERN =
+  /^https(:\/\/|_\/\/)github(\.com|_com)\/[^/]+\/[^/]+\/(issues|pull)\/\d+$/;
+
+export const isGitHubIssueOrPullRequestSessionName = (
+  sessionName: string,
+): boolean =>
+  GITHUB_ISSUE_OR_PULL_REQUEST_SESSION_NAME_PATTERN.test(sessionName);
+
 export type HubTaskStatusResolver = Pick<IssueRepository, 'getIssueByUrl'>;
 
 type NotifyCandidate = {
@@ -58,8 +66,18 @@ export class NotifySilentLiveSessionsUseCase {
   }): Promise<void> => {
     const snapshot =
       await this.liveSessionProcessSnapshotProvider.getSnapshot();
-    const interactiveSessions =
+    const allInteractiveSessions =
       this.resolveInteractiveLiveSessions.resolve(snapshot);
+    const interactiveSessions = allInteractiveSessions.filter((session) =>
+      isGitHubIssueOrPullRequestSessionName(session.sessionName),
+    );
+    const skippedNonGitHubSessionCount =
+      allInteractiveSessions.length - interactiveSessions.length;
+    if (skippedNonGitHubSessionCount > 0) {
+      console.log(
+        `Silent live session notification: ignoring ${skippedNonGitHubSessionCount} non-github-named interactive session(s); only sessions named after a github.com issue or pull-request URL are monitored.`,
+      );
+    }
     const transcriptPathBySessionName =
       this.interactiveLiveSessionTranscriptResolver.resolveTranscriptPaths(
         interactiveSessions,
