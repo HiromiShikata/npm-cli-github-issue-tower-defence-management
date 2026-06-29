@@ -326,7 +326,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     });
 
     const handler = buildHandler([
-      { token: 'fake-active', sessionId: 'session-a' },
+      { token: 'fake-active', sessionKey: 'session-a' },
     ]);
     const output = handler.handle({
       tokenListJsonPath: tokenListPath,
@@ -362,7 +362,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     });
 
     const handler = buildHandler([
-      { token: 'fake-active', sessionId: 'session-a' },
+      { token: 'fake-active', sessionKey: 'session-a' },
     ]);
     const output = handler.handle({
       tokenListJsonPath: tokenListPath,
