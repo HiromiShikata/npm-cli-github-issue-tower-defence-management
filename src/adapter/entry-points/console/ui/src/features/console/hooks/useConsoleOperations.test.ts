@@ -102,6 +102,25 @@ describe('useConsoleOperations', () => {
     });
   });
 
+  it('posts a pull-request close through the triage endpoint with the pull-request url and resolves', async () => {
+    const fetchMock = captureFetch();
+    const { result } = setup();
+    await act(async () => {
+      await result.current.operations.closeIssue(prItem, 'close');
+    });
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/triage?k=token');
+    expect(lastBody(fetchMock)).toMatchObject({
+      pjcode: 'umino',
+      action: 'close',
+      issueUrl: prItem.url,
+    });
+    expect(prItem.url).toContain('/pull/');
+    const stored = JSON.parse(
+      localStorage.getItem(overlayStorageKey('umino')) ?? '{}',
+    );
+    expect(stored[prItem.projectItemId].done).toBe(true);
+  });
+
   it('posts set_status and records the overlay status', async () => {
     const fetchMock = captureFetch();
     const { result } = setup();

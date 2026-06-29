@@ -47,6 +47,9 @@ const badGateway = (message: string): ConsoleOperationResponse => ({
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === 'string' && value.length > 0;
 
+const isPullRequestUrl = (url: string): boolean =>
+  /github\.com\/[^/]+\/[^/]+\/pull\/\d+/.test(url);
+
 const isReviewCommentSide = (
   value: unknown,
 ): value is PullRequestReviewCommentSide =>
@@ -289,10 +292,14 @@ export const handleTriage = async (
         body.commentBody,
       );
     }
-    await context.issueRepository.closeIssueByUrl(
-      issueUrl,
-      action === 'close_not_planned' ? 'not_planned' : 'completed',
-    );
+    if (isPullRequestUrl(issueUrl)) {
+      await context.issueRepository.closePullRequest(issueUrl);
+    } else {
+      await context.issueRepository.closeIssueByUrl(
+        issueUrl,
+        action === 'close_not_planned' ? 'not_planned' : 'completed',
+      );
+    }
     recordDone(context, pjcode, projectItemId);
     return ok();
   }
