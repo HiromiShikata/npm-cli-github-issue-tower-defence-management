@@ -66,6 +66,7 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
   constructor(
     private readonly directoryResolver: SubAgentTranscriptDirectoryResolver,
     private readonly now: Date,
+    private readonly silentCeilingSeconds: number,
   ) {}
 
   listSubAgentActivitiesBySessionName = async (
@@ -140,6 +141,9 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
     const silentSeconds = clampToZero(
       nowEpochSeconds - Math.floor(stats.mtimeMs / 1000),
     );
+    if (silentSeconds > this.silentCeilingSeconds) {
+      return null;
+    }
     const runningSeconds =
       transcript.firstEntryEpochSeconds === null
         ? 0
