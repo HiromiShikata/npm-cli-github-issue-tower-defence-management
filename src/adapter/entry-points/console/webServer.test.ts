@@ -586,6 +586,7 @@ describe('webServer new routes integration', () => {
       createdAt: new Date('2026-06-18T03:21:00.000Z'),
       isDraft: false,
       isConflicted: true,
+      mergeable: 'CONFLICTING',
       isPassedAllCiJob: false,
       isCiStateSuccess: false,
       isResolvedAllReviewComments: false,
@@ -616,6 +617,7 @@ describe('webServer new routes integration', () => {
         found: true,
         status: {
           isConflicted: true,
+          mergeableStatus: 'CONFLICTING',
           isPassedAllCiJob: false,
           isCiStateSuccess: false,
           isBranchOutOfDate: true,

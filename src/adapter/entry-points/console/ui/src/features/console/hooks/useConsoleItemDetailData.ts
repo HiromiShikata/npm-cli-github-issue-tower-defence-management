@@ -25,6 +25,7 @@ const DEFAULT_STATE: ConsoleIssueState = {
 const DEFAULT_PR_STATUS: ConsolePullRequestStatus = {
   found: false,
   isConflicted: false,
+  mergeableStatus: 'UNKNOWN',
   isPassedAllCiJob: false,
   isCiStateSuccess: false,
   isBranchOutOfDate: false,

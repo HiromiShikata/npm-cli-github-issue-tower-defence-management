@@ -92,6 +92,7 @@ const createPassingPr = () => ({
   createdAt: new Date('2024-01-01T00:00:00Z'),
   isDraft: false,
   isConflicted: false,
+  mergeable: null,
   isPassedAllCiJob: true,
   isCiStateSuccess: true,
   isResolvedAllReviewComments: true,

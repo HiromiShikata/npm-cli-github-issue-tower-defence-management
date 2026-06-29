@@ -343,6 +343,7 @@ export const consoleRelatedPullRequestsFixture: ConsoleRelatedPullRequest[] = [
     createdAt: '2026-06-16T22:30:00.000Z',
     isDraft: false,
     isConflicted: false,
+    mergeableStatus: 'MERGEABLE',
     isPassedAllCiJob: true,
     isCiStateSuccess: true,
     isResolvedAllReviewComments: true,

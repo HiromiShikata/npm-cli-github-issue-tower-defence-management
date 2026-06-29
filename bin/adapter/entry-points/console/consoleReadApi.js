@@ -1,8 +1,18 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handlePullRequestStatus = exports.handleIssueTitle = exports.handleRelatedPrs = exports.handlePrCommits = exports.handlePrFiles = exports.handleComments = exports.handleItemBody = exports.PullRequestStatusCache = exports.IssueTitleStateCache = exports.PULL_REQUEST_STATUS_CACHE_TTL_MS = exports.ISSUE_TITLE_CACHE_TTL_MS = void 0;
+exports.handlePullRequestStatus = exports.handleIssueTitle = exports.handleRelatedPrs = exports.handlePrCommits = exports.handlePrFiles = exports.handleComments = exports.handleItemBody = exports.PullRequestStatusCache = exports.IssueTitleStateCache = exports.deriveMergeableStatus = exports.PULL_REQUEST_STATUS_CACHE_TTL_MS = exports.ISSUE_TITLE_CACHE_TTL_MS = void 0;
 exports.ISSUE_TITLE_CACHE_TTL_MS = 300 * 1000;
 exports.PULL_REQUEST_STATUS_CACHE_TTL_MS = 30 * 1000;
+const deriveMergeableStatus = (mergeable) => {
+    if (mergeable === 'MERGEABLE') {
+        return 'MERGEABLE';
+    }
+    if (mergeable === 'CONFLICTING') {
+        return 'CONFLICTING';
+    }
+    return 'UNKNOWN';
+};
+exports.deriveMergeableStatus = deriveMergeableStatus;
 class IssueTitleStateCache {
     constructor(nowMs = () => Date.now()) {
         this.nowMs = nowMs;
@@ -113,6 +123,7 @@ const handleRelatedPrs = async (issueRepository, url) => {
             createdAt: relatedPullRequest.createdAt.toISOString(),
             isDraft: relatedPullRequest.isDraft,
             isConflicted: relatedPullRequest.isConflicted,
+            mergeableStatus: (0, exports.deriveMergeableStatus)(relatedPullRequest.mergeable),
             isPassedAllCiJob: relatedPullRequest.isPassedAllCiJob,
             isCiStateSuccess: relatedPullRequest.isCiStateSuccess,
             isResolvedAllReviewComments: relatedPullRequest.isResolvedAllReviewComments,
@@ -162,6 +173,7 @@ const handlePullRequestStatus = async (issueRepository, cache, url) => {
             found: true,
             status: {
                 isConflicted: pullRequest.isConflicted,
+                mergeableStatus: (0, exports.deriveMergeableStatus)(pullRequest.mergeable),
                 isPassedAllCiJob: pullRequest.isPassedAllCiJob,
                 isCiStateSuccess: pullRequest.isCiStateSuccess,
                 isBranchOutOfDate: pullRequest.isBranchOutOfDate,

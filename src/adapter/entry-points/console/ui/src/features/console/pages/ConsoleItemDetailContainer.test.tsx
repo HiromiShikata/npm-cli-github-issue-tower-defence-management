@@ -44,6 +44,7 @@ const buildCaches = (overrides: CachesOverrides = {}): ConsoleCaches => {
     fetchPullRequestStatus: async () => ({
       found: true,
       isConflicted: false,
+      mergeableStatus: 'MERGEABLE' as const,
       isPassedAllCiJob: true,
       isCiStateSuccess: true,
       isBranchOutOfDate: false,

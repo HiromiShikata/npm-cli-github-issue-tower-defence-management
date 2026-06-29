@@ -64,7 +64,7 @@ export const ConsolePullRequestDetail = ({
           <span className="console-pr-section-state">draft</span>
         )}
         <ConsolePullRequestStatusBadges
-          isConflicted={pullRequest.isConflicted}
+          mergeableStatus={pullRequest.mergeableStatus}
           isPassedAllCiJob={pullRequest.isPassedAllCiJob}
           isCiStateSuccess={pullRequest.isCiStateSuccess}
           isBranchOutOfDate={pullRequest.isBranchOutOfDate}

@@ -22,6 +22,7 @@ import type {
   ConsoleListItem,
   ConsoleTabName,
 } from '../logic/types';
+import type { ConsoleCaches } from './useConsoleCaches';
 import type { ConsoleOverlayState } from './useConsoleOverlay';
 import { useConsoleToken } from './useConsoleToken';
 
@@ -113,15 +114,29 @@ export const useConsoleOperations = (
   pjcode: string | null,
   mode: ConsoleTabName,
   overlayState: ConsoleOverlayState,
+  caches?: ConsoleCaches,
 ): ConsoleOperationsApi => {
   const { appendToken } = useConsoleToken();
   const { patchOverlay } = overlayState;
 
+  const invalidateItemContent = useCallback(
+    (item: ConsoleListItem) => {
+      if (caches === undefined) {
+        return;
+      }
+      const key = `${item.repo}#${item.number}`;
+      caches.body.invalidate(key);
+      caches.comments.invalidate(key);
+    },
+    [caches],
+  );
+
   const markDone = useCallback(
     (item: ConsoleListItem) => {
+      invalidateItemContent(item);
       patchOverlay(overlayKeyForItem(item), { done: true }, mode);
     },
-    [patchOverlay, mode],
+    [invalidateItemContent, patchOverlay, mode],
   );
 
   const reviewPullRequest = useCallback(
@@ -173,13 +188,14 @@ export const useConsoleOperations = (
         storyOptionId: option.id,
       };
       await postConsoleOperation(appendToken, TRIAGE_OPERATION_PATH, request);
+      invalidateItemContent(item);
       patchOverlay(
         overlayKeyForItem(item),
         { done: true, story: { name: option.name, color: option.color } },
         mode,
       );
     },
-    [pjcode, appendToken, patchOverlay, mode],
+    [pjcode, appendToken, invalidateItemContent, patchOverlay, mode],
   );
 
   const setStatus = useCallback(
@@ -195,13 +211,14 @@ export const useConsoleOperations = (
         statusName: option.name,
       };
       await postConsoleOperation(appendToken, TRIAGE_OPERATION_PATH, request);
+      invalidateItemContent(item);
       patchOverlay(
         overlayKeyForItem(item),
         { done: true, status: { name: option.name, color: option.color } },
         mode,
       );
     },
-    [pjcode, appendToken, patchOverlay, mode],
+    [pjcode, appendToken, invalidateItemContent, patchOverlay, mode],
   );
 
   const setInTmuxByHuman = useCallback(
@@ -216,13 +233,14 @@ export const useConsoleOperations = (
         projectItemId: item.projectItemId,
       };
       await postConsoleOperation(appendToken, INTMUX_OPERATION_PATH, request);
+      invalidateItemContent(item);
       patchOverlay(
         overlayKeyForItem(item),
         { done: true, status: { name: option.name, color: option.color } },
         mode,
       );
     },
-    [pjcode, appendToken, patchOverlay, mode],
+    [pjcode, appendToken, invalidateItemContent, patchOverlay, mode],
   );
 
   const closeIssue = useCallback(
@@ -247,13 +265,15 @@ export const useConsoleOperations = (
       if (pjcode === null) {
         throw missingPjcodeError();
       }
-      return postConsoleComment(appendToken, {
+      const comment = await postConsoleComment(appendToken, {
         pjcode,
         url: item.url,
         body,
       });
+      invalidateItemContent(item);
+      return comment;
     },
-    [pjcode, appendToken],
+    [pjcode, appendToken, invalidateItemContent],
   );
 
   const addInlineReviewComment = useCallback(

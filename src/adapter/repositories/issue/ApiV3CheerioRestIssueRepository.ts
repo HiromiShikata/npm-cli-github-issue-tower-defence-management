@@ -996,6 +996,7 @@ export class ApiV3CheerioRestIssueRepository
       createdAt: new Date(0),
       isDraft: data.isDraft === true,
       isConflicted,
+      mergeable: data.mergeable ?? null,
       isPassedAllCiJob,
       isCiStateSuccess,
       isResolvedAllReviewComments,

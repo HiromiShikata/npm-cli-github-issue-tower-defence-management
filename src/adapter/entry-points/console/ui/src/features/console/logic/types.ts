@@ -64,9 +64,12 @@ export type ConsoleIssueState = {
   title: string;
 };
 
+export type ConsoleMergeableStatus = 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN';
+
 export type ConsolePullRequestStatus = {
   found: boolean;
   isConflicted: boolean;
+  mergeableStatus: ConsoleMergeableStatus;
   isPassedAllCiJob: boolean;
   isCiStateSuccess: boolean;
   isBranchOutOfDate: boolean;
@@ -100,6 +103,7 @@ export type ConsoleRelatedPullRequest = {
   createdAt: string;
   isDraft: boolean;
   isConflicted: boolean;
+  mergeableStatus: ConsoleMergeableStatus;
   isPassedAllCiJob: boolean;
   isCiStateSuccess: boolean;
   isResolvedAllReviewComments: boolean;

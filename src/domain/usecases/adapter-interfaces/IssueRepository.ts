@@ -9,6 +9,7 @@ export type RelatedPullRequest = {
   createdAt: Date;
   isDraft: boolean;
   isConflicted: boolean;
+  mergeable: string | null;
   isPassedAllCiJob: boolean;
   isCiStateSuccess: boolean;
   isResolvedAllReviewComments: boolean;

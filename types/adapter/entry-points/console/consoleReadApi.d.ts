@@ -7,8 +7,11 @@ export type IssueOrPullRequestState = {
     isPullRequest: boolean;
     title: string;
 };
+export type MergeableStatus = 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN';
+export declare const deriveMergeableStatus: (mergeable: string | null) => MergeableStatus;
 export type PullRequestStatus = {
     isConflicted: boolean;
+    mergeableStatus: MergeableStatus;
     isPassedAllCiJob: boolean;
     isCiStateSuccess: boolean;
     isBranchOutOfDate: boolean;
@@ -42,6 +45,7 @@ export type RelatedPullRequestWithSummary = {
     createdAt: string;
     isDraft: boolean;
     isConflicted: boolean;
+    mergeableStatus: MergeableStatus;
     isPassedAllCiJob: boolean;
     isCiStateSuccess: boolean;
     isResolvedAllReviewComments: boolean;

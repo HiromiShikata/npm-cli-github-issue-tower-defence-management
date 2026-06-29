@@ -158,7 +158,7 @@ export const ConsoleItemDetail = ({
       {item.isPr && pullRequestStatus?.found && (
         <div className="console-detail-pr-status-row">
           <ConsolePullRequestStatusBadges
-            isConflicted={pullRequestStatus.isConflicted}
+            mergeableStatus={pullRequestStatus.mergeableStatus}
             isPassedAllCiJob={pullRequestStatus.isPassedAllCiJob}
             isCiStateSuccess={pullRequestStatus.isCiStateSuccess}
             isBranchOutOfDate={pullRequestStatus.isBranchOutOfDate}

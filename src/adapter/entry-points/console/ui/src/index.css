@@ -351,6 +351,15 @@ body {
   opacity: 0.85;
 }
 
+.console-detail-mergeable-chip {
+  font-weight: 600;
+}
+
+.console-detail-mergeable-chip-unknown {
+  opacity: 0.7;
+  font-weight: 400;
+}
+
 .console-detail-labels {
   display: flex;
   flex-wrap: wrap;
@@ -655,7 +664,7 @@ body {
 }
 
 .console-op-button {
-  padding: 7px 16px;
+  padding: 9px 16px;
   border: 1px solid #30363d;
   border-radius: 6px;
   background: #21262d;
