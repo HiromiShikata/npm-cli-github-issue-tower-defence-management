@@ -1,3 +1,10 @@
+## [1.116.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.116.6...v1.116.7) (2026-06-29)
+
+
+### Bug Fixes
+
+* **console:** render Close button for pull-request items and close PRs with a valid request ([#1087](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1087)) ([db05eae](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/db05eae1774ca7fb9431086841831edbfe06702b))
+
 ## [1.116.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.116.5...v1.116.6) (2026-06-29)
 
 
