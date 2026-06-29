@@ -344,6 +344,36 @@ describe('consoleOperationApi', () => {
       expectRecordedAcrossTabs('PVTI_np');
     });
 
+    it('closes a pull request via the triage close action without an invalid state_reason', async () => {
+      const response = await handleTriage(context, {
+        pjcode: 'umino',
+        action: 'close',
+        issueUrl: 'https://github.com/o/r/pull/7',
+        projectItemId: 'PVTI_prclose',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.closePullRequest).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/7',
+      );
+      expect(issueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expectRecordedAcrossTabs('PVTI_prclose');
+    });
+
+    it('closes a pull request via the triage close_not_planned action through the pull-request close path', async () => {
+      const response = await handleTriage(context, {
+        pjcode: 'umino',
+        action: 'close_not_planned',
+        issueUrl: 'https://github.com/o/r/pull/8',
+        projectItemId: 'PVTI_prnp',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.closePullRequest).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/8',
+      );
+      expect(issueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expectRecordedAcrossTabs('PVTI_prnp');
+    });
+
     it('rejects an unknown triage action', async () => {
       const response = await handleTriage(context, {
         pjcode: 'umino',

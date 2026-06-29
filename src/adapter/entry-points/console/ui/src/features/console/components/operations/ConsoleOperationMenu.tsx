@@ -24,14 +24,12 @@ export type ConsoleOperationBarProps = {
 
 export const ConsoleOperationMenu = ({
   tab,
-  item,
   hasPullRequest,
   statusOptions,
   storyOptions,
   handlers,
 }: ConsoleOperationBarProps) => {
   const showStory = tab === 'triage';
-  const showClose = tab === 'workflow-blocker' || !item.isPr;
   return (
     <div className="console-operation-bar">
       {hasPullRequest && (
@@ -52,7 +50,7 @@ export const ConsoleOperationMenu = ({
         onSetStatus={handlers.onSetStatus}
         onSetInTmuxByHuman={handlers.onSetInTmuxByHuman}
       />
-      {showClose && <ConsoleCloseActions onClose={handlers.onClose} />}
+      <ConsoleCloseActions onClose={handlers.onClose} />
     </div>
   );
 };

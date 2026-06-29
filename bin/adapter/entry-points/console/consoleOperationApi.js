@@ -17,6 +17,7 @@ const badGateway = (message) => ({
     body: { error: message },
 });
 const isNonEmptyString = (value) => typeof value === 'string' && value.length > 0;
+const isPullRequestUrl = (url) => /github\.com\/[^/]+\/[^/]+\/pull\/\d+/.test(url);
 const isReviewCommentSide = (value) => value === 'LEFT' || value === 'RIGHT';
 const isPositiveInteger = (value) => typeof value === 'number' && Number.isInteger(value) && value > 0;
 const resolveStatusId = (project, statusName) => {
@@ -165,7 +166,12 @@ const handleTriage = async (context, body) => {
         if (isNonEmptyString(body.commentBody)) {
             await context.issueRepository.createCommentByUrl(issueUrl, body.commentBody);
         }
-        await context.issueRepository.closeIssueByUrl(issueUrl, action === 'close_not_planned' ? 'not_planned' : 'completed');
+        if (isPullRequestUrl(issueUrl)) {
+            await context.issueRepository.closePullRequest(issueUrl);
+        }
+        else {
+            await context.issueRepository.closeIssueByUrl(issueUrl, action === 'close_not_planned' ? 'not_planned' : 'completed');
+        }
         recordDone(context, pjcode, projectItemId);
         return ok();
     }

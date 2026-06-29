@@ -20,7 +20,7 @@ const prItem = consoleListItemsFixture[0];
 const issueItem = consoleListItemsFixture[2];
 
 describe('ConsoleOperationMenu', () => {
-  it('shows the review group for a PR and hides story and close groups outside triage', () => {
+  it('shows the review and close groups for a PR while hiding the story group outside triage', () => {
     const { getByText, queryByText } = render(
       <ConsoleOperationMenu
         tab="prs"
@@ -34,7 +34,9 @@ describe('ConsoleOperationMenu', () => {
     expect(getByText('Approve')).toBeInTheDocument();
     expect(getByText('+1 day')).toBeInTheDocument();
     expect(getByText('Awaiting Workspace')).toBeInTheDocument();
-    expect(queryByText('Close')).toBeNull();
+    expect(getByText('Close')).toBeInTheDocument();
+    expect(getByText('Close as not planned')).toBeInTheDocument();
+    expect(queryByText('Move to Okinawa')).toBeNull();
     expect(queryByText('TDPM Console port')).toBeNull();
   });
 
