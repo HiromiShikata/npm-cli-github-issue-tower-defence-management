@@ -1,3 +1,10 @@
+## [1.116.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.116.7...v1.116.8) (2026-06-29)
+
+
+### Bug Fixes
+
+* **silent-notification:** resolve the parent transcript by candidate-id priority ([#1092](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1092)) ([d3fcefb](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d3fcefb2ba761e7ae4cf1c1688c970cda5de590d)), closes [#1090](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1090)
+
 ## [1.116.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.116.6...v1.116.7) (2026-06-29)
 
 

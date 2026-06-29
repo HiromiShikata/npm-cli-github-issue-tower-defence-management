@@ -5,6 +5,7 @@ export declare class FileSystemInteractiveLiveSessionTranscriptResolver implemen
     constructor(sharedProjectsDirectory?: string);
     resolveTranscriptPaths: (sessions: InteractiveLiveSession[]) => Map<string, string>;
     private resolveTranscriptPath;
+    private resolveCandidateTranscriptPath;
     private listProjectsDirectories;
     private listCandidatePaths;
 }
