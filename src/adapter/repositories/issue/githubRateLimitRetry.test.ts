@@ -25,7 +25,9 @@ describe('githubRateLimitRetry', () => {
         hasRateLimitSignals(
           403,
           headers,
-          JSON.stringify({ message: 'You have exceeded a secondary rate limit' }),
+          JSON.stringify({
+            message: 'You have exceeded a secondary rate limit',
+          }),
         ),
       ).toBe(true);
     });
@@ -90,10 +92,10 @@ describe('githubRateLimitRetry', () => {
 
   describe('fetchWithGitHubRateLimitRetry', () => {
     const rateLimitResponse = (): Response =>
-      new Response(
-        JSON.stringify({ message: 'API rate limit exceeded' }),
-        { status: 403, headers: { 'x-ratelimit-remaining': '0' } },
-      );
+      new Response(JSON.stringify({ message: 'API rate limit exceeded' }), {
+        status: 403,
+        headers: { 'x-ratelimit-remaining': '0' },
+      });
 
     it('retries a rate-limit response and resolves with the eventual success', async () => {
       const sleep = jest.fn().mockResolvedValue(undefined);
@@ -113,12 +115,16 @@ describe('githubRateLimitRetry', () => {
 
     it('does not retry a genuine permission 403 without rate-limit signals', async () => {
       const sleep = jest.fn().mockResolvedValue(undefined);
-      const request = jest.fn<Promise<Response>, []>().mockResolvedValue(
-        new Response(
-          JSON.stringify({ message: 'Resource not accessible by integration' }),
-          { status: 403, headers: { 'x-ratelimit-remaining': '4999' } },
-        ),
-      );
+      const request = jest
+        .fn<Promise<Response>, []>()
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              message: 'Resource not accessible by integration',
+            }),
+            { status: 403, headers: { 'x-ratelimit-remaining': '4999' } },
+          ),
+        );
 
       const response = await fetchWithGitHubRateLimitRetry(request, sleep);
 

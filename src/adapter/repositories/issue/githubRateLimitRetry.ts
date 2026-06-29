@@ -29,7 +29,9 @@ export const hasRateLimitSignals = (
   if (status !== 403 && status !== 429) {
     return false;
   }
-  if (parseNonNegativeIntegerHeader(headers.get('x-ratelimit-remaining')) === 0) {
+  if (
+    parseNonNegativeIntegerHeader(headers.get('x-ratelimit-remaining')) === 0
+  ) {
     return true;
   }
   if (headers.get('retry-after') !== null) {

@@ -611,8 +611,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           new Response(JSON.stringify({ state: 'closed' }), { status: 200 }),
         );
 
-      const { repository, sleep } =
-        createApiV3CheerioRestIssueRepository();
+      const { repository, sleep } = createApiV3CheerioRestIssueRepository();
       await repository.closeIssueByUrl(
         'https://github.com/HiromiShikata/test-repository/issues/42',
         'completed',
@@ -639,8 +638,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           }),
         );
 
-      const { repository, sleep } =
-        createApiV3CheerioRestIssueRepository();
+      const { repository, sleep } = createApiV3CheerioRestIssueRepository();
       const result = await repository.getIssueOrPullRequestState(
         'https://github.com/HiromiShikata/test-repository/issues/42',
       );
@@ -660,8 +658,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         ),
       );
 
-      const { repository, sleep } =
-        createApiV3CheerioRestIssueRepository();
+      const { repository, sleep } = createApiV3CheerioRestIssueRepository();
       await expect(
         repository.closeIssueByUrl(
           'https://github.com/HiromiShikata/test-repository/issues/42',
@@ -687,8 +684,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         }),
       );
 
-      const { repository, sleep } =
-        createApiV3CheerioRestIssueRepository();
+      const { repository, sleep } = createApiV3CheerioRestIssueRepository();
       const expectedResetIso = new Date(resetEpochSeconds * 1000).toISOString();
       await expect(
         repository.closeIssueByUrl(
