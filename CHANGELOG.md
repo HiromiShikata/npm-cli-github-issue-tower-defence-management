@@ -1,3 +1,10 @@
+## [1.116.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.116.1...v1.116.2) (2026-06-29)
+
+
+### Bug Fixes
+
+* **console:** include GitHub response reason in PR-review operation errors ([#1080](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1080)) ([00a2df7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/00a2df7aa0b699a4081f391a9f8e3ad6f36d622f)), closes [#1079](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1079)
+
 ## [1.116.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.116.0...v1.116.1) (2026-06-29)
 
 
