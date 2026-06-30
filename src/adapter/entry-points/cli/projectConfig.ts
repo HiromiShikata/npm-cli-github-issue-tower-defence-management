@@ -22,6 +22,12 @@ export type ConfigFile = {
   changeTargetPathAliases?: Record<string, string>;
   consoleAccessToken?: string;
   consoleProjects?: Record<string, string>;
+  disks?: DiskConfig[];
+};
+
+export type DiskConfig = {
+  title: string;
+  mountpoint: string;
 };
 
 const getStringValue = (
@@ -78,6 +84,29 @@ const getStringArrayValue = (
 
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const getDisksValue = (
+  obj: Record<string, unknown>,
+  key: string,
+): DiskConfig[] | undefined => {
+  const value = obj[key];
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const disks: DiskConfig[] = [];
+  for (const item of value) {
+    if (!isRecord(item)) {
+      return undefined;
+    }
+    const title = item['title'];
+    const mountpoint = item['mountpoint'];
+    if (typeof title !== 'string' || typeof mountpoint !== 'string') {
+      return undefined;
+    }
+    disks.push({ title, mountpoint });
+  }
+  return disks;
+};
 
 const knownProjectReadmeConfigKeys = [
   'defaultAgentName',
@@ -146,6 +175,7 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
       ),
       consoleAccessToken: getStringValue(parsed, 'consoleAccessToken'),
       consoleProjects: getStringRecordValue(parsed, 'consoleProjects'),
+      disks: getDisksValue(parsed, 'disks'),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -302,6 +332,7 @@ export const mergeConfigs = (
   consoleAccessToken:
     cliOverrides.consoleAccessToken ?? configFile.consoleAccessToken,
   consoleProjects: cliOverrides.consoleProjects ?? configFile.consoleProjects,
+  disks: cliOverrides.disks ?? configFile.disks,
 });
 
 type GraphqlProjectV2ReadmeResponse = {
