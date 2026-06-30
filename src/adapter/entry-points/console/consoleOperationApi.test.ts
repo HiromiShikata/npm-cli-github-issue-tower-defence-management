@@ -132,10 +132,15 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(200);
       expect(
         issueRepository.requestChangesWithInlineComment,
-      ).toHaveBeenCalledWith('https://github.com/o/r/pull/1', 'src/a.ts', 'please fix', {
-        line: 17,
-        side: 'RIGHT',
-      });
+      ).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+        'src/a.ts',
+        'please fix',
+        {
+          line: 17,
+          side: 'RIGHT',
+        },
+      );
       expectRecordedAcrossTabs('PVTI_b');
     });
 
