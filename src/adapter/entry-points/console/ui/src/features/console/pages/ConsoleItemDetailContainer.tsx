@@ -77,12 +77,6 @@ export const ConsoleItemDetailContainer = ({
   const [pendingReviewComments, setPendingReviewComments] = useState<
     ConsolePendingReviewComment[]
   >([]);
-  const buildAddInlineComment = useCallback(
-    (prUrl: string): ConsoleAddInlineComment =>
-      (path, line, side, body) =>
-        operations.addInlineReviewComment(prUrl, path, line, side, body),
-    [operations],
-  );
   const addInlineComment = useCallback<ConsoleAddInlineComment>(
     async (path, line, side, body) => {
       setPendingReviewComments((previous) => [
@@ -175,8 +169,7 @@ export const ConsoleItemDetailContainer = ({
       now={now}
       buildImageProxyUrl={resolveImageProxyUrl}
       renderReferenceLink={renderReferenceLink}
-      onAddInlineComment={item.isPr ? addInlineComment : undefined}
-      buildAddInlineComment={buildAddInlineComment}
+      onAddInlineComment={addInlineComment}
       commentComposer={
         <ConsoleCommentComposer
           isPr={item.isPr}

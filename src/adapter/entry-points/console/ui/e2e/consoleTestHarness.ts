@@ -30,6 +30,13 @@ export type ConsoleE2eReviewCommentCall = {
   body: string;
 };
 
+export type ConsoleE2eRequestChangesCall = {
+  url: string;
+  changedFilePath: string | null;
+  body: string;
+  inlineCommentLocation: { line: number; side: string } | null;
+};
+
 type ConsoleFixtureListItem = {
   number: number;
   title: string;
@@ -370,6 +377,7 @@ const inlineCommentPullRequestDetail: PullRequestDetail = {
 
 const createStubIssueRepository = (
   reviewCommentCalls: ConsoleE2eReviewCommentCall[],
+  requestChangesCalls: ConsoleE2eRequestChangesCall[],
 ): IssueRepository => ({
   getAllIssues: () => notImplemented('getAllIssues'),
   getIssueByUrl: async (url: string): Promise<Issue | null> =>
@@ -402,7 +410,19 @@ const createStubIssueRepository = (
       : null,
   getPullRequestChangedFilePaths: async (): Promise<string[]> => [],
   approvePullRequest: async (): Promise<void> => undefined,
-  requestChangesWithInlineComment: async (): Promise<void> => undefined,
+  requestChangesWithInlineComment: async (
+    prUrl: string,
+    changedFilePath: string | null,
+    commentBody: string,
+    inlineCommentLocation?: { line: number; side: string } | null,
+  ): Promise<void> => {
+    requestChangesCalls.push({
+      url: prUrl,
+      changedFilePath,
+      body: commentBody,
+      inlineCommentLocation: inlineCommentLocation ?? null,
+    });
+  },
   createPullRequestReviewComment: async (
     prUrl: string,
     filePath: string,
@@ -469,6 +489,7 @@ export type ConsoleE2eHarness = {
   appRootUrl: string;
   consoleDataOutputDir: string;
   reviewCommentCalls: ConsoleE2eReviewCommentCall[];
+  requestChangesCalls: ConsoleE2eRequestChangesCall[];
   stop: () => Promise<void>;
 };
 
@@ -486,12 +507,16 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
     pjcode === CONSOLE_E2E_PJCODE ? { pjcode, project } : null;
 
   const reviewCommentCalls: ConsoleE2eReviewCommentCall[] = [];
+  const requestChangesCalls: ConsoleE2eRequestChangesCall[] = [];
 
   const server = await startWebServer({
     accessToken: CONSOLE_E2E_TOKEN,
     uiDistDir,
     consoleDataOutputDir,
-    issueRepository: createStubIssueRepository(reviewCommentCalls),
+    issueRepository: createStubIssueRepository(
+      reviewCommentCalls,
+      requestChangesCalls,
+    ),
     resolveProject,
     issueTitleStateCache: new IssueTitleStateCache(),
     pullRequestStatusCache: new PullRequestStatusCache(),
@@ -518,6 +543,7 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
     appRootUrl,
     consoleDataOutputDir,
     reviewCommentCalls,
+    requestChangesCalls,
     stop: async (): Promise<void> => {
       await closeServer(server);
       fs.rmSync(tmpRoot, { recursive: true, force: true });

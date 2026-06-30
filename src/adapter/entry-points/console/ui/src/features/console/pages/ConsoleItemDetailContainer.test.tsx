@@ -187,28 +187,39 @@ describe('ConsoleItemDetailContainer', () => {
     ]);
   });
 
-  it('routes an inline review comment on an issue related pull request to that pull request url', async () => {
+  it('collects an inline comment on an issue related pull request diff, enables Reject, and submits it as the request-changes review for that pull request url', async () => {
     const operations = buildOperations();
+    const onQueueAction = jest.fn();
     const relatedPullRequest = consoleRelatedPullRequestsFixture[0];
-    const { container, findByRole, getAllByRole, getByPlaceholderText } =
-      render(
-        <ConsoleItemDetailContainer
-          tab="unread"
-          item={issueItem}
-          caches={buildCaches({
-            relatedPrs: [relatedPullRequest],
-            prFiles: consoleChangedFilesFixture,
-          })}
-          operations={operations}
-          statusOptions={consoleStatusOptionsFixture}
-          storyOptions={consoleStoryOptionsFixture}
-          storyColors={consoleStoryColorsFixture}
-          storyName="TDPM Console port"
-          overlayStatus={null}
-          now={Date.parse('2026-06-19T12:00:00.000Z')}
-          onQueueAction={jest.fn()}
-        />,
-      );
+    const {
+      container,
+      findByRole,
+      getAllByRole,
+      getByPlaceholderText,
+      getByText,
+    } = render(
+      <ConsoleItemDetailContainer
+        tab="unread"
+        item={issueItem}
+        caches={buildCaches({
+          relatedPrs: [relatedPullRequest],
+          prFiles: consoleChangedFilesFixture,
+        })}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getByText('Reject')).toBeInTheDocument();
+    });
+    expect(getByText('Reject')).toBeDisabled();
 
     const fileRow = await findByRole('button', {
       name: new RegExp(consoleChangedFilesFixture[0].path),
@@ -230,13 +241,31 @@ describe('ConsoleItemDetailContainer', () => {
     expect(submitButton).not.toBeNull();
     fireEvent.click(submitButton as Element);
 
-    const addInlineReviewComment =
-      operations.addInlineReviewComment as jest.Mock;
     await waitFor(() => {
-      expect(addInlineReviewComment).toHaveBeenCalledTimes(1);
+      expect(getByText('Reject')).not.toBeDisabled();
     });
-    const call = addInlineReviewComment.mock.calls[0];
-    expect(call[0]).toBe(relatedPullRequest.url);
-    expect(call[4]).toBe('Please rename this variable.');
+    expect(operations.addInlineReviewComment).not.toHaveBeenCalled();
+
+    fireEvent.click(getByText('Reject'));
+    const rejectInput = onQueueAction.mock.calls.at(-1)?.[0];
+    expect(rejectInput.kind).toEqual({
+      type: 'review',
+      action: 'request_changes',
+    });
+    rejectInput.commit();
+    const reviewCall = (
+      operations.reviewPullRequest as jest.Mock
+    ).mock.calls.at(-1);
+    expect(reviewCall?.[1]).toBe(relatedPullRequest.url);
+    expect(reviewCall?.[2]).toBe('request_changes');
+    expect(reviewCall?.[3]).toEqual([
+      {
+        path: consoleChangedFilesFixture[0].path,
+        line: expect.any(Number),
+        side: expect.stringMatching(/LEFT|RIGHT/),
+        body: 'Please rename this variable.',
+      },
+    ]);
+    expect(reviewCall?.[3][0].body).not.toBe('');
   });
 });
