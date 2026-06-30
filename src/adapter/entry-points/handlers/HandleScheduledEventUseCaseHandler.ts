@@ -121,8 +121,10 @@ export class HandleScheduledEventUseCaseHandler {
       candidateDebounceStateFilePath?: string;
       activeHubTaskStatus?: string;
       silentMainStalledMessage?: string;
-      silentSubAgentMessageHeader?: string;
-      silentSubAgentMessageFooter?: string;
+      silentSubAgentIdleMessageHeader?: string;
+      silentSubAgentIdleMessageFooter?: string;
+      silentSubAgentLongRunningMessageHeader?: string;
+      silentSubAgentLongRunningMessageFooter?: string;
       credentials: {
         manager: {
           github: {
@@ -629,13 +631,21 @@ export class HandleScheduledEventUseCaseHandler {
               mergedInput.silentMainStalledMessage ??
               process.env.TDPM_SILENT_MAIN_STALLED_MESSAGE ??
               null,
-            subAgentMessageHeader:
-              mergedInput.silentSubAgentMessageHeader ??
-              process.env.TDPM_SILENT_SUBAGENT_MESSAGE_HEADER ??
+            subAgentIdleMessageHeader:
+              mergedInput.silentSubAgentIdleMessageHeader ??
+              process.env.TDPM_SILENT_SUBAGENT_IDLE_MESSAGE_HEADER ??
               null,
-            subAgentMessageFooter:
-              mergedInput.silentSubAgentMessageFooter ??
-              process.env.TDPM_SILENT_SUBAGENT_MESSAGE_FOOTER ??
+            subAgentIdleMessageFooter:
+              mergedInput.silentSubAgentIdleMessageFooter ??
+              process.env.TDPM_SILENT_SUBAGENT_IDLE_MESSAGE_FOOTER ??
+              null,
+            subAgentLongRunningMessageHeader:
+              mergedInput.silentSubAgentLongRunningMessageHeader ??
+              process.env.TDPM_SILENT_SUBAGENT_LONG_RUNNING_MESSAGE_HEADER ??
+              null,
+            subAgentLongRunningMessageFooter:
+              mergedInput.silentSubAgentLongRunningMessageFooter ??
+              process.env.TDPM_SILENT_SUBAGENT_LONG_RUNNING_MESSAGE_FOOTER ??
               null,
           },
           now: inTmuxNow,
