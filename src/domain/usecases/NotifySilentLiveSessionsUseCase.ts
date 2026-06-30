@@ -229,11 +229,6 @@ export class NotifySilentLiveSessionsUseCase {
       return active;
     }
 
-    // No cached status exists and live resolution failed. A null result and a
-    // transient error are indistinguishable here without an additional network
-    // call (a closed/Done issue and a GraphQL rate-limit both surface as an
-    // unresolvable task), so the conservative fallback is to fail open exactly
-    // once until the next cycle can populate the cache.
     console.warn(
       `Hub task ${hubTaskIssueUrl} for session ${sessionName} is not resolvable and has no cached status (${resolution.reason}); sending notification (fail-open).`,
     );
