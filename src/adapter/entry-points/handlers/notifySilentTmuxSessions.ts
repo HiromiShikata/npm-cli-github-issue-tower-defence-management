@@ -10,6 +10,7 @@ import {
   DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
   DEFAULT_NOTIFICATION_STAGGER_SECONDS,
   DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS,
+  DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS,
 } from '../../../domain/usecases/NotifySilentLiveSessionsUseCase';
 import { DefaultSilentSessionMessageComposer } from '../../../domain/usecases/DefaultSilentSessionMessageComposer';
 import { LocalProcessLiveSessionProcessSnapshotProvider } from '../../repositories/LocalProcessLiveSessionProcessSnapshotProvider';
@@ -30,6 +31,7 @@ import {
 } from '../../repositories/ConfigurableSilentSessionMessageComposer';
 import { RealSleeper } from '../../repositories/RealSleeper';
 import { FileSystemSilentSessionCandidateStateRepository } from '../../repositories/FileSystemSilentSessionCandidateStateRepository';
+import { FileSystemSilentSessionHubTaskStatusCacheRepository } from '../../repositories/FileSystemSilentSessionHubTaskStatusCacheRepository';
 
 export type NotifySilentTmuxSessionsParams = {
   enabled: boolean;
@@ -47,6 +49,8 @@ export type NotifySilentTmuxSessionsParams = {
   candidateDebounceStateFilePath: string | null;
   activeHubTaskStatus: string | null;
   hubTaskStatusResolver: HubTaskStatusResolver | null;
+  hubTaskStatusCacheStateFilePath: string | null;
+  hubTaskStatusCacheTtlSeconds: number;
   messageTemplates: SilentSessionMessageTemplates;
   now: Date;
 };
@@ -104,6 +108,8 @@ export const notifySilentTmuxSessions = async (
     candidateDebounceStateFilePath,
     activeHubTaskStatus,
     hubTaskStatusResolver,
+    hubTaskStatusCacheStateFilePath,
+    hubTaskStatusCacheTtlSeconds,
     messageTemplates,
     now,
   } = params;
@@ -141,6 +147,11 @@ export const notifySilentTmuxSessions = async (
     messageComposer,
     new RealSleeper(),
     hubTaskStatusResolver,
+    hubTaskStatusCacheStateFilePath !== null
+      ? new FileSystemSilentSessionHubTaskStatusCacheRepository(
+          hubTaskStatusCacheStateFilePath,
+        )
+      : new FileSystemSilentSessionHubTaskStatusCacheRepository(),
   );
   await useCase.run({
     mainSilentThresholdSeconds,
@@ -149,6 +160,7 @@ export const notifySilentTmuxSessions = async (
     staggerSeconds,
     candidateDebounceRecencyWindowSeconds,
     activeHubTaskStatus,
+    hubTaskStatusCacheTtlSeconds,
     now,
   });
 };
@@ -160,4 +172,5 @@ export const DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS = {
   staggerSeconds: DEFAULT_NOTIFICATION_STAGGER_SECONDS,
   candidateDebounceRecencyWindowSeconds:
     DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS,
+  hubTaskStatusCacheTtlSeconds: DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS,
 } as const;
