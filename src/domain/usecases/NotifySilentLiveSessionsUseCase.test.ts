@@ -675,10 +675,13 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       warnSpy.mockRestore();
     });
 
-    it('fails open and logs a warning when the hub task cannot be resolved', async () => {
+    it('fails open without a warning when the hub task is not a resolvable tracked task', async () => {
       setupSilentMainSession(HUB_TASK_SESSION);
       const warnSpy = jest
         .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      const logSpy = jest
+        .spyOn(console, 'log')
         .mockImplementation(() => undefined);
       mockHubTaskStatusResolver.getIssueByUrl.mockResolvedValue(null);
 
@@ -687,9 +690,9 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       expect(
         mockNotificationRepository.sendSelfCheckNotification,
       ).toHaveBeenCalledWith(HUB_TASK_SESSION, MAIN_STALLED_SECTION);
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('fail-open'),
-      );
+      expect(warnSpy).not.toHaveBeenCalled();
+      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('fail-open'));
+      logSpy.mockRestore();
       warnSpy.mockRestore();
     });
 
@@ -739,6 +742,31 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       expect(
         mockNotificationRepository.sendSelfCheckNotification,
       ).not.toHaveBeenCalled();
+    });
+
+    it('fails open without throwing or warning for a real tmux session-name form whose repository is unresolvable', async () => {
+      const REAL_TMUX_SESSION =
+        'https_//github_com/example-org/example-repo/issues/2350';
+      const CANONICAL_ISSUE_URL =
+        'https://github.com/example-org/example-repo/issues/2350';
+      setupSilentMainSession(REAL_TMUX_SESSION);
+      const warnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      mockHubTaskStatusResolver.getIssueByUrl.mockResolvedValue(null);
+
+      await expect(
+        useCase.run(runParams({ activeHubTaskStatus: ACTIVE_STATUS })),
+      ).resolves.toBeUndefined();
+
+      expect(mockHubTaskStatusResolver.getIssueByUrl).toHaveBeenCalledWith(
+        CANONICAL_ISSUE_URL,
+      );
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledWith(REAL_TMUX_SESSION, MAIN_STALLED_SECTION);
+      expect(warnSpy).not.toHaveBeenCalled();
+      warnSpy.mockRestore();
     });
 
     it('parses a clean github.com issue URL session name and rejects non-github names', () => {

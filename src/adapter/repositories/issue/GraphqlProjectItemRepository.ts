@@ -986,7 +986,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
           repository: {
             issue: ContentNode | null;
             pullRequest: ContentNode | null;
-          };
+          } | null;
         };
         errors?: { message: string }[];
       }>();
@@ -999,6 +999,9 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       );
     }
     const data = response.data;
+    if (!data.repository) {
+      return null;
+    }
     const content = data.repository.issue ?? data.repository.pullRequest;
     if (!content) {
       return null;
