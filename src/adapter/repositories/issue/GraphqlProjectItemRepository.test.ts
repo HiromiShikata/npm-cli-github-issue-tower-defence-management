@@ -912,6 +912,36 @@ describe('GraphqlProjectItemRepository', () => {
       expect(result).toBeNull();
     });
 
+    it('should return null when repository is null (NOT_FOUND partial result) instead of throwing', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            repository: null,
+          },
+          errors: [
+            {
+              type: 'NOT_FOUND',
+              path: ['repository'],
+              message:
+                'Could not resolve to a Repository with the name owner/repo.',
+            },
+          ],
+        }),
+      );
+
+      const result = await repository.fetchProjectItemByUrl(
+        'https://github.com/owner/repo/issues/2350',
+      );
+
+      expect(result).toBeNull();
+    });
+
     const makeMultiProjectPrNode = (
       url: string,
       number: number,
