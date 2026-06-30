@@ -146,7 +146,29 @@ test('renders the Workflow Blocker tab leftmost and shows its detail operations'
   ).toBeVisible();
 });
 
-test('adds an inline review comment on a related pull request diff without hover on a touch viewport', async ({
+test('shows CI, conflict and out-of-date badges in the related PR header', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Failed Preparation').click();
+  await itemRowByText(
+    page,
+    'Add inline review comments on the related pull request diff',
+  ).click();
+
+  const prHeader = page.locator('.console-pr-header').first();
+  await expect(prHeader.getByText('CI failing')).toBeVisible();
+  await expect(prHeader.getByText(/missing: build, test/)).toBeVisible();
+  await expect(prHeader.getByText('Conflict')).toBeVisible();
+  await expect(prHeader.getByText('Out of date')).toBeVisible();
+
+  await prHeader.screenshot({
+    path: '/tmp/after-related-pr-header.png',
+  });
+});
+
+test('collects an inline comment on a related pull request diff without hover on a touch viewport, enabling Reject and submitting it as request-changes', async ({
   browser,
 }) => {
   const touchContext = await browser.newContext({
@@ -179,6 +201,11 @@ test('adds an inline review comment on a related pull request diff without hover
   );
   expect(Number(opacity)).toBeGreaterThan(0);
 
+  const rejectButton = page
+    .locator('.console-op-button', { hasText: 'Reject' })
+    .first();
+  await expect(rejectButton).toBeDisabled();
+
   await commentButton.click();
   await page
     .locator('.console-diff-composer-input')
@@ -189,35 +216,21 @@ test('adds an inline review comment on a related pull request diff without hover
     'Comment saved.',
   );
 
-  expect(harness.reviewCommentCalls).toHaveLength(1);
-  expect(harness.reviewCommentCalls[0].url).toBe(
+  expect(harness.reviewCommentCalls).toHaveLength(0);
+
+  await expect(rejectButton).toBeEnabled();
+  await rejectButton.click();
+
+  await expect
+    .poll(() => harness.requestChangesCalls.length, { timeout: 10000 })
+    .toBe(1);
+  expect(harness.requestChangesCalls[0].url).toBe(
     'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/912',
   );
-  expect(harness.reviewCommentCalls[0].body).toBe(
+  expect(harness.requestChangesCalls[0].body).toContain(
     'Please verify this opacity change on touch devices.',
   );
+  expect(harness.requestChangesCalls[0].body.length).toBeGreaterThan(0);
 
   await touchContext.close();
-});
-
-test('shows CI, conflict and out-of-date badges in the related PR header', async ({
-  page,
-}) => {
-  await page.goto(harness.appRootUrl);
-
-  await tabByLabel(page, 'Failed Preparation').click();
-  await itemRowByText(
-    page,
-    'Add inline review comments on the related pull request diff',
-  ).click();
-
-  const prHeader = page.locator('.console-pr-header').first();
-  await expect(prHeader.getByText('CI failing')).toBeVisible();
-  await expect(prHeader.getByText(/missing: build, test/)).toBeVisible();
-  await expect(prHeader.getByText('Conflict')).toBeVisible();
-  await expect(prHeader.getByText('Out of date')).toBeVisible();
-
-  await prHeader.screenshot({
-    path: '/tmp/after-related-pr-header.png',
-  });
 });
