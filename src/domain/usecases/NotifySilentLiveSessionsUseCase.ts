@@ -277,7 +277,12 @@ export class NotifySilentLiveSessionsUseCase {
     );
     if (stalledSubAgents.length > 0) {
       sections.push(
-        this.messageComposer.composeSubAgentSection(stalledSubAgents),
+        this.messageComposer.composeSubAgentSection(stalledSubAgents, {
+          subAgentSilentThresholdSeconds:
+            thresholds.subAgentSilentThresholdSeconds,
+          subAgentRunningThresholdSeconds:
+            thresholds.subAgentRunningThresholdSeconds,
+        }),
       );
     }
 

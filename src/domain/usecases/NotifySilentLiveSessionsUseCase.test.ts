@@ -446,10 +446,44 @@ describe('NotifySilentLiveSessionsUseCase', () => {
 
     expect(mockMessageComposer.composeSubAgentSection).toHaveBeenCalledWith(
       subAgents,
+      {
+        subAgentSilentThresholdSeconds:
+          DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
+        subAgentRunningThresholdSeconds:
+          DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
+      },
     );
     expect(
       mockNotificationRepository.sendSelfCheckNotification,
     ).toHaveBeenCalledWith(GITHUB_SESSION, SUBAGENT_SECTION);
+  });
+
+  it('passes a configured running threshold through to the sub-agent section composer', async () => {
+    setupLiveInteractiveSession(GITHUB_SESSION);
+    const subAgents: SubAgentActivity[] = [
+      {
+        label: 'sub-process-1',
+        silentSeconds: 10,
+        runningSeconds: 600,
+      },
+    ];
+    mockSubAgentActivityRepository.listSubAgentActivitiesBySessionName.mockResolvedValue(
+      new Map([[GITHUB_SESSION, subAgents]]),
+    );
+
+    await useCase.run({
+      ...runParams(),
+      subAgentRunningThresholdSeconds: 600,
+    });
+
+    expect(mockMessageComposer.composeSubAgentSection).toHaveBeenCalledWith(
+      subAgents,
+      {
+        subAgentSilentThresholdSeconds:
+          DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
+        subAgentRunningThresholdSeconds: 600,
+      },
+    );
   });
 
   it('excludes an owner-handover spawn from selection so no notification is sent', async () => {

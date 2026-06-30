@@ -20,8 +20,10 @@ const CLAUDE_PID = 201;
 
 const EMPTY_TEMPLATES: SilentSessionMessageTemplates = {
   mainStalledMessage: null,
-  subAgentMessageHeader: null,
-  subAgentMessageFooter: null,
+  subAgentIdleMessageHeader: null,
+  subAgentIdleMessageFooter: null,
+  subAgentLongRunningMessageHeader: null,
+  subAgentLongRunningMessageFooter: null,
 };
 
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
@@ -214,8 +216,10 @@ describe('notifySilentTmuxSessions', () => {
       ...baseParams(runner),
       messageTemplates: {
         mainStalledMessage: 'CUSTOM_MAIN_TEMPLATE',
-        subAgentMessageHeader: null,
-        subAgentMessageFooter: null,
+        subAgentIdleMessageHeader: null,
+        subAgentIdleMessageFooter: null,
+        subAgentLongRunningMessageHeader: null,
+        subAgentLongRunningMessageFooter: null,
       },
     });
 
