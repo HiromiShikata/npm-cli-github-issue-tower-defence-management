@@ -1,3 +1,10 @@
+# [1.118.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.10...v1.118.0) (2026-06-30)
+
+
+### Features
+
+* split sub-agent stall reminder into distinct idle and long-running messages ([#1124](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1124)) ([78e0be1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/78e0be11e5482b91cbdac1eace1ee3e04749688f)), closes [#1123](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1123)
+
 ## [1.117.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.9...v1.117.10) (2026-06-30)
 
 

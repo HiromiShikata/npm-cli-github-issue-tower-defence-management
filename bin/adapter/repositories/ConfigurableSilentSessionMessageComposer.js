@@ -19,21 +19,54 @@ class ConfigurableSilentSessionMessageComposer {
             }
             return withReminderSentinel(this.templates.mainStalledMessage);
         };
-        this.composeSubAgentSection = (subAgents) => {
-            if (this.templates.subAgentMessageHeader === null &&
-                this.templates.subAgentMessageFooter === null) {
-                return this.fallback.composeSubAgentSection(subAgents);
+        this.composeSubAgentSection = (subAgents, thresholds) => {
+            const hasIdleTemplate = this.templates.subAgentIdleMessageHeader !== null ||
+                this.templates.subAgentIdleMessageFooter !== null;
+            const hasLongRunningTemplate = this.templates.subAgentLongRunningMessageHeader !== null ||
+                this.templates.subAgentLongRunningMessageFooter !== null;
+            if (!hasIdleTemplate && !hasLongRunningTemplate) {
+                return this.fallback.composeSubAgentSection(subAgents, thresholds);
             }
-            const lines = subAgents.map((subAgent) => `- ${subAgent.label}: silent for ${formatMinutes(subAgent.silentSeconds)}, running for ${formatMinutes(subAgent.runningSeconds)}`);
+            const idleSubAgents = subAgents.filter((subAgent) => subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds);
+            const longRunningSubAgents = subAgents.filter((subAgent) => subAgent.runningSeconds >= thresholds.subAgentRunningThresholdSeconds);
             const sections = [];
-            if (this.templates.subAgentMessageHeader !== null) {
-                sections.push(this.templates.subAgentMessageHeader);
+            if (idleSubAgents.length > 0 && hasIdleTemplate) {
+                sections.push(this.composeIdleSection(idleSubAgents, this.templates.subAgentIdleMessageHeader, this.templates.subAgentIdleMessageFooter));
             }
-            sections.push(...lines);
-            if (this.templates.subAgentMessageFooter !== null) {
-                sections.push(this.templates.subAgentMessageFooter);
+            else if (idleSubAgents.length > 0) {
+                sections.push(this.composeIdleSection(idleSubAgents, null, null));
             }
-            return withReminderSentinel(sections.join('\n'));
+            if (longRunningSubAgents.length > 0 && hasLongRunningTemplate) {
+                sections.push(this.composeLongRunningSection(longRunningSubAgents, this.templates.subAgentLongRunningMessageHeader, this.templates.subAgentLongRunningMessageFooter));
+            }
+            else if (longRunningSubAgents.length > 0) {
+                sections.push(this.composeLongRunningSection(longRunningSubAgents, null, null));
+            }
+            return withReminderSentinel(sections.join('\n\n'));
+        };
+        this.composeIdleSection = (idleSubAgents, header, footer) => {
+            const lines = idleSubAgents.map((subAgent) => `- ${subAgent.label}: no output for ${formatMinutes(subAgent.silentSeconds)}`);
+            const parts = [];
+            if (header !== null) {
+                parts.push(header);
+            }
+            parts.push(...lines);
+            if (footer !== null) {
+                parts.push(footer);
+            }
+            return parts.join('\n');
+        };
+        this.composeLongRunningSection = (longRunningSubAgents, header, footer) => {
+            const lines = longRunningSubAgents.map((subAgent) => `- ${subAgent.label}: running for ${formatMinutes(subAgent.runningSeconds)}`);
+            const parts = [];
+            if (header !== null) {
+                parts.push(header);
+            }
+            parts.push(...lines);
+            if (footer !== null) {
+                parts.push(footer);
+            }
+            return parts.join('\n');
         };
     }
 }

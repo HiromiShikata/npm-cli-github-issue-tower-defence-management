@@ -6,6 +6,22 @@ const formatMinutes = (seconds) => {
     const minutes = Math.floor(seconds / 60);
     return `${minutes}m`;
 };
+const composeIdleSubAgentSection = (idleSubAgents) => {
+    const lines = idleSubAgents.map((subAgent) => `- ${subAgent.label}: no output for ${formatMinutes(subAgent.silentSeconds)}`);
+    return [
+        `${silentSessionReminderSentinel_1.SILENT_SESSION_REMINDER_SENTINEL} The following sub-process(es) have produced no output for several minutes and may be stalled:`,
+        ...lines,
+        'Check each one. If it is stuck, take action (restart, hand off, or replace it). If it is legitimately waiting on an external dependency (continuous integration, an external API, or another process), let it continue.',
+    ].join('\n');
+};
+const composeLongRunningSubAgentSection = (longRunningSubAgents) => {
+    const lines = longRunningSubAgents.map((subAgent) => `- ${subAgent.label}: running for ${formatMinutes(subAgent.runningSeconds)}`);
+    return [
+        `${silentSessionReminderSentinel_1.SILENT_SESSION_REMINDER_SENTINEL} The following sub-process(es) have been running longer than a task should normally take, which may mean an infinite loop, a task that is too large, or being stuck in an incorrect approach that is not making forward progress:`,
+        ...lines,
+        'Verify each one is genuinely advancing toward completion; do not dismiss it merely because it produced output recently. If it is not progressing, intervene: break the task down, restart, hand off, or replace it.',
+    ].join('\n');
+};
 const composeOwnerCallFormatGuidance = (ownerCallMarker) => {
     const markerInstruction = ownerCallMarker !== null && ownerCallMarker.length > 0
         ? `Emit the owner-call as the configured owner-call marker tag "${ownerCallMarker}" as a complete matching pair — opening marker, content, then closing marker — on a single line with no newline inside the tag.`
@@ -29,13 +45,17 @@ class DefaultSilentSessionMessageComposer {
         this.composeMainStalledSection = (mainSilentSeconds) => {
             return composeMainStalledMessage(mainSilentSeconds, this.ownerCallMarker);
         };
-        this.composeSubAgentSection = (subAgents) => {
-            const lines = subAgents.map((subAgent) => `- ${subAgent.label}: silent for ${formatMinutes(subAgent.silentSeconds)}, running for ${formatMinutes(subAgent.runningSeconds)}`);
-            return [
-                `${silentSessionReminderSentinel_1.SILENT_SESSION_REMINDER_SENTINEL} The following sub-processes have been silent or running for a long time:`,
-                ...lines,
-                'If a sub-process is stalled, take action (restart, hand off, or replace it). If it is legitimately waiting on an external dependency (continuous integration, an external API, or another process), let it continue.',
-            ].join('\n');
+        this.composeSubAgentSection = (subAgents, thresholds) => {
+            const idleSubAgents = subAgents.filter((subAgent) => subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds);
+            const longRunningSubAgents = subAgents.filter((subAgent) => subAgent.runningSeconds >= thresholds.subAgentRunningThresholdSeconds);
+            const sections = [];
+            if (idleSubAgents.length > 0) {
+                sections.push(composeIdleSubAgentSection(idleSubAgents));
+            }
+            if (longRunningSubAgents.length > 0) {
+                sections.push(composeLongRunningSubAgentSection(longRunningSubAgents));
+            }
+            return sections.join('\n\n');
         };
     }
 }

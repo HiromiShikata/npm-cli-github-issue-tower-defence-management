@@ -142,7 +142,10 @@ class NotifySilentLiveSessionsUseCase {
             const stalledSubAgents = snapshot.subAgents.filter((subAgent) => subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds ||
                 subAgent.runningSeconds >= thresholds.subAgentRunningThresholdSeconds);
             if (stalledSubAgents.length > 0) {
-                sections.push(this.messageComposer.composeSubAgentSection(stalledSubAgents));
+                sections.push(this.messageComposer.composeSubAgentSection(stalledSubAgents, {
+                    subAgentSilentThresholdSeconds: thresholds.subAgentSilentThresholdSeconds,
+                    subAgentRunningThresholdSeconds: thresholds.subAgentRunningThresholdSeconds,
+                }));
             }
             if (sections.length === 0) {
                 return null;
