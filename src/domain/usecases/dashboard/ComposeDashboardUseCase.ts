@@ -8,10 +8,16 @@ export type ComposeDashboardProject = {
   row: DashboardRow | null;
 };
 
+export type ComposeDashboardDisk = {
+  title: string;
+  pct: number;
+};
+
 export type ComposeDashboardMachineStatus = {
   memPct: number | null;
   cpuPct: number | null;
   diskPct: number | null;
+  disks?: ComposeDashboardDisk[] | null;
   load: [number, number, number] | null;
   cycleMinutes: number | null;
 };
@@ -98,9 +104,27 @@ export const formatResetCountdown = (totalSeconds: number): string => {
   )}`;
 };
 
+const packTokensWithinBudget = (tokens: string[]): string[] => {
+  const lines: string[] = [];
+  let current = '';
+  for (const token of tokens) {
+    const candidate = current === '' ? token : `${current} ${token}`;
+    if (current !== '' && candidate.length > PROJECT_ROW_WIDTH_BUDGET) {
+      lines.push(current);
+      current = token;
+    } else {
+      current = candidate;
+    }
+  }
+  if (current !== '') {
+    lines.push(current);
+  }
+  return lines;
+};
+
 export const formatMachineStatusLines = (
   machineStatus: ComposeDashboardMachineStatus | null,
-): [string, string] => {
+): string[] => {
   const memText =
     machineStatus !== null && machineStatus.memPct !== null
       ? `${machineStatus.memPct}%`
@@ -121,10 +145,15 @@ export const formatMachineStatusLines = (
     machineStatus !== null && machineStatus.cycleMinutes !== null
       ? `cy${machineStatus.cycleMinutes}`
       : 'cy-';
-  return [
-    `M${memText} C${cpuText} D${diskText} ${cycle}`,
-    `LA ${oneMinute} ${fiveMinute} ${fifteenMinute}`,
-  ];
+  const loadLine = `LA ${oneMinute} ${fiveMinute} ${fifteenMinute}`;
+  const disks =
+    machineStatus !== null && machineStatus.disks ? machineStatus.disks : null;
+  if (disks !== null && disks.length > 0) {
+    const diskTokens = disks.map((disk) => `${disk.title}${disk.pct}%`);
+    const diskLines = packTokensWithinBudget(diskTokens);
+    return [`M${memText} C${cpuText} ${cycle}`, ...diskLines, loadLine];
+  }
+  return [`M${memText} C${cpuText} D${diskText} ${cycle}`, loadLine];
 };
 
 const capThreeDigits = (value: number): string =>
