@@ -9,6 +9,7 @@ import {
   DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
   DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
   DEFAULT_NOTIFICATION_STAGGER_SECONDS,
+  DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS,
 } from '../../../domain/usecases/NotifySilentLiveSessionsUseCase';
 import { DefaultSilentSessionMessageComposer } from '../../../domain/usecases/DefaultSilentSessionMessageComposer';
 import { LocalProcessLiveSessionProcessSnapshotProvider } from '../../repositories/LocalProcessLiveSessionProcessSnapshotProvider';
@@ -28,6 +29,7 @@ import {
   SilentSessionMessageTemplates,
 } from '../../repositories/ConfigurableSilentSessionMessageComposer';
 import { RealSleeper } from '../../repositories/RealSleeper';
+import { FileSystemSilentSessionCandidateStateRepository } from '../../repositories/FileSystemSilentSessionCandidateStateRepository';
 
 export type NotifySilentTmuxSessionsParams = {
   enabled: boolean;
@@ -41,6 +43,8 @@ export type NotifySilentTmuxSessionsParams = {
   subAgentSilentThresholdSeconds: number;
   subAgentRunningThresholdSeconds: number;
   staggerSeconds: number;
+  candidateDebounceRecencyWindowSeconds: number;
+  candidateDebounceStateFilePath: string | null;
   activeHubTaskStatus: string | null;
   hubTaskStatusResolver: HubTaskStatusResolver | null;
   messageTemplates: SilentSessionMessageTemplates;
@@ -96,6 +100,8 @@ export const notifySilentTmuxSessions = async (
     subAgentSilentThresholdSeconds,
     subAgentRunningThresholdSeconds,
     staggerSeconds,
+    candidateDebounceRecencyWindowSeconds,
+    candidateDebounceStateFilePath,
     activeHubTaskStatus,
     hubTaskStatusResolver,
     messageTemplates,
@@ -127,6 +133,11 @@ export const notifySilentTmuxSessions = async (
     ),
     createOwnerCallStatusProvider(ownerCallMarker),
     new TmuxSilentSessionNotificationRepository(localCommandRunner),
+    candidateDebounceStateFilePath !== null
+      ? new FileSystemSilentSessionCandidateStateRepository(
+          candidateDebounceStateFilePath,
+        )
+      : new FileSystemSilentSessionCandidateStateRepository(),
     messageComposer,
     new RealSleeper(),
     hubTaskStatusResolver,
@@ -136,6 +147,7 @@ export const notifySilentTmuxSessions = async (
     subAgentSilentThresholdSeconds,
     subAgentRunningThresholdSeconds,
     staggerSeconds,
+    candidateDebounceRecencyWindowSeconds,
     activeHubTaskStatus,
     now,
   });
@@ -146,4 +158,6 @@ export const DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS = {
   subAgentSilentThresholdSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
   subAgentRunningThresholdSeconds: DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
   staggerSeconds: DEFAULT_NOTIFICATION_STAGGER_SECONDS,
+  candidateDebounceRecencyWindowSeconds:
+    DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS,
 } as const;
