@@ -1,3 +1,10 @@
+## [1.117.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.6...v1.117.7) (2026-06-30)
+
+
+### Bug Fixes
+
+* **console:** require an inline comment to enable Reject and send it as the request-changes review body ([#1116](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1116)) ([633bbfa](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/633bbfac4603cf8bb22e39bf6c1c93e7c910ebae)), closes [#1114](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1114)
+
 ## [1.117.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.5...v1.117.6) (2026-06-30)
 
 

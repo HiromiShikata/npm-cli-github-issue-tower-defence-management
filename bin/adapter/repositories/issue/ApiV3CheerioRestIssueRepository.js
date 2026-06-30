@@ -841,21 +841,24 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 throw new Error(`Failed to approve PR ${prUrl}: ${reason}`);
             }
         };
-        this.requestChangesWithInlineComment = async (prUrl, changedFilePath, commentBody) => {
+        this.requestChangesWithInlineComment = async (prUrl, changedFilePath, commentBody, inlineCommentLocation = null) => {
             const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
             if (changedFilePath === null) {
                 await this.createCommentByUrl(prUrl, commentBody);
                 return;
             }
+            const inlineComment = inlineCommentLocation === null
+                ? { path: changedFilePath, position: 1, body: commentBody }
+                : {
+                    path: changedFilePath,
+                    line: inlineCommentLocation.line,
+                    side: inlineCommentLocation.side,
+                    body: commentBody,
+                };
             const reviewBody = {
                 event: 'REQUEST_CHANGES',
-                comments: [
-                    {
-                        path: changedFilePath,
-                        position: 1,
-                        body: commentBody,
-                    },
-                ],
+                body: commentBody,
+                comments: [inlineComment],
             };
             const response = await this.fetchWithRateLimitRetry(() => fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/reviews`, {
                 method: 'POST',

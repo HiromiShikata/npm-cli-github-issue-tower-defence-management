@@ -47,6 +47,10 @@ export type PullRequestCommit = {
     authoredAt: Date;
 };
 export type PullRequestReviewCommentSide = 'LEFT' | 'RIGHT';
+export type PullRequestReviewInlineLocation = {
+    line: number;
+    side: PullRequestReviewCommentSide;
+};
 export interface IssueRepository {
     getAllIssues: (projectId: Project['id'], allowCacheMinutes: number) => Promise<{
         issues: Issue[];
@@ -88,7 +92,7 @@ export interface IssueRepository {
     getOpenPullRequest: (prUrl: string) => Promise<RelatedPullRequest | null>;
     getPullRequestChangedFilePaths: (prUrl: string) => Promise<string[]>;
     approvePullRequest: (prUrl: string) => Promise<void>;
-    requestChangesWithInlineComment: (prUrl: string, changedFilePath: string | null, commentBody: string) => Promise<void>;
+    requestChangesWithInlineComment: (prUrl: string, changedFilePath: string | null, commentBody: string, inlineCommentLocation?: PullRequestReviewInlineLocation | null) => Promise<void>;
     createPullRequestReviewComment: (prUrl: string, path: string, line: number, side: PullRequestReviewCommentSide, commentBody: string) => Promise<void>;
     closePullRequest: (prUrl: string) => Promise<void>;
     closeIssueByUrl: (issueUrl: string, stateReason: 'completed' | 'not_planned') => Promise<void>;

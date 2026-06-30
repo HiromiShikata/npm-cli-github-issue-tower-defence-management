@@ -97,7 +97,12 @@ const handleReview = async (context, body) => {
         const changedFilePath = isNonEmptyString(body.changedFilePath)
             ? body.changedFilePath
             : null;
-        await context.issueRepository.requestChangesWithInlineComment(prUrl, changedFilePath, commentBody);
+        const inlineCommentLocation = changedFilePath !== null &&
+            isPositiveInteger(body.line) &&
+            isReviewCommentSide(body.side)
+            ? { line: body.line, side: body.side }
+            : null;
+        await context.issueRepository.requestChangesWithInlineComment(prUrl, changedFilePath, commentBody, inlineCommentLocation);
         const failure = await updateStatusByName(context.issueRepository, project, prUrl, projectItemId, exports.AWAITING_WORKSPACE_STATUS_NAME);
         if (failure !== null) {
             return failure;
