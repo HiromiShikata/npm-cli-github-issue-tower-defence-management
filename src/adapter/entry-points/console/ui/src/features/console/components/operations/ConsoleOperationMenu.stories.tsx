@@ -20,6 +20,7 @@ const meta: Meta<typeof ConsoleOperationMenu> = {
   title: 'Console/ConsoleOperationMenu',
   component: ConsoleOperationMenu,
   args: {
+    rejectEnabled: false,
     statusOptions: consoleStatusOptionsFixture,
     storyOptions: consoleStoryOptionsFixture,
     handlers,
@@ -35,6 +36,15 @@ export const PrsTabPullRequest: Story = {
     tab: 'prs',
     item: consoleListItemsFixture[0],
     hasPullRequest: true,
+  },
+};
+
+export const PrsTabPullRequestRejectEnabled: Story = {
+  args: {
+    tab: 'prs',
+    item: consoleListItemsFixture[0],
+    hasPullRequest: true,
+    rejectEnabled: true,
   },
 };
 

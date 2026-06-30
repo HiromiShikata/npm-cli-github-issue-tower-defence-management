@@ -17,6 +17,7 @@ export type ConsoleOperationBarProps = {
   tab: ConsoleTabName;
   item: ConsoleListItem;
   hasPullRequest: boolean;
+  rejectEnabled: boolean;
   statusOptions: ConsoleFieldOption[];
   storyOptions: ConsoleFieldOption[];
   handlers: ConsoleOperationHandlers;
@@ -25,6 +26,7 @@ export type ConsoleOperationBarProps = {
 export const ConsoleOperationMenu = ({
   tab,
   hasPullRequest,
+  rejectEnabled,
   statusOptions,
   storyOptions,
   handlers,
@@ -33,7 +35,10 @@ export const ConsoleOperationMenu = ({
   return (
     <div className="console-operation-bar">
       {hasPullRequest && (
-        <ConsolePullRequestReviewActions onReview={handlers.onReview} />
+        <ConsolePullRequestReviewActions
+          onReview={handlers.onReview}
+          rejectEnabled={rejectEnabled}
+        />
       )}
       <ConsoleNextActionDateActions
         isTodoByHuman={isTodoByHumanTab(tab)}

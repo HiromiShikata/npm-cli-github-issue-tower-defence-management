@@ -111,7 +111,80 @@ describe('ConsoleItemDetailContainer', () => {
       prItem,
       prItem.url,
       'approve',
+      [],
     );
+  });
+
+  it('disables Reject until an inline comment is entered and then commits it as the request-changes review', async () => {
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const {
+      container,
+      findByRole,
+      getAllByRole,
+      getByPlaceholderText,
+      getByText,
+    } = render(
+      <ConsoleItemDetailContainer
+        tab="prs"
+        item={prItem}
+        caches={buildCaches({ prFiles: consoleChangedFilesFixture })}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getByText('Reject')).toBeInTheDocument();
+    });
+    expect(getByText('Reject')).toBeDisabled();
+
+    const fileRow = await findByRole('button', {
+      name: new RegExp(consoleChangedFilesFixture[0].path),
+    });
+    fireEvent.click(fileRow);
+    const commentButton = getAllByRole('button', {
+      name: /^Comment on line/,
+    })[0];
+    fireEvent.click(commentButton);
+    fireEvent.change(
+      getByPlaceholderText('Leave a review comment on this line…'),
+      { target: { value: 'Please rename this variable.' } },
+    );
+    const submitButton = container.querySelector(
+      '.console-diff-composer-submit',
+    );
+    fireEvent.click(submitButton as Element);
+
+    await waitFor(() => {
+      expect(getByText('Reject')).not.toBeDisabled();
+    });
+
+    fireEvent.click(getByText('Reject'));
+    const rejectInput = onQueueAction.mock.calls.at(-1)?.[0];
+    expect(rejectInput.kind).toEqual({
+      type: 'review',
+      action: 'request_changes',
+    });
+    rejectInput.commit();
+    const reviewCall = (
+      operations.reviewPullRequest as jest.Mock
+    ).mock.calls.at(-1);
+    expect(reviewCall?.[2]).toBe('request_changes');
+    expect(reviewCall?.[3]).toEqual([
+      {
+        path: consoleChangedFilesFixture[0].path,
+        line: expect.any(Number),
+        side: expect.stringMatching(/LEFT|RIGHT/),
+        body: 'Please rename this variable.',
+      },
+    ]);
   });
 
   it('routes an inline review comment on an issue related pull request to that pull request url', async () => {

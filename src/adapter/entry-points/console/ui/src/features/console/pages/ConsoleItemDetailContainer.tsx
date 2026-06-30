@@ -1,16 +1,19 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useState } from 'react';
 import { ConsoleCommentComposer } from '../components/detail/ConsoleCommentComposer';
+import type { ConsoleAddInlineComment } from '../components/detail/ConsoleFileDiff';
 import { ConsoleItemDetail } from '../components/detail/ConsoleItemDetail';
 import { ConsoleOperationMenu } from '../components/operations/ConsoleOperationMenu';
 import type { ConsoleCaches } from '../hooks/useConsoleCaches';
 import { useConsoleItemDetailData } from '../hooks/useConsoleItemDetailData';
 import type { ConsoleOperationsApi } from '../hooks/useConsoleOperations';
 import { useConsoleToken } from '../hooks/useConsoleToken';
-import type { ConsoleReviewCommentSide } from '../lib/consoleApi';
 import { buildImageProxyUrl } from '../lib/imageProxy';
 import type { ConsoleActionKind } from '../logic/actionToast';
 import { resolveStoryColorEnum } from '../logic/grouping';
-import type { ConsoleOperationHandlers } from '../logic/operations';
+import type {
+  ConsoleOperationHandlers,
+  ConsolePendingReviewComment,
+} from '../logic/operations';
 import type {
   ConsoleColor,
   ConsoleFieldOption,
@@ -71,20 +74,23 @@ export const ConsoleItemDetailContainer = ({
     [caches.state],
   );
   const hasPullRequest = item.isPr || detail.relatedPullRequests.length > 0;
+  const [pendingReviewComments, setPendingReviewComments] = useState<
+    ConsolePendingReviewComment[]
+  >([]);
   const buildAddInlineComment = useCallback(
-    (prUrl: string) =>
-      (
-        path: string,
-        line: number,
-        side: ConsoleReviewCommentSide,
-        body: string,
-      ) =>
+    (prUrl: string): ConsoleAddInlineComment =>
+      (path, line, side, body) =>
         operations.addInlineReviewComment(prUrl, path, line, side, body),
     [operations],
   );
-  const addInlineComment = useMemo(
-    () => buildAddInlineComment(item.url),
-    [buildAddInlineComment, item.url],
+  const addInlineComment = useCallback<ConsoleAddInlineComment>(
+    async (path, line, side, body) => {
+      setPendingReviewComments((previous) => [
+        ...previous,
+        { path, line, side, body },
+      ]);
+    },
+    [],
   );
 
   const handlers: ConsoleOperationHandlers = {
@@ -92,10 +98,13 @@ export const ConsoleItemDetailContainer = ({
       const prUrl = item.isPr
         ? item.url
         : (detail.relatedPullRequests[0]?.pullRequest.url ?? item.url);
+      const reviewComments =
+        action === 'request_changes' ? pendingReviewComments : [];
       onQueueAction({
         kind: { type: 'review', action },
         item,
-        commit: () => operations.reviewPullRequest(item, prUrl, action),
+        commit: () =>
+          operations.reviewPullRequest(item, prUrl, action, reviewComments),
       });
     },
     onSetNextActionDate: (action) => {
@@ -180,6 +189,7 @@ export const ConsoleItemDetailContainer = ({
           tab={tab}
           item={item}
           hasPullRequest={hasPullRequest}
+          rejectEnabled={pendingReviewComments.length > 0}
           statusOptions={statusOptions}
           storyOptions={storyOptions}
           handlers={handlers}

@@ -118,7 +118,28 @@ describe('consoleOperationApi', () => {
       expectRecordedAcrossTabs('PVTI_a');
     });
 
-    it('requests changes with the inline comment', async () => {
+    it('requests changes with the inline comment anchored to a line and side', async () => {
+      const response = await handleReview(context, {
+        pjcode: 'umino',
+        action: 'request_changes',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_b',
+        commentBody: 'please fix',
+        changedFilePath: 'src/a.ts',
+        line: 17,
+        side: 'RIGHT',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(
+        issueRepository.requestChangesWithInlineComment,
+      ).toHaveBeenCalledWith('https://github.com/o/r/pull/1', 'src/a.ts', 'please fix', {
+        line: 17,
+        side: 'RIGHT',
+      });
+      expectRecordedAcrossTabs('PVTI_b');
+    });
+
+    it('requests changes without a line anchor when line and side are missing', async () => {
       const response = await handleReview(context, {
         pjcode: 'umino',
         action: 'request_changes',
@@ -134,6 +155,7 @@ describe('consoleOperationApi', () => {
         'https://github.com/o/r/pull/1',
         'src/a.ts',
         'please fix',
+        null,
       );
       expectRecordedAcrossTabs('PVTI_b');
     });

@@ -705,6 +705,76 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       jest.restoreAllMocks();
     });
 
+    it('submits a REQUEST_CHANGES review with a non-empty body and a line-anchored comment', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: 7 }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await repository.requestChangesWithInlineComment(
+        'https://github.com/HiromiShikata/test-repository/pull/42',
+        'src/index.ts',
+        'Please address this.',
+        { line: 17, side: 'RIGHT' },
+      );
+
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'https://api.github.com/repos/HiromiShikata/test-repository/pulls/42/reviews',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            event: 'REQUEST_CHANGES',
+            body: 'Please address this.',
+            comments: [
+              {
+                path: 'src/index.ts',
+                line: 17,
+                side: 'RIGHT',
+                body: 'Please address this.',
+              },
+            ],
+          }),
+        }),
+      );
+    });
+
+    it('falls back to a positional comment but still sends a non-empty body when no line anchor is provided', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: 8 }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await repository.requestChangesWithInlineComment(
+        'https://github.com/HiromiShikata/test-repository/pull/42',
+        'src/index.ts',
+        'Please address this.',
+      );
+
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'https://api.github.com/repos/HiromiShikata/test-repository/pulls/42/reviews',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            event: 'REQUEST_CHANGES',
+            body: 'Please address this.',
+            comments: [
+              {
+                path: 'src/index.ts',
+                position: 1,
+                body: 'Please address this.',
+              },
+            ],
+          }),
+        }),
+      );
+    });
+
     it("should surface GitHub's validation reason together with the status when the review POST fails", async () => {
       jest.spyOn(global, 'fetch').mockResolvedValueOnce(
         new Response(

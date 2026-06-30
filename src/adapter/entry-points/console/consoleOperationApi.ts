@@ -187,10 +187,17 @@ export const handleReview = async (
     const changedFilePath = isNonEmptyString(body.changedFilePath)
       ? body.changedFilePath
       : null;
+    const inlineCommentLocation =
+      changedFilePath !== null &&
+      isPositiveInteger(body.line) &&
+      isReviewCommentSide(body.side)
+        ? { line: body.line, side: body.side }
+        : null;
     await context.issueRepository.requestChangesWithInlineComment(
       prUrl,
       changedFilePath,
       commentBody,
+      inlineCommentLocation,
     );
     const failure = await updateStatusByName(
       context.issueRepository,

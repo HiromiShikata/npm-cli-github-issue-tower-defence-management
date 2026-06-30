@@ -1,4 +1,5 @@
 import {
+  buildRequestChangesBody,
   IN_TMUX_BY_HUMAN_NAME,
   isTodoByHumanTab,
   STATUS_BUTTON_NAMES,
@@ -33,5 +34,28 @@ describe('isTodoByHumanTab', () => {
   it('is true only for the todo-by-human tab', () => {
     expect(isTodoByHumanTab('todo-by-human')).toBe(true);
     expect(isTodoByHumanTab('prs')).toBe(false);
+  });
+});
+
+describe('buildRequestChangesBody', () => {
+  it('renders a single inline comment with its file and line prefix', () => {
+    expect(
+      buildRequestChangesBody([
+        { path: 'src/a.ts', line: 12, side: 'RIGHT', body: 'Please fix.' },
+      ]),
+    ).toBe('src/a.ts:12 Please fix.');
+  });
+
+  it('joins multiple inline comments with blank lines', () => {
+    expect(
+      buildRequestChangesBody([
+        { path: 'src/a.ts', line: 3, side: 'RIGHT', body: 'First.' },
+        { path: 'src/b.ts', line: 9, side: 'LEFT', body: 'Second.' },
+      ]),
+    ).toBe('src/a.ts:3 First.\n\nsrc/b.ts:9 Second.');
+  });
+
+  it('returns an empty string when there are no comments', () => {
+    expect(buildRequestChangesBody([])).toBe('');
   });
 });

@@ -9,8 +9,10 @@ import {
   postConsoleReviewComment,
 } from '../lib/consoleApi';
 import {
+  buildRequestChangesBody,
   type ConsoleCloseAction,
   type ConsoleNextActionDateAction,
+  type ConsolePendingReviewComment,
   type ConsoleReviewAction,
   TOTALLY_WRONG_COMMENT_BODY,
   UNNECESSARY_COMMENT_BODY,
@@ -35,6 +37,7 @@ export type ConsoleOperationsApi = {
     item: ConsoleListItem,
     prUrl: string,
     action: ConsoleReviewAction,
+    pendingReviewComments?: ConsolePendingReviewComment[],
   ) => Promise<void>;
   setNextActionDate: (
     item: ConsoleListItem,
@@ -71,6 +74,7 @@ const reviewRequest = (
   item: ConsoleListItem,
   prUrl: string,
   action: ConsoleReviewAction,
+  pendingReviewComments: ConsolePendingReviewComment[],
 ): ConsoleReviewRequest => {
   if (action === 'approve') {
     return {
@@ -81,12 +85,20 @@ const reviewRequest = (
     };
   }
   if (action === 'request_changes') {
+    const firstComment = pendingReviewComments[0];
     return {
       pjcode,
       action: 'request_changes',
       prUrl,
       projectItemId: item.projectItemId,
-      commentBody: '',
+      commentBody: buildRequestChangesBody(pendingReviewComments),
+      ...(firstComment === undefined
+        ? {}
+        : {
+            changedFilePath: firstComment.path,
+            line: firstComment.line,
+            side: firstComment.side,
+          }),
     };
   }
   if (action === 'totally_wrong') {
@@ -144,6 +156,7 @@ export const useConsoleOperations = (
       item: ConsoleListItem,
       prUrl: string,
       action: ConsoleReviewAction,
+      pendingReviewComments: ConsolePendingReviewComment[] = [],
     ) => {
       if (pjcode === null) {
         throw missingPjcodeError();
@@ -151,7 +164,7 @@ export const useConsoleOperations = (
       await postConsoleOperation(
         appendToken,
         REVIEW_OPERATION_PATH,
-        reviewRequest(pjcode, item, prUrl, action),
+        reviewRequest(pjcode, item, prUrl, action, pendingReviewComments),
       );
       markDone(item);
     },
