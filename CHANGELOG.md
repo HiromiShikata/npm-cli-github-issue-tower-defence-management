@@ -1,3 +1,10 @@
+## [1.117.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.9...v1.117.10) (2026-06-30)
+
+
+### Bug Fixes
+
+* **console:** make Reject gate consistent for inline comments on an issue's related PR diff ([#1126](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1126)) ([2177860](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2177860517cb9a34735afbd232dac49fbba01c45)), closes [#1125](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1125)
+
 ## [1.117.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.8...v1.117.9) (2026-06-30)
 
 
