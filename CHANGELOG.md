@@ -1,3 +1,10 @@
+## [1.118.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.118.0...v1.118.1) (2026-06-30)
+
+
+### Bug Fixes
+
+* **silent-monitor:** cache hub-task status and suppress resolved-closed fail-opens ([#1128](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1128)) ([c3aa66c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c3aa66ccdf677d3de59b215ff812ea61664c32fb))
+
 # [1.118.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.10...v1.118.0) (2026-06-30)
 
 

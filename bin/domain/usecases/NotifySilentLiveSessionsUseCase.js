@@ -1,12 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.NotifySilentLiveSessionsUseCase = exports.isGitHubIssueOrPullRequestSessionName = exports.parseHubTaskIssueUrlFromSessionName = exports.DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS = exports.DEFAULT_NOTIFICATION_STAGGER_SECONDS = exports.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = exports.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = exports.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = void 0;
+exports.NotifySilentLiveSessionsUseCase = exports.isGitHubIssueOrPullRequestSessionName = exports.parseHubTaskIssueUrlFromSessionName = exports.DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS = exports.DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS = exports.DEFAULT_NOTIFICATION_STAGGER_SECONDS = exports.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = exports.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = exports.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = void 0;
 const ResolveInteractiveLiveSessionsUseCase_1 = require("./ResolveInteractiveLiveSessionsUseCase");
 exports.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = 10 * 60;
 exports.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = 5 * 60;
 exports.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = 15 * 60;
 exports.DEFAULT_NOTIFICATION_STAGGER_SECONDS = 25;
 exports.DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS = 15 * 60;
+exports.DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS = 5 * 60;
 const GITHUB_ISSUE_OR_PULL_URL_PATTERN = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/(?:issues|pull)\/(\d+)$/;
 const GITHUB_TMUX_SESSION_NAME_PATTERN = /^https_\/\/github_com\/([^/]+)\/([^/]+)\/(?:issues|pull)\/(\d+)$/;
 const parseHubTaskIssueUrlFromSessionName = (sessionName) => {
@@ -26,7 +27,7 @@ const GITHUB_ISSUE_OR_PULL_REQUEST_SESSION_NAME_PATTERN = /^https(:\/\/|_\/\/)gi
 const isGitHubIssueOrPullRequestSessionName = (sessionName) => GITHUB_ISSUE_OR_PULL_REQUEST_SESSION_NAME_PATTERN.test(sessionName);
 exports.isGitHubIssueOrPullRequestSessionName = isGitHubIssueOrPullRequestSessionName;
 class NotifySilentLiveSessionsUseCase {
-    constructor(liveSessionProcessSnapshotProvider, interactiveLiveSessionTranscriptResolver, sessionOutputActivityRepository, subAgentActivityRepository, ownerCallStatusProvider, notificationRepository, candidateStateRepository, messageComposer, sleeper, hubTaskStatusResolver = null) {
+    constructor(liveSessionProcessSnapshotProvider, interactiveLiveSessionTranscriptResolver, sessionOutputActivityRepository, subAgentActivityRepository, ownerCallStatusProvider, notificationRepository, candidateStateRepository, messageComposer, sleeper, hubTaskStatusResolver = null, hubTaskStatusCacheRepository = null) {
         this.liveSessionProcessSnapshotProvider = liveSessionProcessSnapshotProvider;
         this.interactiveLiveSessionTranscriptResolver = interactiveLiveSessionTranscriptResolver;
         this.sessionOutputActivityRepository = sessionOutputActivityRepository;
@@ -37,6 +38,7 @@ class NotifySilentLiveSessionsUseCase {
         this.messageComposer = messageComposer;
         this.sleeper = sleeper;
         this.hubTaskStatusResolver = hubTaskStatusResolver;
+        this.hubTaskStatusCacheRepository = hubTaskStatusCacheRepository;
         this.resolveInteractiveLiveSessions = new ResolveInteractiveLiveSessionsUseCase_1.ResolveInteractiveLiveSessionsUseCase();
         this.run = async (params) => {
             const snapshot = await this.liveSessionProcessSnapshotProvider.getSnapshot();
@@ -73,7 +75,7 @@ class NotifySilentLiveSessionsUseCase {
             console.log(`Silent live session notification: ${debouncedCandidates.length} debounced candidate(s) of ${candidates.length} current candidate(s) across ${interactiveSessions.length} interactive session(s); ${suppressedFirstCycleCount} first-cycle candidate(s) deferred until they persist into the next cycle.`);
             let sentCount = 0;
             for (const candidate of debouncedCandidates) {
-                if (!(await this.isHubTaskActive(candidate.sessionName, params.activeHubTaskStatus))) {
+                if (!(await this.isHubTaskActive(candidate.sessionName, params.activeHubTaskStatus, params.hubTaskStatusCacheTtlSeconds, params.now))) {
                     continue;
                 }
                 if (sentCount > 0) {
@@ -84,7 +86,7 @@ class NotifySilentLiveSessionsUseCase {
                 console.log(`Notified ${candidate.sessionName}.`);
             }
         };
-        this.isHubTaskActive = async (sessionName, activeHubTaskStatus) => {
+        this.isHubTaskActive = async (sessionName, activeHubTaskStatus, hubTaskStatusCacheTtlSeconds, now) => {
             if (activeHubTaskStatus === null || this.hubTaskStatusResolver === null) {
                 return true;
             }
@@ -92,23 +94,66 @@ class NotifySilentLiveSessionsUseCase {
             if (hubTaskIssueUrl === null) {
                 return true;
             }
+            const cachedEntry = this.hubTaskStatusCacheRepository === null
+                ? null
+                : await this.hubTaskStatusCacheRepository.loadHubTaskStatus({
+                    url: hubTaskIssueUrl,
+                });
+            const nowEpochSeconds = Math.floor(now.getTime() / 1000);
+            if (cachedEntry !== null) {
+                const cacheAgeSeconds = nowEpochSeconds - cachedEntry.recordedEpochSeconds;
+                if (cacheAgeSeconds <= hubTaskStatusCacheTtlSeconds) {
+                    const active = this.isResolvedStatusActive(cachedEntry.state, cachedEntry.status, activeHubTaskStatus);
+                    if (!active) {
+                        console.log(`Skipping ${sessionName}: hub task ${hubTaskIssueUrl} is no longer active per cached status (state "${cachedEntry.state}", status "${cachedEntry.status ?? 'null'}", active status "${activeHubTaskStatus}").`);
+                    }
+                    return active;
+                }
+            }
+            const resolution = await this.tryResolveAndCacheHubTask(hubTaskIssueUrl, activeHubTaskStatus, sessionName, now);
+            if (resolution.resolved) {
+                return resolution.active;
+            }
+            if (cachedEntry !== null) {
+                const active = this.isResolvedStatusActive(cachedEntry.state, cachedEntry.status, activeHubTaskStatus);
+                console.warn(`Hub task ${hubTaskIssueUrl} for session ${sessionName} could not be resolved (${resolution.reason}); falling back to expired cached status (state "${cachedEntry.state}", status "${cachedEntry.status ?? 'null'}"), so the notification is ${active ? 'sent' : 'suppressed'}.`);
+                return active;
+            }
+            console.warn(`Hub task ${hubTaskIssueUrl} for session ${sessionName} is not resolvable and has no cached status (${resolution.reason}); sending notification (fail-open).`);
+            return true;
+        };
+        this.tryResolveAndCacheHubTask = async (hubTaskIssueUrl, activeHubTaskStatus, sessionName, now) => {
+            if (this.hubTaskStatusResolver === null) {
+                return { resolved: false, reason: 'resolver is not configured' };
+            }
+            let issue;
             try {
-                const issue = await this.hubTaskStatusResolver.getIssueByUrl(hubTaskIssueUrl);
-                if (issue === null) {
-                    console.log(`Hub task ${hubTaskIssueUrl} for session ${sessionName} is not a resolvable tracked task; sending notification (fail-open).`);
-                    return true;
-                }
-                if (issue.state !== 'OPEN' || issue.status !== activeHubTaskStatus) {
-                    console.log(`Skipping ${sessionName}: hub task ${hubTaskIssueUrl} is no longer active (state "${issue.state}", status "${issue.status ?? 'null'}", active status "${activeHubTaskStatus}").`);
-                    return false;
-                }
-                return true;
+                issue = await this.hubTaskStatusResolver.getIssueByUrl(hubTaskIssueUrl);
             }
             catch (error) {
-                console.warn(`Failed to resolve hub task status for session ${sessionName} (${hubTaskIssueUrl}); sending notification (fail-open): ${error instanceof Error ? error.message : String(error)}`);
-                return true;
+                return {
+                    resolved: false,
+                    reason: error instanceof Error ? error.message : String(error),
+                };
             }
+            if (issue === null) {
+                return { resolved: false, reason: 'resolver returned no tracked task' };
+            }
+            if (this.hubTaskStatusCacheRepository !== null) {
+                await this.hubTaskStatusCacheRepository.saveHubTaskStatus({
+                    url: hubTaskIssueUrl,
+                    state: issue.state,
+                    status: issue.status,
+                    now,
+                });
+            }
+            const active = this.isResolvedStatusActive(issue.state, issue.status, activeHubTaskStatus);
+            if (!active) {
+                console.log(`Skipping ${sessionName}: hub task ${hubTaskIssueUrl} is no longer active (state "${issue.state}", status "${issue.status ?? 'null'}", active status "${activeHubTaskStatus}").`);
+            }
+            return { resolved: true, active };
         };
+        this.isResolvedStatusActive = (state, status, activeHubTaskStatus) => state === 'OPEN' && status === activeHubTaskStatus;
         this.collectSnapshots = async (interactiveSessions, transcriptPathBySessionName, now) => {
             const sessionNames = interactiveSessions.map((session) => session.sessionName);
             const activities = await this.sessionOutputActivityRepository.listSessionOutputActivities(transcriptPathBySessionName);
