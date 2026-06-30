@@ -1,11 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.NotifySilentLiveSessionsUseCase = exports.isGitHubIssueOrPullRequestSessionName = exports.parseHubTaskIssueUrlFromSessionName = exports.DEFAULT_NOTIFICATION_STAGGER_SECONDS = exports.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = exports.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = exports.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = void 0;
+exports.NotifySilentLiveSessionsUseCase = exports.isGitHubIssueOrPullRequestSessionName = exports.parseHubTaskIssueUrlFromSessionName = exports.DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS = exports.DEFAULT_NOTIFICATION_STAGGER_SECONDS = exports.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = exports.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = exports.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = void 0;
 const ResolveInteractiveLiveSessionsUseCase_1 = require("./ResolveInteractiveLiveSessionsUseCase");
 exports.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = 10 * 60;
 exports.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = 5 * 60;
 exports.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = 15 * 60;
 exports.DEFAULT_NOTIFICATION_STAGGER_SECONDS = 25;
+exports.DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS = 15 * 60;
 const GITHUB_ISSUE_OR_PULL_URL_PATTERN = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/(?:issues|pull)\/(\d+)$/;
 const GITHUB_TMUX_SESSION_NAME_PATTERN = /^https_\/\/github_com\/([^/]+)\/([^/]+)\/(?:issues|pull)\/(\d+)$/;
 const parseHubTaskIssueUrlFromSessionName = (sessionName) => {
@@ -25,13 +26,14 @@ const GITHUB_ISSUE_OR_PULL_REQUEST_SESSION_NAME_PATTERN = /^https(:\/\/|_\/\/)gi
 const isGitHubIssueOrPullRequestSessionName = (sessionName) => GITHUB_ISSUE_OR_PULL_REQUEST_SESSION_NAME_PATTERN.test(sessionName);
 exports.isGitHubIssueOrPullRequestSessionName = isGitHubIssueOrPullRequestSessionName;
 class NotifySilentLiveSessionsUseCase {
-    constructor(liveSessionProcessSnapshotProvider, interactiveLiveSessionTranscriptResolver, sessionOutputActivityRepository, subAgentActivityRepository, ownerCallStatusProvider, notificationRepository, messageComposer, sleeper, hubTaskStatusResolver = null) {
+    constructor(liveSessionProcessSnapshotProvider, interactiveLiveSessionTranscriptResolver, sessionOutputActivityRepository, subAgentActivityRepository, ownerCallStatusProvider, notificationRepository, candidateStateRepository, messageComposer, sleeper, hubTaskStatusResolver = null) {
         this.liveSessionProcessSnapshotProvider = liveSessionProcessSnapshotProvider;
         this.interactiveLiveSessionTranscriptResolver = interactiveLiveSessionTranscriptResolver;
         this.sessionOutputActivityRepository = sessionOutputActivityRepository;
         this.subAgentActivityRepository = subAgentActivityRepository;
         this.ownerCallStatusProvider = ownerCallStatusProvider;
         this.notificationRepository = notificationRepository;
+        this.candidateStateRepository = candidateStateRepository;
         this.messageComposer = messageComposer;
         this.sleeper = sleeper;
         this.hubTaskStatusResolver = hubTaskStatusResolver;
@@ -58,9 +60,19 @@ class NotifySilentLiveSessionsUseCase {
                 : left.sessionName > right.sessionName
                     ? 1
                     : 0);
-            console.log(`Silent live session notification: ${candidates.length} candidate(s) of ${interactiveSessions.length} interactive session(s).`);
+            const previousCandidateSessionNames = await this.candidateStateRepository.loadRecentCandidateSessionNames({
+                now: params.now,
+                recencyWindowSeconds: params.candidateDebounceRecencyWindowSeconds,
+            });
+            await this.candidateStateRepository.saveCandidateSessionNames({
+                sessionNames: candidates.map((candidate) => candidate.sessionName),
+                now: params.now,
+            });
+            const debouncedCandidates = candidates.filter((candidate) => previousCandidateSessionNames.has(candidate.sessionName));
+            const suppressedFirstCycleCount = candidates.length - debouncedCandidates.length;
+            console.log(`Silent live session notification: ${debouncedCandidates.length} debounced candidate(s) of ${candidates.length} current candidate(s) across ${interactiveSessions.length} interactive session(s); ${suppressedFirstCycleCount} first-cycle candidate(s) deferred until they persist into the next cycle.`);
             let sentCount = 0;
-            for (const candidate of candidates) {
+            for (const candidate of debouncedCandidates) {
                 if (!(await this.isHubTaskActive(candidate.sessionName, params.activeHubTaskStatus))) {
                     continue;
                 }

@@ -14,6 +14,8 @@ export type NotifySilentTmuxSessionsParams = {
     subAgentSilentThresholdSeconds: number;
     subAgentRunningThresholdSeconds: number;
     staggerSeconds: number;
+    candidateDebounceRecencyWindowSeconds: number;
+    candidateDebounceStateFilePath: string | null;
     activeHubTaskStatus: string | null;
     hubTaskStatusResolver: HubTaskStatusResolver | null;
     messageTemplates: SilentSessionMessageTemplates;
@@ -25,5 +27,6 @@ export declare const DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS: {
     readonly subAgentSilentThresholdSeconds: number;
     readonly subAgentRunningThresholdSeconds: number;
     readonly staggerSeconds: 25;
+    readonly candidateDebounceRecencyWindowSeconds: number;
 };
 //# sourceMappingURL=notifySilentTmuxSessions.d.ts.map

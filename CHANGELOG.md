@@ -1,3 +1,10 @@
+## [1.117.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.8...v1.117.9) (2026-06-30)
+
+
+### Bug Fixes
+
+* debounce silent live-session notifications across two consecutive cycles ([#1121](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1121)) ([6be302a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6be302ac61b97b2e3758f3811d84674a96c557ee))
+
 ## [1.117.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.7...v1.117.8) (2026-06-30)
 
 

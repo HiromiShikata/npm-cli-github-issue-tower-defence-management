@@ -5,12 +5,14 @@ import { SessionOutputActivityRepository } from './adapter-interfaces/SessionOut
 import { SessionSubAgentActivityRepository } from './adapter-interfaces/SessionSubAgentActivityRepository';
 import { SilentSessionMessageComposer } from './adapter-interfaces/SilentSessionMessageComposer';
 import { SilentSessionNotificationRepository } from './adapter-interfaces/SilentSessionNotificationRepository';
+import { SilentSessionCandidateStateRepository } from './adapter-interfaces/SilentSessionCandidateStateRepository';
 import { Sleeper } from './adapter-interfaces/Sleeper';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 export declare const DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS: number;
 export declare const DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS: number;
 export declare const DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS: number;
 export declare const DEFAULT_NOTIFICATION_STAGGER_SECONDS = 25;
+export declare const DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS: number;
 export declare const parseHubTaskIssueUrlFromSessionName: (sessionName: string) => string | null;
 export declare const isGitHubIssueOrPullRequestSessionName: (sessionName: string) => boolean;
 export type HubTaskStatusResolver = Pick<IssueRepository, 'getIssueByUrl'>;
@@ -21,16 +23,18 @@ export declare class NotifySilentLiveSessionsUseCase {
     private readonly subAgentActivityRepository;
     private readonly ownerCallStatusProvider;
     private readonly notificationRepository;
+    private readonly candidateStateRepository;
     private readonly messageComposer;
     private readonly sleeper;
     private readonly hubTaskStatusResolver;
     private readonly resolveInteractiveLiveSessions;
-    constructor(liveSessionProcessSnapshotProvider: LiveSessionProcessSnapshotProvider, interactiveLiveSessionTranscriptResolver: InteractiveLiveSessionTranscriptResolver, sessionOutputActivityRepository: SessionOutputActivityRepository, subAgentActivityRepository: SessionSubAgentActivityRepository, ownerCallStatusProvider: OwnerCallStatusProvider, notificationRepository: SilentSessionNotificationRepository, messageComposer: SilentSessionMessageComposer, sleeper: Sleeper, hubTaskStatusResolver?: HubTaskStatusResolver | null);
+    constructor(liveSessionProcessSnapshotProvider: LiveSessionProcessSnapshotProvider, interactiveLiveSessionTranscriptResolver: InteractiveLiveSessionTranscriptResolver, sessionOutputActivityRepository: SessionOutputActivityRepository, subAgentActivityRepository: SessionSubAgentActivityRepository, ownerCallStatusProvider: OwnerCallStatusProvider, notificationRepository: SilentSessionNotificationRepository, candidateStateRepository: SilentSessionCandidateStateRepository, messageComposer: SilentSessionMessageComposer, sleeper: Sleeper, hubTaskStatusResolver?: HubTaskStatusResolver | null);
     run: (params: {
         mainSilentThresholdSeconds: number;
         subAgentSilentThresholdSeconds: number;
         subAgentRunningThresholdSeconds: number;
         staggerSeconds: number;
+        candidateDebounceRecencyWindowSeconds: number;
         activeHubTaskStatus: string | null;
         now: Date;
     }) => Promise<void>;
