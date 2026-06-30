@@ -1,3 +1,10 @@
+## [1.117.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.5...v1.117.6) (2026-06-30)
+
+
+### Bug Fixes
+
+* **console:** move comment submit button to the far right of the comment area ([#1113](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1113)) ([6f7bc8c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6f7bc8ce4bd3cc235658757cf7c286d223de23b1))
+
 ## [1.117.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.4...v1.117.5) (2026-06-29)
 
 
