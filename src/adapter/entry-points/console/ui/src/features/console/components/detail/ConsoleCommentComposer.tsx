@@ -89,16 +89,6 @@ export const ConsoleCommentComposer = ({
             onChange={(event) => setDraft(event.target.value)}
           />
           <div className="console-composer-row">
-            <button
-              type="button"
-              className="console-composer-submit"
-              disabled={status.kind === 'posting'}
-              onClick={() => {
-                void submit();
-              }}
-            >
-              Comment
-            </button>
             {status.kind === 'posting' && (
               <span className="console-composer-status">Posting…</span>
             )}
@@ -110,6 +100,16 @@ export const ConsoleCommentComposer = ({
                 Failed: {status.message}
               </span>
             )}
+            <button
+              type="button"
+              className="console-composer-submit"
+              disabled={status.kind === 'posting'}
+              onClick={() => {
+                void submit();
+              }}
+            >
+              Comment
+            </button>
           </div>
         </div>
       )}
