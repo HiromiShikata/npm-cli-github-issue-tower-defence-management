@@ -186,7 +186,7 @@ test('adds an inline review comment on a related pull request diff without hover
   await page.locator('.console-diff-composer-submit').click();
 
   await expect(page.locator('.console-diff-composer-posted')).toHaveText(
-    'Comment posted.',
+    'Comment saved.',
   );
 
   expect(harness.reviewCommentCalls).toHaveLength(1);

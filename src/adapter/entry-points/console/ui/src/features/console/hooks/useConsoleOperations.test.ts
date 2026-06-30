@@ -272,6 +272,69 @@ describe('useConsoleOperations', () => {
     });
   });
 
+  it('sends the entered inline comment as the request-changes body and anchor', async () => {
+    const fetchMock = captureFetch();
+    const { result } = setup();
+    await act(async () => {
+      await result.current.operations.reviewPullRequest(
+        prItem,
+        prItem.url,
+        'request_changes',
+        [
+          {
+            path: 'src/index.ts',
+            line: 17,
+            side: 'RIGHT',
+            body: 'Please rename this variable.',
+          },
+        ],
+      );
+    });
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/review?k=token');
+    expect(lastBody(fetchMock)).toMatchObject({
+      pjcode: 'umino',
+      action: 'request_changes',
+      prUrl: prItem.url,
+      commentBody: 'src/index.ts:17 Please rename this variable.',
+      changedFilePath: 'src/index.ts',
+      line: 17,
+      side: 'RIGHT',
+    });
+  });
+
+  it('aggregates multiple entered inline comments into the request-changes body', async () => {
+    const fetchMock = captureFetch();
+    const { result } = setup();
+    await act(async () => {
+      await result.current.operations.reviewPullRequest(
+        prItem,
+        prItem.url,
+        'request_changes',
+        [
+          {
+            path: 'src/a.ts',
+            line: 3,
+            side: 'RIGHT',
+            body: 'First concern.',
+          },
+          {
+            path: 'src/b.ts',
+            line: 9,
+            side: 'LEFT',
+            body: 'Second concern.',
+          },
+        ],
+      );
+    });
+    expect(lastBody(fetchMock)).toMatchObject({
+      action: 'request_changes',
+      commentBody: 'src/a.ts:3 First concern.\n\nsrc/b.ts:9 Second concern.',
+      changedFilePath: 'src/a.ts',
+      line: 3,
+      side: 'RIGHT',
+    });
+  });
+
   it('invalidates the operated item body and comments cache on a review', async () => {
     captureFetch();
     localStorage.clear();

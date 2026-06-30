@@ -4,11 +4,17 @@ import { ConsolePullRequestReviewActions } from './ConsolePullRequestReviewActio
 const meta: Meta<typeof ConsolePullRequestReviewActions> = {
   title: 'Console/ConsolePullRequestReviewActions',
   component: ConsolePullRequestReviewActions,
-  args: { onReview: () => {} },
+  args: { onReview: () => {}, rejectEnabled: false },
 };
 
 export default meta;
 
 type Story = StoryObj<typeof ConsolePullRequestReviewActions>;
 
-export const Default: Story = {};
+export const RejectDisabled: Story = {
+  args: { rejectEnabled: false },
+};
+
+export const RejectEnabled: Story = {
+  args: { rejectEnabled: true },
+};

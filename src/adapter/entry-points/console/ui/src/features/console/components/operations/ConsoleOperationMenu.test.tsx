@@ -26,6 +26,7 @@ describe('ConsoleOperationMenu', () => {
         tab="prs"
         item={prItem}
         hasPullRequest
+        rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
         storyOptions={consoleStoryOptionsFixture}
         handlers={handlers}
@@ -46,6 +47,7 @@ describe('ConsoleOperationMenu', () => {
         tab="triage"
         item={issueItem}
         hasPullRequest={false}
+        rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
         storyOptions={consoleStoryOptionsFixture}
         handlers={handlers}
@@ -62,6 +64,7 @@ describe('ConsoleOperationMenu', () => {
         tab="todo-by-human"
         item={issueItem}
         hasPullRequest={false}
+        rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
         storyOptions={consoleStoryOptionsFixture}
         handlers={handlers}
@@ -76,6 +79,7 @@ describe('ConsoleOperationMenu', () => {
         tab="unread"
         item={issueItem}
         hasPullRequest={false}
+        rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
         storyOptions={consoleStoryOptionsFixture}
         handlers={handlers}
@@ -91,6 +95,7 @@ describe('ConsoleOperationMenu', () => {
         tab="workflow-blocker"
         item={issueItem}
         hasPullRequest={false}
+        rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
         storyOptions={consoleStoryOptionsFixture}
         handlers={handlers}
@@ -110,6 +115,7 @@ describe('ConsoleOperationMenu', () => {
         tab="workflow-blocker"
         item={prItem}
         hasPullRequest
+        rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
         storyOptions={consoleStoryOptionsFixture}
         handlers={handlers}
@@ -117,5 +123,32 @@ describe('ConsoleOperationMenu', () => {
     );
     expect(getByText('Approve')).toBeInTheDocument();
     expect(getByText('Close')).toBeInTheDocument();
+  });
+
+  it('forwards the reject-enabled state to the review group', () => {
+    const { getByText, rerender } = render(
+      <ConsoleOperationMenu
+        tab="prs"
+        item={prItem}
+        hasPullRequest
+        rejectEnabled={false}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        handlers={handlers}
+      />,
+    );
+    expect(getByText('Reject')).toBeDisabled();
+    rerender(
+      <ConsoleOperationMenu
+        tab="prs"
+        item={prItem}
+        hasPullRequest
+        rejectEnabled={true}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        handlers={handlers}
+      />,
+    );
+    expect(getByText('Reject')).not.toBeDisabled();
   });
 });

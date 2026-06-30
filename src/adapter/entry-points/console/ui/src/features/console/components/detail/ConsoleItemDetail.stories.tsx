@@ -167,6 +167,7 @@ export const IssueWithRichMarkdownBody: Story = {
         tab="triage"
         item={consoleListItemsFixture[2]}
         hasPullRequest={false}
+        rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
         storyOptions={consoleStoryOptionsFixture}
         handlers={noopOperationHandlers}

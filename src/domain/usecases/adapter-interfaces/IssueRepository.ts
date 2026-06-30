@@ -54,6 +54,11 @@ export type PullRequestCommit = {
 
 export type PullRequestReviewCommentSide = 'LEFT' | 'RIGHT';
 
+export type PullRequestReviewInlineLocation = {
+  line: number;
+  side: PullRequestReviewCommentSide;
+};
+
 export interface IssueRepository {
   getAllIssues: (
     projectId: Project['id'],
@@ -134,6 +139,7 @@ export interface IssueRepository {
     prUrl: string,
     changedFilePath: string | null,
     commentBody: string,
+    inlineCommentLocation?: PullRequestReviewInlineLocation | null,
   ) => Promise<void>;
   createPullRequestReviewComment: (
     prUrl: string,

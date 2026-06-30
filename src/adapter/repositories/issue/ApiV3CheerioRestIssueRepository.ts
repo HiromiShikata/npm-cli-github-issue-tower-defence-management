@@ -6,6 +6,7 @@ import {
   PullRequestFile,
   PullRequestCommit,
   PullRequestReviewCommentSide,
+  PullRequestReviewInlineLocation,
 } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
@@ -1453,21 +1454,26 @@ export class ApiV3CheerioRestIssueRepository
     prUrl: string,
     changedFilePath: string | null,
     commentBody: string,
+    inlineCommentLocation: PullRequestReviewInlineLocation | null = null,
   ): Promise<void> => {
     const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
     if (changedFilePath === null) {
       await this.createCommentByUrl(prUrl, commentBody);
       return;
     }
+    const inlineComment =
+      inlineCommentLocation === null
+        ? { path: changedFilePath, position: 1, body: commentBody }
+        : {
+            path: changedFilePath,
+            line: inlineCommentLocation.line,
+            side: inlineCommentLocation.side,
+            body: commentBody,
+          };
     const reviewBody: Record<string, unknown> = {
       event: 'REQUEST_CHANGES',
-      comments: [
-        {
-          path: changedFilePath,
-          position: 1,
-          body: commentBody,
-        },
-      ],
+      body: commentBody,
+      comments: [inlineComment],
     };
     const response = await this.fetchWithRateLimitRetry(() =>
       fetch(
