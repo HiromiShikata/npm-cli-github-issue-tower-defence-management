@@ -7,6 +7,7 @@ import { SessionOutputActivityRepository } from './adapter-interfaces/SessionOut
 import { SessionSubAgentActivityRepository } from './adapter-interfaces/SessionSubAgentActivityRepository';
 import { SilentSessionMessageComposer } from './adapter-interfaces/SilentSessionMessageComposer';
 import { SilentSessionNotificationRepository } from './adapter-interfaces/SilentSessionNotificationRepository';
+import { SilentSessionCandidateStateRepository } from './adapter-interfaces/SilentSessionCandidateStateRepository';
 import { Sleeper } from './adapter-interfaces/Sleeper';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ResolveInteractiveLiveSessionsUseCase } from './ResolveInteractiveLiveSessionsUseCase';
@@ -15,6 +16,7 @@ export const DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = 10 * 60;
 export const DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = 5 * 60;
 export const DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = 15 * 60;
 export const DEFAULT_NOTIFICATION_STAGGER_SECONDS = 25;
+export const DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS = 15 * 60;
 
 const GITHUB_ISSUE_OR_PULL_URL_PATTERN =
   /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/(?:issues|pull)\/(\d+)$/;
@@ -63,6 +65,7 @@ export class NotifySilentLiveSessionsUseCase {
     private readonly subAgentActivityRepository: SessionSubAgentActivityRepository,
     private readonly ownerCallStatusProvider: OwnerCallStatusProvider,
     private readonly notificationRepository: SilentSessionNotificationRepository,
+    private readonly candidateStateRepository: SilentSessionCandidateStateRepository,
     private readonly messageComposer: SilentSessionMessageComposer,
     private readonly sleeper: Sleeper,
     private readonly hubTaskStatusResolver: HubTaskStatusResolver | null = null,
@@ -73,6 +76,7 @@ export class NotifySilentLiveSessionsUseCase {
     subAgentSilentThresholdSeconds: number;
     subAgentRunningThresholdSeconds: number;
     staggerSeconds: number;
+    candidateDebounceRecencyWindowSeconds: number;
     activeHubTaskStatus: string | null;
     now: Date;
   }): Promise<void> => {
@@ -116,12 +120,28 @@ export class NotifySilentLiveSessionsUseCase {
           : 0,
     );
 
+    const previousCandidateSessionNames =
+      await this.candidateStateRepository.loadRecentCandidateSessionNames({
+        now: params.now,
+        recencyWindowSeconds: params.candidateDebounceRecencyWindowSeconds,
+      });
+    await this.candidateStateRepository.saveCandidateSessionNames({
+      sessionNames: candidates.map((candidate) => candidate.sessionName),
+      now: params.now,
+    });
+
+    const debouncedCandidates = candidates.filter((candidate) =>
+      previousCandidateSessionNames.has(candidate.sessionName),
+    );
+    const suppressedFirstCycleCount =
+      candidates.length - debouncedCandidates.length;
+
     console.log(
-      `Silent live session notification: ${candidates.length} candidate(s) of ${interactiveSessions.length} interactive session(s).`,
+      `Silent live session notification: ${debouncedCandidates.length} debounced candidate(s) of ${candidates.length} current candidate(s) across ${interactiveSessions.length} interactive session(s); ${suppressedFirstCycleCount} first-cycle candidate(s) deferred until they persist into the next cycle.`,
     );
 
     let sentCount = 0;
-    for (const candidate of candidates) {
+    for (const candidate of debouncedCandidates) {
       if (
         !(await this.isHubTaskActive(
           candidate.sessionName,

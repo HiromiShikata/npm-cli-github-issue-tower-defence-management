@@ -7,6 +7,7 @@ import {
   DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
   DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
   DEFAULT_NOTIFICATION_STAGGER_SECONDS,
+  DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS,
 } from './NotifySilentLiveSessionsUseCase';
 import { Issue } from '../entities/Issue';
 import { LiveSessionProcessSnapshotProvider } from './adapter-interfaces/LiveSessionProcessSnapshotProvider';
@@ -15,6 +16,7 @@ import { SessionOutputActivityRepository } from './adapter-interfaces/SessionOut
 import { SessionSubAgentActivityRepository } from './adapter-interfaces/SessionSubAgentActivityRepository';
 import { OwnerCallStatusProvider } from './adapter-interfaces/OwnerCallStatusProvider';
 import { SilentSessionNotificationRepository } from './adapter-interfaces/SilentSessionNotificationRepository';
+import { SilentSessionCandidateStateRepository } from './adapter-interfaces/SilentSessionCandidateStateRepository';
 import { SilentSessionMessageComposer } from './adapter-interfaces/SilentSessionMessageComposer';
 import { Sleeper } from './adapter-interfaces/Sleeper';
 import { SubAgentActivity } from '../entities/LiveSessionActivitySnapshot';
@@ -26,6 +28,12 @@ type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 const MAIN_STALLED_SECTION = 'MAIN_STALLED_SECTION';
 const SUBAGENT_SECTION = 'SUBAGENT_SECTION';
 
+class EveryNameRecentSet extends Set<string> {
+  override has = (): boolean => true;
+}
+
+const everyNameRecentSet = (): Set<string> => new EveryNameRecentSet();
+
 describe('NotifySilentLiveSessionsUseCase', () => {
   let useCase: NotifySilentLiveSessionsUseCase;
   let mockSnapshotProvider: Mocked<LiveSessionProcessSnapshotProvider>;
@@ -34,6 +42,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
   let mockSubAgentActivityRepository: Mocked<SessionSubAgentActivityRepository>;
   let mockOwnerCallStatusProvider: Mocked<OwnerCallStatusProvider>;
   let mockNotificationRepository: Mocked<SilentSessionNotificationRepository>;
+  let mockCandidateStateRepository: Mocked<SilentSessionCandidateStateRepository>;
   let mockMessageComposer: Mocked<SilentSessionMessageComposer>;
   let mockSleeper: Mocked<Sleeper>;
   let mockHubTaskStatusResolver: Mocked<HubTaskStatusResolver>;
@@ -46,12 +55,16 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     'https_//github_com/HiromiShikata/repo/issues/200';
 
   const runParams = (
-    overrides?: Partial<{ activeHubTaskStatus: string | null }>,
+    overrides?: Partial<{
+      activeHubTaskStatus: string | null;
+      candidateDebounceRecencyWindowSeconds: number;
+    }>,
   ): {
     mainSilentThresholdSeconds: number;
     subAgentSilentThresholdSeconds: number;
     subAgentRunningThresholdSeconds: number;
     staggerSeconds: number;
+    candidateDebounceRecencyWindowSeconds: number;
     activeHubTaskStatus: string | null;
     now: Date;
   } => ({
@@ -59,6 +72,8 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     subAgentSilentThresholdSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
     subAgentRunningThresholdSeconds: DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
     staggerSeconds: DEFAULT_NOTIFICATION_STAGGER_SECONDS,
+    candidateDebounceRecencyWindowSeconds:
+      DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS,
     activeHubTaskStatus: null,
     now,
     ...overrides,
@@ -132,6 +147,12 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     mockNotificationRepository = {
       sendSelfCheckNotification: jest.fn().mockResolvedValue(undefined),
     };
+    mockCandidateStateRepository = {
+      loadRecentCandidateSessionNames: jest
+        .fn()
+        .mockResolvedValue(everyNameRecentSet()),
+      saveCandidateSessionNames: jest.fn().mockResolvedValue(undefined),
+    };
     mockMessageComposer = {
       composeMainStalledSection: jest
         .fn()
@@ -151,6 +172,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       mockSubAgentActivityRepository,
       mockOwnerCallStatusProvider,
       mockNotificationRepository,
+      mockCandidateStateRepository,
       mockMessageComposer,
       mockSleeper,
       mockHubTaskStatusResolver,
@@ -464,7 +486,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     ).not.toHaveBeenCalled();
   });
 
-  it('re-notifies a session on every consecutive cycle while it remains a valid silent target', async () => {
+  it('re-notifies a persistent stall on every cycle once it has been a candidate in the previous cycle', async () => {
     setupLiveInteractiveSession(GITHUB_SESSION);
     mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
       [
@@ -490,29 +512,102 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     ).toHaveBeenNthCalledWith(2, GITHUB_SESSION, MAIN_STALLED_SECTION);
   });
 
-  it('notifies on every repeated cycle at the same instant without reading any cooldown state', async () => {
-    setupLiveInteractiveSession(GITHUB_SESSION);
-    mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
-      [
-        {
-          sessionName: GITHUB_SESSION,
-          lastOutputEpochSeconds:
-            nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+  describe('two-consecutive-cycle debounce', () => {
+    const setupSilentGithubSession = (): void => {
+      setupLiveInteractiveSession(GITHUB_SESSION);
+      mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
+        [
+          {
+            sessionName: GITHUB_SESSION,
+            lastOutputEpochSeconds:
+              nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+          },
+        ],
+      );
+    };
+
+    it('does not notify a session that is a candidate in only one cycle', async () => {
+      setupSilentGithubSession();
+      mockCandidateStateRepository.loadRecentCandidateSessionNames.mockResolvedValue(
+        new Set<string>(),
+      );
+
+      await useCase.run(runParams());
+
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('records the current candidate set so a first-cycle candidate is remembered for the next cycle', async () => {
+      setupSilentGithubSession();
+      mockCandidateStateRepository.loadRecentCandidateSessionNames.mockResolvedValue(
+        new Set<string>(),
+      );
+
+      await useCase.run(runParams());
+
+      expect(
+        mockCandidateStateRepository.saveCandidateSessionNames,
+      ).toHaveBeenCalledWith({ sessionNames: [GITHUB_SESSION], now });
+    });
+
+    it('notifies a session that is a candidate in two consecutive cycles on the second cycle', async () => {
+      setupSilentGithubSession();
+      const previousCandidates = new Set<string>();
+      mockCandidateStateRepository.loadRecentCandidateSessionNames.mockImplementation(
+        async () => new Set(previousCandidates),
+      );
+      mockCandidateStateRepository.saveCandidateSessionNames.mockImplementation(
+        async ({ sessionNames }) => {
+          previousCandidates.clear();
+          for (const sessionName of sessionNames) {
+            previousCandidates.add(sessionName);
+          }
         },
-      ],
-    );
+      );
 
-    await useCase.run(runParams());
-    await useCase.run(runParams());
-    await useCase.run(runParams());
+      await useCase.run(runParams());
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).not.toHaveBeenCalled();
 
-    expect(
-      mockNotificationRepository.sendSelfCheckNotification,
-    ).toHaveBeenCalledTimes(3);
-    expect(Object.keys(mockNotificationRepository)).toEqual([
-      'sendSelfCheckNotification',
-    ]);
-    expect(runParams()).not.toHaveProperty('cooldownSeconds');
+      await useCase.run(runParams());
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledTimes(1);
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledWith(GITHUB_SESSION, MAIN_STALLED_SECTION);
+    });
+
+    it('suppresses the owner-reply-race candidate that was not a candidate in the previous cycle', async () => {
+      setupSilentGithubSession();
+      mockCandidateStateRepository.loadRecentCandidateSessionNames.mockResolvedValue(
+        new Set<string>(),
+      );
+
+      await useCase.run(runParams());
+
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).not.toHaveBeenCalled();
+      expect(
+        mockMessageComposer.composeMainStalledSection,
+      ).toHaveBeenCalledWith(DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS);
+    });
+
+    it('loads the previous candidate set using the configured recency window', async () => {
+      setupSilentGithubSession();
+
+      await useCase.run(
+        runParams({ candidateDebounceRecencyWindowSeconds: 900 }),
+      );
+
+      expect(
+        mockCandidateStateRepository.loadRecentCandidateSessionNames,
+      ).toHaveBeenCalledWith({ now, recencyWindowSeconds: 900 });
+    });
   });
 
   it('sends to multiple sessions sequentially with a stagger delay between sends', async () => {

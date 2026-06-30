@@ -36,16 +36,33 @@ const createMockRunner = (): Mocked<LocalCommandRunner> => ({
 
 describe('notifySilentTmuxSessions', () => {
   let configDir: string;
+  let candidateStateFilePath: string;
 
   beforeEach(() => {
     jest.spyOn(console, 'log').mockImplementation(() => undefined);
     configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'silent-config-'));
+    candidateStateFilePath = path.join(
+      configDir,
+      'silent-session-candidates.json',
+    );
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
     fs.rmSync(configDir, { force: true, recursive: true });
   });
+
+  const seedPreviousCandidates = (sessionNames: string[]): void => {
+    fs.writeFileSync(
+      candidateStateFilePath,
+      JSON.stringify({
+        candidates: sessionNames.map((sessionName) => ({
+          sessionName,
+          recordedEpochSeconds: NOW_EPOCH_SECONDS,
+        })),
+      }),
+    );
+  };
 
   const writeTranscript = (lines: object[]): void => {
     const projectDirectory = path.join(configDir, 'projects', '-home-user');
@@ -114,6 +131,7 @@ describe('notifySilentTmuxSessions', () => {
     subAgentOutputRootDirectory: null,
     subAgentProcessMatchPattern: null,
     subAgentTranscriptRootDirectory: null,
+    candidateDebounceStateFilePath: candidateStateFilePath,
     activeHubTaskStatus: null,
     hubTaskStatusResolver: null,
     messageTemplates: EMPTY_TEMPLATES,
@@ -121,8 +139,9 @@ describe('notifySilentTmuxSessions', () => {
     ...DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS,
   });
 
-  it('sends a main stalled notification to a silent github-named live session', async () => {
+  it('sends a main stalled notification to a silent github-named live session that was already a candidate in the previous cycle', async () => {
     silentAssistantTranscript();
+    seedPreviousCandidates([SESSION_NAME]);
     const runner = liveSessionRunner();
 
     await notifySilentTmuxSessions(baseParams(runner));
@@ -132,6 +151,18 @@ describe('notifySilentTmuxSessions', () => {
     );
     expect(sendCall?.[1][2]).toBe(SESSION_NAME);
     expect(sendCall?.[1][4]).toContain('You have produced no output for');
+  });
+
+  it('does not notify a silent github-named live session on its first candidate cycle', async () => {
+    silentAssistantTranscript();
+    const runner = liveSessionRunner();
+
+    await notifySilentTmuxSessions(baseParams(runner));
+
+    const sendCall = runner.runCommand.mock.calls.find(
+      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
+    );
+    expect(sendCall).toBeUndefined();
   });
 
   it('sends no notification to a silent non-github-named live session', async () => {
@@ -176,6 +207,7 @@ describe('notifySilentTmuxSessions', () => {
 
   it('uses the configured main stalled message template when provided', async () => {
     silentAssistantTranscript();
+    seedPreviousCandidates([SESSION_NAME]);
     const runner = liveSessionRunner();
 
     await notifySilentTmuxSessions({
@@ -230,7 +262,7 @@ describe('notifySilentTmuxSessions', () => {
     expect(sendCall).toBeUndefined();
   });
 
-  it('re-notifies the same silent session on the next cycle with no cooldown suppression', async () => {
+  it('defers the first cycle then notifies on the next cycle once the persisted candidate state confirms a second consecutive cycle', async () => {
     silentAssistantTranscript();
     const firstRunner = liveSessionRunner();
 
@@ -239,7 +271,7 @@ describe('notifySilentTmuxSessions', () => {
     const firstSendCall = firstRunner.runCommand.mock.calls.find(
       (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
     );
-    expect(firstSendCall?.[1][2]).toBe(SESSION_NAME);
+    expect(firstSendCall).toBeUndefined();
 
     const secondRunner = liveSessionRunner();
     await notifySilentTmuxSessions({
@@ -333,6 +365,7 @@ describe('notifySilentTmuxSessions', () => {
 
   it('skips a URL-named session whose hub task is no longer in the active status', async () => {
     writeUrlSessionTranscript();
+    seedPreviousCandidates([HUB_TASK_SESSION_NAME]);
     const runner = urlSessionRunner();
     const getIssueByUrl = jest
       .fn()
@@ -353,6 +386,7 @@ describe('notifySilentTmuxSessions', () => {
 
   it('sends to a URL-named session whose hub task is in the active status', async () => {
     writeUrlSessionTranscript();
+    seedPreviousCandidates([HUB_TASK_SESSION_NAME]);
     const runner = urlSessionRunner();
     const getIssueByUrl = jest
       .fn()

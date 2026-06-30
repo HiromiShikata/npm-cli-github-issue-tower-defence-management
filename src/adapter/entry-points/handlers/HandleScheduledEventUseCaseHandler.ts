@@ -117,6 +117,8 @@ export class HandleScheduledEventUseCaseHandler {
       subAgentSilentThresholdSeconds?: number;
       subAgentRunningThresholdSeconds?: number;
       silentNotificationStaggerSeconds?: number;
+      candidateDebounceRecencyWindowSeconds?: number;
+      candidateDebounceStateFilePath?: string;
       activeHubTaskStatus?: string;
       silentMainStalledMessage?: string;
       silentSubAgentMessageHeader?: string;
@@ -608,6 +610,15 @@ export class HandleScheduledEventUseCaseHandler {
             process.env.TDPM_SILENT_NOTIFICATION_STAGGER_SECONDS,
             DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.staggerSeconds,
           ),
+          candidateDebounceRecencyWindowSeconds: readSilentSeconds(
+            mergedInput.candidateDebounceRecencyWindowSeconds,
+            process.env.TDPM_SILENT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS,
+            DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.candidateDebounceRecencyWindowSeconds,
+          ),
+          candidateDebounceStateFilePath:
+            mergedInput.candidateDebounceStateFilePath ??
+            process.env.TDPM_SILENT_CANDIDATE_DEBOUNCE_STATE_FILE_PATH ??
+            null,
           activeHubTaskStatus:
             mergedInput.activeHubTaskStatus ??
             process.env.TDPM_ACTIVE_HUB_TASK_STATUS ??
