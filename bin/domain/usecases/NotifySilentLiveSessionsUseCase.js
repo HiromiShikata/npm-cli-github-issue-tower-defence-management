@@ -83,7 +83,7 @@ class NotifySilentLiveSessionsUseCase {
             try {
                 const issue = await this.hubTaskStatusResolver.getIssueByUrl(hubTaskIssueUrl);
                 if (issue === null) {
-                    console.warn(`Hub task ${hubTaskIssueUrl} for session ${sessionName} could not be resolved; sending notification (fail-open).`);
+                    console.log(`Hub task ${hubTaskIssueUrl} for session ${sessionName} is not a resolvable tracked task; sending notification (fail-open).`);
                     return true;
                 }
                 if (issue.state !== 'OPEN' || issue.status !== activeHubTaskStatus) {

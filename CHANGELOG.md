@@ -1,3 +1,10 @@
+## [1.117.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.7...v1.117.8) (2026-06-30)
+
+
+### Bug Fixes
+
+* **silent-monitor:** make hub-task-active gate null-safe and actually suppress ([#1117](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1117)) ([dacc841](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/dacc841f2e33bd82365f2ac825374493ea3a14b0)), closes [#1115](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1115)
+
 ## [1.117.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.6...v1.117.7) (2026-06-30)
 
 

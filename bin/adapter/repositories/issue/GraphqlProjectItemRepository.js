@@ -681,6 +681,9 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
                 throw new Error(`GitHub GraphQL API returned no data for fetchProjectItemByUrl: ${errorMessages}`);
             }
             const data = response.data;
+            if (!data.repository) {
+                return null;
+            }
             const content = data.repository.issue ?? data.repository.pullRequest;
             if (!content) {
                 return null;
