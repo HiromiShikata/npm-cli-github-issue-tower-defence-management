@@ -8,6 +8,7 @@ import {
   DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
   DEFAULT_NOTIFICATION_STAGGER_SECONDS,
   DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS,
+  DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS,
 } from './NotifySilentLiveSessionsUseCase';
 import { Issue } from '../entities/Issue';
 import { LiveSessionProcessSnapshotProvider } from './adapter-interfaces/LiveSessionProcessSnapshotProvider';
@@ -17,6 +18,7 @@ import { SessionSubAgentActivityRepository } from './adapter-interfaces/SessionS
 import { OwnerCallStatusProvider } from './adapter-interfaces/OwnerCallStatusProvider';
 import { SilentSessionNotificationRepository } from './adapter-interfaces/SilentSessionNotificationRepository';
 import { SilentSessionCandidateStateRepository } from './adapter-interfaces/SilentSessionCandidateStateRepository';
+import { SilentSessionHubTaskStatusCacheRepository } from './adapter-interfaces/SilentSessionHubTaskStatusCacheRepository';
 import { SilentSessionMessageComposer } from './adapter-interfaces/SilentSessionMessageComposer';
 import { Sleeper } from './adapter-interfaces/Sleeper';
 import { SubAgentActivity } from '../entities/LiveSessionActivitySnapshot';
@@ -46,6 +48,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
   let mockMessageComposer: Mocked<SilentSessionMessageComposer>;
   let mockSleeper: Mocked<Sleeper>;
   let mockHubTaskStatusResolver: Mocked<HubTaskStatusResolver>;
+  let mockHubTaskStatusCacheRepository: Mocked<SilentSessionHubTaskStatusCacheRepository>;
   const now = new Date('2026-06-26T00:00:00Z');
   const nowEpochSeconds = Math.floor(now.getTime() / 1000);
   const GITHUB_SESSION = 'https_//github_com/HiromiShikata/repo/issues/42';
@@ -58,6 +61,8 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     overrides?: Partial<{
       activeHubTaskStatus: string | null;
       candidateDebounceRecencyWindowSeconds: number;
+      hubTaskStatusCacheTtlSeconds: number;
+      now: Date;
     }>,
   ): {
     mainSilentThresholdSeconds: number;
@@ -66,6 +71,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     staggerSeconds: number;
     candidateDebounceRecencyWindowSeconds: number;
     activeHubTaskStatus: string | null;
+    hubTaskStatusCacheTtlSeconds: number;
     now: Date;
   } => ({
     mainSilentThresholdSeconds: DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
@@ -75,6 +81,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     candidateDebounceRecencyWindowSeconds:
       DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS,
     activeHubTaskStatus: null,
+    hubTaskStatusCacheTtlSeconds: DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS,
     now,
     ...overrides,
   });
@@ -165,6 +172,10 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     mockHubTaskStatusResolver = {
       getIssueByUrl: jest.fn().mockResolvedValue(null),
     };
+    mockHubTaskStatusCacheRepository = {
+      loadHubTaskStatus: jest.fn().mockResolvedValue(null),
+      saveHubTaskStatus: jest.fn().mockResolvedValue(undefined),
+    };
     useCase = new NotifySilentLiveSessionsUseCase(
       mockSnapshotProvider,
       mockTranscriptResolver,
@@ -176,6 +187,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       mockMessageComposer,
       mockSleeper,
       mockHubTaskStatusResolver,
+      mockHubTaskStatusCacheRepository,
     );
   });
 
@@ -804,13 +816,10 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       warnSpy.mockRestore();
     });
 
-    it('fails open without a warning when the hub task is not a resolvable tracked task', async () => {
+    it('fails open with a distinct no-cache warning when the hub task is not a resolvable tracked task and no cached status exists', async () => {
       setupSilentMainSession(HUB_TASK_SESSION);
       const warnSpy = jest
         .spyOn(console, 'warn')
-        .mockImplementation(() => undefined);
-      const logSpy = jest
-        .spyOn(console, 'log')
         .mockImplementation(() => undefined);
       mockHubTaskStatusResolver.getIssueByUrl.mockResolvedValue(null);
 
@@ -819,9 +828,12 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       expect(
         mockNotificationRepository.sendSelfCheckNotification,
       ).toHaveBeenCalledWith(HUB_TASK_SESSION, MAIN_STALLED_SECTION);
-      expect(warnSpy).not.toHaveBeenCalled();
-      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('fail-open'));
-      logSpy.mockRestore();
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('no cached status'),
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('fail-open'),
+      );
       warnSpy.mockRestore();
     });
 
@@ -873,7 +885,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       ).not.toHaveBeenCalled();
     });
 
-    it('fails open without throwing or warning for a real tmux session-name form whose repository is unresolvable', async () => {
+    it('fails open without throwing for a real tmux session-name form whose repository is unresolvable and has no cached status', async () => {
       const REAL_TMUX_SESSION =
         'https_//github_com/example-org/example-repo/issues/2350';
       const CANONICAL_ISSUE_URL =
@@ -894,7 +906,204 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       expect(
         mockNotificationRepository.sendSelfCheckNotification,
       ).toHaveBeenCalledWith(REAL_TMUX_SESSION, MAIN_STALLED_SECTION);
-      expect(warnSpy).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('no cached status'),
+      );
+      warnSpy.mockRestore();
+    });
+
+    it('suppresses a resolved CLOSED hub task and writes the resolved status to the cache', async () => {
+      setupSilentMainSession(HUB_TASK_SESSION);
+      mockHubTaskStatusResolver.getIssueByUrl.mockResolvedValue(
+        issueFor({
+          url: HUB_TASK_SESSION,
+          state: 'CLOSED',
+          status: ACTIVE_STATUS,
+          isClosed: true,
+        }),
+      );
+
+      await useCase.run(runParams({ activeHubTaskStatus: ACTIVE_STATUS }));
+
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).not.toHaveBeenCalled();
+      expect(
+        mockHubTaskStatusCacheRepository.saveHubTaskStatus,
+      ).toHaveBeenCalledWith({
+        url: HUB_TASK_SESSION,
+        state: 'CLOSED',
+        status: ACTIVE_STATUS,
+        now,
+      });
+    });
+
+    it('suppresses a resolved Done (non-active project status) hub task', async () => {
+      setupSilentMainSession(HUB_TASK_SESSION);
+      mockHubTaskStatusResolver.getIssueByUrl.mockResolvedValue(
+        issueFor({ url: HUB_TASK_SESSION, state: 'OPEN', status: 'Done' }),
+      );
+
+      await useCase.run(runParams({ activeHubTaskStatus: ACTIVE_STATUS }));
+
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('sends a resolved active hub task and writes its status to the cache', async () => {
+      setupSilentMainSession(HUB_TASK_SESSION);
+      mockHubTaskStatusResolver.getIssueByUrl.mockResolvedValue(
+        issueFor({
+          url: HUB_TASK_SESSION,
+          state: 'OPEN',
+          status: ACTIVE_STATUS,
+        }),
+      );
+
+      await useCase.run(runParams({ activeHubTaskStatus: ACTIVE_STATUS }));
+
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledWith(HUB_TASK_SESSION, MAIN_STALLED_SECTION);
+      expect(
+        mockHubTaskStatusCacheRepository.saveHubTaskStatus,
+      ).toHaveBeenCalledWith({
+        url: HUB_TASK_SESSION,
+        state: 'OPEN',
+        status: ACTIVE_STATUS,
+        now,
+      });
+    });
+
+    it('decides from a fresh cached entry without consulting the resolver', async () => {
+      setupSilentMainSession(HUB_TASK_SESSION);
+      mockHubTaskStatusCacheRepository.loadHubTaskStatus.mockResolvedValue({
+        url: HUB_TASK_SESSION,
+        state: 'OPEN',
+        status: ACTIVE_STATUS,
+        recordedEpochSeconds: nowEpochSeconds - 60,
+      });
+
+      await useCase.run(
+        runParams({
+          activeHubTaskStatus: ACTIVE_STATUS,
+          hubTaskStatusCacheTtlSeconds: 300,
+        }),
+      );
+
+      expect(mockHubTaskStatusResolver.getIssueByUrl).not.toHaveBeenCalled();
+      expect(
+        mockHubTaskStatusCacheRepository.saveHubTaskStatus,
+      ).not.toHaveBeenCalled();
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledWith(HUB_TASK_SESSION, MAIN_STALLED_SECTION);
+    });
+
+    it('suppresses from a fresh cached closed entry without consulting the resolver', async () => {
+      setupSilentMainSession(HUB_TASK_SESSION);
+      mockHubTaskStatusCacheRepository.loadHubTaskStatus.mockResolvedValue({
+        url: HUB_TASK_SESSION,
+        state: 'CLOSED',
+        status: ACTIVE_STATUS,
+        recordedEpochSeconds: nowEpochSeconds - 60,
+      });
+
+      await useCase.run(
+        runParams({
+          activeHubTaskStatus: ACTIVE_STATUS,
+          hubTaskStatusCacheTtlSeconds: 300,
+        }),
+      );
+
+      expect(mockHubTaskStatusResolver.getIssueByUrl).not.toHaveBeenCalled();
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('re-resolves when the cached entry is older than the configured time-to-live', async () => {
+      setupSilentMainSession(HUB_TASK_SESSION);
+      mockHubTaskStatusCacheRepository.loadHubTaskStatus.mockResolvedValue({
+        url: HUB_TASK_SESSION,
+        state: 'OPEN',
+        status: ACTIVE_STATUS,
+        recordedEpochSeconds: nowEpochSeconds - 600,
+      });
+      mockHubTaskStatusResolver.getIssueByUrl.mockResolvedValue(
+        issueFor({
+          url: HUB_TASK_SESSION,
+          state: 'OPEN',
+          status: ACTIVE_STATUS,
+        }),
+      );
+
+      await useCase.run(
+        runParams({
+          activeHubTaskStatus: ACTIVE_STATUS,
+          hubTaskStatusCacheTtlSeconds: 300,
+        }),
+      );
+
+      expect(mockHubTaskStatusResolver.getIssueByUrl).toHaveBeenCalledWith(
+        HUB_TASK_SESSION,
+      );
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledWith(HUB_TASK_SESSION, MAIN_STALLED_SECTION);
+    });
+
+    it('falls back to an expired cached active entry and still sends when live resolution returns null', async () => {
+      setupSilentMainSession(HUB_TASK_SESSION);
+      mockHubTaskStatusCacheRepository.loadHubTaskStatus.mockResolvedValue({
+        url: HUB_TASK_SESSION,
+        state: 'OPEN',
+        status: ACTIVE_STATUS,
+        recordedEpochSeconds: nowEpochSeconds - 600,
+      });
+      mockHubTaskStatusResolver.getIssueByUrl.mockResolvedValue(null);
+
+      await useCase.run(
+        runParams({
+          activeHubTaskStatus: ACTIVE_STATUS,
+          hubTaskStatusCacheTtlSeconds: 300,
+        }),
+      );
+
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledWith(HUB_TASK_SESSION, MAIN_STALLED_SECTION);
+    });
+
+    it('falls back to an expired cached closed entry and suppresses when live resolution throws', async () => {
+      setupSilentMainSession(HUB_TASK_SESSION);
+      const warnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      mockHubTaskStatusCacheRepository.loadHubTaskStatus.mockResolvedValue({
+        url: HUB_TASK_SESSION,
+        state: 'CLOSED',
+        status: ACTIVE_STATUS,
+        recordedEpochSeconds: nowEpochSeconds - 600,
+      });
+      mockHubTaskStatusResolver.getIssueByUrl.mockRejectedValue(
+        new Error('GraphQL rate limit'),
+      );
+
+      await useCase.run(
+        runParams({
+          activeHubTaskStatus: ACTIVE_STATUS,
+          hubTaskStatusCacheTtlSeconds: 300,
+        }),
+      );
+
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('expired cached status'),
+      );
       warnSpy.mockRestore();
     });
 

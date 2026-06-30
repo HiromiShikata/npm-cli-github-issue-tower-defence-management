@@ -120,6 +120,8 @@ export class HandleScheduledEventUseCaseHandler {
       candidateDebounceRecencyWindowSeconds?: number;
       candidateDebounceStateFilePath?: string;
       activeHubTaskStatus?: string;
+      hubTaskStatusCacheStateFilePath?: string;
+      hubTaskStatusCacheTtlSeconds?: number;
       silentMainStalledMessage?: string;
       silentSubAgentIdleMessageHeader?: string;
       silentSubAgentIdleMessageFooter?: string;
@@ -626,6 +628,15 @@ export class HandleScheduledEventUseCaseHandler {
             process.env.TDPM_ACTIVE_HUB_TASK_STATUS ??
             null,
           hubTaskStatusResolver: issueRepository,
+          hubTaskStatusCacheStateFilePath:
+            mergedInput.hubTaskStatusCacheStateFilePath ??
+            process.env.TDPM_SILENT_HUB_TASK_STATUS_CACHE_STATE_FILE_PATH ??
+            null,
+          hubTaskStatusCacheTtlSeconds: readSilentSeconds(
+            mergedInput.hubTaskStatusCacheTtlSeconds,
+            process.env.TDPM_SILENT_HUB_TASK_STATUS_CACHE_TTL_SECONDS,
+            DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.hubTaskStatusCacheTtlSeconds,
+          ),
           messageTemplates: {
             mainStalledMessage:
               mergedInput.silentMainStalledMessage ??

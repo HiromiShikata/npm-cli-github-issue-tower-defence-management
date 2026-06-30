@@ -39,6 +39,7 @@ const createMockRunner = (): Mocked<LocalCommandRunner> => ({
 describe('notifySilentTmuxSessions', () => {
   let configDir: string;
   let candidateStateFilePath: string;
+  let hubTaskStatusCacheStateFilePath: string;
 
   beforeEach(() => {
     jest.spyOn(console, 'log').mockImplementation(() => undefined);
@@ -46,6 +47,10 @@ describe('notifySilentTmuxSessions', () => {
     candidateStateFilePath = path.join(
       configDir,
       'silent-session-candidates.json',
+    );
+    hubTaskStatusCacheStateFilePath = path.join(
+      configDir,
+      'silent-session-hub-task-status.json',
     );
   });
 
@@ -136,6 +141,7 @@ describe('notifySilentTmuxSessions', () => {
     candidateDebounceStateFilePath: candidateStateFilePath,
     activeHubTaskStatus: null,
     hubTaskStatusResolver: null,
+    hubTaskStatusCacheStateFilePath: hubTaskStatusCacheStateFilePath,
     messageTemplates: EMPTY_TEMPLATES,
     now: NOW,
     ...DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS,
