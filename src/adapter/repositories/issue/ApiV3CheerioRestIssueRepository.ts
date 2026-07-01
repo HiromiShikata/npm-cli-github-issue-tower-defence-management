@@ -212,6 +212,18 @@ type DirectPullRequestResponse = {
   errors?: Array<{ message: string }>;
 };
 
+type PullRequestMergeabilityResponse = {
+  data?: {
+    repository?: {
+      pullRequest?: {
+        mergeable?: string | null;
+        mergeStateStatus?: string | null;
+      } | null;
+    } | null;
+  };
+  errors?: Array<{ message: string }>;
+};
+
 function isIssueTimelineResponse(
   value: unknown,
 ): value is IssueTimelineResponse {
@@ -222,6 +234,13 @@ function isIssueTimelineResponse(
 function isDirectPullRequestResponse(
   value: unknown,
 ): value is DirectPullRequestResponse {
+  if (typeof value !== 'object' || value === null) return false;
+  return true;
+}
+
+function isPullRequestMergeabilityResponse(
+  value: unknown,
+): value is PullRequestMergeabilityResponse {
   if (typeof value !== 'object' || value === null) return false;
   return true;
 }
@@ -1006,6 +1025,88 @@ export class ApiV3CheerioRestIssueRepository
     };
   };
 
+  private resolveMergeabilityWithRetry = async (
+    owner: string,
+    repo: string,
+    prNumber: number,
+  ): Promise<{
+    mergeable: string | null;
+    mergeStateStatus: string | null;
+  } | null> => {
+    const query = `
+      query($owner: String!, $repo: String!, $prNumber: Int!) {
+        repository(owner: $owner, name: $repo) {
+          pullRequest(number: $prNumber) {
+            mergeable
+            mergeStateStatus
+          }
+        }
+      }
+    `;
+
+    const maxAttempts = 3;
+    const retryDelayMilliseconds = 1000;
+    let lastResult: {
+      mergeable: string | null;
+      mergeStateStatus: string | null;
+    } | null = null;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (attempt > 0) {
+        await this.sleep(retryDelayMilliseconds);
+      }
+
+      const response = await this.fetchWithRateLimitRetry(() =>
+        fetch('https://api.github.com/graphql', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query,
+            variables: { owner, repo, prNumber },
+          }),
+        }),
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch pull request mergeability from GitHub GraphQL API: HTTP ${response.status}`,
+        );
+      }
+
+      const responseData: unknown = await response.json();
+      if (!isPullRequestMergeabilityResponse(responseData)) {
+        throw new Error(
+          `Unexpected response shape when fetching pull request mergeability: ${owner}/${repo}#${prNumber}`,
+        );
+      }
+
+      if (responseData.errors && responseData.errors.length > 0) {
+        throw new Error(
+          `GraphQL errors: ${JSON.stringify(responseData.errors)}`,
+        );
+      }
+
+      const pr = responseData.data?.repository?.pullRequest;
+      if (!pr) {
+        return null;
+      }
+
+      lastResult = {
+        mergeable: pr.mergeable ?? null,
+        mergeStateStatus: pr.mergeStateStatus ?? null,
+      };
+
+      if (lastResult.mergeable !== null && lastResult.mergeable !== 'UNKNOWN') {
+        return lastResult;
+      }
+    }
+
+    return lastResult;
+  };
+
   findRelatedOpenPRs = async (
     issueUrl: string,
   ): Promise<RelatedPullRequest[]> => {
@@ -1170,8 +1271,31 @@ export class ApiV3CheerioRestIssueRepository
           pr,
         );
 
+        let isConflicted = prStatus.isConflicted;
+        let mergeable = prStatus.mergeable;
+        if (
+          pr.number !== undefined &&
+          (pr.mergeable === undefined ||
+            pr.mergeable === null ||
+            pr.mergeable === 'UNKNOWN')
+        ) {
+          const resolved = await this.resolveMergeabilityWithRetry(
+            owner,
+            repo,
+            pr.number,
+          );
+          if (resolved !== null) {
+            mergeable = resolved.mergeable;
+            isConflicted =
+              resolved.mergeable === 'CONFLICTING' ||
+              resolved.mergeStateStatus === 'DIRTY';
+          }
+        }
+
         relatedPRsMap.set(prUrl, {
           ...prStatus,
+          isConflicted,
+          mergeable,
           createdAt: pr.createdAt ? new Date(pr.createdAt) : new Date(0),
         });
       }

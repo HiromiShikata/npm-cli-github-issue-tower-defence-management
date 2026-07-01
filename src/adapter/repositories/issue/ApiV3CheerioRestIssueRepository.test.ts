@@ -1807,6 +1807,173 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('findRelatedOpenPRs mergeability resolution', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    const buildTimelineResponse = (mergeable: string) => ({
+      data: {
+        repository: {
+          issue: {
+            timelineItems: {
+              pageInfo: { endCursor: null, hasNextPage: false },
+              nodes: [
+                {
+                  __typename: 'CrossReferencedEvent',
+                  willCloseTarget: true,
+                  source: {
+                    __typename: 'PullRequest',
+                    url: 'https://github.com/HiromiShikata/test-repository/pull/11148',
+                    number: 11148,
+                    state: 'OPEN',
+                    createdAt: '2024-01-01T00:00:00Z',
+                    isDraft: false,
+                    mergeable,
+                    headRefName: 'feature-branch',
+                    baseRefName: 'main',
+                    baseRepository: {
+                      branchProtectionRules: { nodes: [] },
+                      defaultBranchRef: { name: 'main' },
+                      rulesets: { nodes: [] },
+                    },
+                    commits: { nodes: [] },
+                    reviewThreads: { nodes: [] },
+                    baseRef: { name: 'main' },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      },
+    });
+
+    const buildMergeabilityResponse = (
+      mergeable: string | null,
+      mergeStateStatus: string | null,
+    ) => ({
+      data: {
+        repository: {
+          pullRequest: {
+            mergeable,
+            mergeStateStatus,
+          },
+        },
+      },
+    });
+
+    it('resolves isConflicted true via a direct query when the timeline node reports mergeable UNKNOWN but the direct query reports CONFLICTING', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(buildTimelineResponse('UNKNOWN')), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify(buildMergeabilityResponse('CONFLICTING', 'DIRTY')),
+            {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            },
+          ),
+        );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/test-repository/issues/11194',
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(result).toHaveLength(1);
+      expect(result[0].isConflicted).toBe(true);
+      expect(result[0].mergeable).toBe('CONFLICTING');
+    });
+
+    it('resolves isConflicted true when the direct query returns mergeable UNKNOWN but mergeStateStatus DIRTY', async () => {
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(buildTimelineResponse('UNKNOWN')), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+        .mockImplementation(() =>
+          Promise.resolve(
+            new Response(
+              JSON.stringify(buildMergeabilityResponse('UNKNOWN', 'DIRTY')),
+              {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' },
+              },
+            ),
+          ),
+        );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/test-repository/issues/11194',
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].isConflicted).toBe(true);
+    });
+
+    it('keeps isConflicted false when mergeability stays UNKNOWN after the bounded retries', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(buildTimelineResponse('UNKNOWN')), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+        .mockImplementation(() =>
+          Promise.resolve(
+            new Response(
+              JSON.stringify(buildMergeabilityResponse('UNKNOWN', 'UNKNOWN')),
+              {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' },
+              },
+            ),
+          ),
+        );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/test-repository/issues/11194',
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(4);
+      expect(result).toHaveLength(1);
+      expect(result[0].isConflicted).toBe(false);
+    });
+
+    it('does not issue a direct mergeability query when the timeline node already reports a definitive mergeable value', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify(buildTimelineResponse('MERGEABLE')), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/test-repository/issues/11194',
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(result).toHaveLength(1);
+      expect(result[0].isConflicted).toBe(false);
+      expect(result[0].mergeable).toBe('MERGEABLE');
+    });
+  });
+
   const createApiV3CheerioRestIssueRepository = () => {
     const apiV3IssueRepository = mock<ApiV3IssueRepository>();
     const restIssueRepository = mock<RestIssueRepository>();
