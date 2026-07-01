@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ImageProxyUrlBuilder } from '../../lib/imageProxy';
+import type { ConsoleRepoContext } from '../../logic/references';
 import { formatRelativeTime } from '../../logic/relativeTime';
 import type { ConsoleComment } from '../../logic/types';
 import type { ConsoleReferenceLinkRenderer } from '../content/ConsoleMarkdownContent';
@@ -12,6 +13,7 @@ export type ConsoleCommentListProps = {
   now: number;
   buildImageProxyUrl?: ImageProxyUrlBuilder;
   renderReferenceLink?: ConsoleReferenceLinkRenderer;
+  repoContext?: ConsoleRepoContext;
 };
 
 export const ConsoleCommentList = ({
@@ -21,6 +23,7 @@ export const ConsoleCommentList = ({
   now,
   buildImageProxyUrl,
   renderReferenceLink,
+  repoContext,
 }: ConsoleCommentListProps) => {
   const [showAll, setShowAll] = useState<boolean>(false);
 
@@ -68,6 +71,7 @@ export const ConsoleCommentList = ({
             body={comment.body}
             buildImageProxyUrl={buildImageProxyUrl}
             renderReferenceLink={renderReferenceLink}
+            repoContext={repoContext}
           />
         </article>
       ))}

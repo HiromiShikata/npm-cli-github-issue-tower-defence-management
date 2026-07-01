@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { ImageProxyUrlBuilder } from '../../lib/imageProxy';
 import { colorFromEnum } from '../../logic/colors';
+import { parseNameWithOwner } from '../../logic/references';
 import {
   formatFullTimestamp,
   formatRelativeTime,
@@ -97,6 +98,7 @@ export const ConsoleItemDetail = ({
   const merged = state?.merged ?? false;
   const closedStateLabel =
     !item.isPr && resolvedState === 'closed' ? 'Closed' : null;
+  const repoContext = parseNameWithOwner(item.nameWithOwner) ?? undefined;
   const storyPalette = colorFromEnum(storyColorEnum);
   const statusPalette = overlayStatus
     ? colorFromEnum(overlayStatus.color)
@@ -224,6 +226,7 @@ export const ConsoleItemDetail = ({
             body={body}
             buildImageProxyUrl={buildImageProxyUrl}
             renderReferenceLink={renderReferenceLink}
+            repoContext={repoContext}
           />
         )}
       </ConsolePanel>
@@ -251,6 +254,7 @@ export const ConsoleItemDetail = ({
           now={now}
           buildImageProxyUrl={buildImageProxyUrl}
           renderReferenceLink={renderReferenceLink}
+          repoContext={repoContext}
         />
       </ConsolePanel>
 

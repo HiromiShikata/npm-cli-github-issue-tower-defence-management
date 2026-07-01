@@ -3,7 +3,7 @@ import { consoleChangedFilesFixture } from '../../testing/fixtures';
 import { ConsoleChangedFileList } from './ConsoleChangedFileList';
 
 describe('ConsoleChangedFileList', () => {
-  it('renders each file path, status badge and additions/deletions', () => {
+  it('renders each file basename, status badge and additions/deletions', () => {
     const { getByText, getAllByText } = render(
       <ConsoleChangedFileList
         files={consoleChangedFilesFixture}
@@ -11,12 +11,27 @@ describe('ConsoleChangedFileList', () => {
         error={null}
       />,
     );
-    expect(
-      getByText('src/adapter/entry-points/console/consoleServer.ts'),
-    ).toBeInTheDocument();
+    expect(getByText('consoleServer.ts')).toBeInTheDocument();
     expect(getByText('+312')).toBeInTheDocument();
     expect(getAllByText('A').length).toBe(2);
     expect(getByText('M')).toBeInTheDocument();
+  });
+
+  it('nests files under their directory nodes as a tree', () => {
+    const { container, getByText } = render(
+      <ConsoleChangedFileList
+        files={consoleChangedFilesFixture}
+        isLoading={false}
+        error={null}
+      />,
+    );
+    expect(getByText('adapter')).toBeInTheDocument();
+    expect(getByText('console')).toBeInTheDocument();
+    expect(getByText('package.json')).toBeInTheDocument();
+    const directoryNames = [
+      ...container.querySelectorAll('.console-file-tree-dir-name'),
+    ].map((node) => node.textContent);
+    expect(directoryNames).toContain('📁src');
   });
 
   it('keeps the diff hidden until the file row is clicked', () => {
@@ -28,9 +43,7 @@ describe('ConsoleChangedFileList', () => {
       />,
     );
     expect(container.querySelector('.console-file-diff')).toBeNull();
-    fireEvent.click(
-      getByText('src/adapter/entry-points/console/consoleServer.ts'),
-    );
+    fireEvent.click(getByText('consoleServer.ts'));
     expect(container.querySelector('.console-file-diff')).toBeInTheDocument();
     const codeText = [...container.querySelectorAll('.console-diff-code')].map(
       (cell) => cell.textContent,
@@ -46,7 +59,7 @@ describe('ConsoleChangedFileList', () => {
         error={null}
       />,
     );
-    const path = getByText('src/adapter/entry-points/console/consoleServer.ts');
+    const path = getByText('consoleServer.ts');
     fireEvent.click(path);
     expect(container.querySelector('.console-file-diff')).toBeInTheDocument();
     fireEvent.click(path);

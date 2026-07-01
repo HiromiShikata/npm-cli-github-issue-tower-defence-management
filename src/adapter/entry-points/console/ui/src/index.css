@@ -599,6 +599,31 @@ body {
   font-size: 0.8125rem;
 }
 
+.console-file-tree,
+.console-file-tree-children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.console-file-tree-dir {
+  display: flex;
+  flex-direction: column;
+}
+
+.console-file-tree-dir-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  color: #8b949e;
+  font-weight: 600;
+}
+
+.console-file-tree-dir-icon {
+  flex: 0 0 auto;
+}
+
 .console-file-badge {
   width: 18px;
   text-align: center;

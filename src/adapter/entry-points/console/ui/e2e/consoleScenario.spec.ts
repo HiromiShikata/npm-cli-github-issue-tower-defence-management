@@ -188,7 +188,7 @@ test('collects an inline comment on a related pull request diff without hover on
 
   const changedFile = page
     .locator('.console-file-row', {
-      hasText: 'src/adapter/entry-points/console/ui/src/index.css',
+      hasText: 'index.css',
     })
     .first();
   await expect(changedFile).toBeVisible();

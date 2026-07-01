@@ -1,7 +1,28 @@
 import DOMPurify from 'dompurify';
 import { nameToEmoji } from 'gemoji';
-import { marked } from 'marked';
+import { marked, type Tokens } from 'marked';
 import { markedEmoji } from 'marked-emoji';
+import type { ConsoleRepoContext } from '../logic/references';
+
+export type { ConsoleRepoContext } from '../logic/references';
+
+type IssueReferenceToken = Tokens.Generic & {
+  type: 'consoleIssueReference';
+  raw: string;
+  numberText: string;
+};
+
+const ISSUE_REFERENCE_PATTERN = /^#(\d+)\b/;
+
+let activeRepoContext: ConsoleRepoContext | null = null;
+
+const issueReferenceHref = (numberText: string): string | null => {
+  if (activeRepoContext === null) {
+    return null;
+  }
+  const { owner, repo } = activeRepoContext;
+  return `https://github.com/${owner}/${repo}/issues/${numberText}`;
+};
 
 marked.use(
   markedEmoji({
@@ -10,15 +31,58 @@ marked.use(
   }),
 );
 
-export const renderMarkdownToSafeHtml = (source: string): string => {
+marked.use({
+  extensions: [
+    {
+      name: 'consoleIssueReference',
+      level: 'inline',
+      start(src: string) {
+        const index = src.indexOf('#');
+        return index === -1 ? undefined : index;
+      },
+      tokenizer(src: string): IssueReferenceToken | undefined {
+        if (activeRepoContext === null) {
+          return undefined;
+        }
+        const match = ISSUE_REFERENCE_PATTERN.exec(src);
+        if (match === null) {
+          return undefined;
+        }
+        return {
+          type: 'consoleIssueReference',
+          raw: match[0],
+          numberText: match[1],
+        };
+      },
+      renderer(token: Tokens.Generic): string {
+        const reference = token as IssueReferenceToken;
+        const href = issueReferenceHref(reference.numberText);
+        if (href === null) {
+          return reference.raw;
+        }
+        return `<a href="${href}">#${reference.numberText}</a>`;
+      },
+    },
+  ],
+});
+
+export const renderMarkdownToSafeHtml = (
+  source: string,
+  repoContext?: ConsoleRepoContext,
+): string => {
   const trimmed = source.trim();
   if (trimmed === '') {
     return '';
   }
+  activeRepoContext = repoContext ?? null;
   marked.setOptions({ gfm: true, breaks: true });
-  const parsed = marked.parse(source, { async: false });
-  const rawHtml = typeof parsed === 'string' ? parsed : '';
-  return DOMPurify.sanitize(rawHtml);
+  try {
+    const parsed = marked.parse(source, { async: false });
+    const rawHtml = typeof parsed === 'string' ? parsed : '';
+    return DOMPurify.sanitize(rawHtml);
+  } finally {
+    activeRepoContext = null;
+  }
 };
 
 export type ConsoleMarkdownSegment =
