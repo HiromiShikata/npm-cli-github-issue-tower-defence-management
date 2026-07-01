@@ -1,3 +1,10 @@
+# [1.119.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.118.1...v1.119.0) (2026-07-01)
+
+
+### Features
+
+* **console:** clickable #N references in markdown and Changed files directory tree ([#1130](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1130)) ([d9f4836](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d9f483668af4b8b09f74468ee7e300ca30b3f6e4)), closes [#N](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/N) [#N](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/N) [#N](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/N) [#1129](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1129)
+
 ## [1.118.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.118.0...v1.118.1) (2026-06-30)
 
 
