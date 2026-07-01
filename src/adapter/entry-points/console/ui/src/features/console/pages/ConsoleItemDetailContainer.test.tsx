@@ -146,7 +146,9 @@ describe('ConsoleItemDetailContainer', () => {
     expect(getByText('Reject')).toBeDisabled();
 
     const fileRow = await findByRole('button', {
-      name: new RegExp(consoleChangedFilesFixture[0].path),
+      name: new RegExp(
+        consoleChangedFilesFixture[0].path.split('/').at(-1) ?? '',
+      ),
     });
     fireEvent.click(fileRow);
     const commentButton = getAllByRole('button', {
@@ -222,7 +224,9 @@ describe('ConsoleItemDetailContainer', () => {
     expect(getByText('Reject')).toBeDisabled();
 
     const fileRow = await findByRole('button', {
-      name: new RegExp(consoleChangedFilesFixture[0].path),
+      name: new RegExp(
+        consoleChangedFilesFixture[0].path.split('/').at(-1) ?? '',
+      ),
     });
     fireEvent.click(fileRow);
 

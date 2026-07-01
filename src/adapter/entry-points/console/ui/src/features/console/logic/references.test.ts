@@ -1,7 +1,30 @@
 import {
   parseGitHubReferenceUrl,
+  parseNameWithOwner,
   referenceStateToIconInput,
 } from './references';
+
+describe('parseNameWithOwner', () => {
+  it('splits owner and repo on the first slash', () => {
+    expect(parseNameWithOwner('HiromiShikata/repo-name')).toEqual({
+      owner: 'HiromiShikata',
+      repo: 'repo-name',
+    });
+  });
+
+  it('returns null when there is no slash', () => {
+    expect(parseNameWithOwner('repo-name')).toBeNull();
+  });
+
+  it('returns null when owner or repo is empty', () => {
+    expect(parseNameWithOwner('/repo')).toBeNull();
+    expect(parseNameWithOwner('owner/')).toBeNull();
+  });
+
+  it('returns null when the value contains extra path segments', () => {
+    expect(parseNameWithOwner('owner/repo/extra')).toBeNull();
+  });
+});
 
 describe('parseGitHubReferenceUrl', () => {
   it('parses an issue url', () => {

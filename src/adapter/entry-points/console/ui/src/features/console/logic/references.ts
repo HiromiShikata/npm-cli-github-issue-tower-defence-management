@@ -33,6 +33,26 @@ export const parseGitHubReferenceUrl = (
   };
 };
 
+export type ConsoleRepoContext = {
+  owner: string;
+  repo: string;
+};
+
+export const parseNameWithOwner = (
+  nameWithOwner: string,
+): ConsoleRepoContext | null => {
+  const separatorIndex = nameWithOwner.indexOf('/');
+  if (separatorIndex <= 0) {
+    return null;
+  }
+  const owner = nameWithOwner.slice(0, separatorIndex);
+  const repo = nameWithOwner.slice(separatorIndex + 1);
+  if (owner === '' || repo === '' || repo.includes('/')) {
+    return null;
+  }
+  return { owner, repo };
+};
+
 export const referenceStateToIconInput = (
   state: ConsoleIssueState,
 ): ConsoleItemIconInput => ({

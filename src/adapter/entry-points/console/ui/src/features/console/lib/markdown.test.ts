@@ -54,6 +54,43 @@ describe('renderMarkdownToSafeHtml', () => {
     expect(html).not.toContain(':sparkles:');
     expect(html).not.toContain(':rocket:');
   });
+
+  it('links a bare #N reference to the provided repo issues path', () => {
+    const html = renderMarkdownToSafeHtml('close #127', {
+      owner: 'HiromiShikata',
+      repo: 'npm-cli-github-issue-tower-defence-management',
+    });
+    expect(html).toContain(
+      '<a href="https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/127">#127</a>',
+    );
+  });
+
+  it('keeps a bare #N reference as plain text when no repo context is given', () => {
+    const html = renderMarkdownToSafeHtml('close #127');
+    expect(html).toContain('#127');
+    expect(html).not.toContain('<a ');
+  });
+
+  it('keeps a full GitHub URL as a rendered link', () => {
+    const html = renderMarkdownToSafeHtml(
+      'see https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/42',
+      {
+        owner: 'HiromiShikata',
+        repo: 'npm-cli-github-issue-tower-defence-management',
+      },
+    );
+    expect(html).toContain(
+      'href="https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/42"',
+    );
+  });
+
+  it('preserves the href attribute on issue reference anchors after sanitization', () => {
+    const html = renderMarkdownToSafeHtml('resolves #9', {
+      owner: 'owner',
+      repo: 'repo',
+    });
+    expect(html).toContain('href="https://github.com/owner/repo/issues/9"');
+  });
 });
 
 describe('splitMarkdownSegments', () => {

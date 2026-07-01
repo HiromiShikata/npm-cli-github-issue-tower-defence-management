@@ -5,6 +5,7 @@ import {
   rewriteGitHubImageSources,
 } from '../../lib/imageProxy';
 import {
+  type ConsoleRepoContext,
   renderMarkdownToSafeHtml,
   splitMarkdownSegments,
 } from '../../lib/markdown';
@@ -20,12 +21,14 @@ export type ConsoleMarkdownViewProps = {
   body: string;
   buildImageProxyUrl?: ImageProxyUrlBuilder;
   renderReferenceLink?: ConsoleReferenceLinkRenderer;
+  repoContext?: ConsoleRepoContext;
 };
 
 type ConsoleMarkdownHtmlBlockProps = {
   source: string;
   buildImageProxyUrl?: ImageProxyUrlBuilder;
   renderReferenceLink?: ConsoleReferenceLinkRenderer;
+  repoContext?: ConsoleRepoContext;
 };
 
 type ReferenceMount = {
@@ -56,14 +59,15 @@ const ConsoleMarkdownHtmlBlock = ({
   source,
   buildImageProxyUrl,
   renderReferenceLink,
+  repoContext,
 }: ConsoleMarkdownHtmlBlockProps) => {
   const html = useMemo(() => {
-    const safeHtml = renderMarkdownToSafeHtml(source);
+    const safeHtml = renderMarkdownToSafeHtml(source, repoContext);
     if (buildImageProxyUrl === undefined) {
       return safeHtml;
     }
     return rewriteGitHubImageSources(safeHtml, buildImageProxyUrl);
-  }, [source, buildImageProxyUrl]);
+  }, [source, buildImageProxyUrl, repoContext]);
   const containerRef = useRef<HTMLDivElement>(null);
   const [referenceMounts, setReferenceMounts] = useState<ReferenceMount[]>([]);
 
@@ -98,6 +102,7 @@ export const ConsoleMarkdownContent = ({
   body,
   buildImageProxyUrl,
   renderReferenceLink,
+  repoContext,
 }: ConsoleMarkdownViewProps) => {
   const segments = useMemo(() => splitMarkdownSegments(body), [body]);
 
@@ -116,6 +121,7 @@ export const ConsoleMarkdownContent = ({
             source={segment.source}
             buildImageProxyUrl={buildImageProxyUrl}
             renderReferenceLink={renderReferenceLink}
+            repoContext={repoContext}
           />
         ),
       )}
