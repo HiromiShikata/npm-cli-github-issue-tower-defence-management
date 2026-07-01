@@ -63,6 +63,7 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     update: (issue: Issue, _project: Project) => Promise<void>;
     private parseIssueUrl;
     private computePrStatus;
+    private resolveMergeabilityWithRetry;
     findRelatedOpenPRs: (issueUrl: string) => Promise<RelatedPullRequest[]>;
     getAllOpened: (project: Project, allowCacheMinutes: number) => Promise<Issue[]>;
     getStoryObjectMap: (project: Project, allowCacheMinutes: number) => Promise<StoryObjectMap>;

@@ -1,3 +1,10 @@
+## [1.119.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.119.0...v1.119.1) (2026-07-01)
+
+
+### Bug Fixes
+
+* **console:** resolve related-PR mergeability directly when issue timeline reports UNKNOWN ([#1132](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1132)) ([6bf5509](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6bf550944a245abef7e72d40a232fa9a372b4baf))
+
 # [1.119.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.118.1...v1.119.0) (2026-07-01)
 
 
