@@ -48,6 +48,30 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
     expect(fallback.composeMainStalledSection).not.toHaveBeenCalled();
   });
 
+  it('appends the owner-call format guidance, including the self-contained and no-scroll-back requirements, to the configured main template', () => {
+    const fallback = createFallback();
+    const composer = new ConfigurableSilentSessionMessageComposer(
+      {
+        ...noTemplates,
+        mainStalledMessage: 'CUSTOM_MAIN',
+      },
+      fallback,
+      '<<OWNER_CALL>>',
+    );
+    const section = composer.composeMainStalledSection(600);
+    expect(section).toContain('CUSTOM_MAIN');
+    expect(section).toContain(
+      'the configured owner-call marker tag "<<OWNER_CALL>>" as a complete matching pair',
+    );
+    expect(section).toContain('🔴');
+    expect(section).toContain(
+      'Make the owner-call message fully self-contained: the owner MUST understand the whole situation — what happened, what you are asking, and any decision needed — from this single latest owner-call message alone, without reading or scrolling back to earlier messages.',
+    );
+    expect(section).toContain(
+      'NEVER tell the owner to scroll up, go back, or read previous or above messages; if context is needed, restate it inside the owner-call message itself.',
+    );
+  });
+
   it('uses the fallback sub-agent section when no sub-agent template is configured', () => {
     const fallback = createFallback();
     const composer = new ConfigurableSilentSessionMessageComposer(
@@ -168,6 +192,11 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
       fallback,
     );
     const section = composer.composeMainStalledSection(600);
-    expect(section).toBe(`${SILENT_SESSION_REMINDER_SENTINEL} CUSTOM_MAIN`);
+    const sentinelOccurrences =
+      section.split(SILENT_SESSION_REMINDER_SENTINEL).length - 1;
+    expect(sentinelOccurrences).toBe(1);
+    expect(
+      section.startsWith(`${SILENT_SESSION_REMINDER_SENTINEL} CUSTOM_MAIN`),
+    ).toBe(true);
   });
 });
