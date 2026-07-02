@@ -42,14 +42,14 @@ const composeLongRunningSubAgentSection = (
   ].join('\n');
 };
 
-const composeOwnerCallFormatGuidance = (
+export const composeOwnerCallFormatGuidance = (
   ownerCallMarker: string | null,
 ): string => {
   const markerInstruction =
     ownerCallMarker !== null && ownerCallMarker.length > 0
       ? `Emit the owner-call as the configured owner-call marker tag "${ownerCallMarker}" as a complete matching pair — opening marker, content, then closing marker — on a single line with no newline inside the tag.`
       : `Emit the owner-call as the configured owner-call marker tag as a complete matching pair — opening marker, content, then closing marker — on a single line with no newline inside the tag.`;
-  return `${markerInstruction} The content between the markers MUST begin with the 🔴 emoji immediately, with no space after it. The owner's app only surfaces the notification together with its content when the exact, well-formed tag with the leading 🔴 is present; a malformed tag (a broken or missing closing marker, or a missing leading 🔴) results in only a red indicator with no readable content.`;
+  return `${markerInstruction} The content between the markers MUST begin with the 🔴 emoji immediately, with no space after it. The owner's app only surfaces the notification together with its content when the exact, well-formed tag with the leading 🔴 is present; a malformed tag (a broken or missing closing marker, or a missing leading 🔴) results in only a red indicator with no readable content. Make the owner-call message fully self-contained: the owner MUST understand the whole situation — what happened, what you are asking, and any decision needed — from this single latest owner-call message alone, without reading or scrolling back to earlier messages. NEVER tell the owner to scroll up, go back, or read previous or above messages; if context is needed, restate it inside the owner-call message itself.`;
 };
 
 const composeMainStalledMessage = (

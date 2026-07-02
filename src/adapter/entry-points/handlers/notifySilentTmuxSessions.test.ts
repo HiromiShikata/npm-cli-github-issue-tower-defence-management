@@ -232,8 +232,11 @@ describe('notifySilentTmuxSessions', () => {
     const sendCall = runner.runCommand.mock.calls.find(
       (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
     );
-    expect(sendCall?.[1][4]).toBe(
+    expect(sendCall?.[1][4]).toContain(
       `${SILENT_SESSION_REMINDER_SENTINEL} CUSTOM_MAIN_TEMPLATE`,
+    );
+    expect(sendCall?.[1][4]).toContain(
+      'NEVER tell the owner to scroll up, go back, or read previous or above messages',
     );
   });
 

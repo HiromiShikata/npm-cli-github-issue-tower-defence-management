@@ -59,6 +59,16 @@ describe('DefaultSilentSessionMessageComposer', () => {
     );
   });
 
+  it('requires the owner-call message to be fully self-contained and forbids telling the owner to scroll back', () => {
+    const section = composer.composeMainStalledSection(600);
+    expect(section).toContain(
+      'Make the owner-call message fully self-contained: the owner MUST understand the whole situation — what happened, what you are asking, and any decision needed — from this single latest owner-call message alone, without reading or scrolling back to earlier messages.',
+    );
+    expect(section).toContain(
+      'NEVER tell the owner to scroll up, go back, or read previous or above messages; if context is needed, restate it inside the owner-call message itself.',
+    );
+  });
+
   it('instructs the agent to fire the owner-call when an owner request has been completed or answered', () => {
     const section = composer.composeMainStalledSection(600);
     expect(section).toContain(

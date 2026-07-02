@@ -1,4 +1,5 @@
 import { SubAgentActivity } from '../../domain/entities/LiveSessionActivitySnapshot';
+import { composeOwnerCallFormatGuidance } from '../../domain/usecases/DefaultSilentSessionMessageComposer';
 import {
   SilentSessionMessageComposer,
   SubAgentStallThresholds,
@@ -27,13 +28,16 @@ export class ConfigurableSilentSessionMessageComposer implements SilentSessionMe
   constructor(
     private readonly templates: SilentSessionMessageTemplates,
     private readonly fallback: SilentSessionMessageComposer,
+    private readonly ownerCallMarker: string | null = null,
   ) {}
 
   composeMainStalledSection = (mainSilentSeconds: number): string => {
     if (this.templates.mainStalledMessage === null) {
       return this.fallback.composeMainStalledSection(mainSilentSeconds);
     }
-    return withReminderSentinel(this.templates.mainStalledMessage);
+    return withReminderSentinel(
+      `${this.templates.mainStalledMessage} ${composeOwnerCallFormatGuidance(this.ownerCallMarker)}`,
+    );
   };
 
   composeSubAgentSection = (
