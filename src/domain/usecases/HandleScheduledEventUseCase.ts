@@ -46,14 +46,14 @@ const SLOW_SWEEP_INTERVAL_SECONDS = 600;
 const WORKFLOW_INCIDENT_ISSUE_TITLE =
   'Error in HandleScheduledEvent / workflow incident';
 
-function isTransientApiError(error: Error): boolean {
+const isTransientApiError = (error: Error): boolean => {
   const msg = error.message;
   return (
     /\b(401|403|429|500|502|503|504)\b/.test(msg) ||
     /rate.?limit|RATE_LIMIT/i.test(msg) ||
     /bad credentials/i.test(msg)
   );
-}
+};
 
 export class HandleScheduledEventUseCase {
   constructor(
