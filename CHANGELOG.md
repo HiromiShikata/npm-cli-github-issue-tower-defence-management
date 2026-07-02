@@ -1,3 +1,10 @@
+## [1.119.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.119.2...v1.119.3) (2026-07-02)
+
+
+### Bug Fixes
+
+* **silent-monitor:** owner-call guidance requires a self-contained message and forbids scroll-back ([#1138](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1138)) ([782f958](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/782f958936a099deb828ed738f7d670a050c318a))
+
 ## [1.119.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.119.1...v1.119.2) (2026-07-02)
 
 

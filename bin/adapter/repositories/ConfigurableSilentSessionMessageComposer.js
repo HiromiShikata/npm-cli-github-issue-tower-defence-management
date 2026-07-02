@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ConfigurableSilentSessionMessageComposer = void 0;
+const DefaultSilentSessionMessageComposer_1 = require("../../domain/usecases/DefaultSilentSessionMessageComposer");
 const silentSessionReminderSentinel_1 = require("../../domain/usecases/silentSessionReminderSentinel");
 const withReminderSentinel = (message) => message.includes(silentSessionReminderSentinel_1.SILENT_SESSION_REMINDER_SENTINEL)
     ? message
@@ -10,14 +11,15 @@ const formatMinutes = (seconds) => {
     return `${minutes}m`;
 };
 class ConfigurableSilentSessionMessageComposer {
-    constructor(templates, fallback) {
+    constructor(templates, fallback, ownerCallMarker = null) {
         this.templates = templates;
         this.fallback = fallback;
+        this.ownerCallMarker = ownerCallMarker;
         this.composeMainStalledSection = (mainSilentSeconds) => {
             if (this.templates.mainStalledMessage === null) {
                 return this.fallback.composeMainStalledSection(mainSilentSeconds);
             }
-            return withReminderSentinel(this.templates.mainStalledMessage);
+            return withReminderSentinel(`${this.templates.mainStalledMessage} ${(0, DefaultSilentSessionMessageComposer_1.composeOwnerCallFormatGuidance)(this.ownerCallMarker)}`);
         };
         this.composeSubAgentSection = (subAgents, thresholds) => {
             const hasIdleTemplate = this.templates.subAgentIdleMessageHeader !== null ||

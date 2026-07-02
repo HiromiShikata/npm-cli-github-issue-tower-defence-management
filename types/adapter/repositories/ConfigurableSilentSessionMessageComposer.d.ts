@@ -10,7 +10,8 @@ export type SilentSessionMessageTemplates = {
 export declare class ConfigurableSilentSessionMessageComposer implements SilentSessionMessageComposer {
     private readonly templates;
     private readonly fallback;
-    constructor(templates: SilentSessionMessageTemplates, fallback: SilentSessionMessageComposer);
+    private readonly ownerCallMarker;
+    constructor(templates: SilentSessionMessageTemplates, fallback: SilentSessionMessageComposer, ownerCallMarker?: string | null);
     composeMainStalledSection: (mainSilentSeconds: number) => string;
     composeSubAgentSection: (subAgents: SubAgentActivity[], thresholds: SubAgentStallThresholds) => string;
     private composeIdleSection;

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DefaultSilentSessionMessageComposer = void 0;
+exports.DefaultSilentSessionMessageComposer = exports.composeOwnerCallFormatGuidance = void 0;
 const silentSessionReminderSentinel_1 = require("./silentSessionReminderSentinel");
 const formatMinutes = (seconds) => {
     const minutes = Math.floor(seconds / 60);
@@ -26,8 +26,9 @@ const composeOwnerCallFormatGuidance = (ownerCallMarker) => {
     const markerInstruction = ownerCallMarker !== null && ownerCallMarker.length > 0
         ? `Emit the owner-call as the configured owner-call marker tag "${ownerCallMarker}" as a complete matching pair — opening marker, content, then closing marker — on a single line with no newline inside the tag.`
         : `Emit the owner-call as the configured owner-call marker tag as a complete matching pair — opening marker, content, then closing marker — on a single line with no newline inside the tag.`;
-    return `${markerInstruction} The content between the markers MUST begin with the 🔴 emoji immediately, with no space after it. The owner's app only surfaces the notification together with its content when the exact, well-formed tag with the leading 🔴 is present; a malformed tag (a broken or missing closing marker, or a missing leading 🔴) results in only a red indicator with no readable content.`;
+    return `${markerInstruction} The content between the markers MUST begin with the 🔴 emoji immediately, with no space after it. The owner's app only surfaces the notification together with its content when the exact, well-formed tag with the leading 🔴 is present; a malformed tag (a broken or missing closing marker, or a missing leading 🔴) results in only a red indicator with no readable content. Make the owner-call message fully self-contained: the owner MUST understand the whole situation — what happened, what you are asking, and any decision needed — from this single latest owner-call message alone, without reading or scrolling back to earlier messages. NEVER tell the owner to scroll up, go back, or read previous or above messages; if context is needed, restate it inside the owner-call message itself.`;
 };
+exports.composeOwnerCallFormatGuidance = composeOwnerCallFormatGuidance;
 const composeMainStalledMessage = (mainSilentSeconds, ownerCallMarker) => {
     const minutes = Math.floor(mainSilentSeconds / 60);
     return [
@@ -35,7 +36,7 @@ const composeMainStalledMessage = (mainSilentSeconds, ownerCallMarker) => {
         `1. Every request from the owner is registered as a session task and your task list is kept current (mark tasks completed when done); verify nothing is missing or stale.`,
         `2. Your plan is the fastest correct path: parallelize independent work across sub-agents, delegate, and remove needless serialization. Choose the fastest safe method, not the easiest.`,
         `3. A monitor is in place that detects when any sub-agent produces no output for 5 minutes.`,
-        `4. If you are blocked on an owner decision — or once you believe all tasks are complete — do not wait passively: the owner is not notified of passive waiting and will not reply unless you raise a new call-to-user, so raise one now (to get the decision, or to ask the owner to verify completion). If you have COMPLETED or ANSWERED a request from the owner in this session, you MUST fire the owner-call to report the RESULT to the owner: completing or answering an owner's requested action is itself a reason to fire the owner-call. Completing or answering an owner request WITHOUT firing the owner-call means the owner is NEVER notified — the owner's app only surfaces this session when the owner-call fires — so the task silently stalls. If this self-check reminder keeps arriving, it is likely because an owner request was completed or answered without firing the owner-call; fire the owner-call now to report the result to the owner. ${composeOwnerCallFormatGuidance(ownerCallMarker)} If no owner input is needed yet, resume immediately and drive all remaining tasks to completion.`,
+        `4. If you are blocked on an owner decision — or once you believe all tasks are complete — do not wait passively: the owner is not notified of passive waiting and will not reply unless you raise a new call-to-user, so raise one now (to get the decision, or to ask the owner to verify completion). If you have COMPLETED or ANSWERED a request from the owner in this session, you MUST fire the owner-call to report the RESULT to the owner: completing or answering an owner's requested action is itself a reason to fire the owner-call. Completing or answering an owner request WITHOUT firing the owner-call means the owner is NEVER notified — the owner's app only surfaces this session when the owner-call fires — so the task silently stalls. If this self-check reminder keeps arriving, it is likely because an owner request was completed or answered without firing the owner-call; fire the owner-call now to report the result to the owner. ${(0, exports.composeOwnerCallFormatGuidance)(ownerCallMarker)} If no owner input is needed yet, resume immediately and drive all remaining tasks to completion.`,
         `Also, in your next output, report an estimate of how many minutes you expect to need to finish all remaining tasks.`,
     ].join('\n');
 };
