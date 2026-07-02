@@ -133,6 +133,31 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
     expect(longRunningSection).toContain('running for 20m');
   });
 
+  it('renders the built-in idle message via the fallback when only a long-running template is configured', () => {
+    const fallback = createFallback();
+    fallback.composeSubAgentSection.mockReturnValue('BUILTIN_IDLE');
+    const composer = new ConfigurableSilentSessionMessageComposer(
+      {
+        ...noTemplates,
+        subAgentLongRunningMessageHeader: 'LONG_HEADER',
+      },
+      fallback,
+    );
+    const section = composer.composeSubAgentSection(
+      [{ label: 'task-idle', silentSeconds: 360, runningSeconds: 60 }],
+      THRESHOLDS,
+    );
+    expect(section).toContain('BUILTIN_IDLE');
+    expect(fallback.composeSubAgentSection).toHaveBeenCalledWith(
+      [{ label: 'task-idle', silentSeconds: 360, runningSeconds: 60 }],
+      {
+        subAgentSilentThresholdSeconds:
+          THRESHOLDS.subAgentSilentThresholdSeconds,
+        subAgentRunningThresholdSeconds: Number.POSITIVE_INFINITY,
+      },
+    );
+  });
+
   it('does not double-prepend the sentinel when the template already carries it', () => {
     const fallback = createFallback();
     const composer = new ConfigurableSilentSessionMessageComposer(

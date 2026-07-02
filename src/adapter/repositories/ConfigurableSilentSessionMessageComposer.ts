@@ -69,7 +69,13 @@ export class ConfigurableSilentSessionMessageComposer implements SilentSessionMe
         ),
       );
     } else if (idleSubAgents.length > 0) {
-      sections.push(this.composeIdleSection(idleSubAgents, null, null));
+      sections.push(
+        this.fallback.composeSubAgentSection(idleSubAgents, {
+          subAgentSilentThresholdSeconds:
+            thresholds.subAgentSilentThresholdSeconds,
+          subAgentRunningThresholdSeconds: Number.POSITIVE_INFINITY,
+        }),
+      );
     }
     if (longRunningSubAgents.length > 0 && hasLongRunningTemplate) {
       sections.push(
