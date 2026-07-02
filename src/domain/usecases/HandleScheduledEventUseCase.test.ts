@@ -873,7 +873,9 @@ describe('HandleScheduledEventUseCase', () => {
       });
 
       it('should create a new incident issue when none exists for a non-transient error', async () => {
-        const nonTransientError = new Error('something went wrong unexpectedly');
+        const nonTransientError = new Error(
+          'something went wrong unexpectedly',
+        );
         mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
           nonTransientError,
         );
@@ -903,7 +905,9 @@ describe('HandleScheduledEventUseCase', () => {
       });
 
       it('should add a comment to the existing incident issue when one already exists', async () => {
-        const nonTransientError = new Error('something went wrong unexpectedly');
+        const nonTransientError = new Error(
+          'something went wrong unexpectedly',
+        );
         mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
           nonTransientError,
         );
@@ -1006,7 +1010,9 @@ describe('HandleScheduledEventUseCase', () => {
           transientError,
         );
 
-        await expect(useCase.run(errorInput)).rejects.toThrow('Bad credentials');
+        await expect(useCase.run(errorInput)).rejects.toThrow(
+          'Bad credentials',
+        );
 
         expect(mockIssueRepository.searchIssue).not.toHaveBeenCalled();
         expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
