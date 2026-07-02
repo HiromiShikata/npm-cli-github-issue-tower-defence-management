@@ -9,9 +9,9 @@ const formatMinutes = (seconds) => {
 const composeIdleSubAgentSection = (idleSubAgents) => {
     const lines = idleSubAgents.map((subAgent) => `- ${subAgent.label}: no output for ${formatMinutes(subAgent.silentSeconds)}`);
     return [
-        `${silentSessionReminderSentinel_1.SILENT_SESSION_REMINDER_SENTINEL} The following sub-process(es) have produced no output for several minutes and may be stalled:`,
+        `${silentSessionReminderSentinel_1.SILENT_SESSION_REMINDER_SENTINEL} The system has already detected, from each sub-process's last tool activity, that it has produced no output for about the minutes shown below. Treat that figure as the authoritative system signal; do NOT spend effort re-deriving whether the sub-process is alive. Around five minutes of silence is a real warning of a possible hang: do NOT speak from speculation ("probably still working") and do NOT dismiss it without evidence.`,
         ...lines,
-        'Check each one. If it is stuck, take action (restart, hand off, or replace it). If it is legitimately waiting on an external dependency (continuous integration, an external API, or another process), let it continue.',
+        'For each one, determine the CAUSE by a concrete check and report the result. Verify specifically: (a) whether there is genuinely no recent activity anywhere — including a very recent push or commit, or output from any nested sub-processes this sub-process itself started; and (b) whether it is legitimately blocked waiting on an external dependency (a continuous-integration run, an external API, or another process). Waiting on continuous integration is plausible, but confirm it by investigation before concluding — do not assume. Based on the check: if it is genuinely stuck, take action (restart, hand off, or replace it); if it is legitimately waiting, state that conclusion together with the concrete evidence you found. Owner notification is not required, but you MUST output your investigation result in this session so it remains as a log.',
     ].join('\n');
 };
 const composeLongRunningSubAgentSection = (longRunningSubAgents) => {

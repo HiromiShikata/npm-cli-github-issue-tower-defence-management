@@ -34,7 +34,10 @@ class ConfigurableSilentSessionMessageComposer {
                 sections.push(this.composeIdleSection(idleSubAgents, this.templates.subAgentIdleMessageHeader, this.templates.subAgentIdleMessageFooter));
             }
             else if (idleSubAgents.length > 0) {
-                sections.push(this.composeIdleSection(idleSubAgents, null, null));
+                sections.push(this.fallback.composeSubAgentSection(idleSubAgents, {
+                    subAgentSilentThresholdSeconds: thresholds.subAgentSilentThresholdSeconds,
+                    subAgentRunningThresholdSeconds: Number.POSITIVE_INFINITY,
+                }));
             }
             if (longRunningSubAgents.length > 0 && hasLongRunningTemplate) {
                 sections.push(this.composeLongRunningSection(longRunningSubAgents, this.templates.subAgentLongRunningMessageHeader, this.templates.subAgentLongRunningMessageFooter));

@@ -1,3 +1,10 @@
+## [1.119.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.119.1...v1.119.2) (2026-07-02)
+
+
+### Bug Fixes
+
+* **silent-monitor:** idle stall reminder mandates authoritative-signal cause-check and logged result ([#1134](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1134)) ([bf659a9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bf659a96256c4d80ea7aa2502c8dab9433e15f56))
+
 ## [1.119.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.119.0...v1.119.1) (2026-07-01)
 
 
