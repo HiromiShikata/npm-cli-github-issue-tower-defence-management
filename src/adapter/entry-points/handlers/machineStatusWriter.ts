@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { DiskConfig } from '../cli/projectConfig';
 import {
   ProcHostMetricsRepository,
   cycleMinutesFromMtimes,
@@ -8,14 +9,21 @@ import {
 export type MachineStatusWriterParams = {
   dashboardDataDir: string | null | undefined;
   allIssuesCacheDir: string | null | undefined;
+  disks?: DiskConfig[] | null;
   hostMetricsRepository?: ProcHostMetricsRepository;
   now?: Date;
+};
+
+export type MachineStatusDisk = {
+  title: string;
+  pct: number;
 };
 
 export type MachineStatusFile = {
   memPct: number;
   cpuPct: number;
   diskPct: number;
+  disks?: MachineStatusDisk[];
   load: [number, number, number];
   cycleMinutes: number | null;
   capturedAt: string;
@@ -65,6 +73,14 @@ export const writeMachineStatus = async (
   const diskPct = hostMetricsRepository.readDiskUsedPercent();
   const load = hostMetricsRepository.readLoadAverages();
 
+  const configuredDisks = params.disks ?? [];
+  const disks: MachineStatusDisk[] = configuredDisks.map((disk) => ({
+    title: disk.title,
+    pct: hostMetricsRepository.readDiskUsedPercentForMountpoint(
+      disk.mountpoint,
+    ),
+  }));
+
   const cycleMinutes = allIssuesCacheDir
     ? cycleMinutesFromMtimes(cacheFileMtimesDescending(allIssuesCacheDir))
     : null;
@@ -73,6 +89,7 @@ export const writeMachineStatus = async (
     memPct,
     cpuPct,
     diskPct,
+    ...(disks.length > 0 ? { disks } : {}),
     load: [load.oneMinute, load.fiveMinute, load.fifteenMinute],
     cycleMinutes,
     capturedAt: (params.now ?? new Date()).toISOString(),
