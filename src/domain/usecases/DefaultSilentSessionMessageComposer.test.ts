@@ -112,10 +112,66 @@ describe('DefaultSilentSessionMessageComposer', () => {
     );
     expect(section).toContain('sub-process-idle');
     expect(section).toContain('no output for 6m');
-    expect(section).toContain('may be stalled');
     expect(section).toContain('restart, hand off, or replace it');
     expect(section).toContain('waiting on an external dependency');
     expect(section).not.toContain('infinite loop');
+  });
+
+  it('presents the system-detected idle duration as the authoritative signal in the idle message', () => {
+    const section = composer.composeSubAgentSection(
+      [{ label: 'sub-process-idle', silentSeconds: 360, runningSeconds: 60 }],
+      THRESHOLDS,
+    );
+    expect(section).toContain(
+      "The system has already detected, from each sub-process's last tool activity, that it has produced no output for about the minutes shown below.",
+    );
+    expect(section).toContain(
+      'Treat that figure as the authoritative system signal; do NOT spend effort re-deriving whether the sub-process is alive.',
+    );
+    expect(section).toContain('no output for 6m');
+  });
+
+  it('forbids speculation and dismissal without evidence in the idle message', () => {
+    const section = composer.composeSubAgentSection(
+      [{ label: 'sub-process-idle', silentSeconds: 360, runningSeconds: 60 }],
+      THRESHOLDS,
+    );
+    expect(section).toContain(
+      'Around five minutes of silence is a real warning of a possible hang',
+    );
+    expect(section).toContain(
+      'do NOT speak from speculation ("probably still working") and do NOT dismiss it without evidence.',
+    );
+  });
+
+  it('requires a concrete cause-check covering recent activity and external-dependency waiting in the idle message', () => {
+    const section = composer.composeSubAgentSection(
+      [{ label: 'sub-process-idle', silentSeconds: 360, runningSeconds: 60 }],
+      THRESHOLDS,
+    );
+    expect(section).toContain('determine the CAUSE by a concrete check');
+    expect(section).toContain(
+      'a very recent push or commit, or output from any nested sub-processes this sub-process itself started',
+    );
+    expect(section).toContain(
+      'legitimately blocked waiting on an external dependency',
+    );
+    expect(section).toContain(
+      'confirm it by investigation before concluding — do not assume',
+    );
+    expect(section).toContain(
+      'if it is legitimately waiting, state that conclusion together with the concrete evidence you found',
+    );
+  });
+
+  it('requires logging the investigation result even though owner notification is not required', () => {
+    const section = composer.composeSubAgentSection(
+      [{ label: 'sub-process-idle', silentSeconds: 360, runningSeconds: 60 }],
+      THRESHOLDS,
+    );
+    expect(section).toContain(
+      'Owner notification is not required, but you MUST output your investigation result in this session so it remains as a log.',
+    );
   });
 
   it('emits a distinct long-running message for a sub-agent that has only run too long', () => {
@@ -163,7 +219,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
       THRESHOLDS,
     );
     expect(section).toContain('no output for 6m');
-    expect(section).toContain('may be stalled');
+    expect(section).toContain('determine the CAUSE by a concrete check');
     expect(section).toContain('running for 20m');
     expect(section).toContain('infinite loop');
     const sentinelOccurrences =
