@@ -83,13 +83,14 @@ type TimelineItem = {
       nodes: Array<{
         commit: {
           statusCheckRollup?: {
+            state?: string;
             contexts?: {
               nodes: Array<
                 | {
                     __typename: 'CheckRun';
                     name: string;
                     conclusion: string | null;
-                    databaseId: number;
+                    startedAt: string | null;
                   }
                 | {
                     __typename: 'StatusContext';
@@ -172,13 +173,14 @@ type PrStatusComputationData = {
     nodes: Array<{
       commit: {
         statusCheckRollup?: {
+          state?: string;
           contexts?: {
             nodes: Array<
               | {
                   __typename: 'CheckRun';
                   name: string;
                   conclusion: string | null;
-                  databaseId: number;
+                  startedAt: string | null;
                 }
               | {
                   __typename: 'StatusContext';
@@ -957,52 +959,37 @@ export class ApiV3CheerioRestIssueRepository
 
     const latestCheckRunByName = new Map<
       string,
-      { conclusion: string | null; databaseId: number }
+      { conclusion: string | null; startedAt: string | null }
     >();
+    const latestStatusContextByContext = new Map<string, string>();
     for (const ctx of contexts) {
       if (ctx.__typename === 'CheckRun') {
         const existing = latestCheckRunByName.get(ctx.name);
-        if (!existing || ctx.databaseId > existing.databaseId) {
+        if (
+          !existing ||
+          new Date(ctx.startedAt ?? 0) > new Date(existing.startedAt ?? 0)
+        ) {
           latestCheckRunByName.set(ctx.name, {
             conclusion: ctx.conclusion,
-            databaseId: ctx.databaseId,
+            startedAt: ctx.startedAt,
           });
         }
+      } else {
+        latestStatusContextByContext.set(ctx.context, ctx.state);
       }
     }
-    const failureConclusions = new Set([
-      'FAILURE',
-      'CANCELLED',
-      'TIMED_OUT',
-      'ACTION_REQUIRED',
-      'STARTUP_FAILURE',
-      'STALE',
-    ]);
-    const isCiStateSuccess = (() => {
-      if (!statusCheckRollup) return false;
-      const latestRuns = [...latestCheckRunByName.values()];
-      const statusContexts = contexts.filter(
-        (
-          ctx,
-        ): ctx is {
-          __typename: 'StatusContext';
-          context: string;
-          state: string;
-        } => ctx.__typename === 'StatusContext',
-      );
-      const hasFailure =
-        latestRuns.some(
-          (r) => r.conclusion !== null && failureConclusions.has(r.conclusion),
-        ) ||
-        statusContexts.some(
-          (ctx) => ctx.state === 'FAILURE' || ctx.state === 'ERROR',
-        );
-      if (hasFailure) return false;
-      const hasPending =
-        latestRuns.some((r) => r.conclusion === null) ||
-        statusContexts.some((ctx) => ctx.state === 'PENDING');
-      return !hasPending;
-    })();
+    const isCiStateSuccess =
+      latestCheckRunByName.size > 0 || latestStatusContextByContext.size > 0
+        ? [...latestCheckRunByName.values()].every(
+            (r) =>
+              r.conclusion === 'SUCCESS' ||
+              r.conclusion === 'NEUTRAL' ||
+              r.conclusion === 'SKIPPED',
+          ) &&
+          [...latestStatusContextByContext.values()].every(
+            (state) => state === 'SUCCESS',
+          )
+        : statusCheckRollup?.state === 'SUCCESS';
     const isPassedAllCiJob = isCiStateSuccess && allRequiredChecksPassed;
 
     const reviewThreads = data.reviewThreads?.nodes || [];
@@ -1180,13 +1167,14 @@ export class ApiV3CheerioRestIssueRepository
                         nodes {
                           commit {
                             statusCheckRollup {
+                              state
                               contexts(first: 100) {
                                 nodes {
                                   __typename
                                   ... on CheckRun {
-                                    databaseId
                                     name
                                     conclusion
+                                    startedAt
                                   }
                                   ... on StatusContext {
                                     context
@@ -1397,13 +1385,14 @@ export class ApiV3CheerioRestIssueRepository
               nodes {
                 commit {
                   statusCheckRollup {
+                    state
                     contexts(first: 100) {
                       nodes {
                         __typename
                         ... on CheckRun {
-                          databaseId
                           name
                           conclusion
+                          startedAt
                         }
                         ... on StatusContext {
                           context
