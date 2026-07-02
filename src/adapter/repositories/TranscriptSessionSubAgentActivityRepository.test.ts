@@ -654,4 +654,197 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
       },
     ]);
   });
+
+  const writeMainTranscript = (sessionName: string, lines: object[]): void => {
+    const filePath = mainTranscriptPathFor(sessionName);
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(
+      filePath,
+      lines.map((line) => JSON.stringify(line)).join('\n'),
+      'utf8',
+    );
+  };
+
+  const killedNotificationEntry = (
+    agentId: string,
+    timestamp: string,
+  ): object => ({
+    type: 'queue-operation',
+    operation: 'enqueue',
+    timestamp,
+    content: `<task-notification>\n<task-id>${agentId}</task-id>\n<status>killed</status>\n</task-notification>`,
+  });
+
+  const failedNotificationEntry = (
+    agentId: string,
+    timestamp: string,
+  ): object => ({
+    type: 'queue-operation',
+    operation: 'enqueue',
+    timestamp,
+    content: `<task-notification>\n<task-id>${agentId}</task-id>\n<status>failed</status>\n</task-notification>`,
+  });
+
+  const completedNotificationEntry = (
+    agentId: string,
+    timestamp: string,
+  ): object => ({
+    type: 'queue-operation',
+    operation: 'enqueue',
+    timestamp,
+    content: `<task-notification>\n<task-id>${agentId}</task-id>\n<status>completed</status>\n</task-notification>`,
+  });
+
+  it('excludes a sub-agent killed via TaskStop when the parent transcript records a killed notification for its id', async () => {
+    const sessionName = 'https_//github_com/owner/repo/issues/9';
+    const killedAgentId = 'aaabbbbcccc00001';
+    writeAgentTranscript(
+      sessionName,
+      killedAgentId,
+      pendingToolUseEntries('2026-06-27T11:00:00.000Z'),
+      nowEpochSeconds - 300,
+    );
+    writeMainTranscript(sessionName, [
+      killedNotificationEntry(killedAgentId, '2026-06-27T11:55:00.000Z'),
+    ]);
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      now,
+      noOpCeilingSeconds,
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.size).toBe(0);
+  });
+
+  it('excludes a sub-agent whose process crashed when the parent transcript records a failed notification for its id', async () => {
+    const sessionName = 'https_//github_com/owner/repo/issues/9';
+    const failedAgentId = 'aaabbbbcccc00002';
+    writeAgentTranscript(
+      sessionName,
+      failedAgentId,
+      pendingToolUseEntries('2026-06-27T11:00:00.000Z'),
+      nowEpochSeconds - 300,
+    );
+    writeMainTranscript(sessionName, [
+      failedNotificationEntry(failedAgentId, '2026-06-27T11:55:00.000Z'),
+    ]);
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      now,
+      noOpCeilingSeconds,
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.size).toBe(0);
+  });
+
+  it('does not exclude a sub-agent whose parent transcript records only a completed notification for its id', async () => {
+    const sessionName = 'https_//github_com/owner/repo/issues/9';
+    const startTimestamp = '2026-06-27T11:45:00.000Z';
+    const completedAgentId = 'aaabbbbcccc00003';
+    writeAgentTranscript(
+      sessionName,
+      completedAgentId,
+      pendingToolUseEntries(startTimestamp),
+      nowEpochSeconds - 120,
+    );
+    writeMainTranscript(sessionName, [
+      completedNotificationEntry(completedAgentId, '2026-06-27T11:58:00.000Z'),
+    ]);
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      now,
+      noOpCeilingSeconds,
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.get(sessionName)).toEqual([
+      {
+        label: `agent-${completedAgentId}`,
+        silentSeconds: 120,
+        runningSeconds: 900,
+      },
+    ]);
+  });
+
+  it('excludes a killed sub-agent but reports a still-active sibling in the same session', async () => {
+    const sessionName = 'https_//github_com/owner/repo/issues/9';
+    const killedAgentId = 'aaabbbbcccc00004';
+    const aliveAgentId = 'aaabbbbcccc00005';
+    writeAgentTranscript(
+      sessionName,
+      killedAgentId,
+      pendingToolUseEntries('2026-06-27T11:00:00.000Z'),
+      nowEpochSeconds - 600,
+    );
+    writeAgentTranscript(
+      sessionName,
+      aliveAgentId,
+      runningEntries('2026-06-27T11:45:00.000Z'),
+      nowEpochSeconds - 120,
+    );
+    writeMainTranscript(sessionName, [
+      killedNotificationEntry(killedAgentId, '2026-06-27T11:55:00.000Z'),
+    ]);
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      now,
+      noOpCeilingSeconds,
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.get(sessionName)).toEqual([
+      {
+        label: `agent-${aliveAgentId}`,
+        silentSeconds: 120,
+        runningSeconds: 900,
+      },
+    ]);
+  });
+
+  it('reports a sub-agent even when the parent transcript path does not exist', async () => {
+    const sessionName = 'https_//github_com/owner/repo/issues/9';
+    const startTimestamp = '2026-06-27T11:45:00.000Z';
+    writeAgentTranscript(
+      sessionName,
+      'aabb1122cc3344ee',
+      runningEntries(startTimestamp),
+      nowEpochSeconds - 120,
+    );
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      now,
+      noOpCeilingSeconds,
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.get(sessionName)).toEqual([
+      {
+        label: 'agent-aabb1122cc3344ee',
+        silentSeconds: 120,
+        runningSeconds: 900,
+      },
+    ]);
+  });
 });

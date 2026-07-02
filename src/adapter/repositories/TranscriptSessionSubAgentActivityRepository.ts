@@ -95,6 +95,45 @@ const parseTranscript = (content: string): ParsedTranscript => {
 
 const clampToZero = (value: number): number => (value > 0 ? value : 0);
 
+const parseKilledOrFailedAgentIds = (content: string): Set<string> => {
+  const result = new Set<string>();
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed.length === 0) {
+      continue;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch {
+      continue;
+    }
+    if (!isRecord(parsed)) {
+      continue;
+    }
+    if (readString(parsed, 'type') !== 'queue-operation') {
+      continue;
+    }
+    if (readString(parsed, 'operation') !== 'enqueue') {
+      continue;
+    }
+    const notifContent = readString(parsed, 'content');
+    if (notifContent === null) {
+      continue;
+    }
+    const taskIdMatch = notifContent.match(/<task-id>(a[0-9a-f]+)<\/task-id>/);
+    const statusMatch = notifContent.match(/<status>([^<]+)<\/status>/);
+    if (!taskIdMatch || !statusMatch) {
+      continue;
+    }
+    const status = statusMatch[1];
+    if (status === 'killed' || status === 'failed') {
+      result.add(taskIdMatch[1]);
+    }
+  }
+  return result;
+};
+
 export class TranscriptSessionSubAgentActivityRepository implements SessionSubAgentActivityRepository {
   constructor(
     private readonly directoryResolver: SubAgentTranscriptDirectoryResolver,
@@ -117,7 +156,13 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
       if (directory === null) {
         continue;
       }
-      const activities = this.collectActivities(directory, nowEpochSeconds);
+      const killedOrFailedAgentIds =
+        this.loadKilledOrFailedAgentIds(mainTranscriptPath);
+      const activities = this.collectActivities(
+        directory,
+        nowEpochSeconds,
+        killedOrFailedAgentIds,
+      );
       if (activities.length > 0) {
         result.set(sessionName, activities);
       }
@@ -125,9 +170,25 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
     return result;
   };
 
+  private loadKilledOrFailedAgentIds = (
+    mainTranscriptPath: string | null,
+  ): Set<string> => {
+    if (mainTranscriptPath === null) {
+      return new Set();
+    }
+    let content: string;
+    try {
+      content = fs.readFileSync(mainTranscriptPath, 'utf8');
+    } catch {
+      return new Set();
+    }
+    return parseKilledOrFailedAgentIds(content);
+  };
+
   private collectActivities = (
     directory: string,
     nowEpochSeconds: number,
+    killedOrFailedAgentIds: Set<string>,
   ): SubAgentActivity[] => {
     let entries: fs.Dirent[];
     try {
@@ -139,6 +200,10 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
     for (const entry of entries) {
       const fileName = entry.name;
       if (!fileName.startsWith('agent-') || !fileName.endsWith('.jsonl')) {
+        continue;
+      }
+      const agentId = fileName.slice('agent-'.length, -'.jsonl'.length);
+      if (killedOrFailedAgentIds.has(agentId)) {
         continue;
       }
       const filePath = path.join(directory, fileName);
