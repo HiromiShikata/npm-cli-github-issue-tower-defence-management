@@ -43,6 +43,17 @@ export class ProjectNotFoundError extends Error {
 }
 
 const SLOW_SWEEP_INTERVAL_SECONDS = 600;
+const WORKFLOW_INCIDENT_ISSUE_TITLE =
+  'Error in HandleScheduledEvent / workflow incident';
+
+function isTransientApiError(error: Error): boolean {
+  const msg = error.message;
+  return (
+    /\b(401|403|429|500|502|503|504)\b/.test(msg) ||
+    /rate.?limit|RATE_LIMIT/i.test(msg) ||
+    /bad credentials/i.test(msg)
+  );
+}
 
 export class HandleScheduledEventUseCase {
   constructor(
@@ -244,11 +255,8 @@ export class HandleScheduledEventUseCase {
       if (!(e instanceof Error)) {
         throw e;
       }
-      await this.issueRepository.createNewIssue(
-        input.org,
-        input.workingReport.repo,
-        `Error in HandleScheduledEvent / workflow incident`,
-        `${e.message}
+      if (!isTransientApiError(e)) {
+        const errorBody = `${e.message}
 \`\`\`
 ${e.stack}
 \`\`\`
@@ -256,10 +264,30 @@ ${e.stack}
 ${JSON.stringify(e)}
 \`\`\`
 
-`,
-        [input.manager],
-        ['error'],
-      );
+`;
+        const existingIncidentIssues = await this.issueRepository.searchIssue({
+          owner: input.org,
+          repositoryName: input.workingReport.repo,
+          type: 'issue',
+          state: 'open',
+          title: WORKFLOW_INCIDENT_ISSUE_TITLE,
+        });
+        if (existingIncidentIssues.length > 0) {
+          await this.issueRepository.createCommentByUrl(
+            existingIncidentIssues[0].url,
+            errorBody,
+          );
+        } else {
+          await this.issueRepository.createNewIssue(
+            input.org,
+            input.workingReport.repo,
+            WORKFLOW_INCIDENT_ISSUE_TITLE,
+            errorBody,
+            [input.manager],
+            ['error'],
+          );
+        }
+      }
       throw e;
     }
 
