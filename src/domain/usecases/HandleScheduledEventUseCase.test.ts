@@ -852,6 +852,174 @@ describe('HandleScheduledEventUseCase', () => {
       });
     });
 
+    describe('workflow incident issue deduplication in catch block', () => {
+      const errorInput = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        allowIssueCacheMinutes: 60,
+      };
+
+      beforeEach(() => {
+        mockIssueRepository.searchIssue.mockResolvedValue([]);
+      });
+
+      it('should create a new incident issue when none exists for a non-transient error', async () => {
+        const nonTransientError = new Error(
+          'something went wrong unexpectedly',
+        );
+        mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
+          nonTransientError,
+        );
+
+        await expect(useCase.run(errorInput)).rejects.toThrow(
+          'something went wrong unexpectedly',
+        );
+
+        expect(mockIssueRepository.searchIssue).toHaveBeenCalledWith(
+          expect.objectContaining({
+            owner: 'test-org',
+            repositoryName: 'test-repo',
+            type: 'issue',
+            state: 'open',
+            title: 'Error in HandleScheduledEvent / workflow incident',
+          }),
+        );
+        expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
+          'test-org',
+          'test-repo',
+          'Error in HandleScheduledEvent / workflow incident',
+          expect.stringContaining('something went wrong unexpectedly'),
+          ['test-manager'],
+          ['error'],
+        );
+        expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      });
+
+      it('should add a comment to the existing incident issue when one already exists', async () => {
+        const nonTransientError = new Error(
+          'something went wrong unexpectedly',
+        );
+        mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
+          nonTransientError,
+        );
+        const existingIssueUrl =
+          'https://github.com/test-org/test-repo/issues/42';
+        mockIssueRepository.searchIssue.mockResolvedValue([
+          {
+            url: existingIssueUrl,
+            title: 'Error in HandleScheduledEvent / workflow incident',
+            number: '42',
+          },
+        ]);
+
+        await expect(useCase.run(errorInput)).rejects.toThrow(
+          'something went wrong unexpectedly',
+        );
+
+        expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
+          existingIssueUrl,
+          expect.stringContaining('something went wrong unexpectedly'),
+        );
+        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalledWith(
+          expect.anything(),
+          expect.anything(),
+          'Error in HandleScheduledEvent / workflow incident',
+          expect.anything(),
+          expect.anything(),
+          expect.anything(),
+        );
+      });
+
+      it('should not create or comment an incident issue for a transient 401 error', async () => {
+        const transientError = new Error('HttpError: 401 Unauthorized');
+        mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
+          transientError,
+        );
+
+        await expect(useCase.run(errorInput)).rejects.toThrow('401');
+
+        expect(mockIssueRepository.searchIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      });
+
+      it('should not create or comment an incident issue for a transient 429 rate limit error', async () => {
+        const transientError = new Error('API rate limit exceeded 429');
+        mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
+          transientError,
+        );
+
+        await expect(useCase.run(errorInput)).rejects.toThrow('429');
+
+        expect(mockIssueRepository.searchIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      });
+
+      it('should not create or comment an incident issue for a transient 502 error', async () => {
+        const transientError = new Error('502 Bad Gateway');
+        mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
+          transientError,
+        );
+
+        await expect(useCase.run(errorInput)).rejects.toThrow('502');
+
+        expect(mockIssueRepository.searchIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      });
+
+      it('should not create or comment an incident issue for a transient 503 error', async () => {
+        const transientError = new Error('503 Service Unavailable');
+        mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
+          transientError,
+        );
+
+        await expect(useCase.run(errorInput)).rejects.toThrow('503');
+
+        expect(mockIssueRepository.searchIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      });
+
+      it('should not create or comment an incident issue for a GraphQL RATE_LIMIT error', async () => {
+        const transientError = new Error('GraphQL error: RATE_LIMIT exceeded');
+        mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
+          transientError,
+        );
+
+        await expect(useCase.run(errorInput)).rejects.toThrow('RATE_LIMIT');
+
+        expect(mockIssueRepository.searchIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      });
+
+      it('should not create or comment an incident issue for a bad credentials error', async () => {
+        const transientError = new Error('Bad credentials');
+        mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
+          transientError,
+        );
+
+        await expect(useCase.run(errorInput)).rejects.toThrow(
+          'Bad credentials',
+        );
+
+        expect(mockIssueRepository.searchIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      });
+    });
+
     describe('spreadsheet access failure error issue creation', () => {
       const failureInput = {
         projectName: 'test-project',
