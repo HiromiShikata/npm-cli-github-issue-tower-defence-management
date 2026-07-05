@@ -1,3 +1,10 @@
+## [1.119.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.119.3...v1.119.4) (2026-07-05)
+
+
+### Bug Fixes
+
+* **HandleScheduledEventUseCase:** deduplicate workflow incident issues in catch block ([#1136](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1136)) ([636563d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/636563d2ff4458e26ae8610c27ed6257b5c85fa4))
+
 ## [1.119.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.119.2...v1.119.3) (2026-07-02)
 
 
