@@ -33,9 +33,7 @@ export class IllegalIssueStatusError extends Error {
   }
 }
 type RejectedReasonType =
-  | 'NO_REPORT_FROM_AGENT_BOT'
-  | 'REPORT_HAS_NEXT_STEP'
-  | PrRejectedReasonType;
+  'NO_REPORT_FROM_AGENT_BOT' | 'REPORT_HAS_NEXT_STEP' | PrRejectedReasonType;
 
 export class NotifyFinishedIssuePreparationUseCase {
   private readonly issueRejectionEvaluator: IssueRejectionEvaluator;
