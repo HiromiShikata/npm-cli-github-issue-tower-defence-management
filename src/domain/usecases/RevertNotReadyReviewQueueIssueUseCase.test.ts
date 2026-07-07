@@ -138,6 +138,7 @@ const linkRelatedOpenPrsToIssue = (
     }),
   );
   mockIssueRepository.getAllIssues.mockResolvedValue({
+    project: createMockProject(),
     issues: [issue, ...prItems],
     cacheUsed: false,
   });
@@ -179,9 +180,11 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
     };
 
     mockIssueRepository = {
-      getAllIssues: jest
-        .fn()
-        .mockResolvedValue({ issues: [], cacheUsed: false }),
+      getAllIssues: jest.fn().mockResolvedValue({
+        project: mockProject,
+        issues: [],
+        cacheUsed: false,
+      }),
       updateStatus: jest.fn().mockResolvedValue(undefined),
       updateStory: jest.fn().mockResolvedValue(undefined),
       findRelatedOpenPRs: jest.fn().mockResolvedValue([]),
@@ -205,6 +208,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
   describe('Awaiting Quality Check processing', () => {
     it('should do nothing when there are no Awaiting Quality Check issues', async () => {
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [
           createMockIssue({ status: 'Awaiting Workspace' }),
           createMockIssue({ status: 'Preparation' }),
@@ -214,7 +218,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -228,13 +231,13 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         labels: ['llm-agent'],
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [issue],
         cacheUsed: false,
       });
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -247,13 +250,13 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         status: 'Awaiting Quality Check',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [issue],
         cacheUsed: false,
       });
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -278,13 +281,13 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         labels: ['story'],
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [issue],
         cacheUsed: false,
       });
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         labelsAsLlmAgentName: ['story', 'chore', 'accounting'],
         allowedIssueAuthors: ['owner'],
       });
@@ -299,13 +302,13 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         labels: ['chore'],
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [issue],
         cacheUsed: false,
       });
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         labelsAsLlmAgentName: ['story', 'chore'],
         allowedIssueAuthors: ['owner'],
       });
@@ -320,13 +323,13 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         labels: ['story'],
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [issue],
         cacheUsed: false,
       });
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -347,13 +350,13 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         labels: ['story'],
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [issue],
         cacheUsed: false,
       });
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         labelsAsLlmAgentName: null,
         allowedIssueAuthors: ['owner'],
       });
@@ -373,7 +376,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -391,7 +393,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -424,7 +425,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -453,7 +453,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -482,7 +481,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -512,7 +510,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -546,7 +543,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -589,6 +585,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           closingIssueReferenceUrls: ['https://github.com/user/repo/issues/2'],
         });
         mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mockProject,
           issues: [readyIssue, notReadyIssue, readyPrItem, conflictedPrItem],
           cacheUsed: false,
         });
@@ -609,7 +606,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
         await useCase.run({
           projectUrl: 'https://github.com/users/user/projects/1',
-          allowIssueCacheMinutes: 10,
           allowedIssueAuthors: ['owner'],
         });
 
@@ -645,6 +641,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           closingIssueReferenceUrls: ['https://github.com/user/repo/issues/42'],
         });
         mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mockProject,
           issues: [prItem, issue],
           cacheUsed: false,
         });
@@ -654,7 +651,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
         await useCase.run({
           projectUrl: 'https://github.com/users/user/projects/1',
-          allowIssueCacheMinutes: 10,
           allowedIssueAuthors: ['owner'],
         });
 
@@ -680,13 +676,13 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           closingIssueReferenceUrls: ['https://github.com/user/repo/issues/9'],
         });
         mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mockProject,
           issues: [issue, closedPrItem],
           cacheUsed: false,
         });
 
         await useCase.run({
           projectUrl: 'https://github.com/users/user/projects/1',
-          allowIssueCacheMinutes: 10,
           allowedIssueAuthors: ['owner'],
         });
 
@@ -718,7 +714,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       const runCycle = () =>
         useCase.run({
           projectUrl: 'https://github.com/users/user/projects/1',
-          allowIssueCacheMinutes: 10,
           allowedIssueAuthors: ['owner'],
         });
 
@@ -918,7 +913,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
         await useCase.run({
           projectUrl: 'https://github.com/users/user/projects/1',
-          allowIssueCacheMinutes: 10,
           allowedIssueAuthors: ['owner'],
           changeTargetPathAliases: {
             adapters: 'src/domain/usecases/adapter-interfaces',
@@ -938,7 +932,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
         await useCase.run({
           projectUrl: 'https://github.com/users/user/projects/1',
-          allowIssueCacheMinutes: 10,
           allowedIssueAuthors: ['owner'],
           changeTargetPathAliases: {
             adapters: 'src/domain/usecases/adapter-interfaces',
@@ -953,6 +946,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
   describe('Unread pull request processing', () => {
     it('should do nothing when there are no Unread pull requests', async () => {
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [
           createMockPullRequest({ status: 'Awaiting Workspace' }),
           createMockPullRequest({ status: 'Preparation' }),
@@ -962,7 +956,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -978,13 +971,13 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         url: 'https://github.com/user/repo/issues/1',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [issue],
         cacheUsed: false,
       });
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -999,13 +992,13 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         labels: ['llm-agent'],
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [pullRequest],
         cacheUsed: false,
       });
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -1019,6 +1012,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         status: 'Unread',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [pullRequest],
         cacheUsed: false,
       });
@@ -1026,7 +1020,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -1040,6 +1033,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         status: 'Unread',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [pullRequest],
         cacheUsed: false,
       });
@@ -1050,7 +1044,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -1079,6 +1072,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         status: 'Unread',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [pullRequest],
         cacheUsed: false,
       });
@@ -1090,7 +1084,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -1115,6 +1108,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         status: 'Unread',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [pullRequest],
         cacheUsed: false,
       });
@@ -1125,7 +1119,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -1150,6 +1143,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         status: 'Unread',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [pullRequest],
         cacheUsed: false,
       });
@@ -1162,7 +1156,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -1187,6 +1180,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         status: 'Unread',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [pullRequest],
         cacheUsed: false,
       });
@@ -1197,7 +1191,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -1222,6 +1215,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         status: 'Unread',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [pullRequest],
         cacheUsed: false,
       });
@@ -1229,7 +1223,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -1257,6 +1250,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         status: 'Unread',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [pullRequest],
         cacheUsed: false,
       });
@@ -1267,7 +1261,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -1306,13 +1299,13 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         status: 'Unread',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [pullRequest],
         cacheUsed: false,
       });
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -1328,6 +1321,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           author: 'outside-contributor',
         });
         mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mockProject,
           issues: [pullRequest],
           cacheUsed: false,
         });
@@ -1338,7 +1332,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
         await useCase.run({
           projectUrl: 'https://github.com/users/user/projects/1',
-          allowIssueCacheMinutes: 10,
           allowedIssueAuthors: ['owner'],
         });
 
@@ -1353,6 +1346,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           author: 'owner',
         });
         mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mockProject,
           issues: [pullRequest],
           cacheUsed: false,
         });
@@ -1363,7 +1357,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
         await useCase.run({
           projectUrl: 'https://github.com/users/user/projects/1',
-          allowIssueCacheMinutes: 10,
           allowedIssueAuthors: ['owner'],
         });
 
@@ -1389,6 +1382,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           author: 'dependabot[bot]',
         });
         mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mockProject,
           issues: [pullRequest],
           cacheUsed: false,
         });
@@ -1399,7 +1393,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
         await useCase.run({
           projectUrl: 'https://github.com/users/user/projects/1',
-          allowIssueCacheMinutes: 10,
           allowedIssueAuthors: ['owner'],
         });
 
@@ -1414,6 +1407,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           author: 'dependabot[bot]',
         });
         mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mockProject,
           issues: [pullRequest],
           cacheUsed: false,
         });
@@ -1424,7 +1418,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
         await useCase.run({
           projectUrl: 'https://github.com/users/user/projects/1',
-          allowIssueCacheMinutes: 10,
           allowedIssueAuthors: ['owner', 'dependabot[bot]'],
         });
 
@@ -1445,6 +1438,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           author: 'outside-contributor',
         });
         mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mockProject,
           issues: [pullRequest],
           cacheUsed: false,
         });
@@ -1455,7 +1449,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
         await useCase.run({
           projectUrl: 'https://github.com/users/user/projects/1',
-          allowIssueCacheMinutes: 10,
           allowedIssueAuthors: null,
         });
 
@@ -1470,6 +1463,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           author: 'owner',
         });
         mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mockProject,
           issues: [pullRequest],
           cacheUsed: false,
         });
@@ -1480,7 +1474,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
         await useCase.run({
           projectUrl: 'https://github.com/users/user/projects/1',
-          allowIssueCacheMinutes: 10,
         });
 
         expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
@@ -1494,6 +1487,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           author: 'owner',
         });
         mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mockProject,
           issues: [pullRequest],
           cacheUsed: false,
         });
@@ -1504,7 +1498,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
         await useCase.run({
           projectUrl: 'https://github.com/users/user/projects/1',
-          allowIssueCacheMinutes: 10,
           allowedIssueAuthors: [],
         });
 

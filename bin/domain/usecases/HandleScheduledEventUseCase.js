@@ -55,12 +55,8 @@ class HandleScheduledEventUseCase {
             if (!projectId) {
                 throw new ProjectNotFoundError(`Project not found. projectUrl: ${input.projectUrl}`);
             }
-            const project = await this.projectRepository.getProject(projectId);
-            if (!project) {
-                throw new ProjectNotFoundError(`Project not found. projectId: ${projectId} projectUrl: ${input.projectUrl}`);
-            }
             const now = await this.dateRepository.now();
-            const { issues, cacheUsed } = await this.issueRepository.getAllIssues(projectId, input.allowIssueCacheMinutes);
+            const { issues, project, cacheUsed, } = await this.issueRepository.getAllIssues(projectId);
             const storyIssues = await this.storyIssues({
                 project,
                 issues,
@@ -167,7 +163,6 @@ ${JSON.stringify(e)}
             });
             await this.revertNotReadyReviewQueueIssueUseCase.run({
                 projectUrl: input.projectUrl,
-                allowIssueCacheMinutes: input.allowIssueCacheMinutes,
                 labelsAsLlmAgentName,
                 changeTargetPathAliases: input.changeTargetPathAliases,
                 allowedIssueAuthors,
@@ -189,7 +184,6 @@ ${JSON.stringify(e)}
                 if (input.startPreparation.preparationProcessCheckCommand) {
                     await this.revertOrphanedPreparationUseCase.run({
                         projectUrl: input.projectUrl,
-                        allowIssueCacheMinutes: input.allowIssueCacheMinutes,
                         preparationProcessCheckCommand: input.startPreparation.preparationProcessCheckCommand,
                         thresholdForAutoReject: input.thresholdForAutoReject ?? 3,
                         awLogDirectoryPath: input.startPreparation.awLogDirectoryPath,
@@ -209,7 +203,6 @@ ${JSON.stringify(e)}
                     utilizationPercentageThreshold: input.startPreparation.utilizationPercentageThreshold ?? 90,
                     allowedIssueAuthors,
                     codexHomeCandidates: input.startPreparation.codexHomeCandidates ?? null,
-                    allowIssueCacheMinutes: input.allowIssueCacheMinutes,
                     labelsAsLlmAgentName,
                 });
                 return { rotationOrder: preparationResult.rotationOrder };

@@ -18,7 +18,7 @@ class RevertOrphanedPreparationUseCase {
             if (!project) {
                 throw new Error(`Project not found. projectId: ${projectId} projectUrl: ${params.projectUrl}`);
             }
-            const { issues } = await this.issueRepository.getAllIssues(projectId, params.allowIssueCacheMinutes);
+            const { issues } = await this.issueRepository.getAllIssues(projectId);
             const preparationIssues = issues.filter((issue) => issue.status === WorkflowStatus_1.PREPARATION_STATUS_NAME);
             const awaitingWorkspaceStatusOption = project.status.statuses.find((s) => s.name === WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME);
             if (!awaitingWorkspaceStatusOption) {

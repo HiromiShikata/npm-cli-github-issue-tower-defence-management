@@ -182,8 +182,6 @@ export class HandleScheduledEventUseCaseHandler {
       allowedIssueAuthors: normalizeAllowedIssueAuthors(
         input.allowedIssueAuthors,
       ),
-      allowIssueCacheMinutes:
-        readmeConfig.allowIssueCacheMinutes ?? input.allowIssueCacheMinutes,
       claudeCodeOauthTokenListJsonPath:
         readmeConfig.claudeCodeOauthTokenListJsonPath ??
         input.claudeCodeOauthTokenListJsonPath,
@@ -302,6 +300,8 @@ export class HandleScheduledEventUseCaseHandler {
       restIssueRepository,
       graphqlProjectItemRepository,
       localStorageCacheRepository,
+      projectRepository,
+      systemDateRepository,
       ...githubRepositoryParams,
     );
     const setupTowerDefenceProjectUseCase = new SetupTowerDefenceProjectUseCase(
@@ -438,7 +438,6 @@ export class HandleScheduledEventUseCaseHandler {
             mergedInput.startPreparation?.maximumPreparingIssuesCount ?? null,
           utilizationPercentageThreshold:
             mergedInput.startPreparation?.utilizationPercentageThreshold ?? 90,
-          allowIssueCacheMinutes: mergedInput.allowIssueCacheMinutes,
           thresholdForAutoReject: 3,
         },
         preparationProcessCheckCommand:
@@ -554,7 +553,6 @@ export class HandleScheduledEventUseCaseHandler {
       try {
         await cleanStaleTmuxSessions({
           project: result.project,
-          allowCacheMinutes: mergedInput.allowIssueCacheMinutes,
           issueRepository,
           localCommandRunner: nodeLocalCommandRunner,
           now: inTmuxNow,

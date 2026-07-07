@@ -38,7 +38,6 @@ export class RevertOrphanedPreparationUseCase {
 
   run = async (params: {
     projectUrl: string;
-    allowIssueCacheMinutes: number;
     preparationProcessCheckCommand: string;
     thresholdForAutoReject: number;
     awLogDirectoryPath?: string;
@@ -58,10 +57,7 @@ export class RevertOrphanedPreparationUseCase {
         `Project not found. projectId: ${projectId} projectUrl: ${params.projectUrl}`,
       );
     }
-    const { issues } = await this.issueRepository.getAllIssues(
-      projectId,
-      params.allowIssueCacheMinutes,
-    );
+    const { issues } = await this.issueRepository.getAllIssues(projectId);
 
     const preparationIssues = issues.filter(
       (issue) => issue.status === PREPARATION_STATUS_NAME,

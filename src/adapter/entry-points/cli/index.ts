@@ -26,6 +26,7 @@ import { RestIssueRepository } from '../../repositories/issue/RestIssueRepositor
 import { GraphqlProjectItemRepository } from '../../repositories/issue/GraphqlProjectItemRepository';
 import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3CheerioRestIssueRepository';
 import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
+import { SystemDateRepository } from '../../repositories/SystemDateRepository';
 import { BaseGitHubRepository } from '../../repositories/BaseGitHubRepository';
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
@@ -56,7 +57,6 @@ type StartDaemonOptions = {
   fallbackLlmModelName?: string;
   defaultLlmAgentName?: string;
   maximumPreparingIssuesCount?: string;
-  allowIssueCacheMinutes?: string;
   utilizationPercentageThreshold?: string;
   allowedIssueAuthors?: string;
   preparationProcessCheckCommand?: string;
@@ -186,10 +186,6 @@ program
     'Maximum number of issues in preparation status (default: 6 per available Claude OAuth token, otherwise 6)',
   )
   .option(
-    '--allowIssueCacheMinutes <minutes>',
-    'Allow cache for issues in minutes (default: 10)',
-  )
-  .option(
     '--utilizationPercentageThreshold <percent>',
     'Per-token Claude 5h utilization % threshold; tokens at or above it are excluded from rotation. Per-token concurrency also tapers from 6 slots down to 1 as either the 5h or 7d utilization rises from 80% toward 100%, taking the more restrictive of the two (default: 90)',
   )
@@ -218,9 +214,6 @@ program
       defaultLlmAgentName: options.defaultLlmAgentName,
       maximumPreparingIssuesCount: options.maximumPreparingIssuesCount
         ? Number(options.maximumPreparingIssuesCount)
-        : undefined,
-      allowIssueCacheMinutes: options.allowIssueCacheMinutes
-        ? Number(options.allowIssueCacheMinutes)
         : undefined,
       utilizationPercentageThreshold: options.utilizationPercentageThreshold
         ? Number(options.utilizationPercentageThreshold)
@@ -279,8 +272,6 @@ program
       maximumPreparingIssuesCount = parsedCount;
     }
 
-    const allowIssueCacheMinutes = config.allowIssueCacheMinutes ?? 10;
-
     console.log(
       `maximumPreparingIssuesCount: ${maximumPreparingIssuesCount ?? 'null (default: 6 per available Claude OAuth token, otherwise 6)'}`,
     );
@@ -314,6 +305,8 @@ program
       restIssueRepository,
       graphqlProjectItemRepository,
       localStorageCacheRepository,
+      projectRepository,
+      new SystemDateRepository(),
       ...githubRepositoryParams,
     );
     const localCommandRunner = new NodeLocalCommandRunner();
@@ -332,7 +325,6 @@ program
       );
       await revertUseCase.run({
         projectUrl,
-        allowIssueCacheMinutes,
         preparationProcessCheckCommand,
         thresholdForAutoReject: config.thresholdForAutoReject ?? 3,
         awLogDirectoryPath: config.awLogDirectoryPath,
@@ -376,7 +368,6 @@ program
         config.utilizationPercentageThreshold ?? 90,
       allowedIssueAuthors,
       codexHomeCandidates,
-      allowIssueCacheMinutes,
       labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
     });
     if (preparationResult.rotationOrder !== null) {
@@ -494,6 +485,8 @@ program
       restIssueRepository,
       graphqlProjectItemRepository,
       localStorageCacheRepository,
+      projectRepository,
+      new SystemDateRepository(),
       ...githubRepositoryParams,
     );
     const issueCommentRepository = new GitHubIssueCommentRepository(token);
@@ -586,11 +579,17 @@ program
     const graphqlProjectItemRepository = new GraphqlProjectItemRepository(
       ...githubRepositoryParams,
     );
+    const projectRepository = new GraphqlProjectRepository(
+      ...githubRepositoryParams,
+      localStorageCacheRepository,
+    );
     const issueRepository = new ApiV3CheerioRestIssueRepository(
       apiV3IssueRepository,
       restIssueRepository,
       graphqlProjectItemRepository,
       localStorageCacheRepository,
+      projectRepository,
+      new SystemDateRepository(),
       ...githubRepositoryParams,
     );
     const issueCommentRepository = new GitHubIssueCommentRepository(token);
@@ -688,6 +687,8 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     restIssueRepository,
     graphqlProjectItemRepository,
     localStorageCacheRepository,
+    projectRepository,
+    new SystemDateRepository(),
     ...githubRepositoryParams,
   );
 
@@ -934,6 +935,8 @@ program
       restIssueRepository,
       graphqlProjectItemRepository,
       localStorageCacheRepository,
+      projectRepository,
+      new SystemDateRepository(),
       ...githubRepositoryParams,
     );
 
@@ -943,11 +946,7 @@ program
       process.exit(1);
     }
 
-    const allowIssueCacheMinutes = config.allowIssueCacheMinutes ?? 10;
-    const { issues } = await issueRepository.getAllIssues(
-      projectId,
-      allowIssueCacheMinutes,
-    );
+    const { issues } = await issueRepository.getAllIssues(projectId);
 
     const handler = new InTmuxByHumanSessionTokenCountHandler();
     const output = handler.handle({

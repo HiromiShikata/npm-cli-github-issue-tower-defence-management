@@ -3,11 +3,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ApiV3CheerioRestIssueRepository = void 0;
+exports.ApiV3CheerioRestIssueRepository = exports.FULL_ISSUE_FETCH_INTERVAL_MS = void 0;
 const typia_1 = __importDefault(require("typia"));
 const BaseGitHubRepository_1 = require("../BaseGitHubRepository");
 const utils_1 = require("../utils");
 const githubRateLimitRetry_1 = require("./githubRateLimitRetry");
+exports.FULL_ISSUE_FETCH_INTERVAL_MS = 60 * 60 * 1000;
 function isIssueTimelineResponse(value) {
     if (typeof value !== 'object' || value === null)
         return false;
@@ -162,15 +163,18 @@ const fnmatch = (pattern, str) => {
     }
 };
 class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
-    constructor(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, localStorageRepository, ghToken = process.env.GH_TOKEN || 'dummy', sleep = githubRateLimitRetry_1.realSleep) {
+    constructor(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, projectRepository, dateRepository, localStorageRepository, ghToken = process.env.GH_TOKEN || 'dummy', sleep = githubRateLimitRetry_1.realSleep) {
         super(localStorageRepository, ghToken);
         this.apiV3IssueRepository = apiV3IssueRepository;
         this.restIssueRepository = restIssueRepository;
         this.graphqlProjectItemRepository = graphqlProjectItemRepository;
         this.localStorageCacheRepository = localStorageCacheRepository;
+        this.projectRepository = projectRepository;
+        this.dateRepository = dateRepository;
         this.localStorageRepository = localStorageRepository;
         this.ghToken = ghToken;
         this.sleep = sleep;
+        this.getAllIssuesRefreshMemo = new Map();
         this.fetchWithRateLimitRetry = (request) => (0, githubRateLimitRetry_1.fetchWithGitHubRateLimitRetry)(request, this.sleep);
         this.updateStatus = async (project, issue, statusId) => {
             await this.graphqlProjectItemRepository.updateProjectField(project.id, project.status.fieldId, issue.itemId, { singleSelectOptionId: statusId });
@@ -217,64 +221,120 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 closingIssueReferenceUrls: item.closingIssueReferenceUrls,
             };
         };
-        this.getAllIssuesFromCache = async (cacheKey, allowCacheMinutes) => {
-            const cache = await this.localStorageCacheRepository.getLatest(cacheKey);
-            if (cache) {
-                const now = new Date();
-                const cacheTimestamp = cache.timestamp;
-                const diff = now.getTime() - cacheTimestamp.getTime();
-                if (diff < allowCacheMinutes * 60 * 1000) {
-                    if (!Array.isArray(cache.value)) {
-                        return null;
-                    }
-                    const issues = cache.value
-                        .filter((issue) => typeof issue === 'object')
-                        .map((issue) => {
-                        const nextActionDate = !('nextActionDate' in issue) ||
-                            typeof issue.nextActionDate !== 'string' ||
-                            issue.nextActionDate === null
-                            ? null
-                            : new Date(issue.nextActionDate);
-                        const completionDate50PercentConfidence = !('completionDate50PercentConfidence' in issue) ||
-                            typeof issue.completionDate50PercentConfidence !== 'string'
-                            ? null
-                            : new Date(issue.completionDate50PercentConfidence);
-                        const createdAt = !('createdAt' in issue) || typeof issue.createdAt !== 'string'
-                            ? new Date()
-                            : new Date(issue.createdAt);
-                        const closingIssueReferenceUrls = 'closingIssueReferenceUrls' in issue &&
-                            Array.isArray(issue.closingIssueReferenceUrls) &&
-                            issue.closingIssueReferenceUrls.every((url) => typeof url === 'string')
-                            ? issue.closingIssueReferenceUrls
-                            : [];
-                        return {
-                            ...issue,
-                            nextActionDate: nextActionDate,
-                            completionDate50PercentConfidence: completionDate50PercentConfidence,
-                            createdAt: createdAt,
-                            closingIssueReferenceUrls: closingIssueReferenceUrls,
-                        };
-                    });
-                    if ((() => { const _io0 = input => "string" === typeof input.nameWithOwner && "number" === typeof input.number && "string" === typeof input.title && ("OPEN" === input.state || "CLOSED" === input.state || "MERGED" === input.state) && (null === input.status || "string" === typeof input.status) && (null === input.story || "string" === typeof input.story) && (null === input.nextActionDate || input.nextActionDate instanceof Date) && (null === input.nextActionHour || "number" === typeof input.nextActionHour) && (null === input.estimationMinutes || "number" === typeof input.estimationMinutes) && (Array.isArray(input.dependedIssueUrls) && input.dependedIssueUrls.every(elem => "string" === typeof elem)) && (null === input.completionDate50PercentConfidence || input.completionDate50PercentConfidence instanceof Date) && "string" === typeof input.url && (Array.isArray(input.assignees) && input.assignees.every(elem => "string" === typeof elem)) && (Array.isArray(input.labels) && input.labels.every(elem => "string" === typeof elem)) && "string" === typeof input.org && "string" === typeof input.repo && "string" === typeof input.body && "string" === typeof input.itemId && "boolean" === typeof input.isPr && "boolean" === typeof input.isInProgress && "boolean" === typeof input.isClosed && input.createdAt instanceof Date && "string" === typeof input.author && (Array.isArray(input.closingIssueReferenceUrls) && input.closingIssueReferenceUrls.every(elem => "string" === typeof elem)); return input => Array.isArray(input) && input.every(elem => "object" === typeof elem && null !== elem && _io0(elem)); })()(issues)) {
-                        return issues;
-                    }
-                }
+        this.restoreIssuesFromCache = (rawIssues) => {
+            if (!Array.isArray(rawIssues)) {
+                return null;
+            }
+            const issues = rawIssues
+                .filter((issue) => typeof issue === 'object' && issue !== null)
+                .map((issue) => {
+                const nextActionDate = !('nextActionDate' in issue) ||
+                    typeof issue.nextActionDate !== 'string' ||
+                    issue.nextActionDate === null
+                    ? null
+                    : new Date(issue.nextActionDate);
+                const completionDate50PercentConfidence = !('completionDate50PercentConfidence' in issue) ||
+                    typeof issue.completionDate50PercentConfidence !== 'string'
+                    ? null
+                    : new Date(issue.completionDate50PercentConfidence);
+                const createdAt = !('createdAt' in issue) || typeof issue.createdAt !== 'string'
+                    ? new Date()
+                    : new Date(issue.createdAt);
+                const closingIssueReferenceUrls = 'closingIssueReferenceUrls' in issue &&
+                    Array.isArray(issue.closingIssueReferenceUrls) &&
+                    issue.closingIssueReferenceUrls.every((url) => typeof url === 'string')
+                    ? issue.closingIssueReferenceUrls
+                    : [];
+                return {
+                    ...issue,
+                    nextActionDate: nextActionDate,
+                    completionDate50PercentConfidence: completionDate50PercentConfidence,
+                    createdAt: createdAt,
+                    closingIssueReferenceUrls: closingIssueReferenceUrls,
+                };
+            });
+            if ((() => { const _io0 = input => "string" === typeof input.nameWithOwner && "number" === typeof input.number && "string" === typeof input.title && ("OPEN" === input.state || "CLOSED" === input.state || "MERGED" === input.state) && (null === input.status || "string" === typeof input.status) && (null === input.story || "string" === typeof input.story) && (null === input.nextActionDate || input.nextActionDate instanceof Date) && (null === input.nextActionHour || "number" === typeof input.nextActionHour) && (null === input.estimationMinutes || "number" === typeof input.estimationMinutes) && (Array.isArray(input.dependedIssueUrls) && input.dependedIssueUrls.every(elem => "string" === typeof elem)) && (null === input.completionDate50PercentConfidence || input.completionDate50PercentConfidence instanceof Date) && "string" === typeof input.url && (Array.isArray(input.assignees) && input.assignees.every(elem => "string" === typeof elem)) && (Array.isArray(input.labels) && input.labels.every(elem => "string" === typeof elem)) && "string" === typeof input.org && "string" === typeof input.repo && "string" === typeof input.body && "string" === typeof input.itemId && "boolean" === typeof input.isPr && "boolean" === typeof input.isInProgress && "boolean" === typeof input.isClosed && input.createdAt instanceof Date && "string" === typeof input.author && (Array.isArray(input.closingIssueReferenceUrls) && input.closingIssueReferenceUrls.every(elem => "string" === typeof elem)); return input => Array.isArray(input) && input.every(elem => "object" === typeof elem && null !== elem && _io0(elem)); })()(issues)) {
+                return issues;
             }
             return null;
         };
-        this.getAllIssues = async (projectId, allowCacheMinutes) => {
-            const cacheKey = `allIssues-${projectId}`;
-            const cachedIssues = await this.getAllIssuesFromCache(cacheKey, allowCacheMinutes);
-            if (cachedIssues) {
-                return { issues: cachedIssues, cacheUsed: true };
+        this.readCachedProjectIssues = async (cacheKey) => {
+            const raw = await this.localStorageCacheRepository.getSingle(cacheKey);
+            if (typeof raw !== 'object' || raw === null) {
+                return null;
             }
-            const issues = await this.getAllIssuesFromGitHub(projectId);
-            await this.localStorageCacheRepository.set(cacheKey, issues);
-            return { issues, cacheUsed: false };
+            if (!('lastFetchedAt' in raw) ||
+                typeof raw.lastFetchedAt !== 'string' ||
+                !('lastFullFetchAt' in raw) ||
+                typeof raw.lastFullFetchAt !== 'string' ||
+                !('project' in raw) ||
+                !('issues' in raw)) {
+                return null;
+            }
+            if (!(() => { const _io0 = input => "string" === typeof input.id && "string" === typeof input.url && "number" === typeof input.databaseId && "string" === typeof input.name && ("object" === typeof input.status && null !== input.status && _io1(input.status)) && (null === input.nextActionDate || "object" === typeof input.nextActionDate && null !== input.nextActionDate && _io3(input.nextActionDate)) && (null === input.nextActionHour || "object" === typeof input.nextActionHour && null !== input.nextActionHour && _io4(input.nextActionHour)) && (null === input.story || "object" === typeof input.story && null !== input.story && _io5(input.story)) && (null === input.remainingEstimationMinutes || "object" === typeof input.remainingEstimationMinutes && null !== input.remainingEstimationMinutes && _io7(input.remainingEstimationMinutes)) && (null === input.dependedIssueUrlSeparatedByComma || "object" === typeof input.dependedIssueUrlSeparatedByComma && null !== input.dependedIssueUrlSeparatedByComma && _io8(input.dependedIssueUrlSeparatedByComma)) && (null === input.completionDate50PercentConfidence || "object" === typeof input.completionDate50PercentConfidence && null !== input.completionDate50PercentConfidence && _io9(input.completionDate50PercentConfidence)); const _io1 = input => "string" === typeof input.name && "string" === typeof input.fieldId && (Array.isArray(input.statuses) && input.statuses.every(elem => "object" === typeof elem && null !== elem && _io2(elem))); const _io2 = input => "string" === typeof input.id && "string" === typeof input.name && ("GRAY" === input.color || "BLUE" === input.color || "GREEN" === input.color || "YELLOW" === input.color || "ORANGE" === input.color || "RED" === input.color || "PINK" === input.color || "PURPLE" === input.color) && "string" === typeof input.description; const _io3 = input => "string" === typeof input.name && "string" === typeof input.fieldId; const _io4 = input => "string" === typeof input.name && "string" === typeof input.fieldId; const _io5 = input => "string" === typeof input.name && "string" === typeof input.fieldId && "number" === typeof input.databaseId && (Array.isArray(input.stories) && input.stories.every(elem => "object" === typeof elem && null !== elem && _io2(elem))) && ("object" === typeof input.workflowManagementStory && null !== input.workflowManagementStory && _io6(input.workflowManagementStory)); const _io6 = input => "string" === typeof input.id && "string" === typeof input.name; const _io7 = input => "string" === typeof input.name && "string" === typeof input.fieldId; const _io8 = input => "string" === typeof input.name && "string" === typeof input.fieldId; const _io9 = input => "string" === typeof input.name && "string" === typeof input.fieldId; return input => "object" === typeof input && null !== input && _io0(input); })()(raw.project)) {
+                return null;
+            }
+            const issues = this.restoreIssuesFromCache(raw.issues);
+            if (!issues) {
+                return null;
+            }
+            return {
+                lastFetchedAt: raw.lastFetchedAt,
+                lastFullFetchAt: raw.lastFullFetchAt,
+                project: raw.project,
+                issues,
+            };
         };
-        this.getAllIssuesFromGitHub = async (projectId) => {
-            const items = await this.graphqlProjectItemRepository.fetchProjectItems(projectId);
-            return items.map((item) => this.convertProjectItemToIssue(item));
+        this.toDateString = (date) => `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+        this.getAllIssues = async (projectId) => {
+            const memoized = this.getAllIssuesRefreshMemo.get(projectId);
+            if (memoized) {
+                return memoized;
+            }
+            const result = await this.refreshAllIssues(projectId);
+            this.getAllIssuesRefreshMemo.set(projectId, result);
+            return result;
+        };
+        this.refreshAllIssues = async (projectId) => {
+            const cacheKey = `allIssues-${projectId}`;
+            const now = await this.dateRepository.now();
+            const cache = await this.readCachedProjectIssues(cacheKey);
+            const isFullFetch = cache === null ||
+                now.getTime() - new Date(cache.lastFullFetchAt).getTime() >=
+                    exports.FULL_ISSUE_FETCH_INTERVAL_MS;
+            if (isFullFetch) {
+                const project = await this.projectRepository.getProject(projectId);
+                if (!project) {
+                    throw new Error(`Project not found. projectId: ${projectId}`);
+                }
+                const items = await this.graphqlProjectItemRepository.fetchProjectItems(projectId);
+                const issues = items.map((item) => this.convertProjectItemToIssue(item));
+                const nowIso = now.toISOString();
+                await this.localStorageCacheRepository.setSingle(cacheKey, {
+                    lastFetchedAt: nowIso,
+                    lastFullFetchAt: nowIso,
+                    project,
+                    issues,
+                });
+                return { issues, project, cacheUsed: false };
+            }
+            const project = cache.project;
+            const overlapStartDate = new Date(cache.lastFetchedAt);
+            overlapStartDate.setUTCDate(overlapStartDate.getUTCDate() - 1);
+            const changedItems = await this.graphqlProjectItemRepository.fetchProjectItems(projectId, `updated:>=${this.toDateString(overlapStartDate)}`);
+            const issuesByUrl = new Map(cache.issues.map((issue) => [issue.url, issue]));
+            for (const item of changedItems) {
+                const issue = this.convertProjectItemToIssue(item);
+                issuesByUrl.set(issue.url, issue);
+            }
+            const issues = Array.from(issuesByUrl.values());
+            await this.localStorageCacheRepository.setSingle(cacheKey, {
+                lastFetchedAt: now.toISOString(),
+                lastFullFetchAt: cache.lastFullFetchAt,
+                project,
+                issues,
+            });
+            return { issues, project, cacheUsed: true };
         };
         this.createNewIssue = async (org, repo, title, body, assignees, labels) => {
             return await this.restIssueRepository.createNewIssue(org, repo, title, body, assignees, labels);
@@ -701,12 +761,12 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             }
             return Array.from(relatedPRsMap.values());
         };
-        this.getAllOpened = async (project, allowCacheMinutes) => {
-            const { issues } = await this.getAllIssues(project.id, allowCacheMinutes);
+        this.getAllOpened = async (project) => {
+            const { issues } = await this.getAllIssues(project.id);
             return issues.filter((issue) => !issue.isClosed);
         };
-        this.getStoryObjectMap = async (project, allowCacheMinutes) => {
-            const { issues } = await this.getAllIssues(project.id, allowCacheMinutes);
+        this.getStoryObjectMap = async (project) => {
+            const { issues } = await this.getAllIssues(project.id);
             const storyObjectMap = new Map();
             const targetStories = project.story?.stories || [];
             for (const story of targetStories) {

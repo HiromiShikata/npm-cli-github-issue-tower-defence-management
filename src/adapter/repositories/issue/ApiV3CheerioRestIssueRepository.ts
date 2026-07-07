@@ -23,6 +23,8 @@ import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import { normalizeFieldName } from '../utils';
 import { LocalStorageRepository } from '../LocalStorageRepository';
 import { Member } from '../../../domain/entities/Member';
+import { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
+import { DateRepository } from '../../../domain/usecases/adapter-interfaces/DateRepository';
 import {
   Sleep,
   realSleep,
@@ -30,6 +32,15 @@ import {
   computeRateLimitResetIso,
   hasRateLimitSignals,
 } from './githubRateLimitRetry';
+
+export const FULL_ISSUE_FETCH_INTERVAL_MS = 60 * 60 * 1000;
+
+export type CachedProjectIssues = {
+  lastFetchedAt: string;
+  lastFullFetchAt: string;
+  project: Project;
+  issues: Issue[];
+};
 
 type TimelineItem = {
   __typename: string;
@@ -494,14 +505,21 @@ export class ApiV3CheerioRestIssueRepository
     >,
     readonly localStorageCacheRepository: Pick<
       LocalStorageCacheRepository,
-      'getLatest' | 'set'
+      'getSingle' | 'setSingle'
     >,
+    readonly projectRepository: Pick<ProjectRepository, 'getProject'>,
+    readonly dateRepository: DateRepository,
     readonly localStorageRepository: LocalStorageRepository,
     readonly ghToken: string = process.env.GH_TOKEN || 'dummy',
     readonly sleep: Sleep = realSleep,
   ) {
     super(localStorageRepository, ghToken);
   }
+
+  private readonly getAllIssuesRefreshMemo = new Map<
+    Project['id'],
+    { issues: Issue[]; project: Project; cacheUsed: boolean }
+  >();
 
   private fetchWithRateLimitRetry = (
     request: () => Promise<Response>,
@@ -578,91 +596,158 @@ export class ApiV3CheerioRestIssueRepository
       closingIssueReferenceUrls: item.closingIssueReferenceUrls,
     };
   };
-  getAllIssuesFromCache = async (
-    cacheKey: string,
-    allowCacheMinutes: number,
-  ): Promise<Issue[] | null> => {
-    const cache = await this.localStorageCacheRepository.getLatest(cacheKey);
-    if (cache) {
-      const now = new Date();
-      const cacheTimestamp = cache.timestamp;
-      const diff = now.getTime() - cacheTimestamp.getTime();
-      if (diff < allowCacheMinutes * 60 * 1000) {
-        if (!Array.isArray(cache.value)) {
-          return null;
-        }
-        const issues = cache.value
-          .filter(
-            (issue: unknown): issue is object => typeof issue === 'object',
+  private restoreIssuesFromCache = (rawIssues: unknown): Issue[] | null => {
+    if (!Array.isArray(rawIssues)) {
+      return null;
+    }
+    const issues = rawIssues
+      .filter(
+        (issue: unknown): issue is object =>
+          typeof issue === 'object' && issue !== null,
+      )
+      .map((issue: object): object => {
+        const nextActionDate =
+          !('nextActionDate' in issue) ||
+          typeof issue.nextActionDate !== 'string' ||
+          issue.nextActionDate === null
+            ? null
+            : new Date(issue.nextActionDate);
+        const completionDate50PercentConfidence =
+          !('completionDate50PercentConfidence' in issue) ||
+          typeof issue.completionDate50PercentConfidence !== 'string'
+            ? null
+            : new Date(issue.completionDate50PercentConfidence);
+        const createdAt =
+          !('createdAt' in issue) || typeof issue.createdAt !== 'string'
+            ? new Date()
+            : new Date(issue.createdAt);
+        const closingIssueReferenceUrls =
+          'closingIssueReferenceUrls' in issue &&
+          Array.isArray(issue.closingIssueReferenceUrls) &&
+          issue.closingIssueReferenceUrls.every(
+            (url): url is string => typeof url === 'string',
           )
-          .map((issue: object): object => {
-            const nextActionDate =
-              !('nextActionDate' in issue) ||
-              typeof issue.nextActionDate !== 'string' ||
-              issue.nextActionDate === null
-                ? null
-                : new Date(issue.nextActionDate);
-            const completionDate50PercentConfidence =
-              !('completionDate50PercentConfidence' in issue) ||
-              typeof issue.completionDate50PercentConfidence !== 'string'
-                ? null
-                : new Date(issue.completionDate50PercentConfidence);
-            const createdAt =
-              !('createdAt' in issue) || typeof issue.createdAt !== 'string'
-                ? new Date()
-                : new Date(issue.createdAt);
-            const closingIssueReferenceUrls =
-              'closingIssueReferenceUrls' in issue &&
-              Array.isArray(issue.closingIssueReferenceUrls) &&
-              issue.closingIssueReferenceUrls.every(
-                (url): url is string => typeof url === 'string',
-              )
-                ? issue.closingIssueReferenceUrls
-                : [];
+            ? issue.closingIssueReferenceUrls
+            : [];
 
-            return {
-              ...issue,
-              nextActionDate: nextActionDate,
-              completionDate50PercentConfidence:
-                completionDate50PercentConfidence,
-              createdAt: createdAt,
-              closingIssueReferenceUrls: closingIssueReferenceUrls,
-            };
-          });
+        return {
+          ...issue,
+          nextActionDate: nextActionDate,
+          completionDate50PercentConfidence: completionDate50PercentConfidence,
+          createdAt: createdAt,
+          closingIssueReferenceUrls: closingIssueReferenceUrls,
+        };
+      });
 
-        if (typia.is<Issue[]>(issues)) {
-          return issues;
-        }
-      }
+    if (typia.is<Issue[]>(issues)) {
+      return issues;
     }
     return null;
   };
 
+  private readCachedProjectIssues = async (
+    cacheKey: string,
+  ): Promise<CachedProjectIssues | null> => {
+    const raw = await this.localStorageCacheRepository.getSingle(cacheKey);
+    if (typeof raw !== 'object' || raw === null) {
+      return null;
+    }
+    if (
+      !('lastFetchedAt' in raw) ||
+      typeof raw.lastFetchedAt !== 'string' ||
+      !('lastFullFetchAt' in raw) ||
+      typeof raw.lastFullFetchAt !== 'string' ||
+      !('project' in raw) ||
+      !('issues' in raw)
+    ) {
+      return null;
+    }
+    if (!typia.is<Project>(raw.project)) {
+      return null;
+    }
+    const issues = this.restoreIssuesFromCache(raw.issues);
+    if (!issues) {
+      return null;
+    }
+    return {
+      lastFetchedAt: raw.lastFetchedAt,
+      lastFullFetchAt: raw.lastFullFetchAt,
+      project: raw.project,
+      issues,
+    };
+  };
+
+  private toDateString = (date: Date): string =>
+    `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+
   getAllIssues = async (
     projectId: Project['id'],
-    allowCacheMinutes: number,
   ): Promise<{
     issues: Issue[];
+    project: Project;
     cacheUsed: boolean;
   }> => {
-    const cacheKey = `allIssues-${projectId}`;
-    const cachedIssues = await this.getAllIssuesFromCache(
-      cacheKey,
-      allowCacheMinutes,
-    );
-    if (cachedIssues) {
-      return { issues: cachedIssues, cacheUsed: true };
+    const memoized = this.getAllIssuesRefreshMemo.get(projectId);
+    if (memoized) {
+      return memoized;
     }
-    const issues = await this.getAllIssuesFromGitHub(projectId);
-    await this.localStorageCacheRepository.set(cacheKey, issues);
-    return { issues, cacheUsed: false };
+    const result = await this.refreshAllIssues(projectId);
+    this.getAllIssuesRefreshMemo.set(projectId, result);
+    return result;
   };
-  getAllIssuesFromGitHub = async (
+
+  private refreshAllIssues = async (
     projectId: Project['id'],
-  ): Promise<Issue[]> => {
-    const items =
-      await this.graphqlProjectItemRepository.fetchProjectItems(projectId);
-    return items.map((item) => this.convertProjectItemToIssue(item));
+  ): Promise<{ issues: Issue[]; project: Project; cacheUsed: boolean }> => {
+    const cacheKey = `allIssues-${projectId}`;
+    const now = await this.dateRepository.now();
+    const cache = await this.readCachedProjectIssues(cacheKey);
+    const isFullFetch =
+      cache === null ||
+      now.getTime() - new Date(cache.lastFullFetchAt).getTime() >=
+        FULL_ISSUE_FETCH_INTERVAL_MS;
+
+    if (isFullFetch) {
+      const project = await this.projectRepository.getProject(projectId);
+      if (!project) {
+        throw new Error(`Project not found. projectId: ${projectId}`);
+      }
+      const items =
+        await this.graphqlProjectItemRepository.fetchProjectItems(projectId);
+      const issues = items.map((item) => this.convertProjectItemToIssue(item));
+      const nowIso = now.toISOString();
+      await this.localStorageCacheRepository.setSingle(cacheKey, {
+        lastFetchedAt: nowIso,
+        lastFullFetchAt: nowIso,
+        project,
+        issues,
+      } satisfies CachedProjectIssues);
+      return { issues, project, cacheUsed: false };
+    }
+
+    const project = cache.project;
+    const overlapStartDate = new Date(cache.lastFetchedAt);
+    overlapStartDate.setUTCDate(overlapStartDate.getUTCDate() - 1);
+    const changedItems =
+      await this.graphqlProjectItemRepository.fetchProjectItems(
+        projectId,
+        `updated:>=${this.toDateString(overlapStartDate)}`,
+      );
+    const issuesByUrl = new Map<string, Issue>(
+      cache.issues.map((issue) => [issue.url, issue]),
+    );
+    for (const item of changedItems) {
+      const issue = this.convertProjectItemToIssue(item);
+      issuesByUrl.set(issue.url, issue);
+    }
+    const issues = Array.from(issuesByUrl.values());
+    await this.localStorageCacheRepository.setSingle(cacheKey, {
+      lastFetchedAt: now.toISOString(),
+      lastFullFetchAt: cache.lastFullFetchAt,
+      project,
+      issues,
+    } satisfies CachedProjectIssues);
+    return { issues, project, cacheUsed: true };
   };
   createNewIssue = async (
     org: string,
@@ -1307,19 +1392,13 @@ export class ApiV3CheerioRestIssueRepository
     return Array.from(relatedPRsMap.values());
   };
 
-  getAllOpened = async (
-    project: Project,
-    allowCacheMinutes: number,
-  ): Promise<Issue[]> => {
-    const { issues } = await this.getAllIssues(project.id, allowCacheMinutes);
+  getAllOpened = async (project: Project): Promise<Issue[]> => {
+    const { issues } = await this.getAllIssues(project.id);
     return issues.filter((issue) => !issue.isClosed);
   };
 
-  getStoryObjectMap = async (
-    project: Project,
-    allowCacheMinutes: number,
-  ): Promise<StoryObjectMap> => {
-    const { issues } = await this.getAllIssues(project.id, allowCacheMinutes);
+  getStoryObjectMap = async (project: Project): Promise<StoryObjectMap> => {
+    const { issues } = await this.getAllIssues(project.id);
     const storyObjectMap: StoryObjectMap = new Map();
     const targetStories = project.story?.stories || [];
     for (const story of targetStories) {

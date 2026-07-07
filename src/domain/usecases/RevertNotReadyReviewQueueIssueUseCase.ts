@@ -56,7 +56,6 @@ export class RevertNotReadyReviewQueueIssueUseCase {
 
   run = async (params: {
     projectUrl: string;
-    allowIssueCacheMinutes: number;
     labelsAsLlmAgentName?: string[] | null;
     changeTargetPathAliases?: Record<string, string> | null;
     allowedIssueAuthors?: string[] | null;
@@ -82,10 +81,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
       return;
     }
 
-    const { issues } = await this.issueRepository.getAllIssues(
-      projectId,
-      params.allowIssueCacheMinutes,
-    );
+    const { issues } = await this.issueRepository.getAllIssues(projectId);
 
     const awaitingQualityCheckIssues = issues.filter(
       (issue) => issue.status === AWAITING_QUALITY_CHECK_STATUS_NAME,

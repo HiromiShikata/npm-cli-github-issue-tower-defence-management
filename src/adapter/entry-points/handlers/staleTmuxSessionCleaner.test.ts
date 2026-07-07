@@ -7,8 +7,6 @@ import { cleanStaleTmuxSessions } from './staleTmuxSessionCleaner';
 
 const NOW = new Date('2026-06-26T00:00:00.000Z');
 const NOW_EPOCH_SECONDS = Math.floor(NOW.getTime() / 1000);
-const ALLOW_CACHE_MINUTES = 10;
-
 const makeProject = (): Project => ({
   id: 'project-1',
   url: 'https://github.com/users/user/projects/1',
@@ -91,7 +89,6 @@ describe('cleanStaleTmuxSessions', () => {
 
     await cleanStaleTmuxSessions({
       project: makeProject(),
-      allowCacheMinutes: ALLOW_CACHE_MINUTES,
       issueRepository: createMockIssueRepository([
         makeIssue({ status: 'In Progress' }),
       ]),
@@ -124,7 +121,6 @@ describe('cleanStaleTmuxSessions', () => {
 
     await cleanStaleTmuxSessions({
       project: makeProject(),
-      allowCacheMinutes: ALLOW_CACHE_MINUTES,
       issueRepository: createMockIssueRepository([
         makeIssue({ status: IN_TMUX_STATUS_NAME }),
       ]),
@@ -155,7 +151,6 @@ describe('cleanStaleTmuxSessions', () => {
 
     await cleanStaleTmuxSessions({
       project: makeProject(),
-      allowCacheMinutes: ALLOW_CACHE_MINUTES,
       issueRepository: createMockIssueRepository([]),
       localCommandRunner: runner,
       now: NOW,

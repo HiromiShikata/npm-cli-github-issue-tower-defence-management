@@ -11,6 +11,7 @@ export type MachineStatusFile = {
     diskPct: number;
     load: [number, number, number];
     cycleMinutes: number | null;
+    lastFetchedAt: string | null;
     capturedAt: string;
 };
 export declare const writeMachineStatus: (params: MachineStatusWriterParams) => Promise<void>;

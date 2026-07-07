@@ -9,7 +9,6 @@ export declare class StaleTmuxSessionKillUseCase {
     constructor(issueRepository: Pick<IssueRepository, 'getAllOpened'>, tmuxSessionRepository: Pick<TmuxSessionRepository, 'listLiveSessionsWithActivity' | 'killSession'>);
     run: (params: {
         project: Project;
-        allowCacheMinutes: number;
         excludedStatus: string;
         idleThresholdSeconds: number;
         now: Date;

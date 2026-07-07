@@ -17,7 +17,7 @@ export declare const parseCpuSample: (statText: string) => CpuSample;
 export declare const cpuUsedPercentFromSamples: (first: CpuSample, second: CpuSample) => number;
 export declare const parseDiskUsedPercent: (blocks: number, bfree: number, bavail: number) => number;
 export declare const parseLoadAverages: (loadavgText: string) => LoadAverages;
-export declare const cycleMinutesFromMtimes: (mtimesDescendingSeconds: number[]) => number | null;
+export declare const cycleMinutesFromFetchTimestamps: (previousFetchedAtIso: string | null, currentFetchedAtIso: string | null) => number | null;
 export declare class ProcHostMetricsRepository {
     private readonly procDirectory;
     private readonly sleep;

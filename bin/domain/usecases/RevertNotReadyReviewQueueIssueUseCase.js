@@ -32,7 +32,7 @@ class RevertNotReadyReviewQueueIssueUseCase {
             if (!awaitingWorkspaceStatusOption) {
                 return;
             }
-            const { issues } = await this.issueRepository.getAllIssues(projectId, params.allowIssueCacheMinutes);
+            const { issues } = await this.issueRepository.getAllIssues(projectId);
             const awaitingQualityCheckIssues = issues.filter((issue) => issue.status === WorkflowStatus_1.AWAITING_QUALITY_CHECK_STATUS_NAME);
             const relatedOpenPrUrlsByIssueUrl = this.buildRelatedOpenPrUrlsByIssueUrl(issues);
             for (const issue of awaitingQualityCheckIssues) {

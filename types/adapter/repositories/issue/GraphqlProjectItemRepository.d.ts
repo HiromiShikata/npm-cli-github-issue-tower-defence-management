@@ -12,6 +12,7 @@ export type ProjectItem = {
     labels: string[];
     assignees: string[];
     createdAt: string;
+    updatedAt: string;
     author: string;
     closingIssueReferenceUrls: string[];
     customFields: {
@@ -29,7 +30,7 @@ export declare const RATE_LIMIT_MAX_BACKOFF_MS = 300000;
 export declare const callWithRateLimitRetry: <T>(request: () => Promise<T>) => Promise<T>;
 export declare class GraphqlProjectItemRepository extends BaseGitHubRepository {
     fetchItemId: (projectId: string, owner: string, repositoryName: string, issueNumber: number) => Promise<string | undefined>;
-    fetchProjectItems: (projectId: string) => Promise<ProjectItem[]>;
+    fetchProjectItems: (projectId: string, query?: string) => Promise<ProjectItem[]>;
     getProjectItemFieldsFromIssueUrl: (issueUrl: string) => Promise<{
         fieldName: string;
         fieldValue: string;

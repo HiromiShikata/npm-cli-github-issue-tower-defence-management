@@ -160,6 +160,7 @@ describe('HandleScheduledEventUseCase', () => {
       );
       mockIssueRepository.getAllIssues.mockResolvedValue({
         issues: [],
+        project: mock<Project>(),
         cacheUsed: false,
       });
       mockSpreadsheetRepository.getSheet.mockResolvedValue([
@@ -184,7 +185,6 @@ describe('HandleScheduledEventUseCase', () => {
         },
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
         disabled: false,
-        allowIssueCacheMinutes: 60,
       };
 
       const mockProject = mock<Project>();
@@ -206,11 +206,14 @@ describe('HandleScheduledEventUseCase', () => {
         },
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
         disabled: false,
-        allowIssueCacheMinutes: 60,
       };
 
       const mockProject = mock<Project>();
-      mockProjectRepository.getProject.mockResolvedValue(mockProject);
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        issues: [],
+        project: mockProject,
+        cacheUsed: false,
+      });
       await useCase.run(input);
       expect(mockUpdateIssueStatusByLabelUseCase.run).toHaveBeenCalledWith({
         project: mockProject,
@@ -231,7 +234,6 @@ describe('HandleScheduledEventUseCase', () => {
         },
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
         disabled: true,
-        allowIssueCacheMinutes: 60,
       };
 
       const result = await useCase.run(input);
@@ -254,7 +256,6 @@ describe('HandleScheduledEventUseCase', () => {
         },
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
         disabled: false,
-        allowIssueCacheMinutes: 60,
       };
 
       const mockProject = mock<Project>();
@@ -264,7 +265,7 @@ describe('HandleScheduledEventUseCase', () => {
       expect(mockProjectRepository.findProjectIdByUrl).toHaveBeenCalled();
     });
 
-    it('should pass allowIssueCacheMinutes to getAllIssues', async () => {
+    it('should call getAllIssues with the resolved project id', async () => {
       const input = {
         projectName: 'test-project',
         org: 'test-org',
@@ -277,15 +278,11 @@ describe('HandleScheduledEventUseCase', () => {
         },
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
         disabled: false,
-        allowIssueCacheMinutes: 120,
       };
 
-      const mockProject = mock<Project>();
-      mockProjectRepository.getProject.mockResolvedValue(mockProject);
       await useCase.run(input);
       expect(mockIssueRepository.getAllIssues).toHaveBeenCalledWith(
         'project-1',
-        120,
       );
     });
 
@@ -304,7 +301,6 @@ describe('HandleScheduledEventUseCase', () => {
         disabledStatus: 'disabled',
         defaultStatus: null,
         disabled: false,
-        allowIssueCacheMinutes: 60,
         startPreparation: {
           awaitingWorkspaceStatus: 'Awaiting Workspace',
           preparationStatus: 'Preparation',
@@ -339,7 +335,6 @@ describe('HandleScheduledEventUseCase', () => {
         },
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
         disabled: false,
-        allowIssueCacheMinutes: 60,
       };
 
       mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
@@ -350,7 +345,6 @@ describe('HandleScheduledEventUseCase', () => {
       ).toHaveBeenCalledWith(
         expect.objectContaining({
           projectUrl: 'https://github.com/test-org/test-project',
-          allowIssueCacheMinutes: 60,
         }),
       );
     });
@@ -368,7 +362,6 @@ describe('HandleScheduledEventUseCase', () => {
         },
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
         disabled: false,
-        allowIssueCacheMinutes: 60,
       };
 
       mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
@@ -392,7 +385,6 @@ describe('HandleScheduledEventUseCase', () => {
         },
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
         disabled: false,
-        allowIssueCacheMinutes: 60,
         allowedIssueAuthors: ['top-level-author'],
       };
 
@@ -421,7 +413,6 @@ describe('HandleScheduledEventUseCase', () => {
         },
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
         disabled: false,
-        allowIssueCacheMinutes: 60,
         allowedIssueAuthors: ['top-level-author'],
         startPreparation: {
           defaultAgentName: 'agent1',
@@ -464,7 +455,6 @@ describe('HandleScheduledEventUseCase', () => {
         },
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
         disabled: false,
-        allowIssueCacheMinutes: 60,
         startPreparation: {
           defaultAgentName: 'agent1',
           configFilePath: '/path/to/config.yml',
@@ -510,7 +500,6 @@ describe('HandleScheduledEventUseCase', () => {
         },
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
         disabled: false,
-        allowIssueCacheMinutes: 60,
         startPreparation: {
           defaultAgentName: 'aw',
           configFilePath: '/path/to/config.yml',
@@ -540,7 +529,6 @@ describe('HandleScheduledEventUseCase', () => {
         },
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
         disabled: false,
-        allowIssueCacheMinutes: 60,
       };
 
       mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
@@ -562,7 +550,6 @@ describe('HandleScheduledEventUseCase', () => {
         },
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
         disabled: false,
-        allowIssueCacheMinutes: 60,
       };
 
       const storyProject: Project = {
@@ -612,6 +599,7 @@ describe('HandleScheduledEventUseCase', () => {
         mockProjectRepository.getProject.mockResolvedValue(storyProject);
         mockIssueRepository.getAllIssues.mockResolvedValue({
           issues: [],
+          project: storyProject,
           cacheUsed: false,
         });
         mockIssueRepository.createNewIssue.mockResolvedValue(99);
@@ -705,7 +693,6 @@ describe('HandleScheduledEventUseCase', () => {
         },
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
         disabled: false,
-        allowIssueCacheMinutes: 10,
         startPreparation: {
           defaultAgentName: 'test-agent',
           configFilePath: '/path/to/config.yml',
@@ -865,7 +852,6 @@ describe('HandleScheduledEventUseCase', () => {
         },
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
         disabled: false,
-        allowIssueCacheMinutes: 60,
       };
 
       beforeEach(() => {
@@ -1033,7 +1019,6 @@ describe('HandleScheduledEventUseCase', () => {
         },
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
         disabled: false,
-        allowIssueCacheMinutes: 60,
       };
 
       it('should create an error issue and rethrow when spreadsheet read fails in findTargetDateAndUpdateLastExecutionDateTime', async () => {
@@ -1098,7 +1083,6 @@ describe('HandleScheduledEventUseCase', () => {
         },
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
         disabled: false,
-        allowIssueCacheMinutes: 60,
       };
 
       it('should not crash and should skip the LastExecutionDateTime write when lastExecutionDateTime is within 60 seconds of now', async () => {

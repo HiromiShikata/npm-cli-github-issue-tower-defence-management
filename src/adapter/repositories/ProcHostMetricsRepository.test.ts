@@ -5,7 +5,7 @@ import {
   DiskBlocks,
   ProcHostMetricsRepository,
   cpuUsedPercentFromSamples,
-  cycleMinutesFromMtimes,
+  cycleMinutesFromFetchTimestamps,
   parseCpuSample,
   parseDiskUsedPercent,
   parseLoadAverages,
@@ -88,18 +88,39 @@ describe('parseDiskUsedPercent', () => {
   });
 });
 
-describe('cycleMinutesFromMtimes', () => {
-  it('rounds the gap between the two newest generations to whole minutes', () => {
-    expect(cycleMinutesFromMtimes([1782469254.0, 1782468443.0])).toBe(14);
+describe('cycleMinutesFromFetchTimestamps', () => {
+  it('rounds the gap between the previous and current fetch to whole minutes', () => {
+    expect(
+      cycleMinutesFromFetchTimestamps(
+        '2026-07-07T00:00:00.000Z',
+        '2026-07-07T00:14:00.000Z',
+      ),
+    ).toBe(14);
   });
 
   it('rounds a 1620 second gap to 27 minutes', () => {
-    expect(cycleMinutesFromMtimes([1620.0, 0.0])).toBe(27);
+    expect(
+      cycleMinutesFromFetchTimestamps(
+        '2026-07-07T00:00:00.000Z',
+        '2026-07-07T00:27:00.000Z',
+      ),
+    ).toBe(27);
   });
 
-  it('returns null when a second generation is missing', () => {
-    expect(cycleMinutesFromMtimes([1000.0])).toBeNull();
-    expect(cycleMinutesFromMtimes([])).toBeNull();
+  it('returns null when either timestamp is missing', () => {
+    expect(
+      cycleMinutesFromFetchTimestamps(null, '2026-07-07T00:00:00.000Z'),
+    ).toBeNull();
+    expect(
+      cycleMinutesFromFetchTimestamps('2026-07-07T00:00:00.000Z', null),
+    ).toBeNull();
+    expect(cycleMinutesFromFetchTimestamps(null, null)).toBeNull();
+  });
+
+  it('returns null when a timestamp is not parseable', () => {
+    expect(
+      cycleMinutesFromFetchTimestamps('not-a-date', '2026-07-07T00:00:00.000Z'),
+    ).toBeNull();
   });
 });
 

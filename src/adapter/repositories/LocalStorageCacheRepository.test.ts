@@ -177,4 +177,79 @@ describe('LocalStorageCacheRepository', () => {
       expect(callOrder).toEqual(['write', 'rename']);
     });
   });
+
+  describe('getSingle', () => {
+    test('returns null when latest.json does not exist', async () => {
+      localStorageRepository.listFiles.mockReturnValue([]);
+
+      const result = await repository.getSingle('test-key');
+
+      expect(result).toBeNull();
+      expect(localStorageRepository.read).not.toHaveBeenCalled();
+    });
+
+    test('returns null when the file content is empty', async () => {
+      localStorageRepository.listFiles.mockReturnValue(['latest.json']);
+      localStorageRepository.read.mockReturnValue(null);
+
+      const result = await repository.getSingle('test-key');
+
+      expect(result).toBeNull();
+    });
+
+    test('returns null when the file content is invalid JSON', async () => {
+      localStorageRepository.listFiles.mockReturnValue(['latest.json']);
+      localStorageRepository.read.mockReturnValue('not-json');
+
+      const result = await repository.getSingle('test-key');
+
+      expect(result).toBeNull();
+    });
+
+    test('returns the parsed value from latest.json', async () => {
+      localStorageRepository.listFiles.mockReturnValue(['latest.json']);
+      localStorageRepository.read.mockReturnValue('{"lastFetchedAt":"x"}');
+
+      const result = await repository.getSingle('test-key');
+
+      expect(result).toEqual({ lastFetchedAt: 'x' });
+      expect(localStorageRepository.read).toHaveBeenCalledWith(
+        './tmp/cache/test-key/latest.json',
+      );
+    });
+  });
+
+  describe('setSingle', () => {
+    test('atomically writes a temp file then renames it to latest.json', async () => {
+      await repository.setSingle('test-key', { test: 'value' });
+
+      expect(localStorageRepository.mkdir).toHaveBeenCalledWith(
+        './tmp/cache/test-key',
+      );
+      const writeArgs = localStorageRepository.write.mock.calls[0];
+      const writtenPath = writeArgs[0];
+      const finalPath = './tmp/cache/test-key/latest.json';
+      expect(writtenPath.startsWith(`${finalPath}.`)).toBe(true);
+      expect(writtenPath.endsWith('.tmp')).toBe(true);
+      expect(writeArgs[1]).toBe('{"test":"value"}');
+      expect(localStorageRepository.rename).toHaveBeenCalledWith(
+        writtenPath,
+        finalPath,
+      );
+    });
+
+    test('writes to the temp file before renaming it into place', async () => {
+      const callOrder: string[] = [];
+      localStorageRepository.write.mockImplementation(() => {
+        callOrder.push('write');
+      });
+      localStorageRepository.rename.mockImplementation(() => {
+        callOrder.push('rename');
+      });
+
+      await repository.setSingle('ordering-key', { ordered: true });
+
+      expect(callOrder).toEqual(['write', 'rename']);
+    });
+  });
 });
