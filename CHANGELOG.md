@@ -1,3 +1,10 @@
+# [1.120.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.119.4...v1.120.0) (2026-07-07)
+
+
+### Features
+
+* exclude In Tmux by agent items from console triage tab ([#1141](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1141)) ([bd0b5ee](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bd0b5ee252587815fb78626f217da37aba09efb1))
+
 ## [1.119.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.119.3...v1.119.4) (2026-07-05)
 
 
