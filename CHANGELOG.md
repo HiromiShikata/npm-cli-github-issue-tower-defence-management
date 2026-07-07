@@ -1,3 +1,10 @@
+## [1.122.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.0...v1.122.1) (2026-07-07)
+
+
+### Bug Fixes
+
+* publish two-phase time-precise incremental issue fetch ([#1150](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1150)) ([8fd254a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8fd254a4730046814922c60bd7a38c696403f18c))
+
 # [1.122.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.121.0...v1.122.0) (2026-07-07)
 
 
