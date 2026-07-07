@@ -497,6 +497,8 @@ export class ApiV3CheerioRestIssueRepository
     readonly graphqlProjectItemRepository: Pick<
       GraphqlProjectItemRepository,
       | 'fetchProjectItems'
+      | 'fetchProjectItemsLight'
+      | 'fetchProjectItemsByIds'
       | 'fetchProjectItemByUrl'
       | 'updateProjectField'
       | 'clearProjectField'
@@ -726,19 +728,29 @@ export class ApiV3CheerioRestIssueRepository
     }
 
     const project = cache.project;
-    const overlapStartDate = new Date(cache.lastFetchedAt);
-    overlapStartDate.setUTCDate(overlapStartDate.getUTCDate() - 1);
-    const changedItems =
-      await this.graphqlProjectItemRepository.fetchProjectItems(
+    const lastFetchedAt = new Date(cache.lastFetchedAt);
+    const lightItems =
+      await this.graphqlProjectItemRepository.fetchProjectItemsLight(
         projectId,
-        `updated:>=${this.toDateString(overlapStartDate)}`,
+        `updated:>=${this.toDateString(lastFetchedAt)}`,
       );
+    const changedItemIds = lightItems
+      .filter(
+        (item) => new Date(item.updatedAt).getTime() >= lastFetchedAt.getTime(),
+      )
+      .map((item) => item.id);
     const issuesByUrl = new Map<string, Issue>(
       cache.issues.map((issue) => [issue.url, issue]),
     );
-    for (const item of changedItems) {
-      const issue = this.convertProjectItemToIssue(item);
-      issuesByUrl.set(issue.url, issue);
+    if (changedItemIds.length > 0) {
+      const changedItems =
+        await this.graphqlProjectItemRepository.fetchProjectItemsByIds(
+          changedItemIds,
+        );
+      for (const item of changedItems) {
+        const issue = this.convertProjectItemToIssue(item);
+        issuesByUrl.set(issue.url, issue);
+      }
     }
     const issues = Array.from(issuesByUrl.values());
     await this.localStorageCacheRepository.setSingle(cacheKey, {
