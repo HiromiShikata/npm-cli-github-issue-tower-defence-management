@@ -1,3 +1,10 @@
+# [1.121.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.120.0...v1.121.0) (2026-07-07)
+
+
+### Features
+
+* maintain a single latest issue cache refreshed incrementally ([#1142](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1142)) ([09ebe33](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/09ebe3363c8a168bbba324a6423046eb75608a71)), closes [HiromiShikata/umino-corporait-operation#30006](https://github.com/HiromiShikata/umino-corporait-operation/issues/30006)
+
 # [1.120.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.119.4...v1.120.0) (2026-07-07)
 
 
