@@ -34,6 +34,7 @@ import {
 } from './githubRateLimitRetry';
 
 export const FULL_ISSUE_FETCH_INTERVAL_MS = 60 * 60 * 1000;
+export const INCREMENTAL_FETCH_SKEW_BUFFER_MS = 5 * 60 * 1000;
 
 export type CachedProjectIssues = {
   lastFetchedAt: string;
@@ -729,15 +730,16 @@ export class ApiV3CheerioRestIssueRepository
 
     const project = cache.project;
     const lastFetchedAt = new Date(cache.lastFetchedAt);
+    const cutoff = new Date(
+      lastFetchedAt.getTime() - INCREMENTAL_FETCH_SKEW_BUFFER_MS,
+    );
     const lightItems =
       await this.graphqlProjectItemRepository.fetchProjectItemsLight(
         projectId,
-        `updated:>=${this.toDateString(lastFetchedAt)}`,
+        `updated:>=${this.toDateString(cutoff)}`,
       );
     const changedItemIds = lightItems
-      .filter(
-        (item) => new Date(item.updatedAt).getTime() >= lastFetchedAt.getTime(),
-      )
+      .filter((item) => new Date(item.updatedAt).getTime() >= cutoff.getTime())
       .map((item) => item.id);
     const issuesByUrl = new Map<string, Issue>(
       cache.issues.map((issue) => [issue.url, issue]),

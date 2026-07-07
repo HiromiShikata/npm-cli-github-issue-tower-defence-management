@@ -339,7 +339,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
     });
 
-    it('keeps only items whose updatedAt is at or after lastFetchedAt, treating an exact equal timestamp as inclusive', async () => {
+    it('includes items within the clock-skew buffer before lastFetchedAt and excludes items older than the buffer', async () => {
       const {
         repository,
         graphqlProjectItemRepository,
@@ -355,18 +355,23 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       });
       graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([
         buildLightItem(
-          'before',
+          'wellBefore',
           'https://github.com/o/r/issues/1',
-          '2026-07-07T00:29:59.999Z',
+          '2026-07-07T00:20:00.000Z',
         ),
         buildLightItem(
-          'equal',
+          'withinBuffer',
           'https://github.com/o/r/issues/2',
+          '2026-07-07T00:27:00.000Z',
+        ),
+        buildLightItem(
+          'atLastFetched',
+          'https://github.com/o/r/issues/3',
           '2026-07-07T00:30:00.000Z',
         ),
         buildLightItem(
           'after',
-          'https://github.com/o/r/issues/3',
+          'https://github.com/o/r/issues/4',
           '2026-07-07T00:40:00.000Z',
         ),
       ]);
@@ -377,7 +382,46 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       expect(
         graphqlProjectItemRepository.fetchProjectItemsByIds,
-      ).toHaveBeenCalledWith(['equal', 'after']);
+      ).toHaveBeenCalledWith(['withinBuffer', 'atLastFetched', 'after']);
+    });
+
+    it('applies the skew buffer across a UTC-midnight boundary, scanning the previous UTC day rather than today', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:30:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue({
+        lastFetchedAt: '2026-07-07T00:02:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project: buildTestProject('cached-project'),
+        issues: [],
+      });
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([
+        buildLightItem(
+          'previousDay',
+          'https://github.com/o/r/issues/1',
+          '2026-07-06T23:58:00.000Z',
+        ),
+        buildLightItem(
+          'beforeBuffer',
+          'https://github.com/o/r/issues/2',
+          '2026-07-06T23:55:00.000Z',
+        ),
+      ]);
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      await repository.getAllIssues('cached-project');
+
+      const lightCall =
+        graphqlProjectItemRepository.fetchProjectItemsLight.mock.calls[0];
+      expect(lightCall[1]).toBe('updated:>=2026-07-06');
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemsByIds,
+      ).toHaveBeenCalledWith(['previousDay']);
     });
 
     it('skips the detail fetch entirely when no light item changed since lastFetchedAt', async () => {
