@@ -162,7 +162,6 @@ describe('CLI', () => {
         defaultLlmModelName: 'claude-opus-4-5',
         defaultLlmAgentName: 'aw',
         maximumPreparingIssuesCount: 10,
-        allowIssueCacheMinutes: 5,
         utilizationPercentageThreshold: 80,
         allowedIssueAuthors: 'user1,user2',
         thresholdForAutoReject: 5,
@@ -237,7 +236,6 @@ describe('CLI', () => {
     it('should ignore non-number values for number fields', () => {
       const config = {
         maximumPreparingIssuesCount: 'abc',
-        allowIssueCacheMinutes: 'def',
         utilizationPercentageThreshold: 'ghi',
         thresholdForAutoReject: 'jkl',
       };
@@ -246,7 +244,6 @@ describe('CLI', () => {
       const result = loadConfigFile(configFilePath);
 
       expect(result.maximumPreparingIssuesCount).toBeUndefined();
-      expect(result.allowIssueCacheMinutes).toBeUndefined();
       expect(result.utilizationPercentageThreshold).toBeUndefined();
       expect(result.thresholdForAutoReject).toBeUndefined();
     });
@@ -723,7 +720,6 @@ mysteryKey: 'value'
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 10,
         labelsAsLlmAgentName: null,
       });
     });
@@ -765,7 +761,6 @@ mysteryKey: 'value'
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 10,
         labelsAsLlmAgentName: null,
       });
     });

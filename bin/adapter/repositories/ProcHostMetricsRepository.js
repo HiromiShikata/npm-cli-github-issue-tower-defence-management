@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ProcHostMetricsRepository = exports.cycleMinutesFromMtimes = exports.parseLoadAverages = exports.parseDiskUsedPercent = exports.cpuUsedPercentFromSamples = exports.parseCpuSample = exports.parseMemoryUsedPercent = void 0;
+exports.ProcHostMetricsRepository = exports.cycleMinutesFromFetchTimestamps = exports.parseLoadAverages = exports.parseDiskUsedPercent = exports.cpuUsedPercentFromSamples = exports.parseCpuSample = exports.parseMemoryUsedPercent = void 0;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const DEFAULT_PROC_DIRECTORY = '/proc';
@@ -119,13 +119,18 @@ const parseLoadAverages = (loadavgText) => {
     return { oneMinute, fiveMinute, fifteenMinute };
 };
 exports.parseLoadAverages = parseLoadAverages;
-const cycleMinutesFromMtimes = (mtimesDescendingSeconds) => {
-    if (mtimesDescendingSeconds.length < 2) {
+const cycleMinutesFromFetchTimestamps = (previousFetchedAtIso, currentFetchedAtIso) => {
+    if (previousFetchedAtIso === null || currentFetchedAtIso === null) {
         return null;
     }
-    return Math.round((mtimesDescendingSeconds[0] - mtimesDescendingSeconds[1]) / 60);
+    const previousMs = new Date(previousFetchedAtIso).getTime();
+    const currentMs = new Date(currentFetchedAtIso).getTime();
+    if (!Number.isFinite(previousMs) || !Number.isFinite(currentMs)) {
+        return null;
+    }
+    return Math.round((currentMs - previousMs) / 60000);
 };
-exports.cycleMinutesFromMtimes = cycleMinutesFromMtimes;
+exports.cycleMinutesFromFetchTimestamps = cycleMinutesFromFetchTimestamps;
 class ProcHostMetricsRepository {
     constructor(procDirectory = DEFAULT_PROC_DIRECTORY, sleep = (milliseconds) => new Promise((resolve) => {
         setTimeout(resolve, milliseconds);

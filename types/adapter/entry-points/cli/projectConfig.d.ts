@@ -5,7 +5,6 @@ export type ConfigFile = {
     fallbackLlmModelName?: string;
     defaultLlmAgentName?: string;
     maximumPreparingIssuesCount?: number;
-    allowIssueCacheMinutes?: number;
     utilizationPercentageThreshold?: number;
     allowedIssueAuthors?: string;
     thresholdForAutoReject?: number;

@@ -12,7 +12,6 @@ export declare class GetStoryObjectMapUseCase {
     constructor(projectRepository: Pick<ProjectRepository, 'findProjectIdByUrl' | 'getProject'>, issueRepository: Pick<IssueRepository, 'getAllIssues'>);
     run: (input: {
         projectUrl: string;
-        allowIssueCacheMinutes: number;
     }) => Promise<{
         project: Project;
         issues: Issue[];

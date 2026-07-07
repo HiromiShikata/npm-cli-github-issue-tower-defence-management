@@ -156,7 +156,6 @@ const validConfig = {
   manager: 'TestManager',
   urlOfStoryView: 'https://github.com/users/TestOrg/projects/1/views/1',
   disabled: false,
-  allowIssueCacheMinutes: 1,
   workingReport: {
     repo: 'test-repo',
     members: ['TestManager'],
@@ -221,6 +220,8 @@ describe('HandleScheduledEventUseCaseHandler', () => {
       expect.anything(),
       expect.anything(),
       expect.anything(),
+      expect.anything(),
+      expect.anything(),
       'test-token',
     );
   });
@@ -228,7 +229,6 @@ describe('HandleScheduledEventUseCaseHandler', () => {
   it('should write situation file after successful run with resolved config values', async () => {
     const configWithPreparation = {
       ...validConfig,
-      allowIssueCacheMinutes: 5,
       startPreparation: {
         defaultAgentName: 'agent1',
         configFilePath: './config.yml',
@@ -249,7 +249,6 @@ describe('HandleScheduledEventUseCaseHandler', () => {
     expect(firstCallArg.projectId).toBe('PVT_kwHOtest123');
     expect(firstCallArg.config.maximumPreparingIssuesCount).toBe(10);
     expect(firstCallArg.config.utilizationPercentageThreshold).toBe(97);
-    expect(firstCallArg.config.allowIssueCacheMinutes).toBe(5);
     expect(firstCallArg.config.thresholdForAutoReject).toBe(3);
     expect(firstCallArg.statusNames.awaitingQualityCheckStatus).toBe(
       'Awaiting Quality Check',
@@ -283,7 +282,6 @@ describe('HandleScheduledEventUseCaseHandler', () => {
   describe('README config overrides', () => {
     const configWithStartPreparation = {
       ...validConfig,
-      allowIssueCacheMinutes: 5,
       startPreparation: {
         defaultAgentName: 'yaml-agent',
         configFilePath: '/path/to/config.yml',
@@ -316,26 +314,6 @@ utilizationPercentageThreshold: 80
       });
     });
 
-    it('should override allowIssueCacheMinutes from README config', async () => {
-      const readmeContent = `<details>
-<summary>config</summary>
-allowIssueCacheMinutes: 30
-</details>`;
-      mockFetchReturningReadme(readmeContent);
-      jest
-        .mocked(fs.readFileSync)
-        .mockReturnValue(YAML.stringify(configWithStartPreparation));
-
-      const handler = new HandleScheduledEventUseCaseHandler();
-      await handler.handle('config.yml', false);
-
-      expect(mockRun).toHaveBeenCalledWith(
-        expect.objectContaining({
-          allowIssueCacheMinutes: 30,
-        }),
-      );
-    });
-
     it('should split comma-separated allowedIssueAuthors from README config', async () => {
       const readmeContent = `<details>
 <summary>config</summary>
@@ -366,7 +344,6 @@ allowedIssueAuthors: 'user1, user2, user3'
       await handler.handle('config.yml', false);
 
       expect(capturedRunInputs[0][0]).toMatchObject({
-        allowIssueCacheMinutes: 5,
         startPreparation: {
           maximumPreparingIssuesCount: 10,
           defaultAgentName: 'yaml-agent',

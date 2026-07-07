@@ -62,8 +62,7 @@ export type PullRequestReviewInlineLocation = {
 export interface IssueRepository {
   getAllIssues: (
     projectId: Project['id'],
-    allowCacheMinutes: number,
-  ) => Promise<{ issues: Issue[]; cacheUsed: boolean }>;
+  ) => Promise<{ issues: Issue[]; project: Project; cacheUsed: boolean }>;
   getIssueByUrl: (url: string) => Promise<Issue | null>;
   createNewIssue: (
     org: string,
@@ -158,14 +157,8 @@ export interface IssueRepository {
     issueOrPrUrl: string,
     commentBody: string,
   ) => Promise<void>;
-  getAllOpened: (
-    project: Project,
-    allowCacheMinutes: number,
-  ) => Promise<Issue[]>;
-  getStoryObjectMap: (
-    project: Project,
-    allowCacheMinutes: number,
-  ) => Promise<StoryObjectMap>;
+  getAllOpened: (project: Project) => Promise<Issue[]>;
+  getStoryObjectMap: (project: Project) => Promise<StoryObjectMap>;
   addIssueToProject: (project: Project, issueUrl: string) => Promise<void>;
   setDependedIssueUrl: (
     prUrl: string,

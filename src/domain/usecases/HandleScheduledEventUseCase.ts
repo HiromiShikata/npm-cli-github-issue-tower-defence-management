@@ -95,7 +95,6 @@ export class HandleScheduledEventUseCase {
     };
     urlOfStoryView: string;
     disabled: boolean;
-    allowIssueCacheMinutes: number;
     labelsAsLlmAgentName?: string[] | null;
     changeTargetPathAliases?: Record<string, string> | null;
     allowedIssueAuthors?: string[] | null;
@@ -139,20 +138,13 @@ export class HandleScheduledEventUseCase {
         `Project not found. projectUrl: ${input.projectUrl}`,
       );
     }
-    const project = await this.projectRepository.getProject(projectId);
-    if (!project) {
-      throw new ProjectNotFoundError(
-        `Project not found. projectId: ${
-          projectId
-        } projectUrl: ${input.projectUrl}`,
-      );
-    }
     const now: Date = await this.dateRepository.now();
-    const { issues, cacheUsed }: { issues: Issue[]; cacheUsed: boolean } =
-      await this.issueRepository.getAllIssues(
-        projectId,
-        input.allowIssueCacheMinutes,
-      );
+    const {
+      issues,
+      project,
+      cacheUsed,
+    }: { issues: Issue[]; project: Project; cacheUsed: boolean } =
+      await this.issueRepository.getAllIssues(projectId);
     const storyIssues: StoryObjectMap = await this.storyIssues({
       project,
       issues,
@@ -329,7 +321,6 @@ ${JSON.stringify(e)}
     });
     await this.revertNotReadyReviewQueueIssueUseCase.run({
       projectUrl: input.projectUrl,
-      allowIssueCacheMinutes: input.allowIssueCacheMinutes,
       labelsAsLlmAgentName,
       changeTargetPathAliases: input.changeTargetPathAliases,
       allowedIssueAuthors,
@@ -351,7 +342,6 @@ ${JSON.stringify(e)}
       if (input.startPreparation.preparationProcessCheckCommand) {
         await this.revertOrphanedPreparationUseCase.run({
           projectUrl: input.projectUrl,
-          allowIssueCacheMinutes: input.allowIssueCacheMinutes,
           preparationProcessCheckCommand:
             input.startPreparation.preparationProcessCheckCommand,
           thresholdForAutoReject: input.thresholdForAutoReject ?? 3,
@@ -377,7 +367,6 @@ ${JSON.stringify(e)}
           input.startPreparation.utilizationPercentageThreshold ?? 90,
         allowedIssueAuthors,
         codexHomeCandidates: input.startPreparation.codexHomeCandidates ?? null,
-        allowIssueCacheMinutes: input.allowIssueCacheMinutes,
         labelsAsLlmAgentName,
       });
       return { rotationOrder: preparationResult.rotationOrder };

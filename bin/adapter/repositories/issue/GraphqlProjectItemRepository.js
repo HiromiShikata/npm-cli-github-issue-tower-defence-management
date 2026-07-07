@@ -147,12 +147,12 @@ class GraphqlProjectItemRepository extends BaseGitHubRepository_1.BaseGitHubRepo
                 return undefined;
             }
         };
-        this.fetchProjectItems = async (projectId) => {
+        this.fetchProjectItems = async (projectId, query) => {
             const graphqlQueryString = `
-query GetProjectItems($projectId: ID!, $after: String, $first: Int!) {
+query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: String) {
   node(id: $projectId) {
     ... on ProjectV2 {
-      items(first: $first, after: $after) {
+      items(first: $first, after: $after, query: $query) {
         totalCount
         pageInfo {
           endCursor
@@ -212,6 +212,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!) {
               state
               url
               createdAt
+              updatedAt
               author {
                 login
               }
@@ -235,6 +236,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!) {
               state
               url
               createdAt
+              updatedAt
               author {
                 login
               }
@@ -271,6 +273,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!) {
                         projectId: projectId,
                         after: after,
                         first: first,
+                        query: query ?? null,
                     },
                 };
                 const response = await (0, exports.callWithRateLimitRetry)(() => ky_1.default
@@ -352,6 +355,9 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!) {
                         labels: item.content.labels?.nodes?.map((l) => l.name) || [],
                         assignees: item.content.assignees?.nodes?.map((a) => a.login) || [],
                         createdAt: item.content.createdAt || new Date().toISOString(),
+                        updatedAt: item.content.updatedAt ||
+                            item.content.createdAt ||
+                            new Date().toISOString(),
                         author: item.content.author?.login || '',
                         closingIssueReferenceUrls: item.content.closingIssuesReferences?.nodes
                             ?.map((node) => node.url)
@@ -504,6 +510,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       url
       body
       createdAt
+      updatedAt
       author {
         login
       }
@@ -581,6 +588,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       url
       body
       createdAt
+      updatedAt
       author {
         login
       }
@@ -709,6 +717,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
                 labels: content.labels?.nodes?.map((l) => l.name) || [],
                 assignees: content.assignees?.nodes?.map((a) => a.login) || [],
                 createdAt: content.createdAt || new Date().toISOString(),
+                updatedAt: content.updatedAt || content.createdAt || new Date().toISOString(),
                 author: content.author?.login || '',
                 closingIssueReferenceUrls: content.closingIssuesReferences?.nodes
                     ?.map((node) => node.url)

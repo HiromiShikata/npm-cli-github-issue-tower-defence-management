@@ -72,17 +72,14 @@ describe('StaleTmuxSessionKillUseCase', () => {
   let mockProject: Project;
   const now = new Date('2026-06-26T00:00:00Z');
   const nowEpochSeconds = Math.floor(now.getTime() / 1000);
-  const allowCacheMinutes = 10;
 
   const runParams = (): {
     project: Project;
-    allowCacheMinutes: number;
     excludedStatus: string;
     idleThresholdSeconds: number;
     now: Date;
   } => ({
     project: mockProject,
-    allowCacheMinutes,
     excludedStatus: DEFAULT_EXCLUDED_STATUS,
     idleThresholdSeconds: DEFAULT_IDLE_THRESHOLD_SECONDS,
     now,
@@ -123,10 +120,7 @@ describe('StaleTmuxSessionKillUseCase', () => {
     expect(
       mockTmuxSessionRepository.listLiveSessionsWithActivity,
     ).toHaveBeenCalledTimes(1);
-    expect(mockIssueRepository.getAllOpened).toHaveBeenCalledWith(
-      mockProject,
-      allowCacheMinutes,
-    );
+    expect(mockIssueRepository.getAllOpened).toHaveBeenCalledWith(mockProject);
   });
 
   it('kills a session mapping to an open issue whose status is not the excluded status', async () => {

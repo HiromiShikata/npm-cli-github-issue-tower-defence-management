@@ -52,8 +52,9 @@ export type PullRequestReviewInlineLocation = {
     side: PullRequestReviewCommentSide;
 };
 export interface IssueRepository {
-    getAllIssues: (projectId: Project['id'], allowCacheMinutes: number) => Promise<{
+    getAllIssues: (projectId: Project['id']) => Promise<{
         issues: Issue[];
+        project: Project;
         cacheUsed: boolean;
     }>;
     getIssueByUrl: (url: string) => Promise<Issue | null>;
@@ -98,8 +99,8 @@ export interface IssueRepository {
     closeIssueByUrl: (issueUrl: string, stateReason: 'completed' | 'not_planned') => Promise<void>;
     deletePullRequestBranch: (prUrl: string, branchName: string) => Promise<void>;
     createCommentByUrl: (issueOrPrUrl: string, commentBody: string) => Promise<void>;
-    getAllOpened: (project: Project, allowCacheMinutes: number) => Promise<Issue[]>;
-    getStoryObjectMap: (project: Project, allowCacheMinutes: number) => Promise<StoryObjectMap>;
+    getAllOpened: (project: Project) => Promise<Issue[]>;
+    getStoryObjectMap: (project: Project) => Promise<StoryObjectMap>;
     addIssueToProject: (project: Project, issueUrl: string) => Promise<void>;
     setDependedIssueUrl: (prUrl: string, project: Project, issueUrl: string) => Promise<void>;
     getIssueOrPullRequestBody: (url: string) => Promise<string>;

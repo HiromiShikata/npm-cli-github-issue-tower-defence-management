@@ -13,6 +13,7 @@ export type ProjectItem = {
   labels: string[];
   assignees: string[];
   createdAt: string;
+  updatedAt: string;
   author: string;
   closingIssueReferenceUrls: string[];
   customFields: {
@@ -196,12 +197,15 @@ export class GraphqlProjectItemRepository extends BaseGitHubRepository {
       return undefined;
     }
   };
-  fetchProjectItems = async (projectId: string): Promise<ProjectItem[]> => {
+  fetchProjectItems = async (
+    projectId: string,
+    query?: string,
+  ): Promise<ProjectItem[]> => {
     const graphqlQueryString = `
-query GetProjectItems($projectId: ID!, $after: String, $first: Int!) {
+query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: String) {
   node(id: $projectId) {
     ... on ProjectV2 {
-      items(first: $first, after: $after) {
+      items(first: $first, after: $after, query: $query) {
         totalCount
         pageInfo {
           endCursor
@@ -261,6 +265,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!) {
               state
               url
               createdAt
+              updatedAt
               author {
                 login
               }
@@ -284,6 +289,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!) {
               state
               url
               createdAt
+              updatedAt
               author {
                 login
               }
@@ -345,6 +351,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!) {
               state: string;
               url: string;
               createdAt: string;
+              updatedAt: string;
               author: { login: string } | null;
               labels: { nodes: { name: string }[] };
               assignees: { nodes: { login: string }[] };
@@ -360,6 +367,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!) {
           projectId: projectId,
           after: after,
           first: first,
+          query: query ?? null,
         },
       };
       const response = await callWithRateLimitRetry(() =>
@@ -399,6 +407,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!) {
                       state: string;
                       url: string;
                       createdAt: string;
+                      updatedAt: string;
                       author: { login: string } | null;
                       labels: { nodes: { name: string }[] };
                       assignees: { nodes: { login: string }[] };
@@ -456,6 +465,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!) {
               state: string;
               url: string;
               createdAt: string;
+              updatedAt: string;
               author: { login: string } | null;
               labels: { nodes: { name: string }[] };
               assignees: { nodes: { login: string }[] };
@@ -534,6 +544,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!) {
           state: string;
           url: string;
           createdAt: string;
+          updatedAt: string;
           author: { login: string } | null;
           labels: { nodes: { name: string }[] };
           assignees: { nodes: { login: string }[] };
@@ -555,6 +566,10 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!) {
           labels: item.content.labels?.nodes?.map((l) => l.name) || [],
           assignees: item.content.assignees?.nodes?.map((a) => a.login) || [],
           createdAt: item.content.createdAt || new Date().toISOString(),
+          updatedAt:
+            item.content.updatedAt ||
+            item.content.createdAt ||
+            new Date().toISOString(),
           author: item.content.author?.login || '',
           closingIssueReferenceUrls:
             item.content.closingIssuesReferences?.nodes
@@ -782,6 +797,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       url
       body
       createdAt
+      updatedAt
       author {
         login
       }
@@ -859,6 +875,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       url
       body
       createdAt
+      updatedAt
       author {
         login
       }
@@ -951,6 +968,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       url: string;
       body: string;
       createdAt: string;
+      updatedAt: string;
       author: { login: string } | null;
       labels: { nodes: { name: string }[] };
       assignees: { nodes: { login: string }[] };
@@ -1029,6 +1047,8 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       labels: content.labels?.nodes?.map((l) => l.name) || [],
       assignees: content.assignees?.nodes?.map((a) => a.login) || [],
       createdAt: content.createdAt || new Date().toISOString(),
+      updatedAt:
+        content.updatedAt || content.createdAt || new Date().toISOString(),
       author: content.author?.login || '',
       closingIssueReferenceUrls:
         content.closingIssuesReferences?.nodes

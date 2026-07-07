@@ -21,7 +21,7 @@ class GetStoryObjectMapUseCase {
             if (!project) {
                 throw new ProjectNotFoundError(`Project not found. projectId: ${projectId} projectUrl: ${input.projectUrl}`);
             }
-            const { issues, cacheUsed } = await this.issueRepository.getAllIssues(projectId, input.allowIssueCacheMinutes);
+            const { issues, cacheUsed } = await this.issueRepository.getAllIssues(projectId);
             const storyObjectMap = this.createStoryObjectMap({
                 project,
                 issues,

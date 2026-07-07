@@ -8,7 +8,6 @@ export type ConfigFile = {
   fallbackLlmModelName?: string;
   defaultLlmAgentName?: string;
   maximumPreparingIssuesCount?: number;
-  allowIssueCacheMinutes?: number;
   utilizationPercentageThreshold?: number;
   allowedIssueAuthors?: string;
   thresholdForAutoReject?: number;
@@ -86,7 +85,6 @@ const knownProjectReadmeConfigKeys = [
   'fallbackLlmModelName',
   'defaultLlmAgentName',
   'maximumPreparingIssuesCount',
-  'allowIssueCacheMinutes',
   'utilizationPercentageThreshold',
   'allowedIssueAuthors',
   'thresholdForAutoReject',
@@ -116,7 +114,6 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         parsed,
         'maximumPreparingIssuesCount',
       ),
-      allowIssueCacheMinutes: getNumberValue(parsed, 'allowIssueCacheMinutes'),
       utilizationPercentageThreshold: getNumberValue(
         parsed,
         'utilizationPercentageThreshold',
@@ -196,7 +193,6 @@ export const parseProjectReadmeConfig = (
         parsed,
         'maximumPreparingIssuesCount',
       ),
-      allowIssueCacheMinutes: getNumberValue(parsed, 'allowIssueCacheMinutes'),
       utilizationPercentageThreshold: getNumberValue(
         parsed,
         'utilizationPercentageThreshold',
@@ -258,10 +254,6 @@ export const mergeConfigs = (
     readmeOverrides.maximumPreparingIssuesCount ??
     cliOverrides.maximumPreparingIssuesCount ??
     configFile.maximumPreparingIssuesCount,
-  allowIssueCacheMinutes:
-    readmeOverrides.allowIssueCacheMinutes ??
-    cliOverrides.allowIssueCacheMinutes ??
-    configFile.allowIssueCacheMinutes,
   utilizationPercentageThreshold:
     readmeOverrides.utilizationPercentageThreshold ??
     cliOverrides.utilizationPercentageThreshold ??

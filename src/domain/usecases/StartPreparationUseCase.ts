@@ -297,7 +297,6 @@ export class StartPreparationUseCase {
     utilizationPercentageThreshold: number;
     allowedIssueAuthors: string[] | null;
     codexHomeCandidates: string[] | null;
-    allowIssueCacheMinutes: number;
     labelsAsLlmAgentName: string[] | null;
   }): Promise<{ rotationOrder: RotationOrderEntry[] | null }> => {
     const tokenUsages =
@@ -352,10 +351,8 @@ export class StartPreparationUseCase {
     }
 
     const project = await this.projectRepository.getByUrl(params.projectUrl);
-    const storyObjectMap = await this.issueRepository.getStoryObjectMap(
-      project,
-      params.allowIssueCacheMinutes,
-    );
+    const storyObjectMap =
+      await this.issueRepository.getStoryObjectMap(project);
 
     const allOpenedIssues = Array.from(storyObjectMap.values()).flatMap(
       (storyObject) => storyObject.issues,

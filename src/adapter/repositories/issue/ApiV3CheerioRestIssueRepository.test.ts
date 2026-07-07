@@ -9,6 +9,66 @@ import {
 import { LocalStorageCacheRepository } from '../LocalStorageCacheRepository';
 import { LocalStorageRepository } from '../LocalStorageRepository';
 import { Project } from '../../../domain/entities/Project';
+import { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
+import { DateRepository } from '../../../domain/usecases/adapter-interfaces/DateRepository';
+
+const buildTestProject = (id: string): Project => ({
+  id,
+  url: 'https://github.com/orgs/o/projects/1',
+  databaseId: 1,
+  name: 'Test Project',
+  status: { name: 'Status', fieldId: 'f-status', statuses: [] },
+  nextActionDate: null,
+  nextActionHour: null,
+  story: null,
+  remainingEstimationMinutes: null,
+  dependedIssueUrlSeparatedByComma: null,
+  completionDate50PercentConfidence: null,
+});
+
+const buildCachedIssueRecord = (url: string, title: string) => ({
+  nameWithOwner: 'o/r',
+  url,
+  title,
+  number: 1,
+  state: 'OPEN',
+  labels: [],
+  assignees: [],
+  nextActionDate: null,
+  nextActionHour: null,
+  estimationMinutes: null,
+  dependedIssueUrls: [],
+  completionDate50PercentConfidence: null,
+  status: null,
+  story: null,
+  org: 'o',
+  repo: 'r',
+  body: '',
+  itemId: 'item-cached',
+  isPr: false,
+  isInProgress: false,
+  isClosed: false,
+  createdAt: '2026-07-01T00:00:00.000Z',
+  author: '',
+  closingIssueReferenceUrls: [],
+});
+
+const buildProjectItem = (url: string, title: string): ProjectItem => ({
+  id: `item-${title}`,
+  nameWithOwner: 'o/r',
+  number: 1,
+  title,
+  state: 'OPEN',
+  url,
+  body: null,
+  labels: [],
+  assignees: [],
+  createdAt: '2026-07-01T00:00:00.000Z',
+  updatedAt: '2026-07-06T00:00:00.000Z',
+  author: '',
+  closingIssueReferenceUrls: [],
+  customFields: [],
+});
 
 describe('ApiV3CheerioRestIssueRepository', () => {
   describe('convertProjectItemToIssue', () => {
@@ -35,6 +95,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             labels: [],
             assignees: [],
             createdAt: '2024-01-01T00:00:00Z',
+            updatedAt: '2024-01-02T00:00:00Z',
             author: 'test-author',
             closingIssueReferenceUrls: [
               'https://github.com/HiromiShikata/test-repository/issues/7',
@@ -91,6 +152,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             labels: [],
             assignees: [],
             createdAt: '2024-01-01T00:00:00Z',
+            updatedAt: '2024-01-02T00:00:00Z',
             author: '',
             closingIssueReferenceUrls: [],
             customFields: [
@@ -139,57 +201,133 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result).toEqual(arg.expected);
     });
   });
-  describe('getAllIssuesFromCache', () => {
-    const testCases: {
-      name: string;
-      params: Parameters<
-        ApiV3CheerioRestIssueRepository['getAllIssuesFromCache']
-      >;
-      expected: Awaited<
-        ReturnType<ApiV3CheerioRestIssueRepository['getAllIssuesFromCache']>
-      >;
-    }[] = [
-      {
-        name: 'normal case',
-        params: ['test-key', 1],
-        expected: null,
-      },
-    ];
-    test.each(testCases)('%s', async (arg) => {
-      const { repository, localStorageCacheRepository } =
-        createApiV3CheerioRestIssueRepository();
-      localStorageCacheRepository.getLatest.mockResolvedValue({
-        timestamp: new Date('2000-01-01'),
-        value: [],
-      });
-      const result = await repository.getAllIssuesFromCache(...arg.params);
-      expect(result).toEqual(arg.expected);
-    });
-  });
-  describe('getAllIssues', () => {
-    const testCases: {
-      name: string;
-      params: Parameters<ApiV3CheerioRestIssueRepository['getAllIssues']>;
-      expected: Awaited<
-        ReturnType<ApiV3CheerioRestIssueRepository['getAllIssues']>
-      >;
-    }[] = [
-      {
-        name: 'normal case',
-        params: ['test-project-id', 1],
-        expected: { issues: [], cacheUsed: false },
-      },
-    ];
-    test.each(testCases)('%s', async (arg) => {
+  describe('getAllIssues full fetch', () => {
+    it('fetches the project and all items when no cache exists', async () => {
       const {
         repository,
         graphqlProjectItemRepository,
         localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
       } = createApiV3CheerioRestIssueRepository();
+      const project = buildTestProject('test-project-id');
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:00:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue(null);
+      projectRepository.getProject.mockResolvedValue(project);
       graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([]);
-      localStorageCacheRepository.set.mockResolvedValue();
-      const result = await repository.getAllIssues(...arg.params);
-      expect(result).toEqual(arg.expected);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      const result = await repository.getAllIssues('test-project-id');
+
+      expect(result.issues).toEqual([]);
+      expect(result.project).toBe(project);
+      expect(result.cacheUsed).toBe(false);
+      expect(
+        graphqlProjectItemRepository.fetchProjectItems,
+      ).toHaveBeenCalledWith('test-project-id');
+      expect(localStorageCacheRepository.setSingle).toHaveBeenCalledTimes(1);
+    });
+
+    it('memoizes the refresh so a second call does not fetch again', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:00:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue(null);
+      projectRepository.getProject.mockResolvedValue(
+        buildTestProject('test-project-id'),
+      );
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      await repository.getAllIssues('test-project-id');
+      await repository.getAllIssues('test-project-id');
+
+      expect(
+        graphqlProjectItemRepository.fetchProjectItems,
+      ).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('getAllIssues incremental fetch', () => {
+    it('reuses the cached project, upserts changed issues by url, and marks cacheUsed', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const cachedProject = buildTestProject('cached-project');
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:30:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue({
+        lastFetchedAt: '2026-07-07T00:00:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project: cachedProject,
+        issues: [
+          buildCachedIssueRecord(
+            'https://github.com/o/r/issues/1',
+            'stale title',
+          ),
+        ],
+      });
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
+        buildProjectItem('https://github.com/o/r/issues/1', 'fresh title'),
+        buildProjectItem('https://github.com/o/r/issues/2', 'new issue'),
+      ]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      const result = await repository.getAllIssues('cached-project');
+
+      expect(result.cacheUsed).toBe(true);
+      expect(result.project).toBe(cachedProject);
+      expect(projectRepository.getProject).not.toHaveBeenCalled();
+      const call = graphqlProjectItemRepository.fetchProjectItems.mock.calls[0];
+      expect(call[0]).toBe('cached-project');
+      expect(call[1]).toBe('updated:>=2026-07-06');
+      const titlesByUrl = new Map(
+        result.issues.map((issue) => [issue.url, issue.title]),
+      );
+      expect(titlesByUrl.get('https://github.com/o/r/issues/1')).toBe(
+        'fresh title',
+      );
+      expect(titlesByUrl.get('https://github.com/o/r/issues/2')).toBe(
+        'new issue',
+      );
+      expect(result.issues).toHaveLength(2);
+    });
+
+    it('performs a full fetch when the hourly gate has elapsed', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T02:00:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue({
+        lastFetchedAt: '2026-07-07T00:50:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project: buildTestProject('cached-project'),
+        issues: [],
+      });
+      const freshProject = buildTestProject('fresh-project');
+      projectRepository.getProject.mockResolvedValue(freshProject);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      const result = await repository.getAllIssues('cached-project');
+
+      expect(result.cacheUsed).toBe(false);
+      expect(result.project).toBe(freshProject);
+      expect(projectRepository.getProject).toHaveBeenCalledWith(
+        'cached-project',
+      );
     });
   });
 
@@ -199,7 +337,14 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         repository,
         graphqlProjectItemRepository,
         localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
       } = createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:00:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue(null);
+      projectRepository.getProject.mockResolvedValue(
+        buildTestProject('test-project-id'),
+      );
       const fetchError = new Error(
         'fetchProjectItems: expected 5 items but accumulated 1',
       );
@@ -207,10 +352,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         fetchError,
       );
 
-      await expect(
-        repository.getAllIssues('test-project-id', 1),
-      ).rejects.toThrow(fetchError);
-      expect(localStorageCacheRepository.set).not.toHaveBeenCalled();
+      await expect(repository.getAllIssues('test-project-id')).rejects.toThrow(
+        fetchError,
+      );
+      expect(localStorageCacheRepository.setSingle).not.toHaveBeenCalled();
     });
   });
 
@@ -1979,6 +2124,8 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     const restIssueRepository = mock<RestIssueRepository>();
     const graphqlProjectItemRepository = mock<GraphqlProjectItemRepository>();
     const localStorageCacheRepository = mock<LocalStorageCacheRepository>();
+    const projectRepository = mock<ProjectRepository>();
+    const dateRepository = mock<DateRepository>();
     const localStorageRepository = mock<LocalStorageRepository>();
     const sleep = jest.fn().mockResolvedValue(undefined);
 
@@ -1987,6 +2134,8 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       restIssueRepository,
       graphqlProjectItemRepository,
       localStorageCacheRepository,
+      projectRepository,
+      dateRepository,
       localStorageRepository,
       'dummy',
       sleep,
@@ -2006,6 +2155,8 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       restIssueRepository,
       graphqlProjectItemRepository,
       localStorageCacheRepository,
+      projectRepository,
+      dateRepository,
       sleep,
     };
   };

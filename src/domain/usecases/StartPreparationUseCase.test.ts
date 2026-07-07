@@ -155,7 +155,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -222,7 +221,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -281,7 +279,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -330,7 +327,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
@@ -381,7 +377,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
@@ -431,7 +426,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
@@ -500,7 +494,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
@@ -592,7 +585,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
@@ -657,7 +649,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
@@ -702,7 +693,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     // Both awaiting issues should be updated (forward iteration: url1 first, then url2)
@@ -760,7 +750,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     // Loop doesn't run because we're already at max (6 >= 6)
@@ -796,7 +785,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -842,7 +830,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -888,7 +875,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -934,7 +920,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -980,7 +965,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -1026,7 +1010,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -1075,7 +1058,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -1124,7 +1106,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -1175,7 +1156,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     // No issues are in 'Awaiting Workspace' status, so no updates should happen
@@ -1211,7 +1191,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(3);
@@ -1246,7 +1225,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(6);
@@ -1308,7 +1286,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -1379,7 +1356,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -1444,7 +1420,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -1493,7 +1468,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -1549,7 +1523,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -1608,7 +1581,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -1657,7 +1629,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -1706,7 +1677,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -1755,7 +1725,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -1810,7 +1779,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['user1', 'user2'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -1859,7 +1827,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -1897,7 +1864,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: [],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -1935,7 +1901,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['dependabot[bot]'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -1973,7 +1938,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['owner'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2020,7 +1984,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['user1', 'user2'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2061,7 +2024,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['user1'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2099,7 +2061,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2148,7 +2109,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: [],
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2197,7 +2157,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: ['.codex-dev1'],
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2266,7 +2225,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: ['.codex-dev1', '.codex-dev2'],
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2332,7 +2290,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2392,7 +2349,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2404,7 +2360,7 @@ describe('StartPreparationUseCase', () => {
     consoleErrorSpy.mockRestore();
   });
 
-  it('should pass allowIssueCacheMinutes to getStoryObjectMap', async () => {
+  it('should call getStoryObjectMap with the resolved project', async () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap([]),
@@ -2421,13 +2377,11 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 5,
       labelsAsLlmAgentName: null,
     });
 
     expect(mockIssueRepository.getStoryObjectMap).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'project-1' }),
-      5,
     );
   });
 
@@ -2469,7 +2423,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2522,7 +2475,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2613,7 +2565,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2671,7 +2622,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2747,7 +2697,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2826,7 +2775,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2904,7 +2852,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2979,7 +2926,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3067,7 +3013,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3134,7 +3079,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3202,7 +3146,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3272,7 +3215,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3345,7 +3287,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3460,7 +3401,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3546,7 +3486,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3607,7 +3546,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3674,7 +3612,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3741,7 +3678,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3808,7 +3744,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3878,7 +3813,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3926,7 +3860,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3996,7 +3929,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -4066,7 +3998,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -4136,7 +4067,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -4214,7 +4144,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -4292,7 +4221,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -4375,7 +4303,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -4487,7 +4414,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -4563,7 +4489,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -4636,7 +4561,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -4684,7 +4608,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: params.labelsAsLlmAgentName,
       });
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -4831,7 +4754,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -4898,7 +4820,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -4957,7 +4878,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -5012,7 +4932,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -5067,7 +4986,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -5123,7 +5041,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -5204,7 +5121,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -5272,7 +5188,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -5332,7 +5247,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -5388,7 +5302,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -5450,7 +5363,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -5512,7 +5424,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -5573,7 +5484,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -5634,7 +5544,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -5689,7 +5598,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -5756,7 +5664,6 @@ describe('StartPreparationUseCase', () => {
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 

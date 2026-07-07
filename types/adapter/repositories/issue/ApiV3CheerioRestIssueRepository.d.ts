@@ -9,25 +9,40 @@ import { LocalStorageCacheRepository } from '../LocalStorageCacheRepository';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import { LocalStorageRepository } from '../LocalStorageRepository';
 import { Member } from '../../../domain/entities/Member';
+import { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
+import { DateRepository } from '../../../domain/usecases/adapter-interfaces/DateRepository';
 import { Sleep } from './githubRateLimitRetry';
+export declare const FULL_ISSUE_FETCH_INTERVAL_MS: number;
+export type CachedProjectIssues = {
+    lastFetchedAt: string;
+    lastFullFetchAt: string;
+    project: Project;
+    issues: Issue[];
+};
 export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository implements IssueRepository {
     readonly apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>;
     readonly restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'createComment' | 'getIssue' | 'updateLabels' | 'removeLabel' | 'updateAssigneeList'>;
     readonly graphqlProjectItemRepository: Pick<GraphqlProjectItemRepository, 'fetchProjectItems' | 'fetchProjectItemByUrl' | 'updateProjectField' | 'clearProjectField' | 'updateProjectTextField' | 'addIssueToProject'>;
-    readonly localStorageCacheRepository: Pick<LocalStorageCacheRepository, 'getLatest' | 'set'>;
+    readonly localStorageCacheRepository: Pick<LocalStorageCacheRepository, 'getSingle' | 'setSingle'>;
+    readonly projectRepository: Pick<ProjectRepository, 'getProject'>;
+    readonly dateRepository: DateRepository;
     readonly localStorageRepository: LocalStorageRepository;
     readonly ghToken: string;
     readonly sleep: Sleep;
-    constructor(apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>, restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'createComment' | 'getIssue' | 'updateLabels' | 'removeLabel' | 'updateAssigneeList'>, graphqlProjectItemRepository: Pick<GraphqlProjectItemRepository, 'fetchProjectItems' | 'fetchProjectItemByUrl' | 'updateProjectField' | 'clearProjectField' | 'updateProjectTextField' | 'addIssueToProject'>, localStorageCacheRepository: Pick<LocalStorageCacheRepository, 'getLatest' | 'set'>, localStorageRepository: LocalStorageRepository, ghToken?: string, sleep?: Sleep);
+    constructor(apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>, restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'createComment' | 'getIssue' | 'updateLabels' | 'removeLabel' | 'updateAssigneeList'>, graphqlProjectItemRepository: Pick<GraphqlProjectItemRepository, 'fetchProjectItems' | 'fetchProjectItemByUrl' | 'updateProjectField' | 'clearProjectField' | 'updateProjectTextField' | 'addIssueToProject'>, localStorageCacheRepository: Pick<LocalStorageCacheRepository, 'getSingle' | 'setSingle'>, projectRepository: Pick<ProjectRepository, 'getProject'>, dateRepository: DateRepository, localStorageRepository: LocalStorageRepository, ghToken?: string, sleep?: Sleep);
+    private readonly getAllIssuesRefreshMemo;
     private fetchWithRateLimitRetry;
     updateStatus: (project: Project, issue: Issue, statusId: string) => Promise<void>;
     convertProjectItemToIssue: (item: ProjectItem) => Issue;
-    getAllIssuesFromCache: (cacheKey: string, allowCacheMinutes: number) => Promise<Issue[] | null>;
-    getAllIssues: (projectId: Project["id"], allowCacheMinutes: number) => Promise<{
+    private restoreIssuesFromCache;
+    private readCachedProjectIssues;
+    private toDateString;
+    getAllIssues: (projectId: Project["id"]) => Promise<{
         issues: Issue[];
+        project: Project;
         cacheUsed: boolean;
     }>;
-    getAllIssuesFromGitHub: (projectId: Project["id"]) => Promise<Issue[]>;
+    private refreshAllIssues;
     createNewIssue: (org: string, repo: string, title: string, body: string, assignees: string[], labels: string[]) => Promise<number>;
     searchIssue: (query: {
         owner: string;
@@ -65,8 +80,8 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     private computePrStatus;
     private resolveMergeabilityWithRetry;
     findRelatedOpenPRs: (issueUrl: string) => Promise<RelatedPullRequest[]>;
-    getAllOpened: (project: Project, allowCacheMinutes: number) => Promise<Issue[]>;
-    getStoryObjectMap: (project: Project, allowCacheMinutes: number) => Promise<StoryObjectMap>;
+    getAllOpened: (project: Project) => Promise<Issue[]>;
+    getStoryObjectMap: (project: Project) => Promise<StoryObjectMap>;
     getOpenPullRequest: (prUrl: string) => Promise<RelatedPullRequest | null>;
     closePullRequest: (prUrl: string) => Promise<void>;
     closeIssueByUrl: (issueUrl: string, stateReason: "completed" | "not_planned") => Promise<void>;

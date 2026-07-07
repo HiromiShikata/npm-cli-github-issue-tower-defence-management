@@ -44,7 +44,6 @@ const MockedApiV3CheerioRestIssueRepository = jest.mocked(
 const validConfig = {
   projectUrl: 'https://github.com/orgs/test/projects/1',
   projectName: 'test-project',
-  allowIssueCacheMinutes: 60,
   credentials: {
     bot: {
       github: {
@@ -60,35 +59,13 @@ describe('GetStoryObjectMapUseCaseHandler', () => {
     jest.mocked(fs.readFileSync).mockReturnValue(YAML.stringify(validConfig));
   });
 
-  it('should pass config allowIssueCacheMinutes when allowCacheMinutes is not provided', async () => {
+  it('should pass the parsed config to the use case', async () => {
     const handler = new GetStoryObjectMapUseCaseHandler();
     await handler.handle('config.yml', false);
 
     expect(mockRun).toHaveBeenCalledWith(
       expect.objectContaining({
-        allowIssueCacheMinutes: 60,
-      }),
-    );
-  });
-
-  it('should override allowIssueCacheMinutes when allowCacheMinutes is provided', async () => {
-    const handler = new GetStoryObjectMapUseCaseHandler();
-    await handler.handle('config.yml', false, 120);
-
-    expect(mockRun).toHaveBeenCalledWith(
-      expect.objectContaining({
-        allowIssueCacheMinutes: 120,
-      }),
-    );
-  });
-
-  it('should use config value when allowCacheMinutes is undefined', async () => {
-    const handler = new GetStoryObjectMapUseCaseHandler();
-    await handler.handle('config.yml', false, undefined);
-
-    expect(mockRun).toHaveBeenCalledWith(
-      expect.objectContaining({
-        allowIssueCacheMinutes: 60,
+        projectUrl: 'https://github.com/orgs/test/projects/1',
       }),
     );
   });
@@ -112,6 +89,8 @@ describe('GetStoryObjectMapUseCaseHandler', () => {
     );
 
     expect(MockedApiV3CheerioRestIssueRepository).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
       expect.anything(),
       expect.anything(),
       expect.anything(),

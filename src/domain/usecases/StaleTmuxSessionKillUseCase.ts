@@ -25,17 +25,13 @@ export class StaleTmuxSessionKillUseCase {
 
   run = async (params: {
     project: Project;
-    allowCacheMinutes: number;
     excludedStatus: string;
     idleThresholdSeconds: number;
     now: Date;
   }): Promise<void> => {
     const liveSessions =
       await this.tmuxSessionRepository.listLiveSessionsWithActivity();
-    const openIssues = await this.issueRepository.getAllOpened(
-      params.project,
-      params.allowCacheMinutes,
-    );
+    const openIssues = await this.issueRepository.getAllOpened(params.project);
     const issueBySessionName = new Map<string, Issue>();
     for (const issue of openIssues) {
       issueBySessionName.set(toTmuxSessionName(issue.url), issue);

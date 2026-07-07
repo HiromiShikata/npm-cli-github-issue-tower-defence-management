@@ -51,4 +51,28 @@ export class LocalStorageCacheRepository {
     this.localStorageRepository.write(tmpPath, JSON.stringify(value));
     this.localStorageRepository.rename(tmpPath, finalPath);
   };
+  getSingle = async (key: string): Promise<unknown> => {
+    const dirPath = `${this.cachePath}/${key}`;
+    const fileName = 'latest.json';
+    if (!this.localStorageRepository.listFiles(dirPath).includes(fileName)) {
+      return null;
+    }
+    const valueStr = this.localStorageRepository.read(`${dirPath}/${fileName}`);
+    if (!valueStr) {
+      return null;
+    }
+    try {
+      return JSON.parse(valueStr);
+    } catch {
+      return null;
+    }
+  };
+  setSingle = async <T>(key: string, value: T): Promise<void> => {
+    const dirPath = `${this.cachePath}/${key}`;
+    this.localStorageRepository.mkdir(dirPath);
+    const finalPath = `${dirPath}/latest.json`;
+    const tmpPath = `${finalPath}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`;
+    this.localStorageRepository.write(tmpPath, JSON.stringify(value));
+    this.localStorageRepository.rename(tmpPath, finalPath);
+  };
 }

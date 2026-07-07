@@ -56,7 +56,6 @@ const baseParams = {
   config: {
     maximumPreparingIssuesCount: 6,
     utilizationPercentageThreshold: 90,
-    allowIssueCacheMinutes: 5,
     thresholdForAutoReject: 3,
   },
 };
@@ -354,10 +353,6 @@ describe('writeSituationFile', () => {
       expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
         expect.any(String),
         expect.stringContaining('"utilizationPercentageThreshold":90'),
-      );
-      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.stringContaining('"allowIssueCacheMinutes":5'),
       );
       expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
         expect.any(String),

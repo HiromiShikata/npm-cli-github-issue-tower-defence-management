@@ -14,26 +14,26 @@ const writeJsonAtomic = (filePath, data) => {
     fs_1.default.writeFileSync(tmpPath, JSON.stringify(data));
     fs_1.default.renameSync(tmpPath, filePath);
 };
-const cacheFileMtimesDescending = (allIssuesCacheDir) => {
-    let entries;
+const isRecord = (value) => typeof value === 'object' && value !== null;
+const readLastFetchedAtFromJsonFile = (filePath) => {
+    let raw;
     try {
-        entries = fs_1.default.readdirSync(allIssuesCacheDir);
+        raw = fs_1.default.readFileSync(filePath, 'utf8');
     }
     catch {
-        return [];
+        return null;
     }
-    return entries
-        .filter((entry) => entry.endsWith('.json'))
-        .map((entry) => {
-        try {
-            return fs_1.default.statSync(path_1.default.join(allIssuesCacheDir, entry)).mtimeMs / 1000;
-        }
-        catch {
-            return null;
-        }
-    })
-        .filter((value) => value !== null)
-        .sort((a, b) => b - a);
+    let parsed;
+    try {
+        parsed = JSON.parse(raw);
+    }
+    catch {
+        return null;
+    }
+    if (isRecord(parsed) && typeof parsed.lastFetchedAt === 'string') {
+        return parsed.lastFetchedAt;
+    }
+    return null;
 };
 const writeMachineStatus = async (params) => {
     const { dashboardDataDir, allIssuesCacheDir } = params;
@@ -45,18 +45,22 @@ const writeMachineStatus = async (params) => {
     const cpuPct = await hostMetricsRepository.readCpuUsedPercent();
     const diskPct = hostMetricsRepository.readDiskUsedPercent();
     const load = hostMetricsRepository.readLoadAverages();
-    const cycleMinutes = allIssuesCacheDir
-        ? (0, ProcHostMetricsRepository_1.cycleMinutesFromMtimes)(cacheFileMtimesDescending(allIssuesCacheDir))
+    const machineStatusPath = path_1.default.join(dashboardDataDir, 'machine-status.json');
+    const previousLastFetchedAt = readLastFetchedAtFromJsonFile(machineStatusPath);
+    const currentLastFetchedAt = allIssuesCacheDir
+        ? readLastFetchedAtFromJsonFile(path_1.default.join(allIssuesCacheDir, 'latest.json'))
         : null;
+    const cycleMinutes = (0, ProcHostMetricsRepository_1.cycleMinutesFromFetchTimestamps)(previousLastFetchedAt, currentLastFetchedAt);
     const file = {
         memPct,
         cpuPct,
         diskPct,
         load: [load.oneMinute, load.fiveMinute, load.fifteenMinute],
         cycleMinutes,
+        lastFetchedAt: currentLastFetchedAt,
         capturedAt: (params.now ?? new Date()).toISOString(),
     };
-    writeJsonAtomic(path_1.default.join(dashboardDataDir, 'machine-status.json'), file);
+    writeJsonAtomic(machineStatusPath, file);
 };
 exports.writeMachineStatus = writeMachineStatus;
 //# sourceMappingURL=machineStatusWriter.js.map

@@ -87,14 +87,12 @@ describe('GetStoryObjectMapUseCase', () => {
       await expect(
         useCase.run({
           projectUrl: 'https://github.com/orgs/test/projects/1',
-          allowIssueCacheMinutes: 60,
         }),
       ).rejects.toThrow(ProjectNotFoundError);
 
       await expect(
         useCase.run({
           projectUrl: 'https://github.com/orgs/test/projects/1',
-          allowIssueCacheMinutes: 60,
         }),
       ).rejects.toThrow(
         'Project not found. projectUrl: https://github.com/orgs/test/projects/1',
@@ -108,14 +106,12 @@ describe('GetStoryObjectMapUseCase', () => {
       await expect(
         useCase.run({
           projectUrl: 'https://github.com/orgs/test/projects/1',
-          allowIssueCacheMinutes: 60,
         }),
       ).rejects.toThrow(ProjectNotFoundError);
 
       await expect(
         useCase.run({
           projectUrl: 'https://github.com/orgs/test/projects/1',
-          allowIssueCacheMinutes: 60,
         }),
       ).rejects.toThrow(
         'Project not found. projectId: project-1 projectUrl: https://github.com/orgs/test/projects/1',
@@ -126,13 +122,13 @@ describe('GetStoryObjectMapUseCase', () => {
       mockProjectRepository.findProjectIdByUrl.mockResolvedValue('project-1');
       mockProjectRepository.getProject.mockResolvedValue(basicProject);
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mock<Project>(),
         issues: [],
         cacheUsed: false,
       });
 
       const result = await useCase.run({
         projectUrl: 'https://github.com/orgs/test/projects/1',
-        allowIssueCacheMinutes: 60,
       });
 
       expect(result.project).toBe(basicProject);
@@ -141,22 +137,21 @@ describe('GetStoryObjectMapUseCase', () => {
       expect(result.storyObjectMap).toBeInstanceOf(Map);
     });
 
-    it('should pass allowIssueCacheMinutes to getAllIssues', async () => {
+    it('should call getAllIssues with the resolved project id', async () => {
       mockProjectRepository.findProjectIdByUrl.mockResolvedValue('project-1');
       mockProjectRepository.getProject.mockResolvedValue(basicProject);
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mock<Project>(),
         issues: [],
         cacheUsed: true,
       });
 
       const result = await useCase.run({
         projectUrl: 'https://github.com/orgs/test/projects/1',
-        allowIssueCacheMinutes: 120,
       });
 
       expect(mockIssueRepository.getAllIssues).toHaveBeenCalledWith(
         'project-1',
-        120,
       );
       expect(result.cacheUsed).toBe(true);
     });
@@ -181,13 +176,13 @@ describe('GetStoryObjectMapUseCase', () => {
       mockProjectRepository.findProjectIdByUrl.mockResolvedValue('project-1');
       mockProjectRepository.getProject.mockResolvedValue(basicProject);
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mock<Project>(),
         issues: [issue1, issue2, issue3],
         cacheUsed: false,
       });
 
       const result = await useCase.run({
         projectUrl: 'https://github.com/orgs/test/projects/1',
-        allowIssueCacheMinutes: 60,
       });
 
       const story1Object = result.storyObjectMap.get('Story 1');
@@ -209,13 +204,13 @@ describe('GetStoryObjectMapUseCase', () => {
       mockProjectRepository.findProjectIdByUrl.mockResolvedValue('project-1');
       mockProjectRepository.getProject.mockResolvedValue(basicProject);
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mock<Project>(),
         issues: [storyIssue],
         cacheUsed: false,
       });
 
       const result = await useCase.run({
         projectUrl: 'https://github.com/orgs/test/projects/1',
-        allowIssueCacheMinutes: 60,
       });
 
       const story1Object = result.storyObjectMap.get('Story 1');
@@ -232,13 +227,13 @@ describe('GetStoryObjectMapUseCase', () => {
       mockProjectRepository.findProjectIdByUrl.mockResolvedValue('project-1');
       mockProjectRepository.getProject.mockResolvedValue(basicProject);
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mock<Project>(),
         issues: [issue],
         cacheUsed: false,
       });
 
       const result = await useCase.run({
         projectUrl: 'https://github.com/orgs/test/projects/1',
-        allowIssueCacheMinutes: 60,
       });
 
       const story1Object = result.storyObjectMap.get('Story 1');
@@ -254,13 +249,13 @@ describe('GetStoryObjectMapUseCase', () => {
       mockProjectRepository.findProjectIdByUrl.mockResolvedValue('project-1');
       mockProjectRepository.getProject.mockResolvedValue(projectWithoutStory);
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mock<Project>(),
         issues: [],
         cacheUsed: false,
       });
 
       const result = await useCase.run({
         projectUrl: 'https://github.com/orgs/test/projects/1',
-        allowIssueCacheMinutes: 60,
       });
 
       expect(result.storyObjectMap.size).toBe(0);

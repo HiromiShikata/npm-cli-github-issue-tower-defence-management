@@ -83,7 +83,6 @@ const knownProjectReadmeConfigKeys = [
     'fallbackLlmModelName',
     'defaultLlmAgentName',
     'maximumPreparingIssuesCount',
-    'allowIssueCacheMinutes',
     'utilizationPercentageThreshold',
     'allowedIssueAuthors',
     'thresholdForAutoReject',
@@ -109,7 +108,6 @@ const loadConfigFile = (configFilePath) => {
             fallbackLlmModelName: getStringValue(parsed, 'fallbackLlmModelName'),
             defaultLlmAgentName: getStringValue(parsed, 'defaultLlmAgentName'),
             maximumPreparingIssuesCount: getNumberValue(parsed, 'maximumPreparingIssuesCount'),
-            allowIssueCacheMinutes: getNumberValue(parsed, 'allowIssueCacheMinutes'),
             utilizationPercentageThreshold: getNumberValue(parsed, 'utilizationPercentageThreshold'),
             allowedIssueAuthors: getStringValue(parsed, 'allowedIssueAuthors'),
             thresholdForAutoReject: getNumberValue(parsed, 'thresholdForAutoReject'),
@@ -161,7 +159,6 @@ const parseProjectReadmeConfig = (readme, projectUrl) => {
             fallbackLlmModelName: getStringValue(parsed, 'fallbackLlmModelName'),
             defaultLlmAgentName: getStringValue(parsed, 'defaultLlmAgentName'),
             maximumPreparingIssuesCount: getNumberValue(parsed, 'maximumPreparingIssuesCount'),
-            allowIssueCacheMinutes: getNumberValue(parsed, 'allowIssueCacheMinutes'),
             utilizationPercentageThreshold: getNumberValue(parsed, 'utilizationPercentageThreshold'),
             allowedIssueAuthors: getStringValue(parsed, 'allowedIssueAuthors'),
             thresholdForAutoReject: getNumberValue(parsed, 'thresholdForAutoReject'),
@@ -197,9 +194,6 @@ const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
     maximumPreparingIssuesCount: readmeOverrides.maximumPreparingIssuesCount ??
         cliOverrides.maximumPreparingIssuesCount ??
         configFile.maximumPreparingIssuesCount,
-    allowIssueCacheMinutes: readmeOverrides.allowIssueCacheMinutes ??
-        cliOverrides.allowIssueCacheMinutes ??
-        configFile.allowIssueCacheMinutes,
     utilizationPercentageThreshold: readmeOverrides.utilizationPercentageThreshold ??
         cliOverrides.utilizationPercentageThreshold ??
         configFile.utilizationPercentageThreshold,
