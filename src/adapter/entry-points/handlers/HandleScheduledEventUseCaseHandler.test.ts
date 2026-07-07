@@ -220,6 +220,8 @@ describe('HandleScheduledEventUseCaseHandler', () => {
       expect.anything(),
       expect.anything(),
       expect.anything(),
+      expect.anything(),
+      expect.anything(),
       'test-token',
     );
   });
