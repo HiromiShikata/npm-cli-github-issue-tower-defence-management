@@ -44,7 +44,9 @@ class GenerateConsoleListsUseCase {
                     storyColors: this.buildStoryColorsString(storyOptions),
                     items: this.sortByStoryOrder(actionableIssues
                         .filter((issue) => issue.story !== null &&
-                        issue.story.toLowerCase().includes('no story'))
+                        issue.story.toLowerCase().includes('no story') &&
+                        issue.status?.toLowerCase() !==
+                            WorkflowStatus_1.IN_TMUX_BY_AGENT_STATUS_NAME.toLowerCase())
                         .map((issue) => this.projectItem(issue)), storyOrder),
                 },
             };
