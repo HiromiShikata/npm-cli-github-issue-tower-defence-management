@@ -16,6 +16,7 @@ export type InTmuxByHumanDataWriterParams = {
   assigneeLogin: string | null | undefined;
   org: string;
   repo: string;
+  newIssueRepo?: string | null | undefined;
   project: Project;
   issues: Issue[];
   now: Date;
@@ -41,6 +42,7 @@ export const writeInTmuxByHumanData = (
     assigneeLogin,
     org,
     repo,
+    newIssueRepo,
     project,
     issues,
     now,
@@ -56,6 +58,7 @@ export const writeInTmuxByHumanData = (
     assigneeLogin,
     org,
     repo,
+    newIssueRepo: newIssueRepo ?? undefined,
     consoleBaseUrl: inTmuxConsoleBaseUrl ?? null,
     consoleToken: inTmuxConsoleToken ?? null,
     now,
