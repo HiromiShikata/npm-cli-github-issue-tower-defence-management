@@ -15,7 +15,7 @@ const writeJsonAtomic = (filePath, data) => {
     fs_1.default.renameSync(tmpPath, filePath);
 };
 const writeInTmuxByHumanData = (params) => {
-    const { inTmuxDataOutputDir, inTmuxConsoleBaseUrl, inTmuxConsoleToken, inTmuxProjectOrder, pjcode, assigneeLogin, org, repo, project, issues, now, } = params;
+    const { inTmuxDataOutputDir, inTmuxConsoleBaseUrl, inTmuxConsoleToken, inTmuxProjectOrder, pjcode, assigneeLogin, org, repo, newIssueRepo, project, issues, now, } = params;
     if (!inTmuxDataOutputDir || !pjcode || !assigneeLogin) {
         return;
     }
@@ -26,6 +26,7 @@ const writeInTmuxByHumanData = (params) => {
         assigneeLogin,
         org,
         repo,
+        newIssueRepo: newIssueRepo ?? undefined,
         consoleBaseUrl: inTmuxConsoleBaseUrl ?? null,
         consoleToken: inTmuxConsoleToken ?? null,
         now,

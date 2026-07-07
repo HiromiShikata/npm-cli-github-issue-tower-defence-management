@@ -1,3 +1,10 @@
+# [1.122.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.121.0...v1.122.0) (2026-07-07)
+
+
+### Features
+
+* **intmux:** add optional newIssueRepo to override the in-tmux newIssueUrl repo segment ([#1143](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1143)) ([50960e1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/50960e1dc063eee0124622fbb61e42978b9b6e1f))
+
 # [1.121.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.120.0...v1.121.0) (2026-07-07)
 
 

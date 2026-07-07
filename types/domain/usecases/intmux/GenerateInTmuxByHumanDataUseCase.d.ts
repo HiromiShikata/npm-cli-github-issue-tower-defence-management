@@ -46,6 +46,7 @@ export type GenerateInTmuxByHumanDataInput = {
     assigneeLogin: string;
     org: string;
     repo: string;
+    newIssueRepo?: string;
     consoleBaseUrl: string | null;
     consoleToken: string | null;
     now: Date;
