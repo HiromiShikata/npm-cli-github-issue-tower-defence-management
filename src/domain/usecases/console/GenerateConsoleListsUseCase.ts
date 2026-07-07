@@ -1,6 +1,7 @@
 import { Issue } from '../../entities/Issue';
 import { FieldOption, Project } from '../../entities/Project';
 import {
+  IN_TMUX_BY_AGENT_STATUS_NAME,
   LEGACY_TODO_STATUS_NAME,
   TODO_STATUS_NAME,
 } from '../../entities/WorkflowStatus';
@@ -164,7 +165,9 @@ export class GenerateConsoleListsUseCase {
             .filter(
               (issue) =>
                 issue.story !== null &&
-                issue.story.toLowerCase().includes('no story'),
+                issue.story.toLowerCase().includes('no story') &&
+                issue.status?.toLowerCase() !==
+                  IN_TMUX_BY_AGENT_STATUS_NAME.toLowerCase(),
             )
             .map((issue) => this.projectItem(issue)),
           storyOrder,
