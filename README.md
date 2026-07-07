@@ -647,6 +647,8 @@ The timestamp of the last slow sweep is stored in the `HandleScheduledEvent` Goo
 
 ### Issue cache contract
 
+On each access the repository chooses between a full fetch (when the cache is absent or stale) and a two-phase, time-precise incremental fetch (when the cache is fresh). The incremental path separates a lightweight day-scan phase from a targeted detail-fetch phase, keeping per-cycle GitHub API usage proportional to the number of items updated since the last fetch rather than proportional to total project size.
+
 The issue repository keeps a single always-latest JSON file per project at `./tmp/cache/{projectName}/allIssues-{projectId}/latest.json` and refreshes it on access. Each refresh writes the file atomically (to a `.tmp` file then renamed) and records `lastFetchedAt`, `lastFullFetchAt`, the cached `project`, and the `issues` array in the same file.
 
 - When the cache file is missing or its `lastFullFetchAt` is at least one hour old, the repository fetches every project item, replaces the whole issue list, refreshes the cached `project`, and sets both `lastFullFetchAt` and `lastFetchedAt` to now (`cacheUsed` is `false`).
