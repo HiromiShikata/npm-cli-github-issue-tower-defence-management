@@ -104,6 +104,7 @@ export class HandleScheduledEventUseCaseHandler {
       dashboardDataDir?: string;
       workflowBlockerStoryName?: string;
       inTmuxDataOutputDir?: string;
+      newIssueRepo?: string;
       inTmuxConsoleBaseUrl?: string;
       inTmuxConsoleToken?: string;
       inTmuxProjectOrder?: string[];
@@ -522,6 +523,7 @@ export class HandleScheduledEventUseCaseHandler {
           assigneeLogin: input.manager,
           org: input.org,
           repo: input.workingReport.repo,
+          newIssueRepo: mergedInput.newIssueRepo ?? undefined,
           project: result.project,
           issues: result.issues,
           now: inTmuxNow,

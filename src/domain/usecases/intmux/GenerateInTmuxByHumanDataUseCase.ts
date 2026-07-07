@@ -55,6 +55,7 @@ export type GenerateInTmuxByHumanDataInput = {
   assigneeLogin: string;
   org: string;
   repo: string;
+  newIssueRepo?: string;
   consoleBaseUrl: string | null;
   consoleToken: string | null;
   now: Date;
@@ -77,6 +78,7 @@ export class GenerateInTmuxByHumanDataUseCase {
       assigneeLogin,
       org,
       repo,
+      newIssueRepo,
       consoleBaseUrl,
       consoleToken,
     } = input;
@@ -132,7 +134,7 @@ export class GenerateInTmuxByHumanDataUseCase {
             version: 4,
             overviewUrl,
             tdpmConsoleUrl: `${tdpmConsoleUrl}?k=${consoleToken}`,
-            newIssueUrl: `https://github.com/${org}/${repo}/issues/new?assignees=${assigneeLogin}`,
+            newIssueUrl: `https://github.com/${org}/${newIssueRepo ?? repo}/issues/new?assignees=${assigneeLogin}`,
             groups: v4Groups,
           }
         : null;
