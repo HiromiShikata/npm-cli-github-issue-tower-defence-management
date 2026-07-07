@@ -3,12 +3,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ApiV3CheerioRestIssueRepository = exports.FULL_ISSUE_FETCH_INTERVAL_MS = void 0;
+exports.ApiV3CheerioRestIssueRepository = exports.INCREMENTAL_FETCH_SKEW_BUFFER_MS = exports.FULL_ISSUE_FETCH_INTERVAL_MS = void 0;
 const typia_1 = __importDefault(require("typia"));
 const BaseGitHubRepository_1 = require("../BaseGitHubRepository");
 const utils_1 = require("../utils");
 const githubRateLimitRetry_1 = require("./githubRateLimitRetry");
 exports.FULL_ISSUE_FETCH_INTERVAL_MS = 60 * 60 * 1000;
+exports.INCREMENTAL_FETCH_SKEW_BUFFER_MS = 5 * 60 * 1000;
 function isIssueTimelineResponse(value) {
     if (typeof value !== 'object' || value === null)
         return false;
@@ -319,13 +320,19 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 return { issues, project, cacheUsed: false };
             }
             const project = cache.project;
-            const overlapStartDate = new Date(cache.lastFetchedAt);
-            overlapStartDate.setUTCDate(overlapStartDate.getUTCDate() - 1);
-            const changedItems = await this.graphqlProjectItemRepository.fetchProjectItems(projectId, `updated:>=${this.toDateString(overlapStartDate)}`);
+            const lastFetchedAt = new Date(cache.lastFetchedAt);
+            const cutoff = new Date(lastFetchedAt.getTime() - exports.INCREMENTAL_FETCH_SKEW_BUFFER_MS);
+            const lightItems = await this.graphqlProjectItemRepository.fetchProjectItemsLight(projectId, `updated:>=${this.toDateString(cutoff)}`);
+            const changedItemIds = lightItems
+                .filter((item) => new Date(item.updatedAt).getTime() >= cutoff.getTime())
+                .map((item) => item.id);
             const issuesByUrl = new Map(cache.issues.map((issue) => [issue.url, issue]));
-            for (const item of changedItems) {
-                const issue = this.convertProjectItemToIssue(item);
-                issuesByUrl.set(issue.url, issue);
+            if (changedItemIds.length > 0) {
+                const changedItems = await this.graphqlProjectItemRepository.fetchProjectItemsByIds(changedItemIds);
+                for (const item of changedItems) {
+                    const issue = this.convertProjectItemToIssue(item);
+                    issuesByUrl.set(issue.url, issue);
+                }
             }
             const issues = Array.from(issuesByUrl.values());
             await this.localStorageCacheRepository.setSingle(cacheKey, {

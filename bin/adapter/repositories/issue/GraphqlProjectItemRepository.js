@@ -33,11 +33,113 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.GraphqlProjectItemRepository = exports.callWithRateLimitRetry = exports.RATE_LIMIT_MAX_BACKOFF_MS = exports.RATE_LIMIT_DEFAULT_BACKOFF_MS = exports.RATE_LIMIT_MIN_BACKOFF_MS = exports.RATE_LIMIT_MAX_RETRIES = exports.FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH = exports.FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE = exports.PAGINATION_DELAY_MS = void 0;
+exports.GraphqlProjectItemRepository = exports.callWithRateLimitRetry = exports.RATE_LIMIT_MAX_BACKOFF_MS = exports.RATE_LIMIT_DEFAULT_BACKOFF_MS = exports.RATE_LIMIT_MIN_BACKOFF_MS = exports.RATE_LIMIT_MAX_RETRIES = exports.FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH = exports.FETCH_PROJECT_ITEMS_BY_IDS_BATCH_SIZE = exports.FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE = exports.PAGINATION_DELAY_MS = void 0;
 const ky_1 = __importStar(require("ky"));
 const BaseGitHubRepository_1 = require("../BaseGitHubRepository");
+const PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION = `
+          fieldValues(first: 10) {
+            nodes {
+              ... on ProjectV2ItemFieldTextValue {
+                text
+                field {
+                  ... on ProjectV2Field{
+                    name
+                  }
+                }
+              }
+              ... on ProjectV2ItemFieldNumberValue {
+                number
+                id
+                field {
+                  ... on ProjectV2Field{
+                    name
+                  }
+                }
+              }
+              ... on ProjectV2ItemFieldDateValue {
+                date
+                field {
+                  ... on ProjectV2Field{
+                    name
+                  }
+                }
+              }
+              ... on ProjectV2ItemFieldSingleSelectValue {
+                name
+                field {
+                  ... on ProjectV2SingleSelectField {
+                    name
+                  }
+                }
+              }
+              ... on ProjectV2ItemFieldIterationValue {
+                title
+                field {
+                  ... on ProjectV2Field{
+                    name
+                  }
+                }
+              }
+            }
+          }
+          content {
+            ... on Issue {
+              number
+              title
+              state
+              url
+              createdAt
+              updatedAt
+              author {
+                login
+              }
+              labels(first: 100) {
+                nodes {
+                  name
+                }
+              }
+              assignees(first: 20) {
+                nodes {
+                  login
+                }
+              }
+              repository {
+                nameWithOwner
+              }
+            }
+            ... on PullRequest {
+              number
+              title
+              state
+              url
+              createdAt
+              updatedAt
+              author {
+                login
+              }
+              labels(first: 100) {
+                nodes {
+                  name
+                }
+              }
+              assignees(first: 20) {
+                nodes {
+                  login
+                }
+              }
+              repository {
+                nameWithOwner
+              }
+              closingIssuesReferences(first: 50) {
+                nodes {
+                  url
+                }
+              }
+            }
+          }`;
 exports.PAGINATION_DELAY_MS = 5000;
 exports.FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE = 100;
+exports.FETCH_PROJECT_ITEMS_BY_IDS_BATCH_SIZE = 100;
 exports.FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH = 4000;
 exports.RATE_LIMIT_MAX_RETRIES = 6;
 exports.RATE_LIMIT_MIN_BACKOFF_MS = 1000;
@@ -159,107 +261,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
           hasNextPage
         }
         nodes {
-          id
-          fieldValues(first: 10) {
-            nodes {
-              ... on ProjectV2ItemFieldTextValue {
-                text
-                field {
-                  ... on ProjectV2Field{
-                    name
-                  }
-                }
-              }
-              ... on ProjectV2ItemFieldNumberValue {
-                number
-                id
-                field {
-                  ... on ProjectV2Field{
-                    name
-                  }
-                }
-              }
-              ... on ProjectV2ItemFieldDateValue {
-                date
-                field {
-                  ... on ProjectV2Field{
-                    name
-                  }
-                }
-              }
-              ... on ProjectV2ItemFieldSingleSelectValue {
-                name
-                field {
-                  ... on ProjectV2SingleSelectField {
-                    name
-                  }
-                }
-              }
-              ... on ProjectV2ItemFieldIterationValue {
-                title
-                field {
-                  ... on ProjectV2Field{
-                    name
-                  }
-                }
-              }
-            }
-          }
-          content {
-            ... on Issue {
-              number
-              title
-              state
-              url
-              createdAt
-              updatedAt
-              author {
-                login
-              }
-              labels(first: 100) {
-                nodes {
-                  name
-                }
-              }
-              assignees(first: 20) {
-                nodes {
-                  login
-                }
-              }
-              repository {
-                nameWithOwner
-              }
-            }
-            ... on PullRequest {
-              number
-              title
-              state
-              url
-              createdAt
-              updatedAt
-              author {
-                login
-              }
-              labels(first: 100) {
-                nodes {
-                  name
-                }
-              }
-              assignees(first: 20) {
-                nodes {
-                  login
-                }
-              }
-              repository {
-                nameWithOwner
-              }
-              closingIssuesReferences(first: 50) {
-                nodes {
-                  url
-                }
-              }
-            }
-          }
+          id${PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION}
         }
       }
     }
@@ -339,42 +341,12 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
                 cumulativeRawNodes += pageNodes.length;
                 pageIndex++;
                 console.log(`fetchProjectItems: page ${pageIndex}, nodes: ${pageNodes.length}, cumulative: ${cumulativeRawNodes}/${totalCount}`);
-                const projectItems = pageNodes;
-                projectItems.forEach((item) => {
-                    if (!item || !item.content || !item.content.repository) {
-                        return;
+                const nodes = pageNodes;
+                nodes.forEach((item) => {
+                    const projectItem = this.mapProjectV2ItemNodeToProjectItem(item);
+                    if (projectItem) {
+                        issues.push(projectItem);
                     }
-                    issues.push({
-                        id: item.id,
-                        nameWithOwner: item.content.repository.nameWithOwner,
-                        number: item.content.number,
-                        title: item.content.title,
-                        state: this.convertStrToState(item.content.state),
-                        url: item.content.url,
-                        body: null,
-                        labels: item.content.labels?.nodes?.map((l) => l.name) || [],
-                        assignees: item.content.assignees?.nodes?.map((a) => a.login) || [],
-                        createdAt: item.content.createdAt || new Date().toISOString(),
-                        updatedAt: item.content.updatedAt ||
-                            item.content.createdAt ||
-                            new Date().toISOString(),
-                        author: item.content.author?.login || '',
-                        closingIssueReferenceUrls: item.content.closingIssuesReferences?.nodes
-                            ?.map((node) => node.url)
-                            .filter((url) => url.length > 0) || [],
-                        customFields: item.fieldValues.nodes
-                            .filter((field) => !!field.field)
-                            .map((field) => {
-                            return {
-                                name: field.field.name,
-                                value: field.name ??
-                                    field.text ??
-                                    field.number?.toString() ??
-                                    field.date ??
-                                    null,
-                            };
-                        }),
-                    });
                 });
                 if (pageNodes.length > 0 &&
                     !pageInfo.hasNextPage &&
@@ -389,6 +361,194 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
                 throw new Error(`fetchProjectItems: expected ${totalCount} items but accumulated ${cumulativeRawNodes}`);
             }
             return issues;
+        };
+        this.mapProjectV2ItemNodeToProjectItem = (item) => {
+            if (!item || !item.content || !item.content.repository) {
+                return null;
+            }
+            return {
+                id: item.id,
+                nameWithOwner: item.content.repository.nameWithOwner,
+                number: item.content.number,
+                title: item.content.title,
+                state: this.convertStrToState(item.content.state),
+                url: item.content.url,
+                body: null,
+                labels: item.content.labels?.nodes?.map((l) => l.name) || [],
+                assignees: item.content.assignees?.nodes?.map((a) => a.login) || [],
+                createdAt: item.content.createdAt || new Date().toISOString(),
+                updatedAt: item.content.updatedAt ||
+                    item.content.createdAt ||
+                    new Date().toISOString(),
+                author: item.content.author?.login || '',
+                closingIssueReferenceUrls: item.content.closingIssuesReferences?.nodes
+                    ?.map((node) => node.url)
+                    .filter((url) => url.length > 0) || [],
+                customFields: item.fieldValues.nodes
+                    .filter((field) => !!field.field)
+                    .map((field) => {
+                    return {
+                        name: field.field.name,
+                        value: field.name ??
+                            field.text ??
+                            field.number?.toString() ??
+                            field.date ??
+                            null,
+                    };
+                }),
+            };
+        };
+        this.fetchProjectItemsLight = async (projectId, query) => {
+            const graphqlQueryString = `
+query GetProjectItemsLight($projectId: ID!, $after: String, $first: Int!, $query: String) {
+  node(id: $projectId) {
+    ... on ProjectV2 {
+      items(first: $first, after: $after, query: $query) {
+        totalCount
+        pageInfo {
+          endCursor
+          hasNextPage
+        }
+        nodes {
+          id
+          updatedAt
+          content {
+            ... on Issue {
+              url
+              number
+            }
+            ... on PullRequest {
+              url
+              number
+            }
+          }
+        }
+      }
+    }
+  }
+}
+`;
+            const callGraphql = async (after) => {
+                const response = await (0, exports.callWithRateLimitRetry)(() => ky_1.default
+                    .post('https://api.github.com/graphql', {
+                    json: {
+                        query: graphqlQueryString,
+                        variables: {
+                            projectId: projectId,
+                            after: after,
+                            first: exports.FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE,
+                            query: query ?? null,
+                        },
+                    },
+                    headers: {
+                        Authorization: `Bearer ${this.ghToken}`,
+                    },
+                })
+                    .json());
+                if (response.errors && response.errors.length > 0) {
+                    throw new Error(`GitHub GraphQL errors: ${stringifyGraphqlErrorsForLog(response.errors)}`);
+                }
+                const rawData = response.data;
+                if (!rawData || rawData.node === null) {
+                    throw new Error('No data returned from GitHub API');
+                }
+                return rawData.node.items;
+            };
+            const lightItems = [];
+            let after = null;
+            let hasNextPage = true;
+            let totalCount = 0;
+            let cumulativeRawNodes = 0;
+            let pageIndex = 0;
+            while (hasNextPage) {
+                if (after !== null) {
+                    await new Promise((resolve) => setTimeout(resolve, exports.PAGINATION_DELAY_MS));
+                }
+                const items = await callGraphql(after);
+                const pageNodes = items.nodes;
+                const pageInfo = items.pageInfo;
+                totalCount = items.totalCount;
+                cumulativeRawNodes += pageNodes.length;
+                pageIndex++;
+                console.log(`fetchProjectItemsLight: page ${pageIndex}, nodes: ${pageNodes.length}, cumulative: ${cumulativeRawNodes}/${totalCount}`);
+                pageNodes.forEach((node) => {
+                    if (!node || !node.content || !node.content.url) {
+                        return;
+                    }
+                    lightItems.push({
+                        id: node.id,
+                        updatedAt: node.updatedAt,
+                        url: node.content.url,
+                        number: node.content.number,
+                    });
+                });
+                if (pageNodes.length > 0 &&
+                    !pageInfo.hasNextPage &&
+                    cumulativeRawNodes < totalCount) {
+                    throw new Error(`fetchProjectItemsLight: page ${pageIndex} has ${pageNodes.length} nodes with hasNextPage=false but only ${cumulativeRawNodes}/${totalCount} items accumulated`);
+                }
+                hasNextPage = pageInfo.hasNextPage;
+                after = pageInfo.endCursor;
+            }
+            console.log(`fetchProjectItemsLight: completed, totalCount: ${totalCount}, cumulativeRawNodes: ${cumulativeRawNodes}, items: ${lightItems.length}`);
+            if (cumulativeRawNodes !== totalCount) {
+                throw new Error(`fetchProjectItemsLight: expected ${totalCount} items but accumulated ${cumulativeRawNodes}`);
+            }
+            return lightItems;
+        };
+        this.fetchProjectItemsByIds = async (ids) => {
+            if (ids.length === 0) {
+                return [];
+            }
+            const graphqlQueryString = `
+query GetProjectItemsByIds($ids: [ID!]!) {
+  nodes(ids: $ids) {
+    ... on ProjectV2Item {
+      id${PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION}
+    }
+  }
+}
+`;
+            const callGraphql = async (batchIds) => {
+                const response = await (0, exports.callWithRateLimitRetry)(() => ky_1.default
+                    .post('https://api.github.com/graphql', {
+                    json: {
+                        query: graphqlQueryString,
+                        variables: {
+                            ids: batchIds,
+                        },
+                    },
+                    headers: {
+                        Authorization: `Bearer ${this.ghToken}`,
+                    },
+                })
+                    .json());
+                if (response.errors && response.errors.length > 0) {
+                    throw new Error(`GitHub GraphQL errors: ${stringifyGraphqlErrorsForLog(response.errors)}`);
+                }
+                if (!response.data) {
+                    throw new Error('No data returned from GitHub API');
+                }
+                return response.data.nodes;
+            };
+            const items = [];
+            let batchIndex = 0;
+            for (let start = 0; start < ids.length; start += exports.FETCH_PROJECT_ITEMS_BY_IDS_BATCH_SIZE) {
+                if (start > 0) {
+                    await new Promise((resolve) => setTimeout(resolve, exports.PAGINATION_DELAY_MS));
+                }
+                const batchIds = ids.slice(start, start + exports.FETCH_PROJECT_ITEMS_BY_IDS_BATCH_SIZE);
+                const nodes = await callGraphql(batchIds);
+                batchIndex++;
+                console.log(`fetchProjectItemsByIds: batch ${batchIndex}, ids: ${batchIds.length}, nodes: ${nodes.length}`);
+                nodes.forEach((node) => {
+                    const projectItem = this.mapProjectV2ItemNodeToProjectItem(node);
+                    if (projectItem) {
+                        items.push(projectItem);
+                    }
+                });
+            }
+            return items;
         };
         this.getProjectItemFieldsFromIssueUrl = async (issueUrl) => {
             const { owner, repo, issueNumber } = this.extractIssueFromUrl(issueUrl);

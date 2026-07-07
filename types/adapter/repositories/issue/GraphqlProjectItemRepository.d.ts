@@ -20,8 +20,15 @@ export type ProjectItem = {
         value: string | null;
     }[];
 };
+export type ProjectItemLight = {
+    id: string;
+    updatedAt: string;
+    url: string;
+    number: number;
+};
 export declare const PAGINATION_DELAY_MS = 5000;
 export declare const FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE = 100;
+export declare const FETCH_PROJECT_ITEMS_BY_IDS_BATCH_SIZE = 100;
 export declare const FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH = 4000;
 export declare const RATE_LIMIT_MAX_RETRIES = 6;
 export declare const RATE_LIMIT_MIN_BACKOFF_MS = 1000;
@@ -31,6 +38,9 @@ export declare const callWithRateLimitRetry: <T>(request: () => Promise<T>) => P
 export declare class GraphqlProjectItemRepository extends BaseGitHubRepository {
     fetchItemId: (projectId: string, owner: string, repositoryName: string, issueNumber: number) => Promise<string | undefined>;
     fetchProjectItems: (projectId: string, query?: string) => Promise<ProjectItem[]>;
+    private mapProjectV2ItemNodeToProjectItem;
+    fetchProjectItemsLight: (projectId: string, query?: string) => Promise<ProjectItemLight[]>;
+    fetchProjectItemsByIds: (ids: string[]) => Promise<ProjectItem[]>;
     getProjectItemFieldsFromIssueUrl: (issueUrl: string) => Promise<{
         fieldName: string;
         fieldValue: string;
