@@ -5,6 +5,7 @@ import { RestIssueRepository } from './RestIssueRepository';
 import {
   GraphqlProjectItemRepository,
   ProjectItem,
+  ProjectItemLight,
 } from './GraphqlProjectItemRepository';
 import { LocalStorageCacheRepository } from '../LocalStorageCacheRepository';
 import { LocalStorageRepository } from '../LocalStorageRepository';
@@ -68,6 +69,17 @@ const buildProjectItem = (url: string, title: string): ProjectItem => ({
   author: '',
   closingIssueReferenceUrls: [],
   customFields: [],
+});
+
+const buildLightItem = (
+  id: string,
+  url: string,
+  updatedAt: string,
+): ProjectItemLight => ({
+  id,
+  updatedAt,
+  url,
+  number: 1,
 });
 
 describe('ApiV3CheerioRestIssueRepository', () => {
@@ -254,7 +266,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
   });
 
   describe('getAllIssues incremental fetch', () => {
-    it('reuses the cached project, upserts changed issues by url, and marks cacheUsed', async () => {
+    it('light-scans the lastFetchedAt UTC day with no previous-day overlap, detail-fetches changed items by id, and upserts by url', async () => {
       const {
         repository,
         graphqlProjectItemRepository,
@@ -263,9 +275,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         dateRepository,
       } = createApiV3CheerioRestIssueRepository();
       const cachedProject = buildTestProject('cached-project');
-      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:30:00Z'));
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:45:00Z'));
       localStorageCacheRepository.getSingle.mockResolvedValue({
-        lastFetchedAt: '2026-07-07T00:00:00.000Z',
+        lastFetchedAt: '2026-07-07T00:30:00.000Z',
         lastFullFetchAt: '2026-07-07T00:00:00.000Z',
         project: cachedProject,
         issues: [
@@ -275,7 +287,19 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           ),
         ],
       });
-      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([
+        buildLightItem(
+          'item-fresh',
+          'https://github.com/o/r/issues/1',
+          '2026-07-07T00:40:00.000Z',
+        ),
+        buildLightItem(
+          'item-new',
+          'https://github.com/o/r/issues/2',
+          '2026-07-07T00:44:00.000Z',
+        ),
+      ]);
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([
         buildProjectItem('https://github.com/o/r/issues/1', 'fresh title'),
         buildProjectItem('https://github.com/o/r/issues/2', 'new issue'),
       ]);
@@ -286,9 +310,16 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result.cacheUsed).toBe(true);
       expect(result.project).toBe(cachedProject);
       expect(projectRepository.getProject).not.toHaveBeenCalled();
-      const call = graphqlProjectItemRepository.fetchProjectItems.mock.calls[0];
-      expect(call[0]).toBe('cached-project');
-      expect(call[1]).toBe('updated:>=2026-07-06');
+      const lightCall =
+        graphqlProjectItemRepository.fetchProjectItemsLight.mock.calls[0];
+      expect(lightCall[0]).toBe('cached-project');
+      expect(lightCall[1]).toBe('updated:>=2026-07-07');
+      expect(
+        graphqlProjectItemRepository.fetchProjectItems,
+      ).not.toHaveBeenCalled();
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemsByIds,
+      ).toHaveBeenCalledWith(['item-fresh', 'item-new']);
       const titlesByUrl = new Map(
         result.issues.map((issue) => [issue.url, issue.title]),
       );
@@ -299,6 +330,143 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         'new issue',
       );
       expect(result.issues).toHaveLength(2);
+      const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1];
+      expect(cacheWrite).toEqual(
+        expect.objectContaining({
+          lastFetchedAt: '2026-07-07T00:45:00.000Z',
+          lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        }),
+      );
+    });
+
+    it('includes items within the clock-skew buffer before lastFetchedAt and excludes items older than the buffer', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:45:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue({
+        lastFetchedAt: '2026-07-07T00:30:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project: buildTestProject('cached-project'),
+        issues: [],
+      });
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([
+        buildLightItem(
+          'wellBefore',
+          'https://github.com/o/r/issues/1',
+          '2026-07-07T00:20:00.000Z',
+        ),
+        buildLightItem(
+          'withinBuffer',
+          'https://github.com/o/r/issues/2',
+          '2026-07-07T00:27:00.000Z',
+        ),
+        buildLightItem(
+          'atLastFetched',
+          'https://github.com/o/r/issues/3',
+          '2026-07-07T00:30:00.000Z',
+        ),
+        buildLightItem(
+          'after',
+          'https://github.com/o/r/issues/4',
+          '2026-07-07T00:40:00.000Z',
+        ),
+      ]);
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      await repository.getAllIssues('cached-project');
+
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemsByIds,
+      ).toHaveBeenCalledWith(['withinBuffer', 'atLastFetched', 'after']);
+    });
+
+    it('applies the skew buffer across a UTC-midnight boundary, scanning the previous UTC day rather than today', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:30:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue({
+        lastFetchedAt: '2026-07-07T00:02:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project: buildTestProject('cached-project'),
+        issues: [],
+      });
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([
+        buildLightItem(
+          'previousDay',
+          'https://github.com/o/r/issues/1',
+          '2026-07-06T23:58:00.000Z',
+        ),
+        buildLightItem(
+          'beforeBuffer',
+          'https://github.com/o/r/issues/2',
+          '2026-07-06T23:55:00.000Z',
+        ),
+      ]);
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      await repository.getAllIssues('cached-project');
+
+      const lightCall =
+        graphqlProjectItemRepository.fetchProjectItemsLight.mock.calls[0];
+      expect(lightCall[1]).toBe('updated:>=2026-07-06');
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemsByIds,
+      ).toHaveBeenCalledWith(['previousDay']);
+    });
+
+    it('skips the detail fetch entirely when no light item changed since lastFetchedAt', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:45:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue({
+        lastFetchedAt: '2026-07-07T00:30:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project: buildTestProject('cached-project'),
+        issues: [
+          buildCachedIssueRecord(
+            'https://github.com/o/r/issues/1',
+            'unchanged title',
+          ),
+        ],
+      });
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([
+        buildLightItem(
+          'stale',
+          'https://github.com/o/r/issues/1',
+          '2026-07-07T00:10:00.000Z',
+        ),
+      ]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      const result = await repository.getAllIssues('cached-project');
+
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemsByIds,
+      ).not.toHaveBeenCalled();
+      expect(result.cacheUsed).toBe(true);
+      expect(result.issues).toHaveLength(1);
+      expect(result.issues[0].title).toBe('unchanged title');
+      const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1];
+      expect(cacheWrite).toEqual(
+        expect.objectContaining({
+          lastFetchedAt: '2026-07-07T00:45:00.000Z',
+          lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        }),
+      );
     });
 
     it('performs a full fetch when the hourly gate has elapsed', async () => {
