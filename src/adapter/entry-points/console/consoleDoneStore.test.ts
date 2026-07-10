@@ -94,5 +94,13 @@ describe('consoleDoneStore', () => {
         ]);
       }
     });
+
+    it('includes the workflow-blocker tab so processed blockers are excluded', () => {
+      expect(CONSOLE_DONE_TAB_NAMES).toContain('workflow-blocker');
+      recordDoneProjectItemIdAcrossTabs(baseDir, 'umino', 'PVTI_7');
+      expect(
+        readDoneProjectItemIds(baseDir, 'umino', 'workflow-blocker'),
+      ).toEqual(['PVTI_7']);
+    });
   });
 });

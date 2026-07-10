@@ -255,7 +255,7 @@ describe('ConsolePage', () => {
     expect(queryByText('project: umino')).toBeNull();
   });
 
-  it('keeps the workflow-blocker tab visible and lists its items even when every item is marked done in the overlay', async () => {
+  it('removes a processed workflow-blocker item from the list and decrements its tab badge, like every other tab', async () => {
     const blockerItems = [
       {
         number: 701,
@@ -311,7 +311,6 @@ describe('ConsolePage', () => {
       'pv_overlay_umino',
       JSON.stringify({
         PVTI_B1: { ts: 1, mode: 'workflow-blocker', done: true },
-        PVTI_B2: { ts: 1, mode: 'workflow-blocker', done: true },
       }),
     );
     window.history.replaceState(
@@ -320,17 +319,17 @@ describe('ConsolePage', () => {
       '/projects/umino/workflow-blocker?k=token',
     );
 
-    const { getByText } = render(<ConsolePage />);
+    const { getByText, queryByText } = render(<ConsolePage />);
     await waitFor(() => {
-      expect(getByText('Blocked deployment task')).toBeInTheDocument();
+      expect(getByText('Blocked rollout task')).toBeInTheDocument();
     });
-    expect(getByText('Blocked rollout task')).toBeInTheDocument();
+    expect(queryByText('Blocked deployment task')).toBeNull();
     const blockerTab = within(tabBar())
       .getByText('Workflow Blocker')
       .closest('a');
     expect(blockerTab).not.toBeNull();
     expect(blockerTab?.querySelector('.console-tab-badge')?.textContent).toBe(
-      '2',
+      '1',
     );
   });
 
