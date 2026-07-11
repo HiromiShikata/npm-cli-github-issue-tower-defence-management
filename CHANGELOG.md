@@ -1,3 +1,10 @@
+## [1.122.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.2...v1.122.3) (2026-07-11)
+
+
+### Bug Fixes
+
+* **console:** remove avoidable GitHub GraphQL calls from console operation path ([#1154](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1154)) ([c9aa71c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c9aa71c2c2d31673d05f8b8d04af5fb591666911)), closes [#1153](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1153)
+
 ## [1.122.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.1...v1.122.2) (2026-07-11)
 
 
