@@ -84,6 +84,7 @@ const recordDoneProjectItemId = (consoleDataOutputDir, pjcode, tab, projectItemI
 };
 exports.recordDoneProjectItemId = recordDoneProjectItemId;
 exports.CONSOLE_DONE_TAB_NAMES = [
+    'workflow-blocker',
     'prs',
     'triage',
     'unread',

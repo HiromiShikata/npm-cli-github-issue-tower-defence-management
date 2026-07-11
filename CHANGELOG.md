@@ -1,3 +1,10 @@
+## [1.122.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.1...v1.122.2) (2026-07-11)
+
+
+### Bug Fixes
+
+* **console:** filter processed items from the workflow-blocker view like other tabs ([#1152](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1152)) ([9745e66](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9745e666526b41e4bd0c318caf7107e50d30d734))
+
 ## [1.122.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.0...v1.122.1) (2026-07-07)
 
 
