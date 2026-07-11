@@ -129,6 +129,28 @@ describe('buildConsoleDataResponse', () => {
     });
   });
 
+  it('applies the done exclusion to the workflow-blocker list', () => {
+    writeJson('umino/workflow-blocker/list.json', {
+      pjcode: 'umino',
+      items: [
+        { projectItemId: 'PVTI_1', title: 'keep' },
+        { projectItemId: 'PVTI_2', title: 'processed blocker' },
+      ],
+    });
+    recordDoneProjectItemId(baseDir, 'umino', 'workflow-blocker', 'PVTI_2');
+    const response = buildConsoleDataResponse(baseDir, {
+      kind: 'list',
+      pjcode: 'umino',
+      tab: 'workflow-blocker',
+    });
+    expect(response.statusCode).toBe(200);
+    const parsed: unknown = JSON.parse(response.body);
+    expect(parsed).toEqual({
+      pjcode: 'umino',
+      items: [{ projectItemId: 'PVTI_1', title: 'keep' }],
+    });
+  });
+
   it('serves a list file without an items array unchanged', () => {
     writeJson('umino/prs/list.json', { pjcode: 'umino' });
     const response = buildConsoleDataResponse(baseDir, {

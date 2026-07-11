@@ -30,23 +30,6 @@ export const filterPendingItems = (
     (item) => !isOverlayEntryActed(overlay[overlayKeyForItem(item)]),
   );
 
-export const tabIgnoresDoneOverlay = (tab: ConsoleTabName): boolean =>
-  tab === 'workflow-blocker';
-
-export const countTabPendingItems = (
-  items: ConsoleListItem[],
-  overlay: ConsoleOverlay,
-  tab: ConsoleTabName,
-): number =>
-  tabIgnoresDoneOverlay(tab) ? items.length : countPendingItems(items, overlay);
-
-export const filterTabPendingItems = (
-  items: ConsoleListItem[],
-  overlay: ConsoleOverlay,
-  tab: ConsoleTabName,
-): ConsoleListItem[] =>
-  tabIgnoresDoneOverlay(tab) ? items : filterPendingItems(items, overlay);
-
 export const writeOverlayEntry = (
   overlay: ConsoleOverlay,
   key: string,

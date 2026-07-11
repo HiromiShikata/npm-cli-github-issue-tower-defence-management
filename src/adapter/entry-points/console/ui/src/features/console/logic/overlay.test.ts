@@ -1,12 +1,9 @@
 import {
   countPendingItems,
-  countTabPendingItems,
   filterPendingItems,
-  filterTabPendingItems,
   isOverlayEntryActed,
   overlayKeyForItem,
   overlayStorageKey,
-  tabIgnoresDoneOverlay,
   writeOverlayEntry,
 } from './overlay';
 import type { ConsoleListItem, ConsoleOverlay } from './types';
@@ -126,59 +123,29 @@ describe('filterPendingItems', () => {
   });
 });
 
-describe('tabIgnoresDoneOverlay', () => {
-  it('ignores the done overlay on the workflow-blocker tab', () => {
-    expect(tabIgnoresDoneOverlay('workflow-blocker')).toBe(true);
-  });
-
-  it('applies the done overlay on every other tab', () => {
-    expect(tabIgnoresDoneOverlay('prs')).toBe(false);
-    expect(tabIgnoresDoneOverlay('triage')).toBe(false);
-    expect(tabIgnoresDoneOverlay('unread')).toBe(false);
-    expect(tabIgnoresDoneOverlay('failed-preparation')).toBe(false);
-    expect(tabIgnoresDoneOverlay('todo-by-human')).toBe(false);
-  });
-});
-
-describe('countTabPendingItems', () => {
-  it('counts every workflow-blocker item even when all are marked done', () => {
+describe('workflow-blocker items are filtered by the done overlay like every other tab', () => {
+  it('subtracts a processed workflow-blocker item from the count', () => {
     const overlay: ConsoleOverlay = {
       PVTI_1: { ts: 100, mode: 'workflow-blocker', done: true },
-      PVTI_2: { ts: 100, mode: 'workflow-blocker', done: true },
     };
-    expect(
-      countTabPendingItems([item(1), item(2)], overlay, 'workflow-blocker'),
-    ).toBe(2);
+    expect(countPendingItems([item(1), item(2)], overlay)).toBe(1);
   });
 
-  it('subtracts done items on tabs other than workflow-blocker', () => {
-    const overlay: ConsoleOverlay = {
-      PVTI_1: { ts: 100, mode: 'prs', done: true },
-    };
-    expect(countTabPendingItems([item(1), item(2)], overlay, 'prs')).toBe(1);
-  });
-});
-
-describe('filterTabPendingItems', () => {
-  it('keeps every workflow-blocker item even when all are marked done', () => {
+  it('removes a processed workflow-blocker item from the list', () => {
     const overlay: ConsoleOverlay = {
       PVTI_1: { ts: 100, mode: 'workflow-blocker', done: true },
-      PVTI_2: { ts: 100, mode: 'workflow-blocker', done: true },
     };
-    const result = filterTabPendingItems(
-      [item(1), item(2)],
-      overlay,
-      'workflow-blocker',
-    );
-    expect(result.map((entry) => entry.number)).toEqual([1, 2]);
-  });
-
-  it('drops done items on tabs other than workflow-blocker', () => {
-    const overlay: ConsoleOverlay = {
-      PVTI_1: { ts: 100, mode: 'prs', done: true },
-    };
-    const result = filterTabPendingItems([item(1), item(2)], overlay, 'prs');
+    const result = filterPendingItems([item(1), item(2)], overlay);
     expect(result.map((entry) => entry.number)).toEqual([2]);
+  });
+
+  it('drives the count to zero when every workflow-blocker item is processed', () => {
+    const overlay: ConsoleOverlay = {
+      PVTI_1: { ts: 100, mode: 'workflow-blocker', done: true },
+      PVTI_2: { ts: 100, mode: 'workflow-blocker', done: true },
+    };
+    expect(countPendingItems([item(1), item(2)], overlay)).toBe(0);
+    expect(filterPendingItems([item(1), item(2)], overlay)).toEqual([]);
   });
 });
 

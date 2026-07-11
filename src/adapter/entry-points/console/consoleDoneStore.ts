@@ -72,6 +72,7 @@ export const recordDoneProjectItemId = (
 };
 
 export const CONSOLE_DONE_TAB_NAMES: string[] = [
+  'workflow-blocker',
   'prs',
   'triage',
   'unread',
