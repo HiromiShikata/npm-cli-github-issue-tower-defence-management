@@ -3,6 +3,7 @@ import { Project } from '../../../domain/entities/Project';
 import {
   buildPjcodeToProjectUrl,
   createConsoleProjectResolver,
+  createPjcodeConfigChecker,
 } from './consoleProjectResolver';
 
 describe('buildPjcodeToProjectUrl', () => {
@@ -36,6 +37,18 @@ describe('buildPjcodeToProjectUrl', () => {
     expect(mapping).toEqual({
       umino: 'https://github.com/orgs/umino/projects/1',
     });
+  });
+});
+
+describe('createPjcodeConfigChecker', () => {
+  it('reports true only for a configured pjcode without loading any project', () => {
+    const isConfigured = createPjcodeConfigChecker({
+      umino: 'https://github.com/orgs/umino/projects/1',
+      xmile: 'https://github.com/orgs/xmile/projects/2',
+    });
+    expect(isConfigured('umino')).toBe(true);
+    expect(isConfigured('xmile')).toBe(true);
+    expect(isConfigured('unknown')).toBe(false);
   });
 });
 

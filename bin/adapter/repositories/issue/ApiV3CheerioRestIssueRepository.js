@@ -286,6 +286,20 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 issues,
             };
         };
+        // Reads the Project (status/story option ids and field ids) that the TDPM
+        // daemon persisted into the `allIssues-${projectId}` cache, without any
+        // GraphQL call. Returns null on cache miss so callers can fall back to a
+        // GraphQL project load only when the daemon has not populated the cache yet.
+        this.getCachedProject = async (projectId) => {
+            const raw = await this.localStorageCacheRepository.getSingle(`allIssues-${projectId}`);
+            if (typeof raw !== 'object' || raw === null || !('project' in raw)) {
+                return null;
+            }
+            if (!(() => { const _io0 = input => "string" === typeof input.id && "string" === typeof input.url && "number" === typeof input.databaseId && "string" === typeof input.name && ("object" === typeof input.status && null !== input.status && _io1(input.status)) && (null === input.nextActionDate || "object" === typeof input.nextActionDate && null !== input.nextActionDate && _io3(input.nextActionDate)) && (null === input.nextActionHour || "object" === typeof input.nextActionHour && null !== input.nextActionHour && _io4(input.nextActionHour)) && (null === input.story || "object" === typeof input.story && null !== input.story && _io5(input.story)) && (null === input.remainingEstimationMinutes || "object" === typeof input.remainingEstimationMinutes && null !== input.remainingEstimationMinutes && _io7(input.remainingEstimationMinutes)) && (null === input.dependedIssueUrlSeparatedByComma || "object" === typeof input.dependedIssueUrlSeparatedByComma && null !== input.dependedIssueUrlSeparatedByComma && _io8(input.dependedIssueUrlSeparatedByComma)) && (null === input.completionDate50PercentConfidence || "object" === typeof input.completionDate50PercentConfidence && null !== input.completionDate50PercentConfidence && _io9(input.completionDate50PercentConfidence)); const _io1 = input => "string" === typeof input.name && "string" === typeof input.fieldId && (Array.isArray(input.statuses) && input.statuses.every(elem => "object" === typeof elem && null !== elem && _io2(elem))); const _io2 = input => "string" === typeof input.id && "string" === typeof input.name && ("GRAY" === input.color || "BLUE" === input.color || "GREEN" === input.color || "YELLOW" === input.color || "ORANGE" === input.color || "RED" === input.color || "PINK" === input.color || "PURPLE" === input.color) && "string" === typeof input.description; const _io3 = input => "string" === typeof input.name && "string" === typeof input.fieldId; const _io4 = input => "string" === typeof input.name && "string" === typeof input.fieldId; const _io5 = input => "string" === typeof input.name && "string" === typeof input.fieldId && "number" === typeof input.databaseId && (Array.isArray(input.stories) && input.stories.every(elem => "object" === typeof elem && null !== elem && _io2(elem))) && ("object" === typeof input.workflowManagementStory && null !== input.workflowManagementStory && _io6(input.workflowManagementStory)); const _io6 = input => "string" === typeof input.id && "string" === typeof input.name; const _io7 = input => "string" === typeof input.name && "string" === typeof input.fieldId; const _io8 = input => "string" === typeof input.name && "string" === typeof input.fieldId; const _io9 = input => "string" === typeof input.name && "string" === typeof input.fieldId; return input => "object" === typeof input && null !== input && _io0(input); })()(raw.project)) {
+                return null;
+            }
+            return raw.project;
+        };
         this.toDateString = (date) => `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
         this.getAllIssues = async (projectId) => {
             const memoized = this.getAllIssuesRefreshMemo.get(projectId);
@@ -376,15 +390,20 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 (await this.graphqlProjectItemRepository.addIssueToProject(project.id, prUrl));
             await this.graphqlProjectItemRepository.updateProjectTextField(project.id, dependedIssueUrlField.fieldId, projectItemId, issueUrl);
         };
-        this.updateNextActionDate = async (issueUrl, project, date) => {
+        this.updateNextActionDate = async (issueUrl, project, date, projectItemId) => {
             if (!project.nextActionDate) {
                 return;
             }
-            const projectItem = await this.graphqlProjectItemRepository.fetchProjectItemByUrl(issueUrl, project.id);
-            if (!projectItem) {
+            // When the caller already knows the project item id (e.g. the console,
+            // which receives it in the request body), use it directly and skip the
+            // GraphQL fetchProjectItemByUrl lookup. Fall back to the lookup only when
+            // no id was supplied, preserving the original behavior for other callers.
+            const itemId = projectItemId ??
+                (await this.graphqlProjectItemRepository.fetchProjectItemByUrl(issueUrl, project.id))?.id;
+            if (!itemId) {
                 return;
             }
-            return this.graphqlProjectItemRepository.updateProjectField(project.id, project.nextActionDate.fieldId, projectItem.id, { date: date.toISOString().split('T')[0] });
+            return this.graphqlProjectItemRepository.updateProjectField(project.id, project.nextActionDate.fieldId, itemId, { date: date.toISOString().split('T')[0] });
         };
         this.updateNextActionHour = async (project, issue, hour) => {
             return this.graphqlProjectItemRepository.updateProjectField(project.id, project.nextActionHour.fieldId, issue.itemId, { number: hour });

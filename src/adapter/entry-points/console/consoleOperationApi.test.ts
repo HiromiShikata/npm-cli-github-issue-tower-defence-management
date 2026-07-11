@@ -7,6 +7,7 @@ import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
 import {
   ConsoleOperationContext,
+  ConsoleProjectBinding,
   handleComment,
   handleIntmux,
   handleReview,
@@ -73,6 +74,7 @@ describe('consoleOperationApi', () => {
       issueRepository,
       resolveProject: async (pjcode: string) =>
         pjcode === 'umino' ? { pjcode, project } : null,
+      isPjcodeConfigured: (pjcode: string) => pjcode === 'umino',
       consoleDataOutputDir: baseDir,
     };
   });
@@ -83,6 +85,7 @@ describe('consoleOperationApi', () => {
     issueRepository,
     resolveProject: async (pjcode: string) =>
       pjcode === 'umino' ? { pjcode, project: nextProject } : null,
+    isPjcodeConfigured: (pjcode: string) => pjcode === 'umino',
     consoleDataOutputDir: baseDir,
   });
 
@@ -112,9 +115,13 @@ describe('consoleOperationApi', () => {
       );
       expect(issueRepository.updateStatus).toHaveBeenCalledWith(
         project,
-        { ...issue, itemId: 'PVTI_a' },
+        expect.objectContaining({
+          itemId: 'PVTI_a',
+          url: 'https://github.com/o/r/pull/1',
+        }),
         'status_aw',
       );
+      expect(issueRepository.get).not.toHaveBeenCalled();
       expectRecordedAcrossTabs('PVTI_a');
     });
 
@@ -234,7 +241,7 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(400);
     });
 
-    it('returns 400 when the issue cannot be loaded during approve', async () => {
+    it('approves using the request project item id without a GraphQL item fetch', async () => {
       issueRepository.get.mockResolvedValue(null);
       const response = await handleReview(context, {
         pjcode: 'umino',
@@ -242,8 +249,13 @@ describe('consoleOperationApi', () => {
         prUrl: 'https://github.com/o/r/pull/1',
         projectItemId: 'PVTI_c',
       });
-      expect(response.statusCode).toBe(400);
-      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.get).not.toHaveBeenCalled();
+      expect(issueRepository.updateStatus).toHaveBeenCalledWith(
+        project,
+        expect.objectContaining({ itemId: 'PVTI_c' }),
+        'status_aw',
+      );
     });
 
     it('returns 400 when the Awaiting workspace status is absent', async () => {
@@ -273,9 +285,13 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(200);
       expect(issueRepository.updateStatus).toHaveBeenCalledWith(
         project,
-        { ...issue, itemId: 'PVTI_d' },
+        expect.objectContaining({
+          itemId: 'PVTI_d',
+          url: 'https://github.com/o/r/issues/1',
+        }),
         'status_todo',
       );
+      expect(issueRepository.get).not.toHaveBeenCalled();
       expectRecordedAcrossTabs('PVTI_d');
     });
 
@@ -302,9 +318,10 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(200);
       expect(issueRepository.updateStory).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'PVT_1' }),
-        { ...issue, itemId: 'PVTI_e' },
+        expect.objectContaining({ itemId: 'PVTI_e' }),
         'story_opt_1',
       );
+      expect(issueRepository.get).not.toHaveBeenCalled();
       expectRecordedAcrossTabs('PVTI_e');
     });
 
@@ -457,7 +474,7 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(400);
     });
 
-    it('returns 400 when the issue cannot be loaded for set_story', async () => {
+    it('sets the story using the request project item id without a GraphQL item fetch', async () => {
       issueRepository.get.mockResolvedValue(null);
       const response = await handleTriage(context, {
         pjcode: 'umino',
@@ -466,7 +483,157 @@ describe('consoleOperationApi', () => {
         projectItemId: 'PVTI_h',
         storyOptionId: 'story_opt_1',
       });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.get).not.toHaveBeenCalled();
+      expect(issueRepository.updateStory).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'PVT_1' }),
+        expect.objectContaining({ itemId: 'PVTI_h' }),
+        'story_opt_1',
+      );
+    });
+  });
+
+  describe('close operations avoid loading the project via GraphQL', () => {
+    let resolveProjectSpy: jest.Mock<
+      Promise<ConsoleProjectBinding | null>,
+      [string]
+    >;
+    let spiedContext: ConsoleOperationContext;
+
+    beforeEach(() => {
+      resolveProjectSpy = jest.fn(async (pjcode: string) =>
+        pjcode === 'umino' ? { pjcode, project } : null,
+      );
+      spiedContext = {
+        issueRepository,
+        resolveProject: resolveProjectSpy,
+        isPjcodeConfigured: (pjcode: string) => pjcode === 'umino',
+        consoleDataOutputDir: baseDir,
+      };
+    });
+
+    it('closes an issue via triage without resolving the project', async () => {
+      const response = await handleTriage(spiedContext, {
+        pjcode: 'umino',
+        action: 'close',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_noproj_close',
+        commentBody: 'duplicate',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.closeIssueByUrl).toHaveBeenCalledWith(
+        'https://github.com/o/r/issues/1',
+        'completed',
+      );
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledWith(
+        'https://github.com/o/r/issues/1',
+        'duplicate',
+      );
+      expect(resolveProjectSpy).not.toHaveBeenCalled();
+      expect(issueRepository.get).not.toHaveBeenCalled();
+    });
+
+    it('closes not planned via triage without resolving the project', async () => {
+      const response = await handleTriage(spiedContext, {
+        pjcode: 'umino',
+        action: 'close_not_planned',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_noproj_np',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.closeIssueByUrl).toHaveBeenCalledWith(
+        'https://github.com/o/r/issues/1',
+        'not_planned',
+      );
+      expect(resolveProjectSpy).not.toHaveBeenCalled();
+    });
+
+    it('closes a pull request via review without resolving the project', async () => {
+      const response = await handleReview(spiedContext, {
+        pjcode: 'umino',
+        action: 'close',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_noproj_reviewclose',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.closePullRequest).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+      );
+      expect(resolveProjectSpy).not.toHaveBeenCalled();
+    });
+
+    it('rejects a close whose pjcode is not configured without resolving the project', async () => {
+      const response = await handleTriage(spiedContext, {
+        pjcode: 'unconfigured',
+        action: 'close',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_noproj_badpj',
+      });
       expect(response.statusCode).toBe(400);
+      expect(issueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(resolveProjectSpy).not.toHaveBeenCalled();
+    });
+
+    it('sets intmux without a GraphQL item fetch while resolving the project', async () => {
+      const response = await handleIntmux(spiedContext, {
+        pjcode: 'umino',
+        action: 'set_intmux',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_needproj_intmux',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(resolveProjectSpy).toHaveBeenCalledTimes(1);
+      expect(issueRepository.get).not.toHaveBeenCalled();
+      expect(issueRepository.updateStatus).toHaveBeenCalledWith(
+        project,
+        expect.objectContaining({ itemId: 'PVTI_needproj_intmux' }),
+        'status_intmux',
+      );
+    });
+
+    it('resolves the project for set_status but performs no GraphQL item fetch', async () => {
+      const response = await handleTriage(spiedContext, {
+        pjcode: 'umino',
+        action: 'set_status',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_needproj_status',
+        statusName: 'Todo',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(resolveProjectSpy).toHaveBeenCalledTimes(1);
+      expect(issueRepository.get).not.toHaveBeenCalled();
+      expect(issueRepository.updateStatus).toHaveBeenCalledTimes(1);
+    });
+
+    it('resolves the project for set_story but performs no GraphQL item fetch', async () => {
+      const response = await handleTriage(spiedContext, {
+        pjcode: 'umino',
+        action: 'set_story',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_needproj_story',
+        storyOptionId: 'story_opt_1',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(resolveProjectSpy).toHaveBeenCalledTimes(1);
+      expect(issueRepository.get).not.toHaveBeenCalled();
+      expect(issueRepository.updateStory).toHaveBeenCalledTimes(1);
+    });
+
+    it('resolves the project for snooze and passes the item id without a GraphQL item fetch', async () => {
+      const response = await handleTriage(spiedContext, {
+        pjcode: 'umino',
+        action: 'snooze_1day',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_needproj_snooze',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(resolveProjectSpy).toHaveBeenCalledTimes(1);
+      expect(issueRepository.get).not.toHaveBeenCalled();
+      const call = issueRepository.updateNextActionDate.mock.calls[0];
+      expect(call[0]).toBe('https://github.com/o/r/issues/1');
+      expect(call[1]).toBe(project);
+      expect(call[2]).toBeInstanceOf(Date);
+      expect(call[3]).toBe('PVTI_needproj_snooze');
     });
   });
 
@@ -481,9 +648,13 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(200);
       expect(issueRepository.updateStatus).toHaveBeenCalledWith(
         project,
-        { ...issue, itemId: 'PVTI_i' },
+        expect.objectContaining({
+          itemId: 'PVTI_i',
+          url: 'https://github.com/o/r/issues/1',
+        }),
         'status_intmux',
       );
+      expect(issueRepository.get).not.toHaveBeenCalled();
       expectRecordedAcrossTabs('PVTI_i');
     });
 
@@ -497,7 +668,7 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(400);
     });
 
-    it('returns 400 when the issue cannot be loaded', async () => {
+    it('sets intmux using the request project item id without a GraphQL item fetch', async () => {
       issueRepository.get.mockResolvedValue(null);
       const response = await handleIntmux(context, {
         pjcode: 'umino',
@@ -505,7 +676,13 @@ describe('consoleOperationApi', () => {
         issueUrl: 'https://github.com/o/r/issues/1',
         projectItemId: 'PVTI_i',
       });
-      expect(response.statusCode).toBe(400);
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.get).not.toHaveBeenCalled();
+      expect(issueRepository.updateStatus).toHaveBeenCalledWith(
+        project,
+        expect.objectContaining({ itemId: 'PVTI_i' }),
+        'status_intmux',
+      );
     });
 
     it('rejects a missing issueUrl', async () => {
@@ -573,6 +750,8 @@ describe('consoleOperationApi', () => {
           }
           return null;
         },
+        isPjcodeConfigured: (pjcode: string) =>
+          pjcode === 'umino' || pjcode === 'xmile',
         consoleDataOutputDir: baseDir,
       };
       const response = await handleTriage(multiContext, {
@@ -585,7 +764,7 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(200);
       expect(issueRepository.updateStatus).toHaveBeenCalledWith(
         otherProject,
-        { ...issue, itemId: 'PVTI_x' },
+        expect.objectContaining({ itemId: 'PVTI_x' }),
         'status_todo',
       );
       for (const tab of CONSOLE_DONE_TAB_NAMES) {

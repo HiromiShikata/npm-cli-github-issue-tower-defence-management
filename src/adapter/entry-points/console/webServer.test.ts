@@ -651,6 +651,7 @@ describe('webServer new routes integration', () => {
       issueRepository,
       resolveProject: async (pjcode) =>
         pjcode === 'umino' ? { pjcode, project: buildProject() } : null,
+      isPjcodeConfigured: (pjcode) => pjcode === 'umino',
       port: 0,
     });
     try {
@@ -702,6 +703,7 @@ describe('webServer new routes integration', () => {
       issueRepository,
       resolveProject: async (pjcode) =>
         pjcode === 'umino' ? { pjcode, project: buildProject() } : null,
+      isPjcodeConfigured: (pjcode) => pjcode === 'umino',
       port: 0,
     });
     try {
@@ -750,6 +752,7 @@ describe('webServer new routes integration', () => {
       issueRepository,
       resolveProject: async (pjcode) =>
         pjcode === 'umino' ? { pjcode, project: buildProject() } : null,
+      isPjcodeConfigured: (pjcode) => pjcode === 'umino',
       port: 0,
     });
     try {
@@ -788,6 +791,7 @@ describe('webServer new routes integration', () => {
       issueRepository,
       resolveProject: async (pjcode) =>
         pjcode === 'umino' ? { pjcode, project: buildProject() } : null,
+      isPjcodeConfigured: (pjcode) => pjcode === 'umino',
       port: 0,
     });
     try {

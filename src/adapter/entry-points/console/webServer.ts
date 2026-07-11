@@ -20,6 +20,7 @@ import {
 } from './consoleReadApi';
 import {
   ConsoleOperationContext,
+  ConsolePjcodeValidator,
   ConsoleProjectResolver,
   handleComment,
   handleIntmux,
@@ -173,6 +174,7 @@ export type WebServerOptions = {
   imageFetcher?: ImageFetcher | null;
   issueRepository?: IssueRepository | null;
   resolveProject?: ConsoleProjectResolver | null;
+  isPjcodeConfigured?: ConsolePjcodeValidator | null;
   issueTitleStateCache?: IssueTitleStateCache | null;
   pullRequestStatusCache?: PullRequestStatusCache | null;
 };
@@ -430,12 +432,18 @@ const handleOperationApi = async (
 ): Promise<{ statusCode: number; body: unknown } | null> => {
   const issueRepository = options.issueRepository ?? null;
   const resolveProject = options.resolveProject ?? null;
-  if (issueRepository === null || resolveProject === null) {
+  const isPjcodeConfigured = options.isPjcodeConfigured ?? null;
+  if (
+    issueRepository === null ||
+    resolveProject === null ||
+    isPjcodeConfigured === null
+  ) {
     return null;
   }
   const context: ConsoleOperationContext = {
     issueRepository,
     resolveProject,
+    isPjcodeConfigured,
     consoleDataOutputDir: options.consoleDataOutputDir,
   };
   const dispatched = dispatchOperation(context, requestPath, body);

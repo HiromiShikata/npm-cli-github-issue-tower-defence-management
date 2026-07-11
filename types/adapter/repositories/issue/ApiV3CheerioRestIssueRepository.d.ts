@@ -37,6 +37,7 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     convertProjectItemToIssue: (item: ProjectItem) => Issue;
     private restoreIssuesFromCache;
     private readCachedProjectIssues;
+    getCachedProject: (projectId: Project["id"]) => Promise<Project | null>;
     private toDateString;
     getAllIssues: (projectId: Project["id"]) => Promise<{
         issues: Issue[];
@@ -62,7 +63,7 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     getIssueByUrl: (url: string) => Promise<Issue | null>;
     addIssueToProject: (project: Project, issueUrl: string) => Promise<void>;
     setDependedIssueUrl: (prUrl: string, project: Project, issueUrl: string) => Promise<void>;
-    updateNextActionDate: (issueUrl: string, project: Project, date: Date) => Promise<void>;
+    updateNextActionDate: (issueUrl: string, project: Project, date: Date, projectItemId?: string) => Promise<void>;
     updateNextActionHour: (project: Project & {
         nextActionHour: NonNullable<Project["nextActionHour"]>;
     }, issue: Issue, hour: number) => Promise<void>;

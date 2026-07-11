@@ -395,11 +395,19 @@ const runServeWeb = async (options) => {
     const graphqlProjectItemRepository = new GraphqlProjectItemRepository_1.GraphqlProjectItemRepository(...githubRepositoryParams);
     const issueRepository = new ApiV3CheerioRestIssueRepository_1.ApiV3CheerioRestIssueRepository(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, projectRepository, new SystemDateRepository_1.SystemDateRepository(), ...githubRepositoryParams);
     const pjcodeToProjectUrl = (0, consoleProjectResolver_1.buildPjcodeToProjectUrl)(projectName, projectUrl, config.consoleProjects ?? null);
+    const isPjcodeConfigured = (0, consoleProjectResolver_1.createPjcodeConfigChecker)(pjcodeToProjectUrl);
     const resolveProject = (0, consoleProjectResolver_1.createConsoleProjectResolver)(pjcodeToProjectUrl, async (targetProjectUrl) => {
         const targetProjectId = await projectRepository.findProjectIdByUrl(targetProjectUrl);
         if (!targetProjectId) {
             console.error(`No project found for projectUrl ${targetProjectUrl}`);
             return null;
+        }
+        // Prefer the Project the TDPM daemon already cached locally (status/story
+        // option ids and field ids), which needs no GraphQL. Fall back to a
+        // GraphQL project load only when the cache has not been populated yet.
+        const cachedProject = await issueRepository.getCachedProject(targetProjectId);
+        if (cachedProject) {
+            return cachedProject;
         }
         const loadedProject = await projectRepository.getProject(targetProjectId);
         if (!loadedProject) {
@@ -425,6 +433,7 @@ const runServeWeb = async (options) => {
         githubToken: token,
         issueRepository,
         resolveProject,
+        isPjcodeConfigured,
         issueTitleStateCache: new consoleReadApi_1.IssueTitleStateCache(),
         pullRequestStatusCache: new consoleReadApi_1.PullRequestStatusCache(),
         port,

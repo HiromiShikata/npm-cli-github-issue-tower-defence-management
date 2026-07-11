@@ -92,6 +92,7 @@ export interface IssueRepository {
     issueUrl: string,
     project: Project,
     date: Date,
+    projectItemId?: string,
   ) => Promise<void>;
   updateNextActionHour: (
     project: Project & {
