@@ -680,6 +680,25 @@ export class ApiV3CheerioRestIssueRepository
     };
   };
 
+  // Reads the Project (status/story option ids and field ids) that the TDPM
+  // daemon persisted into the `allIssues-${projectId}` cache, without any
+  // GraphQL call. Returns null on cache miss so callers can fall back to a
+  // GraphQL project load only when the daemon has not populated the cache yet.
+  getCachedProject = async (
+    projectId: Project['id'],
+  ): Promise<Project | null> => {
+    const raw = await this.localStorageCacheRepository.getSingle(
+      `allIssues-${projectId}`,
+    );
+    if (typeof raw !== 'object' || raw === null || !('project' in raw)) {
+      return null;
+    }
+    if (!typia.is<Project>(raw.project)) {
+      return null;
+    }
+    return raw.project;
+  };
+
   private toDateString = (date: Date): string =>
     `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
 
@@ -855,22 +874,30 @@ export class ApiV3CheerioRestIssueRepository
     issueUrl: string,
     project: Project,
     date: Date,
+    projectItemId?: string,
   ): Promise<void> => {
     if (!project.nextActionDate) {
       return;
     }
-    const projectItem =
-      await this.graphqlProjectItemRepository.fetchProjectItemByUrl(
-        issueUrl,
-        project.id,
-      );
-    if (!projectItem) {
+    // When the caller already knows the project item id (e.g. the console,
+    // which receives it in the request body), use it directly and skip the
+    // GraphQL fetchProjectItemByUrl lookup. Fall back to the lookup only when
+    // no id was supplied, preserving the original behavior for other callers.
+    const itemId =
+      projectItemId ??
+      (
+        await this.graphqlProjectItemRepository.fetchProjectItemByUrl(
+          issueUrl,
+          project.id,
+        )
+      )?.id;
+    if (!itemId) {
       return;
     }
     return this.graphqlProjectItemRepository.updateProjectField(
       project.id,
       project.nextActionDate.fieldId,
-      projectItem.id,
+      itemId,
       { date: date.toISOString().split('T')[0] },
     );
   };

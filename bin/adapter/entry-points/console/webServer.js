@@ -335,12 +335,16 @@ const dispatchOperation = (context, requestPath, body) => {
 const handleOperationApi = async (options, requestPath, body) => {
     const issueRepository = options.issueRepository ?? null;
     const resolveProject = options.resolveProject ?? null;
-    if (issueRepository === null || resolveProject === null) {
+    const isPjcodeConfigured = options.isPjcodeConfigured ?? null;
+    if (issueRepository === null ||
+        resolveProject === null ||
+        isPjcodeConfigured === null) {
         return null;
     }
     const context = {
         issueRepository,
         resolveProject,
+        isPjcodeConfigured,
         consoleDataOutputDir: options.consoleDataOutputDir,
     };
     const dispatched = dispatchOperation(context, requestPath, body);

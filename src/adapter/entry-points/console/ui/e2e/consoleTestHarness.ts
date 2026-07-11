@@ -505,6 +505,8 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
     pjcode: string,
   ): Promise<ConsoleProjectBinding | null> =>
     pjcode === CONSOLE_E2E_PJCODE ? { pjcode, project } : null;
+  const isPjcodeConfigured = (pjcode: string): boolean =>
+    pjcode === CONSOLE_E2E_PJCODE;
 
   const reviewCommentCalls: ConsoleE2eReviewCommentCall[] = [];
   const requestChangesCalls: ConsoleE2eRequestChangesCall[] = [];
@@ -518,6 +520,7 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
       requestChangesCalls,
     ),
     resolveProject,
+    isPjcodeConfigured,
     issueTitleStateCache: new IssueTitleStateCache(),
     pullRequestStatusCache: new PullRequestStatusCache(),
     inTmuxDataDir: null,

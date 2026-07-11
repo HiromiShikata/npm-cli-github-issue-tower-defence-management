@@ -18,9 +18,12 @@ export type ConsoleProjectResolver = (
   pjcode: string,
 ) => Promise<ConsoleProjectBinding | null>;
 
+export type ConsolePjcodeValidator = (pjcode: string) => boolean;
+
 export type ConsoleOperationContext = {
   issueRepository: IssueRepository;
   resolveProject: ConsoleProjectResolver;
+  isPjcodeConfigured: ConsolePjcodeValidator;
   consoleDataOutputDir: string | null;
 };
 
@@ -69,18 +72,40 @@ const resolveStatusId = (
   return match ? match.id : null;
 };
 
-const loadIssueWithProjectItemId = async (
-  issueRepository: IssueRepository,
-  project: Project,
+// Builds the minimal Issue reference the ProjectV2 mutations need. The dashboard
+// already supplies the project item id in the request body, and updateStatus,
+// updateStory and updateNextActionHour read only `issue.itemId` (plus `url` for
+// context). Constructing the reference locally avoids the GraphQL
+// fetchProjectItemByUrl call that issueRepository.get would otherwise perform.
+const projectItemReference = (
   issueUrl: string,
   projectItemId: string,
-): Promise<Issue | null> => {
-  const issue = await issueRepository.get(issueUrl, project);
-  if (issue === null) {
-    return null;
-  }
-  return { ...issue, itemId: projectItemId };
-};
+): Issue => ({
+  nameWithOwner: '',
+  number: 0,
+  title: '',
+  state: 'OPEN',
+  status: null,
+  story: null,
+  nextActionDate: null,
+  nextActionHour: null,
+  estimationMinutes: null,
+  dependedIssueUrls: [],
+  completionDate50PercentConfidence: null,
+  url: issueUrl,
+  assignees: [],
+  labels: [],
+  org: '',
+  repo: '',
+  body: '',
+  itemId: projectItemId,
+  isPr: isPullRequestUrl(issueUrl),
+  isInProgress: false,
+  isClosed: false,
+  createdAt: new Date(0),
+  author: '',
+  closingIssueReferenceUrls: [],
+});
 
 const recordDone = (
   context: ConsoleOperationContext,
@@ -117,6 +142,25 @@ const isOperationResponse = (
 ): value is ConsoleOperationResponse =>
   Object.prototype.hasOwnProperty.call(value, 'statusCode');
 
+// Validates that a pjcode is configured WITHOUT loading the ProjectV2 via
+// GraphQL. Close operations only need the pjcode (for recordDone namespacing)
+// and the issue/PR URL, both of which are handled through REST. Loading the
+// full project here would make close fail whenever the GraphQL quota is
+// exhausted, even though closing a GitHub issue or PR needs only REST.
+const resolveConfiguredPjcode = (
+  context: ConsoleOperationContext,
+  body: Record<string, unknown>,
+): string | ConsoleOperationResponse => {
+  const pjcode = body.pjcode;
+  if (!isNonEmptyString(pjcode)) {
+    return badRequest('pjcode is required');
+  }
+  if (!context.isPjcodeConfigured(pjcode)) {
+    return badRequest(`no project configured for pjcode "${pjcode}"`);
+  }
+  return pjcode;
+};
+
 const updateStatusByName = async (
   issueRepository: IssueRepository,
   project: Project,
@@ -128,16 +172,11 @@ const updateStatusByName = async (
   if (statusId === null) {
     return badRequest(`status option "${statusName}" not found in project`);
   }
-  const issue = await loadIssueWithProjectItemId(
-    issueRepository,
+  await issueRepository.updateStatus(
     project,
-    issueUrl,
-    projectItemId,
+    projectItemReference(issueUrl, projectItemId),
+    statusId,
   );
-  if (issue === null) {
-    return badRequest('issue not found');
-  }
-  await issueRepository.updateStatus(project, issue, statusId);
   return null;
 };
 
@@ -157,6 +196,20 @@ export const handleReview = async (
   if (!isNonEmptyString(projectItemId)) {
     return badRequest('projectItemId is required');
   }
+
+  if (action === 'close') {
+    const pjcodeResult = resolveConfiguredPjcode(context, body);
+    if (typeof pjcodeResult !== 'string') {
+      return pjcodeResult;
+    }
+    await context.issueRepository.closePullRequest(prUrl);
+    if (isNonEmptyString(body.commentBody)) {
+      await context.issueRepository.createCommentByUrl(prUrl, body.commentBody);
+    }
+    recordDone(context, pjcodeResult, projectItemId);
+    return ok();
+  }
+
   const binding = await resolveBinding(context, body);
   if (isOperationResponse(binding)) {
     return binding;
@@ -213,15 +266,6 @@ export const handleReview = async (
     return ok();
   }
 
-  if (action === 'close') {
-    await context.issueRepository.closePullRequest(prUrl);
-    if (isNonEmptyString(body.commentBody)) {
-      await context.issueRepository.createCommentByUrl(prUrl, body.commentBody);
-    }
-    recordDone(context, pjcode, projectItemId);
-    return ok();
-  }
-
   return badRequest(`unknown review action "${action}"`);
 };
 
@@ -241,6 +285,30 @@ export const handleTriage = async (
   if (!isNonEmptyString(projectItemId)) {
     return badRequest('projectItemId is required');
   }
+
+  if (action === 'close' || action === 'close_not_planned') {
+    const pjcodeResult = resolveConfiguredPjcode(context, body);
+    if (typeof pjcodeResult !== 'string') {
+      return pjcodeResult;
+    }
+    if (isNonEmptyString(body.commentBody)) {
+      await context.issueRepository.createCommentByUrl(
+        issueUrl,
+        body.commentBody,
+      );
+    }
+    if (isPullRequestUrl(issueUrl)) {
+      await context.issueRepository.closePullRequest(issueUrl);
+    } else {
+      await context.issueRepository.closeIssueByUrl(
+        issueUrl,
+        action === 'close_not_planned' ? 'not_planned' : 'completed',
+      );
+    }
+    recordDone(context, pjcodeResult, projectItemId);
+    return ok();
+  }
+
   const binding = await resolveBinding(context, body);
   if (isOperationResponse(binding)) {
     return binding;
@@ -274,39 +342,11 @@ export const handleTriage = async (
     if (project.story === null) {
       return badRequest('project does not have a story field');
     }
-    const issue = await loadIssueWithProjectItemId(
-      context.issueRepository,
-      project,
-      issueUrl,
-      projectItemId,
-    );
-    if (issue === null) {
-      return badRequest('issue not found');
-    }
     await context.issueRepository.updateStory(
       { ...project, story: project.story },
-      issue,
+      projectItemReference(issueUrl, projectItemId),
       storyOptionId,
     );
-    recordDone(context, pjcode, projectItemId);
-    return ok();
-  }
-
-  if (action === 'close' || action === 'close_not_planned') {
-    if (isNonEmptyString(body.commentBody)) {
-      await context.issueRepository.createCommentByUrl(
-        issueUrl,
-        body.commentBody,
-      );
-    }
-    if (isPullRequestUrl(issueUrl)) {
-      await context.issueRepository.closePullRequest(issueUrl);
-    } else {
-      await context.issueRepository.closeIssueByUrl(
-        issueUrl,
-        action === 'close_not_planned' ? 'not_planned' : 'completed',
-      );
-    }
     recordDone(context, pjcode, projectItemId);
     return ok();
   }
@@ -318,6 +358,7 @@ export const handleTriage = async (
       issueUrl,
       project,
       target,
+      projectItemId,
     );
     recordDone(context, pjcode, projectItemId);
     return ok();

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createConsoleProjectResolver = exports.buildPjcodeToProjectUrl = void 0;
+exports.createConsoleProjectResolver = exports.createPjcodeConfigChecker = exports.buildPjcodeToProjectUrl = void 0;
 const buildPjcodeToProjectUrl = (defaultPjcode, defaultProjectUrl, consoleProjects) => {
     const mapping = {};
     if (consoleProjects !== null) {
@@ -14,6 +14,13 @@ const buildPjcodeToProjectUrl = (defaultPjcode, defaultProjectUrl, consoleProjec
     return mapping;
 };
 exports.buildPjcodeToProjectUrl = buildPjcodeToProjectUrl;
+// Builds a synchronous predicate that reports whether a pjcode is configured,
+// using only the local pjcode-to-project-url mapping. This lets close
+// operations validate the pjcode without loading the ProjectV2 via GraphQL.
+const createPjcodeConfigChecker = (pjcodeToProjectUrl) => {
+    return (pjcode) => Object.prototype.hasOwnProperty.call(pjcodeToProjectUrl, pjcode);
+};
+exports.createPjcodeConfigChecker = createPjcodeConfigChecker;
 const createConsoleProjectResolver = (pjcodeToProjectUrl, loadProject) => {
     const cache = new Map();
     return async (pjcode) => {

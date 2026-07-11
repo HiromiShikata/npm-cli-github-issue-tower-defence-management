@@ -49,7 +49,9 @@ jest.mock('../../repositories/issue/GraphqlProjectItemRepository', () => ({
   GraphqlProjectItemRepository: jest.fn().mockImplementation(() => ({})),
 }));
 jest.mock('../../repositories/issue/ApiV3CheerioRestIssueRepository', () => ({
-  ApiV3CheerioRestIssueRepository: jest.fn().mockImplementation(() => ({})),
+  ApiV3CheerioRestIssueRepository: jest.fn().mockImplementation(() => ({
+    getCachedProject: jest.fn().mockResolvedValue(null),
+  })),
 }));
 jest.mock('../../repositories/NodeLocalCommandRunner', () => ({
   NodeLocalCommandRunner: jest.fn().mockImplementation(() => ({})),

@@ -593,6 +593,92 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('getCachedProject', () => {
+    it('returns the daemon-cached project without any GraphQL project load', async () => {
+      const { repository, localStorageCacheRepository, projectRepository } =
+        createApiV3CheerioRestIssueRepository();
+      const cachedProject = buildTestProject('cached-project');
+      localStorageCacheRepository.getSingle.mockResolvedValue({
+        lastFetchedAt: '2026-07-07T00:30:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project: cachedProject,
+        issues: [],
+      });
+
+      const result = await repository.getCachedProject('cached-project');
+
+      expect(result).toEqual(cachedProject);
+      expect(localStorageCacheRepository.getSingle).toHaveBeenCalledWith(
+        'allIssues-cached-project',
+      );
+      expect(projectRepository.getProject).not.toHaveBeenCalled();
+    });
+
+    it('returns null on a cache miss so the caller can fall back to GraphQL', async () => {
+      const { repository, localStorageCacheRepository, projectRepository } =
+        createApiV3CheerioRestIssueRepository();
+      localStorageCacheRepository.getSingle.mockResolvedValue(null);
+
+      const result = await repository.getCachedProject('missing-project');
+
+      expect(result).toBeNull();
+      expect(projectRepository.getProject).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('updateNextActionDate', () => {
+    const projectWithNextActionDate = (): Project => ({
+      ...buildTestProject('nad-project'),
+      nextActionDate: { name: 'Next Action Date', fieldId: 'nad-field' },
+    });
+
+    it('uses the provided project item id and skips the GraphQL item fetch', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue();
+
+      await repository.updateNextActionDate(
+        'https://github.com/o/r/issues/1',
+        projectWithNextActionDate(),
+        new Date('2026-07-20T00:00:00.000Z'),
+        'given-item-id',
+      );
+
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemByUrl,
+      ).not.toHaveBeenCalled();
+      expect(
+        graphqlProjectItemRepository.updateProjectField,
+      ).toHaveBeenCalledWith('nad-project', 'nad-field', 'given-item-id', {
+        date: '2026-07-20',
+      });
+    });
+
+    it('falls back to fetchProjectItemByUrl when no project item id is provided', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue();
+      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+        buildProjectItem('https://github.com/o/r/issues/1', 'fallback'),
+      );
+
+      await repository.updateNextActionDate(
+        'https://github.com/o/r/issues/1',
+        projectWithNextActionDate(),
+        new Date('2026-07-20T00:00:00.000Z'),
+      );
+
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemByUrl,
+      ).toHaveBeenCalledWith('https://github.com/o/r/issues/1', 'nad-project');
+      expect(
+        graphqlProjectItemRepository.updateProjectField,
+      ).toHaveBeenCalledWith('nad-project', 'nad-field', 'item-fallback', {
+        date: '2026-07-20',
+      });
+    });
+  });
+
   describe('setDependedIssueUrl', () => {
     const projectWithDependedIssueUrlField = {
       ...mock<Project>(),

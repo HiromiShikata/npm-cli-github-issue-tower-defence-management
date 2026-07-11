@@ -73,7 +73,7 @@ export interface IssueRepository {
         number: string;
     }[]>;
     updateIssue: (issue: Issue) => Promise<void>;
-    updateNextActionDate: (issueUrl: string, project: Project, date: Date) => Promise<void>;
+    updateNextActionDate: (issueUrl: string, project: Project, date: Date, projectItemId?: string) => Promise<void>;
     updateNextActionHour: (project: Project & {
         nextActionHour: NonNullable<Project['nextActionHour']>;
     }, issue: Issue, hour: number) => Promise<void>;
