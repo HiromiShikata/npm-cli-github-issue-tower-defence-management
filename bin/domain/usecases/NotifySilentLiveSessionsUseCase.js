@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.NotifySilentLiveSessionsUseCase = exports.isGitHubIssueOrPullRequestSessionName = exports.parseHubTaskIssueUrlFromSessionName = exports.DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS = exports.DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS = exports.DEFAULT_NOTIFICATION_STAGGER_SECONDS = exports.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = exports.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = exports.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = void 0;
+exports.NotifySilentLiveSessionsUseCase = exports.isGitHubIssueOrPullRequestSessionName = exports.parseHubTaskIssueUrlFromSessionName = exports.DEFAULT_SUBAGENT_REMINDER_ESCALATION_SECONDS = exports.DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS = exports.DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS = exports.DEFAULT_NOTIFICATION_STAGGER_SECONDS = exports.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = exports.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = exports.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = void 0;
 const ResolveInteractiveLiveSessionsUseCase_1 = require("./ResolveInteractiveLiveSessionsUseCase");
 exports.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = 10 * 60;
 exports.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = 5 * 60;
@@ -8,6 +8,7 @@ exports.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = 15 * 60;
 exports.DEFAULT_NOTIFICATION_STAGGER_SECONDS = 25;
 exports.DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS = 15 * 60;
 exports.DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS = 5 * 60;
+exports.DEFAULT_SUBAGENT_REMINDER_ESCALATION_SECONDS = 30 * 60;
 const GITHUB_ISSUE_OR_PULL_URL_PATTERN = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/(?:issues|pull)\/(\d+)$/;
 const GITHUB_TMUX_SESSION_NAME_PATTERN = /^https_\/\/github_com\/([^/]+)\/([^/]+)\/(?:issues|pull)\/(\d+)$/;
 const parseHubTaskIssueUrlFromSessionName = (sessionName) => {
@@ -52,9 +53,9 @@ class NotifySilentLiveSessionsUseCase {
             const snapshots = await this.collectSnapshots(interactiveSessions, transcriptPathBySessionName, params.now);
             const candidates = [];
             for (const sessionSnapshot of snapshots) {
-                const message = this.composeMessage(sessionSnapshot, params);
-                if (message !== null) {
-                    candidates.push({ sessionName: sessionSnapshot.sessionName, message });
+                const candidate = this.composeCandidate(sessionSnapshot, params);
+                if (candidate !== null) {
+                    candidates.push(candidate);
                 }
             }
             candidates.sort((left, right) => left.sessionName < right.sessionName
@@ -75,6 +76,9 @@ class NotifySilentLiveSessionsUseCase {
             console.log(`Silent live session notification: ${debouncedCandidates.length} debounced candidate(s) of ${candidates.length} current candidate(s) across ${interactiveSessions.length} interactive session(s); ${suppressedFirstCycleCount} first-cycle candidate(s) deferred until they persist into the next cycle.`);
             let sentCount = 0;
             for (const candidate of debouncedCandidates) {
+                if (await this.isSubAgentOnlyReminderSuppressed(candidate, params.subAgentReminderEscalationSeconds, params.now)) {
+                    continue;
+                }
                 if (!(await this.isHubTaskActive(candidate.sessionName, params.activeHubTaskStatus, params.hubTaskStatusCacheTtlSeconds, params.now))) {
                     continue;
                 }
@@ -84,7 +88,56 @@ class NotifySilentLiveSessionsUseCase {
                 await this.notificationRepository.sendSelfCheckNotification(candidate.sessionName, candidate.message);
                 sentCount += 1;
                 console.log(`Notified ${candidate.sessionName}.`);
+                if (candidate.stalledSubAgents.length > 0) {
+                    await this.recordSubAgentReminderSend(candidate, params.now);
+                }
             }
+        };
+        this.isSubAgentOnlyReminderSuppressed = async (candidate, subAgentReminderEscalationSeconds, now) => {
+            if (candidate.mainTriggered || candidate.stalledSubAgents.length === 0) {
+                return false;
+            }
+            const lastSend = await this.candidateStateRepository.loadSubAgentReminderSend({
+                sessionName: candidate.sessionName,
+            });
+            if (lastSend === null) {
+                return false;
+            }
+            const nowEpochSeconds = Math.floor(now.getTime() / 1000);
+            const elapsedSecondsSinceLastSend = nowEpochSeconds - lastSend.sentEpochSeconds;
+            if (elapsedSecondsSinceLastSend >= subAgentReminderEscalationSeconds) {
+                return false;
+            }
+            const recordedLastOutputEpochSecondsByLabel = new Map(lastSend.subAgents.map((subAgent) => [
+                subAgent.label,
+                subAgent.lastOutputEpochSeconds,
+            ]));
+            const triggerStateUnchanged = candidate.stalledSubAgents.length === lastSend.subAgents.length &&
+                candidate.stalledSubAgents.every((subAgent) => {
+                    const recordedLastOutputEpochSeconds = recordedLastOutputEpochSecondsByLabel.get(subAgent.label);
+                    if (recordedLastOutputEpochSeconds === undefined) {
+                        return false;
+                    }
+                    const currentLastOutputEpochSeconds = nowEpochSeconds - subAgent.silentSeconds;
+                    return currentLastOutputEpochSeconds <= recordedLastOutputEpochSeconds;
+                });
+            if (!triggerStateUnchanged) {
+                return false;
+            }
+            const remainingEscalationSeconds = subAgentReminderEscalationSeconds - elapsedSecondsSinceLastSend;
+            console.log(`Suppressing sub-agent reminder for ${candidate.sessionName}: sub-agent trigger state is unchanged since the last send; ${remainingEscalationSeconds}s remaining until the escalation re-send.`);
+            return true;
+        };
+        this.recordSubAgentReminderSend = async (candidate, now) => {
+            const nowEpochSeconds = Math.floor(now.getTime() / 1000);
+            await this.candidateStateRepository.saveSubAgentReminderSend({
+                sessionName: candidate.sessionName,
+                subAgents: candidate.stalledSubAgents.map((subAgent) => ({
+                    label: subAgent.label,
+                    lastOutputEpochSeconds: nowEpochSeconds - subAgent.silentSeconds,
+                })),
+                now,
+            });
         };
         this.isHubTaskActive = async (sessionName, activeHubTaskStatus, hubTaskStatusCacheTtlSeconds, now) => {
             if (activeHubTaskStatus === null || this.hubTaskStatusResolver === null) {
@@ -177,12 +230,14 @@ class NotifySilentLiveSessionsUseCase {
                 };
             });
         };
-        this.composeMessage = (snapshot, thresholds) => {
+        this.composeCandidate = (snapshot, thresholds) => {
             const sections = [];
-            if (snapshot.mainSilentSeconds !== null &&
-                snapshot.mainSilentSeconds >= thresholds.mainSilentThresholdSeconds &&
-                !snapshot.hasUnansweredOwnerCall) {
-                sections.push(this.messageComposer.composeMainStalledSection(snapshot.mainSilentSeconds));
+            const mainSilentSeconds = snapshot.mainSilentSeconds;
+            const mainTriggered = mainSilentSeconds !== null &&
+                mainSilentSeconds >= thresholds.mainSilentThresholdSeconds &&
+                !snapshot.hasUnansweredOwnerCall;
+            if (mainTriggered) {
+                sections.push(this.messageComposer.composeMainStalledSection(mainSilentSeconds));
             }
             const stalledSubAgents = snapshot.subAgents.filter((subAgent) => subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds ||
                 subAgent.runningSeconds >= thresholds.subAgentRunningThresholdSeconds);
@@ -195,7 +250,12 @@ class NotifySilentLiveSessionsUseCase {
             if (sections.length === 0) {
                 return null;
             }
-            return sections.join('\n\n');
+            return {
+                sessionName: snapshot.sessionName,
+                message: sections.join('\n\n'),
+                mainTriggered,
+                stalledSubAgents,
+            };
         };
     }
 }

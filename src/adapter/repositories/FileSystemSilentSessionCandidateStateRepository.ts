@@ -1,7 +1,11 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { SilentSessionCandidateStateRepository } from '../../domain/usecases/adapter-interfaces/SilentSessionCandidateStateRepository';
+import {
+  SilentSessionCandidateStateRepository,
+  SubAgentReminderSend,
+  SubAgentReminderSubAgentSnapshot,
+} from '../../domain/usecases/adapter-interfaces/SilentSessionCandidateStateRepository';
 
 type StoredCandidateEntry = {
   sessionName: string;
@@ -12,6 +16,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 export const DEFAULT_STATE_RETENTION_WINDOW_SECONDS = 60 * 60;
+export const SUBAGENT_REMINDER_SEND_RETENTION_WINDOW_SECONDS = 24 * 60 * 60;
 
 const defaultStateFilePath = (): string => {
   const base = process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), '.cache');
@@ -31,7 +36,7 @@ export class FileSystemSilentSessionCandidateStateRepository implements SilentSe
     const nowEpochSeconds = Math.floor(params.now.getTime() / 1000);
     const oldestAllowedEpochSeconds =
       nowEpochSeconds - params.recencyWindowSeconds;
-    const entries = this.readEntries();
+    const entries = this.readCandidateEntries();
     const recentSessionNames = new Set<string>();
     for (const entry of entries) {
       if (entry.recordedEpochSeconds >= oldestAllowedEpochSeconds) {
@@ -50,7 +55,7 @@ export class FileSystemSilentSessionCandidateStateRepository implements SilentSe
       recordedEpochSeconds - this.retentionWindowSeconds;
     const currentSessionNames = new Set(params.sessionNames);
     const mergedBySessionName = new Map<string, StoredCandidateEntry>();
-    for (const entry of this.readEntries()) {
+    for (const entry of this.readCandidateEntries()) {
       if (
         entry.recordedEpochSeconds >= oldestRetainedEpochSeconds &&
         !currentSessionNames.has(entry.sessionName)
@@ -64,26 +69,63 @@ export class FileSystemSilentSessionCandidateStateRepository implements SilentSe
         recordedEpochSeconds,
       });
     }
-    this.writeEntries(Array.from(mergedBySessionName.values()));
+    this.writeState(
+      Array.from(mergedBySessionName.values()),
+      this.readSubAgentReminderSendEntries(),
+    );
   };
 
-  private readEntries = (): StoredCandidateEntry[] => {
+  loadSubAgentReminderSend = async (params: {
+    sessionName: string;
+  }): Promise<SubAgentReminderSend | null> => {
+    const entries = this.readSubAgentReminderSendEntries();
+    return (
+      entries.find((entry) => entry.sessionName === params.sessionName) ?? null
+    );
+  };
+
+  saveSubAgentReminderSend = async (params: {
+    sessionName: string;
+    subAgents: SubAgentReminderSubAgentSnapshot[];
+    now: Date;
+  }): Promise<void> => {
+    const sentEpochSeconds = Math.floor(params.now.getTime() / 1000);
+    const oldestRetainedEpochSeconds =
+      sentEpochSeconds - SUBAGENT_REMINDER_SEND_RETENTION_WINDOW_SECONDS;
+    const retainedEntries = this.readSubAgentReminderSendEntries().filter(
+      (entry) =>
+        entry.sessionName !== params.sessionName &&
+        entry.sentEpochSeconds >= oldestRetainedEpochSeconds,
+    );
+    retainedEntries.push({
+      sessionName: params.sessionName,
+      sentEpochSeconds,
+      subAgents: params.subAgents,
+    });
+    this.writeState(this.readCandidateEntries(), retainedEntries);
+  };
+
+  private readState = (): Record<string, unknown> => {
     let raw: string;
     try {
       raw = fs.readFileSync(this.stateFilePath, 'utf8');
     } catch {
-      return [];
+      return {};
     }
     let parsed: unknown;
     try {
       parsed = JSON.parse(raw);
     } catch {
-      return [];
+      return {};
     }
     if (!isRecord(parsed)) {
-      return [];
+      return {};
     }
-    const storedEntries = parsed.candidates;
+    return parsed;
+  };
+
+  private readCandidateEntries = (): StoredCandidateEntry[] => {
+    const storedEntries = this.readState().candidates;
     if (!Array.isArray(storedEntries)) {
       return [];
     }
@@ -105,11 +147,64 @@ export class FileSystemSilentSessionCandidateStateRepository implements SilentSe
     return entries;
   };
 
-  private writeEntries = (entries: StoredCandidateEntry[]): void => {
+  private readSubAgentReminderSendEntries = (): SubAgentReminderSend[] => {
+    const storedEntries = this.readState().subAgentReminderSends;
+    if (!Array.isArray(storedEntries)) {
+      return [];
+    }
+    const entries: SubAgentReminderSend[] = [];
+    for (const storedEntry of storedEntries) {
+      if (!isRecord(storedEntry)) {
+        continue;
+      }
+      const sessionName = storedEntry.sessionName;
+      const sentEpochSeconds = storedEntry.sentEpochSeconds;
+      if (
+        typeof sessionName !== 'string' ||
+        typeof sentEpochSeconds !== 'number' ||
+        !Number.isFinite(sentEpochSeconds) ||
+        !Array.isArray(storedEntry.subAgents)
+      ) {
+        continue;
+      }
+      const subAgents: SubAgentReminderSubAgentSnapshot[] = [];
+      let subAgentsValid = true;
+      for (const storedSubAgent of storedEntry.subAgents) {
+        if (!isRecord(storedSubAgent)) {
+          subAgentsValid = false;
+          break;
+        }
+        const label = storedSubAgent.label;
+        const lastOutputEpochSeconds = storedSubAgent.lastOutputEpochSeconds;
+        if (
+          typeof label !== 'string' ||
+          typeof lastOutputEpochSeconds !== 'number' ||
+          !Number.isFinite(lastOutputEpochSeconds)
+        ) {
+          subAgentsValid = false;
+          break;
+        }
+        subAgents.push({ label, lastOutputEpochSeconds });
+      }
+      if (!subAgentsValid) {
+        continue;
+      }
+      entries.push({ sessionName, sentEpochSeconds, subAgents });
+    }
+    return entries;
+  };
+
+  private writeState = (
+    candidates: StoredCandidateEntry[],
+    subAgentReminderSends: SubAgentReminderSend[],
+  ): void => {
     const directory = path.dirname(this.stateFilePath);
     fs.mkdirSync(directory, { recursive: true });
     const temporaryPath = `${this.stateFilePath}.${process.pid}.tmp`;
-    fs.writeFileSync(temporaryPath, JSON.stringify({ candidates: entries }));
+    fs.writeFileSync(
+      temporaryPath,
+      JSON.stringify({ candidates, subAgentReminderSends }),
+    );
     fs.renameSync(temporaryPath, this.stateFilePath);
   };
 }

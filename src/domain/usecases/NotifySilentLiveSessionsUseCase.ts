@@ -1,4 +1,7 @@
-import { LiveSessionActivitySnapshot } from '../entities/LiveSessionActivitySnapshot';
+import {
+  LiveSessionActivitySnapshot,
+  SubAgentActivity,
+} from '../entities/LiveSessionActivitySnapshot';
 import { InteractiveLiveSession } from '../entities/InteractiveLiveSession';
 import { LiveSessionProcessSnapshotProvider } from './adapter-interfaces/LiveSessionProcessSnapshotProvider';
 import { InteractiveLiveSessionTranscriptResolver } from './adapter-interfaces/InteractiveLiveSessionTranscriptResolver';
@@ -19,6 +22,7 @@ export const DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = 15 * 60;
 export const DEFAULT_NOTIFICATION_STAGGER_SECONDS = 25;
 export const DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS = 15 * 60;
 export const DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS = 5 * 60;
+export const DEFAULT_SUBAGENT_REMINDER_ESCALATION_SECONDS = 30 * 60;
 
 const GITHUB_ISSUE_OR_PULL_URL_PATTERN =
   /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/(?:issues|pull)\/(\d+)$/;
@@ -54,6 +58,8 @@ export type HubTaskStatusResolver = Pick<IssueRepository, 'getIssueByUrl'>;
 type NotifyCandidate = {
   sessionName: string;
   message: string;
+  mainTriggered: boolean;
+  stalledSubAgents: SubAgentActivity[];
 };
 
 export class NotifySilentLiveSessionsUseCase {
@@ -80,6 +86,7 @@ export class NotifySilentLiveSessionsUseCase {
     subAgentRunningThresholdSeconds: number;
     staggerSeconds: number;
     candidateDebounceRecencyWindowSeconds: number;
+    subAgentReminderEscalationSeconds: number;
     activeHubTaskStatus: string | null;
     hubTaskStatusCacheTtlSeconds: number;
     now: Date;
@@ -111,9 +118,9 @@ export class NotifySilentLiveSessionsUseCase {
 
     const candidates: NotifyCandidate[] = [];
     for (const sessionSnapshot of snapshots) {
-      const message = this.composeMessage(sessionSnapshot, params);
-      if (message !== null) {
-        candidates.push({ sessionName: sessionSnapshot.sessionName, message });
+      const candidate = this.composeCandidate(sessionSnapshot, params);
+      if (candidate !== null) {
+        candidates.push(candidate);
       }
     }
     candidates.sort((left, right) =>
@@ -147,6 +154,15 @@ export class NotifySilentLiveSessionsUseCase {
     let sentCount = 0;
     for (const candidate of debouncedCandidates) {
       if (
+        await this.isSubAgentOnlyReminderSuppressed(
+          candidate,
+          params.subAgentReminderEscalationSeconds,
+          params.now,
+        )
+      ) {
+        continue;
+      }
+      if (
         !(await this.isHubTaskActive(
           candidate.sessionName,
           params.activeHubTaskStatus,
@@ -165,7 +181,75 @@ export class NotifySilentLiveSessionsUseCase {
       );
       sentCount += 1;
       console.log(`Notified ${candidate.sessionName}.`);
+      if (candidate.stalledSubAgents.length > 0) {
+        await this.recordSubAgentReminderSend(candidate, params.now);
+      }
     }
+  };
+
+  private isSubAgentOnlyReminderSuppressed = async (
+    candidate: NotifyCandidate,
+    subAgentReminderEscalationSeconds: number,
+    now: Date,
+  ): Promise<boolean> => {
+    if (candidate.mainTriggered || candidate.stalledSubAgents.length === 0) {
+      return false;
+    }
+    const lastSend =
+      await this.candidateStateRepository.loadSubAgentReminderSend({
+        sessionName: candidate.sessionName,
+      });
+    if (lastSend === null) {
+      return false;
+    }
+    const nowEpochSeconds = Math.floor(now.getTime() / 1000);
+    const elapsedSecondsSinceLastSend =
+      nowEpochSeconds - lastSend.sentEpochSeconds;
+    if (elapsedSecondsSinceLastSend >= subAgentReminderEscalationSeconds) {
+      return false;
+    }
+    const recordedLastOutputEpochSecondsByLabel = new Map(
+      lastSend.subAgents.map((subAgent) => [
+        subAgent.label,
+        subAgent.lastOutputEpochSeconds,
+      ]),
+    );
+    const triggerStateUnchanged =
+      candidate.stalledSubAgents.length === lastSend.subAgents.length &&
+      candidate.stalledSubAgents.every((subAgent) => {
+        const recordedLastOutputEpochSeconds =
+          recordedLastOutputEpochSecondsByLabel.get(subAgent.label);
+        if (recordedLastOutputEpochSeconds === undefined) {
+          return false;
+        }
+        const currentLastOutputEpochSeconds =
+          nowEpochSeconds - subAgent.silentSeconds;
+        return currentLastOutputEpochSeconds <= recordedLastOutputEpochSeconds;
+      });
+    if (!triggerStateUnchanged) {
+      return false;
+    }
+    const remainingEscalationSeconds =
+      subAgentReminderEscalationSeconds - elapsedSecondsSinceLastSend;
+    console.log(
+      `Suppressing sub-agent reminder for ${candidate.sessionName}: sub-agent trigger state is unchanged since the last send; ${remainingEscalationSeconds}s remaining until the escalation re-send.`,
+    );
+    return true;
+  };
+
+  private recordSubAgentReminderSend = async (
+    candidate: NotifyCandidate,
+    now: Date,
+  ): Promise<void> => {
+    const nowEpochSeconds = Math.floor(now.getTime() / 1000);
+    await this.candidateStateRepository.saveSubAgentReminderSend({
+      sessionName: candidate.sessionName,
+      subAgents: candidate.stalledSubAgents.map((subAgent) => ({
+        label: subAgent.label,
+        lastOutputEpochSeconds: nowEpochSeconds - subAgent.silentSeconds,
+      })),
+      now,
+    });
   };
 
   private isHubTaskActive = async (
@@ -334,25 +418,24 @@ export class NotifySilentLiveSessionsUseCase {
     });
   };
 
-  private composeMessage = (
+  private composeCandidate = (
     snapshot: LiveSessionActivitySnapshot,
     thresholds: {
       mainSilentThresholdSeconds: number;
       subAgentSilentThresholdSeconds: number;
       subAgentRunningThresholdSeconds: number;
     },
-  ): string | null => {
+  ): NotifyCandidate | null => {
     const sections: string[] = [];
 
-    if (
-      snapshot.mainSilentSeconds !== null &&
-      snapshot.mainSilentSeconds >= thresholds.mainSilentThresholdSeconds &&
-      !snapshot.hasUnansweredOwnerCall
-    ) {
+    const mainSilentSeconds = snapshot.mainSilentSeconds;
+    const mainTriggered =
+      mainSilentSeconds !== null &&
+      mainSilentSeconds >= thresholds.mainSilentThresholdSeconds &&
+      !snapshot.hasUnansweredOwnerCall;
+    if (mainTriggered) {
       sections.push(
-        this.messageComposer.composeMainStalledSection(
-          snapshot.mainSilentSeconds,
-        ),
+        this.messageComposer.composeMainStalledSection(mainSilentSeconds),
       );
     }
 
@@ -375,6 +458,11 @@ export class NotifySilentLiveSessionsUseCase {
     if (sections.length === 0) {
       return null;
     }
-    return sections.join('\n\n');
+    return {
+      sessionName: snapshot.sessionName,
+      message: sections.join('\n\n'),
+      mainTriggered,
+      stalledSubAgents,
+    };
   };
 }
