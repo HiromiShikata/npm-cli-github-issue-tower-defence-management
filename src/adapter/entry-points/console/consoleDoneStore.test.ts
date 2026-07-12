@@ -8,6 +8,8 @@ import {
   readDoneProjectItemIds,
   recordDoneProjectItemId,
   recordDoneProjectItemIdAcrossTabs,
+  resetDoneProjectItemIds,
+  resetDoneProjectItemIdsAcrossTabs,
 } from './consoleDoneStore';
 
 describe('consoleDoneStore', () => {
@@ -101,6 +103,42 @@ describe('consoleDoneStore', () => {
       expect(
         readDoneProjectItemIds(baseDir, 'umino', 'workflow-blocker'),
       ).toEqual(['PVTI_7']);
+    });
+  });
+
+  describe('resetDoneProjectItemIds', () => {
+    it('clears an accumulated done file to an empty record', () => {
+      recordDoneProjectItemId(baseDir, 'umino', 'prs', 'PVTI_1');
+      recordDoneProjectItemId(baseDir, 'umino', 'prs', 'PVTI_2');
+      recordDoneProjectItemId(baseDir, 'umino', 'prs', 'PVTI_3');
+      resetDoneProjectItemIds(baseDir, 'umino', 'prs');
+      expect(readDoneProjectItemIds(baseDir, 'umino', 'prs')).toEqual([]);
+    });
+
+    it('writes an empty record when no done file exists yet', () => {
+      resetDoneProjectItemIds(baseDir, 'umino', 'prs');
+      const filePath = doneFilePathForTab(baseDir, 'umino', 'prs');
+      const raw: unknown = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+      expect(raw).toEqual({ projectItemIds: [] });
+    });
+
+    it('does not leave a temp file behind', () => {
+      resetDoneProjectItemIds(baseDir, 'umino', 'prs');
+      const filePath = doneFilePathForTab(baseDir, 'umino', 'prs');
+      expect(fs.existsSync(`${filePath}.tmp`)).toBe(false);
+    });
+  });
+
+  describe('resetDoneProjectItemIdsAcrossTabs', () => {
+    it('clears the done file of every tab including in-tmux-by-human', () => {
+      expect(CONSOLE_DONE_TAB_NAMES).toContain('in-tmux-by-human');
+      for (const tab of CONSOLE_DONE_TAB_NAMES) {
+        recordDoneProjectItemId(baseDir, 'umino', tab, 'PVTI_1');
+      }
+      resetDoneProjectItemIdsAcrossTabs(baseDir, 'umino');
+      for (const tab of CONSOLE_DONE_TAB_NAMES) {
+        expect(readDoneProjectItemIds(baseDir, 'umino', tab)).toEqual([]);
+      }
     });
   });
 });

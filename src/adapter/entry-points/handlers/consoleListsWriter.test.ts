@@ -5,6 +5,15 @@ import { mock } from 'jest-mock-extended';
 import { Issue } from '../../../domain/entities/Issue';
 import { FieldOption, Project } from '../../../domain/entities/Project';
 import {
+  buildConsoleDataResponse,
+  parseConsoleDataRoute,
+} from '../console/consoleDataDelivery';
+import {
+  CONSOLE_DONE_TAB_NAMES,
+  readDoneProjectItemIds,
+  recordDoneProjectItemId,
+} from '../console/consoleDoneStore';
+import {
   formatConsoleGeneratedAt,
   writeConsoleLists,
 } from './consoleListsWriter';
@@ -225,6 +234,69 @@ describe('writeConsoleLists', () => {
       issues: [makeIssue({ status: 'Unread' })],
     });
     expect(fs.readdirSync(outDir)).toHaveLength(0);
+  });
+
+  const regenerateUnread = (): void => {
+    writeConsoleLists({
+      consoleDataOutputDir: outDir,
+      pjcode: 'demo',
+      assigneeLogin: ASSIGNEE,
+      project,
+      issues: [makeIssue({ status: 'Unread', itemId: 'item-1' })],
+      generatedAt: '2026-06-14T07:22:33Z',
+    });
+  };
+
+  const unreadServedItemCount = (): number => {
+    const route = parseConsoleDataRoute('projects/demo/unread/list.json');
+    if (route === null) {
+      throw new Error('route should not be null');
+    }
+    const response = buildConsoleDataResponse(outDir, route);
+    const body: unknown = JSON.parse(response.body);
+    const items: unknown = isRecord(body) ? body.items : undefined;
+    return isUnknownArray(items) ? items.length : 0;
+  };
+
+  it('resets the done file of every tab to an empty record on regeneration', () => {
+    regenerateUnread();
+
+    for (const tab of CONSOLE_DONE_TAB_NAMES) {
+      const doneFile = path.join(outDir, 'demo', tab, '.done.json');
+      expect(fs.existsSync(doneFile)).toBe(true);
+      const raw: unknown = JSON.parse(fs.readFileSync(doneFile, 'utf8'));
+      expect(raw).toEqual({ projectItemIds: [] });
+    }
+  });
+
+  it('clears a pre-existing accumulated done file on regeneration', () => {
+    for (const id of ['PVTI_1', 'PVTI_2', 'PVTI_3']) {
+      recordDoneProjectItemId(outDir, 'demo', 'unread', id);
+    }
+    expect(readDoneProjectItemIds(outDir, 'demo', 'unread')).toHaveLength(3);
+
+    regenerateUnread();
+
+    expect(readDoneProjectItemIds(outDir, 'demo', 'unread')).toEqual([]);
+  });
+
+  it('serves the full list after regeneration despite a prior accumulated done record', () => {
+    recordDoneProjectItemId(outDir, 'demo', 'unread', 'item-1');
+
+    regenerateUnread();
+
+    expect(unreadServedItemCount()).toBe(1);
+  });
+
+  it('re-hides an item recorded as done until the next regeneration bounds it to one cycle', () => {
+    regenerateUnread();
+    expect(unreadServedItemCount()).toBe(1);
+
+    recordDoneProjectItemId(outDir, 'demo', 'unread', 'item-1');
+    expect(unreadServedItemCount()).toBe(0);
+
+    regenerateUnread();
+    expect(unreadServedItemCount()).toBe(1);
   });
 });
 
