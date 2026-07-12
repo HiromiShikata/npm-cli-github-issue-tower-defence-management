@@ -1,3 +1,10 @@
+## [1.122.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.4...v1.122.5) (2026-07-12)
+
+
+### Bug Fixes
+
+* **silent-monitor:** bound unanswered-owner-call suppression with an agent-side grace period ([#1162](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1162)) ([d726a1f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d726a1fb76a10fa55866e0b6f046fd73352ba906))
+
 ## [1.122.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.3...v1.122.4) (2026-07-12)
 
 
