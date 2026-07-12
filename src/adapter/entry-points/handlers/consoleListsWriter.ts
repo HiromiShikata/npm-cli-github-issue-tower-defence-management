@@ -7,6 +7,7 @@ import {
   ConsoleTabName,
   GenerateConsoleListsUseCase,
 } from '../../../domain/usecases/console/GenerateConsoleListsUseCase';
+import { resetDoneProjectItemIdsAcrossTabs } from '../console/consoleDoneStore';
 
 export type ConsoleListsWriterParams = {
   consoleDataOutputDir: string | null | undefined;
@@ -61,4 +62,6 @@ export const writeConsoleLists = (params: ConsoleListsWriterParams): void => {
       lists[tab],
     );
   }
+
+  resetDoneProjectItemIdsAcrossTabs(consoleDataOutputDir, pjcode);
 };
