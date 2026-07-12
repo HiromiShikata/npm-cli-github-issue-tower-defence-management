@@ -115,6 +115,7 @@ export class HandleScheduledEventUseCaseHandler {
       subAgentProcessMatchPattern?: string;
       subAgentTranscriptRootDirectory?: string;
       mainSilentThresholdSeconds?: number;
+      unansweredOwnerCallGraceSeconds?: number;
       subAgentSilentThresholdSeconds?: number;
       subAgentRunningThresholdSeconds?: number;
       silentNotificationStaggerSeconds?: number;
@@ -124,6 +125,7 @@ export class HandleScheduledEventUseCaseHandler {
       hubTaskStatusCacheStateFilePath?: string;
       hubTaskStatusCacheTtlSeconds?: number;
       silentMainStalledMessage?: string;
+      silentMainStalledStaleOwnerCallMessage?: string;
       silentSubAgentIdleMessageHeader?: string;
       silentSubAgentIdleMessageFooter?: string;
       silentSubAgentLongRunningMessageHeader?: string;
@@ -599,6 +601,11 @@ export class HandleScheduledEventUseCaseHandler {
             process.env.TDPM_MAIN_SILENT_THRESHOLD_SECONDS,
             DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.mainSilentThresholdSeconds,
           ),
+          unansweredOwnerCallGraceSeconds: readSilentSeconds(
+            mergedInput.unansweredOwnerCallGraceSeconds,
+            process.env.TDPM_SILENT_UNANSWERED_OWNER_CALL_GRACE_SECONDS,
+            DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.unansweredOwnerCallGraceSeconds,
+          ),
           subAgentSilentThresholdSeconds: readSilentSeconds(
             mergedInput.subAgentSilentThresholdSeconds,
             process.env.TDPM_SUBAGENT_SILENT_THRESHOLD_SECONDS,
@@ -641,6 +648,10 @@ export class HandleScheduledEventUseCaseHandler {
             mainStalledMessage:
               mergedInput.silentMainStalledMessage ??
               process.env.TDPM_SILENT_MAIN_STALLED_MESSAGE ??
+              null,
+            mainStalledStaleOwnerCallMessage:
+              mergedInput.silentMainStalledStaleOwnerCallMessage ??
+              process.env.TDPM_SILENT_MAIN_STALLED_STALE_OWNER_CALL_MESSAGE ??
               null,
             subAgentIdleMessageHeader:
               mergedInput.silentSubAgentIdleMessageHeader ??

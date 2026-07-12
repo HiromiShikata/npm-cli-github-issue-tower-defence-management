@@ -4,6 +4,7 @@ export declare class DefaultSilentSessionMessageComposer implements SilentSessio
     private readonly ownerCallMarker;
     constructor(ownerCallMarker?: string | null);
     composeMainStalledSection: (mainSilentSeconds: number) => string;
+    composeMainStalledWithStaleOwnerCallSection: (mainSilentSeconds: number, unansweredOwnerCallAgeSeconds: number) => string;
     composeSubAgentSection: (stallSections: SubAgentStallSections) => string;
 }
 //# sourceMappingURL=DefaultSilentSessionMessageComposer.d.ts.map

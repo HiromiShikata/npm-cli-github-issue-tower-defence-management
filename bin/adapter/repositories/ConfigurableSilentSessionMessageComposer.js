@@ -21,6 +21,12 @@ class ConfigurableSilentSessionMessageComposer {
             }
             return withReminderSentinel(`${this.templates.mainStalledMessage} ${(0, DefaultSilentSessionMessageComposer_1.composeOwnerCallFormatGuidance)(this.ownerCallMarker)}`);
         };
+        this.composeMainStalledWithStaleOwnerCallSection = (mainSilentSeconds, unansweredOwnerCallAgeSeconds) => {
+            if (this.templates.mainStalledStaleOwnerCallMessage === null) {
+                return this.fallback.composeMainStalledWithStaleOwnerCallSection(mainSilentSeconds, unansweredOwnerCallAgeSeconds);
+            }
+            return withReminderSentinel(`${this.templates.mainStalledStaleOwnerCallMessage} ${(0, DefaultSilentSessionMessageComposer_1.composeOwnerCallFormatGuidance)(this.ownerCallMarker)}`);
+        };
         this.composeSubAgentSection = (stallSections) => {
             const hasIdleTemplate = this.templates.subAgentIdleMessageHeader !== null ||
                 this.templates.subAgentIdleMessageFooter !== null;

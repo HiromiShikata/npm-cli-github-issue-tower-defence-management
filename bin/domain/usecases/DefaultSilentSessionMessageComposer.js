@@ -40,11 +40,24 @@ const composeMainStalledMessage = (mainSilentSeconds, ownerCallMarker) => {
         `Also, in your next output, report an estimate of how many minutes you expect to need to finish all remaining tasks.`,
     ].join('\n');
 };
+const composeMainStalledWithStaleOwnerCallMessage = (mainSilentSeconds, unansweredOwnerCallAgeSeconds, ownerCallMarker) => {
+    const silentMinutes = Math.floor(mainSilentSeconds / 60);
+    const ownerCallAgeMinutes = Math.floor(unansweredOwnerCallAgeSeconds / 60);
+    return [
+        `${silentSessionReminderSentinel_1.SILENT_SESSION_REMINDER_SENTINEL} You have produced no output for ${silentMinutes} minutes, and the owner call you raised ${ownerCallAgeMinutes} minutes ago is still unanswered. An owner call outstanding this long may have been missed, may have scrolled out of the owner's view, or may no longer reflect your current situation, so do not keep waiting on it passively. Act now, choosing one of the following:`,
+        `1. If you are still blocked on the owner, re-raise your pending ask NOW as a fresh owner call. Make it fully self-contained: restate the whole situation — what happened, what you are asking, and any decision needed — inside the new owner call itself, so the owner understands everything from that single latest message without scrolling back. ${(0, exports.composeOwnerCallFormatGuidance)(ownerCallMarker)}`,
+        `2. If you are no longer blocked — the answer became unnecessary, you can proceed safely, or the information arrived another way — resume immediately and drive all remaining tasks to completion.`,
+        `This reminder does not notify the owner; only a fresh owner call from you surfaces this session to the owner. Also, in your next output, report an estimate of how many minutes you expect to need to finish all remaining tasks.`,
+    ].join('\n');
+};
 class DefaultSilentSessionMessageComposer {
     constructor(ownerCallMarker = null) {
         this.ownerCallMarker = ownerCallMarker;
         this.composeMainStalledSection = (mainSilentSeconds) => {
             return composeMainStalledMessage(mainSilentSeconds, this.ownerCallMarker);
+        };
+        this.composeMainStalledWithStaleOwnerCallSection = (mainSilentSeconds, unansweredOwnerCallAgeSeconds) => {
+            return composeMainStalledWithStaleOwnerCallMessage(mainSilentSeconds, unansweredOwnerCallAgeSeconds, this.ownerCallMarker);
         };
         this.composeSubAgentSection = (stallSections) => {
             const sections = [];

@@ -2,7 +2,7 @@ import { OwnerCallStatusProvider } from '../../domain/usecases/adapter-interface
 export declare class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvider {
     private readonly ownerCallMarker;
     constructor(ownerCallMarker: string | null);
-    listSessionNamesWithUnansweredOwnerCall: (transcriptPathBySessionName: Map<string, string>) => Promise<Set<string>>;
-    private isWaitingForOwnerReply;
+    listUnansweredOwnerCallEpochSecondsBySessionName: (transcriptPathBySessionName: Map<string, string>) => Promise<Map<string, number>>;
+    private findUnansweredOwnerCallEpochMs;
 }
 //# sourceMappingURL=TranscriptOwnerCallStatusProvider.d.ts.map

@@ -1,4 +1,4 @@
 export interface OwnerCallStatusProvider {
-    listSessionNamesWithUnansweredOwnerCall: (transcriptPathBySessionName: Map<string, string>) => Promise<Set<string>>;
+    listUnansweredOwnerCallEpochSecondsBySessionName: (transcriptPathBySessionName: Map<string, string>) => Promise<Map<string, number>>;
 }
 //# sourceMappingURL=OwnerCallStatusProvider.d.ts.map

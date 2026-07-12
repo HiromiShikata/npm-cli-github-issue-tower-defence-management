@@ -8,6 +8,6 @@ export type LiveSessionActivitySnapshot = {
     sessionName: string;
     mainSilentSeconds: number | null;
     subAgents: SubAgentActivity[];
-    hasUnansweredOwnerCall: boolean;
+    unansweredOwnerCallAgeSeconds: number | null;
 };
 //# sourceMappingURL=LiveSessionActivitySnapshot.d.ts.map

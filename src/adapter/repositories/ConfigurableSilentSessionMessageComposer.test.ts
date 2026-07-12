@@ -6,11 +6,15 @@ type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
 const createFallback = (): Mocked<SilentSessionMessageComposer> => ({
   composeMainStalledSection: jest.fn().mockReturnValue('FALLBACK_MAIN'),
+  composeMainStalledWithStaleOwnerCallSection: jest
+    .fn()
+    .mockReturnValue('FALLBACK_STALE_OWNER_CALL'),
   composeSubAgentSection: jest.fn().mockReturnValue('FALLBACK_SUB'),
 });
 
 const noTemplates = {
   mainStalledMessage: null,
+  mainStalledStaleOwnerCallMessage: null,
   subAgentIdleMessageHeader: null,
   subAgentIdleMessageFooter: null,
   subAgentLongRunningMessageHeader: null,
@@ -65,6 +69,44 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
     expect(section).toContain(
       'NEVER tell the owner to scroll up, go back, or read previous or above messages; if context is needed, restate it inside the owner-call message itself.',
     );
+  });
+
+  it('uses the fallback stale-owner-call section when no stale-owner-call template is configured', () => {
+    const fallback = createFallback();
+    const composer = new ConfigurableSilentSessionMessageComposer(
+      noTemplates,
+      fallback,
+    );
+    expect(
+      composer.composeMainStalledWithStaleOwnerCallSection(600, 3600),
+    ).toBe('FALLBACK_STALE_OWNER_CALL');
+    expect(
+      fallback.composeMainStalledWithStaleOwnerCallSection,
+    ).toHaveBeenCalledWith(600, 3600);
+  });
+
+  it('uses the configured stale-owner-call template when provided', () => {
+    const fallback = createFallback();
+    const composer = new ConfigurableSilentSessionMessageComposer(
+      {
+        ...noTemplates,
+        mainStalledStaleOwnerCallMessage: 'CUSTOM_STALE_OWNER_CALL',
+      },
+      fallback,
+      '<<OWNER_CALL>>',
+    );
+    const section = composer.composeMainStalledWithStaleOwnerCallSection(
+      600,
+      3600,
+    );
+    expect(section).toContain('CUSTOM_STALE_OWNER_CALL');
+    expect(section).toContain(SILENT_SESSION_REMINDER_SENTINEL);
+    expect(section).toContain(
+      'the configured owner-call marker tag "<<OWNER_CALL>>" as a complete matching pair',
+    );
+    expect(
+      fallback.composeMainStalledWithStaleOwnerCallSection,
+    ).not.toHaveBeenCalled();
   });
 
   it('uses the fallback sub-agent section when no sub-agent template is configured', () => {

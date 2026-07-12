@@ -506,7 +506,7 @@ describe('parent transcript resolution feeding owner-call detection', () => {
     ]);
 
     return ownerCallStatusProvider
-      .listSessionNamesWithUnansweredOwnerCall(transcriptPaths)
+      .listUnansweredOwnerCallEpochSecondsBySessionName(transcriptPaths)
       .then((waiting) => {
         expect(waiting.has('waiting')).toBe(true);
       });

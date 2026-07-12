@@ -20,6 +20,7 @@ const CLAUDE_PID = 201;
 
 const EMPTY_TEMPLATES: SilentSessionMessageTemplates = {
   mainStalledMessage: null,
+  mainStalledStaleOwnerCallMessage: null,
   subAgentIdleMessageHeader: null,
   subAgentIdleMessageFooter: null,
   subAgentLongRunningMessageHeader: null,
@@ -221,11 +222,8 @@ describe('notifySilentTmuxSessions', () => {
     await notifySilentTmuxSessions({
       ...baseParams(runner),
       messageTemplates: {
+        ...EMPTY_TEMPLATES,
         mainStalledMessage: 'CUSTOM_MAIN_TEMPLATE',
-        subAgentIdleMessageHeader: null,
-        subAgentIdleMessageFooter: null,
-        subAgentLongRunningMessageHeader: null,
-        subAgentLongRunningMessageFooter: null,
       },
     });
 
@@ -240,14 +238,50 @@ describe('notifySilentTmuxSessions', () => {
     );
   });
 
-  it('suppresses the notification whenever an owner call is unanswered, regardless of how long the session has been silent', async () => {
-    const stalePendingOwnerCall = new Date(
+  it('suppresses the notification while the unanswered owner call is younger than the grace period', async () => {
+    const recentPendingOwnerCall = new Date(
       (NOW_EPOCH_SECONDS - 11 * 60) * 1000,
     ).toISOString();
     writeTranscript([
       {
         type: 'user',
         timestamp: '2026-06-25T23:00:00.000Z',
+        message: { role: 'user', content: 'go ahead' },
+      },
+      {
+        type: 'assistant',
+        timestamp: recentPendingOwnerCall,
+        message: {
+          role: 'assistant',
+          stop_reason: 'end_turn',
+          content: [
+            { type: 'text', text: 'waiting <<OWNER_CALL>> please decide' },
+          ],
+        },
+      },
+    ]);
+    seedPreviousCandidates([SESSION_NAME]);
+    const runner = liveSessionRunner();
+
+    await notifySilentTmuxSessions({
+      ...baseParams(runner),
+      ownerCallMarker: '<<OWNER_CALL>>',
+    });
+
+    const sendCall = runner.runCommand.mock.calls.find(
+      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
+    );
+    expect(sendCall).toBeUndefined();
+  });
+
+  it('sends the stale-owner-call reminder once the unanswered owner call is older than the grace period', async () => {
+    const stalePendingOwnerCall = new Date(
+      (NOW_EPOCH_SECONDS - 2 * 60 * 60) * 1000,
+    ).toISOString();
+    writeTranscript([
+      {
+        type: 'user',
+        timestamp: '2026-06-25T20:00:00.000Z',
         message: { role: 'user', content: 'go ahead' },
       },
       {
@@ -262,6 +296,7 @@ describe('notifySilentTmuxSessions', () => {
         },
       },
     ]);
+    seedPreviousCandidates([SESSION_NAME]);
     const runner = liveSessionRunner();
 
     await notifySilentTmuxSessions({
@@ -272,7 +307,11 @@ describe('notifySilentTmuxSessions', () => {
     const sendCall = runner.runCommand.mock.calls.find(
       (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
     );
-    expect(sendCall).toBeUndefined();
+    expect(sendCall?.[1][2]).toBe(SESSION_NAME);
+    expect(sendCall?.[1][4]).toContain('is still unanswered');
+    expect(sendCall?.[1][4]).toContain(
+      're-raise your pending ask NOW as a fresh owner call',
+    );
   });
 
   it('defers the first cycle then notifies on the next cycle once the persisted candidate state confirms a second consecutive cycle', async () => {

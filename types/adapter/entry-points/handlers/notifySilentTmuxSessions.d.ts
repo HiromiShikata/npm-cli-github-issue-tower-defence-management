@@ -11,6 +11,7 @@ export type NotifySilentTmuxSessionsParams = {
     subAgentProcessMatchPattern: string | null;
     subAgentTranscriptRootDirectory: string | null;
     mainSilentThresholdSeconds: number;
+    unansweredOwnerCallGraceSeconds: number;
     subAgentSilentThresholdSeconds: number;
     subAgentRunningThresholdSeconds: number;
     staggerSeconds: number;
@@ -26,6 +27,7 @@ export type NotifySilentTmuxSessionsParams = {
 export declare const notifySilentTmuxSessions: (params: NotifySilentTmuxSessionsParams) => Promise<void>;
 export declare const DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS: {
     readonly mainSilentThresholdSeconds: number;
+    readonly unansweredOwnerCallGraceSeconds: number;
     readonly subAgentSilentThresholdSeconds: number;
     readonly subAgentRunningThresholdSeconds: number;
     readonly staggerSeconds: 25;

@@ -4,6 +4,7 @@ import {
   parseHubTaskIssueUrlFromSessionName,
   isGitHubIssueOrPullRequestSessionName,
   DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+  DEFAULT_UNANSWERED_OWNER_CALL_GRACE_SECONDS,
   DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
   DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
   DEFAULT_NOTIFICATION_STAGGER_SECONDS,
@@ -28,6 +29,8 @@ import { InteractiveLiveSession } from '../entities/InteractiveLiveSession';
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
 const MAIN_STALLED_SECTION = 'MAIN_STALLED_SECTION';
+const MAIN_STALLED_STALE_OWNER_CALL_SECTION =
+  'MAIN_STALLED_STALE_OWNER_CALL_SECTION';
 const SUBAGENT_SECTION = 'SUBAGENT_SECTION';
 
 class EveryNameRecentSet extends Set<string> {
@@ -66,6 +69,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     }>,
   ): {
     mainSilentThresholdSeconds: number;
+    unansweredOwnerCallGraceSeconds: number;
     subAgentSilentThresholdSeconds: number;
     subAgentRunningThresholdSeconds: number;
     staggerSeconds: number;
@@ -75,6 +79,8 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     now: Date;
   } => ({
     mainSilentThresholdSeconds: DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+    unansweredOwnerCallGraceSeconds:
+      DEFAULT_UNANSWERED_OWNER_CALL_GRACE_SECONDS,
     subAgentSilentThresholdSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
     subAgentRunningThresholdSeconds: DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
     staggerSeconds: DEFAULT_NOTIFICATION_STAGGER_SECONDS,
@@ -147,9 +153,9 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         .mockResolvedValue(new Map<string, SubAgentActivity[]>()),
     };
     mockOwnerCallStatusProvider = {
-      listSessionNamesWithUnansweredOwnerCall: jest
+      listUnansweredOwnerCallEpochSecondsBySessionName: jest
         .fn()
-        .mockResolvedValue(new Set<string>()),
+        .mockResolvedValue(new Map<string, number>()),
     };
     mockNotificationRepository = {
       sendSelfCheckNotification: jest.fn().mockResolvedValue(undefined),
@@ -170,6 +176,9 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       composeMainStalledSection: jest
         .fn()
         .mockReturnValue(MAIN_STALLED_SECTION),
+      composeMainStalledWithStaleOwnerCallSection: jest
+        .fn()
+        .mockReturnValue(MAIN_STALLED_STALE_OWNER_CALL_SECTION),
       composeSubAgentSection: jest.fn().mockReturnValue(SUBAGENT_SECTION),
     };
     mockSleeper = {
@@ -249,6 +258,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
 
   it('exposes the default thresholds as named constants', () => {
     expect(DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS).toBe(600);
+    expect(DEFAULT_UNANSWERED_OWNER_CALL_GRACE_SECONDS).toBe(3600);
     expect(DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS).toBe(300);
     expect(DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS).toBe(900);
     expect(DEFAULT_NOTIFICATION_STAGGER_SECONDS).toBe(25);
@@ -371,26 +381,22 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       mockSessionOutputActivityRepository.listSessionOutputActivities,
     ).toHaveBeenCalledWith(expectedMap);
     expect(
-      mockOwnerCallStatusProvider.listSessionNamesWithUnansweredOwnerCall,
+      mockOwnerCallStatusProvider.listUnansweredOwnerCallEpochSecondsBySessionName,
     ).toHaveBeenCalledWith(expectedMap);
     expect(
       mockSubAgentActivityRepository.listSubAgentActivitiesBySessionName,
     ).toHaveBeenCalledWith([GITHUB_SESSION], expectedMap);
   });
 
-  it('suppresses the stalled section and sends nothing when an owner call is pending past the threshold', async () => {
-    setupLiveInteractiveSession(GITHUB_SESSION);
-    mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
-      [
-        {
-          sessionName: GITHUB_SESSION,
-          lastOutputEpochSeconds:
-            nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
-        },
-      ],
-    );
-    mockOwnerCallStatusProvider.listSessionNamesWithUnansweredOwnerCall.mockResolvedValue(
-      new Set([GITHUB_SESSION]),
+  it('suppresses the stalled section and sends nothing while the unanswered owner call is younger than the grace period', async () => {
+    setupSilentMainSession(GITHUB_SESSION);
+    mockOwnerCallStatusProvider.listUnansweredOwnerCallEpochSecondsBySessionName.mockResolvedValue(
+      new Map([
+        [
+          GITHUB_SESSION,
+          nowEpochSeconds - DEFAULT_UNANSWERED_OWNER_CALL_GRACE_SECONDS + 1,
+        ],
+      ]),
     );
 
     await useCase.run(runParams());
@@ -399,8 +405,95 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       mockMessageComposer.composeMainStalledSection,
     ).not.toHaveBeenCalled();
     expect(
+      mockMessageComposer.composeMainStalledWithStaleOwnerCallSection,
+    ).not.toHaveBeenCalled();
+    expect(
       mockNotificationRepository.sendSelfCheckNotification,
     ).not.toHaveBeenCalled();
+  });
+
+  it('sends the stale-owner-call stalled section once the unanswered owner call reaches the grace period', async () => {
+    setupSilentMainSession(GITHUB_SESSION);
+    mockOwnerCallStatusProvider.listUnansweredOwnerCallEpochSecondsBySessionName.mockResolvedValue(
+      new Map([
+        [
+          GITHUB_SESSION,
+          nowEpochSeconds - DEFAULT_UNANSWERED_OWNER_CALL_GRACE_SECONDS,
+        ],
+      ]),
+    );
+
+    await useCase.run(runParams());
+
+    expect(
+      mockMessageComposer.composeMainStalledWithStaleOwnerCallSection,
+    ).toHaveBeenCalledWith(
+      DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+      DEFAULT_UNANSWERED_OWNER_CALL_GRACE_SECONDS,
+    );
+    expect(
+      mockMessageComposer.composeMainStalledSection,
+    ).not.toHaveBeenCalled();
+    expect(
+      mockNotificationRepository.sendSelfCheckNotification,
+    ).toHaveBeenCalledWith(
+      GITHUB_SESSION,
+      MAIN_STALLED_STALE_OWNER_CALL_SECTION,
+    );
+  });
+
+  it('does not send the stale-owner-call section when the owner call is past the grace period but the main output is not silent past the threshold', async () => {
+    setupLiveInteractiveSession(GITHUB_SESSION);
+    mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
+      [
+        {
+          sessionName: GITHUB_SESSION,
+          lastOutputEpochSeconds:
+            nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS + 1,
+        },
+      ],
+    );
+    mockOwnerCallStatusProvider.listUnansweredOwnerCallEpochSecondsBySessionName.mockResolvedValue(
+      new Map([
+        [
+          GITHUB_SESSION,
+          nowEpochSeconds - DEFAULT_UNANSWERED_OWNER_CALL_GRACE_SECONDS,
+        ],
+      ]),
+    );
+
+    await useCase.run(runParams());
+
+    expect(
+      mockNotificationRepository.sendSelfCheckNotification,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('defers a first-cycle stale-owner-call candidate until it persists into the next cycle', async () => {
+    setupSilentMainSession(GITHUB_SESSION);
+    mockOwnerCallStatusProvider.listUnansweredOwnerCallEpochSecondsBySessionName.mockResolvedValue(
+      new Map([
+        [
+          GITHUB_SESSION,
+          nowEpochSeconds - DEFAULT_UNANSWERED_OWNER_CALL_GRACE_SECONDS,
+        ],
+      ]),
+    );
+    mockCandidateStateRepository.loadRecentCandidateSessionNames.mockResolvedValue(
+      new Set<string>(),
+    );
+
+    await useCase.run(runParams());
+
+    expect(
+      mockNotificationRepository.sendSelfCheckNotification,
+    ).not.toHaveBeenCalled();
+    expect(
+      mockCandidateStateRepository.saveCandidateSessionNames,
+    ).toHaveBeenCalledWith({
+      sessionNames: [GITHUB_SESSION],
+      now,
+    });
   });
 
   it('sends the main stalled section when the session is silent past the threshold and not waiting on the owner', async () => {
@@ -414,8 +507,8 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         },
       ],
     );
-    mockOwnerCallStatusProvider.listSessionNamesWithUnansweredOwnerCall.mockResolvedValue(
-      new Set<string>(),
+    mockOwnerCallStatusProvider.listUnansweredOwnerCallEpochSecondsBySessionName.mockResolvedValue(
+      new Map<string, number>(),
     );
 
     await useCase.run(runParams());
@@ -423,6 +516,9 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     expect(mockMessageComposer.composeMainStalledSection).toHaveBeenCalledWith(
       DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
     );
+    expect(
+      mockMessageComposer.composeMainStalledWithStaleOwnerCallSection,
+    ).not.toHaveBeenCalled();
     expect(
       mockNotificationRepository.sendSelfCheckNotification,
     ).toHaveBeenCalledWith(GITHUB_SESSION, MAIN_STALLED_SECTION);

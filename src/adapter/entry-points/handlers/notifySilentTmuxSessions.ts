@@ -6,6 +6,7 @@ import {
   NotifySilentLiveSessionsUseCase,
   HubTaskStatusResolver,
   DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+  DEFAULT_UNANSWERED_OWNER_CALL_GRACE_SECONDS,
   DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
   DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
   DEFAULT_NOTIFICATION_STAGGER_SECONDS,
@@ -42,6 +43,7 @@ export type NotifySilentTmuxSessionsParams = {
   subAgentProcessMatchPattern: string | null;
   subAgentTranscriptRootDirectory: string | null;
   mainSilentThresholdSeconds: number;
+  unansweredOwnerCallGraceSeconds: number;
   subAgentSilentThresholdSeconds: number;
   subAgentRunningThresholdSeconds: number;
   staggerSeconds: number;
@@ -102,6 +104,7 @@ export const notifySilentTmuxSessions = async (
     subAgentProcessMatchPattern,
     subAgentTranscriptRootDirectory,
     mainSilentThresholdSeconds,
+    unansweredOwnerCallGraceSeconds,
     subAgentSilentThresholdSeconds,
     subAgentRunningThresholdSeconds,
     staggerSeconds,
@@ -157,6 +160,7 @@ export const notifySilentTmuxSessions = async (
   );
   await useCase.run({
     mainSilentThresholdSeconds,
+    unansweredOwnerCallGraceSeconds,
     subAgentSilentThresholdSeconds,
     subAgentRunningThresholdSeconds,
     staggerSeconds,
@@ -169,6 +173,7 @@ export const notifySilentTmuxSessions = async (
 
 export const DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS = {
   mainSilentThresholdSeconds: DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+  unansweredOwnerCallGraceSeconds: DEFAULT_UNANSWERED_OWNER_CALL_GRACE_SECONDS,
   subAgentSilentThresholdSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
   subAgentRunningThresholdSeconds: DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
   staggerSeconds: DEFAULT_NOTIFICATION_STAGGER_SECONDS,
