@@ -157,6 +157,7 @@ export class NotifySilentLiveSessionsUseCase {
         await this.isSubAgentOnlyReminderSuppressed(
           candidate,
           params.subAgentReminderEscalationSeconds,
+          params.subAgentSilentThresholdSeconds,
           params.now,
         )
       ) {
@@ -190,6 +191,7 @@ export class NotifySilentLiveSessionsUseCase {
   private isSubAgentOnlyReminderSuppressed = async (
     candidate: NotifyCandidate,
     subAgentReminderEscalationSeconds: number,
+    subAgentSilentThresholdSeconds: number,
     now: Date,
   ): Promise<boolean> => {
     if (candidate.mainTriggered || candidate.stalledSubAgents.length === 0) {
@@ -214,18 +216,23 @@ export class NotifySilentLiveSessionsUseCase {
         subAgent.lastOutputEpochSeconds,
       ]),
     );
-    const triggerStateUnchanged =
-      candidate.stalledSubAgents.length === lastSend.subAgents.length &&
-      candidate.stalledSubAgents.every((subAgent) => {
+    const triggerStateUnchanged = candidate.stalledSubAgents.every(
+      (subAgent) => {
         const recordedLastOutputEpochSeconds =
           recordedLastOutputEpochSecondsByLabel.get(subAgent.label);
         if (recordedLastOutputEpochSeconds === undefined) {
           return false;
         }
+        const silentTriggered =
+          subAgent.silentSeconds >= subAgentSilentThresholdSeconds;
+        if (!silentTriggered) {
+          return true;
+        }
         const currentLastOutputEpochSeconds =
           nowEpochSeconds - subAgent.silentSeconds;
         return currentLastOutputEpochSeconds <= recordedLastOutputEpochSeconds;
-      });
+      },
+    );
     if (!triggerStateUnchanged) {
       return false;
     }

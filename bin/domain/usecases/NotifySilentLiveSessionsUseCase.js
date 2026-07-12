@@ -76,7 +76,7 @@ class NotifySilentLiveSessionsUseCase {
             console.log(`Silent live session notification: ${debouncedCandidates.length} debounced candidate(s) of ${candidates.length} current candidate(s) across ${interactiveSessions.length} interactive session(s); ${suppressedFirstCycleCount} first-cycle candidate(s) deferred until they persist into the next cycle.`);
             let sentCount = 0;
             for (const candidate of debouncedCandidates) {
-                if (await this.isSubAgentOnlyReminderSuppressed(candidate, params.subAgentReminderEscalationSeconds, params.now)) {
+                if (await this.isSubAgentOnlyReminderSuppressed(candidate, params.subAgentReminderEscalationSeconds, params.subAgentSilentThresholdSeconds, params.now)) {
                     continue;
                 }
                 if (!(await this.isHubTaskActive(candidate.sessionName, params.activeHubTaskStatus, params.hubTaskStatusCacheTtlSeconds, params.now))) {
@@ -93,7 +93,7 @@ class NotifySilentLiveSessionsUseCase {
                 }
             }
         };
-        this.isSubAgentOnlyReminderSuppressed = async (candidate, subAgentReminderEscalationSeconds, now) => {
+        this.isSubAgentOnlyReminderSuppressed = async (candidate, subAgentReminderEscalationSeconds, subAgentSilentThresholdSeconds, now) => {
             if (candidate.mainTriggered || candidate.stalledSubAgents.length === 0) {
                 return false;
             }
@@ -112,15 +112,18 @@ class NotifySilentLiveSessionsUseCase {
                 subAgent.label,
                 subAgent.lastOutputEpochSeconds,
             ]));
-            const triggerStateUnchanged = candidate.stalledSubAgents.length === lastSend.subAgents.length &&
-                candidate.stalledSubAgents.every((subAgent) => {
-                    const recordedLastOutputEpochSeconds = recordedLastOutputEpochSecondsByLabel.get(subAgent.label);
-                    if (recordedLastOutputEpochSeconds === undefined) {
-                        return false;
-                    }
-                    const currentLastOutputEpochSeconds = nowEpochSeconds - subAgent.silentSeconds;
-                    return currentLastOutputEpochSeconds <= recordedLastOutputEpochSeconds;
-                });
+            const triggerStateUnchanged = candidate.stalledSubAgents.every((subAgent) => {
+                const recordedLastOutputEpochSeconds = recordedLastOutputEpochSecondsByLabel.get(subAgent.label);
+                if (recordedLastOutputEpochSeconds === undefined) {
+                    return false;
+                }
+                const silentTriggered = subAgent.silentSeconds >= subAgentSilentThresholdSeconds;
+                if (!silentTriggered) {
+                    return true;
+                }
+                const currentLastOutputEpochSeconds = nowEpochSeconds - subAgent.silentSeconds;
+                return currentLastOutputEpochSeconds <= recordedLastOutputEpochSeconds;
+            });
             if (!triggerStateUnchanged) {
                 return false;
             }
