@@ -43,6 +43,7 @@ export class ProcessListSessionSubAgentActivityRepository implements SessionSubA
         label,
         silentSeconds: this.silentSecondsResolver.resolveSilentSeconds(label),
         runningSeconds: process.elapsedSeconds,
+        waitingOnExternalProcess: false,
       };
       const existing = result.get(sessionName);
       if (existing === undefined) {

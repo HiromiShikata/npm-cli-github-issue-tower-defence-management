@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { SubAgentActivity } from '../../domain/entities/LiveSessionActivitySnapshot';
 import { SessionSubAgentActivityRepository } from '../../domain/usecases/adapter-interfaces/SessionSubAgentActivityRepository';
+import { SubAgentProcessLister } from '../../domain/usecases/adapter-interfaces/SubAgentProcessLister';
 import { SubAgentTranscriptDirectoryResolver } from '../../domain/usecases/adapter-interfaces/SubAgentTranscriptDirectoryResolver';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -23,9 +24,18 @@ const parseEpochSeconds = (timestamp: string | null): number | null => {
   return Number.isNaN(parsed) ? null : Math.floor(parsed / 1000);
 };
 
+const PENDING_TOOL_COMMAND_FRAGMENT_LENGTH = 60;
+
+export const normalizeCommandFragment = (command: string): string =>
+  command
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, PENDING_TOOL_COMMAND_FRAGMENT_LENGTH);
+
 type ParsedTranscript = {
   firstEntryEpochSeconds: number | null;
   lastEntryIndicatesCompletion: boolean;
+  pendingToolCommands: string[];
 };
 
 const readContentBlocks = (
@@ -65,9 +75,33 @@ const entryIndicatesCompletion = (entry: Record<string, unknown>): boolean => {
   return false;
 };
 
+const entryPendingToolCommands = (entry: Record<string, unknown>): string[] => {
+  const type = readString(entry, 'type');
+  const message = entry.message;
+  if (type !== 'assistant' || !isRecord(message)) {
+    return [];
+  }
+  const commands: string[] = [];
+  for (const block of readContentBlocks(message)) {
+    if (readString(block, 'type') !== 'tool_use') {
+      continue;
+    }
+    const input = block.input;
+    if (!isRecord(input)) {
+      continue;
+    }
+    const command = readString(input, 'command');
+    if (command !== null && command.trim().length > 0) {
+      commands.push(command);
+    }
+  }
+  return commands;
+};
+
 const parseTranscript = (content: string): ParsedTranscript => {
   let firstEntryEpochSeconds: number | null = null;
   let lastEntryIndicatesCompletion = false;
+  let pendingToolCommands: string[] = [];
   for (const line of content.split('\n')) {
     const trimmed = line.trim();
     if (trimmed.length === 0) {
@@ -88,9 +122,14 @@ const parseTranscript = (content: string): ParsedTranscript => {
     }
     if (isRecord(parsed.message)) {
       lastEntryIndicatesCompletion = entryIndicatesCompletion(parsed);
+      pendingToolCommands = entryPendingToolCommands(parsed);
     }
   }
-  return { firstEntryEpochSeconds, lastEntryIndicatesCompletion };
+  return {
+    firstEntryEpochSeconds,
+    lastEntryIndicatesCompletion,
+    pendingToolCommands,
+  };
 };
 
 const clampToZero = (value: number): number => (value > 0 ? value : 0);
@@ -98,6 +137,7 @@ const clampToZero = (value: number): number => (value > 0 ? value : 0);
 export class TranscriptSessionSubAgentActivityRepository implements SessionSubAgentActivityRepository {
   constructor(
     private readonly directoryResolver: SubAgentTranscriptDirectoryResolver,
+    private readonly processLister: SubAgentProcessLister,
     private readonly now: Date,
   ) {}
 
@@ -107,6 +147,16 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
   ): Promise<Map<string, SubAgentActivity[]>> => {
     const result = new Map<string, SubAgentActivity[]>();
     const nowEpochSeconds = Math.floor(this.now.getTime() / 1000);
+    let normalizedProcessCommandLines: string[] | null = null;
+    const loadNormalizedProcessCommandLines = async (): Promise<string[]> => {
+      if (normalizedProcessCommandLines === null) {
+        const processes = await this.processLister.listProcesses();
+        normalizedProcessCommandLines = processes.map((process) =>
+          process.commandLine.replace(/\s+/g, ' ').trim(),
+        );
+      }
+      return normalizedProcessCommandLines;
+    };
     for (const sessionName of sessionNames) {
       const mainTranscriptPath =
         transcriptPathBySessionName.get(sessionName) ?? null;
@@ -117,7 +167,11 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
       if (directory === null) {
         continue;
       }
-      const activities = this.collectActivities(directory, nowEpochSeconds);
+      const activities = await this.collectActivities(
+        directory,
+        nowEpochSeconds,
+        loadNormalizedProcessCommandLines,
+      );
       if (activities.length > 0) {
         result.set(sessionName, activities);
       }
@@ -125,10 +179,11 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
     return result;
   };
 
-  private collectActivities = (
+  private collectActivities = async (
     directory: string,
     nowEpochSeconds: number,
-  ): SubAgentActivity[] => {
+    loadNormalizedProcessCommandLines: () => Promise<string[]>,
+  ): Promise<SubAgentActivity[]> => {
     let entries: fs.Dirent[];
     try {
       entries = fs.readdirSync(directory, { withFileTypes: true });
@@ -142,7 +197,12 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
         continue;
       }
       const filePath = path.join(directory, fileName);
-      const activity = this.toActivity(filePath, fileName, nowEpochSeconds);
+      const activity = await this.toActivity(
+        filePath,
+        fileName,
+        nowEpochSeconds,
+        loadNormalizedProcessCommandLines,
+      );
       if (activity !== null) {
         activities.push(activity);
       }
@@ -150,11 +210,12 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
     return activities;
   };
 
-  private toActivity = (
+  private toActivity = async (
     filePath: string,
     fileName: string,
     nowEpochSeconds: number,
-  ): SubAgentActivity | null => {
+    loadNormalizedProcessCommandLines: () => Promise<string[]>,
+  ): Promise<SubAgentActivity | null> => {
     let content: string;
     let stats: fs.Stats;
     try {
@@ -178,6 +239,29 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
       label: fileName.replace(/\.jsonl$/, ''),
       silentSeconds,
       runningSeconds,
+      waitingOnExternalProcess: await this.hasLiveMatchingProcess(
+        transcript.pendingToolCommands,
+        loadNormalizedProcessCommandLines,
+      ),
     };
+  };
+
+  private hasLiveMatchingProcess = async (
+    pendingToolCommands: string[],
+    loadNormalizedProcessCommandLines: () => Promise<string[]>,
+  ): Promise<boolean> => {
+    if (pendingToolCommands.length === 0) {
+      return false;
+    }
+    const fragments = pendingToolCommands
+      .map(normalizeCommandFragment)
+      .filter((fragment) => fragment.length > 0);
+    if (fragments.length === 0) {
+      return false;
+    }
+    const processCommandLines = await loadNormalizedProcessCommandLines();
+    return fragments.some((fragment) =>
+      processCommandLines.some((commandLine) => commandLine.includes(fragment)),
+    );
   };
 }

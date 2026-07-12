@@ -54,7 +54,12 @@ describe('ProcessListSessionSubAgentActivityRepository', () => {
     );
     const result = await repository.listSubAgentActivitiesBySessionName(['s1']);
     expect(result.get('s1')).toEqual([
-      { label: 'task-a', silentSeconds: 180, runningSeconds: 1200 },
+      {
+        label: 'task-a',
+        silentSeconds: 180,
+        runningSeconds: 1200,
+        waitingOnExternalProcess: false,
+      },
     ]);
   });
 
@@ -78,7 +83,12 @@ describe('ProcessListSessionSubAgentActivityRepository', () => {
     );
     const result = await repository.listSubAgentActivitiesBySessionName(['s1']);
     expect(result.get('s1')).toEqual([
-      { label: 's1', silentSeconds: 0, runningSeconds: 30 },
+      {
+        label: 's1',
+        silentSeconds: 0,
+        runningSeconds: 30,
+        waitingOnExternalProcess: false,
+      },
     ]);
   });
 

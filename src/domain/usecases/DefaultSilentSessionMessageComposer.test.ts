@@ -1,11 +1,6 @@
 import { DefaultSilentSessionMessageComposer } from './DefaultSilentSessionMessageComposer';
 import { SILENT_SESSION_REMINDER_SENTINEL } from './silentSessionReminderSentinel';
 
-const THRESHOLDS = {
-  subAgentSilentThresholdSeconds: 300,
-  subAgentRunningThresholdSeconds: 900,
-};
-
 describe('DefaultSilentSessionMessageComposer', () => {
   const composer = new DefaultSilentSessionMessageComposer();
 
@@ -15,10 +10,16 @@ describe('DefaultSilentSessionMessageComposer', () => {
   });
 
   it('embeds the reminder sentinel in the sub-agent section', () => {
-    const section = composer.composeSubAgentSection(
-      [{ label: 'sub-process-1', silentSeconds: 360, runningSeconds: 1200 }],
-      THRESHOLDS,
-    );
+    const subAgent = {
+      label: 'sub-process-1',
+      silentSeconds: 360,
+      runningSeconds: 1200,
+      waitingOnExternalProcess: false,
+    };
+    const section = composer.composeSubAgentSection({
+      idleSubAgents: [subAgent],
+      longRunningSubAgents: [subAgent],
+    });
     expect(section).toContain(SILENT_SESSION_REMINDER_SENTINEL);
   });
 
@@ -116,10 +117,17 @@ describe('DefaultSilentSessionMessageComposer', () => {
   });
 
   it('emits a distinct idle message for a sub-agent that is only output-idle', () => {
-    const section = composer.composeSubAgentSection(
-      [{ label: 'sub-process-idle', silentSeconds: 360, runningSeconds: 60 }],
-      THRESHOLDS,
-    );
+    const section = composer.composeSubAgentSection({
+      idleSubAgents: [
+        {
+          label: 'sub-process-idle',
+          silentSeconds: 360,
+          runningSeconds: 60,
+          waitingOnExternalProcess: false,
+        },
+      ],
+      longRunningSubAgents: [],
+    });
     expect(section).toContain('sub-process-idle');
     expect(section).toContain('no output for 6m');
     expect(section).toContain('restart, hand off, or replace it');
@@ -128,10 +136,17 @@ describe('DefaultSilentSessionMessageComposer', () => {
   });
 
   it('presents the system-detected idle duration as the authoritative signal in the idle message', () => {
-    const section = composer.composeSubAgentSection(
-      [{ label: 'sub-process-idle', silentSeconds: 360, runningSeconds: 60 }],
-      THRESHOLDS,
-    );
+    const section = composer.composeSubAgentSection({
+      idleSubAgents: [
+        {
+          label: 'sub-process-idle',
+          silentSeconds: 360,
+          runningSeconds: 60,
+          waitingOnExternalProcess: false,
+        },
+      ],
+      longRunningSubAgents: [],
+    });
     expect(section).toContain(
       "The system has already detected, from each sub-process's last tool activity, that it has produced no output for about the minutes shown below.",
     );
@@ -142,10 +157,17 @@ describe('DefaultSilentSessionMessageComposer', () => {
   });
 
   it('forbids speculation and dismissal without evidence in the idle message', () => {
-    const section = composer.composeSubAgentSection(
-      [{ label: 'sub-process-idle', silentSeconds: 360, runningSeconds: 60 }],
-      THRESHOLDS,
-    );
+    const section = composer.composeSubAgentSection({
+      idleSubAgents: [
+        {
+          label: 'sub-process-idle',
+          silentSeconds: 360,
+          runningSeconds: 60,
+          waitingOnExternalProcess: false,
+        },
+      ],
+      longRunningSubAgents: [],
+    });
     expect(section).toContain(
       'Around five minutes of silence is a real warning of a possible hang',
     );
@@ -155,10 +177,17 @@ describe('DefaultSilentSessionMessageComposer', () => {
   });
 
   it('requires a concrete cause-check covering recent activity and external-dependency waiting in the idle message', () => {
-    const section = composer.composeSubAgentSection(
-      [{ label: 'sub-process-idle', silentSeconds: 360, runningSeconds: 60 }],
-      THRESHOLDS,
-    );
+    const section = composer.composeSubAgentSection({
+      idleSubAgents: [
+        {
+          label: 'sub-process-idle',
+          silentSeconds: 360,
+          runningSeconds: 60,
+          waitingOnExternalProcess: false,
+        },
+      ],
+      longRunningSubAgents: [],
+    });
     expect(section).toContain('determine the CAUSE by a concrete check');
     expect(section).toContain(
       'a very recent push or commit, or output from any nested sub-processes this sub-process itself started',
@@ -175,26 +204,34 @@ describe('DefaultSilentSessionMessageComposer', () => {
   });
 
   it('requires logging the investigation result even though owner notification is not required', () => {
-    const section = composer.composeSubAgentSection(
-      [{ label: 'sub-process-idle', silentSeconds: 360, runningSeconds: 60 }],
-      THRESHOLDS,
-    );
+    const section = composer.composeSubAgentSection({
+      idleSubAgents: [
+        {
+          label: 'sub-process-idle',
+          silentSeconds: 360,
+          runningSeconds: 60,
+          waitingOnExternalProcess: false,
+        },
+      ],
+      longRunningSubAgents: [],
+    });
     expect(section).toContain(
       'Owner notification is not required, but you MUST output your investigation result in this session so it remains as a log.',
     );
   });
 
   it('emits a distinct long-running message for a sub-agent that has only run too long', () => {
-    const section = composer.composeSubAgentSection(
-      [
+    const section = composer.composeSubAgentSection({
+      idleSubAgents: [],
+      longRunningSubAgents: [
         {
           label: 'sub-process-long',
           silentSeconds: 30,
           runningSeconds: 1200,
+          waitingOnExternalProcess: false,
         },
       ],
-      THRESHOLDS,
-    );
+    });
     expect(section).toContain('sub-process-long');
     expect(section).toContain('running for 20m');
     expect(section).toContain('infinite loop');
@@ -209,25 +246,32 @@ describe('DefaultSilentSessionMessageComposer', () => {
   });
 
   it('does not foreground the short idle time in the long-running message', () => {
-    const section = composer.composeSubAgentSection(
-      [
+    const section = composer.composeSubAgentSection({
+      idleSubAgents: [],
+      longRunningSubAgents: [
         {
           label: 'sub-process-long',
           silentSeconds: 30,
           runningSeconds: 1200,
+          waitingOnExternalProcess: false,
         },
       ],
-      THRESHOLDS,
-    );
+    });
     expect(section).not.toContain('no output for');
     expect(section).not.toContain('silent for');
   });
 
   it('emits both distinct messages for a sub-agent matching both conditions, kept separate', () => {
-    const section = composer.composeSubAgentSection(
-      [{ label: 'sub-process-both', silentSeconds: 360, runningSeconds: 1200 }],
-      THRESHOLDS,
-    );
+    const subAgent = {
+      label: 'sub-process-both',
+      silentSeconds: 360,
+      runningSeconds: 1200,
+      waitingOnExternalProcess: false,
+    };
+    const section = composer.composeSubAgentSection({
+      idleSubAgents: [subAgent],
+      longRunningSubAgents: [subAgent],
+    });
     expect(section).toContain('no output for 6m');
     expect(section).toContain('determine the CAUSE by a concrete check');
     expect(section).toContain('running for 20m');
@@ -238,13 +282,24 @@ describe('DefaultSilentSessionMessageComposer', () => {
   });
 
   it('groups each sub-agent under the condition it matched', () => {
-    const section = composer.composeSubAgentSection(
-      [
-        { label: 'idle-only', silentSeconds: 360, runningSeconds: 60 },
-        { label: 'long-only', silentSeconds: 10, runningSeconds: 960 },
+    const section = composer.composeSubAgentSection({
+      idleSubAgents: [
+        {
+          label: 'idle-only',
+          silentSeconds: 360,
+          runningSeconds: 60,
+          waitingOnExternalProcess: false,
+        },
       ],
-      THRESHOLDS,
-    );
+      longRunningSubAgents: [
+        {
+          label: 'long-only',
+          silentSeconds: 10,
+          runningSeconds: 960,
+          waitingOnExternalProcess: false,
+        },
+      ],
+    });
     const [idleSection, longRunningSection] = section.split('\n\n');
     expect(idleSection).toContain('idle-only');
     expect(idleSection).not.toContain('long-only');
@@ -254,10 +309,16 @@ describe('DefaultSilentSessionMessageComposer', () => {
 
   it('does not contain any host-specific or internal identifiers', () => {
     const mainSection = composer.composeMainStalledSection(600);
-    const subSection = composer.composeSubAgentSection(
-      [{ label: 'sub-process-1', silentSeconds: 360, runningSeconds: 1200 }],
-      THRESHOLDS,
-    );
+    const subAgent = {
+      label: 'sub-process-1',
+      silentSeconds: 360,
+      runningSeconds: 1200,
+      waitingOnExternalProcess: false,
+    };
+    const subSection = composer.composeSubAgentSection({
+      idleSubAgents: [subAgent],
+      longRunningSubAgents: [subAgent],
+    });
     const combined = `${mainSection}\n${subSection}`.toLowerCase();
     expect(combined).not.toContain('claude');
     expect(combined).not.toContain('take ownership');

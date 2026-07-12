@@ -54,6 +54,8 @@ export type HubTaskStatusResolver = Pick<IssueRepository, 'getIssueByUrl'>;
 type NotifyCandidate = {
   sessionName: string;
   message: string;
+  newlyAnnouncedRunningLabels: string[];
+  retainedAnnouncedRunningLabels: string[];
 };
 
 export class NotifySilentLiveSessionsUseCase {
@@ -111,9 +113,9 @@ export class NotifySilentLiveSessionsUseCase {
 
     const candidates: NotifyCandidate[] = [];
     for (const sessionSnapshot of snapshots) {
-      const message = this.composeMessage(sessionSnapshot, params);
-      if (message !== null) {
-        candidates.push({ sessionName: sessionSnapshot.sessionName, message });
+      const candidate = await this.composeCandidate(sessionSnapshot, params);
+      if (candidate !== null) {
+        candidates.push(candidate);
       }
     }
     candidates.sort((left, right) =>
@@ -165,6 +167,16 @@ export class NotifySilentLiveSessionsUseCase {
       );
       sentCount += 1;
       console.log(`Notified ${candidate.sessionName}.`);
+      if (candidate.newlyAnnouncedRunningLabels.length > 0) {
+        await this.candidateStateRepository.saveAnnouncedRunningSubAgentLabels({
+          sessionName: candidate.sessionName,
+          labels: [
+            ...candidate.retainedAnnouncedRunningLabels,
+            ...candidate.newlyAnnouncedRunningLabels,
+          ],
+          now: params.now,
+        });
+      }
     }
   };
 
@@ -334,40 +346,47 @@ export class NotifySilentLiveSessionsUseCase {
     });
   };
 
-  private composeMessage = (
+  private composeCandidate = async (
     snapshot: LiveSessionActivitySnapshot,
     thresholds: {
       mainSilentThresholdSeconds: number;
       subAgentSilentThresholdSeconds: number;
       subAgentRunningThresholdSeconds: number;
+      now: Date;
     },
-  ): string | null => {
+  ): Promise<NotifyCandidate | null> => {
     const sections: string[] = [];
 
-    if (
-      snapshot.mainSilentSeconds !== null &&
-      snapshot.mainSilentSeconds >= thresholds.mainSilentThresholdSeconds &&
-      !snapshot.hasUnansweredOwnerCall
-    ) {
+    const mainSilentSeconds = snapshot.mainSilentSeconds;
+    const mainTriggered =
+      mainSilentSeconds !== null &&
+      mainSilentSeconds >= thresholds.mainSilentThresholdSeconds &&
+      !snapshot.hasUnansweredOwnerCall;
+    if (mainTriggered) {
       sections.push(
-        this.messageComposer.composeMainStalledSection(
-          snapshot.mainSilentSeconds,
-        ),
+        this.messageComposer.composeMainStalledSection(mainSilentSeconds),
       );
     }
 
-    const stalledSubAgents = snapshot.subAgents.filter(
+    const idleSubAgents = snapshot.subAgents.filter(
       (subAgent) =>
-        subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds ||
+        !subAgent.waitingOnExternalProcess &&
+        subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds,
+    );
+    const longRunningSubAgents = snapshot.subAgents.filter(
+      (subAgent) =>
         subAgent.runningSeconds >= thresholds.subAgentRunningThresholdSeconds,
     );
-    if (stalledSubAgents.length > 0) {
+    const retainedAnnouncedRunningLabels =
+      await this.reconcileAnnouncedRunningLabels(snapshot, thresholds.now);
+    const newlyLongRunningSubAgents = longRunningSubAgents.filter(
+      (subAgent) => !retainedAnnouncedRunningLabels.includes(subAgent.label),
+    );
+    if (idleSubAgents.length > 0 || newlyLongRunningSubAgents.length > 0) {
       sections.push(
-        this.messageComposer.composeSubAgentSection(stalledSubAgents, {
-          subAgentSilentThresholdSeconds:
-            thresholds.subAgentSilentThresholdSeconds,
-          subAgentRunningThresholdSeconds:
-            thresholds.subAgentRunningThresholdSeconds,
+        this.messageComposer.composeSubAgentSection({
+          idleSubAgents,
+          longRunningSubAgents: newlyLongRunningSubAgents,
         }),
       );
     }
@@ -375,6 +394,37 @@ export class NotifySilentLiveSessionsUseCase {
     if (sections.length === 0) {
       return null;
     }
-    return sections.join('\n\n');
+    return {
+      sessionName: snapshot.sessionName,
+      message: sections.join('\n\n'),
+      newlyAnnouncedRunningLabels: newlyLongRunningSubAgents.map(
+        (subAgent) => subAgent.label,
+      ),
+      retainedAnnouncedRunningLabels,
+    };
+  };
+
+  private reconcileAnnouncedRunningLabels = async (
+    snapshot: LiveSessionActivitySnapshot,
+    now: Date,
+  ): Promise<string[]> => {
+    const announcedLabels =
+      await this.candidateStateRepository.loadAnnouncedRunningSubAgentLabels({
+        sessionName: snapshot.sessionName,
+      });
+    const currentLabels = new Set(
+      snapshot.subAgents.map((subAgent) => subAgent.label),
+    );
+    const retainedLabels = Array.from(announcedLabels).filter((label) =>
+      currentLabels.has(label),
+    );
+    if (retainedLabels.length !== announcedLabels.size) {
+      await this.candidateStateRepository.saveAnnouncedRunningSubAgentLabels({
+        sessionName: snapshot.sessionName,
+        labels: retainedLabels,
+        now,
+      });
+    }
+    return retainedLabels;
   };
 }

@@ -1,5 +1,6 @@
 import { SilentSessionCandidateStateRepository } from '../../domain/usecases/adapter-interfaces/SilentSessionCandidateStateRepository';
 export declare const DEFAULT_STATE_RETENTION_WINDOW_SECONDS: number;
+export declare const ANNOUNCED_RUNNING_RETENTION_WINDOW_SECONDS: number;
 export declare class FileSystemSilentSessionCandidateStateRepository implements SilentSessionCandidateStateRepository {
     private readonly stateFilePath;
     private readonly retentionWindowSeconds;
@@ -12,7 +13,17 @@ export declare class FileSystemSilentSessionCandidateStateRepository implements 
         sessionNames: string[];
         now: Date;
     }) => Promise<void>;
-    private readEntries;
-    private writeEntries;
+    loadAnnouncedRunningSubAgentLabels: (params: {
+        sessionName: string;
+    }) => Promise<Set<string>>;
+    saveAnnouncedRunningSubAgentLabels: (params: {
+        sessionName: string;
+        labels: string[];
+        now: Date;
+    }) => Promise<void>;
+    private readState;
+    private readCandidateEntries;
+    private readAnnouncedRunningEntries;
+    private writeState;
 }
 //# sourceMappingURL=FileSystemSilentSessionCandidateStateRepository.d.ts.map

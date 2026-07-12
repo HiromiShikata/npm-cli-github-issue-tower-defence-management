@@ -1,7 +1,7 @@
 import { SubAgentActivity } from '../entities/LiveSessionActivitySnapshot';
 import {
   SilentSessionMessageComposer,
-  SubAgentStallThresholds,
+  SubAgentStallSections,
 } from './adapter-interfaces/SilentSessionMessageComposer';
 import { SILENT_SESSION_REMINDER_SENTINEL } from './silentSessionReminderSentinel';
 
@@ -74,24 +74,15 @@ export class DefaultSilentSessionMessageComposer implements SilentSessionMessage
     return composeMainStalledMessage(mainSilentSeconds, this.ownerCallMarker);
   };
 
-  composeSubAgentSection = (
-    subAgents: SubAgentActivity[],
-    thresholds: SubAgentStallThresholds,
-  ): string => {
-    const idleSubAgents = subAgents.filter(
-      (subAgent) =>
-        subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds,
-    );
-    const longRunningSubAgents = subAgents.filter(
-      (subAgent) =>
-        subAgent.runningSeconds >= thresholds.subAgentRunningThresholdSeconds,
-    );
+  composeSubAgentSection = (stallSections: SubAgentStallSections): string => {
     const sections: string[] = [];
-    if (idleSubAgents.length > 0) {
-      sections.push(composeIdleSubAgentSection(idleSubAgents));
+    if (stallSections.idleSubAgents.length > 0) {
+      sections.push(composeIdleSubAgentSection(stallSections.idleSubAgents));
     }
-    if (longRunningSubAgents.length > 0) {
-      sections.push(composeLongRunningSubAgentSection(longRunningSubAgents));
+    if (stallSections.longRunningSubAgents.length > 0) {
+      sections.push(
+        composeLongRunningSubAgentSection(stallSections.longRunningSubAgents),
+      );
     }
     return sections.join('\n\n');
   };

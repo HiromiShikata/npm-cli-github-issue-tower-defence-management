@@ -52,9 +52,9 @@ class NotifySilentLiveSessionsUseCase {
             const snapshots = await this.collectSnapshots(interactiveSessions, transcriptPathBySessionName, params.now);
             const candidates = [];
             for (const sessionSnapshot of snapshots) {
-                const message = this.composeMessage(sessionSnapshot, params);
-                if (message !== null) {
-                    candidates.push({ sessionName: sessionSnapshot.sessionName, message });
+                const candidate = await this.composeCandidate(sessionSnapshot, params);
+                if (candidate !== null) {
+                    candidates.push(candidate);
                 }
             }
             candidates.sort((left, right) => left.sessionName < right.sessionName
@@ -84,6 +84,16 @@ class NotifySilentLiveSessionsUseCase {
                 await this.notificationRepository.sendSelfCheckNotification(candidate.sessionName, candidate.message);
                 sentCount += 1;
                 console.log(`Notified ${candidate.sessionName}.`);
+                if (candidate.newlyAnnouncedRunningLabels.length > 0) {
+                    await this.candidateStateRepository.saveAnnouncedRunningSubAgentLabels({
+                        sessionName: candidate.sessionName,
+                        labels: [
+                            ...candidate.retainedAnnouncedRunningLabels,
+                            ...candidate.newlyAnnouncedRunningLabels,
+                        ],
+                        now: params.now,
+                    });
+                }
             }
         };
         this.isHubTaskActive = async (sessionName, activeHubTaskStatus, hubTaskStatusCacheTtlSeconds, now) => {
@@ -177,25 +187,50 @@ class NotifySilentLiveSessionsUseCase {
                 };
             });
         };
-        this.composeMessage = (snapshot, thresholds) => {
+        this.composeCandidate = async (snapshot, thresholds) => {
             const sections = [];
-            if (snapshot.mainSilentSeconds !== null &&
-                snapshot.mainSilentSeconds >= thresholds.mainSilentThresholdSeconds &&
-                !snapshot.hasUnansweredOwnerCall) {
-                sections.push(this.messageComposer.composeMainStalledSection(snapshot.mainSilentSeconds));
+            const mainSilentSeconds = snapshot.mainSilentSeconds;
+            const mainTriggered = mainSilentSeconds !== null &&
+                mainSilentSeconds >= thresholds.mainSilentThresholdSeconds &&
+                !snapshot.hasUnansweredOwnerCall;
+            if (mainTriggered) {
+                sections.push(this.messageComposer.composeMainStalledSection(mainSilentSeconds));
             }
-            const stalledSubAgents = snapshot.subAgents.filter((subAgent) => subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds ||
-                subAgent.runningSeconds >= thresholds.subAgentRunningThresholdSeconds);
-            if (stalledSubAgents.length > 0) {
-                sections.push(this.messageComposer.composeSubAgentSection(stalledSubAgents, {
-                    subAgentSilentThresholdSeconds: thresholds.subAgentSilentThresholdSeconds,
-                    subAgentRunningThresholdSeconds: thresholds.subAgentRunningThresholdSeconds,
+            const idleSubAgents = snapshot.subAgents.filter((subAgent) => !subAgent.waitingOnExternalProcess &&
+                subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds);
+            const longRunningSubAgents = snapshot.subAgents.filter((subAgent) => subAgent.runningSeconds >= thresholds.subAgentRunningThresholdSeconds);
+            const retainedAnnouncedRunningLabels = await this.reconcileAnnouncedRunningLabels(snapshot, thresholds.now);
+            const newlyLongRunningSubAgents = longRunningSubAgents.filter((subAgent) => !retainedAnnouncedRunningLabels.includes(subAgent.label));
+            if (idleSubAgents.length > 0 || newlyLongRunningSubAgents.length > 0) {
+                sections.push(this.messageComposer.composeSubAgentSection({
+                    idleSubAgents,
+                    longRunningSubAgents: newlyLongRunningSubAgents,
                 }));
             }
             if (sections.length === 0) {
                 return null;
             }
-            return sections.join('\n\n');
+            return {
+                sessionName: snapshot.sessionName,
+                message: sections.join('\n\n'),
+                newlyAnnouncedRunningLabels: newlyLongRunningSubAgents.map((subAgent) => subAgent.label),
+                retainedAnnouncedRunningLabels,
+            };
+        };
+        this.reconcileAnnouncedRunningLabels = async (snapshot, now) => {
+            const announcedLabels = await this.candidateStateRepository.loadAnnouncedRunningSubAgentLabels({
+                sessionName: snapshot.sessionName,
+            });
+            const currentLabels = new Set(snapshot.subAgents.map((subAgent) => subAgent.label));
+            const retainedLabels = Array.from(announcedLabels).filter((label) => currentLabels.has(label));
+            if (retainedLabels.length !== announcedLabels.size) {
+                await this.candidateStateRepository.saveAnnouncedRunningSubAgentLabels({
+                    sessionName: snapshot.sessionName,
+                    labels: retainedLabels,
+                    now,
+                });
+            }
+            return retainedLabels;
         };
     }
 }

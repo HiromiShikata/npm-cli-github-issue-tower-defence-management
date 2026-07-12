@@ -7,4 +7,12 @@ export interface SilentSessionCandidateStateRepository {
     sessionNames: string[];
     now: Date;
   }) => Promise<void>;
+  loadAnnouncedRunningSubAgentLabels: (params: {
+    sessionName: string;
+  }) => Promise<Set<string>>;
+  saveAnnouncedRunningSubAgentLabels: (params: {
+    sessionName: string;
+    labels: string[];
+    now: Date;
+  }) => Promise<void>;
 }

@@ -2,7 +2,7 @@ import { SubAgentActivity } from '../../domain/entities/LiveSessionActivitySnaps
 import { composeOwnerCallFormatGuidance } from '../../domain/usecases/DefaultSilentSessionMessageComposer';
 import {
   SilentSessionMessageComposer,
-  SubAgentStallThresholds,
+  SubAgentStallSections,
 } from '../../domain/usecases/adapter-interfaces/SilentSessionMessageComposer';
 import { SILENT_SESSION_REMINDER_SENTINEL } from '../../domain/usecases/silentSessionReminderSentinel';
 
@@ -40,10 +40,7 @@ export class ConfigurableSilentSessionMessageComposer implements SilentSessionMe
     );
   };
 
-  composeSubAgentSection = (
-    subAgents: SubAgentActivity[],
-    thresholds: SubAgentStallThresholds,
-  ): string => {
+  composeSubAgentSection = (stallSections: SubAgentStallSections): string => {
     const hasIdleTemplate =
       this.templates.subAgentIdleMessageHeader !== null ||
       this.templates.subAgentIdleMessageFooter !== null;
@@ -51,17 +48,10 @@ export class ConfigurableSilentSessionMessageComposer implements SilentSessionMe
       this.templates.subAgentLongRunningMessageHeader !== null ||
       this.templates.subAgentLongRunningMessageFooter !== null;
     if (!hasIdleTemplate && !hasLongRunningTemplate) {
-      return this.fallback.composeSubAgentSection(subAgents, thresholds);
+      return this.fallback.composeSubAgentSection(stallSections);
     }
 
-    const idleSubAgents = subAgents.filter(
-      (subAgent) =>
-        subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds,
-    );
-    const longRunningSubAgents = subAgents.filter(
-      (subAgent) =>
-        subAgent.runningSeconds >= thresholds.subAgentRunningThresholdSeconds,
-    );
+    const { idleSubAgents, longRunningSubAgents } = stallSections;
 
     const sections: string[] = [];
     if (idleSubAgents.length > 0 && hasIdleTemplate) {
@@ -74,10 +64,9 @@ export class ConfigurableSilentSessionMessageComposer implements SilentSessionMe
       );
     } else if (idleSubAgents.length > 0) {
       sections.push(
-        this.fallback.composeSubAgentSection(idleSubAgents, {
-          subAgentSilentThresholdSeconds:
-            thresholds.subAgentSilentThresholdSeconds,
-          subAgentRunningThresholdSeconds: Number.POSITIVE_INFINITY,
+        this.fallback.composeSubAgentSection({
+          idleSubAgents,
+          longRunningSubAgents: [],
         }),
       );
     }

@@ -76,6 +76,7 @@ const createSubAgentActivityRepository = (
       new FileSystemSubAgentTranscriptDirectoryResolver(
         subAgentTranscriptRootDirectory,
       ),
+      new NodeSubAgentProcessLister(localCommandRunner),
       now,
     );
   }
