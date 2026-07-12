@@ -1,7 +1,4 @@
-import {
-  LiveSessionActivitySnapshot,
-  SubAgentActivity,
-} from '../entities/LiveSessionActivitySnapshot';
+import { LiveSessionActivitySnapshot } from '../entities/LiveSessionActivitySnapshot';
 import { InteractiveLiveSession } from '../entities/InteractiveLiveSession';
 import { LiveSessionProcessSnapshotProvider } from './adapter-interfaces/LiveSessionProcessSnapshotProvider';
 import { InteractiveLiveSessionTranscriptResolver } from './adapter-interfaces/InteractiveLiveSessionTranscriptResolver';
@@ -22,7 +19,6 @@ export const DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = 15 * 60;
 export const DEFAULT_NOTIFICATION_STAGGER_SECONDS = 25;
 export const DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS = 15 * 60;
 export const DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS = 5 * 60;
-export const DEFAULT_SUBAGENT_REMINDER_ESCALATION_SECONDS = 30 * 60;
 
 const GITHUB_ISSUE_OR_PULL_URL_PATTERN =
   /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/(?:issues|pull)\/(\d+)$/;
@@ -58,8 +54,8 @@ export type HubTaskStatusResolver = Pick<IssueRepository, 'getIssueByUrl'>;
 type NotifyCandidate = {
   sessionName: string;
   message: string;
-  mainTriggered: boolean;
-  stalledSubAgents: SubAgentActivity[];
+  newlyAnnouncedRunningLabels: string[];
+  retainedAnnouncedRunningLabels: string[];
 };
 
 export class NotifySilentLiveSessionsUseCase {
@@ -86,7 +82,6 @@ export class NotifySilentLiveSessionsUseCase {
     subAgentRunningThresholdSeconds: number;
     staggerSeconds: number;
     candidateDebounceRecencyWindowSeconds: number;
-    subAgentReminderEscalationSeconds: number;
     activeHubTaskStatus: string | null;
     hubTaskStatusCacheTtlSeconds: number;
     now: Date;
@@ -118,7 +113,7 @@ export class NotifySilentLiveSessionsUseCase {
 
     const candidates: NotifyCandidate[] = [];
     for (const sessionSnapshot of snapshots) {
-      const candidate = this.composeCandidate(sessionSnapshot, params);
+      const candidate = await this.composeCandidate(sessionSnapshot, params);
       if (candidate !== null) {
         candidates.push(candidate);
       }
@@ -154,16 +149,6 @@ export class NotifySilentLiveSessionsUseCase {
     let sentCount = 0;
     for (const candidate of debouncedCandidates) {
       if (
-        await this.isSubAgentOnlyReminderSuppressed(
-          candidate,
-          params.subAgentReminderEscalationSeconds,
-          params.subAgentSilentThresholdSeconds,
-          params.now,
-        )
-      ) {
-        continue;
-      }
-      if (
         !(await this.isHubTaskActive(
           candidate.sessionName,
           params.activeHubTaskStatus,
@@ -182,81 +167,17 @@ export class NotifySilentLiveSessionsUseCase {
       );
       sentCount += 1;
       console.log(`Notified ${candidate.sessionName}.`);
-      if (candidate.stalledSubAgents.length > 0) {
-        await this.recordSubAgentReminderSend(candidate, params.now);
+      if (candidate.newlyAnnouncedRunningLabels.length > 0) {
+        await this.candidateStateRepository.saveAnnouncedRunningSubAgentLabels({
+          sessionName: candidate.sessionName,
+          labels: [
+            ...candidate.retainedAnnouncedRunningLabels,
+            ...candidate.newlyAnnouncedRunningLabels,
+          ],
+          now: params.now,
+        });
       }
     }
-  };
-
-  private isSubAgentOnlyReminderSuppressed = async (
-    candidate: NotifyCandidate,
-    subAgentReminderEscalationSeconds: number,
-    subAgentSilentThresholdSeconds: number,
-    now: Date,
-  ): Promise<boolean> => {
-    if (candidate.mainTriggered || candidate.stalledSubAgents.length === 0) {
-      return false;
-    }
-    const lastSend =
-      await this.candidateStateRepository.loadSubAgentReminderSend({
-        sessionName: candidate.sessionName,
-      });
-    if (lastSend === null) {
-      return false;
-    }
-    const nowEpochSeconds = Math.floor(now.getTime() / 1000);
-    const elapsedSecondsSinceLastSend =
-      nowEpochSeconds - lastSend.sentEpochSeconds;
-    if (elapsedSecondsSinceLastSend >= subAgentReminderEscalationSeconds) {
-      return false;
-    }
-    const recordedLastOutputEpochSecondsByLabel = new Map(
-      lastSend.subAgents.map((subAgent) => [
-        subAgent.label,
-        subAgent.lastOutputEpochSeconds,
-      ]),
-    );
-    const triggerStateUnchanged = candidate.stalledSubAgents.every(
-      (subAgent) => {
-        const recordedLastOutputEpochSeconds =
-          recordedLastOutputEpochSecondsByLabel.get(subAgent.label);
-        if (recordedLastOutputEpochSeconds === undefined) {
-          return false;
-        }
-        const silentTriggered =
-          subAgent.silentSeconds >= subAgentSilentThresholdSeconds;
-        if (!silentTriggered) {
-          return true;
-        }
-        const currentLastOutputEpochSeconds =
-          nowEpochSeconds - subAgent.silentSeconds;
-        return currentLastOutputEpochSeconds <= recordedLastOutputEpochSeconds;
-      },
-    );
-    if (!triggerStateUnchanged) {
-      return false;
-    }
-    const remainingEscalationSeconds =
-      subAgentReminderEscalationSeconds - elapsedSecondsSinceLastSend;
-    console.log(
-      `Suppressing sub-agent reminder for ${candidate.sessionName}: sub-agent trigger state is unchanged since the last send; ${remainingEscalationSeconds}s remaining until the escalation re-send.`,
-    );
-    return true;
-  };
-
-  private recordSubAgentReminderSend = async (
-    candidate: NotifyCandidate,
-    now: Date,
-  ): Promise<void> => {
-    const nowEpochSeconds = Math.floor(now.getTime() / 1000);
-    await this.candidateStateRepository.saveSubAgentReminderSend({
-      sessionName: candidate.sessionName,
-      subAgents: candidate.stalledSubAgents.map((subAgent) => ({
-        label: subAgent.label,
-        lastOutputEpochSeconds: nowEpochSeconds - subAgent.silentSeconds,
-      })),
-      now,
-    });
   };
 
   private isHubTaskActive = async (
@@ -425,14 +346,15 @@ export class NotifySilentLiveSessionsUseCase {
     });
   };
 
-  private composeCandidate = (
+  private composeCandidate = async (
     snapshot: LiveSessionActivitySnapshot,
     thresholds: {
       mainSilentThresholdSeconds: number;
       subAgentSilentThresholdSeconds: number;
       subAgentRunningThresholdSeconds: number;
+      now: Date;
     },
-  ): NotifyCandidate | null => {
+  ): Promise<NotifyCandidate | null> => {
     const sections: string[] = [];
 
     const mainSilentSeconds = snapshot.mainSilentSeconds;
@@ -446,18 +368,25 @@ export class NotifySilentLiveSessionsUseCase {
       );
     }
 
-    const stalledSubAgents = snapshot.subAgents.filter(
+    const idleSubAgents = snapshot.subAgents.filter(
       (subAgent) =>
-        subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds ||
+        !subAgent.waitingOnExternalProcess &&
+        subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds,
+    );
+    const longRunningSubAgents = snapshot.subAgents.filter(
+      (subAgent) =>
         subAgent.runningSeconds >= thresholds.subAgentRunningThresholdSeconds,
     );
-    if (stalledSubAgents.length > 0) {
+    const retainedAnnouncedRunningLabels =
+      await this.reconcileAnnouncedRunningLabels(snapshot, thresholds.now);
+    const newlyLongRunningSubAgents = longRunningSubAgents.filter(
+      (subAgent) => !retainedAnnouncedRunningLabels.includes(subAgent.label),
+    );
+    if (idleSubAgents.length > 0 || newlyLongRunningSubAgents.length > 0) {
       sections.push(
-        this.messageComposer.composeSubAgentSection(stalledSubAgents, {
-          subAgentSilentThresholdSeconds:
-            thresholds.subAgentSilentThresholdSeconds,
-          subAgentRunningThresholdSeconds:
-            thresholds.subAgentRunningThresholdSeconds,
+        this.messageComposer.composeSubAgentSection({
+          idleSubAgents,
+          longRunningSubAgents: newlyLongRunningSubAgents,
         }),
       );
     }
@@ -468,8 +397,34 @@ export class NotifySilentLiveSessionsUseCase {
     return {
       sessionName: snapshot.sessionName,
       message: sections.join('\n\n'),
-      mainTriggered,
-      stalledSubAgents,
+      newlyAnnouncedRunningLabels: newlyLongRunningSubAgents.map(
+        (subAgent) => subAgent.label,
+      ),
+      retainedAnnouncedRunningLabels,
     };
+  };
+
+  private reconcileAnnouncedRunningLabels = async (
+    snapshot: LiveSessionActivitySnapshot,
+    now: Date,
+  ): Promise<string[]> => {
+    const announcedLabels =
+      await this.candidateStateRepository.loadAnnouncedRunningSubAgentLabels({
+        sessionName: snapshot.sessionName,
+      });
+    const currentLabels = new Set(
+      snapshot.subAgents.map((subAgent) => subAgent.label),
+    );
+    const retainedLabels = Array.from(announcedLabels).filter((label) =>
+      currentLabels.has(label),
+    );
+    if (retainedLabels.length !== announcedLabels.size) {
+      await this.candidateStateRepository.saveAnnouncedRunningSubAgentLabels({
+        sessionName: snapshot.sessionName,
+        labels: retainedLabels,
+        now,
+      });
+    }
+    return retainedLabels;
   };
 }

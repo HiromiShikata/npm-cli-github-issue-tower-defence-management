@@ -33,13 +33,13 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.FileSystemSilentSessionCandidateStateRepository = exports.SUBAGENT_REMINDER_SEND_RETENTION_WINDOW_SECONDS = exports.DEFAULT_STATE_RETENTION_WINDOW_SECONDS = void 0;
+exports.FileSystemSilentSessionCandidateStateRepository = exports.ANNOUNCED_RUNNING_RETENTION_WINDOW_SECONDS = exports.DEFAULT_STATE_RETENTION_WINDOW_SECONDS = void 0;
 const fs = __importStar(require("fs"));
 const os = __importStar(require("os"));
 const path = __importStar(require("path"));
 const isRecord = (value) => typeof value === 'object' && value !== null && !Array.isArray(value);
 exports.DEFAULT_STATE_RETENTION_WINDOW_SECONDS = 60 * 60;
-exports.SUBAGENT_REMINDER_SEND_RETENTION_WINDOW_SECONDS = 24 * 60 * 60;
+exports.ANNOUNCED_RUNNING_RETENTION_WINDOW_SECONDS = 24 * 60 * 60;
 const defaultStateFilePath = () => {
     const base = process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), '.cache');
     return path.join(base, 'tdpm', 'silent-session-candidates.json');
@@ -77,22 +77,24 @@ class FileSystemSilentSessionCandidateStateRepository {
                     recordedEpochSeconds,
                 });
             }
-            this.writeState(Array.from(mergedBySessionName.values()), this.readSubAgentReminderSendEntries());
+            this.writeState(Array.from(mergedBySessionName.values()), this.readAnnouncedRunningEntries());
         };
-        this.loadSubAgentReminderSend = async (params) => {
-            const entries = this.readSubAgentReminderSendEntries();
-            return (entries.find((entry) => entry.sessionName === params.sessionName) ?? null);
+        this.loadAnnouncedRunningSubAgentLabels = async (params) => {
+            const entry = this.readAnnouncedRunningEntries().find((candidate) => candidate.sessionName === params.sessionName);
+            return new Set(entry?.labels ?? []);
         };
-        this.saveSubAgentReminderSend = async (params) => {
-            const sentEpochSeconds = Math.floor(params.now.getTime() / 1000);
-            const oldestRetainedEpochSeconds = sentEpochSeconds - exports.SUBAGENT_REMINDER_SEND_RETENTION_WINDOW_SECONDS;
-            const retainedEntries = this.readSubAgentReminderSendEntries().filter((entry) => entry.sessionName !== params.sessionName &&
-                entry.sentEpochSeconds >= oldestRetainedEpochSeconds);
-            retainedEntries.push({
-                sessionName: params.sessionName,
-                sentEpochSeconds,
-                subAgents: params.subAgents,
-            });
+        this.saveAnnouncedRunningSubAgentLabels = async (params) => {
+            const recordedEpochSeconds = Math.floor(params.now.getTime() / 1000);
+            const oldestRetainedEpochSeconds = recordedEpochSeconds - exports.ANNOUNCED_RUNNING_RETENTION_WINDOW_SECONDS;
+            const retainedEntries = this.readAnnouncedRunningEntries().filter((entry) => entry.sessionName !== params.sessionName &&
+                entry.recordedEpochSeconds >= oldestRetainedEpochSeconds);
+            if (params.labels.length > 0) {
+                retainedEntries.push({
+                    sessionName: params.sessionName,
+                    labels: params.labels,
+                    recordedEpochSeconds,
+                });
+            }
             this.writeState(this.readCandidateEntries(), retainedEntries);
         };
         this.readState = () => {
@@ -135,8 +137,8 @@ class FileSystemSilentSessionCandidateStateRepository {
             }
             return entries;
         };
-        this.readSubAgentReminderSendEntries = () => {
-            const storedEntries = this.readState().subAgentReminderSends;
+        this.readAnnouncedRunningEntries = () => {
+            const storedEntries = this.readState().announcedRunningSubAgents;
             if (!Array.isArray(storedEntries)) {
                 return [];
             }
@@ -146,42 +148,27 @@ class FileSystemSilentSessionCandidateStateRepository {
                     continue;
                 }
                 const sessionName = storedEntry.sessionName;
-                const sentEpochSeconds = storedEntry.sentEpochSeconds;
+                const recordedEpochSeconds = storedEntry.recordedEpochSeconds;
+                const storedLabels = storedEntry.labels;
                 if (typeof sessionName !== 'string' ||
-                    typeof sentEpochSeconds !== 'number' ||
-                    !Number.isFinite(sentEpochSeconds) ||
-                    !Array.isArray(storedEntry.subAgents)) {
+                    typeof recordedEpochSeconds !== 'number' ||
+                    !Number.isFinite(recordedEpochSeconds) ||
+                    !Array.isArray(storedLabels)) {
                     continue;
                 }
-                const subAgents = [];
-                let subAgentsValid = true;
-                for (const storedSubAgent of storedEntry.subAgents) {
-                    if (!isRecord(storedSubAgent)) {
-                        subAgentsValid = false;
-                        break;
-                    }
-                    const label = storedSubAgent.label;
-                    const lastOutputEpochSeconds = storedSubAgent.lastOutputEpochSeconds;
-                    if (typeof label !== 'string' ||
-                        typeof lastOutputEpochSeconds !== 'number' ||
-                        !Number.isFinite(lastOutputEpochSeconds)) {
-                        subAgentsValid = false;
-                        break;
-                    }
-                    subAgents.push({ label, lastOutputEpochSeconds });
-                }
-                if (!subAgentsValid) {
+                const labels = storedLabels.filter((label) => typeof label === 'string');
+                if (labels.length !== storedLabels.length) {
                     continue;
                 }
-                entries.push({ sessionName, sentEpochSeconds, subAgents });
+                entries.push({ sessionName, labels, recordedEpochSeconds });
             }
             return entries;
         };
-        this.writeState = (candidates, subAgentReminderSends) => {
+        this.writeState = (candidates, announcedRunningSubAgents) => {
             const directory = path.dirname(this.stateFilePath);
             fs.mkdirSync(directory, { recursive: true });
             const temporaryPath = `${this.stateFilePath}.${process.pid}.tmp`;
-            fs.writeFileSync(temporaryPath, JSON.stringify({ candidates, subAgentReminderSends }));
+            fs.writeFileSync(temporaryPath, JSON.stringify({ candidates, announcedRunningSubAgents }));
             fs.renameSync(temporaryPath, this.stateFilePath);
         };
     }

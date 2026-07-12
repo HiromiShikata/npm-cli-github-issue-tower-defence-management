@@ -1,12 +1,3 @@
-export type SubAgentReminderSubAgentSnapshot = {
-    label: string;
-    lastOutputEpochSeconds: number;
-};
-export type SubAgentReminderSend = {
-    sessionName: string;
-    sentEpochSeconds: number;
-    subAgents: SubAgentReminderSubAgentSnapshot[];
-};
 export interface SilentSessionCandidateStateRepository {
     loadRecentCandidateSessionNames: (params: {
         now: Date;
@@ -16,12 +7,12 @@ export interface SilentSessionCandidateStateRepository {
         sessionNames: string[];
         now: Date;
     }) => Promise<void>;
-    loadSubAgentReminderSend: (params: {
+    loadAnnouncedRunningSubAgentLabels: (params: {
         sessionName: string;
-    }) => Promise<SubAgentReminderSend | null>;
-    saveSubAgentReminderSend: (params: {
+    }) => Promise<Set<string>>;
+    saveAnnouncedRunningSubAgentLabels: (params: {
         sessionName: string;
-        subAgents: SubAgentReminderSubAgentSnapshot[];
+        labels: string[];
         now: Date;
     }) => Promise<void>;
 }

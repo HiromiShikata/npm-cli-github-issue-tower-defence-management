@@ -27,12 +27,12 @@ const createOwnerCallStatusProvider = (ownerCallMarker) => {
 };
 const createSubAgentActivityRepository = (subAgentTranscriptRootDirectory, subAgentProcessMatchPattern, subAgentOutputRootDirectory, localCommandRunner, now) => {
     if (subAgentTranscriptRootDirectory !== null) {
-        return new TranscriptSessionSubAgentActivityRepository_1.TranscriptSessionSubAgentActivityRepository(new FileSystemSubAgentTranscriptDirectoryResolver_1.FileSystemSubAgentTranscriptDirectoryResolver(subAgentTranscriptRootDirectory), now);
+        return new TranscriptSessionSubAgentActivityRepository_1.TranscriptSessionSubAgentActivityRepository(new FileSystemSubAgentTranscriptDirectoryResolver_1.FileSystemSubAgentTranscriptDirectoryResolver(subAgentTranscriptRootDirectory), new NodeSubAgentProcessLister_1.NodeSubAgentProcessLister(localCommandRunner), now);
     }
     return new ProcessListSessionSubAgentActivityRepository_1.ProcessListSessionSubAgentActivityRepository(subAgentProcessMatchPattern, new NodeSubAgentProcessLister_1.NodeSubAgentProcessLister(localCommandRunner), new FileSystemSubAgentSilentSecondsResolver_1.FileSystemSubAgentSilentSecondsResolver(subAgentOutputRootDirectory, now));
 };
 const notifySilentTmuxSessions = async (params) => {
-    const { enabled, localCommandRunner, processEnvironReader, ownerCallMarker, subAgentOutputRootDirectory, subAgentProcessMatchPattern, subAgentTranscriptRootDirectory, mainSilentThresholdSeconds, subAgentSilentThresholdSeconds, subAgentRunningThresholdSeconds, staggerSeconds, candidateDebounceRecencyWindowSeconds, subAgentReminderEscalationSeconds, candidateDebounceStateFilePath, activeHubTaskStatus, hubTaskStatusResolver, hubTaskStatusCacheStateFilePath, hubTaskStatusCacheTtlSeconds, messageTemplates, now, } = params;
+    const { enabled, localCommandRunner, processEnvironReader, ownerCallMarker, subAgentOutputRootDirectory, subAgentProcessMatchPattern, subAgentTranscriptRootDirectory, mainSilentThresholdSeconds, subAgentSilentThresholdSeconds, subAgentRunningThresholdSeconds, staggerSeconds, candidateDebounceRecencyWindowSeconds, candidateDebounceStateFilePath, activeHubTaskStatus, hubTaskStatusResolver, hubTaskStatusCacheStateFilePath, hubTaskStatusCacheTtlSeconds, messageTemplates, now, } = params;
     if (!enabled) {
         console.log('Silent live session notification skipped: not enabled (set silentNotificationEnabled or TDPM_SILENT_NOTIFICATION_ENABLED=true to enable).');
         return;
@@ -49,7 +49,6 @@ const notifySilentTmuxSessions = async (params) => {
         subAgentRunningThresholdSeconds,
         staggerSeconds,
         candidateDebounceRecencyWindowSeconds,
-        subAgentReminderEscalationSeconds,
         activeHubTaskStatus,
         hubTaskStatusCacheTtlSeconds,
         now,
@@ -62,7 +61,6 @@ exports.DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS = {
     subAgentRunningThresholdSeconds: NotifySilentLiveSessionsUseCase_1.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
     staggerSeconds: NotifySilentLiveSessionsUseCase_1.DEFAULT_NOTIFICATION_STAGGER_SECONDS,
     candidateDebounceRecencyWindowSeconds: NotifySilentLiveSessionsUseCase_1.DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS,
-    subAgentReminderEscalationSeconds: NotifySilentLiveSessionsUseCase_1.DEFAULT_SUBAGENT_REMINDER_ESCALATION_SECONDS,
     hubTaskStatusCacheTtlSeconds: NotifySilentLiveSessionsUseCase_1.DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS,
 };
 //# sourceMappingURL=notifySilentTmuxSessions.js.map

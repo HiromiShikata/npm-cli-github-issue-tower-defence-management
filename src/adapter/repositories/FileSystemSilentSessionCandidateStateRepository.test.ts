@@ -3,7 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 import {
   DEFAULT_STATE_RETENTION_WINDOW_SECONDS,
-  SUBAGENT_REMINDER_SEND_RETENTION_WINDOW_SECONDS,
+  ANNOUNCED_RUNNING_RETENTION_WINDOW_SECONDS,
   FileSystemSilentSessionCandidateStateRepository,
 } from './FileSystemSilentSessionCandidateStateRepository';
 
@@ -142,7 +142,7 @@ describe('FileSystemSilentSessionCandidateStateRepository', () => {
           recordedEpochSeconds: Math.floor(secondSaveAt.getTime() / 1000),
         },
       ],
-      subAgentReminderSends: [],
+      announcedRunningSubAgents: [],
     });
   });
 
@@ -201,141 +201,151 @@ describe('FileSystemSilentSessionCandidateStateRepository', () => {
     expect(DEFAULT_STATE_RETENTION_WINDOW_SECONDS).toBe(60 * 60);
   });
 
-  describe('sub-agent reminder send state', () => {
-    const subAgentSnapshot = {
-      label: 'sub-process-1',
-      lastOutputEpochSeconds: 1782000000,
-    };
-
-    it('round-trips a saved sub-agent reminder send so the next cycle reads it back', async () => {
+  describe('announced running sub-agent labels', () => {
+    it('round-trips saved announced labels so the next cycle reads them back', async () => {
       const repository = new FileSystemSilentSessionCandidateStateRepository(
         stateFilePath,
       );
-      const sentAt = new Date('2026-06-26T00:00:00Z');
 
-      await repository.saveSubAgentReminderSend({
+      await repository.saveAnnouncedRunningSubAgentLabels({
         sessionName: sessionAlpha,
-        subAgents: [subAgentSnapshot],
-        now: sentAt,
+        labels: ['sub-process-1', 'sub-process-2'],
+        now: new Date('2026-06-26T00:00:00Z'),
       });
-      const loaded = await repository.loadSubAgentReminderSend({
+      const loaded = await repository.loadAnnouncedRunningSubAgentLabels({
         sessionName: sessionAlpha,
       });
 
-      expect(loaded).toEqual({
-        sessionName: sessionAlpha,
-        sentEpochSeconds: Math.floor(sentAt.getTime() / 1000),
-        subAgents: [subAgentSnapshot],
-      });
+      expect(loaded).toEqual(new Set(['sub-process-1', 'sub-process-2']));
     });
 
-    it('returns null when no reminder send has been recorded for the session', async () => {
+    it('returns an empty set when no announcement has been recorded for the session', async () => {
       const repository = new FileSystemSilentSessionCandidateStateRepository(
         stateFilePath,
       );
 
-      const loaded = await repository.loadSubAgentReminderSend({
+      const loaded = await repository.loadAnnouncedRunningSubAgentLabels({
         sessionName: sessionAlpha,
       });
 
-      expect(loaded).toBeNull();
+      expect(loaded).toEqual(new Set<string>());
     });
 
-    it('replaces the previous reminder send entry for the same session', async () => {
+    it('replaces the previous announced labels of the same session', async () => {
       const repository = new FileSystemSilentSessionCandidateStateRepository(
         stateFilePath,
       );
-      const firstSentAt = new Date('2026-06-26T00:00:00Z');
-      const secondSentAt = new Date('2026-06-26T00:30:00Z');
 
-      await repository.saveSubAgentReminderSend({
+      await repository.saveAnnouncedRunningSubAgentLabels({
         sessionName: sessionAlpha,
-        subAgents: [subAgentSnapshot],
-        now: firstSentAt,
+        labels: ['sub-process-1'],
+        now: new Date('2026-06-26T00:00:00Z'),
       });
-      await repository.saveSubAgentReminderSend({
+      await repository.saveAnnouncedRunningSubAgentLabels({
         sessionName: sessionAlpha,
-        subAgents: [
-          { label: 'sub-process-2', lastOutputEpochSeconds: 1782000600 },
-        ],
-        now: secondSentAt,
+        labels: ['sub-process-2'],
+        now: new Date('2026-06-26T00:01:00Z'),
       });
-      const loaded = await repository.loadSubAgentReminderSend({
+      const loaded = await repository.loadAnnouncedRunningSubAgentLabels({
         sessionName: sessionAlpha,
       });
 
-      expect(loaded).toEqual({
-        sessionName: sessionAlpha,
-        sentEpochSeconds: Math.floor(secondSentAt.getTime() / 1000),
-        subAgents: [
-          { label: 'sub-process-2', lastOutputEpochSeconds: 1782000600 },
-        ],
-      });
+      expect(loaded).toEqual(new Set(['sub-process-2']));
     });
 
-    it('keeps the reminder send entry of another session when saving', async () => {
+    it('removes the stored entry when saving an empty label set', async () => {
       const repository = new FileSystemSilentSessionCandidateStateRepository(
         stateFilePath,
       );
-      const sentAt = new Date('2026-06-26T00:00:00Z');
 
-      await repository.saveSubAgentReminderSend({
+      await repository.saveAnnouncedRunningSubAgentLabels({
         sessionName: sessionAlpha,
-        subAgents: [subAgentSnapshot],
-        now: sentAt,
+        labels: ['sub-process-1'],
+        now: new Date('2026-06-26T00:00:00Z'),
       });
-      await repository.saveSubAgentReminderSend({
-        sessionName: sessionBravo,
-        subAgents: [subAgentSnapshot],
-        now: sentAt,
+      await repository.saveAnnouncedRunningSubAgentLabels({
+        sessionName: sessionAlpha,
+        labels: [],
+        now: new Date('2026-06-26T00:01:00Z'),
       });
 
       expect(
-        await repository.loadSubAgentReminderSend({
+        await repository.loadAnnouncedRunningSubAgentLabels({
           sessionName: sessionAlpha,
         }),
-      ).not.toBeNull();
-      expect(
-        await repository.loadSubAgentReminderSend({
-          sessionName: sessionBravo,
-        }),
-      ).not.toBeNull();
+      ).toEqual(new Set<string>());
+      const persisted: unknown = JSON.parse(
+        fs.readFileSync(stateFilePath, 'utf8'),
+      );
+      expect(persisted).toEqual({
+        candidates: [],
+        announcedRunningSubAgents: [],
+      });
     });
 
-    it('drops a reminder send entry that has aged beyond the retention window on the next save', async () => {
+    it('keeps the announced labels of another session when saving', async () => {
       const repository = new FileSystemSilentSessionCandidateStateRepository(
         stateFilePath,
       );
-      const firstSentAt = new Date('2026-06-26T00:00:00Z');
-      const secondSentAt = new Date(
-        firstSentAt.getTime() +
-          (SUBAGENT_REMINDER_SEND_RETENTION_WINDOW_SECONDS + 1) * 1000,
-      );
+      const at = new Date('2026-06-26T00:00:00Z');
 
-      await repository.saveSubAgentReminderSend({
+      await repository.saveAnnouncedRunningSubAgentLabels({
         sessionName: sessionAlpha,
-        subAgents: [subAgentSnapshot],
-        now: firstSentAt,
+        labels: ['sub-process-1'],
+        now: at,
       });
-      await repository.saveSubAgentReminderSend({
+      await repository.saveAnnouncedRunningSubAgentLabels({
         sessionName: sessionBravo,
-        subAgents: [subAgentSnapshot],
-        now: secondSentAt,
+        labels: ['sub-process-2'],
+        now: at,
       });
 
       expect(
-        await repository.loadSubAgentReminderSend({
+        await repository.loadAnnouncedRunningSubAgentLabels({
           sessionName: sessionAlpha,
         }),
-      ).toBeNull();
+      ).toEqual(new Set(['sub-process-1']));
       expect(
-        await repository.loadSubAgentReminderSend({
+        await repository.loadAnnouncedRunningSubAgentLabels({
           sessionName: sessionBravo,
         }),
-      ).not.toBeNull();
+      ).toEqual(new Set(['sub-process-2']));
     });
 
-    it('preserves the candidate set when saving a reminder send and preserves reminder sends when saving candidates', async () => {
+    it('drops an announced entry that has aged beyond the retention window on the next save', async () => {
+      const repository = new FileSystemSilentSessionCandidateStateRepository(
+        stateFilePath,
+      );
+      const firstSaveAt = new Date('2026-06-26T00:00:00Z');
+      const secondSaveAt = new Date(
+        firstSaveAt.getTime() +
+          (ANNOUNCED_RUNNING_RETENTION_WINDOW_SECONDS + 1) * 1000,
+      );
+
+      await repository.saveAnnouncedRunningSubAgentLabels({
+        sessionName: sessionAlpha,
+        labels: ['sub-process-1'],
+        now: firstSaveAt,
+      });
+      await repository.saveAnnouncedRunningSubAgentLabels({
+        sessionName: sessionBravo,
+        labels: ['sub-process-2'],
+        now: secondSaveAt,
+      });
+
+      expect(
+        await repository.loadAnnouncedRunningSubAgentLabels({
+          sessionName: sessionAlpha,
+        }),
+      ).toEqual(new Set<string>());
+      expect(
+        await repository.loadAnnouncedRunningSubAgentLabels({
+          sessionName: sessionBravo,
+        }),
+      ).toEqual(new Set(['sub-process-2']));
+    });
+
+    it('preserves the candidate set when saving announced labels and preserves announced labels when saving candidates', async () => {
       const repository = new FileSystemSilentSessionCandidateStateRepository(
         stateFilePath,
       );
@@ -345,9 +355,9 @@ describe('FileSystemSilentSessionCandidateStateRepository', () => {
         sessionNames: [sessionAlpha],
         now: at,
       });
-      await repository.saveSubAgentReminderSend({
+      await repository.saveAnnouncedRunningSubAgentLabels({
         sessionName: sessionBravo,
-        subAgents: [subAgentSnapshot],
+        labels: ['sub-process-1'],
         now: at,
       });
       await repository.saveCandidateSessionNames({
@@ -363,39 +373,35 @@ describe('FileSystemSilentSessionCandidateStateRepository', () => {
       );
       expect(loadedCandidates).toEqual(new Set([sessionAlpha]));
       expect(
-        await repository.loadSubAgentReminderSend({
+        await repository.loadAnnouncedRunningSubAgentLabels({
           sessionName: sessionBravo,
         }),
-      ).toEqual({
-        sessionName: sessionBravo,
-        sentEpochSeconds: Math.floor(at.getTime() / 1000),
-        subAgents: [subAgentSnapshot],
-      });
+      ).toEqual(new Set(['sub-process-1']));
     });
 
-    it('treats a corrupt state file as no recorded reminder send', async () => {
+    it('treats a corrupt state file as no recorded announcements', async () => {
       fs.writeFileSync(stateFilePath, 'not valid json');
       const repository = new FileSystemSilentSessionCandidateStateRepository(
         stateFilePath,
       );
 
-      const loaded = await repository.loadSubAgentReminderSend({
+      const loaded = await repository.loadAnnouncedRunningSubAgentLabels({
         sessionName: sessionAlpha,
       });
 
-      expect(loaded).toBeNull();
+      expect(loaded).toEqual(new Set<string>());
     });
 
-    it('ignores a stored reminder send entry whose sub-agent snapshot is malformed', async () => {
+    it('ignores a stored announced entry whose labels are malformed', async () => {
       fs.writeFileSync(
         stateFilePath,
         JSON.stringify({
           candidates: [],
-          subAgentReminderSends: [
+          announcedRunningSubAgents: [
             {
               sessionName: sessionAlpha,
-              sentEpochSeconds: 1782000000,
-              subAgents: [{ label: 'sub-process-1' }],
+              labels: ['sub-process-1', 42],
+              recordedEpochSeconds: 1782000000,
             },
           ],
         }),
@@ -404,17 +410,15 @@ describe('FileSystemSilentSessionCandidateStateRepository', () => {
         stateFilePath,
       );
 
-      const loaded = await repository.loadSubAgentReminderSend({
+      const loaded = await repository.loadAnnouncedRunningSubAgentLabels({
         sessionName: sessionAlpha,
       });
 
-      expect(loaded).toBeNull();
+      expect(loaded).toEqual(new Set<string>());
     });
 
-    it('exposes the reminder send retention window as a named constant', () => {
-      expect(SUBAGENT_REMINDER_SEND_RETENTION_WINDOW_SECONDS).toBe(
-        24 * 60 * 60,
-      );
+    it('exposes the announced-label retention window as a named constant', () => {
+      expect(ANNOUNCED_RUNNING_RETENTION_WINDOW_SECONDS).toBe(24 * 60 * 60);
     });
   });
 });

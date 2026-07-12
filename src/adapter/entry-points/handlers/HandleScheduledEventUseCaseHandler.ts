@@ -117,7 +117,6 @@ export class HandleScheduledEventUseCaseHandler {
       mainSilentThresholdSeconds?: number;
       subAgentSilentThresholdSeconds?: number;
       subAgentRunningThresholdSeconds?: number;
-      subAgentReminderEscalationSeconds?: number;
       silentNotificationStaggerSeconds?: number;
       candidateDebounceRecencyWindowSeconds?: number;
       candidateDebounceStateFilePath?: string;
@@ -619,11 +618,6 @@ export class HandleScheduledEventUseCaseHandler {
             mergedInput.candidateDebounceRecencyWindowSeconds,
             process.env.TDPM_SILENT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS,
             DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.candidateDebounceRecencyWindowSeconds,
-          ),
-          subAgentReminderEscalationSeconds: readSilentSeconds(
-            mergedInput.subAgentReminderEscalationSeconds,
-            process.env.TDPM_SUBAGENT_REMINDER_ESCALATION_SECONDS,
-            DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.subAgentReminderEscalationSeconds,
           ),
           candidateDebounceStateFilePath:
             mergedInput.candidateDebounceStateFilePath ??

@@ -15,7 +15,6 @@ export declare const DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS: number;
 export declare const DEFAULT_NOTIFICATION_STAGGER_SECONDS = 25;
 export declare const DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS: number;
 export declare const DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS: number;
-export declare const DEFAULT_SUBAGENT_REMINDER_ESCALATION_SECONDS: number;
 export declare const parseHubTaskIssueUrlFromSessionName: (sessionName: string) => string | null;
 export declare const isGitHubIssueOrPullRequestSessionName: (sessionName: string) => boolean;
 export type HubTaskStatusResolver = Pick<IssueRepository, 'getIssueByUrl'>;
@@ -39,17 +38,15 @@ export declare class NotifySilentLiveSessionsUseCase {
         subAgentRunningThresholdSeconds: number;
         staggerSeconds: number;
         candidateDebounceRecencyWindowSeconds: number;
-        subAgentReminderEscalationSeconds: number;
         activeHubTaskStatus: string | null;
         hubTaskStatusCacheTtlSeconds: number;
         now: Date;
     }) => Promise<void>;
-    private isSubAgentOnlyReminderSuppressed;
-    private recordSubAgentReminderSend;
     private isHubTaskActive;
     private tryResolveAndCacheHubTask;
     private isResolvedStatusActive;
     private collectSnapshots;
     private composeCandidate;
+    private reconcileAnnouncedRunningLabels;
 }
 //# sourceMappingURL=NotifySilentLiveSessionsUseCase.d.ts.map

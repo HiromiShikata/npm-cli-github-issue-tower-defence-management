@@ -4,11 +4,6 @@ import { SILENT_SESSION_REMINDER_SENTINEL } from '../../domain/usecases/silentSe
 
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
-const THRESHOLDS = {
-  subAgentSilentThresholdSeconds: 300,
-  subAgentRunningThresholdSeconds: 900,
-};
-
 const createFallback = (): Mocked<SilentSessionMessageComposer> => ({
   composeMainStalledSection: jest.fn().mockReturnValue('FALLBACK_MAIN'),
   composeSubAgentSection: jest.fn().mockReturnValue('FALLBACK_SUB'),
@@ -78,16 +73,22 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
       noTemplates,
       fallback,
     );
+    const subAgent = {
+      label: 'task-a',
+      silentSeconds: 360,
+      runningSeconds: 1200,
+      waitingOnExternalProcess: false,
+    };
     expect(
-      composer.composeSubAgentSection(
-        [{ label: 'task-a', silentSeconds: 360, runningSeconds: 1200 }],
-        THRESHOLDS,
-      ),
+      composer.composeSubAgentSection({
+        idleSubAgents: [subAgent],
+        longRunningSubAgents: [subAgent],
+      }),
     ).toBe('FALLBACK_SUB');
-    expect(fallback.composeSubAgentSection).toHaveBeenCalledWith(
-      [{ label: 'task-a', silentSeconds: 360, runningSeconds: 1200 }],
-      THRESHOLDS,
-    );
+    expect(fallback.composeSubAgentSection).toHaveBeenCalledWith({
+      idleSubAgents: [subAgent],
+      longRunningSubAgents: [subAgent],
+    });
   });
 
   it('renders the configured idle header, list, and footer for an idle sub-agent', () => {
@@ -100,10 +101,17 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
       },
       fallback,
     );
-    const section = composer.composeSubAgentSection(
-      [{ label: 'task-a', silentSeconds: 360, runningSeconds: 60 }],
-      THRESHOLDS,
-    );
+    const section = composer.composeSubAgentSection({
+      idleSubAgents: [
+        {
+          label: 'task-a',
+          silentSeconds: 360,
+          runningSeconds: 60,
+          waitingOnExternalProcess: false,
+        },
+      ],
+      longRunningSubAgents: [],
+    });
     expect(section).toContain('IDLE_HEADER');
     expect(section).toContain('task-a');
     expect(section).toContain('no output for 6m');
@@ -122,10 +130,17 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
       },
       fallback,
     );
-    const section = composer.composeSubAgentSection(
-      [{ label: 'task-b', silentSeconds: 30, runningSeconds: 1200 }],
-      THRESHOLDS,
-    );
+    const section = composer.composeSubAgentSection({
+      idleSubAgents: [],
+      longRunningSubAgents: [
+        {
+          label: 'task-b',
+          silentSeconds: 30,
+          runningSeconds: 1200,
+          waitingOnExternalProcess: false,
+        },
+      ],
+    });
     expect(section).toContain('LONG_HEADER');
     expect(section).toContain('task-b');
     expect(section).toContain('running for 20m');
@@ -144,10 +159,16 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
       },
       fallback,
     );
-    const section = composer.composeSubAgentSection(
-      [{ label: 'task-both', silentSeconds: 360, runningSeconds: 1200 }],
-      THRESHOLDS,
-    );
+    const subAgent = {
+      label: 'task-both',
+      silentSeconds: 360,
+      runningSeconds: 1200,
+      waitingOnExternalProcess: false,
+    };
+    const section = composer.composeSubAgentSection({
+      idleSubAgents: [subAgent],
+      longRunningSubAgents: [subAgent],
+    });
     const [idleSection, longRunningSection] = section
       .replace(`${SILENT_SESSION_REMINDER_SENTINEL} `, '')
       .split('\n\n');
@@ -167,19 +188,21 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
       },
       fallback,
     );
-    const section = composer.composeSubAgentSection(
-      [{ label: 'task-idle', silentSeconds: 360, runningSeconds: 60 }],
-      THRESHOLDS,
-    );
+    const idleSubAgent = {
+      label: 'task-idle',
+      silentSeconds: 360,
+      runningSeconds: 60,
+      waitingOnExternalProcess: false,
+    };
+    const section = composer.composeSubAgentSection({
+      idleSubAgents: [idleSubAgent],
+      longRunningSubAgents: [],
+    });
     expect(section).toContain('BUILTIN_IDLE');
-    expect(fallback.composeSubAgentSection).toHaveBeenCalledWith(
-      [{ label: 'task-idle', silentSeconds: 360, runningSeconds: 60 }],
-      {
-        subAgentSilentThresholdSeconds:
-          THRESHOLDS.subAgentSilentThresholdSeconds,
-        subAgentRunningThresholdSeconds: Number.POSITIVE_INFINITY,
-      },
-    );
+    expect(fallback.composeSubAgentSection).toHaveBeenCalledWith({
+      idleSubAgents: [idleSubAgent],
+      longRunningSubAgents: [],
+    });
   });
 
   it('does not double-prepend the sentinel when the template already carries it', () => {

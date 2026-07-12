@@ -21,24 +21,23 @@ class ConfigurableSilentSessionMessageComposer {
             }
             return withReminderSentinel(`${this.templates.mainStalledMessage} ${(0, DefaultSilentSessionMessageComposer_1.composeOwnerCallFormatGuidance)(this.ownerCallMarker)}`);
         };
-        this.composeSubAgentSection = (subAgents, thresholds) => {
+        this.composeSubAgentSection = (stallSections) => {
             const hasIdleTemplate = this.templates.subAgentIdleMessageHeader !== null ||
                 this.templates.subAgentIdleMessageFooter !== null;
             const hasLongRunningTemplate = this.templates.subAgentLongRunningMessageHeader !== null ||
                 this.templates.subAgentLongRunningMessageFooter !== null;
             if (!hasIdleTemplate && !hasLongRunningTemplate) {
-                return this.fallback.composeSubAgentSection(subAgents, thresholds);
+                return this.fallback.composeSubAgentSection(stallSections);
             }
-            const idleSubAgents = subAgents.filter((subAgent) => subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds);
-            const longRunningSubAgents = subAgents.filter((subAgent) => subAgent.runningSeconds >= thresholds.subAgentRunningThresholdSeconds);
+            const { idleSubAgents, longRunningSubAgents } = stallSections;
             const sections = [];
             if (idleSubAgents.length > 0 && hasIdleTemplate) {
                 sections.push(this.composeIdleSection(idleSubAgents, this.templates.subAgentIdleMessageHeader, this.templates.subAgentIdleMessageFooter));
             }
             else if (idleSubAgents.length > 0) {
-                sections.push(this.fallback.composeSubAgentSection(idleSubAgents, {
-                    subAgentSilentThresholdSeconds: thresholds.subAgentSilentThresholdSeconds,
-                    subAgentRunningThresholdSeconds: Number.POSITIVE_INFINITY,
+                sections.push(this.fallback.composeSubAgentSection({
+                    idleSubAgents,
+                    longRunningSubAgents: [],
                 }));
             }
             if (longRunningSubAgents.length > 0 && hasLongRunningTemplate) {

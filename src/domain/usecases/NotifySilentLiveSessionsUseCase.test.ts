@@ -8,7 +8,6 @@ import {
   DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
   DEFAULT_NOTIFICATION_STAGGER_SECONDS,
   DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS,
-  DEFAULT_SUBAGENT_REMINDER_ESCALATION_SECONDS,
   DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS,
 } from './NotifySilentLiveSessionsUseCase';
 import { Issue } from '../entities/Issue';
@@ -18,10 +17,7 @@ import { SessionOutputActivityRepository } from './adapter-interfaces/SessionOut
 import { SessionSubAgentActivityRepository } from './adapter-interfaces/SessionSubAgentActivityRepository';
 import { OwnerCallStatusProvider } from './adapter-interfaces/OwnerCallStatusProvider';
 import { SilentSessionNotificationRepository } from './adapter-interfaces/SilentSessionNotificationRepository';
-import {
-  SilentSessionCandidateStateRepository,
-  SubAgentReminderSend,
-} from './adapter-interfaces/SilentSessionCandidateStateRepository';
+import { SilentSessionCandidateStateRepository } from './adapter-interfaces/SilentSessionCandidateStateRepository';
 import { SilentSessionHubTaskStatusCacheRepository } from './adapter-interfaces/SilentSessionHubTaskStatusCacheRepository';
 import { SilentSessionMessageComposer } from './adapter-interfaces/SilentSessionMessageComposer';
 import { Sleeper } from './adapter-interfaces/Sleeper';
@@ -65,7 +61,6 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     overrides?: Partial<{
       activeHubTaskStatus: string | null;
       candidateDebounceRecencyWindowSeconds: number;
-      subAgentReminderEscalationSeconds: number;
       hubTaskStatusCacheTtlSeconds: number;
       now: Date;
     }>,
@@ -75,7 +70,6 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     subAgentRunningThresholdSeconds: number;
     staggerSeconds: number;
     candidateDebounceRecencyWindowSeconds: number;
-    subAgentReminderEscalationSeconds: number;
     activeHubTaskStatus: string | null;
     hubTaskStatusCacheTtlSeconds: number;
     now: Date;
@@ -86,8 +80,6 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     staggerSeconds: DEFAULT_NOTIFICATION_STAGGER_SECONDS,
     candidateDebounceRecencyWindowSeconds:
       DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS,
-    subAgentReminderEscalationSeconds:
-      DEFAULT_SUBAGENT_REMINDER_ESCALATION_SECONDS,
     activeHubTaskStatus: null,
     hubTaskStatusCacheTtlSeconds: DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS,
     now,
@@ -167,8 +159,12 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         .fn()
         .mockResolvedValue(everyNameRecentSet()),
       saveCandidateSessionNames: jest.fn().mockResolvedValue(undefined),
-      loadSubAgentReminderSend: jest.fn().mockResolvedValue(null),
-      saveSubAgentReminderSend: jest.fn().mockResolvedValue(undefined),
+      loadAnnouncedRunningSubAgentLabels: jest
+        .fn()
+        .mockResolvedValue(new Set<string>()),
+      saveAnnouncedRunningSubAgentLabels: jest
+        .fn()
+        .mockResolvedValue(undefined),
     };
     mockMessageComposer = {
       composeMainStalledSection: jest
@@ -458,6 +454,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         label: 'sub-process-1',
         silentSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
         runningSeconds: 60,
+        waitingOnExternalProcess: false,
       },
     ];
     mockSubAgentActivityRepository.listSubAgentActivitiesBySessionName.mockResolvedValue(
@@ -466,27 +463,23 @@ describe('NotifySilentLiveSessionsUseCase', () => {
 
     await useCase.run(runParams());
 
-    expect(mockMessageComposer.composeSubAgentSection).toHaveBeenCalledWith(
-      subAgents,
-      {
-        subAgentSilentThresholdSeconds:
-          DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
-        subAgentRunningThresholdSeconds:
-          DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
-      },
-    );
+    expect(mockMessageComposer.composeSubAgentSection).toHaveBeenCalledWith({
+      idleSubAgents: subAgents,
+      longRunningSubAgents: [],
+    });
     expect(
       mockNotificationRepository.sendSelfCheckNotification,
     ).toHaveBeenCalledWith(GITHUB_SESSION, SUBAGENT_SECTION);
   });
 
-  it('passes a configured running threshold through to the sub-agent section composer', async () => {
+  it('applies a configured running threshold when selecting long-running sub-agents', async () => {
     setupLiveInteractiveSession(GITHUB_SESSION);
     const subAgents: SubAgentActivity[] = [
       {
         label: 'sub-process-1',
         silentSeconds: 10,
         runningSeconds: 600,
+        waitingOnExternalProcess: false,
       },
     ];
     mockSubAgentActivityRepository.listSubAgentActivitiesBySessionName.mockResolvedValue(
@@ -498,14 +491,10 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       subAgentRunningThresholdSeconds: 600,
     });
 
-    expect(mockMessageComposer.composeSubAgentSection).toHaveBeenCalledWith(
-      subAgents,
-      {
-        subAgentSilentThresholdSeconds:
-          DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
-        subAgentRunningThresholdSeconds: 600,
-      },
-    );
+    expect(mockMessageComposer.composeSubAgentSection).toHaveBeenCalledWith({
+      idleSubAgents: [],
+      longRunningSubAgents: subAgents,
+    });
   });
 
   it('excludes an owner-handover spawn from selection so no notification is sent', async () => {
@@ -666,374 +655,195 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     });
   });
 
-  describe('sub-agent reminder edge-triggered suppression', () => {
-    const STALLED_SILENT_SECONDS = DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS;
-    const stalledSubAgent = (label: string): SubAgentActivity => ({
+  describe('sub-agent state-based reminder judgment', () => {
+    const hungSubAgent = (label: string): SubAgentActivity => ({
       label,
-      silentSeconds: STALLED_SILENT_SECONDS,
+      silentSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
       runningSeconds: 60,
+      waitingOnExternalProcess: false,
     });
-    const runningOnlySubAgent = (label: string): SubAgentActivity => ({
+    const waitingSubAgent = (label: string): SubAgentActivity => ({
+      label,
+      silentSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
+      runningSeconds: 60,
+      waitingOnExternalProcess: true,
+    });
+    const longRunningSubAgent = (
+      label: string,
+      waitingOnExternalProcess: boolean,
+    ): SubAgentActivity => ({
       label,
       silentSeconds: 30,
       runningSeconds: DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
+      waitingOnExternalProcess,
     });
 
-    const setupSubAgentOnlyCandidate = (
-      subAgents: SubAgentActivity[],
-    ): void => {
+    const setupSubAgents = (subAgents: SubAgentActivity[]): void => {
       setupLiveInteractiveSession(GITHUB_SESSION);
       mockSubAgentActivityRepository.listSubAgentActivitiesBySessionName.mockResolvedValue(
         new Map([[GITHUB_SESSION, subAgents]]),
       );
     };
 
-    it('exposes the default escalation interval as a named constant', () => {
-      expect(DEFAULT_SUBAGENT_REMINDER_ESCALATION_SECONDS).toBe(1800);
-    });
-
-    it('suppresses a sub-agent-only reminder whose trigger state is unchanged within the escalation interval', async () => {
-      setupSubAgentOnlyCandidate([stalledSubAgent('sub-process-1')]);
-      mockCandidateStateRepository.loadSubAgentReminderSend.mockResolvedValue({
-        sessionName: GITHUB_SESSION,
-        sentEpochSeconds: nowEpochSeconds - 60,
-        subAgents: [
-          {
-            label: 'sub-process-1',
-            lastOutputEpochSeconds: nowEpochSeconds - STALLED_SILENT_SECONDS,
-          },
-        ],
-      });
+    it('never selects a waiting sub-agent as a silent-reminder candidate', async () => {
+      setupSubAgents([waitingSubAgent('sub-process-1')]);
 
       await useCase.run(runParams());
 
+      expect(mockMessageComposer.composeSubAgentSection).not.toHaveBeenCalled();
       expect(
         mockNotificationRepository.sendSelfCheckNotification,
       ).not.toHaveBeenCalled();
-      expect(
-        mockCandidateStateRepository.saveSubAgentReminderSend,
-      ).not.toHaveBeenCalled();
-      expect(console.log).toHaveBeenCalledWith(
-        `Suppressing sub-agent reminder for ${GITHUB_SESSION}: sub-agent trigger state is unchanged since the last send; ${DEFAULT_SUBAGENT_REMINDER_ESCALATION_SECONDS - 60}s remaining until the escalation re-send.`,
-      );
     });
 
-    it('re-notifies when the sub-agent has produced new output since the last send', async () => {
-      setupSubAgentOnlyCandidate([stalledSubAgent('sub-process-1')]);
-      mockCandidateStateRepository.loadSubAgentReminderSend.mockResolvedValue({
-        sessionName: GITHUB_SESSION,
-        sentEpochSeconds: nowEpochSeconds - 60,
-        subAgents: [
-          {
-            label: 'sub-process-1',
-            lastOutputEpochSeconds:
-              nowEpochSeconds - STALLED_SILENT_SECONDS - 600,
-          },
-        ],
-      });
+    it('notifies a hung sub-agent whose in-flight tool has no live process', async () => {
+      setupSubAgents([hungSubAgent('sub-process-1')]);
 
       await useCase.run(runParams());
 
-      expect(
-        mockNotificationRepository.sendSelfCheckNotification,
-      ).toHaveBeenCalledWith(GITHUB_SESSION, SUBAGENT_SECTION);
-      expect(
-        mockCandidateStateRepository.saveSubAgentReminderSend,
-      ).toHaveBeenCalledWith({
-        sessionName: GITHUB_SESSION,
-        subAgents: [
-          {
-            label: 'sub-process-1',
-            lastOutputEpochSeconds: nowEpochSeconds - STALLED_SILENT_SECONDS,
-          },
-        ],
-        now,
+      expect(mockMessageComposer.composeSubAgentSection).toHaveBeenCalledWith({
+        idleSubAgents: [hungSubAgent('sub-process-1')],
+        longRunningSubAgents: [],
       });
-    });
-
-    it('suppresses a running-only sub-agent whose output keeps advancing within the escalation interval', async () => {
-      setupSubAgentOnlyCandidate([runningOnlySubAgent('sub-process-1')]);
-      mockCandidateStateRepository.loadSubAgentReminderSend.mockResolvedValue({
-        sessionName: GITHUB_SESSION,
-        sentEpochSeconds: nowEpochSeconds - 60,
-        subAgents: [
-          {
-            label: 'sub-process-1',
-            lastOutputEpochSeconds: nowEpochSeconds - 90,
-          },
-        ],
-      });
-
-      await useCase.run(runParams());
-
-      expect(
-        mockNotificationRepository.sendSelfCheckNotification,
-      ).not.toHaveBeenCalled();
-      expect(
-        mockCandidateStateRepository.saveSubAgentReminderSend,
-      ).not.toHaveBeenCalled();
-    });
-
-    it('sends again for a running-only sub-agent once the escalation interval has elapsed', async () => {
-      setupSubAgentOnlyCandidate([runningOnlySubAgent('sub-process-1')]);
-      mockCandidateStateRepository.loadSubAgentReminderSend.mockResolvedValue({
-        sessionName: GITHUB_SESSION,
-        sentEpochSeconds:
-          nowEpochSeconds - DEFAULT_SUBAGENT_REMINDER_ESCALATION_SECONDS,
-        subAgents: [
-          {
-            label: 'sub-process-1',
-            lastOutputEpochSeconds: nowEpochSeconds - 90,
-          },
-        ],
-      });
-
-      await useCase.run(runParams());
-
       expect(
         mockNotificationRepository.sendSelfCheckNotification,
       ).toHaveBeenCalledWith(GITHUB_SESSION, SUBAGENT_SECTION);
     });
 
-    it('suppresses a mixed set of an unchanged silent-triggered sub-agent and an advancing running-only sub-agent', async () => {
-      setupSubAgentOnlyCandidate([
-        stalledSubAgent('sub-process-1'),
-        runningOnlySubAgent('sub-process-2'),
+    it('keeps notifying a hung sub-agent on every cycle while the condition holds', async () => {
+      setupSubAgents([hungSubAgent('sub-process-1')]);
+
+      await useCase.run(runParams());
+      await useCase.run(runParams());
+
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledTimes(2);
+    });
+
+    it('announces a running-threshold crossing for a waiting sub-agent without any idle section', async () => {
+      setupSubAgents([
+        {
+          label: 'sub-process-1',
+          silentSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
+          runningSeconds: DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
+          waitingOnExternalProcess: true,
+        },
       ]);
-      mockCandidateStateRepository.loadSubAgentReminderSend.mockResolvedValue({
-        sessionName: GITHUB_SESSION,
-        sentEpochSeconds: nowEpochSeconds - 60,
-        subAgents: [
+
+      await useCase.run(runParams());
+
+      expect(mockMessageComposer.composeSubAgentSection).toHaveBeenCalledWith({
+        idleSubAgents: [],
+        longRunningSubAgents: [
           {
             label: 'sub-process-1',
-            lastOutputEpochSeconds: nowEpochSeconds - STALLED_SILENT_SECONDS,
-          },
-          {
-            label: 'sub-process-2',
-            lastOutputEpochSeconds: nowEpochSeconds - 90,
+            silentSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
+            runningSeconds: DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
+            waitingOnExternalProcess: true,
           },
         ],
       });
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledWith(GITHUB_SESSION, SUBAGENT_SECTION);
+    });
+
+    it('records the announced running label only after the notification is sent', async () => {
+      setupSubAgents([longRunningSubAgent('sub-process-1', false)]);
+
+      await useCase.run(runParams());
+
+      expect(
+        mockCandidateStateRepository.saveAnnouncedRunningSubAgentLabels,
+      ).toHaveBeenCalledWith({
+        sessionName: GITHUB_SESSION,
+        labels: ['sub-process-1'],
+        now,
+      });
+    });
+
+    it('does not record an announced running label when the first-cycle debounce defers the send', async () => {
+      setupSubAgents([longRunningSubAgent('sub-process-1', false)]);
+      mockCandidateStateRepository.loadRecentCandidateSessionNames.mockResolvedValue(
+        new Set<string>(),
+      );
 
       await useCase.run(runParams());
 
       expect(
         mockNotificationRepository.sendSelfCheckNotification,
       ).not.toHaveBeenCalled();
+      expect(
+        mockCandidateStateRepository.saveAnnouncedRunningSubAgentLabels,
+      ).not.toHaveBeenCalled();
     });
 
-    it('re-notifies a mixed set when the silent-triggered sub-agent has produced new output', async () => {
-      setupSubAgentOnlyCandidate([
-        stalledSubAgent('sub-process-1'),
-        runningOnlySubAgent('sub-process-2'),
+    it('does not repeat the running announcement while the same label stays over the threshold', async () => {
+      setupSubAgents([longRunningSubAgent('sub-process-1', false)]);
+      mockCandidateStateRepository.loadAnnouncedRunningSubAgentLabels.mockResolvedValue(
+        new Set(['sub-process-1']),
+      );
+
+      await useCase.run(runParams());
+
+      expect(mockMessageComposer.composeSubAgentSection).not.toHaveBeenCalled();
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('announces only the new label when another announced label is still over the threshold', async () => {
+      setupSubAgents([
+        longRunningSubAgent('sub-process-1', false),
+        longRunningSubAgent('sub-process-2', false),
       ]);
-      mockCandidateStateRepository.loadSubAgentReminderSend.mockResolvedValue({
-        sessionName: GITHUB_SESSION,
-        sentEpochSeconds: nowEpochSeconds - 60,
-        subAgents: [
-          {
-            label: 'sub-process-1',
-            lastOutputEpochSeconds:
-              nowEpochSeconds - STALLED_SILENT_SECONDS - 600,
-          },
-          {
-            label: 'sub-process-2',
-            lastOutputEpochSeconds: nowEpochSeconds - 90,
-          },
-        ],
-      });
+      mockCandidateStateRepository.loadAnnouncedRunningSubAgentLabels.mockResolvedValue(
+        new Set(['sub-process-1']),
+      );
 
       await useCase.run(runParams());
 
-      expect(
-        mockNotificationRepository.sendSelfCheckNotification,
-      ).toHaveBeenCalledWith(GITHUB_SESSION, SUBAGENT_SECTION);
-    });
-
-    it('keeps suppressing when one recorded sub-agent has finished and the remaining trigger is unchanged', async () => {
-      setupSubAgentOnlyCandidate([stalledSubAgent('sub-process-1')]);
-      mockCandidateStateRepository.loadSubAgentReminderSend.mockResolvedValue({
-        sessionName: GITHUB_SESSION,
-        sentEpochSeconds: nowEpochSeconds - 60,
-        subAgents: [
-          {
-            label: 'sub-process-1',
-            lastOutputEpochSeconds: nowEpochSeconds - STALLED_SILENT_SECONDS,
-          },
-          {
-            label: 'sub-process-2',
-            lastOutputEpochSeconds: nowEpochSeconds - 90,
-          },
-        ],
+      expect(mockMessageComposer.composeSubAgentSection).toHaveBeenCalledWith({
+        idleSubAgents: [],
+        longRunningSubAgents: [longRunningSubAgent('sub-process-2', false)],
       });
-
-      await useCase.run(runParams());
-
       expect(
-        mockNotificationRepository.sendSelfCheckNotification,
-      ).not.toHaveBeenCalled();
-    });
-
-    it('re-notifies when a different sub-agent label is the trigger', async () => {
-      setupSubAgentOnlyCandidate([stalledSubAgent('sub-process-2')]);
-      mockCandidateStateRepository.loadSubAgentReminderSend.mockResolvedValue({
-        sessionName: GITHUB_SESSION,
-        sentEpochSeconds: nowEpochSeconds - 60,
-        subAgents: [
-          {
-            label: 'sub-process-1',
-            lastOutputEpochSeconds: nowEpochSeconds - STALLED_SILENT_SECONDS,
-          },
-        ],
-      });
-
-      await useCase.run(runParams());
-
-      expect(
-        mockNotificationRepository.sendSelfCheckNotification,
-      ).toHaveBeenCalledWith(GITHUB_SESSION, SUBAGENT_SECTION);
-    });
-
-    it('sends again once the escalation interval has elapsed with the trigger unchanged', async () => {
-      setupSubAgentOnlyCandidate([stalledSubAgent('sub-process-1')]);
-      mockCandidateStateRepository.loadSubAgentReminderSend.mockResolvedValue({
-        sessionName: GITHUB_SESSION,
-        sentEpochSeconds:
-          nowEpochSeconds - DEFAULT_SUBAGENT_REMINDER_ESCALATION_SECONDS,
-        subAgents: [
-          {
-            label: 'sub-process-1',
-            lastOutputEpochSeconds: nowEpochSeconds - STALLED_SILENT_SECONDS,
-          },
-        ],
-      });
-
-      await useCase.run(runParams());
-
-      expect(
-        mockNotificationRepository.sendSelfCheckNotification,
-      ).toHaveBeenCalledWith(GITHUB_SESSION, SUBAGENT_SECTION);
-      expect(
-        mockCandidateStateRepository.saveSubAgentReminderSend,
+        mockCandidateStateRepository.saveAnnouncedRunningSubAgentLabels,
       ).toHaveBeenCalledWith({
         sessionName: GITHUB_SESSION,
-        subAgents: [
-          {
-            label: 'sub-process-1',
-            lastOutputEpochSeconds: nowEpochSeconds - STALLED_SILENT_SECONDS,
-          },
-        ],
+        labels: ['sub-process-1', 'sub-process-2'],
         now,
       });
     });
 
-    it('suppresses using a configured escalation interval shorter than the default', async () => {
-      setupSubAgentOnlyCandidate([stalledSubAgent('sub-process-1')]);
-      mockCandidateStateRepository.loadSubAgentReminderSend.mockResolvedValue({
-        sessionName: GITHUB_SESSION,
-        sentEpochSeconds: nowEpochSeconds - 120,
-        subAgents: [
-          {
-            label: 'sub-process-1',
-            lastOutputEpochSeconds: nowEpochSeconds - STALLED_SILENT_SECONDS,
-          },
-        ],
-      });
-
-      await useCase.run(runParams({ subAgentReminderEscalationSeconds: 100 }));
-
-      expect(
-        mockNotificationRepository.sendSelfCheckNotification,
-      ).toHaveBeenCalledWith(GITHUB_SESSION, SUBAGENT_SECTION);
-    });
-
-    it('never suppresses a reminder that also carries the main stalled section', async () => {
-      setupSubAgentOnlyCandidate([stalledSubAgent('sub-process-1')]);
-      mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
-        [
-          {
-            sessionName: GITHUB_SESSION,
-            lastOutputEpochSeconds:
-              nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
-          },
-        ],
+    it('clears the announced record when the label disappears from the sub-agent set', async () => {
+      setupSubAgents([]);
+      mockCandidateStateRepository.loadAnnouncedRunningSubAgentLabels.mockResolvedValue(
+        new Set(['sub-process-1']),
       );
-      mockCandidateStateRepository.loadSubAgentReminderSend.mockResolvedValue({
-        sessionName: GITHUB_SESSION,
-        sentEpochSeconds: nowEpochSeconds - 60,
-        subAgents: [
-          {
-            label: 'sub-process-1',
-            lastOutputEpochSeconds: nowEpochSeconds - STALLED_SILENT_SECONDS,
-          },
-        ],
-      });
 
       await useCase.run(runParams());
 
       expect(
-        mockCandidateStateRepository.loadSubAgentReminderSend,
-      ).not.toHaveBeenCalled();
-      expect(
-        mockNotificationRepository.sendSelfCheckNotification,
-      ).toHaveBeenCalledWith(
-        GITHUB_SESSION,
-        `${MAIN_STALLED_SECTION}\n\n${SUBAGENT_SECTION}`,
-      );
-    });
-
-    it('records the triggering sub-agent snapshot after sending a first sub-agent reminder', async () => {
-      setupSubAgentOnlyCandidate([stalledSubAgent('sub-process-1')]);
-
-      await useCase.run(runParams());
-
-      expect(
-        mockNotificationRepository.sendSelfCheckNotification,
-      ).toHaveBeenCalledWith(GITHUB_SESSION, SUBAGENT_SECTION);
-      expect(
-        mockCandidateStateRepository.saveSubAgentReminderSend,
+        mockCandidateStateRepository.saveAnnouncedRunningSubAgentLabels,
       ).toHaveBeenCalledWith({
         sessionName: GITHUB_SESSION,
-        subAgents: [
-          {
-            label: 'sub-process-1',
-            lastOutputEpochSeconds: nowEpochSeconds - STALLED_SILENT_SECONDS,
-          },
-        ],
+        labels: [],
         now,
       });
     });
 
-    it('does not record a sub-agent reminder send for a main-only reminder', async () => {
-      setupSilentMainSession(GITHUB_SESSION);
-
-      await useCase.run(runParams());
-
-      expect(
-        mockNotificationRepository.sendSelfCheckNotification,
-      ).toHaveBeenCalledWith(GITHUB_SESSION, MAIN_STALLED_SECTION);
-      expect(
-        mockCandidateStateRepository.saveSubAgentReminderSend,
-      ).not.toHaveBeenCalled();
-    });
-
-    it('stops the per-cycle re-send across use-case instances sharing the persisted state', async () => {
-      setupSubAgentOnlyCandidate([stalledSubAgent('sub-process-1')]);
-      const persistedSendBySessionName = new Map<
-        string,
-        SubAgentReminderSend
-      >();
-      mockCandidateStateRepository.loadSubAgentReminderSend.mockImplementation(
+    it('announces exactly once per crossing across use-case instances sharing the persisted state', async () => {
+      setupSubAgents([longRunningSubAgent('sub-process-1', false)]);
+      const announcedLabelsBySessionName = new Map<string, string[]>();
+      mockCandidateStateRepository.loadAnnouncedRunningSubAgentLabels.mockImplementation(
         async ({ sessionName }) =>
-          persistedSendBySessionName.get(sessionName) ?? null,
+          new Set(announcedLabelsBySessionName.get(sessionName) ?? []),
       );
-      mockCandidateStateRepository.saveSubAgentReminderSend.mockImplementation(
-        async ({ sessionName, subAgents, now: sentAt }) => {
-          persistedSendBySessionName.set(sessionName, {
-            sessionName,
-            sentEpochSeconds: Math.floor(sentAt.getTime() / 1000),
-            subAgents,
-          });
+      mockCandidateStateRepository.saveAnnouncedRunningSubAgentLabels.mockImplementation(
+        async ({ sessionName, labels }) => {
+          announcedLabelsBySessionName.set(sessionName, labels);
         },
       );
 
@@ -1042,20 +852,6 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         mockNotificationRepository.sendSelfCheckNotification,
       ).toHaveBeenCalledTimes(1);
 
-      mockSubAgentActivityRepository.listSubAgentActivitiesBySessionName.mockResolvedValue(
-        new Map([
-          [
-            GITHUB_SESSION,
-            [
-              {
-                label: 'sub-process-1',
-                silentSeconds: STALLED_SILENT_SECONDS + 60,
-                runningSeconds: 120,
-              },
-            ],
-          ],
-        ]),
-      );
       const secondUseCase = new NotifySilentLiveSessionsUseCase(
         mockSnapshotProvider,
         mockTranscriptResolver,
@@ -1076,6 +872,19 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       expect(
         mockNotificationRepository.sendSelfCheckNotification,
       ).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not touch the announced-label record for a main-only reminder', async () => {
+      setupSilentMainSession(GITHUB_SESSION);
+
+      await useCase.run(runParams());
+
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledWith(GITHUB_SESSION, MAIN_STALLED_SECTION);
+      expect(
+        mockCandidateStateRepository.saveAnnouncedRunningSubAgentLabels,
+      ).not.toHaveBeenCalled();
     });
   });
 

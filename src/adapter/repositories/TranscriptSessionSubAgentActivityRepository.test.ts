@@ -2,6 +2,10 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { SubAgentTranscriptDirectoryResolver } from '../../domain/usecases/adapter-interfaces/SubAgentTranscriptDirectoryResolver';
+import {
+  SubAgentProcess,
+  SubAgentProcessLister,
+} from '../../domain/usecases/adapter-interfaces/SubAgentProcessLister';
 import { FileSystemSubAgentTranscriptDirectoryResolver } from './FileSystemSubAgentTranscriptDirectoryResolver';
 import { TranscriptSessionSubAgentActivityRepository } from './TranscriptSessionSubAgentActivityRepository';
 
@@ -69,6 +73,14 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
 
   const createResolver = (): SubAgentTranscriptDirectoryResolver =>
     new FileSystemSubAgentTranscriptDirectoryResolver(rootDirectory);
+
+  const processListerWith = (
+    processes: SubAgentProcess[],
+  ): SubAgentProcessLister => ({
+    listProcesses: async () => processes,
+  });
+
+  const emptyProcessLister = (): SubAgentProcessLister => processListerWith([]);
 
   const runningEntries = (startTimestamp: string): object[] => [
     { type: 'user', timestamp: startTimestamp, message: { role: 'user' } },
@@ -251,6 +263,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     );
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
+      emptyProcessLister(),
       now,
     );
 
@@ -260,7 +273,12 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     );
 
     expect(result.get(sessionName)).toEqual([
-      { label: 'agent-aaa111', silentSeconds: 120, runningSeconds: 900 },
+      {
+        label: 'agent-aaa111',
+        silentSeconds: 120,
+        runningSeconds: 900,
+        waitingOnExternalProcess: false,
+      },
     ]);
   });
 
@@ -274,6 +292,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     );
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
+      emptyProcessLister(),
       now,
     );
 
@@ -295,6 +314,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     );
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
+      emptyProcessLister(),
       now,
     );
 
@@ -316,6 +336,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     );
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
+      emptyProcessLister(),
       now,
     );
 
@@ -337,6 +358,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     );
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
+      emptyProcessLister(),
       now,
     );
 
@@ -358,6 +380,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     );
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
+      emptyProcessLister(),
       now,
     );
 
@@ -379,6 +402,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     );
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
+      emptyProcessLister(),
       now,
     );
 
@@ -400,6 +424,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     );
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
+      emptyProcessLister(),
       now,
     );
 
@@ -421,6 +446,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     );
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
+      emptyProcessLister(),
       now,
     );
 
@@ -430,7 +456,12 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     );
 
     expect(result.get(sessionName)).toEqual([
-      { label: 'agent-pending', silentSeconds: 600, runningSeconds: 900 },
+      {
+        label: 'agent-pending',
+        silentSeconds: 600,
+        runningSeconds: 900,
+        waitingOnExternalProcess: false,
+      },
     ]);
   });
 
@@ -445,6 +476,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     );
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
+      emptyProcessLister(),
       now,
     );
 
@@ -458,6 +490,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
         label: 'agent-longstall',
         silentSeconds: fourDaysSeconds,
         runningSeconds: fourDaysSeconds,
+        waitingOnExternalProcess: false,
       },
     ]);
   });
@@ -480,6 +513,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     fs.symlinkSync(targetPath, path.join(dir, 'agent-link1.jsonl'));
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
+      emptyProcessLister(),
       now,
     );
 
@@ -489,7 +523,12 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     );
 
     expect(result.get(sessionName)).toEqual([
-      { label: 'agent-link1', silentSeconds: 60, runningSeconds: 600 },
+      {
+        label: 'agent-link1',
+        silentSeconds: 60,
+        runningSeconds: 600,
+        waitingOnExternalProcess: false,
+      },
     ]);
     fs.rmSync(targetDir, { force: true, recursive: true });
   });
@@ -497,6 +536,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
   it('returns an empty map when the resolver returns null', async () => {
     const repository = new TranscriptSessionSubAgentActivityRepository(
       { resolveSubAgentsDirectory: () => null },
+      emptyProcessLister(),
       now,
     );
 
@@ -511,6 +551,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
   it('ignores a session whose subagents directory does not exist', async () => {
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
+      emptyProcessLister(),
       now,
     );
 
@@ -538,6 +579,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     );
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
+      emptyProcessLister(),
       now,
     );
 
@@ -559,6 +601,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     );
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
+      emptyProcessLister(),
       now,
     );
 
@@ -568,7 +611,12 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     );
 
     expect(result.get(sessionName)).toEqual([
-      { label: 'agent-future', silentSeconds: 0, runningSeconds: 0 },
+      {
+        label: 'agent-future',
+        silentSeconds: 0,
+        runningSeconds: 0,
+        waitingOnExternalProcess: false,
+      },
     ]);
   });
 
@@ -604,6 +652,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
 
     const repository = new TranscriptSessionSubAgentActivityRepository(
       new FileSystemSubAgentTranscriptDirectoryResolver(projectsRoot),
+      emptyProcessLister(),
       now,
     );
 
@@ -617,6 +666,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
         label: 'agent-afcbe335fdbec0a28',
         silentSeconds: 120,
         runningSeconds: 900,
+        waitingOnExternalProcess: false,
       },
     ]);
   });
@@ -638,6 +688,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     );
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
+      emptyProcessLister(),
       now,
     );
 
@@ -651,7 +702,148 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
         label: 'agent-stalledold',
         silentSeconds: twoDaysSeconds,
         runningSeconds: twoDaysSeconds,
+        waitingOnExternalProcess: false,
       },
     ]);
+  });
+
+  describe('external-wait classification from the pending tool command', () => {
+    const CI_WATCH_COMMAND =
+      'gh pr checks 123 --watch -i 60 -R owner/repo 2>&1 | tail -5';
+
+    const pendingCommandEntries = (
+      startTimestamp: string,
+      command: string,
+    ): object[] => [
+      { type: 'user', timestamp: startTimestamp, message: { role: 'user' } },
+      {
+        type: 'assistant',
+        timestamp: startTimestamp,
+        message: {
+          role: 'assistant',
+          stop_reason: 'tool_use',
+          content: [{ type: 'tool_use', name: 'Bash', input: { command } }],
+        },
+      },
+    ];
+
+    it('classifies a sub-agent as waiting when its pending tool command matches a live process', async () => {
+      const sessionName = 'https_//github_com/owner/repo/issues/9';
+      writeAgentTranscript(
+        sessionName,
+        'ciwait',
+        pendingCommandEntries('2026-06-27T11:45:00.000Z', CI_WATCH_COMMAND),
+        nowEpochSeconds - 600,
+      );
+      const repository = new TranscriptSessionSubAgentActivityRepository(
+        createResolver(),
+        processListerWith([
+          {
+            commandLine: `/bin/bash -c ${CI_WATCH_COMMAND}`,
+            elapsedSeconds: 600,
+          },
+        ]),
+        now,
+      );
+
+      const result = await repository.listSubAgentActivitiesBySessionName(
+        [sessionName],
+        transcriptMapFor([sessionName]),
+      );
+
+      expect(result.get(sessionName)).toEqual([
+        {
+          label: 'agent-ciwait',
+          silentSeconds: 600,
+          runningSeconds: 900,
+          waitingOnExternalProcess: true,
+        },
+      ]);
+    });
+
+    it('classifies a sub-agent as hung when no live process matches its pending tool command', async () => {
+      const sessionName = 'https_//github_com/owner/repo/issues/9';
+      writeAgentTranscript(
+        sessionName,
+        'dead',
+        pendingCommandEntries('2026-06-27T11:45:00.000Z', CI_WATCH_COMMAND),
+        nowEpochSeconds - 600,
+      );
+      const repository = new TranscriptSessionSubAgentActivityRepository(
+        createResolver(),
+        processListerWith([
+          { commandLine: 'node unrelated-server.js', elapsedSeconds: 5000 },
+        ]),
+        now,
+      );
+
+      const result = await repository.listSubAgentActivitiesBySessionName(
+        [sessionName],
+        transcriptMapFor([sessionName]),
+      );
+
+      expect(result.get(sessionName)).toEqual([
+        {
+          label: 'agent-dead',
+          silentSeconds: 600,
+          runningSeconds: 900,
+          waitingOnExternalProcess: false,
+        },
+      ]);
+    });
+
+    it('classifies a sub-agent as hung when its pending tool call carries no command string', async () => {
+      const sessionName = 'https_//github_com/owner/repo/issues/9';
+      writeAgentTranscript(
+        sessionName,
+        'nocmd',
+        pendingToolUseEntries('2026-06-27T11:45:00.000Z'),
+        nowEpochSeconds - 600,
+      );
+      const repository = new TranscriptSessionSubAgentActivityRepository(
+        createResolver(),
+        processListerWith([
+          { commandLine: 'any process at all', elapsedSeconds: 1 },
+        ]),
+        now,
+      );
+
+      const result = await repository.listSubAgentActivitiesBySessionName(
+        [sessionName],
+        transcriptMapFor([sessionName]),
+      );
+
+      expect(result.get(sessionName)?.[0]?.waitingOnExternalProcess).toBe(
+        false,
+      );
+    });
+
+    it('matches on the whitespace-normalized first 60 characters of a long multi-line command', async () => {
+      const sessionName = 'https_//github_com/owner/repo/issues/9';
+      const longCommand =
+        'OWNER=owner; REPO=repo; PR=123\n  SHA=$(gh api repos/$OWNER/$REPO/pulls/$PR --jq .head.sha)\n  sleep 600';
+      writeAgentTranscript(
+        sessionName,
+        'longcmd',
+        pendingCommandEntries('2026-06-27T11:45:00.000Z', longCommand),
+        nowEpochSeconds - 600,
+      );
+      const normalizedProcessLine =
+        'bash -c OWNER=owner; REPO=repo; PR=123 SHA=$(gh api repos/$OWNER/$REPO/pulls/$PR --jq .head.sha) sleep 600';
+      const repository = new TranscriptSessionSubAgentActivityRepository(
+        createResolver(),
+        processListerWith([
+          { commandLine: normalizedProcessLine, elapsedSeconds: 600 },
+        ]),
+        now,
+      );
+
+      const result = await repository.listSubAgentActivitiesBySessionName(
+        [sessionName],
+        transcriptMapFor([sessionName]),
+      );
+
+      expect(result.get(sessionName)?.[0]?.waitingOnExternalProcess).toBe(true);
+    });
   });
 });

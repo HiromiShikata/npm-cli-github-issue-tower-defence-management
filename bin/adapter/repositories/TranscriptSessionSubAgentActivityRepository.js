@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.TranscriptSessionSubAgentActivityRepository = void 0;
+exports.TranscriptSessionSubAgentActivityRepository = exports.normalizeCommandFragment = void 0;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const isRecord = (value) => typeof value === 'object' && value !== null;
@@ -48,6 +48,12 @@ const parseEpochSeconds = (timestamp) => {
     const parsed = Date.parse(timestamp);
     return Number.isNaN(parsed) ? null : Math.floor(parsed / 1000);
 };
+const PENDING_TOOL_COMMAND_FRAGMENT_LENGTH = 60;
+const normalizeCommandFragment = (command) => command
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, PENDING_TOOL_COMMAND_FRAGMENT_LENGTH);
+exports.normalizeCommandFragment = normalizeCommandFragment;
 const readContentBlocks = (message) => {
     const content = message.content;
     if (!Array.isArray(content)) {
@@ -81,9 +87,32 @@ const entryIndicatesCompletion = (entry) => {
     }
     return false;
 };
+const entryPendingToolCommands = (entry) => {
+    const type = readString(entry, 'type');
+    const message = entry.message;
+    if (type !== 'assistant' || !isRecord(message)) {
+        return [];
+    }
+    const commands = [];
+    for (const block of readContentBlocks(message)) {
+        if (readString(block, 'type') !== 'tool_use') {
+            continue;
+        }
+        const input = block.input;
+        if (!isRecord(input)) {
+            continue;
+        }
+        const command = readString(input, 'command');
+        if (command !== null && command.trim().length > 0) {
+            commands.push(command);
+        }
+    }
+    return commands;
+};
 const parseTranscript = (content) => {
     let firstEntryEpochSeconds = null;
     let lastEntryIndicatesCompletion = false;
+    let pendingToolCommands = [];
     for (const line of content.split('\n')) {
         const trimmed = line.trim();
         if (trimmed.length === 0) {
@@ -105,32 +134,46 @@ const parseTranscript = (content) => {
         }
         if (isRecord(parsed.message)) {
             lastEntryIndicatesCompletion = entryIndicatesCompletion(parsed);
+            pendingToolCommands = entryPendingToolCommands(parsed);
         }
     }
-    return { firstEntryEpochSeconds, lastEntryIndicatesCompletion };
+    return {
+        firstEntryEpochSeconds,
+        lastEntryIndicatesCompletion,
+        pendingToolCommands,
+    };
 };
 const clampToZero = (value) => (value > 0 ? value : 0);
 class TranscriptSessionSubAgentActivityRepository {
-    constructor(directoryResolver, now) {
+    constructor(directoryResolver, processLister, now) {
         this.directoryResolver = directoryResolver;
+        this.processLister = processLister;
         this.now = now;
         this.listSubAgentActivitiesBySessionName = async (sessionNames, transcriptPathBySessionName) => {
             const result = new Map();
             const nowEpochSeconds = Math.floor(this.now.getTime() / 1000);
+            let normalizedProcessCommandLines = null;
+            const loadNormalizedProcessCommandLines = async () => {
+                if (normalizedProcessCommandLines === null) {
+                    const processes = await this.processLister.listProcesses();
+                    normalizedProcessCommandLines = processes.map((process) => process.commandLine.replace(/\s+/g, ' ').trim());
+                }
+                return normalizedProcessCommandLines;
+            };
             for (const sessionName of sessionNames) {
                 const mainTranscriptPath = transcriptPathBySessionName.get(sessionName) ?? null;
                 const directory = this.directoryResolver.resolveSubAgentsDirectory(sessionName, mainTranscriptPath);
                 if (directory === null) {
                     continue;
                 }
-                const activities = this.collectActivities(directory, nowEpochSeconds);
+                const activities = await this.collectActivities(directory, nowEpochSeconds, loadNormalizedProcessCommandLines);
                 if (activities.length > 0) {
                     result.set(sessionName, activities);
                 }
             }
             return result;
         };
-        this.collectActivities = (directory, nowEpochSeconds) => {
+        this.collectActivities = async (directory, nowEpochSeconds, loadNormalizedProcessCommandLines) => {
             let entries;
             try {
                 entries = fs.readdirSync(directory, { withFileTypes: true });
@@ -145,14 +188,14 @@ class TranscriptSessionSubAgentActivityRepository {
                     continue;
                 }
                 const filePath = path.join(directory, fileName);
-                const activity = this.toActivity(filePath, fileName, nowEpochSeconds);
+                const activity = await this.toActivity(filePath, fileName, nowEpochSeconds, loadNormalizedProcessCommandLines);
                 if (activity !== null) {
                     activities.push(activity);
                 }
             }
             return activities;
         };
-        this.toActivity = (filePath, fileName, nowEpochSeconds) => {
+        this.toActivity = async (filePath, fileName, nowEpochSeconds, loadNormalizedProcessCommandLines) => {
             let content;
             let stats;
             try {
@@ -174,7 +217,21 @@ class TranscriptSessionSubAgentActivityRepository {
                 label: fileName.replace(/\.jsonl$/, ''),
                 silentSeconds,
                 runningSeconds,
+                waitingOnExternalProcess: await this.hasLiveMatchingProcess(transcript.pendingToolCommands, loadNormalizedProcessCommandLines),
             };
+        };
+        this.hasLiveMatchingProcess = async (pendingToolCommands, loadNormalizedProcessCommandLines) => {
+            if (pendingToolCommands.length === 0) {
+                return false;
+            }
+            const fragments = pendingToolCommands
+                .map(exports.normalizeCommandFragment)
+                .filter((fragment) => fragment.length > 0);
+            if (fragments.length === 0) {
+                return false;
+            }
+            const processCommandLines = await loadNormalizedProcessCommandLines();
+            return fragments.some((fragment) => processCommandLines.some((commandLine) => commandLine.includes(fragment)));
         };
     }
 }

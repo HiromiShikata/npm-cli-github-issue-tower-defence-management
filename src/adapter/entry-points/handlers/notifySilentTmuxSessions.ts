@@ -10,7 +10,6 @@ import {
   DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
   DEFAULT_NOTIFICATION_STAGGER_SECONDS,
   DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS,
-  DEFAULT_SUBAGENT_REMINDER_ESCALATION_SECONDS,
   DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS,
 } from '../../../domain/usecases/NotifySilentLiveSessionsUseCase';
 import { DefaultSilentSessionMessageComposer } from '../../../domain/usecases/DefaultSilentSessionMessageComposer';
@@ -47,7 +46,6 @@ export type NotifySilentTmuxSessionsParams = {
   subAgentRunningThresholdSeconds: number;
   staggerSeconds: number;
   candidateDebounceRecencyWindowSeconds: number;
-  subAgentReminderEscalationSeconds: number;
   candidateDebounceStateFilePath: string | null;
   activeHubTaskStatus: string | null;
   hubTaskStatusResolver: HubTaskStatusResolver | null;
@@ -78,6 +76,7 @@ const createSubAgentActivityRepository = (
       new FileSystemSubAgentTranscriptDirectoryResolver(
         subAgentTranscriptRootDirectory,
       ),
+      new NodeSubAgentProcessLister(localCommandRunner),
       now,
     );
   }
@@ -107,7 +106,6 @@ export const notifySilentTmuxSessions = async (
     subAgentRunningThresholdSeconds,
     staggerSeconds,
     candidateDebounceRecencyWindowSeconds,
-    subAgentReminderEscalationSeconds,
     candidateDebounceStateFilePath,
     activeHubTaskStatus,
     hubTaskStatusResolver,
@@ -163,7 +161,6 @@ export const notifySilentTmuxSessions = async (
     subAgentRunningThresholdSeconds,
     staggerSeconds,
     candidateDebounceRecencyWindowSeconds,
-    subAgentReminderEscalationSeconds,
     activeHubTaskStatus,
     hubTaskStatusCacheTtlSeconds,
     now,
@@ -177,7 +174,5 @@ export const DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS = {
   staggerSeconds: DEFAULT_NOTIFICATION_STAGGER_SECONDS,
   candidateDebounceRecencyWindowSeconds:
     DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS,
-  subAgentReminderEscalationSeconds:
-    DEFAULT_SUBAGENT_REMINDER_ESCALATION_SECONDS,
   hubTaskStatusCacheTtlSeconds: DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS,
 } as const;

@@ -46,15 +46,13 @@ class DefaultSilentSessionMessageComposer {
         this.composeMainStalledSection = (mainSilentSeconds) => {
             return composeMainStalledMessage(mainSilentSeconds, this.ownerCallMarker);
         };
-        this.composeSubAgentSection = (subAgents, thresholds) => {
-            const idleSubAgents = subAgents.filter((subAgent) => subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds);
-            const longRunningSubAgents = subAgents.filter((subAgent) => subAgent.runningSeconds >= thresholds.subAgentRunningThresholdSeconds);
+        this.composeSubAgentSection = (stallSections) => {
             const sections = [];
-            if (idleSubAgents.length > 0) {
-                sections.push(composeIdleSubAgentSection(idleSubAgents));
+            if (stallSections.idleSubAgents.length > 0) {
+                sections.push(composeIdleSubAgentSection(stallSections.idleSubAgents));
             }
-            if (longRunningSubAgents.length > 0) {
-                sections.push(composeLongRunningSubAgentSection(longRunningSubAgents));
+            if (stallSections.longRunningSubAgents.length > 0) {
+                sections.push(composeLongRunningSubAgentSection(stallSections.longRunningSubAgents));
             }
             return sections.join('\n\n');
         };
