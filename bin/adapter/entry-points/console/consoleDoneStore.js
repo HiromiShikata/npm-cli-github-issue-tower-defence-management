@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.recordDoneProjectItemIdAcrossTabs = exports.CONSOLE_DONE_TAB_NAMES = exports.recordDoneProjectItemId = exports.readDoneProjectItemIds = exports.doneFilePathForTab = exports.CONSOLE_DONE_FILE_NAME = void 0;
+exports.resetDoneProjectItemIdsAcrossTabs = exports.resetDoneProjectItemIds = exports.recordDoneProjectItemIdAcrossTabs = exports.CONSOLE_DONE_TAB_NAMES = exports.recordDoneProjectItemId = exports.readDoneProjectItemIds = exports.doneFilePathForTab = exports.CONSOLE_DONE_FILE_NAME = void 0;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 exports.CONSOLE_DONE_FILE_NAME = '.done.json';
@@ -53,6 +53,12 @@ const parseDoneRecord = (raw) => {
 };
 const doneFilePathForTab = (consoleDataOutputDir, pjcode, tab) => path.join(consoleDataOutputDir, pjcode, tab, exports.CONSOLE_DONE_FILE_NAME);
 exports.doneFilePathForTab = doneFilePathForTab;
+const writeDoneRecordAtomic = (filePath, record) => {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    const tmpPath = `${filePath}.tmp`;
+    fs.writeFileSync(tmpPath, JSON.stringify(record));
+    fs.renameSync(tmpPath, filePath);
+};
 const readDoneProjectItemIds = (consoleDataOutputDir, pjcode, tab) => {
     const filePath = (0, exports.doneFilePathForTab)(consoleDataOutputDir, pjcode, tab);
     let raw;
@@ -77,10 +83,7 @@ const recordDoneProjectItemId = (consoleDataOutputDir, pjcode, tab, projectItemI
     const updated = {
         projectItemIds: [...existing, projectItemId],
     };
-    fs.mkdirSync(path.dirname(filePath), { recursive: true });
-    const tmpPath = `${filePath}.tmp`;
-    fs.writeFileSync(tmpPath, JSON.stringify(updated));
-    fs.renameSync(tmpPath, filePath);
+    writeDoneRecordAtomic(filePath, updated);
 };
 exports.recordDoneProjectItemId = recordDoneProjectItemId;
 exports.CONSOLE_DONE_TAB_NAMES = [
@@ -98,4 +101,15 @@ const recordDoneProjectItemIdAcrossTabs = (consoleDataOutputDir, pjcode, project
     }
 };
 exports.recordDoneProjectItemIdAcrossTabs = recordDoneProjectItemIdAcrossTabs;
+const resetDoneProjectItemIds = (consoleDataOutputDir, pjcode, tab) => {
+    const filePath = (0, exports.doneFilePathForTab)(consoleDataOutputDir, pjcode, tab);
+    writeDoneRecordAtomic(filePath, { projectItemIds: [] });
+};
+exports.resetDoneProjectItemIds = resetDoneProjectItemIds;
+const resetDoneProjectItemIdsAcrossTabs = (consoleDataOutputDir, pjcode) => {
+    for (const tab of exports.CONSOLE_DONE_TAB_NAMES) {
+        (0, exports.resetDoneProjectItemIds)(consoleDataOutputDir, pjcode, tab);
+    }
+};
+exports.resetDoneProjectItemIdsAcrossTabs = resetDoneProjectItemIdsAcrossTabs;
 //# sourceMappingURL=consoleDoneStore.js.map

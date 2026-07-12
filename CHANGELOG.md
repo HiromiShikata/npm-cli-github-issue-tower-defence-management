@@ -1,3 +1,11 @@
+## [1.122.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.3...v1.122.4) (2026-07-12)
+
+
+### Bug Fixes
+
+* **console:** reset per-tab .done.json on list regeneration to bound optimistic-hide store ([#1157](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1157)) ([d632054](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d632054c3d8b38d30feb09eea62c235b1aaab280))
+* **silent-monitor:** judge sub-agent wait state instead of time-window suppression ([#1160](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1160)) ([14cbb6c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/14cbb6cbb31a2424a445f764ac0cee160f2d8ea4))
+
 ## [1.122.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.2...v1.122.3) (2026-07-11)
 
 
