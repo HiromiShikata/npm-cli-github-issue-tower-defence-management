@@ -1,8 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.NotifySilentLiveSessionsUseCase = exports.isGitHubIssueOrPullRequestSessionName = exports.parseHubTaskIssueUrlFromSessionName = exports.DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS = exports.DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS = exports.DEFAULT_NOTIFICATION_STAGGER_SECONDS = exports.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = exports.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = exports.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = void 0;
+exports.NotifySilentLiveSessionsUseCase = exports.isGitHubIssueOrPullRequestSessionName = exports.parseHubTaskIssueUrlFromSessionName = exports.DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS = exports.DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS = exports.DEFAULT_NOTIFICATION_STAGGER_SECONDS = exports.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = exports.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = exports.DEFAULT_UNANSWERED_OWNER_CALL_GRACE_SECONDS = exports.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = void 0;
 const ResolveInteractiveLiveSessionsUseCase_1 = require("./ResolveInteractiveLiveSessionsUseCase");
 exports.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = 10 * 60;
+exports.DEFAULT_UNANSWERED_OWNER_CALL_GRACE_SECONDS = 60 * 60;
 exports.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = 5 * 60;
 exports.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = 15 * 60;
 exports.DEFAULT_NOTIFICATION_STAGGER_SECONDS = 25;
@@ -172,29 +173,38 @@ class NotifySilentLiveSessionsUseCase {
                 lastOutputBySessionName.set(activity.sessionName, activity.lastOutputEpochSeconds);
             }
             const subAgentsBySessionName = await this.subAgentActivityRepository.listSubAgentActivitiesBySessionName(sessionNames, transcriptPathBySessionName);
-            const sessionNamesWithUnansweredOwnerCall = await this.ownerCallStatusProvider.listSessionNamesWithUnansweredOwnerCall(transcriptPathBySessionName);
+            const unansweredOwnerCallEpochSecondsBySessionName = await this.ownerCallStatusProvider.listUnansweredOwnerCallEpochSecondsBySessionName(transcriptPathBySessionName);
             const nowEpochSeconds = Math.floor(now.getTime() / 1000);
             return sessionNames.map((sessionName) => {
                 const lastOutputEpochSeconds = lastOutputBySessionName.get(sessionName);
                 const mainSilentSeconds = lastOutputEpochSeconds === undefined
                     ? null
                     : nowEpochSeconds - lastOutputEpochSeconds;
+                const unansweredOwnerCallEpochSeconds = unansweredOwnerCallEpochSecondsBySessionName.get(sessionName);
                 return {
                     sessionName,
                     mainSilentSeconds,
                     subAgents: subAgentsBySessionName.get(sessionName) ?? [],
-                    hasUnansweredOwnerCall: sessionNamesWithUnansweredOwnerCall.has(sessionName),
+                    unansweredOwnerCallAgeSeconds: unansweredOwnerCallEpochSeconds === undefined
+                        ? null
+                        : nowEpochSeconds - unansweredOwnerCallEpochSeconds,
                 };
             });
         };
         this.composeCandidate = async (snapshot, thresholds) => {
             const sections = [];
             const mainSilentSeconds = snapshot.mainSilentSeconds;
+            const unansweredOwnerCallAgeSeconds = snapshot.unansweredOwnerCallAgeSeconds;
+            const suppressedByRecentOwnerCall = unansweredOwnerCallAgeSeconds !== null &&
+                unansweredOwnerCallAgeSeconds <
+                    thresholds.unansweredOwnerCallGraceSeconds;
             const mainTriggered = mainSilentSeconds !== null &&
                 mainSilentSeconds >= thresholds.mainSilentThresholdSeconds &&
-                !snapshot.hasUnansweredOwnerCall;
+                !suppressedByRecentOwnerCall;
             if (mainTriggered) {
-                sections.push(this.messageComposer.composeMainStalledSection(mainSilentSeconds));
+                sections.push(unansweredOwnerCallAgeSeconds !== null
+                    ? this.messageComposer.composeMainStalledWithStaleOwnerCallSection(mainSilentSeconds, unansweredOwnerCallAgeSeconds)
+                    : this.messageComposer.composeMainStalledSection(mainSilentSeconds));
             }
             const idleSubAgents = snapshot.subAgents.filter((subAgent) => !subAgent.waitingOnExternalProcess &&
                 subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds);

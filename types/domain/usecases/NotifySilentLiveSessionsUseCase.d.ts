@@ -10,6 +10,7 @@ import { SilentSessionHubTaskStatusCacheRepository } from './adapter-interfaces/
 import { Sleeper } from './adapter-interfaces/Sleeper';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 export declare const DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS: number;
+export declare const DEFAULT_UNANSWERED_OWNER_CALL_GRACE_SECONDS: number;
 export declare const DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS: number;
 export declare const DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS: number;
 export declare const DEFAULT_NOTIFICATION_STAGGER_SECONDS = 25;
@@ -34,6 +35,7 @@ export declare class NotifySilentLiveSessionsUseCase {
     constructor(liveSessionProcessSnapshotProvider: LiveSessionProcessSnapshotProvider, interactiveLiveSessionTranscriptResolver: InteractiveLiveSessionTranscriptResolver, sessionOutputActivityRepository: SessionOutputActivityRepository, subAgentActivityRepository: SessionSubAgentActivityRepository, ownerCallStatusProvider: OwnerCallStatusProvider, notificationRepository: SilentSessionNotificationRepository, candidateStateRepository: SilentSessionCandidateStateRepository, messageComposer: SilentSessionMessageComposer, sleeper: Sleeper, hubTaskStatusResolver?: HubTaskStatusResolver | null, hubTaskStatusCacheRepository?: SilentSessionHubTaskStatusCacheRepository | null);
     run: (params: {
         mainSilentThresholdSeconds: number;
+        unansweredOwnerCallGraceSeconds: number;
         subAgentSilentThresholdSeconds: number;
         subAgentRunningThresholdSeconds: number;
         staggerSeconds: number;

@@ -116,6 +116,81 @@ describe('DefaultSilentSessionMessageComposer', () => {
     expect(section).not.toContain('""');
   });
 
+  it('embeds the reminder sentinel in the stale-owner-call main-stalled section', () => {
+    const section = composer.composeMainStalledWithStaleOwnerCallSection(
+      600,
+      3600,
+    );
+    expect(section).toContain(SILENT_SESSION_REMINDER_SENTINEL);
+  });
+
+  it('renders the stale-owner-call section with the silent and owner-call-age minutes substituted', () => {
+    const section = composer.composeMainStalledWithStaleOwnerCallSection(
+      659,
+      3659,
+    );
+    expect(section).toContain(
+      'You have produced no output for 10 minutes, and the owner call you raised 60 minutes ago is still unanswered.',
+    );
+  });
+
+  it('directs the agent to re-raise its pending ask as a fresh fully self-contained owner call', () => {
+    const section = composer.composeMainStalledWithStaleOwnerCallSection(
+      600,
+      3600,
+    );
+    expect(section).toContain(
+      'If you are still blocked on the owner, re-raise your pending ask NOW as a fresh owner call.',
+    );
+    expect(section).toContain(
+      'Make it fully self-contained: restate the whole situation — what happened, what you are asking, and any decision needed — inside the new owner call itself',
+    );
+  });
+
+  it('directs the agent to continue autonomously when it is no longer blocked', () => {
+    const section = composer.composeMainStalledWithStaleOwnerCallSection(
+      600,
+      3600,
+    );
+    expect(section).toContain(
+      'If you are no longer blocked — the answer became unnecessary, you can proceed safely, or the information arrived another way — resume immediately and drive all remaining tasks to completion.',
+    );
+  });
+
+  it('states that the stale-owner-call reminder itself does not notify the owner', () => {
+    const section = composer.composeMainStalledWithStaleOwnerCallSection(
+      600,
+      3600,
+    );
+    expect(section).toContain(
+      'This reminder does not notify the owner; only a fresh owner call from you surfaces this session to the owner.',
+    );
+  });
+
+  it('interpolates the configured owner-call marker into the stale-owner-call format guidance', () => {
+    const markedComposer = new DefaultSilentSessionMessageComposer(
+      '<<OWNER_CALL>>',
+    );
+    const section = markedComposer.composeMainStalledWithStaleOwnerCallSection(
+      600,
+      3600,
+    );
+    expect(section).toContain(
+      'the configured owner-call marker tag "<<OWNER_CALL>>" as a complete matching pair',
+    );
+    expect(section).toContain('🔴');
+  });
+
+  it('composes the stale-owner-call section distinctly from the plain main-stalled section', () => {
+    const plainSection = composer.composeMainStalledSection(600);
+    const staleSection = composer.composeMainStalledWithStaleOwnerCallSection(
+      600,
+      3600,
+    );
+    expect(staleSection).not.toBe(plainSection);
+    expect(plainSection).not.toContain('is still unanswered');
+  });
+
   it('emits a distinct idle message for a sub-agent that is only output-idle', () => {
     const section = composer.composeSubAgentSection({
       idleSubAgents: [

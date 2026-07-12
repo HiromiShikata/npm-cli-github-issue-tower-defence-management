@@ -32,7 +32,7 @@ const createSubAgentActivityRepository = (subAgentTranscriptRootDirectory, subAg
     return new ProcessListSessionSubAgentActivityRepository_1.ProcessListSessionSubAgentActivityRepository(subAgentProcessMatchPattern, new NodeSubAgentProcessLister_1.NodeSubAgentProcessLister(localCommandRunner), new FileSystemSubAgentSilentSecondsResolver_1.FileSystemSubAgentSilentSecondsResolver(subAgentOutputRootDirectory, now));
 };
 const notifySilentTmuxSessions = async (params) => {
-    const { enabled, localCommandRunner, processEnvironReader, ownerCallMarker, subAgentOutputRootDirectory, subAgentProcessMatchPattern, subAgentTranscriptRootDirectory, mainSilentThresholdSeconds, subAgentSilentThresholdSeconds, subAgentRunningThresholdSeconds, staggerSeconds, candidateDebounceRecencyWindowSeconds, candidateDebounceStateFilePath, activeHubTaskStatus, hubTaskStatusResolver, hubTaskStatusCacheStateFilePath, hubTaskStatusCacheTtlSeconds, messageTemplates, now, } = params;
+    const { enabled, localCommandRunner, processEnvironReader, ownerCallMarker, subAgentOutputRootDirectory, subAgentProcessMatchPattern, subAgentTranscriptRootDirectory, mainSilentThresholdSeconds, unansweredOwnerCallGraceSeconds, subAgentSilentThresholdSeconds, subAgentRunningThresholdSeconds, staggerSeconds, candidateDebounceRecencyWindowSeconds, candidateDebounceStateFilePath, activeHubTaskStatus, hubTaskStatusResolver, hubTaskStatusCacheStateFilePath, hubTaskStatusCacheTtlSeconds, messageTemplates, now, } = params;
     if (!enabled) {
         console.log('Silent live session notification skipped: not enabled (set silentNotificationEnabled or TDPM_SILENT_NOTIFICATION_ENABLED=true to enable).');
         return;
@@ -45,6 +45,7 @@ const notifySilentTmuxSessions = async (params) => {
         : new FileSystemSilentSessionHubTaskStatusCacheRepository_1.FileSystemSilentSessionHubTaskStatusCacheRepository());
     await useCase.run({
         mainSilentThresholdSeconds,
+        unansweredOwnerCallGraceSeconds,
         subAgentSilentThresholdSeconds,
         subAgentRunningThresholdSeconds,
         staggerSeconds,
@@ -57,6 +58,7 @@ const notifySilentTmuxSessions = async (params) => {
 exports.notifySilentTmuxSessions = notifySilentTmuxSessions;
 exports.DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS = {
     mainSilentThresholdSeconds: NotifySilentLiveSessionsUseCase_1.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+    unansweredOwnerCallGraceSeconds: NotifySilentLiveSessionsUseCase_1.DEFAULT_UNANSWERED_OWNER_CALL_GRACE_SECONDS,
     subAgentSilentThresholdSeconds: NotifySilentLiveSessionsUseCase_1.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
     subAgentRunningThresholdSeconds: NotifySilentLiveSessionsUseCase_1.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
     staggerSeconds: NotifySilentLiveSessionsUseCase_1.DEFAULT_NOTIFICATION_STAGGER_SECONDS,

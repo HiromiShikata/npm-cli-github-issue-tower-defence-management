@@ -91,31 +91,41 @@ const hasOwnerTextReply = (content: unknown): boolean => {
 export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvider {
   constructor(private readonly ownerCallMarker: string | null) {}
 
-  listSessionNamesWithUnansweredOwnerCall = async (
+  listUnansweredOwnerCallEpochSecondsBySessionName = async (
     transcriptPathBySessionName: Map<string, string>,
-  ): Promise<Set<string>> => {
-    const waiting = new Set<string>();
+  ): Promise<Map<string, number>> => {
+    const unansweredOwnerCallEpochSecondsBySessionName = new Map<
+      string,
+      number
+    >();
     if (this.ownerCallMarker === null || this.ownerCallMarker.length === 0) {
-      return waiting;
+      return unansweredOwnerCallEpochSecondsBySessionName;
     }
     const marker = this.ownerCallMarker;
     for (const [sessionName, transcriptPath] of transcriptPathBySessionName) {
-      if (this.isWaitingForOwnerReply(transcriptPath, marker)) {
-        waiting.add(sessionName);
+      const unansweredOwnerCallEpochMs = this.findUnansweredOwnerCallEpochMs(
+        transcriptPath,
+        marker,
+      );
+      if (unansweredOwnerCallEpochMs !== null) {
+        unansweredOwnerCallEpochSecondsBySessionName.set(
+          sessionName,
+          Math.floor(unansweredOwnerCallEpochMs / 1000),
+        );
       }
     }
-    return waiting;
+    return unansweredOwnerCallEpochSecondsBySessionName;
   };
 
-  private isWaitingForOwnerReply = (
+  private findUnansweredOwnerCallEpochMs = (
     transcriptPath: string,
     marker: string,
-  ): boolean => {
+  ): number | null => {
     let content: string;
     try {
       content = fs.readFileSync(transcriptPath, 'utf8');
     } catch {
-      return false;
+      return null;
     }
     let lastOwnerCallEpochMs: number | null = null;
     let lastOwnerReplyEpochMs: number | null = null;
@@ -155,11 +165,11 @@ export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvide
       }
     }
     if (lastOwnerCallEpochMs === null) {
-      return false;
+      return null;
     }
-    return (
-      lastOwnerReplyEpochMs === null ||
+    return lastOwnerReplyEpochMs === null ||
       lastOwnerCallEpochMs > lastOwnerReplyEpochMs
-    );
+      ? lastOwnerCallEpochMs
+      : null;
   };
 }

@@ -1,5 +1,5 @@
 export interface OwnerCallStatusProvider {
-  listSessionNamesWithUnansweredOwnerCall: (
+  listUnansweredOwnerCallEpochSecondsBySessionName: (
     transcriptPathBySessionName: Map<string, string>,
-  ) => Promise<Set<string>>;
+  ) => Promise<Map<string, number>>;
 }

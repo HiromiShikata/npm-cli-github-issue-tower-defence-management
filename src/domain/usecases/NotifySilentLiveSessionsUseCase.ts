@@ -14,6 +14,7 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ResolveInteractiveLiveSessionsUseCase } from './ResolveInteractiveLiveSessionsUseCase';
 
 export const DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = 10 * 60;
+export const DEFAULT_UNANSWERED_OWNER_CALL_GRACE_SECONDS = 60 * 60;
 export const DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = 5 * 60;
 export const DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = 15 * 60;
 export const DEFAULT_NOTIFICATION_STAGGER_SECONDS = 25;
@@ -78,6 +79,7 @@ export class NotifySilentLiveSessionsUseCase {
 
   run = async (params: {
     mainSilentThresholdSeconds: number;
+    unansweredOwnerCallGraceSeconds: number;
     subAgentSilentThresholdSeconds: number;
     subAgentRunningThresholdSeconds: number;
     staggerSeconds: number;
@@ -324,8 +326,8 @@ export class NotifySilentLiveSessionsUseCase {
         transcriptPathBySessionName,
       );
 
-    const sessionNamesWithUnansweredOwnerCall =
-      await this.ownerCallStatusProvider.listSessionNamesWithUnansweredOwnerCall(
+    const unansweredOwnerCallEpochSecondsBySessionName =
+      await this.ownerCallStatusProvider.listUnansweredOwnerCallEpochSecondsBySessionName(
         transcriptPathBySessionName,
       );
 
@@ -336,12 +338,16 @@ export class NotifySilentLiveSessionsUseCase {
         lastOutputEpochSeconds === undefined
           ? null
           : nowEpochSeconds - lastOutputEpochSeconds;
+      const unansweredOwnerCallEpochSeconds =
+        unansweredOwnerCallEpochSecondsBySessionName.get(sessionName);
       return {
         sessionName,
         mainSilentSeconds,
         subAgents: subAgentsBySessionName.get(sessionName) ?? [],
-        hasUnansweredOwnerCall:
-          sessionNamesWithUnansweredOwnerCall.has(sessionName),
+        unansweredOwnerCallAgeSeconds:
+          unansweredOwnerCallEpochSeconds === undefined
+            ? null
+            : nowEpochSeconds - unansweredOwnerCallEpochSeconds,
       };
     });
   };
@@ -350,6 +356,7 @@ export class NotifySilentLiveSessionsUseCase {
     snapshot: LiveSessionActivitySnapshot,
     thresholds: {
       mainSilentThresholdSeconds: number;
+      unansweredOwnerCallGraceSeconds: number;
       subAgentSilentThresholdSeconds: number;
       subAgentRunningThresholdSeconds: number;
       now: Date;
@@ -358,13 +365,24 @@ export class NotifySilentLiveSessionsUseCase {
     const sections: string[] = [];
 
     const mainSilentSeconds = snapshot.mainSilentSeconds;
+    const unansweredOwnerCallAgeSeconds =
+      snapshot.unansweredOwnerCallAgeSeconds;
+    const suppressedByRecentOwnerCall =
+      unansweredOwnerCallAgeSeconds !== null &&
+      unansweredOwnerCallAgeSeconds <
+        thresholds.unansweredOwnerCallGraceSeconds;
     const mainTriggered =
       mainSilentSeconds !== null &&
       mainSilentSeconds >= thresholds.mainSilentThresholdSeconds &&
-      !snapshot.hasUnansweredOwnerCall;
+      !suppressedByRecentOwnerCall;
     if (mainTriggered) {
       sections.push(
-        this.messageComposer.composeMainStalledSection(mainSilentSeconds),
+        unansweredOwnerCallAgeSeconds !== null
+          ? this.messageComposer.composeMainStalledWithStaleOwnerCallSection(
+              mainSilentSeconds,
+              unansweredOwnerCallAgeSeconds,
+            )
+          : this.messageComposer.composeMainStalledSection(mainSilentSeconds),
       );
     }
 

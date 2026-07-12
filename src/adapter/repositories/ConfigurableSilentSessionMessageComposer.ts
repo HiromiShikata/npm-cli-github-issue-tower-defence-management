@@ -13,6 +13,7 @@ const withReminderSentinel = (message: string): string =>
 
 export type SilentSessionMessageTemplates = {
   mainStalledMessage: string | null;
+  mainStalledStaleOwnerCallMessage: string | null;
   subAgentIdleMessageHeader: string | null;
   subAgentIdleMessageFooter: string | null;
   subAgentLongRunningMessageHeader: string | null;
@@ -37,6 +38,21 @@ export class ConfigurableSilentSessionMessageComposer implements SilentSessionMe
     }
     return withReminderSentinel(
       `${this.templates.mainStalledMessage} ${composeOwnerCallFormatGuidance(this.ownerCallMarker)}`,
+    );
+  };
+
+  composeMainStalledWithStaleOwnerCallSection = (
+    mainSilentSeconds: number,
+    unansweredOwnerCallAgeSeconds: number,
+  ): string => {
+    if (this.templates.mainStalledStaleOwnerCallMessage === null) {
+      return this.fallback.composeMainStalledWithStaleOwnerCallSection(
+        mainSilentSeconds,
+        unansweredOwnerCallAgeSeconds,
+      );
+    }
+    return withReminderSentinel(
+      `${this.templates.mainStalledStaleOwnerCallMessage} ${composeOwnerCallFormatGuidance(this.ownerCallMarker)}`,
     );
   };
 

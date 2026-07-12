@@ -129,11 +129,46 @@ describe('TranscriptOwnerCallStatusProvider', () => {
     ]);
     const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
 
-    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
-      new Map([[sessionName, transcriptPath]]),
-    );
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
 
     expect(result.has(sessionName)).toBe(true);
+  });
+
+  it('exposes the epoch seconds of the unanswered owner call so its age can be computed', async () => {
+    const transcriptPath = writeTranscript('workbench.jsonl', [
+      ownerReply('2026-06-27T10:00:00.000Z'),
+      assistantWithMarker('2026-06-27T10:05:00.000Z'),
+    ]);
+    const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
+
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
+
+    expect(result.get(sessionName)).toBe(
+      Math.floor(Date.parse('2026-06-27T10:05:00.000Z') / 1000),
+    );
+  });
+
+  it('exposes the epoch seconds of the latest owner call when several calls are unanswered', async () => {
+    const transcriptPath = writeTranscript('workbench.jsonl', [
+      assistantWithMarker('2026-06-27T09:00:00.000Z'),
+      assistantWithMarker('2026-06-27T10:05:00.000Z'),
+    ]);
+    const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
+
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
+
+    expect(result.get(sessionName)).toBe(
+      Math.floor(Date.parse('2026-06-27T10:05:00.000Z') / 1000),
+    );
   });
 
   it('does not report a session as waiting when a later owner reply followed the call', async () => {
@@ -143,9 +178,10 @@ describe('TranscriptOwnerCallStatusProvider', () => {
     ]);
     const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
 
-    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
-      new Map([[sessionName, transcriptPath]]),
-    );
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
 
     expect(result.has(sessionName)).toBe(false);
   });
@@ -157,9 +193,10 @@ describe('TranscriptOwnerCallStatusProvider', () => {
     ]);
     const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
 
-    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
-      new Map([[sessionName, transcriptPath]]),
-    );
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
 
     expect(result.has(sessionName)).toBe(false);
   });
@@ -171,9 +208,10 @@ describe('TranscriptOwnerCallStatusProvider', () => {
     ]);
     const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
 
-    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
-      new Map([[sessionName, transcriptPath]]),
-    );
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
 
     expect(result.has(sessionName)).toBe(true);
   });
@@ -185,9 +223,10 @@ describe('TranscriptOwnerCallStatusProvider', () => {
     ]);
     const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
 
-    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
-      new Map([[sessionName, transcriptPath]]),
-    );
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
 
     expect(result.has(sessionName)).toBe(true);
   });
@@ -199,9 +238,10 @@ describe('TranscriptOwnerCallStatusProvider', () => {
     ]);
     const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
 
-    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
-      new Map([[sessionName, transcriptPath]]),
-    );
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
 
     expect(result.has(sessionName)).toBe(true);
   });
@@ -214,9 +254,10 @@ describe('TranscriptOwnerCallStatusProvider', () => {
     ]);
     const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
 
-    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
-      new Map([[sessionName, transcriptPath]]),
-    );
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
 
     expect(result.has(sessionName)).toBe(false);
   });
@@ -228,9 +269,10 @@ describe('TranscriptOwnerCallStatusProvider', () => {
     ]);
     const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
 
-    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
-      new Map([[sessionName, transcriptPath]]),
-    );
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
 
     expect(result.has(sessionName)).toBe(true);
   });
@@ -242,9 +284,10 @@ describe('TranscriptOwnerCallStatusProvider', () => {
     ]);
     const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
 
-    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
-      new Map([[sessionName, transcriptPath]]),
-    );
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
 
     expect(result.has(sessionName)).toBe(true);
   });
@@ -256,9 +299,10 @@ describe('TranscriptOwnerCallStatusProvider', () => {
     ]);
     const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
 
-    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
-      new Map([[sessionName, transcriptPath]]),
-    );
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
 
     expect(result.has(sessionName)).toBe(false);
   });
@@ -271,9 +315,10 @@ describe('TranscriptOwnerCallStatusProvider', () => {
     ]);
     const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
 
-    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
-      new Map([[sessionName, transcriptPath]]),
-    );
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
 
     expect(result.has(sessionName)).toBe(false);
   });
@@ -285,23 +330,25 @@ describe('TranscriptOwnerCallStatusProvider', () => {
     ]);
     const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
 
-    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
-      new Map([[sessionName, transcriptPath]]),
-    );
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
 
     expect(result.has(sessionName)).toBe(false);
   });
 
-  it('returns an empty set when the marker is null', async () => {
+  it('returns an empty map when the marker is null', async () => {
     const transcriptPath = writeTranscript('workbench.jsonl', [
       ownerReply('2026-06-27T10:00:00.000Z'),
       assistantWithMarker('2026-06-27T10:05:00.000Z'),
     ]);
     const provider = new TranscriptOwnerCallStatusProvider(null);
 
-    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
-      new Map([[sessionName, transcriptPath]]),
-    );
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
 
     expect(result.size).toBe(0);
   });
@@ -309,9 +356,10 @@ describe('TranscriptOwnerCallStatusProvider', () => {
   it('ignores a session whose transcript file is missing', async () => {
     const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
 
-    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
-      new Map([[sessionName, path.join(rootDirectory, 'missing.jsonl')]]),
-    );
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, path.join(rootDirectory, 'missing.jsonl')]]),
+      );
 
     expect(result.size).toBe(0);
   });
@@ -328,9 +376,10 @@ describe('TranscriptOwnerCallStatusProvider', () => {
     );
     const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
 
-    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
-      new Map([[sessionName, filePath]]),
-    );
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, filePath]]),
+      );
 
     expect(result.has(sessionName)).toBe(true);
   });
@@ -348,9 +397,10 @@ describe('TranscriptOwnerCallStatusProvider', () => {
     ]);
     const provider = new TranscriptOwnerCallStatusProvider('<call-to-user>');
 
-    const result = await provider.listSessionNamesWithUnansweredOwnerCall(
-      new Map([[sessionName, transcriptPath]]),
-    );
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
 
     expect(result.has(sessionName)).toBe(true);
   });
