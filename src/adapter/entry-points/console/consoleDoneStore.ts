@@ -33,6 +33,16 @@ export const doneFilePathForTab = (
 ): string =>
   path.join(consoleDataOutputDir, pjcode, tab, CONSOLE_DONE_FILE_NAME);
 
+const writeDoneRecordAtomic = (
+  filePath: string,
+  record: ConsoleDoneRecord,
+): void => {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  const tmpPath = `${filePath}.tmp`;
+  fs.writeFileSync(tmpPath, JSON.stringify(record));
+  fs.renameSync(tmpPath, filePath);
+};
+
 export const readDoneProjectItemIds = (
   consoleDataOutputDir: string,
   pjcode: string,
@@ -65,10 +75,7 @@ export const recordDoneProjectItemId = (
   const updated: ConsoleDoneRecord = {
     projectItemIds: [...existing, projectItemId],
   };
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  const tmpPath = `${filePath}.tmp`;
-  fs.writeFileSync(tmpPath, JSON.stringify(updated));
-  fs.renameSync(tmpPath, filePath);
+  writeDoneRecordAtomic(filePath, updated);
 };
 
 export const CONSOLE_DONE_TAB_NAMES: string[] = [
@@ -88,5 +95,24 @@ export const recordDoneProjectItemIdAcrossTabs = (
 ): void => {
   for (const tab of CONSOLE_DONE_TAB_NAMES) {
     recordDoneProjectItemId(consoleDataOutputDir, pjcode, tab, projectItemId);
+  }
+};
+
+export const resetDoneProjectItemIds = (
+  consoleDataOutputDir: string,
+  pjcode: string,
+  tab: string,
+): void => {
+  writeDoneRecordAtomic(doneFilePathForTab(consoleDataOutputDir, pjcode, tab), {
+    projectItemIds: [],
+  });
+};
+
+export const resetDoneProjectItemIdsAcrossTabs = (
+  consoleDataOutputDir: string,
+  pjcode: string,
+): void => {
+  for (const tab of CONSOLE_DONE_TAB_NAMES) {
+    resetDoneProjectItemIds(consoleDataOutputDir, pjcode, tab);
   }
 };

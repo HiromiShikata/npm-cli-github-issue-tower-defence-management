@@ -8,6 +8,8 @@ import {
   readDoneProjectItemIds,
   recordDoneProjectItemId,
   recordDoneProjectItemIdAcrossTabs,
+  resetDoneProjectItemIds,
+  resetDoneProjectItemIdsAcrossTabs,
 } from './consoleDoneStore';
 
 describe('consoleDoneStore', () => {
@@ -101,6 +103,52 @@ describe('consoleDoneStore', () => {
       expect(
         readDoneProjectItemIds(baseDir, 'umino', 'workflow-blocker'),
       ).toEqual(['PVTI_7']);
+    });
+  });
+
+  describe('resetDoneProjectItemIds', () => {
+    it('writes an empty projectItemIds record for the tab', () => {
+      resetDoneProjectItemIds(baseDir, 'umino', 'prs');
+      const raw = fs.readFileSync(
+        doneFilePathForTab(baseDir, 'umino', 'prs'),
+        'utf-8',
+      );
+      expect(JSON.parse(raw)).toEqual({ projectItemIds: [] });
+    });
+
+    it('clears an accumulated done file to empty', () => {
+      recordDoneProjectItemId(baseDir, 'umino', 'prs', 'PVTI_1');
+      recordDoneProjectItemId(baseDir, 'umino', 'prs', 'PVTI_2');
+      resetDoneProjectItemIds(baseDir, 'umino', 'prs');
+      expect(readDoneProjectItemIds(baseDir, 'umino', 'prs')).toEqual([]);
+    });
+
+    it('does not leave a temp file behind', () => {
+      resetDoneProjectItemIds(baseDir, 'umino', 'prs');
+      expect(
+        fs.existsSync(`${doneFilePathForTab(baseDir, 'umino', 'prs')}.tmp`),
+      ).toBe(false);
+    });
+  });
+
+  describe('resetDoneProjectItemIdsAcrossTabs', () => {
+    it('clears the accumulated done file of every tab', () => {
+      for (const tab of CONSOLE_DONE_TAB_NAMES) {
+        recordDoneProjectItemId(baseDir, 'umino', tab, 'PVTI_1');
+      }
+      resetDoneProjectItemIdsAcrossTabs(baseDir, 'umino');
+      for (const tab of CONSOLE_DONE_TAB_NAMES) {
+        expect(readDoneProjectItemIds(baseDir, 'umino', tab)).toEqual([]);
+      }
+    });
+
+    it('resets the in-tmux-by-human tab so re-entered items are no longer hidden', () => {
+      expect(CONSOLE_DONE_TAB_NAMES).toContain('in-tmux-by-human');
+      recordDoneProjectItemId(baseDir, 'umino', 'in-tmux-by-human', 'PVTI_9');
+      resetDoneProjectItemIdsAcrossTabs(baseDir, 'umino');
+      expect(
+        readDoneProjectItemIds(baseDir, 'umino', 'in-tmux-by-human'),
+      ).toEqual([]);
     });
   });
 });

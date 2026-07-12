@@ -5,6 +5,12 @@ import { mock } from 'jest-mock-extended';
 import { Issue } from '../../../domain/entities/Issue';
 import { FieldOption, Project } from '../../../domain/entities/Project';
 import {
+  CONSOLE_DONE_TAB_NAMES,
+  doneFilePathForTab,
+  readDoneProjectItemIds,
+  recordDoneProjectItemId,
+} from '../console/consoleDoneStore';
+import {
   formatConsoleGeneratedAt,
   writeConsoleLists,
 } from './consoleListsWriter';
@@ -192,6 +198,42 @@ describe('writeConsoleLists', () => {
       generatedAt: '2026-06-14T07:22:33Z',
     });
     expect(fs.existsSync(`${tabFile('prs')}.tmp`)).toBe(false);
+  });
+
+  it('resets every tab done file to empty after regenerating list.json', () => {
+    writeConsoleLists({
+      consoleDataOutputDir: outDir,
+      pjcode: 'demo',
+      assigneeLogin: ASSIGNEE,
+      project,
+      issues: [makeIssue({ status: 'Unread' })],
+      generatedAt: '2026-06-14T07:22:33Z',
+    });
+
+    for (const tab of CONSOLE_DONE_TAB_NAMES) {
+      const raw: unknown = JSON.parse(
+        fs.readFileSync(doneFilePathForTab(outDir, 'demo', tab), 'utf8'),
+      );
+      expect(raw).toEqual({ projectItemIds: [] });
+    }
+  });
+
+  it('clears a pre-existing accumulated done file on regeneration', () => {
+    recordDoneProjectItemId(outDir, 'demo', 'unread', 'PVTI_stale');
+    expect(readDoneProjectItemIds(outDir, 'demo', 'unread')).toEqual([
+      'PVTI_stale',
+    ]);
+
+    writeConsoleLists({
+      consoleDataOutputDir: outDir,
+      pjcode: 'demo',
+      assigneeLogin: ASSIGNEE,
+      project,
+      issues: [makeIssue({ status: 'Unread' })],
+      generatedAt: '2026-06-14T07:22:33Z',
+    });
+
+    expect(readDoneProjectItemIds(outDir, 'demo', 'unread')).toEqual([]);
   });
 
   it('is a no-op when consoleDataOutputDir is unset', () => {

@@ -7,6 +7,7 @@ exports.writeConsoleLists = exports.formatConsoleGeneratedAt = void 0;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const GenerateConsoleListsUseCase_1 = require("../../../domain/usecases/console/GenerateConsoleListsUseCase");
+const consoleDoneStore_1 = require("../console/consoleDoneStore");
 const CONSOLE_TAB_NAMES = [
     'workflow-blocker',
     'prs',
@@ -41,6 +42,7 @@ const writeConsoleLists = (params) => {
     for (const tab of CONSOLE_TAB_NAMES) {
         writeJsonAtomic(path_1.default.join(consoleDataOutputDir, pjcode, tab, 'list.json'), lists[tab]);
     }
+    (0, consoleDoneStore_1.resetDoneProjectItemIdsAcrossTabs)(consoleDataOutputDir, pjcode);
 };
 exports.writeConsoleLists = writeConsoleLists;
 //# sourceMappingURL=consoleListsWriter.js.map
