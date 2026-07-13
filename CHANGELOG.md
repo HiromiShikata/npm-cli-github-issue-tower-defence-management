@@ -1,3 +1,10 @@
+## [1.122.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.5...v1.122.6) (2026-07-13)
+
+
+### Bug Fixes
+
+* **silent-monitor:** neutralize imperative reminder wording that trips model safety classifiers ([#1164](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1164)) ([e82e704](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e82e70438b3e6be00d20d5a3e5037c6bb7ea0325))
+
 ## [1.122.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.4...v1.122.5) (2026-07-12)
 
 
