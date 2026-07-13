@@ -234,7 +234,7 @@ describe('notifySilentTmuxSessions', () => {
       `${SILENT_SESSION_REMINDER_SENTINEL} CUSTOM_MAIN_TEMPLATE`,
     );
     expect(sendCall?.[1][4]).toContain(
-      'NEVER tell the owner to scroll up, go back, or read previous or above messages',
+      'Please avoid telling the owner to scroll up, go back, or read previous or above messages',
     );
   });
 
