@@ -64,10 +64,10 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
     );
     expect(section).toContain('🔴');
     expect(section).toContain(
-      'Make the owner-call message fully self-contained: the owner MUST understand the whole situation — what happened, what you are asking, and any decision needed — from this single latest owner-call message alone, without reading or scrolling back to earlier messages.',
+      'Make the owner-call message fully self-contained: the owner should be able to understand the whole situation — what happened, what you are asking, and any decision needed — from this single latest owner-call message alone, without reading or scrolling back to earlier messages.',
     );
     expect(section).toContain(
-      'NEVER tell the owner to scroll up, go back, or read previous or above messages; if context is needed, restate it inside the owner-call message itself.',
+      'Please avoid telling the owner to scroll up, go back, or read previous or above messages; if context is needed, restate it inside the owner-call message itself.',
     );
   });
 

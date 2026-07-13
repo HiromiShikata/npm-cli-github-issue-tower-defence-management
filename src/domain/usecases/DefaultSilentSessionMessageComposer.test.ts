@@ -30,7 +30,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
     expect(section).toContain(
       'Always work proactively and stay ahead of the work',
     );
-    expect(section).toContain('never wait passively');
+    expect(section).toContain('rather than waiting passively');
     expect(section).toContain('Self-check now:');
     expect(section).toContain('1.');
     expect(section).toContain('2.');
@@ -50,7 +50,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
     const section = composer.composeMainStalledSection(600);
     expect(section).toContain('🔴');
     expect(section).toContain(
-      'The content between the markers MUST begin with the 🔴 emoji immediately, with no space after it.',
+      'The content between the markers needs to begin with the 🔴 emoji immediately, with no space after it.',
     );
     expect(section).toContain(
       'complete matching pair — opening marker, content, then closing marker — on a single line with no newline inside the tag.',
@@ -63,17 +63,17 @@ describe('DefaultSilentSessionMessageComposer', () => {
   it('requires the owner-call message to be fully self-contained and forbids telling the owner to scroll back', () => {
     const section = composer.composeMainStalledSection(600);
     expect(section).toContain(
-      'Make the owner-call message fully self-contained: the owner MUST understand the whole situation — what happened, what you are asking, and any decision needed — from this single latest owner-call message alone, without reading or scrolling back to earlier messages.',
+      'Make the owner-call message fully self-contained: the owner should be able to understand the whole situation — what happened, what you are asking, and any decision needed — from this single latest owner-call message alone, without reading or scrolling back to earlier messages.',
     );
     expect(section).toContain(
-      'NEVER tell the owner to scroll up, go back, or read previous or above messages; if context is needed, restate it inside the owner-call message itself.',
+      'Please avoid telling the owner to scroll up, go back, or read previous or above messages; if context is needed, restate it inside the owner-call message itself.',
     );
   });
 
   it('instructs the agent to fire the owner-call when an owner request has been completed or answered', () => {
     const section = composer.composeMainStalledSection(600);
     expect(section).toContain(
-      'If you have COMPLETED or ANSWERED a request from the owner in this session, you MUST fire the owner-call to report the RESULT to the owner',
+      'If you have COMPLETED or ANSWERED a request from the owner in this session, please fire the owner-call to report the RESULT to the owner',
     );
     expect(section).toContain(
       "completing or answering an owner's requested action is itself a reason to fire the owner-call",
@@ -83,7 +83,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
   it('explains that completing an owner request without an owner-call leaves the owner unnotified', () => {
     const section = composer.composeMainStalledSection(600);
     expect(section).toContain(
-      'Completing or answering an owner request WITHOUT firing the owner-call means the owner is NEVER notified',
+      'Completing or answering an owner request WITHOUT firing the owner-call means the owner is not notified',
     );
     expect(section).toContain(
       "the owner's app only surfaces this session when the owner-call fires",
@@ -226,7 +226,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
       "The system has already detected, from each sub-process's last tool activity, that it has produced no output for about the minutes shown below.",
     );
     expect(section).toContain(
-      'Treat that figure as the authoritative system signal; do NOT spend effort re-deriving whether the sub-process is alive.',
+      'Please treat that figure as the authoritative system signal; there is no need to spend effort re-deriving whether the sub-process is alive.',
     );
     expect(section).toContain('no output for 6m');
   });
@@ -247,7 +247,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
       'Around five minutes of silence is a real warning of a possible hang',
     );
     expect(section).toContain(
-      'do NOT speak from speculation ("probably still working") and do NOT dismiss it without evidence.',
+      'please base your assessment on concrete evidence rather than speculation ("probably still working"), and please keep the warning in view until evidence resolves it.',
     );
   });
 
@@ -291,7 +291,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
       longRunningSubAgents: [],
     });
     expect(section).toContain(
-      'Owner notification is not required, but you MUST output your investigation result in this session so it remains as a log.',
+      'Owner notification is not required, but please output your investigation result in this session so it remains as a log.',
     );
   });
 
@@ -380,6 +380,39 @@ describe('DefaultSilentSessionMessageComposer', () => {
     expect(idleSection).not.toContain('long-only');
     expect(longRunningSection).toContain('long-only');
     expect(longRunningSection).not.toContain('idle-only');
+  });
+
+  it('composes default texts free of prohibition-styled vocabulary that trips model safety classifiers', () => {
+    const flaggedPatterns = [
+      /unacceptable/i,
+      /\bnever\b/i,
+      /\b[Dd]o NOT\b/,
+      /\b[Yy]ou MUST\b/,
+    ];
+    const markedComposer = new DefaultSilentSessionMessageComposer(
+      '<<OWNER_CALL>>',
+    );
+    const subAgent = {
+      label: 'sub-process-1',
+      silentSeconds: 360,
+      runningSeconds: 1200,
+      waitingOnExternalProcess: false,
+    };
+    const composedDefaultTexts = [
+      composer.composeMainStalledSection(600),
+      markedComposer.composeMainStalledSection(600),
+      composer.composeMainStalledWithStaleOwnerCallSection(600, 3600),
+      markedComposer.composeMainStalledWithStaleOwnerCallSection(600, 3600),
+      composer.composeSubAgentSection({
+        idleSubAgents: [subAgent],
+        longRunningSubAgents: [subAgent],
+      }),
+    ];
+    for (const text of composedDefaultTexts) {
+      for (const pattern of flaggedPatterns) {
+        expect(text).not.toMatch(pattern);
+      }
+    }
   });
 
   it('does not contain any host-specific or internal identifiers', () => {
