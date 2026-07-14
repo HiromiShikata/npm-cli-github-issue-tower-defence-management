@@ -14,6 +14,10 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ResolveInteractiveLiveSessionsUseCase } from './ResolveInteractiveLiveSessionsUseCase';
 
 export const DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = 10 * 60;
+// Retained only for backward compatibility of the configuration surface
+// (TDPM_SILENT_UNANSWERED_OWNER_CALL_GRACE_SECONDS). The value is no longer
+// consulted: an unanswered owner call suppresses the main-stall reminder
+// unconditionally (treated as an infinite grace). See composeCandidate.
 export const DEFAULT_UNANSWERED_OWNER_CALL_GRACE_SECONDS = 60 * 60;
 export const DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = 5 * 60;
 export const DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = 15 * 60;
@@ -367,22 +371,23 @@ export class NotifySilentLiveSessionsUseCase {
     const mainSilentSeconds = snapshot.mainSilentSeconds;
     const unansweredOwnerCallAgeSeconds =
       snapshot.unansweredOwnerCallAgeSeconds;
-    const suppressedByRecentOwnerCall =
-      unansweredOwnerCallAgeSeconds !== null &&
-      unansweredOwnerCallAgeSeconds <
-        thresholds.unansweredOwnerCallGraceSeconds;
+    // Owner-defined rule: whenever the latest owner call is newer than the
+    // latest owner reply (i.e. the call is unanswered), the session is
+    // waiting on the owner and MUST NOT receive a main-stall reminder —
+    // unconditionally, with no age or grace expiry. The persistent unread
+    // indicator in the owner's app covers the missed-call case, so a
+    // time-based re-fire is unnecessary. `unansweredOwnerCallGraceSeconds`
+    // is retained in the parameters only for backward compatibility of the
+    // call signature and is intentionally ignored (treated as infinite).
+    const suppressedByUnansweredOwnerCall =
+      unansweredOwnerCallAgeSeconds !== null;
     const mainTriggered =
       mainSilentSeconds !== null &&
       mainSilentSeconds >= thresholds.mainSilentThresholdSeconds &&
-      !suppressedByRecentOwnerCall;
+      !suppressedByUnansweredOwnerCall;
     if (mainTriggered) {
       sections.push(
-        unansweredOwnerCallAgeSeconds !== null
-          ? this.messageComposer.composeMainStalledWithStaleOwnerCallSection(
-              mainSilentSeconds,
-              unansweredOwnerCallAgeSeconds,
-            )
-          : this.messageComposer.composeMainStalledSection(mainSilentSeconds),
+        this.messageComposer.composeMainStalledSection(mainSilentSeconds),
       );
     }
 

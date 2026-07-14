@@ -388,7 +388,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     ).toHaveBeenCalledWith([GITHUB_SESSION], expectedMap);
   });
 
-  it('suppresses the stalled section and sends nothing while the unanswered owner call is younger than the grace period', async () => {
+  it('suppresses the stalled section and sends nothing while the latest owner call is unanswered', async () => {
     setupSilentMainSession(GITHUB_SESSION);
     mockOwnerCallStatusProvider.listUnansweredOwnerCallEpochSecondsBySessionName.mockResolvedValue(
       new Map([
@@ -412,7 +412,32 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     ).not.toHaveBeenCalled();
   });
 
-  it('sends the stale-owner-call stalled section once the unanswered owner call reaches the grace period', async () => {
+  it('suppresses the reminder even when the unanswered owner call is far older than the former grace period (10 hours)', async () => {
+    setupSilentMainSession(GITHUB_SESSION);
+    mockOwnerCallStatusProvider.listUnansweredOwnerCallEpochSecondsBySessionName.mockResolvedValue(
+      new Map([[GITHUB_SESSION, nowEpochSeconds - 10 * 60 * 60]]),
+    );
+
+    await useCase.run(runParams());
+
+    expect(
+      mockMessageComposer.composeMainStalledWithStaleOwnerCallSection,
+    ).not.toHaveBeenCalled();
+    expect(
+      mockMessageComposer.composeMainStalledSection,
+    ).not.toHaveBeenCalled();
+    expect(
+      mockNotificationRepository.sendSelfCheckNotification,
+    ).not.toHaveBeenCalled();
+    expect(
+      mockCandidateStateRepository.saveCandidateSessionNames,
+    ).toHaveBeenCalledWith({
+      sessionNames: [],
+      now,
+    });
+  });
+
+  it('suppresses the reminder at exactly the former grace-period age instead of firing the stale-owner-call section', async () => {
     setupSilentMainSession(GITHUB_SESSION);
     mockOwnerCallStatusProvider.listUnansweredOwnerCallEpochSecondsBySessionName.mockResolvedValue(
       new Map([
@@ -427,22 +452,16 @@ describe('NotifySilentLiveSessionsUseCase', () => {
 
     expect(
       mockMessageComposer.composeMainStalledWithStaleOwnerCallSection,
-    ).toHaveBeenCalledWith(
-      DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
-      DEFAULT_UNANSWERED_OWNER_CALL_GRACE_SECONDS,
-    );
+    ).not.toHaveBeenCalled();
     expect(
       mockMessageComposer.composeMainStalledSection,
     ).not.toHaveBeenCalled();
     expect(
       mockNotificationRepository.sendSelfCheckNotification,
-    ).toHaveBeenCalledWith(
-      GITHUB_SESSION,
-      MAIN_STALLED_STALE_OWNER_CALL_SECTION,
-    );
+    ).not.toHaveBeenCalled();
   });
 
-  it('does not send the stale-owner-call section when the owner call is past the grace period but the main output is not silent past the threshold', async () => {
+  it('does not send anything when the owner call is old and the main output is not silent past the threshold', async () => {
     setupLiveInteractiveSession(GITHUB_SESSION);
     mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
       [
@@ -467,33 +486,6 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     expect(
       mockNotificationRepository.sendSelfCheckNotification,
     ).not.toHaveBeenCalled();
-  });
-
-  it('defers a first-cycle stale-owner-call candidate until it persists into the next cycle', async () => {
-    setupSilentMainSession(GITHUB_SESSION);
-    mockOwnerCallStatusProvider.listUnansweredOwnerCallEpochSecondsBySessionName.mockResolvedValue(
-      new Map([
-        [
-          GITHUB_SESSION,
-          nowEpochSeconds - DEFAULT_UNANSWERED_OWNER_CALL_GRACE_SECONDS,
-        ],
-      ]),
-    );
-    mockCandidateStateRepository.loadRecentCandidateSessionNames.mockResolvedValue(
-      new Set<string>(),
-    );
-
-    await useCase.run(runParams());
-
-    expect(
-      mockNotificationRepository.sendSelfCheckNotification,
-    ).not.toHaveBeenCalled();
-    expect(
-      mockCandidateStateRepository.saveCandidateSessionNames,
-    ).toHaveBeenCalledWith({
-      sessionNames: [GITHUB_SESSION],
-      now,
-    });
   });
 
   it('sends the main stalled section when the session is silent past the threshold and not waiting on the owner', async () => {

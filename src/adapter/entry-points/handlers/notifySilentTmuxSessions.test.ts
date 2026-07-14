@@ -238,7 +238,7 @@ describe('notifySilentTmuxSessions', () => {
     );
   });
 
-  it('suppresses the notification while the unanswered owner call is younger than the grace period', async () => {
+  it('suppresses the notification while the latest owner call is unanswered', async () => {
     const recentPendingOwnerCall = new Date(
       (NOW_EPOCH_SECONDS - 11 * 60) * 1000,
     ).toISOString();
@@ -274,7 +274,7 @@ describe('notifySilentTmuxSessions', () => {
     expect(sendCall).toBeUndefined();
   });
 
-  it('sends the stale-owner-call reminder once the unanswered owner call is older than the grace period', async () => {
+  it('suppresses the notification even when the unanswered owner call is older than the former grace period', async () => {
     const stalePendingOwnerCall = new Date(
       (NOW_EPOCH_SECONDS - 2 * 60 * 60) * 1000,
     ).toISOString();
@@ -307,13 +307,7 @@ describe('notifySilentTmuxSessions', () => {
     const sendCall = runner.runCommand.mock.calls.find(
       (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
     );
-    expect(sendCall?.[1][2]).toBe(SESSION_NAME);
-    expect(sendCall?.[1][4]).toContain('has not yet been acknowledged');
-    expect(sendCall?.[1][4]).toContain(
-      're-raise its content as a fresh, self-contained owner call',
-    );
-    expect(sendCall?.[1][4]).not.toContain('no longer blocked');
-    expect(sendCall?.[1][4]).not.toContain('continue with the next step');
+    expect(sendCall).toBeUndefined();
   });
 
   it('defers the first cycle then notifies on the next cycle once the persisted candidate state confirms a second consecutive cycle', async () => {
