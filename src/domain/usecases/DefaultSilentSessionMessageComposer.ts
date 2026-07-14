@@ -20,9 +20,9 @@ const composeIdleSubAgentSection = (
       )}`,
   );
   return [
-    `${SILENT_SESSION_REMINDER_SENTINEL} The system has already detected, from each sub-process's last tool activity, that it has produced no output for about the minutes shown below. Please treat that figure as the authoritative system signal; there is no need to spend effort re-deriving whether the sub-process is alive. Around five minutes of silence is a real warning of a possible hang: please base your assessment on concrete evidence rather than speculation ("probably still working"), and please keep the warning in view until evidence resolves it.`,
+    `${SILENT_SESSION_REMINDER_SENTINEL} This is an automated status check. The following sub-process(es) have produced no output for about the minutes shown, measured from their last tool activity:`,
     ...lines,
-    'For each one, determine the CAUSE by a concrete check and report the result. Verify specifically: (a) whether there is genuinely no recent activity anywhere — including a very recent push or commit, or output from any nested sub-processes this sub-process itself started; and (b) whether it is legitimately blocked waiting on an external dependency (a continuous-integration run, an external API, or another process). Waiting on continuous integration is plausible, but confirm it by investigation before concluding — do not assume. Based on the check: if it is genuinely stuck, take action (restart, hand off, or replace it); if it is legitimately waiting, state that conclusion together with the concrete evidence you found. Owner notification is not required, but please output your investigation result in this session so it remains as a log.',
+    'For each one: if it is waiting on an external dependency (a continuous-integration run, an external API, or another process), no action is needed — please log one line noting the wait. If it appears stuck, please restart it, hand it off, or replace it.',
   ].join('\n');
 };
 
@@ -36,20 +36,20 @@ const composeLongRunningSubAgentSection = (
       )}`,
   );
   return [
-    `${SILENT_SESSION_REMINDER_SENTINEL} The following sub-process(es) have been running longer than a task should normally take, which may mean an infinite loop, a task that is too large, or being stuck in an incorrect approach that is not making forward progress:`,
+    `${SILENT_SESSION_REMINDER_SENTINEL} This is an automated status check. The following sub-process(es) have been running longer than a task usually takes:`,
     ...lines,
-    'Verify each one is genuinely advancing toward completion; do not dismiss it merely because it produced output recently. If it is not progressing, intervene: break the task down, restart, hand off, or replace it.',
+    'If one is not making progress toward completion, consider breaking the task down, restarting it, handing it off, or replacing it. If it is progressing normally, no action is needed.',
   ].join('\n');
 };
 
 export const composeOwnerCallFormatGuidance = (
   ownerCallMarker: string | null,
 ): string => {
-  const markerInstruction =
+  const tagLabel =
     ownerCallMarker !== null && ownerCallMarker.length > 0
-      ? `Emit the owner-call as the configured owner-call marker tag "${ownerCallMarker}" as a complete matching pair — opening marker, content, then closing marker — on a single line with no newline inside the tag.`
-      : `Emit the owner-call as the configured owner-call marker tag as a complete matching pair — opening marker, content, then closing marker — on a single line with no newline inside the tag.`;
-  return `${markerInstruction} The content between the markers needs to begin with the 🔴 emoji immediately, with no space after it. The owner's app only surfaces the notification together with its content when the exact, well-formed tag with the leading 🔴 is present; a malformed tag (a broken or missing closing marker, or a missing leading 🔴) results in only a red indicator with no readable content. Make the owner-call message fully self-contained: the owner should be able to understand the whole situation — what happened, what you are asking, and any decision needed — from this single latest owner-call message alone, without reading or scrolling back to earlier messages. Please avoid telling the owner to scroll up, go back, or read previous or above messages; if context is needed, restate it inside the owner-call message itself.`;
+      ? ` "${ownerCallMarker}"`
+      : '';
+  return `Format reminder: write the owner-call marker tag${tagLabel} as a complete opening and closing pair on one line, with the content starting immediately with the 🔴 emoji and written to be self-contained, so the owner can understand the situation, the ask, and any decision needed from that single message.`;
 };
 
 const composeMainStalledMessage = (
@@ -58,12 +58,14 @@ const composeMainStalledMessage = (
 ): string => {
   const minutes = Math.floor(mainSilentSeconds / 60);
   return [
-    `${SILENT_SESSION_REMINDER_SENTINEL} You have produced no output for ${minutes} minutes. Idle waiting wastes this live session, so please keep making progress. Always work proactively and stay ahead of the work: anticipate the next steps and, at every point, choose the fastest path so the whole task finishes as early as possible, rather than waiting passively. Finish every task in the shortest possible time — but "fastest" means correct and incident-free, not merely quick: a fast but wrong result is worthless and causes incidents, so be fast without breaking things. Use parallel execution and your whole team of sub-agents to minimize total wall-clock time. Your goal is to drive every task to completion and have the owner confirm that all tasks are done. Please leave this session open rather than closing it on your own — it is closed only after the owner has verified completion and asks you to close it. Self-check now:`,
-    `1. Every request from the owner is registered as a session task and your task list is kept current (mark tasks completed when done); verify nothing is missing or stale.`,
-    `2. Your plan is the fastest correct path: parallelize independent work across sub-agents, delegate, and remove needless serialization. Choose the fastest safe method, not the easiest.`,
-    `3. A monitor is in place that detects when any sub-agent produces no output for 5 minutes.`,
-    `4. If you are blocked on an owner decision — or once you believe all tasks are complete — do not wait passively: the owner is not notified of passive waiting and will not reply unless you raise a new call-to-user, so raise one now (to get the decision, or to ask the owner to verify completion). If you have COMPLETED or ANSWERED a request from the owner in this session, please fire the owner-call to report the RESULT to the owner: completing or answering an owner's requested action is itself a reason to fire the owner-call. Completing or answering an owner request WITHOUT firing the owner-call means the owner is not notified — the owner's app only surfaces this session when the owner-call fires — so the task silently stalls. If this self-check reminder keeps arriving, it is likely because an owner request was completed or answered without firing the owner-call; fire the owner-call now to report the result to the owner. ${composeOwnerCallFormatGuidance(ownerCallMarker)} If no owner input is needed yet, resume immediately and drive all remaining tasks to completion.`,
-    `Also, in your next output, report an estimate of how many minutes you expect to need to finish all remaining tasks.`,
+    `${SILENT_SESSION_REMINDER_SENTINEL} This is an automated status check. No output has been observed for ${minutes} minutes. If you are waiting on an external process, no action is needed — please log one line explaining the wait. Otherwise please continue with the next step, with these points in mind:`,
+    `1. Keep the session task list current, marking finished items as done.`,
+    `2. Run independent pieces of work in parallel across sub-agents.`,
+    `3. Keep a monitor in place that notices when a sub-agent has produced no output for about 5 minutes.`,
+    `4. When an owner decision is needed, or when an owner request has been completed or answered, please share it through a new owner-call — the owner is notified only when one is raised. ${composeOwnerCallFormatGuidance(
+      ownerCallMarker,
+    )}`,
+    `Please also include in your next output an estimate of the remaining minutes to finish all tasks.`,
   ].join('\n');
 };
 
@@ -75,10 +77,11 @@ const composeMainStalledWithStaleOwnerCallMessage = (
   const silentMinutes = Math.floor(mainSilentSeconds / 60);
   const ownerCallAgeMinutes = Math.floor(unansweredOwnerCallAgeSeconds / 60);
   return [
-    `${SILENT_SESSION_REMINDER_SENTINEL} You have produced no output for ${silentMinutes} minutes, and the owner call you raised ${ownerCallAgeMinutes} minutes ago is still unanswered. An owner call outstanding this long may have been missed, may have scrolled out of the owner's view, or may no longer reflect your current situation, so do not keep waiting on it passively. Act now, choosing one of the following:`,
-    `1. If you are still blocked on the owner, re-raise your pending ask NOW as a fresh owner call. Make it fully self-contained: restate the whole situation — what happened, what you are asking, and any decision needed — inside the new owner call itself, so the owner understands everything from that single latest message without scrolling back. ${composeOwnerCallFormatGuidance(ownerCallMarker)}`,
-    `2. If you are no longer blocked — the answer became unnecessary, you can proceed safely, or the information arrived another way — resume immediately and drive all remaining tasks to completion.`,
-    `This reminder does not notify the owner; only a fresh owner call from you surfaces this session to the owner. Also, in your next output, report an estimate of how many minutes you expect to need to finish all remaining tasks.`,
+    `${SILENT_SESSION_REMINDER_SENTINEL} This is an automated status check. No output has been observed for ${silentMinutes} minutes, and the owner call raised ${ownerCallAgeMinutes} minutes ago is still unanswered.`,
+    `If you are still waiting on that answer, the older owner call may have been missed, so please re-raise the ask as a fresh, self-contained owner call. ${composeOwnerCallFormatGuidance(
+      ownerCallMarker,
+    )}`,
+    `If you are no longer blocked, please continue with the next step. Please also include in your next output an estimate of the remaining minutes to finish all tasks.`,
   ].join('\n');
 };
 

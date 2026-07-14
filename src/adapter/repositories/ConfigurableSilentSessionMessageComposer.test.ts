@@ -47,7 +47,7 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
     expect(fallback.composeMainStalledSection).not.toHaveBeenCalled();
   });
 
-  it('appends the owner-call format guidance, including the self-contained and no-scroll-back requirements, to the configured main template', () => {
+  it('appends the owner-call format guidance, including the self-contained requirement, to the configured main template', () => {
     const fallback = createFallback();
     const composer = new ConfigurableSilentSessionMessageComposer(
       {
@@ -60,15 +60,10 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
     const section = composer.composeMainStalledSection(600);
     expect(section).toContain('CUSTOM_MAIN');
     expect(section).toContain(
-      'the configured owner-call marker tag "<<OWNER_CALL>>" as a complete matching pair',
+      'owner-call marker tag "<<OWNER_CALL>>" as a complete opening and closing pair on one line',
     );
     expect(section).toContain('🔴');
-    expect(section).toContain(
-      'Make the owner-call message fully self-contained: the owner should be able to understand the whole situation — what happened, what you are asking, and any decision needed — from this single latest owner-call message alone, without reading or scrolling back to earlier messages.',
-    );
-    expect(section).toContain(
-      'Please avoid telling the owner to scroll up, go back, or read previous or above messages; if context is needed, restate it inside the owner-call message itself.',
-    );
+    expect(section).toContain('written to be self-contained');
   });
 
   it('uses the fallback stale-owner-call section when no stale-owner-call template is configured', () => {
@@ -102,7 +97,7 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
     expect(section).toContain('CUSTOM_STALE_OWNER_CALL');
     expect(section).toContain(SILENT_SESSION_REMINDER_SENTINEL);
     expect(section).toContain(
-      'the configured owner-call marker tag "<<OWNER_CALL>>" as a complete matching pair',
+      'owner-call marker tag "<<OWNER_CALL>>" as a complete opening and closing pair on one line',
     );
     expect(
       fallback.composeMainStalledWithStaleOwnerCallSection,
