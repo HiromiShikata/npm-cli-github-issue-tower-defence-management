@@ -1,3 +1,10 @@
+## [1.122.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.6...v1.122.7) (2026-07-14)
+
+
+### Bug Fixes
+
+* **silent-monitor:** shorten silent-session reminder defaults to a calm neutral status notice ([#1166](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1166)) ([3f29b69](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3f29b69065c005b8d41db3e68ead624f9c26ef95))
+
 ## [1.122.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.5...v1.122.6) (2026-07-13)
 
 
