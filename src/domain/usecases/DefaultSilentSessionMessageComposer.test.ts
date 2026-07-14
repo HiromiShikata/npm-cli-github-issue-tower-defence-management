@@ -23,78 +23,61 @@ describe('DefaultSilentSessionMessageComposer', () => {
     expect(section).toContain(SILENT_SESSION_REMINDER_SENTINEL);
   });
 
-  it('renders the configured main-stalled message with the silent minutes substituted', () => {
+  it('renders the main-stalled message as a neutral automated status notice with the silent minutes substituted', () => {
     const section = composer.composeMainStalledSection(600);
-    expect(section).toContain('You have produced no output for 10 minutes.');
-    expect(section).toContain('Idle waiting wastes this live session');
+    expect(section).toContain('This is an automated status check.');
+    expect(section).toContain('No output has been observed for 10 minutes.');
     expect(section).toContain(
-      'Always work proactively and stay ahead of the work',
+      'If you are waiting on an external process, no action is needed — please log one line explaining the wait.',
     );
-    expect(section).toContain('rather than waiting passively');
-    expect(section).toContain('Self-check now:');
+    expect(section).toContain('Otherwise please continue with the next step');
     expect(section).toContain('1.');
     expect(section).toContain('2.');
     expect(section).toContain('3.');
     expect(section).toContain('4.');
+  });
+
+  it('states each of the four checkpoints exactly once', () => {
+    const section = composer.composeMainStalledSection(600);
+    const occurrences = (needle: string): number =>
+      section.split(needle).length - 1;
+    expect(occurrences('Keep the session task list current')).toBe(1);
+    expect(occurrences('Run independent pieces of work in parallel')).toBe(1);
+    expect(
+      occurrences(
+        'Keep a monitor in place that notices when a sub-agent has produced no output for about 5 minutes.',
+      ),
+    ).toBe(1);
+    expect(occurrences('share it through a new owner-call')).toBe(1);
+  });
+
+  it('requests a remaining-minutes estimate in the next output', () => {
+    const section = composer.composeMainStalledSection(600);
     expect(section).toContain(
-      'report an estimate of how many minutes you expect to need',
+      'an estimate of the remaining minutes to finish all tasks',
     );
   });
 
   it('floors the silent seconds to whole minutes', () => {
     const section = composer.composeMainStalledSection(659);
-    expect(section).toContain('You have produced no output for 10 minutes.');
+    expect(section).toContain('No output has been observed for 10 minutes.');
   });
 
-  it('instructs the required owner-call notification format with the leading red circle and single-line complete tag', () => {
+  it('states the owner-call tag format exactly once: complete pair on one line, content starting with the red-circle emoji, self-contained', () => {
     const section = composer.composeMainStalledSection(600);
+    const formatOccurrences =
+      section.split('complete opening and closing pair on one line').length - 1;
+    expect(formatOccurrences).toBe(1);
     expect(section).toContain('🔴');
     expect(section).toContain(
-      'The content between the markers needs to begin with the 🔴 emoji immediately, with no space after it.',
+      'with the content starting immediately with the 🔴 emoji',
     );
-    expect(section).toContain(
-      'complete matching pair — opening marker, content, then closing marker — on a single line with no newline inside the tag.',
-    );
-    expect(section).toContain(
-      'a malformed tag (a broken or missing closing marker, or a missing leading 🔴) results in only a red indicator with no readable content.',
-    );
+    expect(section).toContain('written to be self-contained');
   });
 
-  it('requires the owner-call message to be fully self-contained and forbids telling the owner to scroll back', () => {
+  it('explains that the owner is notified only when an owner-call is raised', () => {
     const section = composer.composeMainStalledSection(600);
-    expect(section).toContain(
-      'Make the owner-call message fully self-contained: the owner should be able to understand the whole situation — what happened, what you are asking, and any decision needed — from this single latest owner-call message alone, without reading or scrolling back to earlier messages.',
-    );
-    expect(section).toContain(
-      'Please avoid telling the owner to scroll up, go back, or read previous or above messages; if context is needed, restate it inside the owner-call message itself.',
-    );
-  });
-
-  it('instructs the agent to fire the owner-call when an owner request has been completed or answered', () => {
-    const section = composer.composeMainStalledSection(600);
-    expect(section).toContain(
-      'If you have COMPLETED or ANSWERED a request from the owner in this session, please fire the owner-call to report the RESULT to the owner',
-    );
-    expect(section).toContain(
-      "completing or answering an owner's requested action is itself a reason to fire the owner-call",
-    );
-  });
-
-  it('explains that completing an owner request without an owner-call leaves the owner unnotified', () => {
-    const section = composer.composeMainStalledSection(600);
-    expect(section).toContain(
-      'Completing or answering an owner request WITHOUT firing the owner-call means the owner is not notified',
-    );
-    expect(section).toContain(
-      "the owner's app only surfaces this session when the owner-call fires",
-    );
-  });
-
-  it('states the causal link that the reminder keeps arriving because no owner-call was fired', () => {
-    const section = composer.composeMainStalledSection(600);
-    expect(section).toContain(
-      'If this self-check reminder keeps arriving, it is likely because an owner request was completed or answered without firing the owner-call; fire the owner-call now to report the result to the owner.',
-    );
+    expect(section).toContain('the owner is notified only when one is raised');
   });
 
   it('interpolates the configured owner-call marker into the format guidance when provided', () => {
@@ -103,7 +86,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
     );
     const section = markedComposer.composeMainStalledSection(600);
     expect(section).toContain(
-      'the configured owner-call marker tag "<<OWNER_CALL>>" as a complete matching pair',
+      'owner-call marker tag "<<OWNER_CALL>>" as a complete opening and closing pair on one line',
     );
     expect(section).toContain('🔴');
   });
@@ -111,7 +94,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
   it('falls back to generic owner-call format guidance when no marker is configured', () => {
     const section = composer.composeMainStalledSection(600);
     expect(section).toContain(
-      'Emit the owner-call as the configured owner-call marker tag as a complete matching pair',
+      'owner-call marker tag as a complete opening and closing pair on one line',
     );
     expect(section).not.toContain('""');
   });
@@ -130,40 +113,30 @@ describe('DefaultSilentSessionMessageComposer', () => {
       3659,
     );
     expect(section).toContain(
-      'You have produced no output for 10 minutes, and the owner call you raised 60 minutes ago is still unanswered.',
+      'No output has been observed for 10 minutes, and the owner call raised 60 minutes ago is still unanswered.',
     );
   });
 
-  it('directs the agent to re-raise its pending ask as a fresh fully self-contained owner call', () => {
+  it('suggests re-raising the pending ask as a fresh self-contained owner call when still waiting', () => {
     const section = composer.composeMainStalledWithStaleOwnerCallSection(
       600,
       3600,
     );
     expect(section).toContain(
-      'If you are still blocked on the owner, re-raise your pending ask NOW as a fresh owner call.',
-    );
-    expect(section).toContain(
-      'Make it fully self-contained: restate the whole situation — what happened, what you are asking, and any decision needed — inside the new owner call itself',
+      'please re-raise the ask as a fresh, self-contained owner call',
     );
   });
 
-  it('directs the agent to continue autonomously when it is no longer blocked', () => {
+  it('suggests continuing when no longer blocked and requests a remaining-minutes estimate', () => {
     const section = composer.composeMainStalledWithStaleOwnerCallSection(
       600,
       3600,
     );
     expect(section).toContain(
-      'If you are no longer blocked — the answer became unnecessary, you can proceed safely, or the information arrived another way — resume immediately and drive all remaining tasks to completion.',
-    );
-  });
-
-  it('states that the stale-owner-call reminder itself does not notify the owner', () => {
-    const section = composer.composeMainStalledWithStaleOwnerCallSection(
-      600,
-      3600,
+      'If you are no longer blocked, please continue with the next step.',
     );
     expect(section).toContain(
-      'This reminder does not notify the owner; only a fresh owner call from you surfaces this session to the owner.',
+      'an estimate of the remaining minutes to finish all tasks',
     );
   });
 
@@ -176,7 +149,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
       3600,
     );
     expect(section).toContain(
-      'the configured owner-call marker tag "<<OWNER_CALL>>" as a complete matching pair',
+      'owner-call marker tag "<<OWNER_CALL>>" as a complete opening and closing pair on one line',
     );
     expect(section).toContain('🔴');
   });
@@ -205,12 +178,12 @@ describe('DefaultSilentSessionMessageComposer', () => {
     });
     expect(section).toContain('sub-process-idle');
     expect(section).toContain('no output for 6m');
-    expect(section).toContain('restart, hand off, or replace it');
+    expect(section).toContain('please restart it, hand it off, or replace it');
     expect(section).toContain('waiting on an external dependency');
-    expect(section).not.toContain('infinite loop');
+    expect(section).not.toContain('running longer than a task usually takes');
   });
 
-  it('presents the system-detected idle duration as the authoritative signal in the idle message', () => {
+  it('frames the idle message as an automated status check with the system-measured duration', () => {
     const section = composer.composeSubAgentSection({
       idleSubAgents: [
         {
@@ -222,16 +195,14 @@ describe('DefaultSilentSessionMessageComposer', () => {
       ],
       longRunningSubAgents: [],
     });
+    expect(section).toContain('This is an automated status check.');
     expect(section).toContain(
-      "The system has already detected, from each sub-process's last tool activity, that it has produced no output for about the minutes shown below.",
-    );
-    expect(section).toContain(
-      'Please treat that figure as the authoritative system signal; there is no need to spend effort re-deriving whether the sub-process is alive.',
+      'produced no output for about the minutes shown, measured from their last tool activity',
     );
     expect(section).toContain('no output for 6m');
   });
 
-  it('forbids speculation and dismissal without evidence in the idle message', () => {
+  it('tells the agent that logging one line suffices for a legitimate external wait in the idle message', () => {
     const section = composer.composeSubAgentSection({
       idleSubAgents: [
         {
@@ -244,54 +215,10 @@ describe('DefaultSilentSessionMessageComposer', () => {
       longRunningSubAgents: [],
     });
     expect(section).toContain(
-      'Around five minutes of silence is a real warning of a possible hang',
+      'a continuous-integration run, an external API, or another process',
     );
     expect(section).toContain(
-      'please base your assessment on concrete evidence rather than speculation ("probably still working"), and please keep the warning in view until evidence resolves it.',
-    );
-  });
-
-  it('requires a concrete cause-check covering recent activity and external-dependency waiting in the idle message', () => {
-    const section = composer.composeSubAgentSection({
-      idleSubAgents: [
-        {
-          label: 'sub-process-idle',
-          silentSeconds: 360,
-          runningSeconds: 60,
-          waitingOnExternalProcess: false,
-        },
-      ],
-      longRunningSubAgents: [],
-    });
-    expect(section).toContain('determine the CAUSE by a concrete check');
-    expect(section).toContain(
-      'a very recent push or commit, or output from any nested sub-processes this sub-process itself started',
-    );
-    expect(section).toContain(
-      'legitimately blocked waiting on an external dependency',
-    );
-    expect(section).toContain(
-      'confirm it by investigation before concluding — do not assume',
-    );
-    expect(section).toContain(
-      'if it is legitimately waiting, state that conclusion together with the concrete evidence you found',
-    );
-  });
-
-  it('requires logging the investigation result even though owner notification is not required', () => {
-    const section = composer.composeSubAgentSection({
-      idleSubAgents: [
-        {
-          label: 'sub-process-idle',
-          silentSeconds: 360,
-          runningSeconds: 60,
-          waitingOnExternalProcess: false,
-        },
-      ],
-      longRunningSubAgents: [],
-    });
-    expect(section).toContain(
-      'Owner notification is not required, but please output your investigation result in this session so it remains as a log.',
+      'no action is needed — please log one line noting the wait',
     );
   });
 
@@ -309,14 +236,12 @@ describe('DefaultSilentSessionMessageComposer', () => {
     });
     expect(section).toContain('sub-process-long');
     expect(section).toContain('running for 20m');
-    expect(section).toContain('infinite loop');
-    expect(section).toContain('too large');
-    expect(section).toContain('not making forward progress');
+    expect(section).toContain('running longer than a task usually takes');
     expect(section).toContain(
-      'do not dismiss it merely because it produced output recently',
+      'breaking the task down, restarting it, handing it off, or replacing it',
     );
     expect(section).toContain(
-      'break the task down, restart, hand off, or replace',
+      'If it is progressing normally, no action is needed.',
     );
   });
 
@@ -348,9 +273,8 @@ describe('DefaultSilentSessionMessageComposer', () => {
       longRunningSubAgents: [subAgent],
     });
     expect(section).toContain('no output for 6m');
-    expect(section).toContain('determine the CAUSE by a concrete check');
     expect(section).toContain('running for 20m');
-    expect(section).toContain('infinite loop');
+    expect(section).toContain('running longer than a task usually takes');
     const sentinelOccurrences =
       section.split(SILENT_SESSION_REMINDER_SENTINEL).length - 1;
     expect(sentinelOccurrences).toBe(2);
@@ -382,12 +306,19 @@ describe('DefaultSilentSessionMessageComposer', () => {
     expect(longRunningSection).not.toContain('idle-only');
   });
 
-  it('composes default texts free of prohibition-styled vocabulary that trips model safety classifiers', () => {
+  it('composes default texts free of pressure- and prohibition-styled vocabulary that trips model safety classifiers', () => {
     const flaggedPatterns = [
       /unacceptable/i,
       /\bnever\b/i,
       /\b[Dd]o NOT\b/,
       /\b[Yy]ou MUST\b/,
+      /\bwastes?\b/i,
+      /silently stalls/i,
+      /\bstall(s|ed|ing)?\b/i,
+      /raise one now/i,
+      /fire the owner-call now/i,
+      /do not wait passively/i,
+      /is prohibited/i,
     ];
     const markedComposer = new DefaultSilentSessionMessageComposer(
       '<<OWNER_CALL>>',

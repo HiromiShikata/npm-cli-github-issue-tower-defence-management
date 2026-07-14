@@ -159,7 +159,7 @@ describe('notifySilentTmuxSessions', () => {
       (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
     );
     expect(sendCall?.[1][2]).toBe(SESSION_NAME);
-    expect(sendCall?.[1][4]).toContain('You have produced no output for');
+    expect(sendCall?.[1][4]).toContain('No output has been observed for');
   });
 
   it('does not notify a silent github-named live session on its first candidate cycle', async () => {
@@ -234,7 +234,7 @@ describe('notifySilentTmuxSessions', () => {
       `${SILENT_SESSION_REMINDER_SENTINEL} CUSTOM_MAIN_TEMPLATE`,
     );
     expect(sendCall?.[1][4]).toContain(
-      'Please avoid telling the owner to scroll up, go back, or read previous or above messages',
+      'complete opening and closing pair on one line',
     );
   });
 
@@ -310,7 +310,7 @@ describe('notifySilentTmuxSessions', () => {
     expect(sendCall?.[1][2]).toBe(SESSION_NAME);
     expect(sendCall?.[1][4]).toContain('is still unanswered');
     expect(sendCall?.[1][4]).toContain(
-      're-raise your pending ask NOW as a fresh owner call',
+      're-raise the ask as a fresh, self-contained owner call',
     );
   });
 
