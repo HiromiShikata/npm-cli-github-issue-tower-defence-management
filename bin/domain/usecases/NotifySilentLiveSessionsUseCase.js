@@ -3,6 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.NotifySilentLiveSessionsUseCase = exports.isGitHubIssueOrPullRequestSessionName = exports.parseHubTaskIssueUrlFromSessionName = exports.DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS = exports.DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS = exports.DEFAULT_NOTIFICATION_STAGGER_SECONDS = exports.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = exports.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = exports.DEFAULT_UNANSWERED_OWNER_CALL_GRACE_SECONDS = exports.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = void 0;
 const ResolveInteractiveLiveSessionsUseCase_1 = require("./ResolveInteractiveLiveSessionsUseCase");
 exports.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = 10 * 60;
+// Retained only for backward compatibility of the configuration surface
+// (TDPM_SILENT_UNANSWERED_OWNER_CALL_GRACE_SECONDS). The value is no longer
+// consulted: an unanswered owner call suppresses the main-stall reminder
+// unconditionally (treated as an infinite grace). See composeCandidate.
 exports.DEFAULT_UNANSWERED_OWNER_CALL_GRACE_SECONDS = 60 * 60;
 exports.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = 5 * 60;
 exports.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = 15 * 60;
@@ -195,16 +199,20 @@ class NotifySilentLiveSessionsUseCase {
             const sections = [];
             const mainSilentSeconds = snapshot.mainSilentSeconds;
             const unansweredOwnerCallAgeSeconds = snapshot.unansweredOwnerCallAgeSeconds;
-            const suppressedByRecentOwnerCall = unansweredOwnerCallAgeSeconds !== null &&
-                unansweredOwnerCallAgeSeconds <
-                    thresholds.unansweredOwnerCallGraceSeconds;
+            // Owner-defined rule: whenever the latest owner call is newer than the
+            // latest owner reply (i.e. the call is unanswered), the session is
+            // waiting on the owner and MUST NOT receive a main-stall reminder —
+            // unconditionally, with no age or grace expiry. The persistent unread
+            // indicator in the owner's app covers the missed-call case, so a
+            // time-based re-fire is unnecessary. `unansweredOwnerCallGraceSeconds`
+            // is retained in the parameters only for backward compatibility of the
+            // call signature and is intentionally ignored (treated as infinite).
+            const suppressedByUnansweredOwnerCall = unansweredOwnerCallAgeSeconds !== null;
             const mainTriggered = mainSilentSeconds !== null &&
                 mainSilentSeconds >= thresholds.mainSilentThresholdSeconds &&
-                !suppressedByRecentOwnerCall;
+                !suppressedByUnansweredOwnerCall;
             if (mainTriggered) {
-                sections.push(unansweredOwnerCallAgeSeconds !== null
-                    ? this.messageComposer.composeMainStalledWithStaleOwnerCallSection(mainSilentSeconds, unansweredOwnerCallAgeSeconds)
-                    : this.messageComposer.composeMainStalledSection(mainSilentSeconds));
+                sections.push(this.messageComposer.composeMainStalledSection(mainSilentSeconds));
             }
             const idleSubAgents = snapshot.subAgents.filter((subAgent) => !subAgent.waitingOnExternalProcess &&
                 subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds);

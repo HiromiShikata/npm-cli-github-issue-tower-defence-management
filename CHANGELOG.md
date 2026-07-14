@@ -1,3 +1,10 @@
+## [1.122.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.8...v1.122.9) (2026-07-14)
+
+
+### Bug Fixes
+
+* suppress silent reminders unconditionally while the latest owner call is unanswered ([#1170](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1170)) ([1fe7432](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1fe743279896734ad9ed1c291bd697c488c22c64))
+
 ## [1.122.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.7...v1.122.8) (2026-07-14)
 
 
