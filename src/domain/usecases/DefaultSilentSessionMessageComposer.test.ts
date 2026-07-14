@@ -113,31 +113,61 @@ describe('DefaultSilentSessionMessageComposer', () => {
       3659,
     );
     expect(section).toContain(
-      'No output has been observed for 10 minutes, and the owner call raised 60 minutes ago is still unanswered.',
+      'No output has been observed for 10 minutes, and the owner call raised 60 minutes ago has not yet been acknowledged by the owner.',
     );
   });
 
-  it('suggests re-raising the pending ask as a fresh self-contained owner call when still waiting', () => {
+  it('instructs unconditionally to re-raise the content as a fresh self-contained owner call', () => {
     const section = composer.composeMainStalledWithStaleOwnerCallSection(
       600,
       3600,
     );
     expect(section).toContain(
-      'please re-raise the ask as a fresh, self-contained owner call',
+      'Please re-raise its content as a fresh, self-contained owner call.',
     );
   });
 
-  it('suggests continuing when no longer blocked and requests a remaining-minutes estimate', () => {
+  it('frames every unanswered owner call kind as awaiting acknowledgment', () => {
     const section = composer.composeMainStalledWithStaleOwnerCallSection(
       600,
       3600,
     );
+    expect(section).toContain('acknowledg');
     expect(section).toContain(
-      'If you are no longer blocked, please continue with the next step.',
+      'a completion report, a question, or a decision request',
+    );
+    expect(section).toContain("still awaiting the owner's acknowledgment");
+  });
+
+  it('contains no not-blocked escape phrasing and no conditional re-raise phrasing', () => {
+    const section = composer.composeMainStalledWithStaleOwnerCallSection(
+      600,
+      3600,
+    );
+    expect(section).not.toContain('no longer blocked');
+    expect(section).not.toContain('continue with the next step');
+    expect(section).not.toContain('If you are still waiting');
+    expect(section).not.toContain('If you are');
+  });
+
+  it('requests a remaining-minutes estimate in the stale-owner-call section', () => {
+    const section = composer.composeMainStalledWithStaleOwnerCallSection(
+      600,
+      3600,
     );
     expect(section).toContain(
       'an estimate of the remaining minutes to finish all tasks',
     );
+  });
+
+  it('states the owner-call format guidance exactly once in the stale-owner-call section', () => {
+    const section = composer.composeMainStalledWithStaleOwnerCallSection(
+      600,
+      3600,
+    );
+    const formatOccurrences =
+      section.split('complete opening and closing pair on one line').length - 1;
+    expect(formatOccurrences).toBe(1);
   });
 
   it('interpolates the configured owner-call marker into the stale-owner-call format guidance', () => {
@@ -161,7 +191,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
       3600,
     );
     expect(staleSection).not.toBe(plainSection);
-    expect(plainSection).not.toContain('is still unanswered');
+    expect(plainSection).not.toContain('has not yet been acknowledged');
   });
 
   it('emits a distinct idle message for a sub-agent that is only output-idle', () => {

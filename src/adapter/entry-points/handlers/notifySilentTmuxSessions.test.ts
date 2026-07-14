@@ -308,10 +308,12 @@ describe('notifySilentTmuxSessions', () => {
       (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
     );
     expect(sendCall?.[1][2]).toBe(SESSION_NAME);
-    expect(sendCall?.[1][4]).toContain('is still unanswered');
+    expect(sendCall?.[1][4]).toContain('has not yet been acknowledged');
     expect(sendCall?.[1][4]).toContain(
-      're-raise the ask as a fresh, self-contained owner call',
+      're-raise its content as a fresh, self-contained owner call',
     );
+    expect(sendCall?.[1][4]).not.toContain('no longer blocked');
+    expect(sendCall?.[1][4]).not.toContain('continue with the next step');
   });
 
   it('defers the first cycle then notifies on the next cycle once the persisted candidate state confirms a second consecutive cycle', async () => {

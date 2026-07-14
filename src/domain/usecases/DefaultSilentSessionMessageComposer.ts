@@ -77,11 +77,11 @@ const composeMainStalledWithStaleOwnerCallMessage = (
   const silentMinutes = Math.floor(mainSilentSeconds / 60);
   const ownerCallAgeMinutes = Math.floor(unansweredOwnerCallAgeSeconds / 60);
   return [
-    `${SILENT_SESSION_REMINDER_SENTINEL} This is an automated status check. No output has been observed for ${silentMinutes} minutes, and the owner call raised ${ownerCallAgeMinutes} minutes ago is still unanswered.`,
-    `If you are still waiting on that answer, the older owner call may have been missed, so please re-raise the ask as a fresh, self-contained owner call. ${composeOwnerCallFormatGuidance(
+    `${SILENT_SESSION_REMINDER_SENTINEL} This is an automated status check. No output has been observed for ${silentMinutes} minutes, and the owner call raised ${ownerCallAgeMinutes} minutes ago has not yet been acknowledged by the owner.`,
+    `An owner call without an acknowledgment — whether it carried a completion report, a question, or a decision request — is still awaiting the owner's acknowledgment, and the earlier message may have been missed. Please re-raise its content as a fresh, self-contained owner call. ${composeOwnerCallFormatGuidance(
       ownerCallMarker,
     )}`,
-    `If you are no longer blocked, please continue with the next step. Please also include in your next output an estimate of the remaining minutes to finish all tasks.`,
+    `Please also include in your next output an estimate of the remaining minutes to finish all tasks.`,
   ].join('\n');
 };
 
