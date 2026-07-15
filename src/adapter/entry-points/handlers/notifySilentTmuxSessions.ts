@@ -125,8 +125,7 @@ export const notifySilentTmuxSessions = async (
   }
   const messageComposer = new ConfigurableSilentSessionMessageComposer(
     messageTemplates,
-    new DefaultSilentSessionMessageComposer(ownerCallMarker),
-    ownerCallMarker,
+    new DefaultSilentSessionMessageComposer(),
   );
   const useCase = new NotifySilentLiveSessionsUseCase(
     new LocalProcessLiveSessionProcessSnapshotProvider(

@@ -55,15 +55,20 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
         mainStalledMessage: 'CUSTOM_MAIN',
       },
       fallback,
-      '<<OWNER_CALL>>',
     );
     const section = composer.composeMainStalledSection(600);
     expect(section).toContain('CUSTOM_MAIN');
     expect(section).toContain(
-      'owner-call marker tag "<<OWNER_CALL>>" as a complete opening and closing pair on one line',
+      'share it through a new owner-call in the format documented for this session',
     );
-    expect(section).toContain('🔴');
     expect(section).toContain('written to be self-contained');
+    expect(section).not.toContain('marker tag');
+    expect(section).not.toContain('<');
+    expect(section).not.toContain('>');
+    expect(section).not.toMatch(
+      /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}]/u,
+    );
+    expect(section).not.toContain('\u{FE0F}');
   });
 
   it('uses the fallback stale-owner-call section when no stale-owner-call template is configured', () => {
@@ -88,7 +93,6 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
         mainStalledStaleOwnerCallMessage: 'CUSTOM_STALE_OWNER_CALL',
       },
       fallback,
-      '<<OWNER_CALL>>',
     );
     const section = composer.composeMainStalledWithStaleOwnerCallSection(
       600,
@@ -97,8 +101,11 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
     expect(section).toContain('CUSTOM_STALE_OWNER_CALL');
     expect(section).toContain(SILENT_SESSION_REMINDER_SENTINEL);
     expect(section).toContain(
-      'owner-call marker tag "<<OWNER_CALL>>" as a complete opening and closing pair on one line',
+      'share it through a new owner-call in the format documented for this session',
     );
+    expect(section).not.toContain('marker tag');
+    expect(section).not.toContain('<');
+    expect(section).not.toContain('>');
     expect(
       fallback.composeMainStalledWithStaleOwnerCallSection,
     ).not.toHaveBeenCalled();
