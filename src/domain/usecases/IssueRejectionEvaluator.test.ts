@@ -388,6 +388,160 @@ describe('IssueRejectionEvaluator', () => {
       });
     });
 
+    describe('transient getOpenPullRequest failure containment', () => {
+      let warnSpy: jest.SpyInstance;
+
+      beforeEach(() => {
+        warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      });
+
+      afterEach(() => {
+        warnSpy.mockRestore();
+      });
+
+      it('should not throw and should return no rejections when getOpenPullRequest rejects for a PR item (isPr=true)', async () => {
+        mockIssueRepository.getOpenPullRequest.mockRejectedValue(
+          new Error(
+            'GraphQL errors: [{"message":"Something went wrong while executing your query"}]',
+          ),
+        );
+
+        const result = await evaluator.evaluate({
+          url: 'https://github.com/user/repo/pull/10',
+          labels: [],
+          isPr: true,
+        });
+
+        expect(result.rejections).toHaveLength(0);
+        expect(result.approvedPrUrl).toBeNull();
+      });
+
+      it('should log one warning line containing the PR URL and error message when getOpenPullRequest rejects for a PR item', async () => {
+        mockIssueRepository.getOpenPullRequest.mockRejectedValue(
+          new Error('Something went wrong while executing your query'),
+        );
+
+        await evaluator.evaluate({
+          url: 'https://github.com/user/repo/pull/10',
+          labels: [],
+          isPr: true,
+        });
+
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('https://github.com/user/repo/pull/10'),
+        );
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining(
+            'Something went wrong while executing your query',
+          ),
+        );
+      });
+
+      it('should skip the failing URL, log a warning, and still evaluate the healthy PR in the same batch (prebuilt path)', async () => {
+        mockIssueRepository.getOpenPullRequest.mockImplementation(
+          (prUrl: string) =>
+            prUrl === 'https://github.com/user/repo/pull/8'
+              ? Promise.reject(
+                  new Error('Something went wrong while executing your query'),
+                )
+              : Promise.resolve(createReadyPr(prUrl)),
+        );
+
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: [],
+            isPr: false,
+          },
+          [],
+          {
+            relatedOpenPrUrls: [
+              'https://github.com/user/repo/pull/8',
+              'https://github.com/user/repo/pull/9',
+            ],
+          },
+        );
+
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('https://github.com/user/repo/pull/8'),
+        );
+        expect(result.rejections).toHaveLength(0);
+        expect(result.approvedPrUrl).toBe(
+          'https://github.com/user/repo/pull/9',
+        );
+      });
+
+      it('should not reject with PULL_REQUEST_NOT_FOUND when the only related URL fails transiently (state unknown, skipped)', async () => {
+        mockIssueRepository.getOpenPullRequest.mockRejectedValue(
+          new Error('Something went wrong while executing your query'),
+        );
+
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: [],
+            isPr: false,
+          },
+          [],
+          { relatedOpenPrUrls: ['https://github.com/user/repo/pull/8'] },
+        );
+
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+        expect(result.rejections).toHaveLength(0);
+        expect(result.approvedPrUrl).toBeNull();
+      });
+
+      it('should still evaluate the healthy remaining PR normally when it has a rejection reason (draft) after another URL fails', async () => {
+        mockIssueRepository.getOpenPullRequest.mockImplementation(
+          (prUrl: string) =>
+            prUrl === 'https://github.com/user/repo/pull/8'
+              ? Promise.reject(
+                  new Error('Something went wrong while executing your query'),
+                )
+              : Promise.resolve(createReadyPr(prUrl, { isDraft: true })),
+        );
+
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: [],
+            isPr: false,
+          },
+          [],
+          {
+            relatedOpenPrUrls: [
+              'https://github.com/user/repo/pull/8',
+              'https://github.com/user/repo/pull/9',
+            ],
+          },
+        );
+
+        expect(result.rejections).toHaveLength(1);
+        expect(result.rejections[0].type).toBe('PULL_REQUEST_IS_DRAFT');
+        expect(result.approvedPrUrl).toBeNull();
+      });
+
+      it('should handle a non-Error rejection value without throwing', async () => {
+        mockIssueRepository.getOpenPullRequest.mockRejectedValue(
+          'string failure',
+        );
+
+        const result = await evaluator.evaluate({
+          url: 'https://github.com/user/repo/pull/10',
+          labels: [],
+          isPr: true,
+        });
+
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('string failure'),
+        );
+        expect(result.rejections).toHaveLength(0);
+      });
+    });
+
     describe('change-target-must: label behavior', () => {
       const prUrl = 'https://github.com/user/repo/pull/1';
 
