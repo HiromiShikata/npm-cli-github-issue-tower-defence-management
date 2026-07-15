@@ -1,3 +1,10 @@
+## [1.122.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.10...v1.122.11) (2026-07-15)
+
+
+### Bug Fixes
+
+* contain transient getOpenPullRequest errors in IssueRejectionEvaluator ([#1177](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1177)) ([8b0ddba](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8b0ddbaa303bf24bcbd55c67a56f08111b8239b1))
+
 ## [1.122.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.9...v1.122.10) (2026-07-15)
 
 
