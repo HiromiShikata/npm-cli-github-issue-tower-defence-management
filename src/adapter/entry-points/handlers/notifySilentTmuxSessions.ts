@@ -21,6 +21,7 @@ import { FileSystemSessionOutputActivityRepository } from '../../repositories/Fi
 import { TmuxSilentSessionNotificationRepository } from '../../repositories/TmuxSilentSessionNotificationRepository';
 import { NoUnansweredOwnerCallStatusProvider } from '../../repositories/NoUnansweredOwnerCallStatusProvider';
 import { TranscriptOwnerCallStatusProvider } from '../../repositories/TranscriptOwnerCallStatusProvider';
+import { TranscriptRefusalTailStatusProvider } from '../../repositories/TranscriptRefusalTailStatusProvider';
 import { ProcessListSessionSubAgentActivityRepository } from '../../repositories/ProcessListSessionSubAgentActivityRepository';
 import { TranscriptSessionSubAgentActivityRepository } from '../../repositories/TranscriptSessionSubAgentActivityRepository';
 import { FileSystemSubAgentTranscriptDirectoryResolver } from '../../repositories/FileSystemSubAgentTranscriptDirectoryResolver';
@@ -157,6 +158,7 @@ export const notifySilentTmuxSessions = async (
           hubTaskStatusCacheStateFilePath,
         )
       : new FileSystemSilentSessionHubTaskStatusCacheRepository(),
+    new TranscriptRefusalTailStatusProvider(),
   );
   await useCase.run({
     mainSilentThresholdSeconds,

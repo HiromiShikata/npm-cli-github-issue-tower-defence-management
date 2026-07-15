@@ -17,6 +17,7 @@ import { InteractiveLiveSessionTranscriptResolver } from './adapter-interfaces/I
 import { SessionOutputActivityRepository } from './adapter-interfaces/SessionOutputActivityRepository';
 import { SessionSubAgentActivityRepository } from './adapter-interfaces/SessionSubAgentActivityRepository';
 import { OwnerCallStatusProvider } from './adapter-interfaces/OwnerCallStatusProvider';
+import { RefusalTailStatusProvider } from './adapter-interfaces/RefusalTailStatusProvider';
 import { SilentSessionNotificationRepository } from './adapter-interfaces/SilentSessionNotificationRepository';
 import { SilentSessionCandidateStateRepository } from './adapter-interfaces/SilentSessionCandidateStateRepository';
 import { SilentSessionHubTaskStatusCacheRepository } from './adapter-interfaces/SilentSessionHubTaskStatusCacheRepository';
@@ -52,6 +53,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
   let mockSleeper: Mocked<Sleeper>;
   let mockHubTaskStatusResolver: Mocked<HubTaskStatusResolver>;
   let mockHubTaskStatusCacheRepository: Mocked<SilentSessionHubTaskStatusCacheRepository>;
+  let mockRefusalTailStatusProvider: Mocked<RefusalTailStatusProvider>;
   const now = new Date('2026-06-26T00:00:00Z');
   const nowEpochSeconds = Math.floor(now.getTime() / 1000);
   const GITHUB_SESSION = 'https_//github_com/HiromiShikata/repo/issues/42';
@@ -191,6 +193,11 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       loadHubTaskStatus: jest.fn().mockResolvedValue(null),
       saveHubTaskStatus: jest.fn().mockResolvedValue(undefined),
     };
+    mockRefusalTailStatusProvider = {
+      listRefusalTailedSessionNames: jest
+        .fn()
+        .mockResolvedValue(new Set<string>()),
+    };
     useCase = new NotifySilentLiveSessionsUseCase(
       mockSnapshotProvider,
       mockTranscriptResolver,
@@ -203,6 +210,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       mockSleeper,
       mockHubTaskStatusResolver,
       mockHubTaskStatusCacheRepository,
+      mockRefusalTailStatusProvider,
     );
   });
 
@@ -1474,6 +1482,145 @@ describe('NotifySilentLiveSessionsUseCase', () => {
           'https_//github_com/HiromiShikata/repo/discussions/42',
         ),
       ).toBeNull();
+    });
+  });
+
+  describe('refusal-tailed session gating', () => {
+    it('excludes a main-stalled session whose last assistant turn is a refusal and logs one skip line', async () => {
+      setupSilentMainSession(GITHUB_SESSION);
+      mockRefusalTailStatusProvider.listRefusalTailedSessionNames.mockResolvedValue(
+        new Set([GITHUB_SESSION]),
+      );
+
+      await useCase.run(runParams());
+
+      expect(
+        mockMessageComposer.composeMainStalledSection,
+      ).not.toHaveBeenCalled();
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).not.toHaveBeenCalled();
+      const skipLines = jest
+        .mocked(console.log)
+        .mock.calls.filter(
+          (call) =>
+            typeof call[0] === 'string' &&
+            call[0].includes('last assistant turn was a model refusal'),
+        );
+      expect(skipLines).toEqual([
+        [
+          `Skipping ${GITHUB_SESSION}: last assistant turn was a model refusal; suppressing reminders until a non-refusal turn appears.`,
+        ],
+      ]);
+    });
+
+    it('excludes a refusal-tailed session from the sub-agent reminder branch as well', async () => {
+      setupLiveInteractiveSession(GITHUB_SESSION);
+      const subAgents: SubAgentActivity[] = [
+        {
+          label: 'sub-process-1',
+          silentSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
+          runningSeconds: 60,
+          waitingOnExternalProcess: false,
+        },
+      ];
+      mockSubAgentActivityRepository.listSubAgentActivitiesBySessionName.mockResolvedValue(
+        new Map([[GITHUB_SESSION, subAgents]]),
+      );
+      mockRefusalTailStatusProvider.listRefusalTailedSessionNames.mockResolvedValue(
+        new Set([GITHUB_SESSION]),
+      );
+
+      await useCase.run(runParams());
+
+      expect(mockMessageComposer.composeSubAgentSection).not.toHaveBeenCalled();
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).not.toHaveBeenCalled();
+      expect(
+        mockSubAgentActivityRepository.listSubAgentActivitiesBySessionName,
+      ).toHaveBeenCalledWith([], transcriptMapFor([GITHUB_SESSION]));
+    });
+
+    it('passes the resolved transcript paths to the refusal-tail provider', async () => {
+      setupSilentMainSession(GITHUB_SESSION);
+
+      await useCase.run(runParams());
+
+      expect(
+        mockRefusalTailStatusProvider.listRefusalTailedSessionNames,
+      ).toHaveBeenCalledWith(transcriptMapFor([GITHUB_SESSION]));
+    });
+
+    it('notifies a session again once the provider stops reporting it (a non-refusal turn followed the refusal)', async () => {
+      setupSilentMainSession(GITHUB_SESSION);
+      mockRefusalTailStatusProvider.listRefusalTailedSessionNames.mockResolvedValue(
+        new Set<string>(),
+      );
+
+      await useCase.run(runParams());
+
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledWith(GITHUB_SESSION, MAIN_STALLED_SECTION);
+    });
+
+    it('excludes only the refusal-tailed session when mixed with a healthy stalled session', async () => {
+      mockSnapshotProvider.getSnapshot.mockResolvedValue(
+        snapshotWithSessions([GITHUB_SESSION_ALPHA, GITHUB_SESSION_BRAVO]),
+      );
+      mockTranscriptResolver.resolveTranscriptPaths.mockReturnValue(
+        transcriptMapFor([GITHUB_SESSION_ALPHA, GITHUB_SESSION_BRAVO]),
+      );
+      mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
+        [
+          {
+            sessionName: GITHUB_SESSION_ALPHA,
+            lastOutputEpochSeconds:
+              nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+          },
+          {
+            sessionName: GITHUB_SESSION_BRAVO,
+            lastOutputEpochSeconds:
+              nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+          },
+        ],
+      );
+      mockRefusalTailStatusProvider.listRefusalTailedSessionNames.mockResolvedValue(
+        new Set([GITHUB_SESSION_ALPHA]),
+      );
+
+      await useCase.run(runParams());
+
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledTimes(1);
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledWith(GITHUB_SESSION_BRAVO, MAIN_STALLED_SECTION);
+    });
+
+    it('keeps the existing behavior when no refusal-tail provider is configured', async () => {
+      const useCaseWithoutProvider = new NotifySilentLiveSessionsUseCase(
+        mockSnapshotProvider,
+        mockTranscriptResolver,
+        mockSessionOutputActivityRepository,
+        mockSubAgentActivityRepository,
+        mockOwnerCallStatusProvider,
+        mockNotificationRepository,
+        mockCandidateStateRepository,
+        mockMessageComposer,
+        mockSleeper,
+        mockHubTaskStatusResolver,
+        mockHubTaskStatusCacheRepository,
+      );
+      setupSilentMainSession(GITHUB_SESSION);
+
+      await useCaseWithoutProvider.run(runParams());
+
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledWith(GITHUB_SESSION, MAIN_STALLED_SECTION);
     });
   });
 
