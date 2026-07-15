@@ -3,6 +3,7 @@ import { InteractiveLiveSession } from '../entities/InteractiveLiveSession';
 import { LiveSessionProcessSnapshotProvider } from './adapter-interfaces/LiveSessionProcessSnapshotProvider';
 import { InteractiveLiveSessionTranscriptResolver } from './adapter-interfaces/InteractiveLiveSessionTranscriptResolver';
 import { OwnerCallStatusProvider } from './adapter-interfaces/OwnerCallStatusProvider';
+import { RefusalTailStatusProvider } from './adapter-interfaces/RefusalTailStatusProvider';
 import { SessionOutputActivityRepository } from './adapter-interfaces/SessionOutputActivityRepository';
 import { SessionSubAgentActivityRepository } from './adapter-interfaces/SessionSubAgentActivityRepository';
 import { SilentSessionMessageComposer } from './adapter-interfaces/SilentSessionMessageComposer';
@@ -79,6 +80,7 @@ export class NotifySilentLiveSessionsUseCase {
     private readonly sleeper: Sleeper,
     private readonly hubTaskStatusResolver: HubTaskStatusResolver | null = null,
     private readonly hubTaskStatusCacheRepository: SilentSessionHubTaskStatusCacheRepository | null = null,
+    private readonly refusalTailStatusProvider: RefusalTailStatusProvider | null = null,
   ) {}
 
   run = async (params: {
@@ -111,8 +113,31 @@ export class NotifySilentLiveSessionsUseCase {
         interactiveSessions,
       );
 
+    // A session whose most recent assistant turn is a model refusal is
+    // excluded from ALL reminder candidates (main-stall and sub-agent
+    // branches alike): each reminder delivery re-sends the full session
+    // context to the API and is guaranteed to produce another refusal, so
+    // reminding such a session only burns tokens. The gate is state-based
+    // (no time windows) and self-clears once a non-refusal assistant turn
+    // appears after the refusal.
+    const refusalTailedSessionNames =
+      this.refusalTailStatusProvider === null
+        ? new Set<string>()
+        : await this.refusalTailStatusProvider.listRefusalTailedSessionNames(
+            transcriptPathBySessionName,
+          );
+    const monitoredSessions = interactiveSessions.filter((session) => {
+      if (!refusalTailedSessionNames.has(session.sessionName)) {
+        return true;
+      }
+      console.log(
+        `Skipping ${session.sessionName}: last assistant turn was a model refusal; suppressing reminders until a non-refusal turn appears.`,
+      );
+      return false;
+    });
+
     const snapshots = await this.collectSnapshots(
-      interactiveSessions,
+      monitoredSessions,
       transcriptPathBySessionName,
       params.now,
     );
