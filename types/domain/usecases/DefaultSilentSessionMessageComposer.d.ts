@@ -1,8 +1,6 @@
 import { SilentSessionMessageComposer, SubAgentStallSections } from './adapter-interfaces/SilentSessionMessageComposer';
-export declare const composeOwnerCallFormatGuidance: (ownerCallMarker: string | null) => string;
+export declare const composeOwnerCallFormatGuidance: () => string;
 export declare class DefaultSilentSessionMessageComposer implements SilentSessionMessageComposer {
-    private readonly ownerCallMarker;
-    constructor(ownerCallMarker?: string | null);
     composeMainStalledSection: (mainSilentSeconds: number) => string;
     composeMainStalledWithStaleOwnerCallSection: (mainSilentSeconds: number, unansweredOwnerCallAgeSeconds: number) => string;
     composeSubAgentSection: (stallSections: SubAgentStallSections) => string;

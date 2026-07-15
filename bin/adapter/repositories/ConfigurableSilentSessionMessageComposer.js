@@ -11,21 +11,20 @@ const formatMinutes = (seconds) => {
     return `${minutes}m`;
 };
 class ConfigurableSilentSessionMessageComposer {
-    constructor(templates, fallback, ownerCallMarker = null) {
+    constructor(templates, fallback) {
         this.templates = templates;
         this.fallback = fallback;
-        this.ownerCallMarker = ownerCallMarker;
         this.composeMainStalledSection = (mainSilentSeconds) => {
             if (this.templates.mainStalledMessage === null) {
                 return this.fallback.composeMainStalledSection(mainSilentSeconds);
             }
-            return withReminderSentinel(`${this.templates.mainStalledMessage} ${(0, DefaultSilentSessionMessageComposer_1.composeOwnerCallFormatGuidance)(this.ownerCallMarker)}`);
+            return withReminderSentinel(`${this.templates.mainStalledMessage} ${(0, DefaultSilentSessionMessageComposer_1.composeOwnerCallFormatGuidance)()}`);
         };
         this.composeMainStalledWithStaleOwnerCallSection = (mainSilentSeconds, unansweredOwnerCallAgeSeconds) => {
             if (this.templates.mainStalledStaleOwnerCallMessage === null) {
                 return this.fallback.composeMainStalledWithStaleOwnerCallSection(mainSilentSeconds, unansweredOwnerCallAgeSeconds);
             }
-            return withReminderSentinel(`${this.templates.mainStalledStaleOwnerCallMessage} ${(0, DefaultSilentSessionMessageComposer_1.composeOwnerCallFormatGuidance)(this.ownerCallMarker)}`);
+            return withReminderSentinel(`${this.templates.mainStalledStaleOwnerCallMessage} ${(0, DefaultSilentSessionMessageComposer_1.composeOwnerCallFormatGuidance)()}`);
         };
         this.composeSubAgentSection = (stallSections) => {
             const hasIdleTemplate = this.templates.subAgentIdleMessageHeader !== null ||
