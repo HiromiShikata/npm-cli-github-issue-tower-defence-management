@@ -1,3 +1,10 @@
+## [1.122.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.9...v1.122.10) (2026-07-15)
+
+
+### Bug Fixes
+
+* **silent-monitor:** skip reminders for sessions whose last turn is a model refusal ([#1175](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1175)) ([8b72e1b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8b72e1b7a46ad6ef142cd7c1f46135240c3a31f4))
+
 ## [1.122.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.8...v1.122.9) (2026-07-14)
 
 

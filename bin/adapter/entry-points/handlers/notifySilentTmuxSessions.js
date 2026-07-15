@@ -10,6 +10,7 @@ const FileSystemSessionOutputActivityRepository_1 = require("../../repositories/
 const TmuxSilentSessionNotificationRepository_1 = require("../../repositories/TmuxSilentSessionNotificationRepository");
 const NoUnansweredOwnerCallStatusProvider_1 = require("../../repositories/NoUnansweredOwnerCallStatusProvider");
 const TranscriptOwnerCallStatusProvider_1 = require("../../repositories/TranscriptOwnerCallStatusProvider");
+const TranscriptRefusalTailStatusProvider_1 = require("../../repositories/TranscriptRefusalTailStatusProvider");
 const ProcessListSessionSubAgentActivityRepository_1 = require("../../repositories/ProcessListSessionSubAgentActivityRepository");
 const TranscriptSessionSubAgentActivityRepository_1 = require("../../repositories/TranscriptSessionSubAgentActivityRepository");
 const FileSystemSubAgentTranscriptDirectoryResolver_1 = require("../../repositories/FileSystemSubAgentTranscriptDirectoryResolver");
@@ -42,7 +43,7 @@ const notifySilentTmuxSessions = async (params) => {
         ? new FileSystemSilentSessionCandidateStateRepository_1.FileSystemSilentSessionCandidateStateRepository(candidateDebounceStateFilePath)
         : new FileSystemSilentSessionCandidateStateRepository_1.FileSystemSilentSessionCandidateStateRepository(), messageComposer, new RealSleeper_1.RealSleeper(), hubTaskStatusResolver, hubTaskStatusCacheStateFilePath !== null
         ? new FileSystemSilentSessionHubTaskStatusCacheRepository_1.FileSystemSilentSessionHubTaskStatusCacheRepository(hubTaskStatusCacheStateFilePath)
-        : new FileSystemSilentSessionHubTaskStatusCacheRepository_1.FileSystemSilentSessionHubTaskStatusCacheRepository());
+        : new FileSystemSilentSessionHubTaskStatusCacheRepository_1.FileSystemSilentSessionHubTaskStatusCacheRepository(), new TranscriptRefusalTailStatusProvider_1.TranscriptRefusalTailStatusProvider());
     await useCase.run({
         mainSilentThresholdSeconds,
         unansweredOwnerCallGraceSeconds,

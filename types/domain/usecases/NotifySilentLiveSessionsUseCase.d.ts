@@ -1,6 +1,7 @@
 import { LiveSessionProcessSnapshotProvider } from './adapter-interfaces/LiveSessionProcessSnapshotProvider';
 import { InteractiveLiveSessionTranscriptResolver } from './adapter-interfaces/InteractiveLiveSessionTranscriptResolver';
 import { OwnerCallStatusProvider } from './adapter-interfaces/OwnerCallStatusProvider';
+import { RefusalTailStatusProvider } from './adapter-interfaces/RefusalTailStatusProvider';
 import { SessionOutputActivityRepository } from './adapter-interfaces/SessionOutputActivityRepository';
 import { SessionSubAgentActivityRepository } from './adapter-interfaces/SessionSubAgentActivityRepository';
 import { SilentSessionMessageComposer } from './adapter-interfaces/SilentSessionMessageComposer';
@@ -31,8 +32,9 @@ export declare class NotifySilentLiveSessionsUseCase {
     private readonly sleeper;
     private readonly hubTaskStatusResolver;
     private readonly hubTaskStatusCacheRepository;
+    private readonly refusalTailStatusProvider;
     private readonly resolveInteractiveLiveSessions;
-    constructor(liveSessionProcessSnapshotProvider: LiveSessionProcessSnapshotProvider, interactiveLiveSessionTranscriptResolver: InteractiveLiveSessionTranscriptResolver, sessionOutputActivityRepository: SessionOutputActivityRepository, subAgentActivityRepository: SessionSubAgentActivityRepository, ownerCallStatusProvider: OwnerCallStatusProvider, notificationRepository: SilentSessionNotificationRepository, candidateStateRepository: SilentSessionCandidateStateRepository, messageComposer: SilentSessionMessageComposer, sleeper: Sleeper, hubTaskStatusResolver?: HubTaskStatusResolver | null, hubTaskStatusCacheRepository?: SilentSessionHubTaskStatusCacheRepository | null);
+    constructor(liveSessionProcessSnapshotProvider: LiveSessionProcessSnapshotProvider, interactiveLiveSessionTranscriptResolver: InteractiveLiveSessionTranscriptResolver, sessionOutputActivityRepository: SessionOutputActivityRepository, subAgentActivityRepository: SessionSubAgentActivityRepository, ownerCallStatusProvider: OwnerCallStatusProvider, notificationRepository: SilentSessionNotificationRepository, candidateStateRepository: SilentSessionCandidateStateRepository, messageComposer: SilentSessionMessageComposer, sleeper: Sleeper, hubTaskStatusResolver?: HubTaskStatusResolver | null, hubTaskStatusCacheRepository?: SilentSessionHubTaskStatusCacheRepository | null, refusalTailStatusProvider?: RefusalTailStatusProvider | null);
     run: (params: {
         mainSilentThresholdSeconds: number;
         unansweredOwnerCallGraceSeconds: number;

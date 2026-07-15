@@ -32,7 +32,7 @@ const GITHUB_ISSUE_OR_PULL_REQUEST_SESSION_NAME_PATTERN = /^https(:\/\/|_\/\/)gi
 const isGitHubIssueOrPullRequestSessionName = (sessionName) => GITHUB_ISSUE_OR_PULL_REQUEST_SESSION_NAME_PATTERN.test(sessionName);
 exports.isGitHubIssueOrPullRequestSessionName = isGitHubIssueOrPullRequestSessionName;
 class NotifySilentLiveSessionsUseCase {
-    constructor(liveSessionProcessSnapshotProvider, interactiveLiveSessionTranscriptResolver, sessionOutputActivityRepository, subAgentActivityRepository, ownerCallStatusProvider, notificationRepository, candidateStateRepository, messageComposer, sleeper, hubTaskStatusResolver = null, hubTaskStatusCacheRepository = null) {
+    constructor(liveSessionProcessSnapshotProvider, interactiveLiveSessionTranscriptResolver, sessionOutputActivityRepository, subAgentActivityRepository, ownerCallStatusProvider, notificationRepository, candidateStateRepository, messageComposer, sleeper, hubTaskStatusResolver = null, hubTaskStatusCacheRepository = null, refusalTailStatusProvider = null) {
         this.liveSessionProcessSnapshotProvider = liveSessionProcessSnapshotProvider;
         this.interactiveLiveSessionTranscriptResolver = interactiveLiveSessionTranscriptResolver;
         this.sessionOutputActivityRepository = sessionOutputActivityRepository;
@@ -44,6 +44,7 @@ class NotifySilentLiveSessionsUseCase {
         this.sleeper = sleeper;
         this.hubTaskStatusResolver = hubTaskStatusResolver;
         this.hubTaskStatusCacheRepository = hubTaskStatusCacheRepository;
+        this.refusalTailStatusProvider = refusalTailStatusProvider;
         this.resolveInteractiveLiveSessions = new ResolveInteractiveLiveSessionsUseCase_1.ResolveInteractiveLiveSessionsUseCase();
         this.run = async (params) => {
             const snapshot = await this.liveSessionProcessSnapshotProvider.getSnapshot();
@@ -54,7 +55,24 @@ class NotifySilentLiveSessionsUseCase {
                 console.log(`Silent live session notification: ignoring ${skippedNonGitHubSessionCount} non-github-named interactive session(s); only sessions named after a github.com issue or pull-request URL are monitored.`);
             }
             const transcriptPathBySessionName = this.interactiveLiveSessionTranscriptResolver.resolveTranscriptPaths(interactiveSessions);
-            const snapshots = await this.collectSnapshots(interactiveSessions, transcriptPathBySessionName, params.now);
+            // A session whose most recent assistant turn is a model refusal is
+            // excluded from ALL reminder candidates (main-stall and sub-agent
+            // branches alike): each reminder delivery re-sends the full session
+            // context to the API and is guaranteed to produce another refusal, so
+            // reminding such a session only burns tokens. The gate is state-based
+            // (no time windows) and self-clears once a non-refusal assistant turn
+            // appears after the refusal.
+            const refusalTailedSessionNames = this.refusalTailStatusProvider === null
+                ? new Set()
+                : await this.refusalTailStatusProvider.listRefusalTailedSessionNames(transcriptPathBySessionName);
+            const monitoredSessions = interactiveSessions.filter((session) => {
+                if (!refusalTailedSessionNames.has(session.sessionName)) {
+                    return true;
+                }
+                console.log(`Skipping ${session.sessionName}: last assistant turn was a model refusal; suppressing reminders until a non-refusal turn appears.`);
+                return false;
+            });
+            const snapshots = await this.collectSnapshots(monitoredSessions, transcriptPathBySessionName, params.now);
             const candidates = [];
             for (const sessionSnapshot of snapshots) {
                 const candidate = await this.composeCandidate(sessionSnapshot, params);
