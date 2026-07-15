@@ -48,7 +48,9 @@ describe('DefaultSilentSessionMessageComposer', () => {
         'Keep a monitor in place that notices when a sub-agent has produced no output for about 5 minutes.',
       ),
     ).toBe(1);
-    expect(occurrences('share it through a new owner-call')).toBe(1);
+    expect(
+      occurrences('work the owner asked for has been completed or answered'),
+    ).toBe(1);
   });
 
   it('requests a remaining-minutes estimate in the next output', () => {
@@ -77,8 +79,16 @@ describe('DefaultSilentSessionMessageComposer', () => {
   it('explains that the owner is notified only when an owner-call is raised', () => {
     const section = composer.composeMainStalledSection(600);
     expect(section).toContain(
-      'the owner is notified only when a new owner-call is raised',
+      'The owner is notified only when an owner-call is raised.',
     );
+  });
+
+  it('frames a completed owner request as awaiting acknowledgment rather than a no-action case', () => {
+    const section = composer.composeMainStalledSection(600);
+    expect(section).toContain(
+      "a completion still awaits the owner's acknowledgment",
+    );
+    expect(section).toContain('so it is not a no-action case');
   });
 
   it('contains no marker-tag example, tag name, or angle bracket in the format guidance', () => {
