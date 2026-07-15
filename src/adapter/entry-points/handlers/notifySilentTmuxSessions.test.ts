@@ -234,7 +234,7 @@ describe('notifySilentTmuxSessions', () => {
       `${SILENT_SESSION_REMINDER_SENTINEL} CUSTOM_MAIN_TEMPLATE`,
     );
     expect(sendCall?.[1][4]).toContain(
-      'complete opening and closing pair on one line',
+      'in the format documented for this session',
     );
   });
 

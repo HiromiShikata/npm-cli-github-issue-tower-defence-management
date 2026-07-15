@@ -48,7 +48,9 @@ describe('DefaultSilentSessionMessageComposer', () => {
         'Keep a monitor in place that notices when a sub-agent has produced no output for about 5 minutes.',
       ),
     ).toBe(1);
-    expect(occurrences('share it through a new owner-call')).toBe(1);
+    expect(
+      occurrences('work the owner asked for has been completed or answered'),
+    ).toBe(1);
   });
 
   it('requests a remaining-minutes estimate in the next output', () => {
@@ -63,40 +65,38 @@ describe('DefaultSilentSessionMessageComposer', () => {
     expect(section).toContain('No output has been observed for 10 minutes.');
   });
 
-  it('states the owner-call tag format exactly once: complete pair on one line, content starting with the red-circle emoji, self-contained', () => {
+  it('states the owner-call format guidance exactly once, deferring to the session-documented format', () => {
     const section = composer.composeMainStalledSection(600);
     const formatOccurrences =
-      section.split('complete opening and closing pair on one line').length - 1;
+      section.split('in the format documented for this session').length - 1;
     expect(formatOccurrences).toBe(1);
-    expect(section).toContain('🔴');
-    expect(section).toContain(
-      'with the content starting immediately with the 🔴 emoji',
-    );
     expect(section).toContain('written to be self-contained');
+    expect(section).toContain(
+      'so the owner can understand the situation from that single message',
+    );
   });
 
   it('explains that the owner is notified only when an owner-call is raised', () => {
     const section = composer.composeMainStalledSection(600);
-    expect(section).toContain('the owner is notified only when one is raised');
-  });
-
-  it('interpolates the configured owner-call marker into the format guidance when provided', () => {
-    const markedComposer = new DefaultSilentSessionMessageComposer(
-      '<<OWNER_CALL>>',
-    );
-    const section = markedComposer.composeMainStalledSection(600);
     expect(section).toContain(
-      'owner-call marker tag "<<OWNER_CALL>>" as a complete opening and closing pair on one line',
+      'The owner is notified only when an owner-call is raised.',
     );
-    expect(section).toContain('🔴');
   });
 
-  it('falls back to generic owner-call format guidance when no marker is configured', () => {
+  it('frames a completed owner request as awaiting acknowledgment rather than a no-action case', () => {
     const section = composer.composeMainStalledSection(600);
     expect(section).toContain(
-      'owner-call marker tag as a complete opening and closing pair on one line',
+      "a completion still awaits the owner's acknowledgment",
     );
-    expect(section).not.toContain('""');
+    expect(section).toContain('so it is not a no-action case');
+  });
+
+  it('contains no marker-tag example, tag name, or angle bracket in the format guidance', () => {
+    const section = composer.composeMainStalledSection(600);
+    expect(section).not.toContain('marker tag');
+    expect(section).not.toContain('opening and closing pair');
+    expect(section).not.toContain('<');
+    expect(section).not.toContain('>');
   });
 
   it('embeds the reminder sentinel in the stale-owner-call main-stalled section', () => {
@@ -166,22 +166,19 @@ describe('DefaultSilentSessionMessageComposer', () => {
       3600,
     );
     const formatOccurrences =
-      section.split('complete opening and closing pair on one line').length - 1;
+      section.split('in the format documented for this session').length - 1;
     expect(formatOccurrences).toBe(1);
   });
 
-  it('interpolates the configured owner-call marker into the stale-owner-call format guidance', () => {
-    const markedComposer = new DefaultSilentSessionMessageComposer(
-      '<<OWNER_CALL>>',
-    );
-    const section = markedComposer.composeMainStalledWithStaleOwnerCallSection(
+  it('contains no marker-tag example, tag name, or angle bracket in the stale-owner-call section', () => {
+    const section = composer.composeMainStalledWithStaleOwnerCallSection(
       600,
       3600,
     );
-    expect(section).toContain(
-      'owner-call marker tag "<<OWNER_CALL>>" as a complete opening and closing pair on one line',
-    );
-    expect(section).toContain('🔴');
+    expect(section).not.toContain('marker tag');
+    expect(section).not.toContain('opening and closing pair');
+    expect(section).not.toContain('<');
+    expect(section).not.toContain('>');
   });
 
   it('composes the stale-owner-call section distinctly from the plain main-stalled section', () => {
@@ -350,9 +347,6 @@ describe('DefaultSilentSessionMessageComposer', () => {
       /do not wait passively/i,
       /is prohibited/i,
     ];
-    const markedComposer = new DefaultSilentSessionMessageComposer(
-      '<<OWNER_CALL>>',
-    );
     const subAgent = {
       label: 'sub-process-1',
       silentSeconds: 360,
@@ -361,9 +355,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
     };
     const composedDefaultTexts = [
       composer.composeMainStalledSection(600),
-      markedComposer.composeMainStalledSection(600),
       composer.composeMainStalledWithStaleOwnerCallSection(600, 3600),
-      markedComposer.composeMainStalledWithStaleOwnerCallSection(600, 3600),
       composer.composeSubAgentSection({
         idleSubAgents: [subAgent],
         longRunningSubAgents: [subAgent],
@@ -373,6 +365,34 @@ describe('DefaultSilentSessionMessageComposer', () => {
       for (const pattern of flaggedPatterns) {
         expect(text).not.toMatch(pattern);
       }
+    }
+  });
+
+  it('composes default texts free of angle-bracket tag examples and emoji characters', () => {
+    const emojiPattern =
+      /[\u{1F000}-\u{1FAFF}\u{2190}-\u{21FF}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}]/u;
+    const subAgent = {
+      label: 'sub-process-1',
+      silentSeconds: 360,
+      runningSeconds: 1200,
+      waitingOnExternalProcess: false,
+    };
+    const composedDefaultTexts = [
+      composer.composeMainStalledSection(600),
+      composer.composeMainStalledWithStaleOwnerCallSection(600, 3600),
+      composer.composeSubAgentSection({
+        idleSubAgents: [subAgent],
+        longRunningSubAgents: [subAgent],
+      }),
+    ];
+    for (const text of composedDefaultTexts) {
+      expect(text).not.toContain('<');
+      expect(text).not.toContain('>');
+      expect(text).not.toMatch(emojiPattern);
+      expect(text).not.toContain('\u{FE0F}');
+      expect(text).not.toContain('\u{200D}');
+      // The bracketed reminder sentinel remains allowed.
+      expect(text).toContain(SILENT_SESSION_REMINDER_SENTINEL);
     }
   });
 

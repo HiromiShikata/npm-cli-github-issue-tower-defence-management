@@ -29,7 +29,6 @@ export class ConfigurableSilentSessionMessageComposer implements SilentSessionMe
   constructor(
     private readonly templates: SilentSessionMessageTemplates,
     private readonly fallback: SilentSessionMessageComposer,
-    private readonly ownerCallMarker: string | null = null,
   ) {}
 
   composeMainStalledSection = (mainSilentSeconds: number): string => {
@@ -37,7 +36,7 @@ export class ConfigurableSilentSessionMessageComposer implements SilentSessionMe
       return this.fallback.composeMainStalledSection(mainSilentSeconds);
     }
     return withReminderSentinel(
-      `${this.templates.mainStalledMessage} ${composeOwnerCallFormatGuidance(this.ownerCallMarker)}`,
+      `${this.templates.mainStalledMessage} ${composeOwnerCallFormatGuidance()}`,
     );
   };
 
@@ -52,7 +51,7 @@ export class ConfigurableSilentSessionMessageComposer implements SilentSessionMe
       );
     }
     return withReminderSentinel(
-      `${this.templates.mainStalledStaleOwnerCallMessage} ${composeOwnerCallFormatGuidance(this.ownerCallMarker)}`,
+      `${this.templates.mainStalledStaleOwnerCallMessage} ${composeOwnerCallFormatGuidance()}`,
     );
   };
 
