@@ -25,6 +25,7 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
     urlOfStoryView: string;
     storyObjectMap: StoryObjectMap;
     manager: Member['name'];
+    createTaskFromStoryBodyCheckboxEnabled: boolean;
   }): Promise<void> => {
     const story = input.project.story;
     if (!story) {
@@ -63,6 +64,9 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
           ...freshStoryIssue,
           body: newBody,
         });
+      }
+      if (!input.createTaskFromStoryBodyCheckboxEnabled) {
+        continue;
       }
       if (!newBody.includes('- [ ] ')) {
         continue;

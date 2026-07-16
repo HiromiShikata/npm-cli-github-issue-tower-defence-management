@@ -64,6 +64,21 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
       ['Story 2', basicStoryObject2],
     ]);
 
+    const singleStoryProject: Project = {
+      ...basicProject,
+      story: {
+        name: 'Story Field',
+        databaseId: 1,
+        fieldId: 'storyFieldId',
+        stories: [{ ...mock<StoryOption>(), id: 'story1', name: 'Story 1' }],
+        workflowManagementStory: { id: 'workflow1', name: 'Workflow Story' },
+      },
+    };
+
+    const singleStoryObjectMap: StoryObjectMap = new Map([
+      ['Story 1', basicStoryObject1],
+    ]);
+
     const regularStoryProject = {
       ...basicProject,
       story: {
@@ -101,6 +116,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
         urlOfStoryView: string;
         storyObjectMap: StoryObjectMap;
         manager: string;
+        createTaskFromStoryBodyCheckboxEnabled: boolean;
       };
       expectedThrowError?: Error;
       expectedCreateNewIssueCalls: [
@@ -125,6 +141,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           urlOfStoryView: 'https://example.com',
           storyObjectMap: basicStoryObjectMap,
           manager: 'manager',
+          createTaskFromStoryBodyCheckboxEnabled: true,
         },
         expectedCreateNewIssueCalls: [],
         expectedUpdateIssueCalls: [],
@@ -141,6 +158,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           urlOfStoryView: 'https://example.com',
           storyObjectMap: basicStoryObjectMap,
           manager: 'manager',
+          createTaskFromStoryBodyCheckboxEnabled: true,
         },
         expectedCreateNewIssueCalls: [
           [
@@ -290,6 +308,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           urlOfStoryView: 'https://example.com',
           storyObjectMap: regularStoryObjectMap,
           manager: 'manager',
+          createTaskFromStoryBodyCheckboxEnabled: true,
         },
         expectedCreateNewIssueCalls: [],
         expectedUpdateIssueCalls: [],
@@ -306,6 +325,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           urlOfStoryView: 'https://example.com',
           storyObjectMap: basicStoryObjectMap,
           manager: 'manager',
+          createTaskFromStoryBodyCheckboxEnabled: true,
         },
         expectedThrowError: new Error('Story issue not found: Story 1'),
         expectedCreateNewIssueCalls: [],
@@ -334,6 +354,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           urlOfStoryView: 'https://example.com',
           storyObjectMap: basicStoryObjectMap,
           manager: 'manager',
+          createTaskFromStoryBodyCheckboxEnabled: true,
         },
         expectedCreateNewIssueCalls: [],
         expectedUpdateIssueCalls: [],
@@ -350,6 +371,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           urlOfStoryView: 'https://example.com',
           storyObjectMap: basicStoryObjectMap,
           manager: 'manager',
+          createTaskFromStoryBodyCheckboxEnabled: true,
         },
         expectedCreateNewIssueCalls: [
           [
@@ -514,6 +536,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           urlOfStoryView: 'https://example.com',
           storyObjectMap: new Map([['Story 1', basicStoryObject1]]),
           manager: 'manager',
+          createTaskFromStoryBodyCheckboxEnabled: true,
         },
         expectedCreateNewIssueCalls: [
           [
@@ -605,6 +628,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             ],
           ]),
           manager: 'manager',
+          createTaskFromStoryBodyCheckboxEnabled: true,
         },
         expectedCreateNewIssueCalls: [],
         expectedUpdateIssueCalls: [
@@ -639,6 +663,7 @@ Some description without checkboxes`,
           urlOfStoryView: 'https://example.com',
           storyObjectMap: basicStoryObjectMap,
           manager: 'manager',
+          createTaskFromStoryBodyCheckboxEnabled: true,
         },
         expectedCreateNewIssueCalls: [
           [
@@ -836,6 +861,7 @@ Some description without checkboxes`,
             ],
           ]),
           manager: 'manager',
+          createTaskFromStoryBodyCheckboxEnabled: true,
         },
         expectedCreateNewIssueCalls: [
           [
@@ -924,6 +950,131 @@ Some description without checkboxes`,
         expectedAddIssueToProjectCalls: [
           [basicProject, 'https://github.com/orgA/repoA/issues/1'],
           [basicProject, 'https://github.com/orgB/repoB/issues/2'],
+        ],
+      },
+      {
+        name: 'should not create task issues but still inject story view link when createTaskFromStoryBodyCheckboxEnabled is false',
+        input: {
+          project: basicProject,
+          issues: [basicStoryIssue1, basicStoryIssue2],
+          cacheUsed: true,
+          urlOfStoryView: 'https://example.com',
+          storyObjectMap: basicStoryObjectMap,
+          manager: 'manager',
+          createTaskFromStoryBodyCheckboxEnabled: false,
+        },
+        expectedCreateNewIssueCalls: [],
+        expectedUpdateIssueCalls: [
+          [
+            {
+              ...basicStoryIssue1,
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+
+- [ ] Task 1
+- [ ] Task 2`,
+            },
+          ],
+          [
+            {
+              ...basicStoryIssue2,
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+
+- [ ] Task 3
+- [ ] Task 4`,
+            },
+          ],
+        ],
+        expectedUpdateStoryCalls: [],
+        expectedGetIssueByUrlCalls: [
+          ['https://github.com/org/repo/issues/123'],
+          ['https://github.com/org/repo/issues/456'],
+        ],
+        expectedAddIssueToProjectCalls: [],
+      },
+      {
+        name: 'should create task issues from checkboxes when createTaskFromStoryBodyCheckboxEnabled is true',
+        input: {
+          project: singleStoryProject,
+          issues: [basicStoryIssue1],
+          cacheUsed: false,
+          urlOfStoryView: 'https://example.com',
+          storyObjectMap: singleStoryObjectMap,
+          manager: 'manager',
+          createTaskFromStoryBodyCheckboxEnabled: true,
+        },
+        expectedCreateNewIssueCalls: [
+          [
+            'org',
+            'repo',
+            'Task 1',
+            '- Parent issue: https://github.com/org/repo/issues/123',
+            ['manager'],
+            [],
+          ],
+          [
+            'org',
+            'repo',
+            'Task 2',
+            '- Parent issue: https://github.com/org/repo/issues/123',
+            ['manager'],
+            [],
+          ],
+        ],
+        expectedUpdateIssueCalls: [
+          [
+            {
+              ...basicStoryIssue1,
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+
+- [ ] Task 1
+- [ ] Task 2`,
+            },
+          ],
+          [
+            {
+              ...basicStoryIssue1,
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+
+- [ ] https://github.com/org/repo/issues/1
+- [ ] Task 2`,
+            },
+          ],
+          [
+            {
+              ...basicStoryIssue1,
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+
+- [ ] https://github.com/org/repo/issues/1
+- [ ] https://github.com/org/repo/issues/2`,
+            },
+          ],
+        ],
+        expectedUpdateStoryCalls: [
+          [
+            singleStoryProject,
+            {
+              ...mock<Issue>(),
+              url: 'https://github.com/org/repo/issues/1',
+            },
+            'story1',
+          ],
+          [
+            singleStoryProject,
+            {
+              ...mock<Issue>(),
+              url: 'https://github.com/org/repo/issues/2',
+            },
+            'story1',
+          ],
+        ],
+        expectedGetIssueByUrlCalls: [
+          ['https://github.com/org/repo/issues/123'],
+          ['https://github.com/org/repo/issues/1'],
+          ['https://github.com/org/repo/issues/2'],
+        ],
+        expectedAddIssueToProjectCalls: [
+          [singleStoryProject, 'https://github.com/org/repo/issues/1'],
+          [singleStoryProject, 'https://github.com/org/repo/issues/2'],
         ],
       },
     ];
