@@ -1571,6 +1571,79 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     });
   });
 
+  describe('per-send observability log line', () => {
+    const notifiedLogLines = (): string[] =>
+      jest
+        .mocked(console.log)
+        .mock.calls.map((call): unknown => call[0])
+        .filter(
+          (line): line is string =>
+            typeof line === 'string' && line.startsWith('Notified '),
+        );
+
+    it('logs the timestamp and the main-stalled section type on a main-stall send', async () => {
+      setupSilentMainSession(GITHUB_SESSION);
+
+      await useCase.run(runParams());
+
+      expect(notifiedLogLines()).toEqual([
+        `Notified ${GITHUB_SESSION} at=${now.toISOString()} sections=[main-stalled]`,
+      ]);
+    });
+
+    it('logs sub-agent section types with their sub-agent labels', async () => {
+      setupLiveInteractiveSession(GITHUB_SESSION);
+      const idleOnlySubAgent: SubAgentActivity = {
+        label: 'agent-idle-1',
+        silentSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
+        runningSeconds: 60,
+        waitingOnExternalProcess: false,
+      };
+      const quietLongRunningSubAgent: SubAgentActivity = {
+        label: 'agent-long-1',
+        silentSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
+        runningSeconds: DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
+        waitingOnExternalProcess: false,
+      };
+      mockSubAgentActivityRepository.listSubAgentActivitiesBySessionName.mockResolvedValue(
+        new Map([
+          [GITHUB_SESSION, [idleOnlySubAgent, quietLongRunningSubAgent]],
+        ]),
+      );
+
+      await useCase.run(runParams());
+
+      expect(notifiedLogLines()).toEqual([
+        `Notified ${GITHUB_SESSION} at=${now.toISOString()} sections=[sub-agent-idle:agent-idle-1,sub-agent-idle:agent-long-1,sub-agent-long-running:agent-long-1]`,
+      ]);
+    });
+
+    it('logs both the main-stalled and sub-agent section types on a combined send', async () => {
+      setupSilentMainSession(GITHUB_SESSION);
+      mockSubAgentActivityRepository.listSubAgentActivitiesBySessionName.mockResolvedValue(
+        new Map([
+          [
+            GITHUB_SESSION,
+            [
+              {
+                label: 'agent-idle-1',
+                silentSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
+                runningSeconds: 60,
+                waitingOnExternalProcess: false,
+              },
+            ],
+          ],
+        ]),
+      );
+
+      await useCase.run(runParams());
+
+      expect(notifiedLogLines()).toEqual([
+        `Notified ${GITHUB_SESSION} at=${now.toISOString()} sections=[main-stalled,sub-agent-idle:agent-idle-1]`,
+      ]);
+    });
+  });
+
   describe('isGitHubIssueOrPullRequestSessionName', () => {
     it('accepts the encoded form of a github.com issue URL session name', () => {
       expect(

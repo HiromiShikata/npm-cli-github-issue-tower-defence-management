@@ -60,6 +60,7 @@ export type HubTaskStatusResolver = Pick<IssueRepository, 'getIssueByUrl'>;
 type NotifyCandidate = {
   sessionName: string;
   message: string;
+  sectionLabels: string[];
 };
 
 export class NotifySilentLiveSessionsUseCase {
@@ -195,7 +196,12 @@ export class NotifySilentLiveSessionsUseCase {
         candidate.message,
       );
       sentCount += 1;
-      console.log(`Notified ${candidate.sessionName}.`);
+      // One line per send, grep-stable on the `Notified ` prefix: the
+      // ISO-8601 UTC timestamp disambiguates concurrent schedule runs and
+      // the section list records what the message actually contained.
+      console.log(
+        `Notified ${candidate.sessionName} at=${params.now.toISOString()} sections=[${candidate.sectionLabels.join(',')}]`,
+      );
     }
   };
 
@@ -380,6 +386,7 @@ export class NotifySilentLiveSessionsUseCase {
     },
   ): NotifyCandidate | null => {
     const sections: string[] = [];
+    const sectionLabels: string[] = [];
 
     const mainSilentSeconds = snapshot.mainSilentSeconds;
     const unansweredOwnerCallAgeSeconds =
@@ -402,6 +409,7 @@ export class NotifySilentLiveSessionsUseCase {
       sections.push(
         this.messageComposer.composeMainStalledSection(mainSilentSeconds),
       );
+      sectionLabels.push('main-stalled');
     }
 
     const idleSubAgents = snapshot.subAgents.filter(
@@ -429,6 +437,12 @@ export class NotifySilentLiveSessionsUseCase {
           longRunningSubAgents,
         }),
       );
+      for (const subAgent of idleSubAgents) {
+        sectionLabels.push(`sub-agent-idle:${subAgent.label}`);
+      }
+      for (const subAgent of longRunningSubAgents) {
+        sectionLabels.push(`sub-agent-long-running:${subAgent.label}`);
+      }
     }
 
     if (sections.length === 0) {
@@ -437,6 +451,7 @@ export class NotifySilentLiveSessionsUseCase {
     return {
       sessionName: snapshot.sessionName,
       message: sections.join('\n\n'),
+      sectionLabels,
     };
   };
 }
