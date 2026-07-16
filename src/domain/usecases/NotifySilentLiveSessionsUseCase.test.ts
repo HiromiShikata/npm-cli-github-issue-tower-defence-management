@@ -167,12 +167,6 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         .fn()
         .mockResolvedValue(everyNameRecentSet()),
       saveCandidateSessionNames: jest.fn().mockResolvedValue(undefined),
-      loadAnnouncedRunningSubAgentLabels: jest
-        .fn()
-        .mockResolvedValue(new Set<string>()),
-      saveAnnouncedRunningSubAgentLabels: jest
-        .fn()
-        .mockResolvedValue(undefined),
     };
     mockMessageComposer = {
       composeMainStalledSection: jest
@@ -573,7 +567,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     const subAgents: SubAgentActivity[] = [
       {
         label: 'sub-process-1',
-        silentSeconds: 10,
+        silentSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
         runningSeconds: 600,
         waitingOnExternalProcess: false,
       },
@@ -588,9 +582,31 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     });
 
     expect(mockMessageComposer.composeSubAgentSection).toHaveBeenCalledWith({
-      idleSubAgents: [],
+      idleSubAgents: subAgents,
       longRunningSubAgents: subAgents,
     });
+  });
+
+  it('suppresses the long-running section for a sub-agent that produced output recently even past the running threshold', async () => {
+    setupLiveInteractiveSession(GITHUB_SESSION);
+    const subAgents: SubAgentActivity[] = [
+      {
+        label: 'sub-process-1',
+        silentSeconds: 10,
+        runningSeconds: DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
+        waitingOnExternalProcess: false,
+      },
+    ];
+    mockSubAgentActivityRepository.listSubAgentActivitiesBySessionName.mockResolvedValue(
+      new Map([[GITHUB_SESSION, subAgents]]),
+    );
+
+    await useCase.run(runParams());
+
+    expect(mockMessageComposer.composeSubAgentSection).not.toHaveBeenCalled();
+    expect(
+      mockNotificationRepository.sendSelfCheckNotification,
+    ).not.toHaveBeenCalled();
   });
 
   it('excludes an owner-handover spawn from selection so no notification is sent', async () => {
@@ -764,14 +780,20 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       runningSeconds: 60,
       waitingOnExternalProcess: true,
     });
-    const longRunningSubAgent = (
+    const quietLongRunningSubAgent = (
       label: string,
       waitingOnExternalProcess: boolean,
     ): SubAgentActivity => ({
       label,
-      silentSeconds: 30,
+      silentSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
       runningSeconds: DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
       waitingOnExternalProcess,
+    });
+    const producingLongRunningSubAgent = (label: string): SubAgentActivity => ({
+      label,
+      silentSeconds: 30,
+      runningSeconds: DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
+      waitingOnExternalProcess: false,
     });
 
     const setupSubAgents = (subAgents: SubAgentActivity[]): void => {
@@ -817,27 +839,37 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       ).toHaveBeenCalledTimes(2);
     });
 
-    it('announces a running-threshold crossing for a waiting sub-agent without any idle section', async () => {
-      setupSubAgents([
-        {
-          label: 'sub-process-1',
-          silentSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
-          runningSeconds: DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
-          waitingOnExternalProcess: true,
-        },
-      ]);
+    it('never selects a waiting sub-agent for the long-running section even when quiet past both thresholds', async () => {
+      setupSubAgents([quietLongRunningSubAgent('sub-process-1', true)]);
+
+      await useCase.run(runParams());
+
+      expect(mockMessageComposer.composeSubAgentSection).not.toHaveBeenCalled();
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('never selects a long-running sub-agent that produced output within the silent threshold', async () => {
+      setupSubAgents([producingLongRunningSubAgent('sub-process-1')]);
+
+      await useCase.run(runParams());
+
+      expect(mockMessageComposer.composeSubAgentSection).not.toHaveBeenCalled();
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('includes a quiet long-running sub-agent in both the idle and long-running sections', async () => {
+      setupSubAgents([quietLongRunningSubAgent('sub-process-1', false)]);
 
       await useCase.run(runParams());
 
       expect(mockMessageComposer.composeSubAgentSection).toHaveBeenCalledWith({
-        idleSubAgents: [],
+        idleSubAgents: [quietLongRunningSubAgent('sub-process-1', false)],
         longRunningSubAgents: [
-          {
-            label: 'sub-process-1',
-            silentSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
-            runningSeconds: DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
-            waitingOnExternalProcess: true,
-          },
+          quietLongRunningSubAgent('sub-process-1', false),
         ],
       });
       expect(
@@ -845,22 +877,27 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       ).toHaveBeenCalledWith(GITHUB_SESSION, SUBAGENT_SECTION);
     });
 
-    it('records the announced running label only after the notification is sent', async () => {
-      setupSubAgents([longRunningSubAgent('sub-process-1', false)]);
+    it('keeps notifying a quiet long-running sub-agent on every cycle while the condition holds', async () => {
+      setupSubAgents([quietLongRunningSubAgent('sub-process-1', false)]);
 
+      await useCase.run(runParams());
       await useCase.run(runParams());
 
       expect(
-        mockCandidateStateRepository.saveAnnouncedRunningSubAgentLabels,
-      ).toHaveBeenCalledWith({
-        sessionName: GITHUB_SESSION,
-        labels: ['sub-process-1'],
-        now,
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledTimes(2);
+      expect(
+        mockMessageComposer.composeSubAgentSection,
+      ).toHaveBeenNthCalledWith(2, {
+        idleSubAgents: [quietLongRunningSubAgent('sub-process-1', false)],
+        longRunningSubAgents: [
+          quietLongRunningSubAgent('sub-process-1', false),
+        ],
       });
     });
 
-    it('does not record an announced running label when the first-cycle debounce defers the send', async () => {
-      setupSubAgents([longRunningSubAgent('sub-process-1', false)]);
+    it('defers a first-cycle long-running candidate until it persists into the next cycle', async () => {
+      setupSubAgents([quietLongRunningSubAgent('sub-process-1', false)]);
       mockCandidateStateRepository.loadRecentCandidateSessionNames.mockResolvedValue(
         new Set<string>(),
       );
@@ -871,116 +908,26 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         mockNotificationRepository.sendSelfCheckNotification,
       ).not.toHaveBeenCalled();
       expect(
-        mockCandidateStateRepository.saveAnnouncedRunningSubAgentLabels,
-      ).not.toHaveBeenCalled();
+        mockCandidateStateRepository.saveCandidateSessionNames,
+      ).toHaveBeenCalledWith({ sessionNames: [GITHUB_SESSION], now });
     });
 
-    it('does not repeat the running announcement while the same label stays over the threshold', async () => {
-      setupSubAgents([longRunningSubAgent('sub-process-1', false)]);
-      mockCandidateStateRepository.loadAnnouncedRunningSubAgentLabels.mockResolvedValue(
-        new Set(['sub-process-1']),
-      );
-
-      await useCase.run(runParams());
-
-      expect(mockMessageComposer.composeSubAgentSection).not.toHaveBeenCalled();
-      expect(
-        mockNotificationRepository.sendSelfCheckNotification,
-      ).not.toHaveBeenCalled();
-    });
-
-    it('announces only the new label when another announced label is still over the threshold', async () => {
-      setupSubAgents([
-        longRunningSubAgent('sub-process-1', false),
-        longRunningSubAgent('sub-process-2', false),
-      ]);
-      mockCandidateStateRepository.loadAnnouncedRunningSubAgentLabels.mockResolvedValue(
-        new Set(['sub-process-1']),
-      );
-
-      await useCase.run(runParams());
-
-      expect(mockMessageComposer.composeSubAgentSection).toHaveBeenCalledWith({
-        idleSubAgents: [],
-        longRunningSubAgents: [longRunningSubAgent('sub-process-2', false)],
-      });
-      expect(
-        mockCandidateStateRepository.saveAnnouncedRunningSubAgentLabels,
-      ).toHaveBeenCalledWith({
-        sessionName: GITHUB_SESSION,
-        labels: ['sub-process-1', 'sub-process-2'],
-        now,
-      });
-    });
-
-    it('clears the announced record when the label disappears from the sub-agent set', async () => {
-      setupSubAgents([]);
-      mockCandidateStateRepository.loadAnnouncedRunningSubAgentLabels.mockResolvedValue(
-        new Set(['sub-process-1']),
-      );
-
-      await useCase.run(runParams());
-
-      expect(
-        mockCandidateStateRepository.saveAnnouncedRunningSubAgentLabels,
-      ).toHaveBeenCalledWith({
-        sessionName: GITHUB_SESSION,
-        labels: [],
-        now,
-      });
-    });
-
-    it('announces exactly once per crossing across use-case instances sharing the persisted state', async () => {
-      setupSubAgents([longRunningSubAgent('sub-process-1', false)]);
-      const announcedLabelsBySessionName = new Map<string, string[]>();
-      mockCandidateStateRepository.loadAnnouncedRunningSubAgentLabels.mockImplementation(
-        async ({ sessionName }) =>
-          new Set(announcedLabelsBySessionName.get(sessionName) ?? []),
-      );
-      mockCandidateStateRepository.saveAnnouncedRunningSubAgentLabels.mockImplementation(
-        async ({ sessionName, labels }) => {
-          announcedLabelsBySessionName.set(sessionName, labels);
-        },
-      );
+    it('stops notifying once the long-running sub-agent drops out of the activity snapshot', async () => {
+      setupSubAgents([quietLongRunningSubAgent('sub-process-1', false)]);
 
       await useCase.run(runParams());
       expect(
         mockNotificationRepository.sendSelfCheckNotification,
       ).toHaveBeenCalledTimes(1);
 
-      const secondUseCase = new NotifySilentLiveSessionsUseCase(
-        mockSnapshotProvider,
-        mockTranscriptResolver,
-        mockSessionOutputActivityRepository,
-        mockSubAgentActivityRepository,
-        mockOwnerCallStatusProvider,
-        mockNotificationRepository,
-        mockCandidateStateRepository,
-        mockMessageComposer,
-        mockSleeper,
-        mockHubTaskStatusResolver,
-        mockHubTaskStatusCacheRepository,
+      mockSubAgentActivityRepository.listSubAgentActivitiesBySessionName.mockResolvedValue(
+        new Map<string, SubAgentActivity[]>(),
       );
-      await secondUseCase.run(
-        runParams({ now: new Date(now.getTime() + 60 * 1000) }),
-      );
-
-      expect(
-        mockNotificationRepository.sendSelfCheckNotification,
-      ).toHaveBeenCalledTimes(1);
-    });
-
-    it('does not touch the announced-label record for a main-only reminder', async () => {
-      setupSilentMainSession(GITHUB_SESSION);
-
       await useCase.run(runParams());
 
       expect(
         mockNotificationRepository.sendSelfCheckNotification,
-      ).toHaveBeenCalledWith(GITHUB_SESSION, MAIN_STALLED_SECTION);
-      expect(
-        mockCandidateStateRepository.saveAnnouncedRunningSubAgentLabels,
-      ).not.toHaveBeenCalled();
+      ).toHaveBeenCalledTimes(1);
     });
   });
 

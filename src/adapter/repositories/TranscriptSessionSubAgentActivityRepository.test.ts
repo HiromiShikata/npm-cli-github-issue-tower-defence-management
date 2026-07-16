@@ -164,7 +164,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     },
   ];
 
-  const toolResultTerminalEntries = (startTimestamp: string): object[] => [
+  const inFlightToolResultTailEntries = (startTimestamp: string): object[] => [
     { type: 'user', timestamp: startTimestamp, message: { role: 'user' } },
     {
       type: 'assistant',
@@ -370,13 +370,17 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     expect(result.size).toBe(0);
   });
 
-  it('excludes a dead sub-agent whose transcript ends with an unconsumed tool result and no following assistant turn', async () => {
+  it('keeps an in-flight sub-agent whose transcript tail is an ordinary tool result awaiting the next assistant turn', async () => {
+    // The transcript tail of an actively working agent alternates between a
+    // pending tool_use (assistant) and a tool_result (user). Treating the
+    // tool_result tail as completion made an active agent flap in and out of
+    // the snapshot between samples; it must stay in the snapshot instead.
     const sessionName = 'https_//github_com/owner/repo/issues/9';
     writeAgentTranscript(
       sessionName,
       'toolresultend',
-      toolResultTerminalEntries('2026-06-27T11:00:00.000Z'),
-      nowEpochSeconds - 600,
+      inFlightToolResultTailEntries('2026-06-27T11:50:00.000Z'),
+      nowEpochSeconds - 60,
     );
     const repository = new TranscriptSessionSubAgentActivityRepository(
       createResolver(),
@@ -389,7 +393,14 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
       transcriptMapFor([sessionName]),
     );
 
-    expect(result.size).toBe(0);
+    expect(result.get(sessionName)).toEqual([
+      {
+        label: 'agent-toolresultend',
+        silentSeconds: 60,
+        runningSeconds: 600,
+        waitingOnExternalProcess: false,
+      },
+    ]);
   });
 
   it('excludes a finished sub-agent whose transcript ends with the final StructuredOutput tool result', async () => {
@@ -412,6 +423,58 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     );
 
     expect(result.size).toBe(0);
+  });
+
+  it('keeps an in-flight sub-agent whose tail tool result follows a Bash call even when an earlier turn used StructuredOutput', async () => {
+    // Only the assistant turn immediately preceding the tail tool_result
+    // decides completion: an earlier StructuredOutput call that was already
+    // consumed must not mark a later in-flight tool_result as terminal.
+    const sessionName = 'https_//github_com/owner/repo/issues/9';
+    const startTimestamp = '2026-06-27T11:50:00.000Z';
+    writeAgentTranscript(
+      sessionName,
+      'laterbash',
+      [
+        ...structuredOutputTerminalEntries(startTimestamp),
+        {
+          type: 'assistant',
+          timestamp: startTimestamp,
+          message: {
+            role: 'assistant',
+            stop_reason: 'tool_use',
+            content: [{ type: 'tool_use', name: 'Bash', input: {} }],
+          },
+        },
+        {
+          type: 'user',
+          timestamp: startTimestamp,
+          message: {
+            role: 'user',
+            content: [{ type: 'tool_result', content: 'command output' }],
+          },
+        },
+      ],
+      nowEpochSeconds - 60,
+    );
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      emptyProcessLister(),
+      now,
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.get(sessionName)).toEqual([
+      {
+        label: 'agent-laterbash',
+        silentSeconds: 60,
+        runningSeconds: 600,
+        waitingOnExternalProcess: false,
+      },
+    ]);
   });
 
   it('excludes a dead sub-agent whose transcript ends with a user entry that has no content blocks', async () => {
