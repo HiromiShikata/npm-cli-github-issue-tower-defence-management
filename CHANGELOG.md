@@ -1,3 +1,10 @@
+## [1.122.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.11...v1.122.12) (2026-07-16)
+
+
+### Bug Fixes
+
+* **silent-monitor:** gate long-running advisory on output recency and keep in-flight agents in the snapshot ([#1179](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1179)) ([e533043](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e533043e140d699ee1175c48eb186496d8cad7d0)), closes [#actions](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/actions)
+
 ## [1.122.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.10...v1.122.11) (2026-07-15)
 
 

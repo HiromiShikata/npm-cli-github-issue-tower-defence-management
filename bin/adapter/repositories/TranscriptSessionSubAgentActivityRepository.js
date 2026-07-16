@@ -61,7 +61,15 @@ const readContentBlocks = (message) => {
     }
     return content.filter(isRecord);
 };
-const entryIndicatesCompletion = (entry) => {
+// Tool whose result marks the sub-agent's final structured answer: once its
+// tool_result is recorded, the sub-agent has delivered its output and is
+// genuinely complete even though the transcript tail is a user entry.
+const COMPLETION_TOOL_NAMES = new Set(['StructuredOutput']);
+const entryToolUseNames = (message) => readContentBlocks(message)
+    .filter((block) => readString(block, 'type') === 'tool_use')
+    .map((block) => readString(block, 'name'))
+    .filter((name) => name !== null);
+const entryIndicatesCompletion = (entry, precedingAssistantToolUseNames) => {
     const type = readString(entry, 'type');
     const message = entry.message;
     if (!isRecord(message)) {
@@ -83,7 +91,24 @@ const entryIndicatesCompletion = (entry) => {
         }
         const lastBlock = blocks[blocks.length - 1];
         const lastBlockType = readString(lastBlock, 'type');
-        return lastBlockType === 'text' || lastBlockType === 'tool_result';
+        if (lastBlockType === 'text') {
+            // A trailing user text entry is an interruption (e.g. "[Request
+            // interrupted by user]"): the sub-agent will not produce further
+            // output, so the transcript is terminal.
+            return true;
+        }
+        if (lastBlockType === 'tool_result') {
+            // A trailing tool_result is an IN-FLIGHT state, not completion: the
+            // sub-agent has just received a tool result and the next assistant
+            // turn is being generated. Treating it as completion made an active
+            // agent flap in and out of the activity snapshot between samples
+            // (tail alternates between pending tool_use and tool_result). Only
+            // the result of an explicit completion tool (see
+            // COMPLETION_TOOL_NAMES) is a genuine terminal state, so completed
+            // agents still drop out of the snapshot.
+            return precedingAssistantToolUseNames.some((name) => COMPLETION_TOOL_NAMES.has(name));
+        }
+        return false;
     }
     return false;
 };
@@ -113,6 +138,7 @@ const parseTranscript = (content) => {
     let firstEntryEpochSeconds = null;
     let lastEntryIndicatesCompletion = false;
     let pendingToolCommands = [];
+    let precedingAssistantToolUseNames = [];
     for (const line of content.split('\n')) {
         const trimmed = line.trim();
         if (trimmed.length === 0) {
@@ -133,8 +159,11 @@ const parseTranscript = (content) => {
             firstEntryEpochSeconds = epochSeconds;
         }
         if (isRecord(parsed.message)) {
-            lastEntryIndicatesCompletion = entryIndicatesCompletion(parsed);
+            lastEntryIndicatesCompletion = entryIndicatesCompletion(parsed, precedingAssistantToolUseNames);
             pendingToolCommands = entryPendingToolCommands(parsed);
+            if (readString(parsed, 'type') === 'assistant') {
+                precedingAssistantToolUseNames = entryToolUseNames(parsed.message);
+            }
         }
     }
     return {

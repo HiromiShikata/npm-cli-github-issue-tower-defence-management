@@ -51,6 +51,5 @@ export declare class NotifySilentLiveSessionsUseCase {
     private isResolvedStatusActive;
     private collectSnapshots;
     private composeCandidate;
-    private reconcileAnnouncedRunningLabels;
 }
 //# sourceMappingURL=NotifySilentLiveSessionsUseCase.d.ts.map
