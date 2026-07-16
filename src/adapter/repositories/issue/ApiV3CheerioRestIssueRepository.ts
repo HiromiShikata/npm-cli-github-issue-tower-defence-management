@@ -1405,11 +1405,30 @@ export class ApiV3CheerioRestIssueRepository
             pr.mergeable === null ||
             pr.mergeable === 'UNKNOWN')
         ) {
-          const resolved = await this.resolveMergeabilityWithRetry(
-            owner,
-            repo,
-            pr.number,
-          );
+          let resolved: {
+            mergeable: string | null;
+            mergeStateStatus: string | null;
+          } | null;
+          try {
+            resolved = await this.resolveMergeabilityWithRetry(
+              owner,
+              repo,
+              pr.number,
+            );
+          } catch (error) {
+            const errorMessage =
+              error instanceof Error ? error.message : String(error);
+            if (errorMessage.includes('NOT_FOUND')) {
+              console.info(
+                `ApiV3CheerioRestIssueRepository: pull request no longer exists, excluding it from related open PRs. prUrl: ${prUrl}`,
+              );
+            } else {
+              console.warn(
+                `ApiV3CheerioRestIssueRepository: resolveMergeabilityWithRetry failed, skipping PR for this cycle. prUrl: ${prUrl} error: ${errorMessage}`,
+              );
+            }
+            continue;
+          }
           if (resolved !== null) {
             mergeable = resolved.mergeable;
             isConflicted =

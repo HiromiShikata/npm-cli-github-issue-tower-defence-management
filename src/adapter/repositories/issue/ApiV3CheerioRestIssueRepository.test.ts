@@ -2371,6 +2371,131 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result[0].isConflicted).toBe(false);
       expect(result[0].mergeable).toBe('MERGEABLE');
     });
+
+    const buildPullRequestTimelineNode = (
+      prNumber: number,
+      mergeable: string,
+    ) => ({
+      __typename: 'CrossReferencedEvent',
+      willCloseTarget: true,
+      source: {
+        __typename: 'PullRequest',
+        url: `https://github.com/HiromiShikata/test-repository/pull/${prNumber}`,
+        number: prNumber,
+        state: 'OPEN',
+        createdAt: '2024-01-01T00:00:00Z',
+        isDraft: false,
+        mergeable,
+        headRefName: 'feature-branch',
+        baseRefName: 'main',
+        baseRepository: {
+          branchProtectionRules: { nodes: [] },
+          defaultBranchRef: { name: 'main' },
+          rulesets: { nodes: [] },
+        },
+        commits: { nodes: [] },
+        reviewThreads: { nodes: [] },
+        baseRef: { name: 'main' },
+      },
+    });
+
+    const buildTwoPrTimelineResponse = () => ({
+      data: {
+        repository: {
+          issue: {
+            timelineItems: {
+              pageInfo: { endCursor: null, hasNextPage: false },
+              nodes: [
+                buildPullRequestTimelineNode(11148, 'UNKNOWN'),
+                buildPullRequestTimelineNode(11149, 'MERGEABLE'),
+              ],
+            },
+          },
+        },
+      },
+    });
+
+    it('excludes a PR whose mergeability resolution reports NOT_FOUND and still returns the healthy PR in the same batch', async () => {
+      const consoleInfoSpy = jest
+        .spyOn(console, 'info')
+        .mockImplementation(() => undefined);
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(buildTwoPrTimelineResponse()), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              data: { repository: { pullRequest: null } },
+              errors: [
+                {
+                  type: 'NOT_FOUND',
+                  path: ['repository', 'pullRequest'],
+                  message:
+                    'Could not resolve to a PullRequest with the number of 11148.',
+                },
+              ],
+            }),
+            {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            },
+          ),
+        );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/test-repository/issues/11194',
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].url).toBe(
+        'https://github.com/HiromiShikata/test-repository/pull/11149',
+      );
+      expect(consoleInfoSpy).toHaveBeenCalledTimes(1);
+      expect(consoleInfoSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'https://github.com/HiromiShikata/test-repository/pull/11148',
+        ),
+      );
+    });
+
+    it('skips a PR whose mergeability resolution fails with a generic error, logs one warning, and still returns the healthy PR in the same batch', async () => {
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(buildTwoPrTimelineResponse()), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response('Internal Server Error', { status: 500 }),
+        );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/test-repository/issues/11194',
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].url).toBe(
+        'https://github.com/HiromiShikata/test-repository/pull/11149',
+      );
+      expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'https://github.com/HiromiShikata/test-repository/pull/11148',
+        ),
+      );
+    });
   });
 
   const createApiV3CheerioRestIssueRepository = () => {
