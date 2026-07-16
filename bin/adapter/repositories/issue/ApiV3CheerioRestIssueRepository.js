@@ -767,7 +767,20 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                         (pr.mergeable === undefined ||
                             pr.mergeable === null ||
                             pr.mergeable === 'UNKNOWN')) {
-                        const resolved = await this.resolveMergeabilityWithRetry(owner, repo, pr.number);
+                        let resolved;
+                        try {
+                            resolved = await this.resolveMergeabilityWithRetry(owner, repo, pr.number);
+                        }
+                        catch (error) {
+                            const errorMessage = error instanceof Error ? error.message : String(error);
+                            if (errorMessage.includes('NOT_FOUND')) {
+                                console.info(`ApiV3CheerioRestIssueRepository: pull request no longer exists, excluding it from related open PRs. prUrl: ${prUrl}`);
+                            }
+                            else {
+                                console.warn(`ApiV3CheerioRestIssueRepository: resolveMergeabilityWithRetry failed, skipping PR for this cycle. prUrl: ${prUrl} error: ${errorMessage}`);
+                            }
+                            continue;
+                        }
                         if (resolved !== null) {
                             mergeable = resolved.mergeable;
                             isConflicted =

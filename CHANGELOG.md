@@ -1,3 +1,10 @@
+## [1.122.14](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.13...v1.122.14) (2026-07-16)
+
+
+### Bug Fixes
+
+* **issue-repository:** contain per-PR mergeability resolution failures in findRelatedOpenPRs so a vanished pull request does not abort the schedule cycle ([#1185](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1185)) ([1a67e18](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1a67e18101b1f4acea1b72f3ac6566651f98a26e))
+
 ## [1.122.13](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.12...v1.122.13) (2026-07-16)
 
 
