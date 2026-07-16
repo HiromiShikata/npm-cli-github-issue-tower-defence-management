@@ -1,3 +1,10 @@
+## [1.122.13](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.12...v1.122.13) (2026-07-16)
+
+
+### Bug Fixes
+
+* **silent-monitor:** log ISO-8601 UTC timestamp and section types with every notification send ([#1181](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1181)) ([598c97f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/598c97f5b1af1e9705ecbcd145edb168a5d76add))
+
 ## [1.122.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.11...v1.122.12) (2026-07-16)
 
 

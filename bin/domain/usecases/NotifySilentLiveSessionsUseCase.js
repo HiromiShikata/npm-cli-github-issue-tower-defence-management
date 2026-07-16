@@ -106,7 +106,10 @@ class NotifySilentLiveSessionsUseCase {
                 }
                 await this.notificationRepository.sendSelfCheckNotification(candidate.sessionName, candidate.message);
                 sentCount += 1;
-                console.log(`Notified ${candidate.sessionName}.`);
+                // One line per send, grep-stable on the `Notified ` prefix: the
+                // ISO-8601 UTC timestamp disambiguates concurrent schedule runs and
+                // the section list records what the message actually contained.
+                console.log(`Notified ${candidate.sessionName} at=${params.now.toISOString()} sections=[${candidate.sectionLabels.join(',')}]`);
             }
         };
         this.isHubTaskActive = async (sessionName, activeHubTaskStatus, hubTaskStatusCacheTtlSeconds, now) => {
@@ -205,6 +208,7 @@ class NotifySilentLiveSessionsUseCase {
         };
         this.composeCandidate = (snapshot, thresholds) => {
             const sections = [];
+            const sectionLabels = [];
             const mainSilentSeconds = snapshot.mainSilentSeconds;
             const unansweredOwnerCallAgeSeconds = snapshot.unansweredOwnerCallAgeSeconds;
             // Owner-defined rule: whenever the latest owner call is newer than the
@@ -221,6 +225,7 @@ class NotifySilentLiveSessionsUseCase {
                 !suppressedByUnansweredOwnerCall;
             if (mainTriggered) {
                 sections.push(this.messageComposer.composeMainStalledSection(mainSilentSeconds));
+                sectionLabels.push('main-stalled');
             }
             const idleSubAgents = snapshot.subAgents.filter((subAgent) => !subAgent.waitingOnExternalProcess &&
                 subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds);
@@ -239,6 +244,12 @@ class NotifySilentLiveSessionsUseCase {
                     idleSubAgents,
                     longRunningSubAgents,
                 }));
+                for (const subAgent of idleSubAgents) {
+                    sectionLabels.push(`sub-agent-idle:${subAgent.label}`);
+                }
+                for (const subAgent of longRunningSubAgents) {
+                    sectionLabels.push(`sub-agent-long-running:${subAgent.label}`);
+                }
             }
             if (sections.length === 0) {
                 return null;
@@ -246,6 +257,7 @@ class NotifySilentLiveSessionsUseCase {
             return {
                 sessionName: snapshot.sessionName,
                 message: sections.join('\n\n'),
+                sectionLabels,
             };
         };
     }
