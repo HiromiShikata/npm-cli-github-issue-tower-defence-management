@@ -8,23 +8,24 @@ type StoredCandidateEntry = {
   recordedEpochSeconds: number;
 };
 
-type StoredAnnouncedRunningEntry = {
-  sessionName: string;
-  labels: string[];
-  recordedEpochSeconds: number;
-};
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 export const DEFAULT_STATE_RETENTION_WINDOW_SECONDS = 60 * 60;
-export const ANNOUNCED_RUNNING_RETENTION_WINDOW_SECONDS = 24 * 60 * 60;
 
 const defaultStateFilePath = (): string => {
   const base = process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), '.cache');
   return path.join(base, 'tdpm', 'silent-session-candidates.json');
 };
 
+// Persists only the candidate set used by the two-consecutive-cycle
+// debounce. The formerly persisted announced-running-sub-agent labels
+// (fire-once state for the long-running advisory) were removed: the
+// long-running advisory now re-fires on every qualifying cycle, so no
+// per-label announcement state exists anymore. An old state file that
+// still contains an `announcedRunningSubAgents` key is read without
+// error (unknown keys are ignored) and the key is dropped on the next
+// write.
 export class FileSystemSilentSessionCandidateStateRepository implements SilentSessionCandidateStateRepository {
   constructor(
     private readonly stateFilePath: string = defaultStateFilePath(),
@@ -71,42 +72,7 @@ export class FileSystemSilentSessionCandidateStateRepository implements SilentSe
         recordedEpochSeconds,
       });
     }
-    this.writeState(
-      Array.from(mergedBySessionName.values()),
-      this.readAnnouncedRunningEntries(),
-    );
-  };
-
-  loadAnnouncedRunningSubAgentLabels = async (params: {
-    sessionName: string;
-  }): Promise<Set<string>> => {
-    const entry = this.readAnnouncedRunningEntries().find(
-      (candidate) => candidate.sessionName === params.sessionName,
-    );
-    return new Set(entry?.labels ?? []);
-  };
-
-  saveAnnouncedRunningSubAgentLabels = async (params: {
-    sessionName: string;
-    labels: string[];
-    now: Date;
-  }): Promise<void> => {
-    const recordedEpochSeconds = Math.floor(params.now.getTime() / 1000);
-    const oldestRetainedEpochSeconds =
-      recordedEpochSeconds - ANNOUNCED_RUNNING_RETENTION_WINDOW_SECONDS;
-    const retainedEntries = this.readAnnouncedRunningEntries().filter(
-      (entry) =>
-        entry.sessionName !== params.sessionName &&
-        entry.recordedEpochSeconds >= oldestRetainedEpochSeconds,
-    );
-    if (params.labels.length > 0) {
-      retainedEntries.push({
-        sessionName: params.sessionName,
-        labels: params.labels,
-        recordedEpochSeconds,
-      });
-    }
-    this.writeState(this.readCandidateEntries(), retainedEntries);
+    this.writeState(Array.from(mergedBySessionName.values()));
   };
 
   private readState = (): Record<string, unknown> => {
@@ -151,49 +117,11 @@ export class FileSystemSilentSessionCandidateStateRepository implements SilentSe
     return entries;
   };
 
-  private readAnnouncedRunningEntries = (): StoredAnnouncedRunningEntry[] => {
-    const storedEntries = this.readState().announcedRunningSubAgents;
-    if (!Array.isArray(storedEntries)) {
-      return [];
-    }
-    const entries: StoredAnnouncedRunningEntry[] = [];
-    for (const storedEntry of storedEntries) {
-      if (!isRecord(storedEntry)) {
-        continue;
-      }
-      const sessionName = storedEntry.sessionName;
-      const recordedEpochSeconds = storedEntry.recordedEpochSeconds;
-      const storedLabels = storedEntry.labels;
-      if (
-        typeof sessionName !== 'string' ||
-        typeof recordedEpochSeconds !== 'number' ||
-        !Number.isFinite(recordedEpochSeconds) ||
-        !Array.isArray(storedLabels)
-      ) {
-        continue;
-      }
-      const labels = storedLabels.filter(
-        (label): label is string => typeof label === 'string',
-      );
-      if (labels.length !== storedLabels.length) {
-        continue;
-      }
-      entries.push({ sessionName, labels, recordedEpochSeconds });
-    }
-    return entries;
-  };
-
-  private writeState = (
-    candidates: StoredCandidateEntry[],
-    announcedRunningSubAgents: StoredAnnouncedRunningEntry[],
-  ): void => {
+  private writeState = (candidates: StoredCandidateEntry[]): void => {
     const directory = path.dirname(this.stateFilePath);
     fs.mkdirSync(directory, { recursive: true });
     const temporaryPath = `${this.stateFilePath}.${process.pid}.tmp`;
-    fs.writeFileSync(
-      temporaryPath,
-      JSON.stringify({ candidates, announcedRunningSubAgents }),
-    );
+    fs.writeFileSync(temporaryPath, JSON.stringify({ candidates }));
     fs.renameSync(temporaryPath, this.stateFilePath);
   };
 }

@@ -3,7 +3,6 @@ import * as os from 'os';
 import * as path from 'path';
 import {
   DEFAULT_STATE_RETENTION_WINDOW_SECONDS,
-  ANNOUNCED_RUNNING_RETENTION_WINDOW_SECONDS,
   FileSystemSilentSessionCandidateStateRepository,
 } from './FileSystemSilentSessionCandidateStateRepository';
 
@@ -142,7 +141,6 @@ describe('FileSystemSilentSessionCandidateStateRepository', () => {
           recordedEpochSeconds: Math.floor(secondSaveAt.getTime() / 1000),
         },
       ],
-      announcedRunningSubAgents: [],
     });
   });
 
@@ -201,224 +199,55 @@ describe('FileSystemSilentSessionCandidateStateRepository', () => {
     expect(DEFAULT_STATE_RETENTION_WINDOW_SECONDS).toBe(60 * 60);
   });
 
-  describe('announced running sub-agent labels', () => {
-    it('round-trips saved announced labels so the next cycle reads them back', async () => {
-      const repository = new FileSystemSilentSessionCandidateStateRepository(
-        stateFilePath,
-      );
+  it('reads a legacy state file containing the removed announced-label key and drops the key on the next save', async () => {
+    const at = new Date('2026-06-26T00:00:00Z');
+    fs.writeFileSync(
+      stateFilePath,
+      JSON.stringify({
+        candidates: [
+          {
+            sessionName: sessionAlpha,
+            recordedEpochSeconds: Math.floor(at.getTime() / 1000),
+          },
+        ],
+        announcedRunningSubAgents: [
+          {
+            sessionName: sessionAlpha,
+            labels: ['sub-process-1'],
+            recordedEpochSeconds: Math.floor(at.getTime() / 1000),
+          },
+        ],
+      }),
+    );
+    const repository = new FileSystemSilentSessionCandidateStateRepository(
+      stateFilePath,
+    );
 
-      await repository.saveAnnouncedRunningSubAgentLabels({
-        sessionName: sessionAlpha,
-        labels: ['sub-process-1', 'sub-process-2'],
-        now: new Date('2026-06-26T00:00:00Z'),
-      });
-      const loaded = await repository.loadAnnouncedRunningSubAgentLabels({
-        sessionName: sessionAlpha,
-      });
-
-      expect(loaded).toEqual(new Set(['sub-process-1', 'sub-process-2']));
+    const loaded = await repository.loadRecentCandidateSessionNames({
+      now: new Date('2026-06-26T00:01:00Z'),
+      recencyWindowSeconds: 15 * 60,
     });
+    expect(loaded).toEqual(new Set([sessionAlpha]));
 
-    it('returns an empty set when no announcement has been recorded for the session', async () => {
-      const repository = new FileSystemSilentSessionCandidateStateRepository(
-        stateFilePath,
-      );
-
-      const loaded = await repository.loadAnnouncedRunningSubAgentLabels({
-        sessionName: sessionAlpha,
-      });
-
-      expect(loaded).toEqual(new Set<string>());
+    const saveAt = new Date('2026-06-26T00:02:00Z');
+    await repository.saveCandidateSessionNames({
+      sessionNames: [sessionBravo],
+      now: saveAt,
     });
-
-    it('replaces the previous announced labels of the same session', async () => {
-      const repository = new FileSystemSilentSessionCandidateStateRepository(
-        stateFilePath,
-      );
-
-      await repository.saveAnnouncedRunningSubAgentLabels({
-        sessionName: sessionAlpha,
-        labels: ['sub-process-1'],
-        now: new Date('2026-06-26T00:00:00Z'),
-      });
-      await repository.saveAnnouncedRunningSubAgentLabels({
-        sessionName: sessionAlpha,
-        labels: ['sub-process-2'],
-        now: new Date('2026-06-26T00:01:00Z'),
-      });
-      const loaded = await repository.loadAnnouncedRunningSubAgentLabels({
-        sessionName: sessionAlpha,
-      });
-
-      expect(loaded).toEqual(new Set(['sub-process-2']));
-    });
-
-    it('removes the stored entry when saving an empty label set', async () => {
-      const repository = new FileSystemSilentSessionCandidateStateRepository(
-        stateFilePath,
-      );
-
-      await repository.saveAnnouncedRunningSubAgentLabels({
-        sessionName: sessionAlpha,
-        labels: ['sub-process-1'],
-        now: new Date('2026-06-26T00:00:00Z'),
-      });
-      await repository.saveAnnouncedRunningSubAgentLabels({
-        sessionName: sessionAlpha,
-        labels: [],
-        now: new Date('2026-06-26T00:01:00Z'),
-      });
-
-      expect(
-        await repository.loadAnnouncedRunningSubAgentLabels({
-          sessionName: sessionAlpha,
-        }),
-      ).toEqual(new Set<string>());
-      const persisted: unknown = JSON.parse(
-        fs.readFileSync(stateFilePath, 'utf8'),
-      );
-      expect(persisted).toEqual({
-        candidates: [],
-        announcedRunningSubAgents: [],
-      });
-    });
-
-    it('keeps the announced labels of another session when saving', async () => {
-      const repository = new FileSystemSilentSessionCandidateStateRepository(
-        stateFilePath,
-      );
-      const at = new Date('2026-06-26T00:00:00Z');
-
-      await repository.saveAnnouncedRunningSubAgentLabels({
-        sessionName: sessionAlpha,
-        labels: ['sub-process-1'],
-        now: at,
-      });
-      await repository.saveAnnouncedRunningSubAgentLabels({
-        sessionName: sessionBravo,
-        labels: ['sub-process-2'],
-        now: at,
-      });
-
-      expect(
-        await repository.loadAnnouncedRunningSubAgentLabels({
-          sessionName: sessionAlpha,
-        }),
-      ).toEqual(new Set(['sub-process-1']));
-      expect(
-        await repository.loadAnnouncedRunningSubAgentLabels({
-          sessionName: sessionBravo,
-        }),
-      ).toEqual(new Set(['sub-process-2']));
-    });
-
-    it('drops an announced entry that has aged beyond the retention window on the next save', async () => {
-      const repository = new FileSystemSilentSessionCandidateStateRepository(
-        stateFilePath,
-      );
-      const firstSaveAt = new Date('2026-06-26T00:00:00Z');
-      const secondSaveAt = new Date(
-        firstSaveAt.getTime() +
-          (ANNOUNCED_RUNNING_RETENTION_WINDOW_SECONDS + 1) * 1000,
-      );
-
-      await repository.saveAnnouncedRunningSubAgentLabels({
-        sessionName: sessionAlpha,
-        labels: ['sub-process-1'],
-        now: firstSaveAt,
-      });
-      await repository.saveAnnouncedRunningSubAgentLabels({
-        sessionName: sessionBravo,
-        labels: ['sub-process-2'],
-        now: secondSaveAt,
-      });
-
-      expect(
-        await repository.loadAnnouncedRunningSubAgentLabels({
-          sessionName: sessionAlpha,
-        }),
-      ).toEqual(new Set<string>());
-      expect(
-        await repository.loadAnnouncedRunningSubAgentLabels({
-          sessionName: sessionBravo,
-        }),
-      ).toEqual(new Set(['sub-process-2']));
-    });
-
-    it('preserves the candidate set when saving announced labels and preserves announced labels when saving candidates', async () => {
-      const repository = new FileSystemSilentSessionCandidateStateRepository(
-        stateFilePath,
-      );
-      const at = new Date('2026-06-26T00:00:00Z');
-
-      await repository.saveCandidateSessionNames({
-        sessionNames: [sessionAlpha],
-        now: at,
-      });
-      await repository.saveAnnouncedRunningSubAgentLabels({
-        sessionName: sessionBravo,
-        labels: ['sub-process-1'],
-        now: at,
-      });
-      await repository.saveCandidateSessionNames({
-        sessionNames: [sessionAlpha],
-        now: new Date('2026-06-26T00:01:00Z'),
-      });
-
-      const loadedCandidates = await repository.loadRecentCandidateSessionNames(
+    const persisted: unknown = JSON.parse(
+      fs.readFileSync(stateFilePath, 'utf8'),
+    );
+    expect(persisted).toEqual({
+      candidates: [
         {
-          now: new Date('2026-06-26T00:02:00Z'),
-          recencyWindowSeconds: 15 * 60,
+          sessionName: sessionAlpha,
+          recordedEpochSeconds: Math.floor(at.getTime() / 1000),
         },
-      );
-      expect(loadedCandidates).toEqual(new Set([sessionAlpha]));
-      expect(
-        await repository.loadAnnouncedRunningSubAgentLabels({
+        {
           sessionName: sessionBravo,
-        }),
-      ).toEqual(new Set(['sub-process-1']));
-    });
-
-    it('treats a corrupt state file as no recorded announcements', async () => {
-      fs.writeFileSync(stateFilePath, 'not valid json');
-      const repository = new FileSystemSilentSessionCandidateStateRepository(
-        stateFilePath,
-      );
-
-      const loaded = await repository.loadAnnouncedRunningSubAgentLabels({
-        sessionName: sessionAlpha,
-      });
-
-      expect(loaded).toEqual(new Set<string>());
-    });
-
-    it('ignores a stored announced entry whose labels are malformed', async () => {
-      fs.writeFileSync(
-        stateFilePath,
-        JSON.stringify({
-          candidates: [],
-          announcedRunningSubAgents: [
-            {
-              sessionName: sessionAlpha,
-              labels: ['sub-process-1', 42],
-              recordedEpochSeconds: 1782000000,
-            },
-          ],
-        }),
-      );
-      const repository = new FileSystemSilentSessionCandidateStateRepository(
-        stateFilePath,
-      );
-
-      const loaded = await repository.loadAnnouncedRunningSubAgentLabels({
-        sessionName: sessionAlpha,
-      });
-
-      expect(loaded).toEqual(new Set<string>());
-    });
-
-    it('exposes the announced-label retention window as a named constant', () => {
-      expect(ANNOUNCED_RUNNING_RETENTION_WINDOW_SECONDS).toBe(24 * 60 * 60);
+          recordedEpochSeconds: Math.floor(saveAt.getTime() / 1000),
+        },
+      ],
     });
   });
 });

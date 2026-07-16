@@ -60,8 +60,6 @@ export type HubTaskStatusResolver = Pick<IssueRepository, 'getIssueByUrl'>;
 type NotifyCandidate = {
   sessionName: string;
   message: string;
-  newlyAnnouncedRunningLabels: string[];
-  retainedAnnouncedRunningLabels: string[];
 };
 
 export class NotifySilentLiveSessionsUseCase {
@@ -144,7 +142,7 @@ export class NotifySilentLiveSessionsUseCase {
 
     const candidates: NotifyCandidate[] = [];
     for (const sessionSnapshot of snapshots) {
-      const candidate = await this.composeCandidate(sessionSnapshot, params);
+      const candidate = this.composeCandidate(sessionSnapshot, params);
       if (candidate !== null) {
         candidates.push(candidate);
       }
@@ -198,16 +196,6 @@ export class NotifySilentLiveSessionsUseCase {
       );
       sentCount += 1;
       console.log(`Notified ${candidate.sessionName}.`);
-      if (candidate.newlyAnnouncedRunningLabels.length > 0) {
-        await this.candidateStateRepository.saveAnnouncedRunningSubAgentLabels({
-          sessionName: candidate.sessionName,
-          labels: [
-            ...candidate.retainedAnnouncedRunningLabels,
-            ...candidate.newlyAnnouncedRunningLabels,
-          ],
-          now: params.now,
-        });
-      }
     }
   };
 
@@ -381,7 +369,7 @@ export class NotifySilentLiveSessionsUseCase {
     });
   };
 
-  private composeCandidate = async (
+  private composeCandidate = (
     snapshot: LiveSessionActivitySnapshot,
     thresholds: {
       mainSilentThresholdSeconds: number;
@@ -390,7 +378,7 @@ export class NotifySilentLiveSessionsUseCase {
       subAgentRunningThresholdSeconds: number;
       now: Date;
     },
-  ): Promise<NotifyCandidate | null> => {
+  ): NotifyCandidate | null => {
     const sections: string[] = [];
 
     const mainSilentSeconds = snapshot.mainSilentSeconds;
@@ -421,20 +409,24 @@ export class NotifySilentLiveSessionsUseCase {
         !subAgent.waitingOnExternalProcess &&
         subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds,
     );
+    // The long-running advisory is gated on output recency, mirroring the
+    // idle branch: a sub-agent that produced output recently is working, no
+    // matter how long it has been running, so it is never selected. Only a
+    // sub-agent that is BOTH long-running and quiet (and not waiting on a
+    // live external process) qualifies, and it is re-selected on EVERY cycle
+    // while the condition holds — there is intentionally no fire-once state
+    // and no time-window suppression, matching the idle-branch semantics.
     const longRunningSubAgents = snapshot.subAgents.filter(
       (subAgent) =>
-        subAgent.runningSeconds >= thresholds.subAgentRunningThresholdSeconds,
+        !subAgent.waitingOnExternalProcess &&
+        subAgent.runningSeconds >= thresholds.subAgentRunningThresholdSeconds &&
+        subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds,
     );
-    const retainedAnnouncedRunningLabels =
-      await this.reconcileAnnouncedRunningLabels(snapshot, thresholds.now);
-    const newlyLongRunningSubAgents = longRunningSubAgents.filter(
-      (subAgent) => !retainedAnnouncedRunningLabels.includes(subAgent.label),
-    );
-    if (idleSubAgents.length > 0 || newlyLongRunningSubAgents.length > 0) {
+    if (idleSubAgents.length > 0 || longRunningSubAgents.length > 0) {
       sections.push(
         this.messageComposer.composeSubAgentSection({
           idleSubAgents,
-          longRunningSubAgents: newlyLongRunningSubAgents,
+          longRunningSubAgents,
         }),
       );
     }
@@ -445,34 +437,6 @@ export class NotifySilentLiveSessionsUseCase {
     return {
       sessionName: snapshot.sessionName,
       message: sections.join('\n\n'),
-      newlyAnnouncedRunningLabels: newlyLongRunningSubAgents.map(
-        (subAgent) => subAgent.label,
-      ),
-      retainedAnnouncedRunningLabels,
     };
-  };
-
-  private reconcileAnnouncedRunningLabels = async (
-    snapshot: LiveSessionActivitySnapshot,
-    now: Date,
-  ): Promise<string[]> => {
-    const announcedLabels =
-      await this.candidateStateRepository.loadAnnouncedRunningSubAgentLabels({
-        sessionName: snapshot.sessionName,
-      });
-    const currentLabels = new Set(
-      snapshot.subAgents.map((subAgent) => subAgent.label),
-    );
-    const retainedLabels = Array.from(announcedLabels).filter((label) =>
-      currentLabels.has(label),
-    );
-    if (retainedLabels.length !== announcedLabels.size) {
-      await this.candidateStateRepository.saveAnnouncedRunningSubAgentLabels({
-        sessionName: snapshot.sessionName,
-        labels: retainedLabels,
-        now,
-      });
-    }
-    return retainedLabels;
   };
 }
