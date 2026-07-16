@@ -265,6 +265,57 @@ describe('HandleScheduledEventUseCase', () => {
       expect(mockProjectRepository.findProjectIdByUrl).toHaveBeenCalled();
     });
 
+    it('should pass createTaskFromStoryBodyCheckboxEnabled false to ConvertCheckboxToIssueInStoryIssueUseCase when the field is absent', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+      };
+
+      await useCase.run(input);
+      expect(
+        mockConvertCheckboxToIssueInStoryIssueUseCase.run,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createTaskFromStoryBodyCheckboxEnabled: false,
+        }),
+      );
+    });
+
+    it('should pass createTaskFromStoryBodyCheckboxEnabled true to ConvertCheckboxToIssueInStoryIssueUseCase when the field is true', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        createTaskFromStoryBodyCheckboxEnabled: true,
+      };
+
+      await useCase.run(input);
+      expect(
+        mockConvertCheckboxToIssueInStoryIssueUseCase.run,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createTaskFromStoryBodyCheckboxEnabled: true,
+        }),
+      );
+    });
+
     it('should call getAllIssues with the resolved project id', async () => {
       const input = {
         projectName: 'test-project',
