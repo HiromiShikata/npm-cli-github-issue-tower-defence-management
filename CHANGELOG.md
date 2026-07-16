@@ -1,3 +1,10 @@
+# [1.123.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.14...v1.123.0) (2026-07-16)
+
+
+### Features
+
+* gate story-body checkbox task creation behind createTaskFromStoryBodyCheckboxEnabled flag (default false) ([#1184](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1184)) ([bb8990d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bb8990d1ad309eb29702b3a040e44095739cf7f2))
+
 ## [1.122.14](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.13...v1.122.14) (2026-07-16)
 
 

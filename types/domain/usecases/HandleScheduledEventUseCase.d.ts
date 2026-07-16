@@ -87,6 +87,7 @@ export declare class HandleScheduledEventUseCase {
             labelsAsLlmAgentName?: string[] | null;
         } | null;
         thresholdForAutoReject?: number;
+        createTaskFromStoryBodyCheckboxEnabled?: boolean;
         dailySecurityScan?: DailySecurityScanConfig | null;
     }) => Promise<{
         project: Project;

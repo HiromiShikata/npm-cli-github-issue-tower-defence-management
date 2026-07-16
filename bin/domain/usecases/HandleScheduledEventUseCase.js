@@ -280,6 +280,7 @@ ${JSON.stringify(e)}
                 urlOfStoryView: input.urlOfStoryView,
                 storyObjectMap: storyObjectMap,
                 manager: input.manager,
+                createTaskFromStoryBodyCheckboxEnabled: input.createTaskFromStoryBodyCheckboxEnabled ?? false,
             });
             await this.changeStatusByStoryColorUseCase.run({
                 project,

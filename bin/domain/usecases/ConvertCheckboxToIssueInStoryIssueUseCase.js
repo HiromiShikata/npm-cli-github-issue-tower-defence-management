@@ -37,6 +37,9 @@ class ConvertCheckboxToIssueInStoryIssueUseCase {
                         body: newBody,
                     });
                 }
+                if (!input.createTaskFromStoryBodyCheckboxEnabled) {
+                    continue;
+                }
                 if (!newBody.includes('- [ ] ')) {
                     continue;
                 }
