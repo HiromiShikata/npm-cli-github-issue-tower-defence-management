@@ -770,6 +770,141 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     ]);
   });
 
+  describe('delegation-wait classification from a pending nested agent tool call', () => {
+    const pendingDelegationEntries = (
+      startTimestamp: string,
+      toolName: string,
+    ): object[] => [
+      { type: 'user', timestamp: startTimestamp, message: { role: 'user' } },
+      {
+        type: 'assistant',
+        timestamp: startTimestamp,
+        message: {
+          role: 'assistant',
+          stop_reason: 'tool_use',
+          content: [
+            {
+              type: 'tool_use',
+              name: toolName,
+              input: { prompt: 'do the sub-task', subagent_type: 'impl' },
+            },
+          ],
+        },
+      },
+    ];
+
+    it.each(['Agent', 'Task'])(
+      'classifies a parent as waiting when its transcript tail is a pending %s tool call spawning a nested child',
+      async (toolName) => {
+        const sessionName = 'https_//github_com/owner/repo/issues/9';
+        writeAgentTranscript(
+          sessionName,
+          'delegating',
+          pendingDelegationEntries('2026-06-27T11:45:00.000Z', toolName),
+          nowEpochSeconds - 600,
+        );
+        const repository = new TranscriptSessionSubAgentActivityRepository(
+          createResolver(),
+          emptyProcessLister(),
+          now,
+        );
+
+        const result = await repository.listSubAgentActivitiesBySessionName(
+          [sessionName],
+          transcriptMapFor([sessionName]),
+        );
+
+        expect(result.get(sessionName)).toEqual([
+          {
+            label: 'agent-delegating',
+            silentSeconds: 600,
+            runningSeconds: 900,
+            waitingOnExternalProcess: true,
+          },
+        ]);
+      },
+    );
+
+    it('stops classifying as waiting once the nested agent tool call has returned its tool result', async () => {
+      const sessionName = 'https_//github_com/owner/repo/issues/9';
+      const startTimestamp = '2026-06-27T11:45:00.000Z';
+      writeAgentTranscript(
+        sessionName,
+        'childdone',
+        [
+          ...pendingDelegationEntries(startTimestamp, 'Agent'),
+          {
+            type: 'user',
+            timestamp: startTimestamp,
+            message: {
+              role: 'user',
+              content: [{ type: 'tool_result', content: 'child finished' }],
+            },
+          },
+        ],
+        nowEpochSeconds - 600,
+      );
+      const repository = new TranscriptSessionSubAgentActivityRepository(
+        createResolver(),
+        emptyProcessLister(),
+        now,
+      );
+
+      const result = await repository.listSubAgentActivitiesBySessionName(
+        [sessionName],
+        transcriptMapFor([sessionName]),
+      );
+
+      expect(result.get(sessionName)?.[0]?.waitingOnExternalProcess).toBe(
+        false,
+      );
+    });
+
+    it('does not classify as waiting when a later pending Bash call follows an already-consumed nested agent call', async () => {
+      const sessionName = 'https_//github_com/owner/repo/issues/9';
+      const startTimestamp = '2026-06-27T11:45:00.000Z';
+      writeAgentTranscript(
+        sessionName,
+        'laterpending',
+        [
+          ...pendingDelegationEntries(startTimestamp, 'Agent'),
+          {
+            type: 'user',
+            timestamp: startTimestamp,
+            message: {
+              role: 'user',
+              content: [{ type: 'tool_result', content: 'child finished' }],
+            },
+          },
+          {
+            type: 'assistant',
+            timestamp: startTimestamp,
+            message: {
+              role: 'assistant',
+              stop_reason: 'tool_use',
+              content: [{ type: 'tool_use', name: 'Bash', input: {} }],
+            },
+          },
+        ],
+        nowEpochSeconds - 600,
+      );
+      const repository = new TranscriptSessionSubAgentActivityRepository(
+        createResolver(),
+        emptyProcessLister(),
+        now,
+      );
+
+      const result = await repository.listSubAgentActivitiesBySessionName(
+        [sessionName],
+        transcriptMapFor([sessionName]),
+      );
+
+      expect(result.get(sessionName)?.[0]?.waitingOnExternalProcess).toBe(
+        false,
+      );
+    });
+  });
+
   describe('external-wait classification from the pending tool command', () => {
     const CI_WATCH_COMMAND =
       'gh pr checks 123 --watch -i 60 -R owner/repo 2>&1 | tail -5';
