@@ -1483,6 +1483,10 @@ export class ApiV3CheerioRestIssueRepository
         const pr = item.source;
         const prUrl = pr.url || '';
 
+        if (!prUrl) continue;
+
+        const { owner: prOwner, repo: prRepo } = this.parseIssueUrl(prUrl);
+
         let isConflicted = pr.mergeable === 'CONFLICTING';
         let mergeable: string | null = pr.mergeable ?? null;
         if (
@@ -1497,8 +1501,8 @@ export class ApiV3CheerioRestIssueRepository
           } | null;
           try {
             resolved = await this.resolveMergeabilityWithRetry(
-              owner,
-              repo,
+              prOwner,
+              prRepo,
               pr.number,
             );
           } catch (error) {
@@ -1528,8 +1532,8 @@ export class ApiV3CheerioRestIssueRepository
         let prStatus: RelatedPullRequest;
         try {
           const slimPullRequest = await this.fetchSlimPullRequest(
-            owner,
-            repo,
+            prOwner,
+            prRepo,
             pr.number,
           );
           if (!slimPullRequest || slimPullRequest.state !== 'OPEN') {
@@ -1540,7 +1544,7 @@ export class ApiV3CheerioRestIssueRepository
           }
           const baseRefName =
             slimPullRequest.baseRefName ?? pr.baseRefName ?? pr.baseRef?.name;
-          prStatus = await this.buildRelatedPullRequestFromSlim(owner, repo, {
+          prStatus = await this.buildRelatedPullRequestFromSlim(prOwner, prRepo, {
             ...slimPullRequest,
             url: slimPullRequest.url || prUrl,
             headRefName: slimPullRequest.headRefName ?? pr.headRefName,
