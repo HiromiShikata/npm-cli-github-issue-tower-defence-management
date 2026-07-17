@@ -1,3 +1,10 @@
+## [1.123.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.123.1...v1.123.2) (2026-07-17)
+
+
+### Bug Fixes
+
+* **silent-monitor:** treat a pending nested Agent/Task tool_use tail as waiting on an external process ([#1190](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1190)) ([feaf6c0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/feaf6c0b63920f4d36cfa85e4c9a5c88cd131ec2))
+
 ## [1.123.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.123.0...v1.123.1) (2026-07-17)
 
 

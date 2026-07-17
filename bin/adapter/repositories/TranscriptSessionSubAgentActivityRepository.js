@@ -65,6 +65,13 @@ const readContentBlocks = (message) => {
 // tool_result is recorded, the sub-agent has delivered its output and is
 // genuinely complete even though the transcript tail is a user entry.
 const COMPLETION_TOOL_NAMES = new Set(['StructuredOutput']);
+// Tools that delegate work to a nested child sub-agent. A parent whose
+// transcript tail is a pending tool_use of one of these tools is waiting for
+// the child to run (possibly queued), produces no transcript writes of its
+// own, and therefore looks "silent" by mtime alone. Such a parent is treated
+// as waiting on an external process so it is excluded from both the
+// sub-agent-idle and sub-agent-long-running selections.
+const DELEGATION_TOOL_NAMES = new Set(['Agent', 'Task']);
 const entryToolUseNames = (message) => readContentBlocks(message)
     .filter((block) => readString(block, 'type') === 'tool_use')
     .map((block) => readString(block, 'name'))
@@ -138,6 +145,7 @@ const parseTranscript = (content) => {
     let firstEntryEpochSeconds = null;
     let lastEntryIndicatesCompletion = false;
     let pendingToolCommands = [];
+    let pendingDelegationToolUse = false;
     let precedingAssistantToolUseNames = [];
     for (const line of content.split('\n')) {
         const trimmed = line.trim();
@@ -163,6 +171,10 @@ const parseTranscript = (content) => {
             pendingToolCommands = entryPendingToolCommands(parsed);
             if (readString(parsed, 'type') === 'assistant') {
                 precedingAssistantToolUseNames = entryToolUseNames(parsed.message);
+                pendingDelegationToolUse = precedingAssistantToolUseNames.some((name) => DELEGATION_TOOL_NAMES.has(name));
+            }
+            else {
+                pendingDelegationToolUse = false;
             }
         }
     }
@@ -170,6 +182,7 @@ const parseTranscript = (content) => {
         firstEntryEpochSeconds,
         lastEntryIndicatesCompletion,
         pendingToolCommands,
+        pendingDelegationToolUse,
     };
 };
 const clampToZero = (value) => (value > 0 ? value : 0);
@@ -246,7 +259,8 @@ class TranscriptSessionSubAgentActivityRepository {
                 label: fileName.replace(/\.jsonl$/, ''),
                 silentSeconds,
                 runningSeconds,
-                waitingOnExternalProcess: await this.hasLiveMatchingProcess(transcript.pendingToolCommands, loadNormalizedProcessCommandLines),
+                waitingOnExternalProcess: transcript.pendingDelegationToolUse ||
+                    (await this.hasLiveMatchingProcess(transcript.pendingToolCommands, loadNormalizedProcessCommandLines)),
             };
         };
         this.hasLiveMatchingProcess = async (pendingToolCommands, loadNormalizedProcessCommandLines) => {
