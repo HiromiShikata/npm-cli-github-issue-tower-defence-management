@@ -14,6 +14,7 @@ import { DateRepository } from '../../../domain/usecases/adapter-interfaces/Date
 import { Sleep } from './githubRateLimitRetry';
 export declare const FULL_ISSUE_FETCH_INTERVAL_MS: number;
 export declare const INCREMENTAL_FETCH_SKEW_BUFFER_MS: number;
+export declare const REQUIRED_CHECKS_CACHE_TTL_MS: number;
 export type CachedProjectIssues = {
     lastFetchedAt: string;
     lastFullFetchAt: string;
@@ -80,6 +81,11 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     update: (issue: Issue, _project: Project) => Promise<void>;
     private parseIssueUrl;
     private computePrStatus;
+    private readonly requiredCheckNamesCache;
+    private getRequiredCheckNames;
+    private getCommitCiContexts;
+    private fetchSlimPullRequest;
+    private buildRelatedPullRequestFromSlim;
     private resolveMergeabilityWithRetry;
     findRelatedOpenPRs: (issueUrl: string) => Promise<RelatedPullRequest[]>;
     getAllOpened: (project: Project) => Promise<Issue[]>;

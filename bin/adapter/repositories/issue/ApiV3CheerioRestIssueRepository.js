@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ApiV3CheerioRestIssueRepository = exports.INCREMENTAL_FETCH_SKEW_BUFFER_MS = exports.FULL_ISSUE_FETCH_INTERVAL_MS = void 0;
+exports.ApiV3CheerioRestIssueRepository = exports.REQUIRED_CHECKS_CACHE_TTL_MS = exports.INCREMENTAL_FETCH_SKEW_BUFFER_MS = exports.FULL_ISSUE_FETCH_INTERVAL_MS = void 0;
 const typia_1 = __importDefault(require("typia"));
 const BaseGitHubRepository_1 = require("../BaseGitHubRepository");
 const githubGraphqlClient_1 = require("../githubGraphqlClient");
@@ -11,15 +11,34 @@ const utils_1 = require("../utils");
 const githubRateLimitRetry_1 = require("./githubRateLimitRetry");
 exports.FULL_ISSUE_FETCH_INTERVAL_MS = 60 * 60 * 1000;
 exports.INCREMENTAL_FETCH_SKEW_BUFFER_MS = 5 * 60 * 1000;
+exports.REQUIRED_CHECKS_CACHE_TTL_MS = 10 * 60 * 1000;
 function isIssueTimelineResponse(value) {
     if (typeof value !== 'object' || value === null)
         return false;
     return true;
 }
-function isDirectPullRequestResponse(value) {
+function isSlimPullRequestResponse(value) {
     if (typeof value !== 'object' || value === null)
         return false;
     return true;
+}
+function isBranchRulesResponse(value) {
+    return Array.isArray(value);
+}
+function isBranchDetailResponse(value) {
+    if (typeof value !== 'object' || value === null)
+        return false;
+    return true;
+}
+function isCheckRunsResponse(value) {
+    if (typeof value !== 'object' || value === null)
+        return false;
+    return 'check_runs' in value && Array.isArray(value.check_runs);
+}
+function isCombinedStatusResponse(value) {
+    if (typeof value !== 'object' || value === null)
+        return false;
+    return 'statuses' in value && Array.isArray(value.statuses);
 }
 function isPullRequestMergeabilityResponse(value) {
     if (typeof value !== 'object' || value === null)
@@ -107,63 +126,6 @@ function isPullRequestCommitsResponseItem(value) {
 function isPullRequestCommitsResponse(value) {
     return Array.isArray(value) && value.every(isPullRequestCommitsResponseItem);
 }
-const fnmatch = (pattern, str) => {
-    let regexStr = '^';
-    let i = 0;
-    while (i < pattern.length) {
-        const c = pattern[i];
-        if (c === '*') {
-            if (pattern[i + 1] === '*') {
-                regexStr += '.*';
-                i += 2;
-                if (pattern[i] === '/') {
-                    i++;
-                }
-            }
-            else {
-                regexStr += '[^/]*';
-                i++;
-            }
-        }
-        else if (c === '?') {
-            regexStr += '[^/]';
-            i++;
-        }
-        else if (c === '[') {
-            let j = i + 1;
-            while (j < pattern.length && pattern[j] !== ']') {
-                j++;
-            }
-            if (j >= pattern.length) {
-                regexStr += '\\[';
-                i++;
-                continue;
-            }
-            const content = pattern.slice(i + 1, j);
-            if (content.length > 0 && (content[0] === '!' || content[0] === '^')) {
-                const body = content.slice(1).replace(/\\/g, '\\\\');
-                regexStr += '[^' + body + ']';
-            }
-            else {
-                const escapedContent = content.replace(/\\/g, '\\\\');
-                regexStr += '[' + escapedContent + ']';
-            }
-            i = j + 1;
-        }
-        else {
-            regexStr += c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            i++;
-        }
-    }
-    regexStr += '$';
-    try {
-        const regex = new RegExp(regexStr);
-        return regex.test(str);
-    }
-    catch {
-        return pattern === str;
-    }
-};
 class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
     constructor(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, projectRepository, dateRepository, localStorageRepository, ghToken = process.env.GH_TOKEN || 'dummy', sleep = githubRateLimitRetry_1.realSleep) {
         super(localStorageRepository, ghToken);
@@ -449,62 +411,11 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 isPr: urlMatch[3] === 'pull',
             };
         };
-        this.computePrStatus = (prUrl, headRefName, baseRefName, data) => {
+        this.computePrStatus = (prUrl, headRefName, data) => {
             const isConflicted = data.mergeable === 'CONFLICTING';
-            const lastCommit = data.commits?.nodes[0]?.commit;
-            const statusCheckRollup = lastCommit?.statusCheckRollup;
-            const contexts = statusCheckRollup?.contexts?.nodes || [];
-            const branchProtectionRules = data.baseRepository?.branchProtectionRules?.nodes || [];
-            const matchingRules = baseRefName
-                ? branchProtectionRules.filter((rule) => rule.pattern === baseRefName || fnmatch(rule.pattern, baseRefName))
-                : [];
-            const requiredCheckNamesSet = new Set();
-            for (const rule of matchingRules) {
-                for (const name of rule.requiredStatusCheckContexts) {
-                    requiredCheckNamesSet.add(name);
-                }
-            }
-            const rulesets = data.baseRepository?.rulesets?.nodes || [];
-            const defaultBranchName = data.baseRepository?.defaultBranchRef?.name || '';
-            for (const ruleset of rulesets) {
-                if (ruleset.enforcement !== 'ACTIVE')
-                    continue;
-                const refIncludes = ruleset.conditions.refName.include;
-                const refExcludes = ruleset.conditions.refName.exclude;
-                const matchesInclude = baseRefName !== undefined &&
-                    refIncludes.some((pattern) => {
-                        if (pattern === '~DEFAULT_BRANCH') {
-                            return baseRefName === defaultBranchName;
-                        }
-                        if (pattern === '~ALL') {
-                            return true;
-                        }
-                        const branchPattern = pattern.replace(/^refs\/heads\//, '');
-                        return (branchPattern === baseRefName || fnmatch(branchPattern, baseRefName));
-                    });
-                if (!matchesInclude)
-                    continue;
-                const matchesExclude = baseRefName !== undefined &&
-                    refExcludes.some((pattern) => {
-                        if (pattern === '~DEFAULT_BRANCH') {
-                            return baseRefName === defaultBranchName;
-                        }
-                        const branchPattern = pattern.replace(/^refs\/heads\//, '');
-                        return (branchPattern === baseRefName || fnmatch(branchPattern, baseRefName));
-                    });
-                if (matchesExclude)
-                    continue;
-                for (const rule of ruleset.rules.nodes) {
-                    if (rule.type !== 'REQUIRED_STATUS_CHECKS')
-                        continue;
-                    if ('requiredStatusChecks' in rule.parameters) {
-                        for (const check of rule.parameters.requiredStatusChecks) {
-                            requiredCheckNamesSet.add(check.context);
-                        }
-                    }
-                }
-            }
-            const requiredCheckNames = Array.from(requiredCheckNamesSet);
+            const hasStatusCheckRollup = data.ciContexts.length > 0;
+            const contexts = data.ciContexts;
+            const requiredCheckNames = data.requiredCheckNames;
             const seenContextNames = new Set();
             for (const ctx of contexts) {
                 if ('name' in ctx) {
@@ -537,7 +448,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 'STALE',
             ]);
             const isCiStateSuccess = (() => {
-                if (!statusCheckRollup)
+                if (!hasStatusCheckRollup)
                     return false;
                 const latestRuns = [...latestCheckRunByName.values()];
                 const statusContexts = contexts.filter((ctx) => ctx.__typename === 'StatusContext');
@@ -550,7 +461,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 return !hasPending;
             })();
             const isPassedAllCiJob = isCiStateSuccess && allRequiredChecksPassed;
-            const reviewThreads = data.reviewThreads?.nodes || [];
+            const reviewThreads = data.reviewThreads;
             const isResolvedAllReviewComments = reviewThreads.length === 0 ||
                 reviewThreads.every((thread) => thread.isResolved);
             return {
@@ -566,6 +477,219 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 isBranchOutOfDate: false,
                 missingRequiredCheckNames,
             };
+        };
+        this.requiredCheckNamesCache = new Map();
+        this.getRequiredCheckNames = async (owner, repo, branch) => {
+            const cacheKey = `${owner}/${repo}/${branch}`;
+            const nowMs = (await this.dateRepository.now()).getTime();
+            const cached = this.requiredCheckNamesCache.get(cacheKey);
+            if (cached && nowMs - cached.fetchedAtMs < exports.REQUIRED_CHECKS_CACHE_TTL_MS) {
+                return cached.names;
+            }
+            const ownerSegment = encodeURIComponent(owner);
+            const repoSegment = encodeURIComponent(repo);
+            const branchSegment = encodeURIComponent(branch);
+            const requiredCheckNamesSet = new Set();
+            const rulesResponse = await this.fetchWithRateLimitRetry(() => fetch(`https://api.github.com/repos/${ownerSegment}/${repoSegment}/rules/branches/${branchSegment}?per_page=100`, {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${this.ghToken}`,
+                    Accept: 'application/vnd.github+json',
+                },
+            }));
+            if (rulesResponse.ok) {
+                const rulesBody = await rulesResponse.json();
+                if (!isBranchRulesResponse(rulesBody)) {
+                    throw new Error(`Unexpected response shape when fetching branch rules: ${owner}/${repo}/${branch}`);
+                }
+                for (const rule of rulesBody) {
+                    if (rule.type !== 'required_status_checks')
+                        continue;
+                    for (const check of rule.parameters?.required_status_checks || []) {
+                        requiredCheckNamesSet.add(check.context);
+                    }
+                }
+            }
+            else if (rulesResponse.status !== 404) {
+                const reason = await this.formatGitHubErrorWithStatus(rulesResponse);
+                throw new Error(`Failed to fetch branch rules for ${owner}/${repo}/${branch}: ${reason}`);
+            }
+            const branchResponse = await this.fetchWithRateLimitRetry(() => fetch(`https://api.github.com/repos/${ownerSegment}/${repoSegment}/branches/${branchSegment}`, {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${this.ghToken}`,
+                    Accept: 'application/vnd.github+json',
+                },
+            }));
+            if (branchResponse.ok) {
+                const branchBody = await branchResponse.json();
+                if (!isBranchDetailResponse(branchBody)) {
+                    throw new Error(`Unexpected response shape when fetching branch detail: ${owner}/${repo}/${branch}`);
+                }
+                for (const context of branchBody.protection?.required_status_checks
+                    ?.contexts || []) {
+                    requiredCheckNamesSet.add(context);
+                }
+            }
+            else if (branchResponse.status !== 404) {
+                const reason = await this.formatGitHubErrorWithStatus(branchResponse);
+                throw new Error(`Failed to fetch branch detail for ${owner}/${repo}/${branch}: ${reason}`);
+            }
+            const names = Array.from(requiredCheckNamesSet);
+            this.requiredCheckNamesCache.set(cacheKey, {
+                fetchedAtMs: nowMs,
+                names,
+            });
+            return names;
+        };
+        this.getCommitCiContexts = async (owner, repo, commitSha) => {
+            const ownerSegment = encodeURIComponent(owner);
+            const repoSegment = encodeURIComponent(repo);
+            const shaSegment = encodeURIComponent(commitSha);
+            const contexts = [];
+            const perPage = 100;
+            let page = 1;
+            let hasMore = true;
+            while (hasMore) {
+                const checkRunsResponse = await this.fetchWithRateLimitRetry(() => fetch(`https://api.github.com/repos/${ownerSegment}/${repoSegment}/commits/${shaSegment}/check-runs?per_page=${perPage}&page=${page}`, {
+                    method: 'GET',
+                    headers: {
+                        Authorization: `Bearer ${this.ghToken}`,
+                        Accept: 'application/vnd.github+json',
+                    },
+                }));
+                if (!checkRunsResponse.ok) {
+                    const reason = await this.formatGitHubErrorWithStatus(checkRunsResponse);
+                    throw new Error(`Failed to fetch check runs for ${owner}/${repo}@${commitSha}: ${reason}`);
+                }
+                const checkRunsBody = await checkRunsResponse.json();
+                if (!isCheckRunsResponse(checkRunsBody)) {
+                    throw new Error(`Unexpected response shape when fetching check runs: ${owner}/${repo}@${commitSha}`);
+                }
+                for (const checkRun of checkRunsBody.check_runs) {
+                    contexts.push({
+                        __typename: 'CheckRun',
+                        name: checkRun.name,
+                        conclusion: checkRun.conclusion
+                            ? checkRun.conclusion.toUpperCase()
+                            : null,
+                        databaseId: checkRun.id,
+                    });
+                }
+                if (checkRunsBody.check_runs.length < perPage ||
+                    page * perPage >= checkRunsBody.total_count) {
+                    hasMore = false;
+                }
+                else {
+                    page += 1;
+                }
+            }
+            const combinedStatusResponse = await this.fetchWithRateLimitRetry(() => fetch(`https://api.github.com/repos/${ownerSegment}/${repoSegment}/commits/${shaSegment}/status?per_page=100`, {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${this.ghToken}`,
+                    Accept: 'application/vnd.github+json',
+                },
+            }));
+            if (!combinedStatusResponse.ok) {
+                const reason = await this.formatGitHubErrorWithStatus(combinedStatusResponse);
+                throw new Error(`Failed to fetch combined status for ${owner}/${repo}@${commitSha}: ${reason}`);
+            }
+            const combinedStatusBody = await combinedStatusResponse.json();
+            if (!isCombinedStatusResponse(combinedStatusBody)) {
+                throw new Error(`Unexpected response shape when fetching combined status: ${owner}/${repo}@${commitSha}`);
+            }
+            for (const status of combinedStatusBody.statuses) {
+                contexts.push({
+                    __typename: 'StatusContext',
+                    context: status.context,
+                    state: status.state.toUpperCase(),
+                });
+            }
+            return contexts;
+        };
+        this.fetchSlimPullRequest = async (owner, repo, prNumber) => {
+            const query = `
+      query PullRequestSlimStatus($owner: String!, $repo: String!, $prNumber: Int!, $reviewThreadsAfter: String) {
+        repository(owner: $owner, name: $repo) {
+          pullRequest(number: $prNumber) {
+            url
+            state
+            isDraft
+            headRefName
+            baseRefName
+            mergeable
+            headRefOid
+            reviewThreads(first: 100, after: $reviewThreadsAfter) {
+              pageInfo {
+                endCursor
+                hasNextPage
+              }
+              nodes {
+                isResolved
+              }
+            }
+          }
+        }
+      }
+    `;
+            let slimPullRequest = null;
+            let reviewThreadsAfter = null;
+            let hasNextPage = true;
+            while (hasNextPage) {
+                const response = await this.fetchWithRateLimitRetry(() => (0, githubGraphqlClient_1.fetchGithubGraphql)({
+                    ghToken: this.ghToken,
+                    query,
+                    variables: { owner, repo, prNumber, reviewThreadsAfter },
+                }));
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch pull request from GitHub GraphQL API: HTTP ${response.status}`);
+                }
+                const responseData = await response.json();
+                if (!isSlimPullRequestResponse(responseData)) {
+                    throw new Error('Unexpected response shape when fetching pull request');
+                }
+                if (responseData.errors && responseData.errors.length > 0) {
+                    throw new Error(`GraphQL errors: ${JSON.stringify(responseData.errors)}`);
+                }
+                const pr = responseData.data?.repository?.pullRequest;
+                if (!pr) {
+                    return null;
+                }
+                if (!slimPullRequest) {
+                    slimPullRequest = {
+                        url: pr.url,
+                        state: pr.state,
+                        isDraft: pr.isDraft,
+                        headRefName: pr.headRefName,
+                        baseRefName: pr.baseRefName,
+                        mergeable: pr.mergeable,
+                        headRefOid: pr.headRefOid,
+                        reviewThreads: [],
+                    };
+                }
+                for (const thread of pr.reviewThreads?.nodes || []) {
+                    slimPullRequest.reviewThreads.push({ isResolved: thread.isResolved });
+                }
+                hasNextPage = pr.reviewThreads?.pageInfo.hasNextPage === true;
+                reviewThreadsAfter = pr.reviewThreads?.pageInfo.endCursor ?? null;
+            }
+            return slimPullRequest;
+        };
+        this.buildRelatedPullRequestFromSlim = async (owner, repo, slimPullRequest) => {
+            const requiredCheckNames = slimPullRequest.baseRefName
+                ? await this.getRequiredCheckNames(owner, repo, slimPullRequest.baseRefName)
+                : [];
+            const ciContexts = slimPullRequest.headRefOid
+                ? await this.getCommitCiContexts(owner, repo, slimPullRequest.headRefOid)
+                : [];
+            return this.computePrStatus(slimPullRequest.url, slimPullRequest.headRefName, {
+                isDraft: slimPullRequest.isDraft,
+                mergeable: slimPullRequest.mergeable,
+                requiredCheckNames,
+                ciContexts,
+                reviewThreads: slimPullRequest.reviewThreads,
+            });
         };
         this.resolveMergeabilityWithRetry = async (owner, repo, prNumber) => {
             const query = `
@@ -643,68 +767,6 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                       mergeable
                       headRefName
                       baseRefName
-                      baseRepository {
-                        branchProtectionRules(first: 100) {
-                          nodes {
-                            pattern
-                            requiredStatusCheckContexts
-                          }
-                        }
-                        defaultBranchRef {
-                          name
-                        }
-                        rulesets(first: 100) {
-                          nodes {
-                            name
-                            enforcement
-                            conditions {
-                              refName {
-                                include
-                                exclude
-                              }
-                            }
-                            rules(first: 100) {
-                              nodes {
-                                type
-                                parameters {
-                                  ... on RequiredStatusChecksParameters {
-                                    requiredStatusChecks {
-                                      context
-                                    }
-                                  }
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                      commits(last: 1) {
-                        nodes {
-                          commit {
-                            statusCheckRollup {
-                              contexts(first: 100) {
-                                nodes {
-                                  __typename
-                                  ... on CheckRun {
-                                    databaseId
-                                    name
-                                    conclusion
-                                  }
-                                  ... on StatusContext {
-                                    context
-                                    state
-                                  }
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                      reviewThreads(first: 100) {
-                        nodes {
-                          isResolved
-                        }
-                      }
                       baseRef {
                         name
                       }
@@ -748,10 +810,8 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                         continue;
                     const pr = item.source;
                     const prUrl = pr.url || '';
-                    const baseRefName = pr.baseRefName ?? pr.baseRef?.name;
-                    const prStatus = this.computePrStatus(prUrl, pr.headRefName, baseRefName, pr);
-                    let isConflicted = prStatus.isConflicted;
-                    let mergeable = prStatus.mergeable;
+                    let isConflicted = pr.mergeable === 'CONFLICTING';
+                    let mergeable = pr.mergeable ?? null;
                     if (pr.number !== undefined &&
                         (pr.mergeable === undefined ||
                             pr.mergeable === null ||
@@ -776,6 +836,28 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                                 resolved.mergeable === 'CONFLICTING' ||
                                     resolved.mergeStateStatus === 'DIRTY';
                         }
+                    }
+                    if (pr.number === undefined)
+                        continue;
+                    let prStatus;
+                    try {
+                        const slimPullRequest = await this.fetchSlimPullRequest(owner, repo, pr.number);
+                        if (!slimPullRequest || slimPullRequest.state !== 'OPEN') {
+                            console.info(`ApiV3CheerioRestIssueRepository: pull request is no longer open, excluding it from related open PRs. prUrl: ${prUrl}`);
+                            continue;
+                        }
+                        const baseRefName = slimPullRequest.baseRefName ?? pr.baseRefName ?? pr.baseRef?.name;
+                        prStatus = await this.buildRelatedPullRequestFromSlim(owner, repo, {
+                            ...slimPullRequest,
+                            url: slimPullRequest.url || prUrl,
+                            headRefName: slimPullRequest.headRefName ?? pr.headRefName,
+                            baseRefName,
+                        });
+                    }
+                    catch (error) {
+                        const errorMessage = error instanceof Error ? error.message : String(error);
+                        console.warn(`ApiV3CheerioRestIssueRepository: fetching pull request status failed, skipping PR for this cycle. prUrl: ${prUrl} error: ${errorMessage}`);
+                        continue;
                     }
                     relatedPRsMap.set(prUrl, {
                         ...prStatus,
@@ -818,102 +900,11 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 return null;
             }
             const { owner, repo, issueNumber: prNumber } = parsedUrl;
-            const query = `
-      query PullRequestStatus($owner: String!, $repo: String!, $prNumber: Int!) {
-        repository(owner: $owner, name: $repo) {
-          pullRequest(number: $prNumber) {
-            url
-            state
-            isDraft
-            headRefName
-            baseRefName
-            mergeable
-            baseRepository {
-              branchProtectionRules(first: 100) {
-                nodes {
-                  pattern
-                  requiredStatusCheckContexts
-                }
-              }
-              defaultBranchRef {
-                name
-              }
-              rulesets(first: 100) {
-                nodes {
-                  name
-                  enforcement
-                  conditions {
-                    refName {
-                      include
-                      exclude
-                    }
-                  }
-                  rules(first: 100) {
-                    nodes {
-                      type
-                      parameters {
-                        ... on RequiredStatusChecksParameters {
-                          requiredStatusChecks {
-                            context
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-            commits(last: 1) {
-              nodes {
-                commit {
-                  statusCheckRollup {
-                    contexts(first: 100) {
-                      nodes {
-                        __typename
-                        ... on CheckRun {
-                          databaseId
-                          name
-                          conclusion
-                        }
-                        ... on StatusContext {
-                          context
-                          state
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-            reviewThreads(first: 100) {
-              nodes {
-                isResolved
-              }
-            }
-          }
-        }
-      }
-    `;
-            const response = await this.fetchWithRateLimitRetry(() => (0, githubGraphqlClient_1.fetchGithubGraphql)({
-                ghToken: this.ghToken,
-                query,
-                variables: { owner, repo, prNumber },
-            }));
-            if (!response.ok) {
-                throw new Error(`Failed to fetch pull request from GitHub GraphQL API: HTTP ${response.status}`);
-            }
-            const responseData = await response.json();
-            if (!isDirectPullRequestResponse(responseData)) {
-                throw new Error('Unexpected response shape when fetching pull request');
-            }
-            if (responseData.errors && responseData.errors.length > 0) {
-                throw new Error(`GraphQL errors: ${JSON.stringify(responseData.errors)}`);
-            }
-            const pr = responseData.data?.repository?.pullRequest;
-            if (!pr || pr.state !== 'OPEN') {
+            const slimPullRequest = await this.fetchSlimPullRequest(owner, repo, prNumber);
+            if (!slimPullRequest || slimPullRequest.state !== 'OPEN') {
                 return null;
             }
-            return this.computePrStatus(pr.url, pr.headRefName, pr.baseRefName, pr);
+            return this.buildRelatedPullRequestFromSlim(owner, repo, slimPullRequest);
         };
         this.closePullRequest = async (prUrl) => {
             const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);

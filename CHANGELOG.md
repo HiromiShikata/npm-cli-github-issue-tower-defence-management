@@ -1,3 +1,10 @@
+# [1.125.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.124.0...v1.125.0) (2026-07-17)
+
+
+### Features
+
+* **pr-status:** split findRelatedOpenPRs into two stages and resolve required checks and CI state via REST with a TTL cache ([#1198](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1198)) ([5361641](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5361641c91e2217927296e124e2c55328823d951))
+
 # [1.124.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.123.3...v1.124.0) (2026-07-17)
 
 
