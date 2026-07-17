@@ -113,9 +113,41 @@ describe('buildComposeDashboardInput', () => {
         memPct: 55,
         cpuPct: 62,
         diskPct: 89,
+        disks: null,
         load: [16, 23, 40],
         cycleMinutes: 14,
       });
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  });
+
+  it('reads a disks array from machine-status.json', () => {
+    const dataDir = makeDataDir();
+    try {
+      fs.writeFileSync(
+        path.join(dataDir, 'machine-status.json'),
+        JSON.stringify({
+          memPct: 55,
+          cpuPct: 62,
+          diskPct: 89,
+          disks: [
+            { title: 'D', pct: 89 },
+            { title: 'S', pct: 41 },
+          ],
+          load: [16, 23, 40],
+          cycleMinutes: 14,
+          capturedAt: 'x',
+        }),
+      );
+      const input = buildComposeDashboardInput({
+        dashboardDataDir: dataDir,
+        projectNames: [],
+      });
+      expect(input.machineStatus?.disks).toEqual([
+        { title: 'D', pct: 89 },
+        { title: 'S', pct: 41 },
+      ]);
     } finally {
       fs.rmSync(dataDir, { recursive: true, force: true });
     }

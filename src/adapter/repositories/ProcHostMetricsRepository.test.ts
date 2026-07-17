@@ -167,6 +167,31 @@ describe('ProcHostMetricsRepository', () => {
     expect(repository.readDiskUsedPercent()).toBe(90);
   });
 
+  it('reads the df-style disk used percent for a given mountpoint', () => {
+    const blocksByMountpoint: Record<string, DiskBlocks> = {
+      '/': { blocks: 1100, bfree: 200, bavail: 100 },
+      '/mountpoint-a': { blocks: 1000, bfree: 700, bavail: 700 },
+    };
+    const requestedMountpoints: string[] = [];
+    const repository = new ProcHostMetricsRepository(
+      procDirectory,
+      async () => {},
+      (mountpoint) => {
+        requestedMountpoints.push(mountpoint);
+        const blocks = blocksByMountpoint[mountpoint];
+        if (!blocks) {
+          throw new Error(`unexpected mountpoint ${mountpoint}`);
+        }
+        return blocks;
+      },
+    );
+    expect(repository.readDiskUsedPercentForMountpoint('/mountpoint-a')).toBe(
+      30,
+    );
+    expect(repository.readDiskUsedPercentForMountpoint('/')).toBe(90);
+    expect(requestedMountpoints).toEqual(['/mountpoint-a', '/']);
+  });
+
   it('samples /proc/stat twice and computes the busy percent', async () => {
     const statPath = path.join(procDirectory, 'stat');
     let sampleIndex = 0;
