@@ -1,3 +1,10 @@
+# [1.124.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.123.3...v1.124.0) (2026-07-17)
+
+
+### Features
+
+* **graphql:** add per-query rateLimit cost logging and reduce project item selection sizes ([#1197](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1197)) ([b5d29eb](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b5d29eb1854b7d56f4bab70fd4fb05ee6c74e9a0))
+
 ## [1.123.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.123.2...v1.123.3) (2026-07-17)
 
 

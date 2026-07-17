@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ApiV3CheerioRestIssueRepository = exports.INCREMENTAL_FETCH_SKEW_BUFFER_MS = exports.FULL_ISSUE_FETCH_INTERVAL_MS = void 0;
 const typia_1 = __importDefault(require("typia"));
 const BaseGitHubRepository_1 = require("../BaseGitHubRepository");
+const githubGraphqlClient_1 = require("../githubGraphqlClient");
 const utils_1 = require("../utils");
 const githubRateLimitRetry_1 = require("./githubRateLimitRetry");
 exports.FULL_ISSUE_FETCH_INTERVAL_MS = 60 * 60 * 1000;
@@ -568,7 +569,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         };
         this.resolveMergeabilityWithRetry = async (owner, repo, prNumber) => {
             const query = `
-      query($owner: String!, $repo: String!, $prNumber: Int!) {
+      query PullRequestMergeability($owner: String!, $repo: String!, $prNumber: Int!) {
         repository(owner: $owner, name: $repo) {
           pullRequest(number: $prNumber) {
             mergeable
@@ -584,16 +585,10 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 if (attempt > 0) {
                     await this.sleep(retryDelayMilliseconds);
                 }
-                const response = await this.fetchWithRateLimitRetry(() => fetch('https://api.github.com/graphql', {
-                    method: 'POST',
-                    headers: {
-                        Authorization: `Bearer ${this.ghToken}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        query,
-                        variables: { owner, repo, prNumber },
-                    }),
+                const response = await this.fetchWithRateLimitRetry(() => (0, githubGraphqlClient_1.fetchGithubGraphql)({
+                    ghToken: this.ghToken,
+                    query,
+                    variables: { owner, repo, prNumber },
                 }));
                 if (!response.ok) {
                     throw new Error(`Failed to fetch pull request mergeability from GitHub GraphQL API: HTTP ${response.status}`);
@@ -625,7 +620,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 throw new Error('findRelatedOpenPRs only supports issue URLs, not pull request URLs');
             }
             const query = `
-      query($owner: String!, $repo: String!, $issueNumber: Int!, $after: String) {
+      query IssueRelatedOpenPullRequests($owner: String!, $repo: String!, $issueNumber: Int!, $after: String) {
         repository(owner: $owner, name: $repo) {
           issue(number: $issueNumber) {
             timelineItems(first: 100, after: $after, itemTypes: [CROSS_REFERENCED_EVENT]) {
@@ -726,16 +721,10 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             let after = null;
             let hasNextPage = true;
             while (hasNextPage) {
-                const response = await this.fetchWithRateLimitRetry(() => fetch('https://api.github.com/graphql', {
-                    method: 'POST',
-                    headers: {
-                        Authorization: `Bearer ${this.ghToken}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        query,
-                        variables: { owner, repo, issueNumber, after },
-                    }),
+                const response = await this.fetchWithRateLimitRetry(() => (0, githubGraphqlClient_1.fetchGithubGraphql)({
+                    ghToken: this.ghToken,
+                    query,
+                    variables: { owner, repo, issueNumber, after },
                 }));
                 if (!response.ok) {
                     throw new Error(`Failed to fetch issue timeline from GitHub GraphQL API: HTTP ${response.status}`);
@@ -830,7 +819,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             }
             const { owner, repo, issueNumber: prNumber } = parsedUrl;
             const query = `
-      query($owner: String!, $repo: String!, $prNumber: Int!) {
+      query PullRequestStatus($owner: String!, $repo: String!, $prNumber: Int!) {
         repository(owner: $owner, name: $repo) {
           pullRequest(number: $prNumber) {
             url
@@ -905,16 +894,10 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         }
       }
     `;
-            const response = await this.fetchWithRateLimitRetry(() => fetch('https://api.github.com/graphql', {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${this.ghToken}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    query,
-                    variables: { owner, repo, prNumber },
-                }),
+            const response = await this.fetchWithRateLimitRetry(() => (0, githubGraphqlClient_1.fetchGithubGraphql)({
+                ghToken: this.ghToken,
+                query,
+                variables: { owner, repo, prNumber },
             }));
             if (!response.ok) {
                 throw new Error(`Failed to fetch pull request from GitHub GraphQL API: HTTP ${response.status}`);

@@ -39,6 +39,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.fetchProjectReadme = exports.mergeConfigs = exports.parseProjectReadmeConfig = exports.loadConfigFile = exports.isRecord = void 0;
 const yaml_1 = __importDefault(require("yaml"));
 const fs = __importStar(require("fs"));
+const githubGraphqlClient_1 = require("../../repositories/githubGraphqlClient");
 const getStringValue = (obj, key) => {
     const value = obj[key];
     return typeof value === 'string' ? value : undefined;
@@ -246,7 +247,7 @@ const fetchProjectReadme = async (projectUrl, token) => {
         const projectNumber = parseInt(urlParts[urlParts.length - 1], 10);
         const owner = urlParts[urlParts.length - 3];
         const query = `
-      query($owner: String!, $number: Int!) {
+      query ProjectReadme($owner: String!, $number: Int!) {
         organization(login: $owner) {
           projectV2(number: $number) {
             readme
@@ -259,16 +260,10 @@ const fetchProjectReadme = async (projectUrl, token) => {
         }
       }
     `;
-        const response = await fetch('https://api.github.com/graphql', {
-            method: 'POST',
-            headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                query,
-                variables: { owner, number: projectNumber },
-            }),
+        const response = await (0, githubGraphqlClient_1.fetchGithubGraphql)({
+            ghToken: token,
+            query,
+            variables: { owner, number: projectNumber },
         });
         if (!response.ok) {
             throw new Error(`GraphQL request failed: ${response.status}`);

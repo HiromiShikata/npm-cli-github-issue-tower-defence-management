@@ -1,41 +1,19 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.GraphqlProjectItemRepository = exports.callWithRateLimitRetry = exports.RATE_LIMIT_MAX_BACKOFF_MS = exports.RATE_LIMIT_DEFAULT_BACKOFF_MS = exports.RATE_LIMIT_MIN_BACKOFF_MS = exports.RATE_LIMIT_MAX_RETRIES = exports.FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH = exports.FETCH_PROJECT_ITEMS_BY_IDS_BATCH_SIZE = exports.FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE = exports.PAGINATION_DELAY_MS = void 0;
-const ky_1 = __importStar(require("ky"));
+exports.GraphqlProjectItemRepository = exports.callWithRateLimitRetry = exports.RATE_LIMIT_MAX_BACKOFF_MS = exports.RATE_LIMIT_DEFAULT_BACKOFF_MS = exports.RATE_LIMIT_MIN_BACKOFF_MS = exports.RATE_LIMIT_MAX_RETRIES = exports.FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH = exports.FETCH_PROJECT_ITEMS_BY_IDS_BATCH_SIZE = exports.FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE = exports.PAGINATION_DELAY_MS = exports.PROJECT_ITEM_ASSIGNEES_FIRST = exports.PROJECT_ITEM_LABELS_FIRST = void 0;
+const ky_1 = require("ky");
 const BaseGitHubRepository_1 = require("../BaseGitHubRepository");
+const githubGraphqlClient_1 = require("../githubGraphqlClient");
+// Rate-limit cost of a GraphQL query grows with the number of requested
+// nodes (roughly totalNodes / 100, see
+// https://docs.github.com/en/graphql/overview/rate-limits-and-node-limits-for-the-graphql-api).
+// The previous values (labels first: 100, assignees first: 20) requested far
+// more nodes than any issue in the managed projects actually carries: no
+// operational issue has more than 20 labels or more than 10 assignees, so
+// these reduced limits do not drop any data while cutting the per-item node
+// budget to roughly one third.
+exports.PROJECT_ITEM_LABELS_FIRST = 20;
+exports.PROJECT_ITEM_ASSIGNEES_FIRST = 10;
 const PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION = `
           fieldValues(first: 10) {
             nodes {
@@ -93,12 +71,12 @@ const PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION = `
               author {
                 login
               }
-              labels(first: 100) {
+              labels(first: ${exports.PROJECT_ITEM_LABELS_FIRST}) {
                 nodes {
                   name
                 }
               }
-              assignees(first: 20) {
+              assignees(first: ${exports.PROJECT_ITEM_ASSIGNEES_FIRST}) {
                 nodes {
                   login
                 }
@@ -117,12 +95,12 @@ const PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION = `
               author {
                 login
               }
-              labels(first: 100) {
+              labels(first: ${exports.PROJECT_ITEM_LABELS_FIRST}) {
                 nodes {
                   name
                 }
               }
-              assignees(first: 20) {
+              assignees(first: ${exports.PROJECT_ITEM_ASSIGNEES_FIRST}) {
                 nodes {
                   login
                 }
@@ -226,14 +204,11 @@ class GraphqlProjectItemRepository extends BaseGitHubRepository_1.BaseGitHubRepo
                 },
             };
             try {
-                const response = await ky_1.default
-                    .post('https://api.github.com/graphql', {
-                    json: graphqlQuery,
-                    headers: {
-                        Authorization: `Bearer ${this.ghToken}`,
-                    },
-                })
-                    .json();
+                const response = await (0, githubGraphqlClient_1.postGithubGraphqlJson)({
+                    ghToken: this.ghToken,
+                    query: graphqlQuery.query,
+                    variables: graphqlQuery.variables,
+                });
                 if (!response.data) {
                     const errorMessages = response.errors
                         ? response.errors.map((e) => e.message).join('; ')
@@ -278,14 +253,11 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
                         query: query ?? null,
                     },
                 };
-                const response = await (0, exports.callWithRateLimitRetry)(() => ky_1.default
-                    .post('https://api.github.com/graphql', {
-                    json: graphqlQuery,
-                    headers: {
-                        Authorization: `Bearer ${this.ghToken}`,
-                    },
-                })
-                    .json());
+                const response = await (0, exports.callWithRateLimitRetry)(() => (0, githubGraphqlClient_1.postGithubGraphqlJson)({
+                    ghToken: this.ghToken,
+                    query: graphqlQuery.query,
+                    variables: graphqlQuery.variables,
+                }));
                 if (response.errors && response.errors.length > 0) {
                     throw new Error(`GitHub GraphQL errors: ${stringifyGraphqlErrorsForLog(response.errors)}`);
                 }
@@ -429,22 +401,16 @@ query GetProjectItemsLight($projectId: ID!, $after: String, $first: Int!, $query
 }
 `;
             const callGraphql = async (after) => {
-                const response = await (0, exports.callWithRateLimitRetry)(() => ky_1.default
-                    .post('https://api.github.com/graphql', {
-                    json: {
-                        query: graphqlQueryString,
-                        variables: {
-                            projectId: projectId,
-                            after: after,
-                            first: exports.FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE,
-                            query: query ?? null,
-                        },
+                const response = await (0, exports.callWithRateLimitRetry)(() => (0, githubGraphqlClient_1.postGithubGraphqlJson)({
+                    ghToken: this.ghToken,
+                    query: graphqlQueryString,
+                    variables: {
+                        projectId: projectId,
+                        after: after,
+                        first: exports.FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE,
+                        query: query ?? null,
                     },
-                    headers: {
-                        Authorization: `Bearer ${this.ghToken}`,
-                    },
-                })
-                    .json());
+                }));
                 if (response.errors && response.errors.length > 0) {
                     throw new Error(`GitHub GraphQL errors: ${stringifyGraphqlErrorsForLog(response.errors)}`);
                 }
@@ -510,19 +476,13 @@ query GetProjectItemsByIds($ids: [ID!]!) {
 }
 `;
             const callGraphql = async (batchIds) => {
-                const response = await (0, exports.callWithRateLimitRetry)(() => ky_1.default
-                    .post('https://api.github.com/graphql', {
-                    json: {
-                        query: graphqlQueryString,
-                        variables: {
-                            ids: batchIds,
-                        },
+                const response = await (0, exports.callWithRateLimitRetry)(() => (0, githubGraphqlClient_1.postGithubGraphqlJson)({
+                    ghToken: this.ghToken,
+                    query: graphqlQueryString,
+                    variables: {
+                        ids: batchIds,
                     },
-                    headers: {
-                        Authorization: `Bearer ${this.ghToken}`,
-                    },
-                })
-                    .json());
+                }));
                 if (response.errors && response.errors.length > 0) {
                     throw new Error(`GitHub GraphQL errors: ${stringifyGraphqlErrorsForLog(response.errors)}`);
                 }
@@ -626,14 +586,11 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
                     issueNumber: issueNumber,
                 },
             };
-            const response = await ky_1.default
-                .post('https://api.github.com/graphql', {
-                json: graphqlQuery,
-                headers: {
-                    Authorization: `Bearer ${this.ghToken}`,
-                },
-            })
-                .json();
+            const response = await (0, githubGraphqlClient_1.postGithubGraphqlJson)({
+                ghToken: this.ghToken,
+                query: graphqlQuery.query,
+                variables: graphqlQuery.variables,
+            });
             if (!response.data) {
                 const errorMessages = response.errors
                     ? response.errors.map((e) => e.message).join('; ')
@@ -674,12 +631,12 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       author {
         login
       }
-      labels(first: 100) {
+      labels(first: ${exports.PROJECT_ITEM_LABELS_FIRST}) {
         nodes {
           name
         }
       }
-      assignees(first: 20) {
+      assignees(first: ${exports.PROJECT_ITEM_ASSIGNEES_FIRST}) {
         nodes {
           login
         }
@@ -752,12 +709,12 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       author {
         login
       }
-      labels(first: 100) {
+      labels(first: ${exports.PROJECT_ITEM_LABELS_FIRST}) {
         nodes {
           name
         }
       }
-      assignees(first: 20) {
+      assignees(first: ${exports.PROJECT_ITEM_ASSIGNEES_FIRST}) {
         nodes {
           login
         }
@@ -834,14 +791,11 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
                     number: issueNumber,
                 },
             };
-            const response = await ky_1.default
-                .post('https://api.github.com/graphql', {
-                json: graphqlQuery,
-                headers: {
-                    Authorization: `Bearer ${this.ghToken}`,
-                },
-            })
-                .json();
+            const response = await (0, githubGraphqlClient_1.postGithubGraphqlJson)({
+                ghToken: this.ghToken,
+                query: graphqlQuery.query,
+                variables: graphqlQuery.variables,
+            });
             if (!response.data) {
                 const errorMessages = response.errors
                     ? response.errors.map((e) => e.message).join('; ')
@@ -918,14 +872,10 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       }
     }`,
             };
-            const res = await ky_1.default
-                .post('https://api.github.com/graphql', {
-                json: graphqlQuery,
-                headers: {
-                    Authorization: `Bearer ${this.ghToken}`,
-                },
-            })
-                .json();
+            const res = await (0, githubGraphqlClient_1.postGithubGraphqlJson)({
+                ghToken: this.ghToken,
+                query: graphqlQuery.query,
+            });
             if (res.errors) {
                 throw new Error(res.errors.map((e) => e.message).join('\n'));
             }
@@ -942,14 +892,10 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       }
     }`,
             };
-            const res = await ky_1.default
-                .post('https://api.github.com/graphql', {
-                json: graphqlQuery,
-                headers: {
-                    Authorization: `Bearer ${this.ghToken}`,
-                },
-            })
-                .json();
+            const res = await (0, githubGraphqlClient_1.postGithubGraphqlJson)({
+                ghToken: this.ghToken,
+                query: graphqlQuery.query,
+            });
             if (res.errors) {
                 throw new Error(res.errors.map((e) => e.message).join('\n'));
             }
@@ -969,14 +915,11 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
                     itemId,
                 },
             };
-            const res = await ky_1.default
-                .post('https://api.github.com/graphql', {
-                json: graphqlQuery,
-                headers: {
-                    Authorization: `Bearer ${this.ghToken}`,
-                },
-            })
-                .json();
+            const res = await (0, githubGraphqlClient_1.postGithubGraphqlJson)({
+                ghToken: this.ghToken,
+                query: graphqlQuery.query,
+                variables: graphqlQuery.variables,
+            });
             if (res.errors) {
                 throw new Error(res.errors.map((e) => e.message).join('\n'));
             }
@@ -1006,14 +949,11 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       }`,
                 variables: { owner, repo, number: issueNumber },
             };
-            const nodeIdRes = await ky_1.default
-                .post('https://api.github.com/graphql', {
-                json: nodeIdQuery,
-                headers: {
-                    Authorization: `Bearer ${this.ghToken}`,
-                },
-            })
-                .json();
+            const nodeIdRes = await (0, githubGraphqlClient_1.postGithubGraphqlJson)({
+                ghToken: this.ghToken,
+                query: nodeIdQuery.query,
+                variables: nodeIdQuery.variables,
+            });
             if (nodeIdRes.errors) {
                 throw new Error(nodeIdRes.errors.map((e) => e.message).join('\n'));
             }
@@ -1029,14 +969,11 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       }`,
                 variables: { projectId, contentId },
             };
-            const addRes = await ky_1.default
-                .post('https://api.github.com/graphql', {
-                json: addQuery,
-                headers: {
-                    Authorization: `Bearer ${this.ghToken}`,
-                },
-            })
-                .json();
+            const addRes = await (0, githubGraphqlClient_1.postGithubGraphqlJson)({
+                ghToken: this.ghToken,
+                query: addQuery.query,
+                variables: addQuery.variables,
+            });
             if (addRes.errors) {
                 throw new Error(addRes.errors.map((e) => e.message).join('\n'));
             }

@@ -26,6 +26,8 @@ export type ProjectItemLight = {
     url: string;
     number: number;
 };
+export declare const PROJECT_ITEM_LABELS_FIRST = 20;
+export declare const PROJECT_ITEM_ASSIGNEES_FIRST = 10;
 export declare const PAGINATION_DELAY_MS = 5000;
 export declare const FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE = 100;
 export declare const FETCH_PROJECT_ITEMS_BY_IDS_BATCH_SIZE = 100;

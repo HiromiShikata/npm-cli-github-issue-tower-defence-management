@@ -1,11 +1,8 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GraphqlProjectRepository = exports.convertToFieldOptionColor = void 0;
-const ky_1 = __importDefault(require("ky"));
 const BaseGitHubRepository_1 = require("./BaseGitHubRepository");
+const githubGraphqlClient_1 = require("./githubGraphqlClient");
 const utils_1 = require("./utils");
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const PROJECT_ID_DISK_CACHE_KEY_PREFIX = 'projectId';
@@ -105,14 +102,11 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             };
             let response;
             try {
-                response = await ky_1.default
-                    .post('https://api.github.com/graphql', {
-                    json: graphqlQuery,
-                    headers: {
-                        Authorization: `Bearer ${this.ghToken}`,
-                    },
-                })
-                    .json();
+                response = await (0, githubGraphqlClient_1.postGithubGraphqlJson)({
+                    ghToken: this.ghToken,
+                    query: graphqlQuery.query,
+                    variables: graphqlQuery.variables,
+                });
             }
             catch (error) {
                 this.fetchProjectIdFailedAt.set(cacheKey, Date.now());
@@ -196,14 +190,11 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             const variables = {
                 projectId: projectId,
             };
-            const response = await ky_1.default
-                .post('https://api.github.com/graphql', {
-                json: { query, variables },
-                headers: {
-                    Authorization: `Bearer ${this.ghToken}`,
-                },
-            })
-                .json();
+            const response = await (0, githubGraphqlClient_1.postGithubGraphqlJson)({
+                ghToken: this.ghToken,
+                query,
+                variables,
+            });
             if (!response.data) {
                 const errorMessages = response.errors
                     ? response.errors.map((e) => e.message).join('; ')
@@ -327,14 +318,11 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
                     description,
                 })),
             };
-            const response = await ky_1.default
-                .post('https://api.github.com/graphql', {
-                json: { query: mutation, variables },
-                headers: {
-                    Authorization: `Bearer ${this.ghToken}`,
-                },
-            })
-                .json();
+            const response = await (0, githubGraphqlClient_1.postGithubGraphqlJson)({
+                ghToken: this.ghToken,
+                query: mutation,
+                variables,
+            });
             return response.data.updateProjectV2Field.projectV2Field.options;
         };
         this.updateStatusList = async (project, newStatusList) => {
@@ -364,14 +352,11 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
                     description,
                 })),
             };
-            const response = await ky_1.default
-                .post('https://api.github.com/graphql', {
-                json: { query: mutation, variables },
-                headers: {
-                    Authorization: `Bearer ${this.ghToken}`,
-                },
-            })
-                .json();
+            const response = await (0, githubGraphqlClient_1.postGithubGraphqlJson)({
+                ghToken: this.ghToken,
+                query: mutation,
+                variables,
+            });
             return response.data.updateProjectV2Field.projectV2Field.options;
         };
         this.projectCache = projectCache;
