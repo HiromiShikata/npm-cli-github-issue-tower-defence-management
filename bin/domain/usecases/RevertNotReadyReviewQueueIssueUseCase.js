@@ -4,6 +4,15 @@ exports.RevertNotReadyReviewQueueIssueUseCase = void 0;
 const IssueRejectionEvaluator_1 = require("./IssueRejectionEvaluator");
 const ChangeTargetPullRequestApprover_1 = require("./ChangeTargetPullRequestApprover");
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
+// GitHub rejects field mutations against archived project items with
+// "The item is archived and cannot be updated". Such a failure is specific to
+// the single item being reverted, so it must not abort the whole schedule
+// cycle (the same containment policy as the transient GraphQL error handling
+// and the findRelatedOpenPRs NOT_FOUND handling).
+const isArchivedProjectItemError = (error) => {
+    const message = error instanceof Error ? error.message : String(error);
+    return message.toLowerCase().includes('archived');
+};
 const isAuthorAuthorizedForAutoStatusCheck = (author, allowedIssueAuthors) => {
     if (allowedIssueAuthors === null || allowedIssueAuthors === undefined) {
         return false;
@@ -47,7 +56,16 @@ class RevertNotReadyReviewQueueIssueUseCase {
                     relatedOpenPrUrls: relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? [],
                 });
                 if (rejections.length > 0) {
-                    await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
+                    try {
+                        await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
+                    }
+                    catch (error) {
+                        if (isArchivedProjectItemError(error)) {
+                            console.warn(`RevertNotReadyReviewQueueIssueUseCase: project item is archived and cannot be updated, skipping revert. issueUrl: ${issue.url}`);
+                            continue;
+                        }
+                        throw error;
+                    }
                     await this.issueCommentRepository.createComment(issue, `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`);
                     continue;
                 }
@@ -65,7 +83,16 @@ class RevertNotReadyReviewQueueIssueUseCase {
                 }
                 const { rejections } = await this.issueRejectionEvaluator.evaluate(pullRequest, params.labelsAsLlmAgentName ?? []);
                 if (rejections.length > 0) {
-                    await this.issueRepository.updateStatus(project, pullRequest, awaitingWorkspaceStatusOption.id);
+                    try {
+                        await this.issueRepository.updateStatus(project, pullRequest, awaitingWorkspaceStatusOption.id);
+                    }
+                    catch (error) {
+                        if (isArchivedProjectItemError(error)) {
+                            console.warn(`RevertNotReadyReviewQueueIssueUseCase: project item is archived and cannot be updated, skipping revert. prUrl: ${pullRequest.url}`);
+                            continue;
+                        }
+                        throw error;
+                    }
                     if (projectStory) {
                         await this.issueRepository.updateStory({ ...project, story: projectStory }, pullRequest, projectStory.workflowManagementStory.id);
                     }

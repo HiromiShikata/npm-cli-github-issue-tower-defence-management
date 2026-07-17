@@ -1,3 +1,10 @@
+## [1.123.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.123.2...v1.123.3) (2026-07-17)
+
+
+### Bug Fixes
+
+* **revert-review-queue:** contain archived project item update failures so an archived item does not abort the schedule cycle ([#1193](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1193)) ([6034127](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6034127c4aeff0cebfc8a4a914eff36781e878f4))
+
 ## [1.123.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.123.1...v1.123.2) (2026-07-17)
 
 
