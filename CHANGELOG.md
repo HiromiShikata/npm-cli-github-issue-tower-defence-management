@@ -1,3 +1,10 @@
+## [1.123.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.123.0...v1.123.1) (2026-07-17)
+
+
+### Bug Fixes
+
+* **deps:** update dependency commander to v15 ([#767](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/767)) ([a3af965](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a3af96592f255fa22bfbc22110c973025d586019))
+
 # [1.123.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.14...v1.123.0) (2026-07-16)
 
 
