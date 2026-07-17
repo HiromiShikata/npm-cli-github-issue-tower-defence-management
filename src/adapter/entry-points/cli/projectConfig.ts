@@ -1,5 +1,6 @@
 import YAML from 'yaml';
 import * as fs from 'fs';
+import { fetchGithubGraphql } from '../../repositories/githubGraphqlClient';
 
 export type ConfigFile = {
   projectUrl?: string;
@@ -330,7 +331,7 @@ export const fetchProjectReadme = async (
     const owner = urlParts[urlParts.length - 3];
 
     const query = `
-      query($owner: String!, $number: Int!) {
+      query ProjectReadme($owner: String!, $number: Int!) {
         organization(login: $owner) {
           projectV2(number: $number) {
             readme
@@ -344,16 +345,10 @@ export const fetchProjectReadme = async (
       }
     `;
 
-    const response = await fetch('https://api.github.com/graphql', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query,
-        variables: { owner, number: projectNumber },
-      }),
+    const response = await fetchGithubGraphql({
+      ghToken: token,
+      query,
+      variables: { owner, number: projectNumber },
     });
 
     if (!response.ok) {

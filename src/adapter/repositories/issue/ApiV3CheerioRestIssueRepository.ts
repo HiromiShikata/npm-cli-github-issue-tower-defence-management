@@ -20,6 +20,7 @@ import {
 import { LocalStorageCacheRepository } from '../LocalStorageCacheRepository';
 import typia from 'typia';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
+import { fetchGithubGraphql } from '../githubGraphqlClient';
 import { normalizeFieldName } from '../utils';
 import { LocalStorageRepository } from '../LocalStorageRepository';
 import { Member } from '../../../domain/entities/Member';
@@ -1160,7 +1161,7 @@ export class ApiV3CheerioRestIssueRepository
     mergeStateStatus: string | null;
   } | null> => {
     const query = `
-      query($owner: String!, $repo: String!, $prNumber: Int!) {
+      query PullRequestMergeability($owner: String!, $repo: String!, $prNumber: Int!) {
         repository(owner: $owner, name: $repo) {
           pullRequest(number: $prNumber) {
             mergeable
@@ -1183,16 +1184,10 @@ export class ApiV3CheerioRestIssueRepository
       }
 
       const response = await this.fetchWithRateLimitRetry(() =>
-        fetch('https://api.github.com/graphql', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${this.ghToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query,
-            variables: { owner, repo, prNumber },
-          }),
+        fetchGithubGraphql({
+          ghToken: this.ghToken,
+          query,
+          variables: { owner, repo, prNumber },
         }),
       );
 
@@ -1244,7 +1239,7 @@ export class ApiV3CheerioRestIssueRepository
     }
 
     const query = `
-      query($owner: String!, $repo: String!, $issueNumber: Int!, $after: String) {
+      query IssueRelatedOpenPullRequests($owner: String!, $repo: String!, $issueNumber: Int!, $after: String) {
         repository(owner: $owner, name: $repo) {
           issue(number: $issueNumber) {
             timelineItems(first: 100, after: $after, itemTypes: [CROSS_REFERENCED_EVENT]) {
@@ -1348,16 +1343,10 @@ export class ApiV3CheerioRestIssueRepository
 
     while (hasNextPage) {
       const response = await this.fetchWithRateLimitRetry(() =>
-        fetch('https://api.github.com/graphql', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${this.ghToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query,
-            variables: { owner, repo, issueNumber, after },
-          }),
+        fetchGithubGraphql({
+          ghToken: this.ghToken,
+          query,
+          variables: { owner, repo, issueNumber, after },
         }),
       );
 
@@ -1488,7 +1477,7 @@ export class ApiV3CheerioRestIssueRepository
     const { owner, repo, issueNumber: prNumber } = parsedUrl;
 
     const query = `
-      query($owner: String!, $repo: String!, $prNumber: Int!) {
+      query PullRequestStatus($owner: String!, $repo: String!, $prNumber: Int!) {
         repository(owner: $owner, name: $repo) {
           pullRequest(number: $prNumber) {
             url
@@ -1565,16 +1554,10 @@ export class ApiV3CheerioRestIssueRepository
     `;
 
     const response = await this.fetchWithRateLimitRetry(() =>
-      fetch('https://api.github.com/graphql', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query,
-          variables: { owner, repo, prNumber },
-        }),
+      fetchGithubGraphql({
+        ghToken: this.ghToken,
+        query,
+        variables: { owner, repo, prNumber },
       }),
     );
 

@@ -22,6 +22,8 @@ import { HTTPError } from 'ky';
 import {
   GraphqlProjectItemRepository,
   PAGINATION_DELAY_MS,
+  PROJECT_ITEM_ASSIGNEES_FIRST,
+  PROJECT_ITEM_LABELS_FIRST,
   RATE_LIMIT_MAX_RETRIES,
   callWithRateLimitRetry,
 } from './GraphqlProjectItemRepository';
@@ -158,6 +160,66 @@ describe('GraphqlProjectItemRepository', () => {
     afterEach(() => {
       jest.useRealTimers();
       mockPost.mockReset();
+    });
+
+    it('requests the reduced labels and assignees selection sizes', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost.mockReturnValueOnce(makePageResponse(false, 'cursor-1', 1));
+
+      await repository.fetchProjectItems('test-project-id');
+
+      expect(PROJECT_ITEM_LABELS_FIRST).toBe(20);
+      expect(PROJECT_ITEM_ASSIGNEES_FIRST).toBe(10);
+      const sentQuery = extractRequestedQueryFromMockCall(
+        mockPost.mock.calls[0],
+      );
+      expect(sentQuery).toContain(
+        `labels(first: ${PROJECT_ITEM_LABELS_FIRST})`,
+      );
+      expect(sentQuery).toContain(
+        `assignees(first: ${PROJECT_ITEM_ASSIGNEES_FIRST})`,
+      );
+      expect(sentQuery).not.toContain('labels(first: 100)');
+      expect(sentQuery).not.toContain('assignees(first: 20)');
+    });
+
+    it('logs the rateLimit cost of the request in one line', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            node: {
+              items: {
+                totalCount: 0,
+                pageInfo: {
+                  endCursor: 'cursor-1',
+                  startCursor: 'cursor-start',
+                  hasNextPage: false,
+                },
+                nodes: [],
+              },
+            },
+            rateLimit: { cost: 3, remaining: 4200 },
+          },
+        }),
+      );
+      const consoleLogSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+      try {
+        await repository.fetchProjectItems('test-project-id');
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+          'githubGraphqlClient: query=GetProjectItems cost=3 remaining=4200',
+        );
+      } finally {
+        consoleLogSpy.mockRestore();
+      }
     });
 
     it('should sleep between paginated requests to avoid 403', async () => {
