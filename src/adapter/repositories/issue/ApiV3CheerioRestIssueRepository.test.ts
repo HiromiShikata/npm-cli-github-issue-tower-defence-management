@@ -2045,7 +2045,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       typeof variables.reviewThreadsAfter === 'string'
         ? variables.reviewThreadsAfter
         : null;
-    return { query: parsed.query, variables: { owner, repo, prNumber, reviewThreadsAfter } };
+    return {
+      query: parsed.query,
+      variables: { owner, repo, prNumber, reviewThreadsAfter },
+    };
   };
 
   const mockFetchRoutes = (routes: FetchRoutes) =>

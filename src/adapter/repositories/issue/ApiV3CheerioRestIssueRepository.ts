@@ -1544,12 +1544,16 @@ export class ApiV3CheerioRestIssueRepository
           }
           const baseRefName =
             slimPullRequest.baseRefName ?? pr.baseRefName ?? pr.baseRef?.name;
-          prStatus = await this.buildRelatedPullRequestFromSlim(prOwner, prRepo, {
-            ...slimPullRequest,
-            url: slimPullRequest.url || prUrl,
-            headRefName: slimPullRequest.headRefName ?? pr.headRefName,
-            baseRefName,
-          });
+          prStatus = await this.buildRelatedPullRequestFromSlim(
+            prOwner,
+            prRepo,
+            {
+              ...slimPullRequest,
+              url: slimPullRequest.url || prUrl,
+              headRefName: slimPullRequest.headRefName ?? pr.headRefName,
+              baseRefName,
+            },
+          );
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : String(error);
