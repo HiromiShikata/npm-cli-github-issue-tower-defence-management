@@ -1507,4 +1507,194 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
     });
   });
+
+  describe('archived project item containment', () => {
+    let warnSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      warnSpy.mockRestore();
+    });
+
+    it('should skip an archived issue on updateStatus failure and continue with remaining issues', async () => {
+      const archivedIssue = createMockIssue({
+        number: 1,
+        url: 'https://github.com/user/repo/issues/1',
+        itemId: 'archived-item',
+        status: 'Awaiting Quality Check',
+      });
+      const normalIssue = createMockIssue({
+        number: 2,
+        url: 'https://github.com/user/repo/issues/2',
+        itemId: 'normal-item',
+        status: 'Awaiting Quality Check',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [archivedIssue, normalIssue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.updateStatus.mockImplementation(
+        (_project: Project, issue: Issue) =>
+          issue.url === archivedIssue.url
+            ? Promise.reject(
+                new Error('The item is archived and cannot be updated'),
+              )
+            : Promise.resolve(undefined),
+      );
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        archivedIssue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        normalIssue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        archivedIssue,
+        expect.anything(),
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        normalIssue,
+        expect.stringContaining('Auto Status Check: REJECTED'),
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(archivedIssue.url),
+      );
+    });
+
+    it('should propagate a non-archived updateStatus error for issues unchanged', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.updateStatus.mockRejectedValue(
+        new Error('Something went wrong'),
+      );
+
+      await expect(
+        useCase.run({
+          projectUrl: 'https://github.com/users/user/projects/1',
+          allowedIssueAuthors: ['owner'],
+        }),
+      ).rejects.toThrow('Something went wrong');
+
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('should skip an archived Unread pull request on updateStatus failure and continue with remaining pull requests', async () => {
+      const archivedPullRequest = createMockPullRequest({
+        number: 1,
+        url: 'https://github.com/user/repo/pull/1',
+        itemId: 'archived-pr-item',
+        status: 'Unread',
+      });
+      const normalPullRequest = createMockPullRequest({
+        number: 2,
+        url: 'https://github.com/user/repo/pull/2',
+        itemId: 'normal-pr-item',
+        status: 'Unread',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [archivedPullRequest, normalPullRequest],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequest.mockImplementation(
+        (prUrl: string) =>
+          Promise.resolve({
+            ...createReadyPr(prUrl),
+            isConflicted: true,
+          }),
+      );
+      mockIssueRepository.updateStatus.mockImplementation(
+        (_project: Project, issue: Issue) =>
+          issue.url === archivedPullRequest.url
+            ? Promise.reject(
+                new Error('The item is archived and cannot be updated'),
+              )
+            : Promise.resolve(undefined),
+      );
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        archivedPullRequest,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalledWith(
+        expect.anything(),
+        archivedPullRequest,
+        expect.anything(),
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        archivedPullRequest,
+        expect.anything(),
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        normalPullRequest,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'project-1' }),
+        normalPullRequest,
+        'workflow-management-story-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        normalPullRequest,
+        expect.stringContaining('Auto Status Check: REJECTED'),
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(archivedPullRequest.url),
+      );
+    });
+
+    it('should propagate a non-archived updateStatus error for Unread pull requests unchanged', async () => {
+      const pullRequest = createMockPullRequest({
+        status: 'Unread',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [pullRequest],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequest.mockResolvedValue({
+        ...createReadyPr(),
+        isConflicted: true,
+      });
+      mockIssueRepository.updateStatus.mockRejectedValue(
+        new Error('Something went wrong'),
+      );
+
+      await expect(
+        useCase.run({
+          projectUrl: 'https://github.com/users/user/projects/1',
+          allowedIssueAuthors: ['owner'],
+        }),
+      ).rejects.toThrow('Something went wrong');
+
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+  });
 });
