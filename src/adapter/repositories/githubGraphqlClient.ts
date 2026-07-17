@@ -2,9 +2,6 @@ import ky from 'ky';
 
 export const GITHUB_GRAPHQL_ENDPOINT = 'https://api.github.com/graphql';
 
-// Appended to every query operation so that each request reports its actual
-// rate-limit cost and the remaining hourly budget. `rateLimit` is a field on
-// the query root only, so mutations are sent unchanged.
 export const RATE_LIMIT_SELECTION = 'rateLimit { cost remaining }';
 
 export type GithubGraphqlRateLimit = {
@@ -76,10 +73,6 @@ export const logGithubGraphqlCost = (
   );
 };
 
-// Common path for ky-based GraphQL calls. Injects the rateLimit selection into
-// query operations, sends the request, and emits a one-line cost log.
-// HTTP errors keep ky semantics (HTTPError on non-2xx) so existing retry
-// wrappers such as callWithRateLimitRetry continue to work unchanged.
 export const postGithubGraphqlJson = async <T>(params: {
   ghToken: string;
   query: string;
@@ -102,9 +95,6 @@ export const postGithubGraphqlJson = async <T>(params: {
   return response;
 };
 
-// Common path for fetch-based GraphQL calls. Keeps fetch semantics (the caller
-// inspects response.ok / status) so existing retry wrappers such as
-// fetchWithRateLimitRetry continue to work unchanged.
 export const fetchGithubGraphql = async (params: {
   ghToken: string;
   query: string;
@@ -122,12 +112,11 @@ export const fetchGithubGraphql = async (params: {
     }),
   });
   if (response.ok) {
-    try {
-      const responseBody: unknown = await response.clone().json();
-      logGithubGraphqlCost(params.query, responseBody);
-    } catch {
-      // Non-JSON body: nothing to log. The caller handles the response.
-    }
+    const responseBody: unknown = await response
+      .clone()
+      .json()
+      .catch((): null => null);
+    logGithubGraphqlCost(params.query, responseBody);
   }
   return response;
 };

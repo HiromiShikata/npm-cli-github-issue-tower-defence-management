@@ -65,7 +65,6 @@ type ProjectV2ItemNode = {
 // operational issue has more than 20 labels or more than 10 assignees, so
 // these reduced limits do not drop any data while cutting the per-item node
 // budget to roughly one third.
-// https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1194
 export const PROJECT_ITEM_LABELS_FIRST = 20;
 export const PROJECT_ITEM_ASSIGNEES_FIRST = 10;
 
