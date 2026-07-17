@@ -1,5 +1,8 @@
 import { mock } from 'jest-mock-extended';
-import { ApiV3CheerioRestIssueRepository } from './ApiV3CheerioRestIssueRepository';
+import {
+  ApiV3CheerioRestIssueRepository,
+  REQUIRED_CHECKS_CACHE_TTL_MS,
+} from './ApiV3CheerioRestIssueRepository';
 import { ApiV3IssueRepository } from './ApiV3IssueRepository';
 import { RestIssueRepository } from './RestIssueRepository';
 import {
@@ -1965,74 +1968,202 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  const jsonResponse = (body: object): Response =>
+    new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+  const toResponse = (value: Response | object): Response =>
+    value instanceof Response ? value : jsonResponse(value);
+
+  type FetchRoutes = {
+    timeline?: () => Response | object;
+    mergeability?: () => Response | object;
+    slimPullRequest?: (variables: {
+      prNumber: number;
+      reviewThreadsAfter: string | null;
+    }) => Response | object;
+    branchRules?: (url: string) => Response | object;
+    branchDetail?: (url: string) => Response | object;
+    checkRuns?: (url: string) => Response | object;
+    combinedStatus?: (url: string) => Response | object;
+  };
+
+  const requestUrlOf = (input: RequestInfo | URL): string =>
+    typeof input === 'string'
+      ? input
+      : input instanceof URL
+        ? input.toString()
+        : input.url;
+
+  const requestBodyOf = (init?: RequestInit): string =>
+    typeof init?.body === 'string' ? init.body : '';
+
+  type GraphqlRequestBody = {
+    query: string;
+    variables: {
+      prNumber: number;
+      reviewThreadsAfter: string | null;
+    };
+  };
+
+  const parseGraphqlRequestBody = (init?: RequestInit): GraphqlRequestBody => {
+    const parsed: unknown = JSON.parse(requestBodyOf(init));
+    if (
+      typeof parsed !== 'object' ||
+      parsed === null ||
+      !('query' in parsed) ||
+      typeof parsed.query !== 'string'
+    ) {
+      throw new Error('Unexpected GraphQL request body in test');
+    }
+    const rawVariables: unknown =
+      'variables' in parsed ? parsed.variables : null;
+    const variables =
+      typeof rawVariables === 'object' && rawVariables !== null
+        ? rawVariables
+        : {};
+    const prNumber =
+      'prNumber' in variables && typeof variables.prNumber === 'number'
+        ? variables.prNumber
+        : 0;
+    const reviewThreadsAfter =
+      'reviewThreadsAfter' in variables &&
+      typeof variables.reviewThreadsAfter === 'string'
+        ? variables.reviewThreadsAfter
+        : null;
+    return { query: parsed.query, variables: { prNumber, reviewThreadsAfter } };
+  };
+
+  const mockFetchRoutes = (routes: FetchRoutes) =>
+    jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(
+        async (input: RequestInfo | URL, init?: RequestInit) => {
+          const url = requestUrlOf(input);
+          if (url === 'https://api.github.com/graphql') {
+            const body = parseGraphqlRequestBody(init);
+            if (body.query.includes('timelineItems') && routes.timeline) {
+              return toResponse(routes.timeline());
+            }
+            if (
+              body.query.includes('mergeStateStatus') &&
+              routes.mergeability
+            ) {
+              return toResponse(routes.mergeability());
+            }
+            if (body.query.includes('headRefOid') && routes.slimPullRequest) {
+              return toResponse(routes.slimPullRequest(body.variables));
+            }
+            throw new Error(`Unexpected GraphQL query in test: ${body.query}`);
+          }
+          if (url.includes('/rules/branches/')) {
+            return toResponse(
+              routes.branchRules ? routes.branchRules(url) : [],
+            );
+          }
+          if (/\/branches\/[^/?]+$/.test(url)) {
+            return toResponse(
+              routes.branchDetail ? routes.branchDetail(url) : {},
+            );
+          }
+          if (url.includes('/check-runs')) {
+            return toResponse(
+              routes.checkRuns
+                ? routes.checkRuns(url)
+                : { total_count: 0, check_runs: [] },
+            );
+          }
+          if (url.includes('/status?')) {
+            return toResponse(
+              routes.combinedStatus
+                ? routes.combinedStatus(url)
+                : { statuses: [] },
+            );
+          }
+          throw new Error(`Unexpected fetch URL in test: ${url}`);
+        },
+      );
+
+  type FetchSpy = ReturnType<typeof mockFetchRoutes>;
+
+  const countCallsMatching = (
+    fetchSpy: FetchSpy,
+    predicate: (url: string, body: string) => boolean,
+  ): number =>
+    fetchSpy.mock.calls.filter(([input, init]) =>
+      predicate(requestUrlOf(input), requestBodyOf(init)),
+    ).length;
+
+  const countMergeabilityQueries = (fetchSpy: FetchSpy): number =>
+    countCallsMatching(
+      fetchSpy,
+      (url, body) =>
+        url === 'https://api.github.com/graphql' &&
+        body.includes('mergeStateStatus'),
+    );
+
+  const buildSlimPullRequestResponse = (
+    overrides: {
+      url?: string;
+      state?: string;
+      isDraft?: boolean;
+      headRefName?: string;
+      baseRefName?: string;
+      mergeable?: string;
+      headRefOid?: string;
+      reviewThreads?: {
+        pageInfo: { endCursor: string | null; hasNextPage: boolean };
+        nodes: Array<{ isResolved: boolean }>;
+      };
+    } = {},
+  ) => ({
+    data: {
+      repository: {
+        pullRequest: {
+          url:
+            overrides.url ??
+            'https://github.com/HiromiShikata/test-repository/pull/31',
+          state: overrides.state ?? 'OPEN',
+          isDraft: overrides.isDraft ?? false,
+          headRefName: overrides.headRefName ?? 'feature-branch',
+          baseRefName: overrides.baseRefName ?? 'main',
+          mergeable: overrides.mergeable ?? 'MERGEABLE',
+          headRefOid: overrides.headRefOid ?? 'headsha123',
+          reviewThreads: overrides.reviewThreads ?? {
+            pageInfo: { endCursor: null, hasNextPage: false },
+            nodes: [],
+          },
+        },
+      },
+    },
+  });
+
   describe('getOpenPullRequest CI state computation', () => {
     afterEach(() => {
       jest.restoreAllMocks();
     });
 
-    const buildGraphqlPrResponse = (
-      checkRunNodes: Array<{
-        __typename: 'CheckRun';
-        databaseId: number;
-        name: string;
-        conclusion: string | null;
-      }>,
-    ) => ({
-      data: {
-        repository: {
-          pullRequest: {
-            url: 'https://github.com/HiromiShikata/test-repository/pull/31',
-            state: 'OPEN',
-            isDraft: false,
-            headRefName: 'dependabot/npm_and_yarn/some-package-2.0.0',
-            baseRefName: 'main',
-            mergeable: 'MERGEABLE',
-            baseRepository: {
-              branchProtectionRules: { nodes: [] },
-              defaultBranchRef: { name: 'main' },
-              rulesets: { nodes: [] },
+    it('returns isCiStateSuccess true when the latest check run per name is success even though an older run has failure', async () => {
+      mockFetchRoutes({
+        slimPullRequest: () => buildSlimPullRequestResponse(),
+        checkRuns: () => ({
+          total_count: 2,
+          check_runs: [
+            {
+              id: 100,
+              name: 'check_pull_requests_to_link_issues',
+              conclusion: 'failure',
             },
-            commits: {
-              nodes: [
-                {
-                  commit: {
-                    statusCheckRollup: {
-                      contexts: {
-                        nodes: checkRunNodes,
-                      },
-                    },
-                  },
-                },
-              ],
+            {
+              id: 200,
+              name: 'check_pull_requests_to_link_issues',
+              conclusion: 'success',
             },
-            reviewThreads: { nodes: [] },
-          },
-        },
-      },
-    });
-
-    it('returns isCiStateSuccess true when latest CheckRun per name is SUCCESS even though an older run has FAILURE', async () => {
-      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-        new Response(
-          JSON.stringify(
-            buildGraphqlPrResponse([
-              {
-                __typename: 'CheckRun',
-                databaseId: 100,
-                name: 'check_pull_requests_to_link_issues',
-                conclusion: 'FAILURE',
-              },
-              {
-                __typename: 'CheckRun',
-                databaseId: 200,
-                name: 'check_pull_requests_to_link_issues',
-                conclusion: 'SUCCESS',
-              },
-            ]),
-          ),
-          { status: 200, headers: { 'Content-Type': 'application/json' } },
-        ),
-      );
+          ],
+        }),
+      });
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = await repository.getOpenPullRequest(
@@ -2044,28 +2175,17 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result?.isPassedAllCiJob).toBe(true);
     });
 
-    it('returns isCiStateSuccess false when latest CheckRun per name has FAILURE conclusion', async () => {
-      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-        new Response(
-          JSON.stringify(
-            buildGraphqlPrResponse([
-              {
-                __typename: 'CheckRun',
-                databaseId: 100,
-                name: 'ci',
-                conclusion: 'SUCCESS',
-              },
-              {
-                __typename: 'CheckRun',
-                databaseId: 200,
-                name: 'ci',
-                conclusion: 'FAILURE',
-              },
-            ]),
-          ),
-          { status: 200, headers: { 'Content-Type': 'application/json' } },
-        ),
-      );
+    it('returns isCiStateSuccess false when the latest check run per name has failure conclusion', async () => {
+      mockFetchRoutes({
+        slimPullRequest: () => buildSlimPullRequestResponse(),
+        checkRuns: () => ({
+          total_count: 2,
+          check_runs: [
+            { id: 100, name: 'ci', conclusion: 'success' },
+            { id: 200, name: 'ci', conclusion: 'failure' },
+          ],
+        }),
+      });
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = await repository.getOpenPullRequest(
@@ -2077,28 +2197,17 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result?.isPassedAllCiJob).toBe(false);
     });
 
-    it('returns isCiStateSuccess false when latest CheckRun per name has null conclusion (still running)', async () => {
-      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-        new Response(
-          JSON.stringify(
-            buildGraphqlPrResponse([
-              {
-                __typename: 'CheckRun',
-                databaseId: 100,
-                name: 'ci',
-                conclusion: 'FAILURE',
-              },
-              {
-                __typename: 'CheckRun',
-                databaseId: 200,
-                name: 'ci',
-                conclusion: null,
-              },
-            ]),
-          ),
-          { status: 200, headers: { 'Content-Type': 'application/json' } },
-        ),
-      );
+    it('returns isCiStateSuccess false when the latest check run per name has null conclusion (still running)', async () => {
+      mockFetchRoutes({
+        slimPullRequest: () => buildSlimPullRequestResponse(),
+        checkRuns: () => ({
+          total_count: 2,
+          check_runs: [
+            { id: 100, name: 'ci', conclusion: 'failure' },
+            { id: 200, name: 'ci', conclusion: null },
+          ],
+        }),
+      });
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = await repository.getOpenPullRequest(
@@ -2110,51 +2219,88 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result?.isPassedAllCiJob).toBe(false);
     });
 
-    it('returns isCiStateSuccess false when a StatusContext has FAILURE state', async () => {
-      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            data: {
-              repository: {
-                pullRequest: {
-                  url: 'https://github.com/HiromiShikata/test-repository/pull/31',
-                  state: 'OPEN',
-                  isDraft: false,
-                  headRefName: 'feature-branch',
-                  baseRefName: 'main',
-                  mergeable: 'MERGEABLE',
-                  baseRepository: {
-                    branchProtectionRules: { nodes: [] },
-                    defaultBranchRef: { name: 'main' },
-                    rulesets: { nodes: [] },
-                  },
-                  commits: {
-                    nodes: [
-                      {
-                        commit: {
-                          statusCheckRollup: {
-                            contexts: {
-                              nodes: [
-                                {
-                                  __typename: 'StatusContext',
-                                  context: 'external-ci',
-                                  state: 'FAILURE',
-                                },
-                              ],
-                            },
-                          },
-                        },
-                      },
-                    ],
-                  },
-                  reviewThreads: { nodes: [] },
-                },
-              },
+    it('returns isCiStateSuccess false when a commit status context has failure state', async () => {
+      mockFetchRoutes({
+        slimPullRequest: () => buildSlimPullRequestResponse(),
+        combinedStatus: () => ({
+          statuses: [{ context: 'external-ci', state: 'failure' }],
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.isCiStateSuccess).toBe(false);
+    });
+
+    it('returns isCiStateSuccess false when the head commit has no check runs and no commit statuses', async () => {
+      mockFetchRoutes({
+        slimPullRequest: () => buildSlimPullRequestResponse(),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.isCiStateSuccess).toBe(false);
+      expect(result?.isPassedAllCiJob).toBe(false);
+    });
+
+    it('combines REST check runs and commit statuses into one CI success evaluation', async () => {
+      mockFetchRoutes({
+        slimPullRequest: () => buildSlimPullRequestResponse(),
+        checkRuns: () => ({
+          total_count: 1,
+          check_runs: [{ id: 1, name: 'unit-test', conclusion: 'success' }],
+        }),
+        combinedStatus: () => ({
+          statuses: [{ context: 'external-ci', state: 'success' }],
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.isCiStateSuccess).toBe(true);
+      expect(result?.isPassedAllCiJob).toBe(true);
+    });
+  });
+
+  describe('getOpenPullRequest required check resolution via REST', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('reports missing required checks merged from branch rules and classic branch protection', async () => {
+      mockFetchRoutes({
+        slimPullRequest: () => buildSlimPullRequestResponse(),
+        branchRules: () => [
+          {
+            type: 'required_status_checks',
+            parameters: {
+              required_status_checks: [{ context: 'ruleset-check' }],
             },
-          }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } },
-        ),
-      );
+          },
+          { type: 'deletion' },
+        ],
+        branchDetail: () => ({
+          protection: {
+            required_status_checks: { contexts: ['classic-check'] },
+          },
+        }),
+        checkRuns: () => ({
+          total_count: 1,
+          check_runs: [{ id: 1, name: 'ruleset-check', conclusion: 'success' }],
+        }),
+      });
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = await repository.getOpenPullRequest(
@@ -2162,38 +2308,35 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
 
       expect(result).not.toBeNull();
-      expect(result?.isCiStateSuccess).toBe(false);
+      expect(result?.missingRequiredCheckNames).toEqual(['classic-check']);
+      expect(result?.isCiStateSuccess).toBe(true);
+      expect(result?.isPassedAllCiJob).toBe(false);
     });
 
-    it('returns isCiStateSuccess false when statusCheckRollup is null', async () => {
-      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            data: {
-              repository: {
-                pullRequest: {
-                  url: 'https://github.com/HiromiShikata/test-repository/pull/31',
-                  state: 'OPEN',
-                  isDraft: false,
-                  headRefName: 'feature-branch',
-                  baseRefName: 'main',
-                  mergeable: 'MERGEABLE',
-                  baseRepository: {
-                    branchProtectionRules: { nodes: [] },
-                    defaultBranchRef: { name: 'main' },
-                    rulesets: { nodes: [] },
-                  },
-                  commits: {
-                    nodes: [{ commit: { statusCheckRollup: null } }],
-                  },
-                  reviewThreads: { nodes: [] },
-                },
-              },
+    it('passes all required checks when every required check name has reported on the head commit', async () => {
+      mockFetchRoutes({
+        slimPullRequest: () => buildSlimPullRequestResponse(),
+        branchRules: () => [
+          {
+            type: 'required_status_checks',
+            parameters: {
+              required_status_checks: [{ context: 'ruleset-check' }],
             },
-          }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } },
-        ),
-      );
+          },
+        ],
+        branchDetail: () => ({
+          protection: {
+            required_status_checks: { contexts: ['classic-check'] },
+          },
+        }),
+        checkRuns: () => ({
+          total_count: 2,
+          check_runs: [
+            { id: 1, name: 'ruleset-check', conclusion: 'success' },
+            { id: 2, name: 'classic-check', conclusion: 'success' },
+          ],
+        }),
+      });
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = await repository.getOpenPullRequest(
@@ -2201,8 +2344,147 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
 
       expect(result).not.toBeNull();
-      expect(result?.isCiStateSuccess).toBe(false);
-      expect(result?.isPassedAllCiJob).toBe(false);
+      expect(result?.missingRequiredCheckNames).toEqual([]);
+      expect(result?.isPassedAllCiJob).toBe(true);
+    });
+  });
+
+  describe('required check names TTL cache', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('fetches branch rules only once for repeated calls on the same base branch within the TTL', async () => {
+      const fetchSpy = mockFetchRoutes({
+        slimPullRequest: () => buildSlimPullRequestResponse(),
+      });
+
+      const { repository, dateRepository } =
+        createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(
+        new Date('2026-01-01T00:00:00.000Z'),
+      );
+      await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+      await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      expect(
+        countCallsMatching(fetchSpy, (url) => url.includes('/rules/branches/')),
+      ).toBe(1);
+      expect(
+        countCallsMatching(fetchSpy, (url) => /\/branches\/[^/?]+$/.test(url)),
+      ).toBe(1);
+    });
+
+    it('fetches branch rules again after the TTL has expired', async () => {
+      const fetchSpy = mockFetchRoutes({
+        slimPullRequest: () => buildSlimPullRequestResponse(),
+      });
+
+      const { repository, dateRepository } =
+        createApiV3CheerioRestIssueRepository();
+      const baseTimeMs = new Date('2026-01-01T00:00:00.000Z').getTime();
+      dateRepository.now
+        .mockResolvedValueOnce(new Date(baseTimeMs))
+        .mockResolvedValueOnce(
+          new Date(baseTimeMs + REQUIRED_CHECKS_CACHE_TTL_MS + 1),
+        );
+      await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+      await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      expect(
+        countCallsMatching(fetchSpy, (url) => url.includes('/rules/branches/')),
+      ).toBe(2);
+    });
+
+    it('fetches branch rules separately for different base branches (cache miss)', async () => {
+      const fetchSpy = mockFetchRoutes({
+        slimPullRequest: (variables) =>
+          buildSlimPullRequestResponse({
+            url: `https://github.com/HiromiShikata/test-repository/pull/${variables.prNumber}`,
+            baseRefName: variables.prNumber === 31 ? 'main' : 'develop',
+          }),
+      });
+
+      const { repository, dateRepository } =
+        createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(
+        new Date('2026-01-01T00:00:00.000Z'),
+      );
+      await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+      await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/32',
+      );
+
+      expect(
+        countCallsMatching(fetchSpy, (url) =>
+          url.includes('/rules/branches/main'),
+        ),
+      ).toBe(1);
+      expect(
+        countCallsMatching(fetchSpy, (url) =>
+          url.includes('/rules/branches/develop'),
+        ),
+      ).toBe(1);
+    });
+  });
+
+  describe('getOpenPullRequest review thread paging', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('fetches every review thread page and evaluates resolution over all pages', async () => {
+      const fetchSpy = mockFetchRoutes({
+        slimPullRequest: (variables) =>
+          buildSlimPullRequestResponse({
+            reviewThreads:
+              variables.reviewThreadsAfter === null
+                ? {
+                    pageInfo: { endCursor: 'cursor-1', hasNextPage: true },
+                    nodes: [{ isResolved: true }],
+                  }
+                : {
+                    pageInfo: { endCursor: null, hasNextPage: false },
+                    nodes: [{ isResolved: false }],
+                  },
+          }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.isResolvedAllReviewComments).toBe(false);
+      expect(
+        countCallsMatching(
+          fetchSpy,
+          (url, body) =>
+            url === 'https://api.github.com/graphql' &&
+            body.includes('headRefOid'),
+        ),
+      ).toBe(2);
+      const secondSlimCall = fetchSpy.mock.calls
+        .map(([input, init]) =>
+          requestUrlOf(input) === 'https://api.github.com/graphql'
+            ? parseGraphqlRequestBody(init)
+            : null,
+        )
+        .filter(
+          (body) => body !== null && body.query.includes('headRefOid'),
+        )[1];
+      expect(secondSlimCall?.variables.reviewThreadsAfter).toBe('cursor-1');
     });
   });
 
@@ -2211,37 +2493,33 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       jest.restoreAllMocks();
     });
 
+    const buildPullRequestTimelineNode = (
+      prNumber: number,
+      mergeable: string,
+    ) => ({
+      __typename: 'CrossReferencedEvent',
+      willCloseTarget: true,
+      source: {
+        __typename: 'PullRequest',
+        url: `https://github.com/HiromiShikata/test-repository/pull/${prNumber}`,
+        number: prNumber,
+        state: 'OPEN',
+        createdAt: '2024-01-01T00:00:00Z',
+        isDraft: false,
+        mergeable,
+        headRefName: 'feature-branch',
+        baseRefName: 'main',
+        baseRef: { name: 'main' },
+      },
+    });
+
     const buildTimelineResponse = (mergeable: string) => ({
       data: {
         repository: {
           issue: {
             timelineItems: {
               pageInfo: { endCursor: null, hasNextPage: false },
-              nodes: [
-                {
-                  __typename: 'CrossReferencedEvent',
-                  willCloseTarget: true,
-                  source: {
-                    __typename: 'PullRequest',
-                    url: 'https://github.com/HiromiShikata/test-repository/pull/11148',
-                    number: 11148,
-                    state: 'OPEN',
-                    createdAt: '2024-01-01T00:00:00Z',
-                    isDraft: false,
-                    mergeable,
-                    headRefName: 'feature-branch',
-                    baseRefName: 'main',
-                    baseRepository: {
-                      branchProtectionRules: { nodes: [] },
-                      defaultBranchRef: { name: 'main' },
-                      rulesets: { nodes: [] },
-                    },
-                    commits: { nodes: [] },
-                    reviewThreads: { nodes: [] },
-                    baseRef: { name: 'main' },
-                  },
-                },
-              ],
+              nodes: [buildPullRequestTimelineNode(11148, mergeable)],
             },
           },
         },
@@ -2262,56 +2540,35 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       },
     });
 
+    const slimForPrNumber = (variables: { prNumber: number }) =>
+      buildSlimPullRequestResponse({
+        url: `https://github.com/HiromiShikata/test-repository/pull/${variables.prNumber}`,
+      });
+
     it('resolves isConflicted true via a direct query when the timeline node reports mergeable UNKNOWN but the direct query reports CONFLICTING', async () => {
-      const fetchSpy = jest
-        .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify(buildTimelineResponse('UNKNOWN')), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          }),
-        )
-        .mockResolvedValueOnce(
-          new Response(
-            JSON.stringify(buildMergeabilityResponse('CONFLICTING', 'DIRTY')),
-            {
-              status: 200,
-              headers: { 'Content-Type': 'application/json' },
-            },
-          ),
-        );
+      const fetchSpy = mockFetchRoutes({
+        timeline: () => buildTimelineResponse('UNKNOWN'),
+        mergeability: () => buildMergeabilityResponse('CONFLICTING', 'DIRTY'),
+        slimPullRequest: slimForPrNumber,
+      });
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = await repository.findRelatedOpenPRs(
         'https://github.com/HiromiShikata/test-repository/issues/11194',
       );
 
-      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(countMergeabilityQueries(fetchSpy)).toBe(1);
       expect(result).toHaveLength(1);
       expect(result[0].isConflicted).toBe(true);
       expect(result[0].mergeable).toBe('CONFLICTING');
     });
 
     it('resolves isConflicted true when the direct query returns mergeable UNKNOWN but mergeStateStatus DIRTY', async () => {
-      jest
-        .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify(buildTimelineResponse('UNKNOWN')), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          }),
-        )
-        .mockImplementation(() =>
-          Promise.resolve(
-            new Response(
-              JSON.stringify(buildMergeabilityResponse('UNKNOWN', 'DIRTY')),
-              {
-                status: 200,
-                headers: { 'Content-Type': 'application/json' },
-              },
-            ),
-          ),
-        );
+      mockFetchRoutes({
+        timeline: () => buildTimelineResponse('UNKNOWN'),
+        mergeability: () => buildMergeabilityResponse('UNKNOWN', 'DIRTY'),
+        slimPullRequest: slimForPrNumber,
+      });
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = await repository.findRelatedOpenPRs(
@@ -2323,80 +2580,37 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     it('keeps isConflicted false when mergeability stays UNKNOWN after the bounded retries', async () => {
-      const fetchSpy = jest
-        .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify(buildTimelineResponse('UNKNOWN')), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          }),
-        )
-        .mockImplementation(() =>
-          Promise.resolve(
-            new Response(
-              JSON.stringify(buildMergeabilityResponse('UNKNOWN', 'UNKNOWN')),
-              {
-                status: 200,
-                headers: { 'Content-Type': 'application/json' },
-              },
-            ),
-          ),
-        );
+      const fetchSpy = mockFetchRoutes({
+        timeline: () => buildTimelineResponse('UNKNOWN'),
+        mergeability: () => buildMergeabilityResponse('UNKNOWN', 'UNKNOWN'),
+        slimPullRequest: slimForPrNumber,
+      });
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = await repository.findRelatedOpenPRs(
         'https://github.com/HiromiShikata/test-repository/issues/11194',
       );
 
-      expect(fetchSpy).toHaveBeenCalledTimes(4);
+      expect(countMergeabilityQueries(fetchSpy)).toBe(3);
       expect(result).toHaveLength(1);
       expect(result[0].isConflicted).toBe(false);
     });
 
     it('does not issue a direct mergeability query when the timeline node already reports a definitive mergeable value', async () => {
-      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-        new Response(JSON.stringify(buildTimelineResponse('MERGEABLE')), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      );
+      const fetchSpy = mockFetchRoutes({
+        timeline: () => buildTimelineResponse('MERGEABLE'),
+        slimPullRequest: slimForPrNumber,
+      });
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = await repository.findRelatedOpenPRs(
         'https://github.com/HiromiShikata/test-repository/issues/11194',
       );
 
-      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(countMergeabilityQueries(fetchSpy)).toBe(0);
       expect(result).toHaveLength(1);
       expect(result[0].isConflicted).toBe(false);
       expect(result[0].mergeable).toBe('MERGEABLE');
-    });
-
-    const buildPullRequestTimelineNode = (
-      prNumber: number,
-      mergeable: string,
-    ) => ({
-      __typename: 'CrossReferencedEvent',
-      willCloseTarget: true,
-      source: {
-        __typename: 'PullRequest',
-        url: `https://github.com/HiromiShikata/test-repository/pull/${prNumber}`,
-        number: prNumber,
-        state: 'OPEN',
-        createdAt: '2024-01-01T00:00:00Z',
-        isDraft: false,
-        mergeable,
-        headRefName: 'feature-branch',
-        baseRefName: 'main',
-        baseRepository: {
-          branchProtectionRules: { nodes: [] },
-          defaultBranchRef: { name: 'main' },
-          rulesets: { nodes: [] },
-        },
-        commits: { nodes: [] },
-        reviewThreads: { nodes: [] },
-        baseRef: { name: 'main' },
-      },
     });
 
     const buildTwoPrTimelineResponse = () => ({
@@ -2419,33 +2633,21 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       const consoleInfoSpy = jest
         .spyOn(console, 'info')
         .mockImplementation(() => undefined);
-      jest
-        .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify(buildTwoPrTimelineResponse()), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          }),
-        )
-        .mockResolvedValueOnce(
-          new Response(
-            JSON.stringify({
-              data: { repository: { pullRequest: null } },
-              errors: [
-                {
-                  type: 'NOT_FOUND',
-                  path: ['repository', 'pullRequest'],
-                  message:
-                    'Could not resolve to a PullRequest with the number of 11148.',
-                },
-              ],
-            }),
+      mockFetchRoutes({
+        timeline: () => buildTwoPrTimelineResponse(),
+        mergeability: () => ({
+          data: { repository: { pullRequest: null } },
+          errors: [
             {
-              status: 200,
-              headers: { 'Content-Type': 'application/json' },
+              type: 'NOT_FOUND',
+              path: ['repository', 'pullRequest'],
+              message:
+                'Could not resolve to a PullRequest with the number of 11148.',
             },
-          ),
-        );
+          ],
+        }),
+        slimPullRequest: slimForPrNumber,
+      });
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = await repository.findRelatedOpenPRs(
@@ -2468,17 +2670,12 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       const consoleWarnSpy = jest
         .spyOn(console, 'warn')
         .mockImplementation(() => undefined);
-      jest
-        .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify(buildTwoPrTimelineResponse()), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          }),
-        )
-        .mockResolvedValueOnce(
+      mockFetchRoutes({
+        timeline: () => buildTwoPrTimelineResponse(),
+        mergeability: () =>
           new Response('Internal Server Error', { status: 500 }),
-        );
+        slimPullRequest: slimForPrNumber,
+      });
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = await repository.findRelatedOpenPRs(
@@ -2489,6 +2686,143 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result[0].url).toBe(
         'https://github.com/HiromiShikata/test-repository/pull/11149',
       );
+      expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'https://github.com/HiromiShikata/test-repository/pull/11148',
+        ),
+      );
+    });
+  });
+
+  describe('findRelatedOpenPRs two-stage split', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    const buildSlimTimelineResponse = () => ({
+      data: {
+        repository: {
+          issue: {
+            timelineItems: {
+              pageInfo: { endCursor: null, hasNextPage: false },
+              nodes: [
+                {
+                  __typename: 'CrossReferencedEvent',
+                  willCloseTarget: true,
+                  source: {
+                    __typename: 'PullRequest',
+                    url: 'https://github.com/HiromiShikata/test-repository/pull/11148',
+                    number: 11148,
+                    state: 'OPEN',
+                    createdAt: '2024-01-01T00:00:00Z',
+                    isDraft: false,
+                    mergeable: 'MERGEABLE',
+                    headRefName: 'feature-branch',
+                    baseRefName: 'main',
+                    baseRef: { name: 'main' },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      },
+    });
+
+    it('produces the same evaluation inputs from the two-stage flow and sends no nested rules connections in any GraphQL query', async () => {
+      const fetchSpy = mockFetchRoutes({
+        timeline: () => buildSlimTimelineResponse(),
+        slimPullRequest: () =>
+          buildSlimPullRequestResponse({
+            url: 'https://github.com/HiromiShikata/test-repository/pull/11148',
+            reviewThreads: {
+              pageInfo: { endCursor: null, hasNextPage: false },
+              nodes: [{ isResolved: true }],
+            },
+          }),
+        branchRules: () => [
+          {
+            type: 'required_status_checks',
+            parameters: { required_status_checks: [{ context: 'ci' }] },
+          },
+        ],
+        checkRuns: () => ({
+          total_count: 1,
+          check_runs: [{ id: 1, name: 'ci', conclusion: 'success' }],
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/test-repository/issues/11194',
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        url: 'https://github.com/HiromiShikata/test-repository/pull/11148',
+        branchName: 'feature-branch',
+        createdAt: new Date('2024-01-01T00:00:00Z'),
+        isDraft: false,
+        isConflicted: false,
+        mergeable: 'MERGEABLE',
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+      });
+      expect(
+        countCallsMatching(
+          fetchSpy,
+          (url, body) =>
+            url === 'https://api.github.com/graphql' &&
+            (body.includes('branchProtectionRules') ||
+              body.includes('rulesets') ||
+              body.includes('statusCheckRollup')),
+        ),
+      ).toBe(0);
+    });
+
+    it('excludes a PR that is no longer open at the second stage', async () => {
+      const consoleInfoSpy = jest
+        .spyOn(console, 'info')
+        .mockImplementation(() => undefined);
+      mockFetchRoutes({
+        timeline: () => buildSlimTimelineResponse(),
+        slimPullRequest: () =>
+          buildSlimPullRequestResponse({ state: 'MERGED' }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/test-repository/issues/11194',
+      );
+
+      expect(result).toHaveLength(0);
+      expect(consoleInfoSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'https://github.com/HiromiShikata/test-repository/pull/11148',
+        ),
+      );
+    });
+
+    it('skips a PR whose second-stage status fetch fails and logs one warning', async () => {
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      mockFetchRoutes({
+        timeline: () => buildSlimTimelineResponse(),
+        slimPullRequest: () =>
+          new Response('Internal Server Error', { status: 500 }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/test-repository/issues/11194',
+      );
+
+      expect(result).toHaveLength(0);
       expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
       expect(consoleWarnSpy).toHaveBeenCalledWith(
         expect.stringContaining(
@@ -2519,6 +2853,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       'dummy',
       sleep,
     );
+    dateRepository.now.mockResolvedValue(new Date('2026-01-01T00:00:00.000Z'));
     restIssueRepository.getIssue.mockResolvedValue({
       labels: [],
       assignees: [],
