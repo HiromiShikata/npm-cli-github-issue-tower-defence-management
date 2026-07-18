@@ -1,3 +1,10 @@
+## [1.125.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.125.1...v1.125.2) (2026-07-18)
+
+
+### Bug Fixes
+
+* **schedule-cycle:** contain ky TimeoutError from GitHub GraphQL POST so a request timeout does not abort the schedule cycle ([#1214](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1214)) ([0bb61b0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0bb61b019c8c4a158da05baa3e535e330e669c78))
+
 ## [1.125.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.125.0...v1.125.1) (2026-07-18)
 
 

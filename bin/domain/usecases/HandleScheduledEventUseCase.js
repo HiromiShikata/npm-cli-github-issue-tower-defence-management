@@ -16,7 +16,9 @@ const isTransientApiError = (error) => {
     const msg = error.message;
     return (/\b(401|403|429|500|502|503|504)\b/.test(msg) ||
         /rate.?limit|RATE_LIMIT/i.test(msg) ||
-        /bad credentials/i.test(msg));
+        /bad credentials/i.test(msg) ||
+        error.name === 'TimeoutError' ||
+        /request timed out/i.test(msg));
 };
 class HandleScheduledEventUseCase {
     constructor(setupTowerDefenceProjectUseCase, actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, revertNotReadyReviewQueueIssueUseCase, updateRateLimitCacheUseCase, dailySecurityScanUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
