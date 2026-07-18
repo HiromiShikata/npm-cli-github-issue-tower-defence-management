@@ -262,7 +262,8 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
       if (directory === null) {
         continue;
       }
-      const killedOrFailedAgentIds = this.loadKilledOrFailedAgentIds(mainTranscriptPath);
+      const killedOrFailedAgentIds =
+        this.loadKilledOrFailedAgentIds(mainTranscriptPath);
       const activities = await this.collectActivities(
         directory,
         nowEpochSeconds,
@@ -276,7 +277,9 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
     return result;
   };
 
-  private loadKilledOrFailedAgentIds = (mainTranscriptPath: string | null): Set<string> => {
+  private loadKilledOrFailedAgentIds = (
+    mainTranscriptPath: string | null,
+  ): Set<string> => {
     if (mainTranscriptPath === null) {
       return new Set();
     }

@@ -1045,10 +1045,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     });
   });
 
-  const writeMainTranscript = (
-    sessionName: string,
-    lines: object[],
-  ): void => {
+  const writeMainTranscript = (sessionName: string, lines: object[]): void => {
     const filePath = mainTranscriptPathFor(sessionName);
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
     fs.writeFileSync(
@@ -1235,7 +1232,12 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     );
 
     expect(result.get(sessionName)).toEqual([
-      { label: 'agent-aabb1122cc3344ee', silentSeconds: 120, runningSeconds: 900, waitingOnExternalProcess: false },
+      {
+        label: 'agent-aabb1122cc3344ee',
+        silentSeconds: 120,
+        runningSeconds: 900,
+        waitingOnExternalProcess: false,
+      },
     ]);
   });
 });
