@@ -51,7 +51,9 @@ const isTransientApiError = (error: Error): boolean => {
   return (
     /\b(401|403|429|500|502|503|504)\b/.test(msg) ||
     /rate.?limit|RATE_LIMIT/i.test(msg) ||
-    /bad credentials/i.test(msg)
+    /bad credentials/i.test(msg) ||
+    error.name === 'TimeoutError' ||
+    /request timed out/i.test(msg)
   );
 };
 

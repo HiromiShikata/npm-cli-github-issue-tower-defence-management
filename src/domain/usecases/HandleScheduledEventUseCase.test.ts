@@ -1055,6 +1055,41 @@ describe('HandleScheduledEventUseCase', () => {
         expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
         expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
       });
+
+      it('should not create or comment an incident issue for a ky TimeoutError (matched by error name)', async () => {
+        const timeoutError = new Error(
+          'Request timed out: POST https://api.github.com/graphql',
+        );
+        timeoutError.name = 'TimeoutError';
+        mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
+          timeoutError,
+        );
+
+        await expect(useCase.run(errorInput)).rejects.toThrow(
+          'Request timed out',
+        );
+
+        expect(mockIssueRepository.searchIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      });
+
+      it('should not create or comment an incident issue for a request timed out error (matched by message)', async () => {
+        const timeoutError = new Error(
+          'Request timed out: POST https://api.github.com/graphql',
+        );
+        mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
+          timeoutError,
+        );
+
+        await expect(useCase.run(errorInput)).rejects.toThrow(
+          'Request timed out',
+        );
+
+        expect(mockIssueRepository.searchIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      });
     });
 
     describe('spreadsheet access failure error issue creation', () => {

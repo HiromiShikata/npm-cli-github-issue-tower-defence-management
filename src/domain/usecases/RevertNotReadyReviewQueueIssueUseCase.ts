@@ -20,6 +20,9 @@ const isArchivedProjectItemError = (error: unknown): boolean => {
   return message.toLowerCase().includes('archived');
 };
 
+const isTimeoutError = (error: unknown): boolean =>
+  error instanceof Error && error.name === 'TimeoutError';
+
 const isAuthorAuthorizedForAutoStatusCheck = (
   author: string,
   allowedIssueAuthors: string[] | null | undefined,
@@ -114,42 +117,53 @@ export class RevertNotReadyReviewQueueIssueUseCase {
         continue;
       }
 
-      const { rejections, approvedPrUrl } =
-        await this.issueRejectionEvaluator.evaluate(
-          issue,
-          params.labelsAsLlmAgentName ?? [],
-          {
-            relatedOpenPrUrls: relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? [],
-          },
-        );
-      if (rejections.length > 0) {
-        try {
-          await this.issueRepository.updateStatus(
-            project,
+      try {
+        const { rejections, approvedPrUrl } =
+          await this.issueRejectionEvaluator.evaluate(
             issue,
-            awaitingWorkspaceStatusOption.id,
+            params.labelsAsLlmAgentName ?? [],
+            {
+              relatedOpenPrUrls:
+                relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? [],
+            },
           );
-        } catch (error) {
-          if (isArchivedProjectItemError(error)) {
-            console.warn(
-              `RevertNotReadyReviewQueueIssueUseCase: project item is archived and cannot be updated, skipping revert. issueUrl: ${issue.url}`,
+        if (rejections.length > 0) {
+          try {
+            await this.issueRepository.updateStatus(
+              project,
+              issue,
+              awaitingWorkspaceStatusOption.id,
             );
-            continue;
+          } catch (error) {
+            if (isArchivedProjectItemError(error)) {
+              console.warn(
+                `RevertNotReadyReviewQueueIssueUseCase: project item is archived and cannot be updated, skipping revert. issueUrl: ${issue.url}`,
+              );
+              continue;
+            }
+            throw error;
           }
-          throw error;
+          await this.issueCommentRepository.createComment(
+            issue,
+            `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`,
+          );
+          continue;
         }
-        await this.issueCommentRepository.createComment(
-          issue,
-          `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`,
-        );
-        continue;
-      }
 
-      await this.changeTargetPullRequestApprover.approveIfConfined(
-        issue.labels,
-        approvedPrUrl,
-        params.changeTargetPathAliases,
-      );
+        await this.changeTargetPullRequestApprover.approveIfConfined(
+          issue.labels,
+          approvedPrUrl,
+          params.changeTargetPathAliases,
+        );
+      } catch (error) {
+        if (isTimeoutError(error)) {
+          console.warn(
+            `RevertNotReadyReviewQueueIssueUseCase: request timed out, skipping issue for this cycle. issueUrl: ${issue.url} error: ${error instanceof Error ? error.message : String(error)}`,
+          );
+          continue;
+        }
+        throw error;
+      }
     }
 
     const projectStory = project.story;
@@ -174,37 +188,47 @@ export class RevertNotReadyReviewQueueIssueUseCase {
         continue;
       }
 
-      const { rejections } = await this.issueRejectionEvaluator.evaluate(
-        pullRequest,
-        params.labelsAsLlmAgentName ?? [],
-      );
-      if (rejections.length > 0) {
-        try {
-          await this.issueRepository.updateStatus(
-            project,
-            pullRequest,
-            awaitingWorkspaceStatusOption.id,
-          );
-        } catch (error) {
-          if (isArchivedProjectItemError(error)) {
-            console.warn(
-              `RevertNotReadyReviewQueueIssueUseCase: project item is archived and cannot be updated, skipping revert. prUrl: ${pullRequest.url}`,
-            );
-            continue;
-          }
-          throw error;
-        }
-        if (projectStory) {
-          await this.issueRepository.updateStory(
-            { ...project, story: projectStory },
-            pullRequest,
-            projectStory.workflowManagementStory.id,
-          );
-        }
-        await this.issueCommentRepository.createComment(
+      try {
+        const { rejections } = await this.issueRejectionEvaluator.evaluate(
           pullRequest,
-          `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`,
+          params.labelsAsLlmAgentName ?? [],
         );
+        if (rejections.length > 0) {
+          try {
+            await this.issueRepository.updateStatus(
+              project,
+              pullRequest,
+              awaitingWorkspaceStatusOption.id,
+            );
+          } catch (error) {
+            if (isArchivedProjectItemError(error)) {
+              console.warn(
+                `RevertNotReadyReviewQueueIssueUseCase: project item is archived and cannot be updated, skipping revert. prUrl: ${pullRequest.url}`,
+              );
+              continue;
+            }
+            throw error;
+          }
+          if (projectStory) {
+            await this.issueRepository.updateStory(
+              { ...project, story: projectStory },
+              pullRequest,
+              projectStory.workflowManagementStory.id,
+            );
+          }
+          await this.issueCommentRepository.createComment(
+            pullRequest,
+            `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`,
+          );
+        }
+      } catch (error) {
+        if (isTimeoutError(error)) {
+          console.warn(
+            `RevertNotReadyReviewQueueIssueUseCase: request timed out, skipping pull request for this cycle. prUrl: ${pullRequest.url} error: ${error instanceof Error ? error.message : String(error)}`,
+          );
+          continue;
+        }
+        throw error;
       }
     }
   };
