@@ -20,14 +20,6 @@ const isArchivedProjectItemError = (error: unknown): boolean => {
   return message.toLowerCase().includes('archived');
 };
 
-// ky rejects a GitHub GraphQL POST that exceeds its timeout with a
-// TimeoutError ("Request timed out: POST https://api.github.com/graphql").
-// Such a failure is transient and specific to the single item being
-// processed, so it must not abort the whole schedule cycle (the same
-// containment policy as the transient GraphQL error handling, the
-// findRelatedOpenPRs NOT_FOUND handling, and the archived-item handling).
-// The check is by error name so it matches ky's TimeoutError without a
-// dependency on the ky package from the domain layer.
 const isTimeoutError = (error: unknown): boolean =>
   error instanceof Error && error.name === 'TimeoutError';
 
