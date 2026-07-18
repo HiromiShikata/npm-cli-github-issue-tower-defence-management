@@ -1061,6 +1061,11 @@ export class ApiV3CheerioRestIssueRepository
           requiredCheckNamesSet.add(check.context);
         }
       }
+    } else if (rulesResponse.status === 403) {
+      const reason = await this.formatGitHubErrorWithStatus(rulesResponse);
+      console.warn(
+        `ApiV3CheerioRestIssueRepository: branch rules are not accessible for ${owner}/${repo}/${branch}, treating as no required checks. reason: ${reason}`,
+      );
     } else if (rulesResponse.status !== 404) {
       const reason = await this.formatGitHubErrorWithStatus(rulesResponse);
       throw new Error(
@@ -1091,6 +1096,11 @@ export class ApiV3CheerioRestIssueRepository
         ?.contexts || []) {
         requiredCheckNamesSet.add(context);
       }
+    } else if (branchResponse.status === 403) {
+      const reason = await this.formatGitHubErrorWithStatus(branchResponse);
+      console.warn(
+        `ApiV3CheerioRestIssueRepository: branch detail (classic protection) is not accessible for ${owner}/${repo}/${branch}, treating as no required checks. reason: ${reason}`,
+      );
     } else if (branchResponse.status !== 404) {
       const reason = await this.formatGitHubErrorWithStatus(branchResponse);
       throw new Error(
