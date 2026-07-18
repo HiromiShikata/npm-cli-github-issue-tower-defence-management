@@ -2347,6 +2347,140 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result?.missingRequiredCheckNames).toEqual([]);
       expect(result?.isPassedAllCiJob).toBe(true);
     });
+
+    it('treats HTTP 403 from branch rules and branch detail as no required checks and keeps evaluating the PR', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const planLimitationMessage =
+        'Upgrade to GitHub Pro or make this repository public to enable this feature.';
+      mockFetchRoutes({
+        slimPullRequest: () => buildSlimPullRequestResponse(),
+        branchRules: () =>
+          new Response(JSON.stringify({ message: planLimitationMessage }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        branchDetail: () =>
+          new Response(JSON.stringify({ message: planLimitationMessage }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        checkRuns: () => ({
+          total_count: 1,
+          check_runs: [{ id: 1, name: 'unit-test', conclusion: 'success' }],
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.missingRequiredCheckNames).toEqual([]);
+      expect(result?.isCiStateSuccess).toBe(true);
+      expect(result?.isPassedAllCiJob).toBe(true);
+      const warnMessages = warnSpy.mock.calls.map((call) => String(call[0]));
+      expect(
+        warnMessages.some(
+          (message) =>
+            message.includes('branch rules are not accessible') &&
+            message.includes(planLimitationMessage),
+        ),
+      ).toBe(true);
+      expect(
+        warnMessages.some(
+          (message) =>
+            message.includes(
+              'branch detail (classic protection) is not accessible',
+            ) && message.includes(planLimitationMessage),
+        ),
+      ).toBe(true);
+    });
+
+    it('caches the empty result from an HTTP 403 so the branch rules endpoint is not fetched again within the TTL', async () => {
+      jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const forbidden = () =>
+        new Response(
+          JSON.stringify({
+            message:
+              'Upgrade to GitHub Pro or make this repository public to enable this feature.',
+          }),
+          { status: 403, headers: { 'Content-Type': 'application/json' } },
+        );
+      const fetchSpy = mockFetchRoutes({
+        slimPullRequest: () => buildSlimPullRequestResponse(),
+        branchRules: forbidden,
+        branchDetail: forbidden,
+      });
+
+      const { repository, dateRepository } =
+        createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(
+        new Date('2026-01-01T00:00:00.000Z'),
+      );
+      await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+      await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      expect(
+        countCallsMatching(fetchSpy, (url) => url.includes('/rules/branches/')),
+      ).toBe(1);
+      expect(
+        countCallsMatching(fetchSpy, (url) => /\/branches\/[^/?]+$/.test(url)),
+      ).toBe(1);
+    });
+
+    it('treats HTTP 404 from branch rules and branch detail as no required checks without warning', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      mockFetchRoutes({
+        slimPullRequest: () => buildSlimPullRequestResponse(),
+        branchRules: () =>
+          new Response(JSON.stringify({ message: 'Not Found' }), {
+            status: 404,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        branchDetail: () =>
+          new Response(JSON.stringify({ message: 'Branch not found' }), {
+            status: 404,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        checkRuns: () => ({
+          total_count: 1,
+          check_runs: [{ id: 1, name: 'unit-test', conclusion: 'success' }],
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.missingRequiredCheckNames).toEqual([]);
+      expect(result?.isPassedAllCiJob).toBe(true);
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    it('still throws when branch rules fetch fails with a non-403 non-404 status', async () => {
+      mockFetchRoutes({
+        slimPullRequest: () => buildSlimPullRequestResponse(),
+        branchRules: () =>
+          new Response(JSON.stringify({ message: 'Server Error' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.getOpenPullRequest(
+          'https://github.com/HiromiShikata/test-repository/pull/31',
+        ),
+      ).rejects.toThrow(/Failed to fetch branch rules/);
+    });
   });
 
   describe('required check names TTL cache', () => {
