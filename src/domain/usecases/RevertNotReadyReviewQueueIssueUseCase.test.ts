@@ -1697,4 +1697,207 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
   });
+
+  describe('ky TimeoutError containment', () => {
+    let warnSpy: jest.SpyInstance;
+
+    const createKyTimeoutError = (): Error => {
+      const error = new Error(
+        'Request timed out: POST https://api.github.com/graphql',
+      );
+      error.name = 'TimeoutError';
+      return error;
+    };
+
+    beforeEach(() => {
+      warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      warnSpy.mockRestore();
+    });
+
+    it('should skip an issue whose updateStatus times out and continue with remaining issues', async () => {
+      const timedOutIssue = createMockIssue({
+        number: 1,
+        url: 'https://github.com/user/repo/issues/1',
+        itemId: 'timed-out-item',
+        status: 'Awaiting Quality Check',
+      });
+      const normalIssue = createMockIssue({
+        number: 2,
+        url: 'https://github.com/user/repo/issues/2',
+        itemId: 'normal-item',
+        status: 'Awaiting Quality Check',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [timedOutIssue, normalIssue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.updateStatus.mockImplementation(
+        (_project: Project, issue: Issue) =>
+          issue.url === timedOutIssue.url
+            ? Promise.reject(createKyTimeoutError())
+            : Promise.resolve(undefined),
+      );
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        timedOutIssue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        normalIssue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        timedOutIssue,
+        expect.anything(),
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        normalIssue,
+        expect.stringContaining('Auto Status Check: REJECTED'),
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(timedOutIssue.url),
+      );
+    });
+
+    it('should skip an issue whose createComment times out and continue with remaining issues', async () => {
+      const timedOutIssue = createMockIssue({
+        number: 1,
+        url: 'https://github.com/user/repo/issues/1',
+        itemId: 'timed-out-item',
+        status: 'Awaiting Quality Check',
+      });
+      const normalIssue = createMockIssue({
+        number: 2,
+        url: 'https://github.com/user/repo/issues/2',
+        itemId: 'normal-item',
+        status: 'Awaiting Quality Check',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [timedOutIssue, normalIssue],
+        cacheUsed: false,
+      });
+      mockIssueCommentRepository.createComment.mockImplementation(
+        (issue: Issue) =>
+          issue.url === timedOutIssue.url
+            ? Promise.reject(createKyTimeoutError())
+            : Promise.resolve(undefined),
+      );
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        normalIssue,
+        expect.stringContaining('Auto Status Check: REJECTED'),
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(timedOutIssue.url),
+      );
+    });
+
+    it('should skip an Unread pull request whose updateStatus times out and continue with remaining pull requests', async () => {
+      const timedOutPullRequest = createMockPullRequest({
+        number: 1,
+        url: 'https://github.com/user/repo/pull/1',
+        itemId: 'timed-out-pr-item',
+        status: 'Unread',
+      });
+      const normalPullRequest = createMockPullRequest({
+        number: 2,
+        url: 'https://github.com/user/repo/pull/2',
+        itemId: 'normal-pr-item',
+        status: 'Unread',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [timedOutPullRequest, normalPullRequest],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequest.mockImplementation(
+        (prUrl: string) =>
+          Promise.resolve({
+            ...createReadyPr(prUrl),
+            isConflicted: true,
+          }),
+      );
+      mockIssueRepository.updateStatus.mockImplementation(
+        (_project: Project, issue: Issue) =>
+          issue.url === timedOutPullRequest.url
+            ? Promise.reject(createKyTimeoutError())
+            : Promise.resolve(undefined),
+      );
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        timedOutPullRequest,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalledWith(
+        expect.anything(),
+        timedOutPullRequest,
+        expect.anything(),
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        timedOutPullRequest,
+        expect.anything(),
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        normalPullRequest,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'project-1' }),
+        normalPullRequest,
+        'workflow-management-story-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        normalPullRequest,
+        expect.stringContaining('Auto Status Check: REJECTED'),
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(timedOutPullRequest.url),
+      );
+    });
+
+    it('should propagate a non-timeout non-archived error from createComment unchanged', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueCommentRepository.createComment.mockRejectedValue(
+        new Error('Something went wrong'),
+      );
+
+      await expect(
+        useCase.run({
+          projectUrl: 'https://github.com/users/user/projects/1',
+          allowedIssueAuthors: ['owner'],
+        }),
+      ).rejects.toThrow('Something went wrong');
+    });
+  });
 });

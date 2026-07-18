@@ -51,7 +51,15 @@ const isTransientApiError = (error: Error): boolean => {
   return (
     /\b(401|403|429|500|502|503|504)\b/.test(msg) ||
     /rate.?limit|RATE_LIMIT/i.test(msg) ||
-    /bad credentials/i.test(msg)
+    /bad credentials/i.test(msg) ||
+    // ky rejects a GitHub GraphQL POST that exceeds its timeout with a
+    // TimeoutError ("Request timed out: POST https://api.github.com/graphql").
+    // Such a timeout is as transient as a 5xx response, so it must not spam
+    // the workflow incident issue. The check is by error name and message so
+    // it matches ky's TimeoutError without a dependency on the ky package
+    // from the domain layer.
+    error.name === 'TimeoutError' ||
+    /request timed out/i.test(msg)
   );
 };
 
