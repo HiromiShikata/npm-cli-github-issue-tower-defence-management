@@ -1,3 +1,10 @@
+## [1.125.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.125.0...v1.125.1) (2026-07-18)
+
+
+### Bug Fixes
+
+* **pr-status:** treat HTTP 403 from branch rules and classic protection as no required checks ([#1212](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1212)) ([b264917](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b26491761589ce63636d721fb2b3166be9832a85))
+
 # [1.125.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.124.0...v1.125.0) (2026-07-17)
 
 
