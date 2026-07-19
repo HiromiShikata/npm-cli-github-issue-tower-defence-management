@@ -1981,6 +1981,8 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     timeline?: () => Response | object;
     mergeability?: () => Response | object;
     slimPullRequest?: (variables: {
+      owner?: string;
+      repo?: string;
       prNumber: number;
       reviewThreadsAfter: string | null;
     }) => Response | object;
@@ -2003,6 +2005,8 @@ describe('ApiV3CheerioRestIssueRepository', () => {
   type GraphqlRequestBody = {
     query: string;
     variables: {
+      owner?: string;
+      repo?: string;
       prNumber: number;
       reviewThreadsAfter: string | null;
     };
@@ -2024,6 +2028,14 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       typeof rawVariables === 'object' && rawVariables !== null
         ? rawVariables
         : {};
+    const owner =
+      'owner' in variables && typeof variables.owner === 'string'
+        ? variables.owner
+        : undefined;
+    const repo =
+      'repo' in variables && typeof variables.repo === 'string'
+        ? variables.repo
+        : undefined;
     const prNumber =
       'prNumber' in variables && typeof variables.prNumber === 'number'
         ? variables.prNumber
@@ -2033,7 +2045,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       typeof variables.reviewThreadsAfter === 'string'
         ? variables.reviewThreadsAfter
         : null;
-    return { query: parsed.query, variables: { prNumber, reviewThreadsAfter } };
+    return {
+      query: parsed.query,
+      variables: { owner, repo, prNumber, reviewThreadsAfter },
+    };
   };
 
   const mockFetchRoutes = (routes: FetchRoutes) =>
@@ -2963,6 +2978,72 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           'https://github.com/HiromiShikata/test-repository/pull/11148',
         ),
       );
+    });
+  });
+
+  describe('findRelatedOpenPRs cross-repo PR', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('queries the PR repository owner and name when the PR is in a different repository than the issue', async () => {
+      const capturedSlimVariables: Array<{
+        owner?: string;
+        repo?: string;
+        prNumber: number;
+      }> = [];
+
+      mockFetchRoutes({
+        timeline: () => ({
+          data: {
+            repository: {
+              issue: {
+                timelineItems: {
+                  pageInfo: { endCursor: null, hasNextPage: false },
+                  nodes: [
+                    {
+                      __typename: 'CrossReferencedEvent',
+                      willCloseTarget: true,
+                      source: {
+                        __typename: 'PullRequest',
+                        url: 'https://github.com/HiromiShikata/secretary/pull/2751',
+                        number: 2751,
+                        state: 'OPEN',
+                        createdAt: '2024-01-01T00:00:00Z',
+                        isDraft: false,
+                        mergeable: 'MERGEABLE',
+                        headRefName: 'close-ufw-port-9981-i30106',
+                        baseRefName: 'main',
+                        baseRef: { name: 'main' },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        }),
+        slimPullRequest: (variables) => {
+          capturedSlimVariables.push(variables);
+          return buildSlimPullRequestResponse({
+            url: 'https://github.com/HiromiShikata/secretary/pull/2751',
+          });
+        },
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/umino-corporait-operation/issues/30106',
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].url).toBe(
+        'https://github.com/HiromiShikata/secretary/pull/2751',
+      );
+      expect(capturedSlimVariables).toHaveLength(1);
+      expect(capturedSlimVariables[0].owner).toBe('HiromiShikata');
+      expect(capturedSlimVariables[0].repo).toBe('secretary');
+      expect(capturedSlimVariables[0].prNumber).toBe(2751);
     });
   });
 
