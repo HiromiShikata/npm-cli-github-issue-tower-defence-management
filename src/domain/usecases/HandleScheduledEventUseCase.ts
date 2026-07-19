@@ -57,6 +57,60 @@ const isTransientApiError = (error: Error): boolean => {
   );
 };
 
+const TRANSIENT_NETWORK_ERROR_CODE_PATTERN =
+  /\b(ECONNRESET|ECONNREFUSED|ECONNABORTED|ETIMEDOUT|EPIPE|ENOTFOUND|EAI_AGAIN|ERR_NETWORK|ERR_SOCKET_CONNECTION_TIMEOUT)\b/;
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const extractHttpStatusFromError = (error: Error): number | null => {
+  if (!isRecord(error)) {
+    return null;
+  }
+  const response: unknown = error.response;
+  const values: unknown[] = [
+    error.status,
+    isRecord(response) ? response.status : null,
+    error.code,
+  ];
+  for (const value of values) {
+    if (typeof value === 'number' && Number.isInteger(value)) {
+      return value;
+    }
+    if (typeof value === 'string' && /^\d{3}$/.test(value)) {
+      return Number(value);
+    }
+  }
+  return null;
+};
+
+const isTransientSpreadsheetApiError = (error: Error): boolean => {
+  const status = extractHttpStatusFromError(error);
+  if (status !== null) {
+    return status === 429 || (status >= 500 && status <= 599);
+  }
+  if (
+    error.name === 'TimeoutError' ||
+    /request timed out/i.test(error.message)
+  ) {
+    return true;
+  }
+  const code: unknown = isRecord(error) ? error.code : null;
+  if (
+    typeof code === 'string' &&
+    TRANSIENT_NETWORK_ERROR_CODE_PATTERN.test(code)
+  ) {
+    return true;
+  }
+  return (
+    /\b(429|500|502|503|504)\b/.test(error.message) ||
+    /rate.?limit/i.test(error.message) ||
+    /internal error encountered/i.test(error.message) ||
+    /socket hang up/i.test(error.message) ||
+    TRANSIENT_NETWORK_ERROR_CODE_PATTERN.test(error.message)
+  );
+};
+
 export class HandleScheduledEventUseCase {
   constructor(
     readonly setupTowerDefenceProjectUseCase: SetupTowerDefenceProjectUseCase,
@@ -217,22 +271,41 @@ export class HandleScheduledEventUseCase {
       );
     }
 
-    const targetDateTimes: Date[] =
-      await this.findTargetDateAndUpdateLastExecutionDateTime(
+    let targetDateTimes: Date[] = [];
+    try {
+      targetDateTimes = await this.findTargetDateAndUpdateLastExecutionDateTime(
         input.workingReport.spreadsheetUrl,
         now,
         input.org,
         input.workingReport.repo,
         input.manager,
       );
+    } catch (e) {
+      if (!(e instanceof Error) || !isTransientSpreadsheetApiError(e)) {
+        throw e;
+      }
+      console.warn(
+        `[HandleScheduledEvent] Transient spreadsheet API error while updating last execution date time, skipping this spreadsheet operation and continuing the cycle: ${e.name}: ${e.message}`,
+      );
+    }
 
-    const runSlowSweep = await this.shouldRunSlowSweep(
-      input.workingReport.spreadsheetUrl,
-      now,
-      input.org,
-      input.workingReport.repo,
-      input.manager,
-    );
+    let runSlowSweep = false;
+    try {
+      runSlowSweep = await this.shouldRunSlowSweep(
+        input.workingReport.spreadsheetUrl,
+        now,
+        input.org,
+        input.workingReport.repo,
+        input.manager,
+      );
+    } catch (e) {
+      if (!(e instanceof Error) || !isTransientSpreadsheetApiError(e)) {
+        throw e;
+      }
+      console.warn(
+        `[HandleScheduledEvent] Transient spreadsheet API error while checking slow sweep schedule, skipping slow sweep for this cycle: ${e.name}: ${e.message}`,
+      );
+    }
 
     let rotationOrder: RotationOrderEntry[] | null;
     try {
@@ -515,6 +588,12 @@ ${JSON.stringify(e)}
       return await action();
     } catch (e) {
       if (!(e instanceof Error)) {
+        throw e;
+      }
+      if (isTransientSpreadsheetApiError(e)) {
+        console.warn(
+          `[HandleScheduledEvent] Transient spreadsheet API error on ${operation} (${spreadsheetUrl}): ${e.name}: ${e.message}`,
+        );
         throw e;
       }
       await this.issueRepository.createNewIssue(
