@@ -51,7 +51,10 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
         storyIssue.url,
       );
       if (!freshStoryIssue) {
-        throw new Error(`Story issue not found by URL: ${storyIssue.url}`);
+        console.warn(
+          `ConvertCheckboxToIssueInStoryIssueUseCase: story issue not found by URL (possibly deleted), skipping story. storyIssueUrl: ${storyIssue.url}`,
+        );
+        continue;
       }
       const storyViewLink = this.buildStoryViewLink(
         input.urlOfStoryView,

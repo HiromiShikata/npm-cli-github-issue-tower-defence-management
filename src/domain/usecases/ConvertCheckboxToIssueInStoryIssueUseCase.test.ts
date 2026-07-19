@@ -1143,6 +1143,71 @@ Some description without checkboxes`,
         });
       },
     );
+
+    it('skips a story whose story issue was deleted on GitHub and continues with the remaining stories', async () => {
+      jest.clearAllMocks();
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      mockIssueRepository.getIssueByUrl.mockImplementation(async (url) => {
+        if (url === basicStoryIssue1.url) {
+          return null;
+        }
+        return basicStoryIssue2;
+      });
+      const useCase = new ConvertCheckboxToIssueInStoryIssueUseCase(
+        mockIssueRepository,
+      );
+
+      await useCase.run({
+        project: basicProject,
+        issues: [basicStoryIssue1, basicStoryIssue2],
+        cacheUsed: false,
+        urlOfStoryView: 'https://example.com',
+        storyObjectMap: basicStoryObjectMap,
+        manager: 'ManagerName',
+        createTaskFromStoryBodyCheckboxEnabled: false,
+      });
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(basicStoryIssue1.url),
+      );
+      expect(mockIssueRepository.getIssueByUrl.mock.calls).toEqual([
+        [basicStoryIssue1.url],
+        [basicStoryIssue2.url],
+      ]);
+      expect(mockIssueRepository.updateIssue.mock.calls).toEqual([
+        [
+          {
+            ...basicStoryIssue2,
+            body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+
+- [ ] Task 3
+- [ ] Task 4`,
+          },
+        ],
+      ]);
+      warnSpy.mockRestore();
+    });
+
+    it('propagates errors thrown while fetching the story issue by URL', async () => {
+      jest.clearAllMocks();
+      const fetchError = new Error('GraphQL request failed');
+      mockIssueRepository.getIssueByUrl.mockRejectedValue(fetchError);
+      const useCase = new ConvertCheckboxToIssueInStoryIssueUseCase(
+        mockIssueRepository,
+      );
+
+      await expect(
+        useCase.run({
+          project: basicProject,
+          issues: [basicStoryIssue1, basicStoryIssue2],
+          cacheUsed: false,
+          urlOfStoryView: 'https://example.com',
+          storyObjectMap: basicStoryObjectMap,
+          manager: 'ManagerName',
+          createTaskFromStoryBodyCheckboxEnabled: false,
+        }),
+      ).rejects.toThrow('GraphQL request failed');
+    });
   });
 
   describe('buildStoryViewLink', () => {
