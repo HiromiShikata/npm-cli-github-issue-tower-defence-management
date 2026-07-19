@@ -20,6 +20,48 @@ const isTransientApiError = (error) => {
         error.name === 'TimeoutError' ||
         /request timed out/i.test(msg));
 };
+const TRANSIENT_NETWORK_ERROR_CODE_PATTERN = /\b(ECONNRESET|ECONNREFUSED|ECONNABORTED|ETIMEDOUT|EPIPE|ENOTFOUND|EAI_AGAIN|ERR_NETWORK|ERR_SOCKET_CONNECTION_TIMEOUT)\b/;
+const isRecord = (value) => typeof value === 'object' && value !== null;
+const extractHttpStatusFromError = (error) => {
+    if (!isRecord(error)) {
+        return null;
+    }
+    const response = error.response;
+    const values = [
+        error.status,
+        isRecord(response) ? response.status : null,
+        error.code,
+    ];
+    for (const value of values) {
+        if (typeof value === 'number' && Number.isInteger(value)) {
+            return value;
+        }
+        if (typeof value === 'string' && /^\d{3}$/.test(value)) {
+            return Number(value);
+        }
+    }
+    return null;
+};
+const isTransientSpreadsheetApiError = (error) => {
+    const status = extractHttpStatusFromError(error);
+    if (status !== null) {
+        return status === 429 || (status >= 500 && status <= 599);
+    }
+    if (error.name === 'TimeoutError' ||
+        /request timed out/i.test(error.message)) {
+        return true;
+    }
+    const code = isRecord(error) ? error.code : null;
+    if (typeof code === 'string' &&
+        TRANSIENT_NETWORK_ERROR_CODE_PATTERN.test(code)) {
+        return true;
+    }
+    return (/\b(429|500|502|503|504)\b/.test(error.message) ||
+        /rate.?limit/i.test(error.message) ||
+        /internal error encountered/i.test(error.message) ||
+        /socket hang up/i.test(error.message) ||
+        TRANSIENT_NETWORK_ERROR_CODE_PATTERN.test(error.message));
+};
 class HandleScheduledEventUseCase {
     constructor(setupTowerDefenceProjectUseCase, actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, revertNotReadyReviewQueueIssueUseCase, updateRateLimitCacheUseCase, dailySecurityScanUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
         this.setupTowerDefenceProjectUseCase = setupTowerDefenceProjectUseCase;
@@ -105,8 +147,26 @@ class HandleScheduledEventUseCase {
                 storyObject.issues.push(newIssue);
                 console.log(`[HandleScheduledEvent] Story issue created: story="${storyObject.story.name}" elapsed=${Date.now() - storyStartTime}ms`);
             }
-            const targetDateTimes = await this.findTargetDateAndUpdateLastExecutionDateTime(input.workingReport.spreadsheetUrl, now, input.org, input.workingReport.repo, input.manager);
-            const runSlowSweep = await this.shouldRunSlowSweep(input.workingReport.spreadsheetUrl, now, input.org, input.workingReport.repo, input.manager);
+            let targetDateTimes = [];
+            try {
+                targetDateTimes = await this.findTargetDateAndUpdateLastExecutionDateTime(input.workingReport.spreadsheetUrl, now, input.org, input.workingReport.repo, input.manager);
+            }
+            catch (e) {
+                if (!(e instanceof Error) || !isTransientSpreadsheetApiError(e)) {
+                    throw e;
+                }
+                console.warn(`[HandleScheduledEvent] Transient spreadsheet API error while updating last execution date time, skipping this spreadsheet operation and continuing the cycle: ${e.name}: ${e.message}`);
+            }
+            let runSlowSweep = false;
+            try {
+                runSlowSweep = await this.shouldRunSlowSweep(input.workingReport.spreadsheetUrl, now, input.org, input.workingReport.repo, input.manager);
+            }
+            catch (e) {
+                if (!(e instanceof Error) || !isTransientSpreadsheetApiError(e)) {
+                    throw e;
+                }
+                console.warn(`[HandleScheduledEvent] Transient spreadsheet API error while checking slow sweep schedule, skipping slow sweep for this cycle: ${e.name}: ${e.message}`);
+            }
             let rotationOrder;
             try {
                 const useCaseResult = await this.runEachUseCases(input, project, issues, cacheUsed, targetDateTimes, storyIssues, runSlowSweep);
@@ -315,6 +375,10 @@ ${JSON.stringify(e)}
             }
             catch (e) {
                 if (!(e instanceof Error)) {
+                    throw e;
+                }
+                if (isTransientSpreadsheetApiError(e)) {
+                    console.warn(`[HandleScheduledEvent] Transient spreadsheet API error on ${operation} (${spreadsheetUrl}): ${e.name}: ${e.message}`);
                     throw e;
                 }
                 await this.issueRepository.createNewIssue(org, repo, `Error in HandleScheduledEvent / spreadsheet ${operation} failure`, `Spreadsheet URL: ${spreadsheetUrl}

@@ -1,3 +1,10 @@
+## [1.125.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.125.2...v1.125.3) (2026-07-19)
+
+
+### Bug Fixes
+
+* **schedule-cycle:** contain transient Google Sheets API errors so a gaxios 5xx does not abort the schedule cycle ([#1216](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1216)) ([31c2c69](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/31c2c691bd502478c4dd9bffad7f6c64d303d33f))
+
 ## [1.125.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.125.1...v1.125.2) (2026-07-18)
 
 
