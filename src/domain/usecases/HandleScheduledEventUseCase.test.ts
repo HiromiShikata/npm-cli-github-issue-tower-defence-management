@@ -1156,6 +1156,169 @@ describe('HandleScheduledEventUseCase', () => {
       });
     });
 
+    describe('transient spreadsheet API error containment', () => {
+      const transientInput = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+      };
+
+      const createGaxiosLikeError = (
+        message: string,
+        status?: number,
+        code?: string,
+      ): Error => {
+        const error: Error & {
+          status?: number;
+          code?: string;
+          response?: { status?: number };
+        } = new Error(message);
+        error.name = 'GaxiosError';
+        if (status !== undefined) {
+          error.status = status;
+          error.response = { status };
+        }
+        if (code !== undefined) {
+          error.code = code;
+        }
+        return error;
+      };
+
+      let warnSpy: jest.SpyInstance;
+      beforeEach(() => {
+        warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      });
+      afterEach(() => {
+        warnSpy.mockRestore();
+      });
+
+      it('should skip the spreadsheet read and continue the cycle when getSheet fails with a gaxios HTTP 500 error', async () => {
+        mockSpreadsheetRepository.getSheet.mockRejectedValue(
+          createGaxiosLikeError('Internal error encountered.', 500),
+        );
+
+        const result = await useCase.run(transientInput);
+
+        expect(result).not.toBeNull();
+        expect(result?.targetDateTimes).toEqual([]);
+        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+        expect(warnSpy).toHaveBeenCalled();
+        expect(
+          mockRevertNotReadyReviewQueueIssueUseCase.run,
+        ).toHaveBeenCalled();
+      });
+
+      it('should skip the spreadsheet write and continue the cycle when updateCell fails with a gaxios HTTP 503 error', async () => {
+        mockSpreadsheetRepository.updateCell.mockRejectedValue(
+          createGaxiosLikeError('The service is currently unavailable.', 503),
+        );
+
+        const result = await useCase.run(transientInput);
+
+        expect(result).not.toBeNull();
+        expect(result?.targetDateTimes).toEqual([]);
+        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+        expect(warnSpy).toHaveBeenCalled();
+        expect(
+          mockRevertNotReadyReviewQueueIssueUseCase.run,
+        ).toHaveBeenCalled();
+      });
+
+      it('should skip the spreadsheet operation and continue the cycle when getSheet fails with a gaxios HTTP 429 rate limit error', async () => {
+        mockSpreadsheetRepository.getSheet.mockRejectedValue(
+          createGaxiosLikeError('Quota exceeded', 429),
+        );
+
+        const result = await useCase.run(transientInput);
+
+        expect(result).not.toBeNull();
+        expect(result?.targetDateTimes).toEqual([]);
+        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+        expect(warnSpy).toHaveBeenCalled();
+        expect(
+          mockRevertNotReadyReviewQueueIssueUseCase.run,
+        ).toHaveBeenCalled();
+      });
+
+      it('should skip the spreadsheet operation and continue the cycle when getSheet fails with a gaxios network error without an HTTP status', async () => {
+        mockSpreadsheetRepository.getSheet.mockRejectedValue(
+          createGaxiosLikeError('socket hang up', undefined, 'ECONNRESET'),
+        );
+
+        const result = await useCase.run(transientInput);
+
+        expect(result).not.toBeNull();
+        expect(result?.targetDateTimes).toEqual([]);
+        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+        expect(warnSpy).toHaveBeenCalled();
+        expect(
+          mockRevertNotReadyReviewQueueIssueUseCase.run,
+        ).toHaveBeenCalled();
+      });
+
+      it('should skip the spreadsheet operation and continue the cycle when getSheet fails with a gaxios internal error carrying no status field (matched by message)', async () => {
+        mockSpreadsheetRepository.getSheet.mockRejectedValue(
+          createGaxiosLikeError('Internal error encountered.'),
+        );
+
+        const result = await useCase.run(transientInput);
+
+        expect(result).not.toBeNull();
+        expect(result?.targetDateTimes).toEqual([]);
+        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+        expect(warnSpy).toHaveBeenCalled();
+        expect(
+          mockRevertNotReadyReviewQueueIssueUseCase.run,
+        ).toHaveBeenCalled();
+      });
+
+      it('should create an error issue and rethrow when getSheet fails with a gaxios HTTP 401 authentication error', async () => {
+        mockSpreadsheetRepository.getSheet.mockRejectedValue(
+          createGaxiosLikeError('Invalid Credentials', 401),
+        );
+
+        await expect(useCase.run(transientInput)).rejects.toThrow(
+          'Invalid Credentials',
+        );
+
+        expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
+          transientInput.org,
+          transientInput.workingReport.repo,
+          'Error in HandleScheduledEvent / spreadsheet read failure',
+          expect.stringContaining(transientInput.workingReport.spreadsheetUrl),
+          [transientInput.manager],
+          ['error'],
+        );
+      });
+
+      it('should create an error issue and rethrow when getSheet fails with a gaxios HTTP 403 permission error', async () => {
+        mockSpreadsheetRepository.getSheet.mockRejectedValue(
+          createGaxiosLikeError('The caller does not have permission', 403),
+        );
+
+        await expect(useCase.run(transientInput)).rejects.toThrow(
+          'The caller does not have permission',
+        );
+
+        expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
+          transientInput.org,
+          transientInput.workingReport.repo,
+          'Error in HandleScheduledEvent / spreadsheet read failure',
+          expect.stringContaining(transientInput.workingReport.spreadsheetUrl),
+          [transientInput.manager],
+          ['error'],
+        );
+      });
+    });
+
     describe('empty targetDateTimes handling', () => {
       const emptyTargetInput = {
         projectName: 'test-project',
