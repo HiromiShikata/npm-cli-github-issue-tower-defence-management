@@ -818,6 +818,9 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                         continue;
                     const pr = item.source;
                     const prUrl = pr.url || '';
+                    if (!prUrl)
+                        continue;
+                    const { owner: prOwner, repo: prRepo } = this.parseIssueUrl(prUrl);
                     let isConflicted = pr.mergeable === 'CONFLICTING';
                     let mergeable = pr.mergeable ?? null;
                     if (pr.number !== undefined &&
@@ -826,7 +829,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                             pr.mergeable === 'UNKNOWN')) {
                         let resolved;
                         try {
-                            resolved = await this.resolveMergeabilityWithRetry(owner, repo, pr.number);
+                            resolved = await this.resolveMergeabilityWithRetry(prOwner, prRepo, pr.number);
                         }
                         catch (error) {
                             const errorMessage = error instanceof Error ? error.message : String(error);
@@ -849,13 +852,13 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                         continue;
                     let prStatus;
                     try {
-                        const slimPullRequest = await this.fetchSlimPullRequest(owner, repo, pr.number);
+                        const slimPullRequest = await this.fetchSlimPullRequest(prOwner, prRepo, pr.number);
                         if (!slimPullRequest || slimPullRequest.state !== 'OPEN') {
                             console.info(`ApiV3CheerioRestIssueRepository: pull request is no longer open, excluding it from related open PRs. prUrl: ${prUrl}`);
                             continue;
                         }
                         const baseRefName = slimPullRequest.baseRefName ?? pr.baseRefName ?? pr.baseRef?.name;
-                        prStatus = await this.buildRelatedPullRequestFromSlim(owner, repo, {
+                        prStatus = await this.buildRelatedPullRequestFromSlim(prOwner, prRepo, {
                             ...slimPullRequest,
                             url: slimPullRequest.url || prUrl,
                             headRefName: slimPullRequest.headRefName ?? pr.headRefName,

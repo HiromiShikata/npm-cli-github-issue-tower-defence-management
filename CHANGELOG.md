@@ -1,3 +1,10 @@
+## [1.125.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.125.4...v1.125.5) (2026-07-19)
+
+
+### Bug Fixes
+
+* **cross-repo-pr:** use PR's owner/repo instead of issue's when querying cross-repo PRs ([#1204](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1204)) ([2ac5e4b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2ac5e4b3ff2512d5f964a0d28f8bdad668bf76f9))
+
 ## [1.125.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.125.3...v1.125.4) (2026-07-19)
 
 
