@@ -1,3 +1,10 @@
+## [1.125.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.125.3...v1.125.4) (2026-07-19)
+
+
+### Bug Fixes
+
+* **schedule-cycle:** contain deleted story issue in ConvertCheckboxToIssueInStoryIssueUseCase so a missing story issue does not abort the schedule cycle ([#1218](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1218)) ([c754341](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c754341393753f40193f5d96f6367ef3e7d10221))
+
 ## [1.125.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.125.2...v1.125.3) (2026-07-19)
 
 
