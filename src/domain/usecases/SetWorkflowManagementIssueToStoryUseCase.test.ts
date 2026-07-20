@@ -123,26 +123,36 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
       expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
     });
 
-    it('should do nothing when cacheUsed is true', async () => {
-      await useCase.run({
+    it('should map story label to matching story when cacheUsed is true', async () => {
+      const issue: Issue = {
+        ...mock<Issue>(),
+        labels: ['story:high-priority'],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        isPr: false,
+      };
+
+      const promise = useCase.run({
         targetDates: [targetDate],
         project: basicProject,
-        issues: [
-          {
-            ...mock<Issue>(),
-            labels: ['story:high-priority'],
-            story: null,
-            state: 'OPEN',
-            nextActionDate: null,
-            nextActionHour: null,
-            isPr: false,
-          },
-        ],
+        issues: [issue],
         cacheUsed: true,
       });
+      await jest.runAllTimersAsync();
+      await promise;
 
-      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
-      expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+      expect(mockIssueRepository.updateStory.mock.calls).toEqual([
+        [
+          { ...basicProject, story: basicProject.story },
+          issue,
+          'highPriorityId',
+        ],
+      ]);
+      expect(mockIssueRepository.removeLabel.mock.calls).toEqual([
+        [issue, 'story:high-priority'],
+      ]);
     });
 
     it('should map story label to matching story on non-minute-0 target date', async () => {
