@@ -71,6 +71,42 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
     expect(section).not.toContain('\u{FE0F}');
   });
 
+  it('appends the self-diagnosis guidance to the configured main template', () => {
+    const fallback = createFallback();
+    const composer = new ConfigurableSilentSessionMessageComposer(
+      {
+        ...noTemplates,
+        mainStalledMessage: 'CUSTOM_MAIN',
+      },
+      fallback,
+    );
+    const section = composer.composeMainStalledSection(600);
+    expect(section).toContain(
+      'This reminder is delivered only to sessions that have no registered unanswered owner-call.',
+    );
+    expect(section).toContain(
+      're-raise the pending request as a new owner-call in that format',
+    );
+  });
+
+  it('omits the self-diagnosis guidance from the configured stale-owner-call template section', () => {
+    const fallback = createFallback();
+    const composer = new ConfigurableSilentSessionMessageComposer(
+      {
+        ...noTemplates,
+        mainStalledStaleOwnerCallMessage: 'CUSTOM_STALE',
+      },
+      fallback,
+    );
+    const section = composer.composeMainStalledWithStaleOwnerCallSection(
+      600,
+      3600,
+    );
+    expect(section).not.toContain(
+      'This reminder is delivered only to sessions that have no registered unanswered owner-call.',
+    );
+  });
+
   it('uses the fallback stale-owner-call section when no stale-owner-call template is configured', () => {
     const fallback = createFallback();
     const composer = new ConfigurableSilentSessionMessageComposer(
