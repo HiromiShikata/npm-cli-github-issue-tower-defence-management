@@ -99,6 +99,60 @@ describe('DefaultSilentSessionMessageComposer', () => {
     expect(section).not.toContain('>');
   });
 
+  it('explains in the main-stalled section that the reminder reaches only sessions without a registered unanswered owner-call', () => {
+    const section = composer.composeMainStalledSection(600);
+    expect(section).toContain(
+      'This reminder is delivered only to sessions that have no registered unanswered owner-call.',
+    );
+  });
+
+  it('explains in the main-stalled section that receiving the reminder while believing an owner-call is pending means the call was not registered and the owner was not notified', () => {
+    const section = composer.composeMainStalledSection(600);
+    expect(section).toContain(
+      'If you believe you have already raised an owner-call and are waiting for the owner',
+    );
+    expect(section).toContain(
+      'receiving this reminder means that call was not registered',
+    );
+    expect(section).toContain('the owner has not been notified');
+  });
+
+  it('instructs in the main-stalled section to review the documented owner-call format and re-raise the pending request', () => {
+    const section = composer.composeMainStalledSection(600);
+    expect(section).toContain(
+      'please review the documented owner-call format for this session',
+    );
+    expect(section).toContain(
+      're-raise the pending request as a new owner-call in that format',
+    );
+  });
+
+  it('omits the self-diagnosis guidance from the stale-owner-call section', () => {
+    const section = composer.composeMainStalledWithStaleOwnerCallSection(
+      600,
+      3600,
+    );
+    expect(section).not.toContain(
+      'This reminder is delivered only to sessions that have no registered unanswered owner-call.',
+    );
+  });
+
+  it('omits the self-diagnosis guidance from the sub-agent sections', () => {
+    const subAgent = {
+      label: 'sub-process-1',
+      silentSeconds: 360,
+      runningSeconds: 1200,
+      waitingOnExternalProcess: false,
+    };
+    const section = composer.composeSubAgentSection({
+      idleSubAgents: [subAgent],
+      longRunningSubAgents: [subAgent],
+    });
+    expect(section).not.toContain(
+      'This reminder is delivered only to sessions that have no registered unanswered owner-call.',
+    );
+  });
+
   it('embeds the reminder sentinel in the stale-owner-call main-stalled section', () => {
     const section = composer.composeMainStalledWithStaleOwnerCallSection(
       600,
