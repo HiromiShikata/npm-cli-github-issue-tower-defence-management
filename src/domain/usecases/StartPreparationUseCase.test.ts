@@ -84,6 +84,7 @@ describe('StartPreparationUseCase', () => {
     Pick<
       IssueRepository,
       | 'getStoryObjectMap'
+      | 'getAllOpened'
       | 'updateStatus'
       | 'findRelatedOpenPRs'
       | 'getOpenPullRequest'
@@ -103,6 +104,7 @@ describe('StartPreparationUseCase', () => {
     };
     mockIssueRepository = {
       getStoryObjectMap: jest.fn().mockResolvedValue(new Map()),
+      getAllOpened: jest.fn().mockResolvedValue([]),
       updateStatus: jest.fn(),
       findRelatedOpenPRs: jest.fn().mockResolvedValue([]),
       getOpenPullRequest: jest.fn().mockResolvedValue(null),
@@ -5676,6 +5678,245 @@ describe('StartPreparationUseCase', () => {
       });
     });
   });
+
+  it('should log one aggregate spawn candidate exclusion summary per run with counts by reason', async () => {
+    const currentHour = new Date().getHours();
+    const dayAfterTomorrow = new Date();
+    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/11',
+        title: 'Depended Issue',
+        status: 'Awaiting Workspace',
+        number: 11,
+        dependedIssueUrls: ['https://github.com/user/repo/issues/99'],
+      }),
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/12',
+        title: 'Future Next Action Date Issue',
+        status: 'Awaiting Workspace',
+        number: 12,
+        nextActionDate: dayAfterTomorrow,
+      }),
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/13',
+        title: 'Future Next Action Hour Issue',
+        status: 'Awaiting Workspace',
+        number: 13,
+        nextActionHour: currentHour + 1,
+      }),
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/14',
+        title: 'Disallowed Author Issue',
+        status: 'Awaiting Workspace',
+        number: 14,
+        author: 'not-allowed-user',
+      }),
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/15',
+        title: 'Spawnable Issue',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        number: 15,
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    const consoleLogSpy = jest
+      .spyOn(console, 'log')
+      .mockImplementation(() => {});
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+    const summaryCalls = consoleLogSpy.mock.calls.filter((call) =>
+      String(call[0]).includes('Spawn candidate exclusion summary'),
+    );
+    expect(summaryCalls).toHaveLength(1);
+    expect(summaryCalls[0][0]).toBe(
+      'Spawn candidate exclusion summary for https://github.com/user/repo: dependedIssueUrls=1, futureNextActionDate=1, nextActionHourNotReached=1, authorNotAllowed=1',
+    );
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][0]).toBe(
+      'https://github.com/user/repo/issues/15',
+    );
+    consoleLogSpy.mockRestore();
+  });
+
+  it('should log the aggregate exclusion summary with zero counts when nothing is excluded', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/21',
+        title: 'Spawnable Issue',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        number: 21,
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    const consoleLogSpy = jest
+      .spyOn(console, 'log')
+      .mockImplementation(() => {});
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+    const summaryCalls = consoleLogSpy.mock.calls.filter((call) =>
+      String(call[0]).includes('Spawn candidate exclusion summary'),
+    );
+    expect(summaryCalls).toHaveLength(1);
+    expect(summaryCalls[0][0]).toBe(
+      'Spawn candidate exclusion summary for https://github.com/user/repo: dependedIssueUrls=0, futureNextActionDate=0, nextActionHourNotReached=0, authorNotAllowed=0',
+    );
+    consoleLogSpy.mockRestore();
+  });
+
+  it('should warn with URLs of Awaiting Workspace issues invisible to selection because Story is unset', async () => {
+    const issueWithStory = createMockIssue({
+      url: 'https://github.com/user/repo/issues/31',
+      title: 'Issue With Story',
+      labels: ['category:impl'],
+      status: 'Awaiting Workspace',
+      number: 31,
+      story: 'Default Story',
+    });
+    const storyUnsetAwaitingWorkspaceIssueOne = createMockIssue({
+      url: 'https://github.com/user/repo/issues/32',
+      title: 'Story Unset Issue One',
+      status: 'Awaiting Workspace',
+      number: 32,
+      story: null,
+    });
+    const storyUnsetAwaitingWorkspaceIssueTwo = createMockIssue({
+      url: 'https://github.com/user/repo/issues/33',
+      title: 'Story Unset Issue Two',
+      status: 'Awaiting Workspace',
+      number: 33,
+      story: null,
+    });
+    const storyUnsetOtherStatusIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/34',
+      title: 'Story Unset Other Status Issue',
+      status: 'Todo',
+      number: 34,
+      story: null,
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([issueWithStory]),
+    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([
+      issueWithStory,
+      storyUnsetAwaitingWorkspaceIssueOne,
+      storyUnsetAwaitingWorkspaceIssueTwo,
+      storyUnsetOtherStatusIssue,
+    ]);
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    const consoleWarnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => {});
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+    const storyUnsetWarningCalls = consoleWarnSpy.mock.calls.filter((call) =>
+      String(call[0]).includes('Story is unset'),
+    );
+    expect(storyUnsetWarningCalls).toHaveLength(1);
+    expect(storyUnsetWarningCalls[0][0]).toBe(
+      'Awaiting Workspace issue(s) invisible to spawn candidate selection because Story is unset: https://github.com/user/repo/issues/32, https://github.com/user/repo/issues/33',
+    );
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    consoleWarnSpy.mockRestore();
+  });
+
+  it('should not warn about Story-unset issues when every Awaiting Workspace issue has a Story', async () => {
+    const issueWithStory = createMockIssue({
+      url: 'https://github.com/user/repo/issues/41',
+      title: 'Issue With Story',
+      labels: ['category:impl'],
+      status: 'Awaiting Workspace',
+      number: 41,
+      story: 'Default Story',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([issueWithStory]),
+    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([issueWithStory]);
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    const consoleWarnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => {});
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+    const storyUnsetWarningCalls = consoleWarnSpy.mock.calls.filter((call) =>
+      String(call[0]).includes('Story is unset'),
+    );
+    expect(storyUnsetWarningCalls).toHaveLength(0);
+    consoleWarnSpy.mockRestore();
+  });
 });
 
 describe('StartPreparationUseCase.buildRotationOrder', () => {
@@ -5688,6 +5929,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
     Pick<
       IssueRepository,
       | 'getStoryObjectMap'
+      | 'getAllOpened'
       | 'updateStatus'
       | 'findRelatedOpenPRs'
       | 'getOpenPullRequest'
@@ -5697,6 +5939,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
     >
   > = {
     getStoryObjectMap: jest.fn(),
+    getAllOpened: jest.fn(),
     updateStatus: jest.fn(),
     findRelatedOpenPRs: jest.fn(),
     getOpenPullRequest: jest.fn(),
@@ -5994,6 +6237,7 @@ describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
       { getByUrl: jest.fn() },
       {
         getStoryObjectMap: jest.fn(),
+        getAllOpened: jest.fn(),
         updateStatus: jest.fn(),
         findRelatedOpenPRs: jest.fn(),
         getOpenPullRequest: jest.fn(),
