@@ -838,6 +838,154 @@ describe('GraphqlProjectItemRepository', () => {
 
       expect(result.map((item) => item.id)).toEqual(['PVTI_1']);
     });
+
+    it('retries the full fetch exactly once when the last page reports fewer accumulated items than totalCount and returns the consistent retry result', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost
+        .mockReturnValueOnce(
+          makeLightPageResponse(
+            false,
+            'cursor-1',
+            [
+              {
+                id: 'PVTI_1',
+                updatedAt: '2026-07-07T10:00:00Z',
+                content: { url: 'https://github.com/o/r/issues/1', number: 1 },
+              },
+            ],
+            2,
+          ),
+        )
+        .mockReturnValueOnce(
+          makeLightPageResponse(
+            false,
+            'cursor-1',
+            [
+              {
+                id: 'PVTI_1',
+                updatedAt: '2026-07-07T10:00:00Z',
+                content: { url: 'https://github.com/o/r/issues/1', number: 1 },
+              },
+              {
+                id: 'PVTI_2',
+                updatedAt: '2026-07-07T11:00:00Z',
+                content: { url: 'https://github.com/o/r/issues/2', number: 2 },
+              },
+            ],
+            2,
+          ),
+        );
+
+      const result = await repository.fetchProjectItemsLight(
+        'test-project-id',
+        'updated:>=2026-07-07',
+      );
+
+      expect(mockPost).toHaveBeenCalledTimes(2);
+      expect(result.map((item) => item.id)).toEqual(['PVTI_1', 'PVTI_2']);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'page 1 has 1 nodes with hasNextPage=false but only 1/2 items accumulated',
+        ),
+      );
+      warnSpy.mockRestore();
+    });
+
+    it('warns and returns the accumulated items without throwing when the retry is still inconsistent', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      const inconsistentPage = () =>
+        makeLightPageResponse(
+          false,
+          'cursor-1',
+          [
+            {
+              id: 'PVTI_1',
+              updatedAt: '2026-07-07T10:00:00Z',
+              content: { url: 'https://github.com/o/r/issues/1', number: 1 },
+            },
+          ],
+          2,
+        );
+      mockPost
+        .mockReturnValueOnce(inconsistentPage())
+        .mockReturnValueOnce(inconsistentPage());
+
+      const result = await repository.fetchProjectItemsLight(
+        'test-project-id',
+        'updated:>=2026-07-07',
+      );
+
+      expect(mockPost).toHaveBeenCalledTimes(2);
+      expect(result.map((item) => item.id)).toEqual(['PVTI_1']);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'page 1 has 1 nodes with hasNextPage=false but only 1/2 items accumulated',
+        ),
+      );
+      warnSpy.mockRestore();
+    });
+
+    it('retries exactly once when the accumulated count exceeds totalCount after the loop and returns the consistent retry result', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost
+        .mockReturnValueOnce(
+          makeLightPageResponse(
+            false,
+            'cursor-1',
+            [
+              {
+                id: 'PVTI_1',
+                updatedAt: '2026-07-07T10:00:00Z',
+                content: { url: 'https://github.com/o/r/issues/1', number: 1 },
+              },
+              {
+                id: 'PVTI_2',
+                updatedAt: '2026-07-07T11:00:00Z',
+                content: { url: 'https://github.com/o/r/issues/2', number: 2 },
+              },
+            ],
+            1,
+          ),
+        )
+        .mockReturnValueOnce(
+          makeLightPageResponse(
+            false,
+            'cursor-1',
+            [
+              {
+                id: 'PVTI_1',
+                updatedAt: '2026-07-07T10:00:00Z',
+                content: { url: 'https://github.com/o/r/issues/1', number: 1 },
+              },
+            ],
+            1,
+          ),
+        );
+
+      const result = await repository.fetchProjectItemsLight(
+        'test-project-id',
+        'updated:>=2026-07-07',
+      );
+
+      expect(mockPost).toHaveBeenCalledTimes(2);
+      expect(result.map((item) => item.id)).toEqual(['PVTI_1']);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('expected 1 items but accumulated 2'),
+      );
+      warnSpy.mockRestore();
+    });
   });
 
   describe('fetchProjectItemsByIds', () => {
