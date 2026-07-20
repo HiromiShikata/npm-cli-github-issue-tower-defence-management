@@ -2,6 +2,8 @@ import ky from 'ky';
 
 export const GITHUB_GRAPHQL_ENDPOINT = 'https://api.github.com/graphql';
 
+export const GITHUB_GRAPHQL_REQUEST_TIMEOUT_MS = 120_000;
+
 export const RATE_LIMIT_SELECTION = 'rateLimit { cost remaining }';
 
 export type GithubGraphqlRateLimit = {
@@ -99,6 +101,7 @@ export const fetchGithubGraphql = async (params: {
   ghToken: string;
   query: string;
   variables?: Record<string, unknown>;
+  timeoutMs?: number;
 }): Promise<Response> => {
   const response = await fetch(GITHUB_GRAPHQL_ENDPOINT, {
     method: 'POST',
@@ -110,6 +113,9 @@ export const fetchGithubGraphql = async (params: {
       query: injectRateLimitSelection(params.query),
       variables: params.variables,
     }),
+    signal: AbortSignal.timeout(
+      params.timeoutMs ?? GITHUB_GRAPHQL_REQUEST_TIMEOUT_MS,
+    ),
   });
   if (response.ok) {
     const responseBody: unknown = await response

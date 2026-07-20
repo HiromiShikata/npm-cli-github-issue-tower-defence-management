@@ -14,8 +14,10 @@ jest.mock('ky', () => ({
   __esModule: true,
 }));
 
+import net from 'node:net';
 import {
   GITHUB_GRAPHQL_ENDPOINT,
+  GITHUB_GRAPHQL_REQUEST_TIMEOUT_MS,
   RATE_LIMIT_SELECTION,
   extractGraphqlOperationName,
   fetchGithubGraphql,
@@ -246,6 +248,59 @@ describe('githubGraphqlClient', () => {
       });
       expect(response.status).toBe(403);
       expect(consoleLogSpy).not.toHaveBeenCalled();
+    });
+
+    it('has a default request timeout bound of 120 seconds', () => {
+      expect(GITHUB_GRAPHQL_REQUEST_TIMEOUT_MS).toBe(120_000);
+    });
+
+    it('passes an abort signal to fetch by default', async () => {
+      const fetchMock = jest
+        .fn()
+        .mockResolvedValue(new Response('{}', { status: 200 }));
+      global.fetch = fetchMock;
+      await fetchGithubGraphql({
+        ghToken: 'token-b',
+        query: 'query PullRequestStatus($a: Int!) { x }',
+      });
+      const call = getMockCallArguments(fetchMock, 0);
+      const init = expectRecord(call[1]);
+      expect(init.signal).toBeInstanceOf(AbortSignal);
+    });
+
+    it('rejects with a TimeoutError within the bound when the server never responds', async () => {
+      const realFetch = originalFetch;
+      const openSockets = new Set<net.Socket>();
+      const server = net.createServer((socket) => {
+        openSockets.add(socket);
+        socket.on('close', () => openSockets.delete(socket));
+      });
+      await new Promise<void>((resolve) =>
+        server.listen(0, '127.0.0.1', resolve),
+      );
+      const address = server.address();
+      if (address === null || typeof address === 'string') {
+        throw new Error('Expected the server to listen on a TCP port');
+      }
+      const localEndpoint = `http://127.0.0.1:${address.port}/`;
+      global.fetch = (_input: RequestInfo | URL, init?: RequestInit) =>
+        realFetch(localEndpoint, init);
+      try {
+        const startedAt = Date.now();
+        await expect(
+          fetchGithubGraphql({
+            ghToken: 'token-b',
+            query: 'query PullRequestStatus($a: Int!) { x }',
+            timeoutMs: 300,
+          }),
+        ).rejects.toMatchObject({ name: 'TimeoutError' });
+        expect(Date.now() - startedAt).toBeLessThan(4000);
+      } finally {
+        for (const socket of openSockets) {
+          socket.destroy();
+        }
+        await new Promise<void>((resolve) => server.close(() => resolve()));
+      }
     });
   });
 });
