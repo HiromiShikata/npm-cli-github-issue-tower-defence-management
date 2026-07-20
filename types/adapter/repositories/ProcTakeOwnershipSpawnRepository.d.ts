@@ -3,7 +3,6 @@ export declare class ProcTakeOwnershipSpawnRepository implements TakeOwnershipSp
     private readonly procDirectory;
     constructor(procDirectory?: string);
     listSpawns: () => TakeOwnershipSpawn[];
-    listRunningIssueUrls: () => string[];
     private listProcessIdDirectories;
     private readSpawn;
     private readRawCmdline;

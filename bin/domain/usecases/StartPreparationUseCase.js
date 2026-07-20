@@ -7,12 +7,11 @@ const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
 const FIVE_HOUR_THROTTLE_START_THRESHOLD = 0.8;
 exports.DEFAULT_FALLBACK_LLM_MODEL_NAME = 'claude-opus-4-8';
 class StartPreparationUseCase {
-    constructor(projectRepository, issueRepository, localCommandRunner, claudeTokenUsageRepository, takeOwnershipSpawnRepository) {
+    constructor(projectRepository, issueRepository, localCommandRunner, claudeTokenUsageRepository) {
         this.projectRepository = projectRepository;
         this.issueRepository = issueRepository;
         this.localCommandRunner = localCommandRunner;
         this.claudeTokenUsageRepository = claudeTokenUsageRepository;
-        this.takeOwnershipSpawnRepository = takeOwnershipSpawnRepository;
         this.weeklyLimitTypeForModel = (modelName) => {
             const normalized = (modelName ?? '').toLowerCase();
             if (normalized.includes('sonnet'))
@@ -182,7 +181,6 @@ class StartPreparationUseCase {
                 console.error(`Preparation status option '${WorkflowStatus_1.PREPARATION_STATUS_NAME}' not found in project.`);
                 return { rotationOrder };
             }
-            const runningIssueUrls = new Set(this.takeOwnershipSpawnRepository.listRunningIssueUrls());
             const awaitingWorkspaceIssues = allOpenedIssues
                 .filter((issue) => issue.status === WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME && !issue.isClosed)
                 .map((issue) => ({ ...issue }));
@@ -214,10 +212,6 @@ class StartPreparationUseCase {
                 const issue = awaitingWorkspaceIssues[i];
                 if (issue.dependedIssueUrls.length > 0) {
                     exclusionCounts.dependedIssueUrls++;
-                    continue;
-                }
-                if (runningIssueUrls.has(issue.url)) {
-                    console.warn(`Skipping ${issue.url}: worker already running.`);
                     continue;
                 }
                 if (issue.nextActionDate !== null &&
