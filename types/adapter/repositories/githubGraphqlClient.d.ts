@@ -1,4 +1,5 @@
 export declare const GITHUB_GRAPHQL_ENDPOINT = "https://api.github.com/graphql";
+export declare const GITHUB_GRAPHQL_REQUEST_TIMEOUT_MS = 120000;
 export declare const RATE_LIMIT_SELECTION = "rateLimit { cost remaining }";
 export type GithubGraphqlRateLimit = {
     cost: number;
@@ -17,5 +18,6 @@ export declare const fetchGithubGraphql: (params: {
     ghToken: string;
     query: string;
     variables?: Record<string, unknown>;
+    timeoutMs?: number;
 }) => Promise<Response>;
 //# sourceMappingURL=githubGraphqlClient.d.ts.map

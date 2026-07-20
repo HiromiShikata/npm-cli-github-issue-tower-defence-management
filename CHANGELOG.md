@@ -1,3 +1,17 @@
+# [1.126.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.125.5...v1.126.0) (2026-07-20)
+
+
+### Bug Fixes
+
+* **githubGraphqlClient:** add bounded 120s request timeout to fetchGithubGraphql ([#1226](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1226)) ([647c328](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/647c328d71d4f22b7ce636362c92ef7df884ad2b))
+* **situation:** exclude closed items from immediately-actionable counts ([#1225](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1225)) ([a47b7d4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a47b7d45bb6feafe55ab5b66d2c828ee69679fb6))
+
+
+### Features
+
+* **preparation:** log spawn-candidate exclusion reasons and story-unset warning ([#1227](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1227)) ([38ccf35](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/38ccf35edbfd78ddac10f1ee2d2495d6ba8e830d))
+* **silent-monitor:** add self-diagnosis guidance to the main-stalled reminder ([#1221](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1221)) ([c619ff2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c619ff23c2d67e97ede008a131cabcc9f02884d5))
+
 ## [1.125.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.125.4...v1.125.5) (2026-07-19)
 
 

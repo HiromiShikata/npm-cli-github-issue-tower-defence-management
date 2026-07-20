@@ -3,9 +3,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetchGithubGraphql = exports.postGithubGraphqlJson = exports.logGithubGraphqlCost = exports.injectRateLimitSelection = exports.extractGraphqlOperationName = exports.isMutationOperation = exports.RATE_LIMIT_SELECTION = exports.GITHUB_GRAPHQL_ENDPOINT = void 0;
+exports.fetchGithubGraphql = exports.postGithubGraphqlJson = exports.logGithubGraphqlCost = exports.injectRateLimitSelection = exports.extractGraphqlOperationName = exports.isMutationOperation = exports.RATE_LIMIT_SELECTION = exports.GITHUB_GRAPHQL_REQUEST_TIMEOUT_MS = exports.GITHUB_GRAPHQL_ENDPOINT = void 0;
 const ky_1 = __importDefault(require("ky"));
 exports.GITHUB_GRAPHQL_ENDPOINT = 'https://api.github.com/graphql';
+exports.GITHUB_GRAPHQL_REQUEST_TIMEOUT_MS = 120000;
 exports.RATE_LIMIT_SELECTION = 'rateLimit { cost remaining }';
 const isMutationOperation = (query) => query.trimStart().startsWith('mutation');
 exports.isMutationOperation = isMutationOperation;
@@ -85,6 +86,7 @@ const fetchGithubGraphql = async (params) => {
             query: (0, exports.injectRateLimitSelection)(params.query),
             variables: params.variables,
         }),
+        signal: AbortSignal.timeout(params.timeoutMs ?? exports.GITHUB_GRAPHQL_REQUEST_TIMEOUT_MS),
     });
     if (response.ok) {
         const responseBody = await response
