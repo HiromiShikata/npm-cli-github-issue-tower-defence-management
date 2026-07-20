@@ -218,7 +218,6 @@ describe('StartPreparationUseCase', () => {
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
