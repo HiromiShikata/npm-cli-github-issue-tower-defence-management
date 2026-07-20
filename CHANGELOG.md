@@ -1,3 +1,10 @@
+## [1.126.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.126.1...v1.126.2) (2026-07-20)
+
+
+### Bug Fixes
+
+* **repository:** retry once and fail open on fetchProjectItemsLight pagination inconsistency ([#1233](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1233)) ([f4f310d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f4f310d73411ab46f7ff8b90827619fec4bded8e))
+
 ## [1.126.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.126.0...v1.126.1) (2026-07-20)
 
 
