@@ -48,6 +48,7 @@ const toPercent = (used: number, total: number): number =>
   total > 0 ? Math.round((used / total) * 1000) / 10 : 0;
 
 const isImmediatelyActionable = (issue: Issue): boolean =>
+  !issue.isClosed &&
   issue.dependedIssueUrls.length === 0 &&
   issue.nextActionDate === null &&
   issue.nextActionHour === null;

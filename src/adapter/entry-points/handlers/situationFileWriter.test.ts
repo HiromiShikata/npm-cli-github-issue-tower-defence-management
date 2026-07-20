@@ -121,6 +121,42 @@ describe('writeSituationFile', () => {
       );
     });
 
+    it('excludes closed items without reactivation triggers from immediately actionable counts', async () => {
+      const issues = [
+        createIssue({
+          status: 'Awaiting quality check',
+          state: 'CLOSED',
+          isClosed: true,
+        }),
+        createIssue({
+          status: 'Awaiting quality check',
+          state: 'MERGED',
+          isClosed: true,
+          isPr: true,
+        }),
+        createIssue({ status: 'Awaiting quality check' }),
+        createIssue({
+          status: 'Awaiting workspace',
+          state: 'CLOSED',
+          isClosed: true,
+        }),
+        createIssue({ status: 'Awaiting workspace' }),
+      ];
+
+      await writeSituationFile({ ...baseParams, issues });
+
+      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining(
+          '"awaitingQualityCheckImmediatelyActionable":1',
+        ),
+      );
+      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining('"awaitingWorkspaceImmediatelyActionable":1'),
+      );
+    });
+
     it('counts preparation total correctly', async () => {
       const issues = [
         createIssue({ status: 'Preparation' }),
