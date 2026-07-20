@@ -1,3 +1,10 @@
+## [1.126.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.126.0...v1.126.1) (2026-07-20)
+
+
+### Bug Fixes
+
+* **ci:** replace autogen force push with rebase and normal push in publish workflow ([#1231](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1231)) ([2f129cf](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2f129cf02b24874f19521229ecf498ca0376707a))
+
 # [1.126.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.125.5...v1.126.0) (2026-07-20)
 
 
