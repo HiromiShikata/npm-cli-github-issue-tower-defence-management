@@ -719,59 +719,76 @@ query GetProjectItemsLight($projectId: ID!, $after: String, $first: Int!, $query
       }
       return rawData.node.items;
     };
-    const lightItems: ProjectItemLight[] = [];
-    let after: string | null = null;
-    let hasNextPage = true;
-    let totalCount = 0;
-    let cumulativeRawNodes = 0;
-    let pageIndex = 0;
-    while (hasNextPage) {
-      if (after !== null) {
-        await new Promise((resolve) =>
-          setTimeout(resolve, PAGINATION_DELAY_MS),
-        );
-      }
-      const items = await callGraphql(after);
-      const pageNodes = items.nodes;
-      const pageInfo = items.pageInfo;
-      totalCount = items.totalCount;
-      cumulativeRawNodes += pageNodes.length;
-      pageIndex++;
-      console.log(
-        `fetchProjectItemsLight: page ${pageIndex}, nodes: ${pageNodes.length}, cumulative: ${cumulativeRawNodes}/${totalCount}`,
-      );
-      pageNodes.forEach((node) => {
-        if (!node || !node.content || !node.content.url) {
-          return;
+    const fetchAllLightPages = async (): Promise<{
+      lightItems: ProjectItemLight[];
+      inconsistencyMessage: string | null;
+    }> => {
+      const lightItems: ProjectItemLight[] = [];
+      let after: string | null = null;
+      let hasNextPage = true;
+      let totalCount = 0;
+      let cumulativeRawNodes = 0;
+      let pageIndex = 0;
+      let inconsistencyMessage: string | null = null;
+      while (hasNextPage) {
+        if (after !== null) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, PAGINATION_DELAY_MS),
+          );
         }
-        lightItems.push({
-          id: node.id,
-          updatedAt: node.updatedAt,
-          url: node.content.url,
-          number: node.content.number,
-        });
-      });
-      if (
-        pageNodes.length > 0 &&
-        !pageInfo.hasNextPage &&
-        cumulativeRawNodes < totalCount
-      ) {
-        throw new Error(
-          `fetchProjectItemsLight: page ${pageIndex} has ${pageNodes.length} nodes with hasNextPage=false but only ${cumulativeRawNodes}/${totalCount} items accumulated`,
+        const items = await callGraphql(after);
+        const pageNodes = items.nodes;
+        const pageInfo = items.pageInfo;
+        totalCount = items.totalCount;
+        cumulativeRawNodes += pageNodes.length;
+        pageIndex++;
+        console.log(
+          `fetchProjectItemsLight: page ${pageIndex}, nodes: ${pageNodes.length}, cumulative: ${cumulativeRawNodes}/${totalCount}`,
         );
+        pageNodes.forEach((node) => {
+          if (!node || !node.content || !node.content.url) {
+            return;
+          }
+          lightItems.push({
+            id: node.id,
+            updatedAt: node.updatedAt,
+            url: node.content.url,
+            number: node.content.number,
+          });
+        });
+        if (
+          pageNodes.length > 0 &&
+          !pageInfo.hasNextPage &&
+          cumulativeRawNodes < totalCount
+        ) {
+          inconsistencyMessage = `fetchProjectItemsLight: page ${pageIndex} has ${pageNodes.length} nodes with hasNextPage=false but only ${cumulativeRawNodes}/${totalCount} items accumulated`;
+        }
+        hasNextPage = pageInfo.hasNextPage;
+        after = pageInfo.endCursor;
       }
-      hasNextPage = pageInfo.hasNextPage;
-      after = pageInfo.endCursor;
-    }
-    console.log(
-      `fetchProjectItemsLight: completed, totalCount: ${totalCount}, cumulativeRawNodes: ${cumulativeRawNodes}, items: ${lightItems.length}`,
-    );
-    if (cumulativeRawNodes !== totalCount) {
-      throw new Error(
-        `fetchProjectItemsLight: expected ${totalCount} items but accumulated ${cumulativeRawNodes}`,
+      console.log(
+        `fetchProjectItemsLight: completed, totalCount: ${totalCount}, cumulativeRawNodes: ${cumulativeRawNodes}, items: ${lightItems.length}`,
       );
+      if (inconsistencyMessage === null && cumulativeRawNodes !== totalCount) {
+        inconsistencyMessage = `fetchProjectItemsLight: expected ${totalCount} items but accumulated ${cumulativeRawNodes}`;
+      }
+      return { lightItems, inconsistencyMessage };
+    };
+    const firstAttempt = await fetchAllLightPages();
+    if (firstAttempt.inconsistencyMessage === null) {
+      return firstAttempt.lightItems;
     }
-    return lightItems;
+    console.warn(
+      `${firstAttempt.inconsistencyMessage}, retrying full fetch once`,
+    );
+    const retryAttempt = await fetchAllLightPages();
+    if (retryAttempt.inconsistencyMessage === null) {
+      return retryAttempt.lightItems;
+    }
+    console.warn(
+      `${retryAttempt.inconsistencyMessage}, continuing with accumulated items after retry`,
+    );
+    return retryAttempt.lightItems;
   };
   fetchProjectItemsByIds = async (ids: string[]): Promise<ProjectItem[]> => {
     if (ids.length === 0) {
