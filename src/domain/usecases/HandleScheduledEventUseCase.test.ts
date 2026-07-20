@@ -1056,6 +1056,24 @@ describe('HandleScheduledEventUseCase', () => {
         expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
       });
 
+      it('should not create or comment an incident issue for a fetch AbortSignal timeout DOMException', async () => {
+        const timeoutError = new DOMException(
+          'The operation was aborted due to timeout',
+          'TimeoutError',
+        );
+        mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
+          timeoutError,
+        );
+
+        await expect(useCase.run(errorInput)).rejects.toThrow(
+          'The operation was aborted due to timeout',
+        );
+
+        expect(mockIssueRepository.searchIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      });
+
       it('should not create or comment an incident issue for a ky TimeoutError (matched by error name)', async () => {
         const timeoutError = new Error(
           'Request timed out: POST https://api.github.com/graphql',
