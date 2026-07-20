@@ -70,5 +70,9 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "autogen: release"
-            git push --force origin main
+            git pull --rebase origin main
+            if ! git push origin main; then
+              git pull --rebase origin main
+              git push origin main
+            fi
           fi
