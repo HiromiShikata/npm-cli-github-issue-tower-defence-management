@@ -1,4 +1,5 @@
 import { Issue } from '../../../domain/entities/Issue';
+import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { LocalCommandRunner } from '../../../domain/usecases/adapter-interfaces/LocalCommandRunner';
 import { reconcileInTmuxByHumanSessions } from './inTmuxByHumanSessionReconciler';
 
@@ -39,6 +40,16 @@ const createMockRunner = (): Mocked<LocalCommandRunner> => ({
   runCommand: jest.fn(),
 });
 
+const createIssueStateRepository = (
+  state = 'open',
+): Pick<IssueRepository, 'getIssueOrPullRequestState'> => ({
+  getIssueOrPullRequestState: async () => ({
+    state,
+    merged: false,
+    isPullRequest: false,
+  }),
+});
+
 describe('reconcileInTmuxByHumanSessions', () => {
   it('does nothing when no launcher command is configured', async () => {
     const runner = createMockRunner();
@@ -48,6 +59,7 @@ describe('reconcileInTmuxByHumanSessions', () => {
       assigneeLogin: ASSIGNEE,
       issues: [makeIssue()],
       localCommandRunner: runner,
+      issueStateRepository: createIssueStateRepository(),
       now: NOW,
     });
 
@@ -71,6 +83,7 @@ describe('reconcileInTmuxByHumanSessions', () => {
       assigneeLogin: ASSIGNEE,
       issues: [makeIssue()],
       localCommandRunner: runner,
+      issueStateRepository: createIssueStateRepository(),
       now: NOW,
     });
 
@@ -118,6 +131,30 @@ describe('reconcileInTmuxByHumanSessions', () => {
       assigneeLogin: ASSIGNEE,
       issues: [makeIssue()],
       localCommandRunner: runner,
+      issueStateRepository: createIssueStateRepository(),
+      now: NOW,
+    });
+
+    const newSessionCalls = runner.runCommand.mock.calls.filter(
+      (call) => call[0] === 'tmux' && call[1][0] === 'new-session',
+    );
+    expect(newSessionCalls).toHaveLength(0);
+  });
+
+  it('does not launch when the live GitHub state of the issue is closed', async () => {
+    const runner = createMockRunner();
+    runner.runCommand.mockImplementation(async () => ({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    }));
+
+    await reconcileInTmuxByHumanSessions({
+      inTmuxLauncherCommand: 'cl',
+      assigneeLogin: ASSIGNEE,
+      issues: [makeIssue()],
+      localCommandRunner: runner,
+      issueStateRepository: createIssueStateRepository('closed'),
       now: NOW,
     });
 

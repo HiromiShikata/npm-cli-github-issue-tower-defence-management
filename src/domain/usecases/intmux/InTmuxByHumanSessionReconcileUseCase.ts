@@ -1,5 +1,6 @@
 import { Issue } from '../../entities/Issue';
 import { IN_TMUX_STATUS_NAME } from '../../entities/WorkflowStatus';
+import { IssueRepository } from '../adapter-interfaces/IssueRepository';
 import { TmuxSessionRepository } from '../adapter-interfaces/TmuxSessionRepository';
 
 export type InTmuxByHumanSessionReconcileInput = {
@@ -25,7 +26,13 @@ export const toTmuxSessionName = (issueUrl: string): string =>
   issueUrl.replace(/[.:]/g, '_');
 
 export class InTmuxByHumanSessionReconcileUseCase {
-  constructor(private readonly tmuxSessionRepository: TmuxSessionRepository) {}
+  constructor(
+    private readonly tmuxSessionRepository: TmuxSessionRepository,
+    private readonly issueStateRepository: Pick<
+      IssueRepository,
+      'getIssueOrPullRequestState'
+    >,
+  ) {}
 
   run = async (
     input: InTmuxByHumanSessionReconcileInput,
@@ -50,6 +57,11 @@ export class InTmuxByHumanSessionReconcileUseCase {
       if (
         this.hasLiveSession(issue.url, liveSessionNames, processCommandLines)
       ) {
+        continue;
+      }
+      const liveState =
+        await this.issueStateRepository.getIssueOrPullRequestState(issue.url);
+      if (liveState.state.toLowerCase() !== 'open') {
         continue;
       }
       await this.tmuxSessionRepository.launchDetachedSession(
