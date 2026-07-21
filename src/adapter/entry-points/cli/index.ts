@@ -130,11 +130,22 @@ const buildGithubRepositoryParams = (
   token,
 ];
 
+const parseInTmuxProjectOrder = (raw: string | undefined): string[] | null => {
+  if (raw === undefined) {
+    return null;
+  }
+  return raw
+    .split(',')
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0);
+};
+
 interface ScheduleOptions {
   trigger: 'issue' | 'schedule';
   config: string;
   issue?: string;
   verbose: boolean;
+  inTmuxProjectOrder?: string;
 }
 
 export const program = new Command();
@@ -154,6 +165,10 @@ program
   .requiredOption('-c, --config <path>', 'Path to config YAML file')
   .option('-v, --verbose', 'Verbose output')
   .option('-i, --issue <url>', 'GitHub Issue URL')
+  .option(
+    '--inTmuxProjectOrder <names>',
+    'Comma-separated project names, in display order, for the in-tmux-by-human session list. When omitted, falls back to the inTmuxProjectOrder value in the config file.',
+  )
   .action(async (options: ScheduleOptions) => {
     if (options.trigger === 'issue' && !options.issue) {
       console.error('Issue URL is required when trigger type is "issue"');
@@ -163,7 +178,11 @@ program
       const { HandleScheduledEventUseCaseHandler } =
         await import('../handlers/HandleScheduledEventUseCaseHandler');
       const handler = new HandleScheduledEventUseCaseHandler();
-      await handler.handle(options.config, options.verbose);
+      await handler.handle(
+        options.config,
+        options.verbose,
+        parseInTmuxProjectOrder(options.inTmuxProjectOrder),
+      );
     }
   });
 

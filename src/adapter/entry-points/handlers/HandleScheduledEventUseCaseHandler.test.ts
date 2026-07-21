@@ -126,9 +126,13 @@ jest.mock('./situationFileWriter', () => ({
 jest.mock('./rotationOrderFileWriter', () => ({
   writeRotationOrderFile: jest.fn(),
 }));
+jest.mock('./inTmuxByHumanDataWriter', () => ({
+  writeInTmuxByHumanData: jest.fn(),
+}));
 
 import { HandleScheduledEventUseCaseHandler } from './HandleScheduledEventUseCaseHandler';
 import { writeSituationFile } from './situationFileWriter';
+import { writeInTmuxByHumanData } from './inTmuxByHumanDataWriter';
 import { GraphqlProjectRepository } from '../../repositories/GraphqlProjectRepository';
 import { ApiV3IssueRepository } from '../../repositories/issue/ApiV3IssueRepository';
 import { RestIssueRepository } from '../../repositories/issue/RestIssueRepository';
@@ -148,6 +152,7 @@ const MockedApiV3CheerioRestIssueRepository = jest.mocked(
 const MockedProxyClaudeTokenUsageRepository = jest.mocked(
   ProxyClaudeTokenUsageRepository,
 );
+const MockedWriteInTmuxByHumanData = jest.mocked(writeInTmuxByHumanData);
 
 const validConfig = {
   projectName: 'test-project',
@@ -575,6 +580,67 @@ defaultAgentName: readme-agent
       expect(consoleLogSpy).toHaveBeenCalledWith(
         'Effective defaultAgentName: null (source: unset (default))',
       );
+    });
+  });
+
+  describe('inTmuxProjectOrder override', () => {
+    const getInTmuxProjectOrderArg = (): string[] | null | undefined => {
+      const call = MockedWriteInTmuxByHumanData.mock.calls[0];
+      if (call === undefined) {
+        throw new Error('writeInTmuxByHumanData was not called');
+      }
+      return call[0].inTmuxProjectOrder;
+    };
+
+    it('should use the CLI override when provided, ignoring the config value', async () => {
+      jest.mocked(fs.readFileSync).mockReturnValue(
+        YAML.stringify({
+          ...validConfig,
+          inTmuxProjectOrder: ['alpha', 'beta'],
+        }),
+      );
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false, ['gamma', 'delta']);
+
+      expect(getInTmuxProjectOrderArg()).toEqual(['gamma', 'delta']);
+    });
+
+    it('should fall back to the config value when the CLI override is null', async () => {
+      jest.mocked(fs.readFileSync).mockReturnValue(
+        YAML.stringify({
+          ...validConfig,
+          inTmuxProjectOrder: ['alpha', 'beta'],
+        }),
+      );
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false, null);
+
+      expect(getInTmuxProjectOrderArg()).toEqual(['alpha', 'beta']);
+    });
+
+    it('should fall back to the config value when the override argument is omitted', async () => {
+      jest.mocked(fs.readFileSync).mockReturnValue(
+        YAML.stringify({
+          ...validConfig,
+          inTmuxProjectOrder: ['alpha', 'beta'],
+        }),
+      );
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(getInTmuxProjectOrderArg()).toEqual(['alpha', 'beta']);
+    });
+
+    it('should pass null when neither the override nor the config provides a value', async () => {
+      jest.mocked(fs.readFileSync).mockReturnValue(YAML.stringify(validConfig));
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false, null);
+
+      expect(getInTmuxProjectOrderArg()).toBeNull();
     });
   });
 });

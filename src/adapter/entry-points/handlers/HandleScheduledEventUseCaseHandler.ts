@@ -86,6 +86,7 @@ export class HandleScheduledEventUseCaseHandler {
   handle = async (
     configFilePath: string,
     _verbose: boolean,
+    inTmuxProjectOrderOverride: string[] | null = null,
   ): Promise<{
     project: Project;
     issues: Issue[];
@@ -520,7 +521,10 @@ export class HandleScheduledEventUseCaseHandler {
           inTmuxDataOutputDir: mergedInput.inTmuxDataOutputDir ?? null,
           inTmuxConsoleBaseUrl: mergedInput.inTmuxConsoleBaseUrl ?? null,
           inTmuxConsoleToken: mergedInput.inTmuxConsoleToken ?? null,
-          inTmuxProjectOrder: mergedInput.inTmuxProjectOrder ?? null,
+          inTmuxProjectOrder:
+            inTmuxProjectOrderOverride ??
+            mergedInput.inTmuxProjectOrder ??
+            null,
           pjcode: input.projectName,
           assigneeLogin: input.manager,
           org: input.org,
