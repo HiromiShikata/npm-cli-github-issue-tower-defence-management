@@ -103,6 +103,7 @@ describe('startProxy', () => {
   let proxyPort = 0;
   let writeRateLimitSpy: jest.SpyInstance;
   let writeModelRateLimitSpy: jest.SpyInstance;
+  let writeFableRejectionSpy: jest.SpyInstance;
 
   const listen = (server: http.Server): Promise<number> =>
     new Promise((resolve) => {
@@ -191,6 +192,9 @@ describe('startProxy', () => {
     writeModelRateLimitSpy = jest
       .spyOn(RateLimitCache, 'writeModelRateLimit')
       .mockImplementation(() => undefined);
+    writeFableRejectionSpy = jest
+      .spyOn(RateLimitCache, 'writeFableRejection')
+      .mockImplementation(() => undefined);
 
     proxyPort = await new Promise<number>((resolve) => {
       const probe = http.createServer();
@@ -207,6 +211,7 @@ describe('startProxy', () => {
     httpsRequestImpl = null;
     writeRateLimitSpy.mockRestore();
     writeModelRateLimitSpy.mockRestore();
+    writeFableRejectionSpy.mockRestore();
     await closeServer(proxyServer);
     await closeServer(upstreamServer);
   });
@@ -306,6 +311,74 @@ describe('startProxy', () => {
       expect.objectContaining({ 'content-type': 'application/json' }),
       429,
     );
+  });
+
+  it('should mark the fable weekly limit when a fable-model request is rejected with 429', async () => {
+    upstreamHandler = (_request, response) => {
+      response.writeHead(429, {
+        'content-type': 'application/json',
+        'retry-after': '120',
+      });
+      response.end('{"type":"error","error":{"type":"rate_limit_error"}}');
+    };
+
+    const response = await requestThroughProxy(
+      'POST',
+      '/v1/messages',
+      JSON.stringify({ model: 'claude-fable-5', messages: [] }),
+    );
+
+    expect(response.statusCode).toBe(429);
+    expect(writeFableRejectionSpy).toHaveBeenCalledTimes(1);
+    expect(writeFableRejectionSpy).toHaveBeenCalledWith(TOKEN, 120);
+  });
+
+  it('should not mark the fable weekly limit when a non-fable request is rejected with 429', async () => {
+    upstreamHandler = (_request, response) => {
+      response.writeHead(429, { 'content-type': 'application/json' });
+      response.end('{"type":"error","error":{"type":"rate_limit_error"}}');
+    };
+
+    const response = await requestThroughProxy(
+      'POST',
+      '/v1/messages',
+      JSON.stringify({ model: 'claude-sonnet-4-6', messages: [] }),
+    );
+
+    expect(response.statusCode).toBe(429);
+    expect(writeFableRejectionSpy).not.toHaveBeenCalled();
+  });
+
+  it('should not mark the fable weekly limit when a fable request succeeds', async () => {
+    upstreamHandler = (_request, response) => {
+      response.writeHead(200, { 'content-type': 'application/json' });
+      response.end('{"model":"claude-fable-5"}');
+    };
+
+    const response = await requestThroughProxy(
+      'POST',
+      '/v1/messages',
+      JSON.stringify({ model: 'claude-fable-5', messages: [] }),
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(writeFableRejectionSpy).not.toHaveBeenCalled();
+  });
+
+  it('should mark the fable weekly limit with a null retry-after when the header is absent', async () => {
+    upstreamHandler = (_request, response) => {
+      response.writeHead(429, { 'content-type': 'application/json' });
+      response.end('{"type":"error","error":{"type":"rate_limit_error"}}');
+    };
+
+    const response = await requestThroughProxy(
+      'POST',
+      '/v1/messages',
+      JSON.stringify({ model: 'claude-fable-5', messages: [] }),
+    );
+
+    expect(response.statusCode).toBe(429);
+    expect(writeFableRejectionSpy).toHaveBeenCalledWith(TOKEN, null);
   });
 
   it('should forward non-SSE responses without crashing', async () => {

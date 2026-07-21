@@ -23,12 +23,14 @@ const candidate = (
   snapshotValue: OauthTokenWindowSnapshot | null,
   subscriptionDisabled = false,
   unifiedRejected = false,
+  fableRejected = false,
 ): OauthTokenCandidate => ({
   name,
   token: `fake-token-${name}`,
   snapshot: snapshotValue,
   subscriptionDisabled,
   unifiedRejected,
+  fableRejected,
 });
 
 describe('OauthTokenSelectUseCase', () => {
@@ -220,5 +222,28 @@ describe('OauthTokenSelectUseCase', () => {
     const rejected = result.metrics.find((m) => m.name === 'rejected');
     expect(rejected?.eligible).toBe(false);
     expect(rejected?.exclusionReason).toContain('rejected');
+  });
+
+  it('excludes a fable-rejected token even when rate-limit windows are fully free', () => {
+    const result = useCase.run(
+      [
+        candidate('fable-out', snapshot({}), false, false, true),
+        candidate('active', snapshot({}), false, false, false),
+      ],
+      NOW,
+    );
+
+    expect(result.selected?.name).toBe('active');
+    const fableOut = result.metrics.find((m) => m.name === 'fable-out');
+    expect(fableOut?.eligible).toBe(false);
+    expect(fableOut?.exclusionReason).toContain('fable weekly limit exhausted');
+  });
+
+  it('treats a token without a fable marker as eligible for fable selection', () => {
+    const result = useCase.run([candidate('alive', snapshot({}))], NOW);
+
+    expect(result.selected?.name).toBe('alive');
+    const alive = result.metrics.find((m) => m.name === 'alive');
+    expect(alive?.eligible).toBe(true);
   });
 });

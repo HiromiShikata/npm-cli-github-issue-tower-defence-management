@@ -24,12 +24,14 @@ const candidate = (
   snapshotValue: OauthTokenWindowSnapshot | null,
   subscriptionDisabled = false,
   unifiedRejected = false,
+  fableRejected = false,
 ): OauthTokenCandidate => ({
   name,
   token: `fake-token-${name}`,
   snapshot: snapshotValue,
   subscriptionDisabled,
   unifiedRejected,
+  fableRejected,
 });
 
 const session = (name: string, sessionKey: string): ClaudeLiveSession => ({

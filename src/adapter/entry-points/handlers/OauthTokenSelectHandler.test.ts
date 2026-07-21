@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { hashToken } from '../../proxy/RateLimitCache';
+import { FABLE_LIMIT_TYPE, hashToken } from '../../proxy/RateLimitCache';
 import {
   OauthTokenSelectHandler,
   resolveCacheDirectory,
@@ -94,6 +94,28 @@ describe('OauthTokenSelectHandler', () => {
     headers: Record<string, string>,
   ): void => {
     const payload = { ts: NOW, headers, modelWeeklyLimits: {} };
+    fs.writeFileSync(
+      path.join(cacheDirectory, `${hashToken(token)}.json`),
+      JSON.stringify(payload),
+    );
+  };
+
+  const writeFableRejectionCache = (token: string, resetsAt: number): void => {
+    const payload = {
+      ts: NOW,
+      headers: {
+        'anthropic-ratelimit-unified-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': String(NOW + HOUR),
+        'anthropic-ratelimit-unified-5h-utilization': '0.1',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': String(NOW + DAY),
+        'anthropic-ratelimit-unified-7d-utilization': '0.1',
+      },
+      modelWeeklyLimits: {
+        [FABLE_LIMIT_TYPE]: { rejected: true, resetsAt },
+      },
+    };
     fs.writeFileSync(
       path.join(cacheDirectory, `${hashToken(token)}.json`),
       JSON.stringify(payload),
@@ -246,6 +268,48 @@ describe('OauthTokenSelectHandler', () => {
 
     expect(output.selectedName).toBe('active');
     expect(output.diagnostics.join('\n')).toContain('rejected');
+  });
+
+  it('excludes a token whose fable marker is set and not yet expired', () => {
+    writeTokenList([
+      { name: 'fable-out', token: 'fake-fable-out' },
+      { name: 'active', token: 'fake-active' },
+    ]);
+    writeFableRejectionCache('fake-fable-out', NOW + HOUR);
+    writeCache('fake-active', {
+      fiveHourUtilization: 0.1,
+      fiveHourReset: NOW + HOUR,
+      sevenDayUtilization: 0.1,
+      sevenDayReset: NOW + DAY,
+    });
+
+    const handler = new OauthTokenSelectHandler();
+    const output = handler.handle({
+      tokenListJsonPath: tokenListPath,
+      cacheDirectory,
+      nowEpochSeconds: NOW,
+    });
+
+    expect(output.selectedName).toBe('active');
+    expect(output.diagnostics.join('\n')).toContain(
+      'fable weekly limit exhausted',
+    );
+  });
+
+  it('treats a token whose fable marker has expired as usable', () => {
+    writeTokenList([
+      { name: 'fable-recovered', token: 'fake-fable-recovered' },
+    ]);
+    writeFableRejectionCache('fake-fable-recovered', NOW - HOUR);
+
+    const handler = new OauthTokenSelectHandler();
+    const output = handler.handle({
+      tokenListJsonPath: tokenListPath,
+      cacheDirectory,
+      nowEpochSeconds: NOW,
+    });
+
+    expect(output.selectedName).toBe('fable-recovered');
   });
 
   it('does not exclude a token solely because overage is disabled', () => {

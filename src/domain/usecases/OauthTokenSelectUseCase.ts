@@ -11,6 +11,7 @@ export type OauthTokenCandidate = {
   snapshot: OauthTokenWindowSnapshot | null;
   subscriptionDisabled: boolean;
   unifiedRejected: boolean;
+  fableRejected: boolean;
 };
 
 export type OauthTokenCandidateMetrics = {
@@ -79,6 +80,7 @@ export class OauthTokenSelectUseCase {
     const exclusionReason = this.exclusionReason(
       candidate.subscriptionDisabled,
       candidate.unifiedRejected,
+      candidate.fableRejected,
       fiveHourFreeRatio,
       sevenDayFreeRatio,
     );
@@ -96,6 +98,7 @@ export class OauthTokenSelectUseCase {
   private exclusionReason = (
     subscriptionDisabled: boolean,
     unifiedRejected: boolean,
+    fableRejected: boolean,
     fiveHourFreeRatio: number,
     sevenDayFreeRatio: number,
   ): string | null => {
@@ -104,6 +107,9 @@ export class OauthTokenSelectUseCase {
     }
     if (unifiedRejected) {
       return 'token request was rejected (anthropic-ratelimit-unified-status: rejected)';
+    }
+    if (fableRejected) {
+      return 'fable weekly limit exhausted (a fable request was rejected with HTTP 429)';
     }
     if (fiveHourFreeRatio < FIVE_HOUR_MIN_FREE_RATIO) {
       return `5h window only ${this.toPercent(fiveHourFreeRatio)}% free (requires >= ${this.toPercent(FIVE_HOUR_MIN_FREE_RATIO)}%)`;

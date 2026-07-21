@@ -6,7 +6,7 @@ import {
   ClaudeLiveSessionRepository,
 } from '../../../domain/usecases/adapter-interfaces/ClaudeLiveSessionRepository';
 import { LiveSessionOauthTokenSelectUseCase } from '../../../domain/usecases/LiveSessionOauthTokenSelectUseCase';
-import { hashToken } from '../../proxy/RateLimitCache';
+import { FABLE_LIMIT_TYPE, hashToken } from '../../proxy/RateLimitCache';
 import { LiveSessionOauthTokenSelectHandler } from './LiveSessionOauthTokenSelectHandler';
 
 const NOW = 2_000_000;
@@ -114,6 +114,54 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
       new LiveSessionOauthTokenSelectUseCase(),
       new FakeClaudeLiveSessionRepository(sessions),
     );
+
+  const writeFableRejectionCache = (token: string, resetsAt: number): void => {
+    const payload = {
+      ts: NOW,
+      headers: {
+        'anthropic-ratelimit-unified-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': String(NOW + HOUR),
+        'anthropic-ratelimit-unified-5h-utilization': '0.1',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': String(NOW + DAY),
+        'anthropic-ratelimit-unified-7d-utilization': '0.1',
+      },
+      modelWeeklyLimits: {
+        [FABLE_LIMIT_TYPE]: { rejected: true, resetsAt },
+      },
+    };
+    fs.writeFileSync(
+      path.join(cacheDirectory, `${hashToken(token)}.json`),
+      JSON.stringify(payload),
+    );
+  };
+
+  it('excludes a token whose fable marker is set even when it is unoccupied', () => {
+    writeTokenList([
+      { name: 'fable-out', token: 'fake-fable-out' },
+      { name: 'active', token: 'fake-active' },
+    ]);
+    writeFableRejectionCache('fake-fable-out', NOW + HOUR);
+    writeCache('fake-active', {
+      fiveHourUtilization: 0.1,
+      fiveHourReset: NOW + HOUR,
+      sevenDayUtilization: 0.1,
+      sevenDayReset: NOW + DAY,
+    });
+
+    const handler = buildHandler([]);
+    const output = handler.handle({
+      tokenListJsonPath: tokenListPath,
+      cacheDirectory,
+      nowEpochSeconds: NOW,
+    });
+
+    expect(output.selectedName).toBe('active');
+    expect(output.diagnostics.join('\n')).toContain(
+      'fable weekly limit exhausted',
+    );
+  });
 
   it('selects the eligible token with the fewest live sessions', () => {
     writeTokenList([

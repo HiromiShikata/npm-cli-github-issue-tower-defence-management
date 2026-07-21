@@ -4,13 +4,16 @@ import * as path from 'path';
 import {
   cacheDir,
   cachePathForToken,
+  FABLE_LIMIT_TYPE,
   hashToken,
   HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS,
   HEADERLESS_429_MAX_COOLDOWN_SECONDS,
+  isFableModel,
   parseModelRateLimitsFromBody,
   parseModelRateLimitsFromHeaders,
   PERMISSION_DISABLED_COOLDOWN_SECONDS,
   readRateLimit,
+  writeFableRejection,
   writeModelRateLimit,
   writeRateLimit,
   writeSubscriptionDisabled,
@@ -699,6 +702,81 @@ describe('RateLimitCache', () => {
     });
   });
 
+  describe('isFableModel', () => {
+    it('should return true for the fable model id', () => {
+      expect(isFableModel('claude-fable-5')).toBe(true);
+    });
+
+    it('should be case insensitive', () => {
+      expect(isFableModel('Claude-FABLE-5')).toBe(true);
+    });
+
+    it('should return false for sonnet and opus models', () => {
+      expect(isFableModel('claude-sonnet-4-6')).toBe(false);
+      expect(isFableModel('claude-opus-4-8')).toBe(false);
+    });
+
+    it('should return false for a null model', () => {
+      expect(isFableModel(null)).toBe(false);
+    });
+  });
+
+  describe('writeFableRejection', () => {
+    it('should persist a rejected fable weekly limit readable by readRateLimit', () => {
+      const token = 'fable-rejection-token';
+      const nowEpochSeconds = Date.now() / 1000;
+      writeFableRejection(token, 120);
+      const snapshot = readRateLimit(token);
+      const fableLimit = snapshot?.modelWeeklyLimits[FABLE_LIMIT_TYPE];
+      expect(fableLimit?.rejected).toBe(true);
+      expect(fableLimit?.resetsAt).toBeGreaterThanOrEqual(
+        nowEpochSeconds + 120,
+      );
+      expect(fableLimit?.resetsAt).toBeLessThanOrEqual(
+        nowEpochSeconds + 120 + 5,
+      );
+    });
+
+    it('should cap the reset from an oversized retry-after at the max cooldown', () => {
+      const token = 'fable-rejection-cap-token';
+      const nowEpochSeconds = Date.now() / 1000;
+      writeFableRejection(token, HEADERLESS_429_MAX_COOLDOWN_SECONDS + 10_000);
+      const fableLimit =
+        readRateLimit(token)?.modelWeeklyLimits[FABLE_LIMIT_TYPE];
+      expect(fableLimit?.resetsAt).toBeLessThanOrEqual(
+        nowEpochSeconds + HEADERLESS_429_MAX_COOLDOWN_SECONDS + 5,
+      );
+    });
+
+    it('should use the default cooldown when retry-after is absent', () => {
+      const token = 'fable-rejection-default-token';
+      const nowEpochSeconds = Date.now() / 1000;
+      writeFableRejection(token, null);
+      const fableLimit =
+        readRateLimit(token)?.modelWeeklyLimits[FABLE_LIMIT_TYPE];
+      expect(fableLimit?.resetsAt).toBeGreaterThanOrEqual(
+        nowEpochSeconds + HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS,
+      );
+      expect(fableLimit?.resetsAt).toBeLessThanOrEqual(
+        nowEpochSeconds + HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS + 5,
+      );
+    });
+
+    it('should preserve other model weekly limits already recorded', () => {
+      const token = 'fable-rejection-merge-token';
+      writeModelRateLimit(token, {
+        seven_day_sonnet: { rejected: true, resetsAt: 1779642000 },
+      });
+      writeFableRejection(token, 90);
+      const limits = readRateLimit(token)?.modelWeeklyLimits;
+      expect(limits?.seven_day_sonnet).toEqual({
+        rejected: true,
+        resetsAt: 1779642000,
+      });
+      expect(limits?.[FABLE_LIMIT_TYPE]?.rejected).toBe(true);
+    });
+  });
+
   describe('parseModelRateLimitsFromHeaders', () => {
     it('should extract a rejected seven_day_sonnet limit from the per-model unified headers', () => {
       expect(
@@ -915,6 +993,7 @@ describe('RateLimitCache', () => {
                   },
             subscriptionDisabled: snapshot?.subscriptionDisabled ?? false,
             unifiedRejected: snapshot?.unifiedRejected ?? false,
+            fableRejected: false,
           },
         ],
         Date.now() / 1000,

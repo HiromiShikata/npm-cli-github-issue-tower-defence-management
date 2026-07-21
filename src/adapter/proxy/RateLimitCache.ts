@@ -28,6 +28,8 @@ export interface RateLimitSnapshot {
 
 export const PROXY_PORT = 8787;
 
+export const FABLE_LIMIT_TYPE = 'seven_day_fable';
+
 const HASH_ALGORITHM = 'sha256';
 
 export const HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS = 90;
@@ -180,6 +182,22 @@ export const writeModelRateLimit = (
     modelWeeklyLimits: merged,
   };
   fs.writeFileSync(filePath, JSON.stringify(payload));
+};
+
+export const isFableModel = (modelName: string | null): boolean =>
+  (modelName ?? '').toLowerCase().includes('fable');
+
+export const writeFableRejection = (
+  token: string,
+  retryAfterSeconds: number | null,
+): void => {
+  const resetsAt = cooldownEndFromRetryAfter(
+    retryAfterSeconds,
+    Date.now() / 1000,
+  );
+  writeModelRateLimit(token, {
+    [FABLE_LIMIT_TYPE]: { rejected: true, resetsAt },
+  });
 };
 
 export const writeSubscriptionDisabled = (

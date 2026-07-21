@@ -13,6 +13,7 @@ const candidate = (name: string): OauthTokenCandidate => ({
   snapshot: null,
   subscriptionDisabled: false,
   unifiedRejected: false,
+  fableRejected: false,
 });
 
 const session = (
