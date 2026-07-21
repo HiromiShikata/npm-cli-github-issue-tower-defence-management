@@ -5,6 +5,7 @@ import {
   hashToken,
   isFableModel,
   parseModelRateLimitsFromBody,
+  parseSevenDayRejection,
   writeFableRejection,
   writeModelRateLimit,
   writeRateLimit,
@@ -150,10 +151,15 @@ const startProxy = (
                   Buffer.concat(requestChunks).toString('utf8'),
                 );
                 if (isFableModel(requestModel)) {
-                  writeFableRejection(
-                    token,
-                    parseRetryAfterSeconds(upstreamResponse.headers),
-                  );
+                  const { sevenDayRejected, sevenDayReset } =
+                    parseSevenDayRejection(upstreamResponse.headers);
+                  if (sevenDayRejected) {
+                    writeFableRejection(
+                      token,
+                      parseRetryAfterSeconds(upstreamResponse.headers),
+                      sevenDayReset,
+                    );
+                  }
                 }
               } catch (error) {
                 console.error('Failed to write fable rejection cache:', error);

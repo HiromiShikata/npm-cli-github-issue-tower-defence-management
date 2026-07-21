@@ -11,6 +11,7 @@ import {
   isFableModel,
   parseModelRateLimitsFromBody,
   parseModelRateLimitsFromHeaders,
+  parseSevenDayRejection,
   PERMISSION_DISABLED_COOLDOWN_SECONDS,
   readRateLimit,
   writeFableRejection,
@@ -774,6 +775,74 @@ describe('RateLimitCache', () => {
         resetsAt: 1779642000,
       });
       expect(limits?.[FABLE_LIMIT_TYPE]?.rejected).toBe(true);
+    });
+
+    it('should use the seven-day reset for resetsAt when provided instead of the retry-after cooldown', () => {
+      const token = 'fable-rejection-sevenday-reset-token';
+      const sevenDayReset = 1893456000;
+      writeFableRejection(token, 120, sevenDayReset);
+      const fableLimit =
+        readRateLimit(token)?.modelWeeklyLimits[FABLE_LIMIT_TYPE];
+      expect(fableLimit?.rejected).toBe(true);
+      expect(fableLimit?.resetsAt).toBe(sevenDayReset);
+    });
+
+    it('should fall back to the retry-after cooldown when the seven-day reset is null', () => {
+      const token = 'fable-rejection-null-reset-token';
+      const nowEpochSeconds = Date.now() / 1000;
+      writeFableRejection(token, 120, null);
+      const fableLimit =
+        readRateLimit(token)?.modelWeeklyLimits[FABLE_LIMIT_TYPE];
+      expect(fableLimit?.resetsAt).toBeGreaterThanOrEqual(
+        nowEpochSeconds + 120,
+      );
+      expect(fableLimit?.resetsAt).toBeLessThanOrEqual(
+        nowEpochSeconds + 120 + 5,
+      );
+    });
+  });
+
+  describe('parseSevenDayRejection', () => {
+    it('should report a rejection and the reset epoch when the 7-day status is rejected', () => {
+      expect(
+        parseSevenDayRejection({
+          'anthropic-ratelimit-unified-7d-status': 'rejected',
+          'anthropic-ratelimit-unified-7d-reset': '1893456000',
+        }),
+      ).toEqual({ sevenDayRejected: true, sevenDayReset: 1893456000 });
+    });
+
+    it('should report no rejection when only the 5-hour status is rejected', () => {
+      expect(
+        parseSevenDayRejection({
+          'anthropic-ratelimit-unified-5h-status': 'rejected',
+          'anthropic-ratelimit-unified-7d-status': 'allowed',
+        }),
+      ).toEqual({ sevenDayRejected: false, sevenDayReset: null });
+    });
+
+    it('should report no rejection when no rate-limit headers are present', () => {
+      expect(parseSevenDayRejection({})).toEqual({
+        sevenDayRejected: false,
+        sevenDayReset: null,
+      });
+    });
+
+    it('should return a null reset when the 7-day status is rejected but no reset header is present', () => {
+      expect(
+        parseSevenDayRejection({
+          'anthropic-ratelimit-unified-7d-status': 'rejected',
+        }),
+      ).toEqual({ sevenDayRejected: true, sevenDayReset: null });
+    });
+
+    it('should pick the first value when a header is an array', () => {
+      expect(
+        parseSevenDayRejection({
+          'anthropic-ratelimit-unified-7d-status': ['rejected', 'allowed'],
+          'anthropic-ratelimit-unified-7d-reset': ['1893456000'],
+        }),
+      ).toEqual({ sevenDayRejected: true, sevenDayReset: 1893456000 });
     });
   });
 

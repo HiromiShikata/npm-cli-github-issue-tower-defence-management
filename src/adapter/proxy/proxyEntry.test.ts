@@ -313,11 +313,14 @@ describe('startProxy', () => {
     );
   });
 
-  it('should mark the fable weekly limit when a fable-model request is rejected with 429', async () => {
+  it('should mark the fable weekly limit when a fable 429 carries a rejected 7-day status, using the 7-day reset', async () => {
+    const sevenDayReset = 1893456000;
     upstreamHandler = (_request, response) => {
       response.writeHead(429, {
         'content-type': 'application/json',
         'retry-after': '120',
+        'anthropic-ratelimit-unified-7d-status': 'rejected',
+        'anthropic-ratelimit-unified-7d-reset': String(sevenDayReset),
       });
       response.end('{"type":"error","error":{"type":"rate_limit_error"}}');
     };
@@ -330,12 +333,78 @@ describe('startProxy', () => {
 
     expect(response.statusCode).toBe(429);
     expect(writeFableRejectionSpy).toHaveBeenCalledTimes(1);
-    expect(writeFableRejectionSpy).toHaveBeenCalledWith(TOKEN, 120);
+    expect(writeFableRejectionSpy).toHaveBeenCalledWith(
+      TOKEN,
+      120,
+      sevenDayReset,
+    );
   });
 
-  it('should not mark the fable weekly limit when a non-fable request is rejected with 429', async () => {
+  it('should fall back to retry-after for the reset when a rejected 7-day status carries no 7-day reset header', async () => {
+    upstreamHandler = (_request, response) => {
+      response.writeHead(429, {
+        'content-type': 'application/json',
+        'retry-after': '120',
+        'anthropic-ratelimit-unified-7d-status': 'rejected',
+      });
+      response.end('{"type":"error","error":{"type":"rate_limit_error"}}');
+    };
+
+    const response = await requestThroughProxy(
+      'POST',
+      '/v1/messages',
+      JSON.stringify({ model: 'claude-fable-5', messages: [] }),
+    );
+
+    expect(response.statusCode).toBe(429);
+    expect(writeFableRejectionSpy).toHaveBeenCalledTimes(1);
+    expect(writeFableRejectionSpy).toHaveBeenCalledWith(TOKEN, 120, null);
+  });
+
+  it('should not mark the fable weekly limit when a fable 429 is a 5-hour rejection without a 7-day rejection', async () => {
+    upstreamHandler = (_request, response) => {
+      response.writeHead(429, {
+        'content-type': 'application/json',
+        'retry-after': '120',
+        'anthropic-ratelimit-unified-5h-status': 'rejected',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+      });
+      response.end('{"type":"error","error":{"type":"rate_limit_error"}}');
+    };
+
+    const response = await requestThroughProxy(
+      'POST',
+      '/v1/messages',
+      JSON.stringify({ model: 'claude-fable-5', messages: [] }),
+    );
+
+    expect(response.statusCode).toBe(429);
+    expect(writeFableRejectionSpy).not.toHaveBeenCalled();
+  });
+
+  it('should not mark the fable weekly limit when a fable 429 carries no rate-limit rejection headers', async () => {
     upstreamHandler = (_request, response) => {
       response.writeHead(429, { 'content-type': 'application/json' });
+      response.end('{"type":"error","error":{"type":"rate_limit_error"}}');
+    };
+
+    const response = await requestThroughProxy(
+      'POST',
+      '/v1/messages',
+      JSON.stringify({ model: 'claude-fable-5', messages: [] }),
+    );
+
+    expect(response.statusCode).toBe(429);
+    expect(writeFableRejectionSpy).not.toHaveBeenCalled();
+  });
+
+  it('should not mark the fable weekly limit when a non-fable request is rejected with a 7-day-rejected 429', async () => {
+    upstreamHandler = (_request, response) => {
+      response.writeHead(429, {
+        'content-type': 'application/json',
+        'anthropic-ratelimit-unified-7d-status': 'rejected',
+        'anthropic-ratelimit-unified-7d-reset': '1893456000',
+      });
       response.end('{"type":"error","error":{"type":"rate_limit_error"}}');
     };
 
@@ -363,22 +432,6 @@ describe('startProxy', () => {
 
     expect(response.statusCode).toBe(200);
     expect(writeFableRejectionSpy).not.toHaveBeenCalled();
-  });
-
-  it('should mark the fable weekly limit with a null retry-after when the header is absent', async () => {
-    upstreamHandler = (_request, response) => {
-      response.writeHead(429, { 'content-type': 'application/json' });
-      response.end('{"type":"error","error":{"type":"rate_limit_error"}}');
-    };
-
-    const response = await requestThroughProxy(
-      'POST',
-      '/v1/messages',
-      JSON.stringify({ model: 'claude-fable-5', messages: [] }),
-    );
-
-    expect(response.statusCode).toBe(429);
-    expect(writeFableRejectionSpy).toHaveBeenCalledWith(TOKEN, null);
   });
 
   it('should forward non-SSE responses without crashing', async () => {
