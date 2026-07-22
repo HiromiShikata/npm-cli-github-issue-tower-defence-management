@@ -21,9 +21,7 @@ const parseEpochMilliseconds = (timestamp: string | null): number | null => {
   return Number.isNaN(parsed) ? null : parsed;
 };
 
-export class FileSystemSessionOutputActivityRepository
-  implements SessionOutputActivityRepository
-{
+export class FileSystemSessionOutputActivityRepository implements SessionOutputActivityRepository {
   listSessionOutputActivities = async (
     transcriptPathBySessionName: Map<string, string>,
   ): Promise<LiveSessionOutputActivity[]> => {
