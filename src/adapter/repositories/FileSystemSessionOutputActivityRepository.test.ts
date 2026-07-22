@@ -51,6 +51,45 @@ describe('FileSystemSessionOutputActivityRepository', () => {
     content: 'Compacting conversation history',
   });
 
+  const assistantEntryWithToolUse = (
+    timestamp: string,
+    toolUseId: string,
+  ): object => ({
+    type: 'assistant',
+    timestamp,
+    message: {
+      role: 'assistant',
+      stop_reason: 'tool_use',
+      content: [
+        { type: 'text', text: 'running a command' },
+        {
+          type: 'tool_use',
+          id: toolUseId,
+          name: 'Bash',
+          input: { command: 'sleep 590' },
+        },
+      ],
+    },
+  });
+
+  const toolResultUserEntry = (
+    timestamp: string,
+    toolUseId: string,
+  ): object => ({
+    type: 'user',
+    timestamp,
+    message: {
+      role: 'user',
+      content: [
+        {
+          type: 'tool_result',
+          tool_use_id: toolUseId,
+          content: 'done',
+        },
+      ],
+    },
+  });
+
   const untimestampedEntry = (): object => ({
     type: 'summary',
     summary: 'no timestamp on this entry',
@@ -85,6 +124,7 @@ describe('FileSystemSessionOutputActivityRepository', () => {
         lastOutputEpochSeconds: Math.floor(
           Date.parse('2026-06-27T01:00:00.000Z') / 1000,
         ),
+        hasInProgressToolCall: false,
       },
     ]);
   });
@@ -106,6 +146,7 @@ describe('FileSystemSessionOutputActivityRepository', () => {
         lastOutputEpochSeconds: Math.floor(
           Date.parse('2026-06-27T09:55:00.000Z') / 1000,
         ),
+        hasInProgressToolCall: false,
       },
     ]);
   });
@@ -127,6 +168,7 @@ describe('FileSystemSessionOutputActivityRepository', () => {
         lastOutputEpochSeconds: Math.floor(
           Date.parse('2026-06-27T10:00:00.000Z') / 1000,
         ),
+        hasInProgressToolCall: false,
       },
     ]);
   });
@@ -148,6 +190,7 @@ describe('FileSystemSessionOutputActivityRepository', () => {
         lastOutputEpochSeconds: Math.floor(
           Date.parse('2026-06-27T10:00:00.000Z') / 1000,
         ),
+        hasInProgressToolCall: false,
       },
     ]);
   });
@@ -171,6 +214,7 @@ describe('FileSystemSessionOutputActivityRepository', () => {
         lastOutputEpochSeconds: Math.floor(
           Date.parse('2026-06-27T10:05:00.000Z') / 1000,
         ),
+        hasInProgressToolCall: false,
       },
     ]);
   });
@@ -192,6 +236,7 @@ describe('FileSystemSessionOutputActivityRepository', () => {
         lastOutputEpochSeconds: Math.floor(
           Date.parse('2026-06-27T10:00:00.000Z') / 1000,
         ),
+        hasInProgressToolCall: false,
       },
     ]);
   });
@@ -215,6 +260,7 @@ describe('FileSystemSessionOutputActivityRepository', () => {
         lastOutputEpochSeconds: Math.floor(
           Date.parse('2026-06-27T10:00:00.000Z') / 1000,
         ),
+        hasInProgressToolCall: false,
       },
     ]);
   });
@@ -245,6 +291,50 @@ describe('FileSystemSessionOutputActivityRepository', () => {
     );
 
     expect(result).toEqual([]);
+  });
+
+  it('flags a session as waiting on a running tool when the last assistant tool_use has no matching tool_result', async () => {
+    const transcriptPath = writeTranscript('busy.jsonl', [
+      assistantEntry('2026-06-27T09:00:00.000Z'),
+      assistantEntryWithToolUse('2026-06-27T09:01:00.000Z', 'toolu_running'),
+    ]);
+    const repository = new FileSystemSessionOutputActivityRepository();
+
+    const result = await repository.listSessionOutputActivities(
+      new Map([['busy', transcriptPath]]),
+    );
+
+    expect(result).toEqual([
+      {
+        sessionName: 'busy',
+        lastOutputEpochSeconds: Math.floor(
+          Date.parse('2026-06-27T09:01:00.000Z') / 1000,
+        ),
+        hasInProgressToolCall: true,
+      },
+    ]);
+  });
+
+  it('does not flag a session once the matching tool_result for its last tool_use is appended', async () => {
+    const transcriptPath = writeTranscript('completed.jsonl', [
+      assistantEntryWithToolUse('2026-06-27T09:01:00.000Z', 'toolu_done'),
+      toolResultUserEntry('2026-06-27T09:05:00.000Z', 'toolu_done'),
+    ]);
+    const repository = new FileSystemSessionOutputActivityRepository();
+
+    const result = await repository.listSessionOutputActivities(
+      new Map([['completed', transcriptPath]]),
+    );
+
+    expect(result).toEqual([
+      {
+        sessionName: 'completed',
+        lastOutputEpochSeconds: Math.floor(
+          Date.parse('2026-06-27T09:01:00.000Z') / 1000,
+        ),
+        hasInProgressToolCall: false,
+      },
+    ]);
   });
 
   it('returns an empty list when no sessions are requested', async () => {

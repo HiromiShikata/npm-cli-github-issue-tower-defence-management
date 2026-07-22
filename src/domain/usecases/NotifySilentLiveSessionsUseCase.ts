@@ -336,10 +336,15 @@ export class NotifySilentLiveSessionsUseCase {
         transcriptPathBySessionName,
       );
     const lastOutputBySessionName = new Map<string, number>();
+    const inProgressToolCallBySessionName = new Map<string, boolean>();
     for (const activity of activities) {
       lastOutputBySessionName.set(
         activity.sessionName,
         activity.lastOutputEpochSeconds,
+      );
+      inProgressToolCallBySessionName.set(
+        activity.sessionName,
+        activity.hasInProgressToolCall,
       );
     }
 
@@ -366,6 +371,8 @@ export class NotifySilentLiveSessionsUseCase {
       return {
         sessionName,
         mainSilentSeconds,
+        mainHasInProgressToolCall:
+          inProgressToolCallBySessionName.get(sessionName) ?? false,
         subAgents: subAgentsBySessionName.get(sessionName) ?? [],
         unansweredOwnerCallAgeSeconds:
           unansweredOwnerCallEpochSeconds === undefined
@@ -401,10 +408,20 @@ export class NotifySilentLiveSessionsUseCase {
     // call signature and is intentionally ignored (treated as infinite).
     const suppressedByUnansweredOwnerCall =
       unansweredOwnerCallAgeSeconds !== null;
+    // A session whose transcript tail is an assistant tool_use with no matching
+    // tool_result is legitimately busy running one long tool call (e.g. a Bash
+    // command near its timeout, or a Monitor waiting up to an hour): it appends
+    // no new assistant line while the tool runs, so mainSilentSeconds crosses
+    // the threshold even though the session is working, not stalled. Suppress
+    // the main-stall reminder in that case. Genuine thrashing silence — where
+    // the last assistant tool_use was already answered (or there is none) — has
+    // no pending tool call and is still flagged.
+    const suppressedByInProgressToolCall = snapshot.mainHasInProgressToolCall;
     const mainTriggered =
       mainSilentSeconds !== null &&
       mainSilentSeconds >= thresholds.mainSilentThresholdSeconds &&
-      !suppressedByUnansweredOwnerCall;
+      !suppressedByUnansweredOwnerCall &&
+      !suppressedByInProgressToolCall;
     if (mainTriggered) {
       sections.push(
         this.messageComposer.composeMainStalledSection(mainSilentSeconds),

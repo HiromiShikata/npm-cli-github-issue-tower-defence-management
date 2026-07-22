@@ -244,6 +244,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
           sessionName,
           lastOutputEpochSeconds:
             nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+          hasInProgressToolCall: false,
         },
       ],
     );
@@ -274,6 +275,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
           sessionName: GITHUB_SESSION,
           lastOutputEpochSeconds:
             nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+          hasInProgressToolCall: false,
         },
       ],
     );
@@ -297,6 +299,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
           sessionName: pullRequestSession,
           lastOutputEpochSeconds:
             nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+          hasInProgressToolCall: false,
         },
       ],
     );
@@ -318,6 +321,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
           sessionName: 'workbench',
           lastOutputEpochSeconds:
             nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+          hasInProgressToolCall: false,
         },
       ],
     );
@@ -351,11 +355,13 @@ describe('NotifySilentLiveSessionsUseCase', () => {
           sessionName: GITHUB_SESSION,
           lastOutputEpochSeconds:
             nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+          hasInProgressToolCall: false,
         },
         {
           sessionName: 'orchestrator',
           lastOutputEpochSeconds:
             nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+          hasInProgressToolCall: false,
         },
       ],
     );
@@ -471,6 +477,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
           sessionName: GITHUB_SESSION,
           lastOutputEpochSeconds:
             nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS + 1,
+          hasInProgressToolCall: false,
         },
       ],
     );
@@ -498,6 +505,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
           sessionName: GITHUB_SESSION,
           lastOutputEpochSeconds:
             nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+          hasInProgressToolCall: false,
         },
       ],
     );
@@ -518,6 +526,32 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     ).toHaveBeenCalledWith(GITHUB_SESSION, MAIN_STALLED_SECTION);
   });
 
+  it('does not send the main stalled section when the session is silent past the threshold but is waiting on a running tool call', async () => {
+    setupLiveInteractiveSession(GITHUB_SESSION);
+    mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
+      [
+        {
+          sessionName: GITHUB_SESSION,
+          lastOutputEpochSeconds:
+            nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+          hasInProgressToolCall: true,
+        },
+      ],
+    );
+    mockOwnerCallStatusProvider.listUnansweredOwnerCallEpochSecondsBySessionName.mockResolvedValue(
+      new Map<string, number>(),
+    );
+
+    await useCase.run(runParams());
+
+    expect(
+      mockMessageComposer.composeMainStalledSection,
+    ).not.toHaveBeenCalled();
+    expect(
+      mockNotificationRepository.sendSelfCheckNotification,
+    ).not.toHaveBeenCalled();
+  });
+
   it('does not send the main stalled section when output is within the threshold', async () => {
     setupLiveInteractiveSession(GITHUB_SESSION);
     mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
@@ -526,6 +560,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
           sessionName: GITHUB_SESSION,
           lastOutputEpochSeconds:
             nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS + 1,
+          hasInProgressToolCall: false,
         },
       ],
     );
@@ -651,6 +686,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
           sessionName: GITHUB_SESSION,
           lastOutputEpochSeconds:
             nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+          hasInProgressToolCall: false,
         },
       ],
     );
@@ -678,6 +714,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
             sessionName: GITHUB_SESSION,
             lastOutputEpochSeconds:
               nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+            hasInProgressToolCall: false,
           },
         ],
       );
@@ -944,11 +981,13 @@ describe('NotifySilentLiveSessionsUseCase', () => {
           sessionName: GITHUB_SESSION_ALPHA,
           lastOutputEpochSeconds:
             nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+          hasInProgressToolCall: false,
         },
         {
           sessionName: GITHUB_SESSION_BRAVO,
           lastOutputEpochSeconds:
             nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+          hasInProgressToolCall: false,
         },
       ],
     );
@@ -984,6 +1023,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
           sessionName: GITHUB_SESSION,
           lastOutputEpochSeconds:
             nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+          hasInProgressToolCall: false,
         },
       ],
     );
@@ -1525,11 +1565,13 @@ describe('NotifySilentLiveSessionsUseCase', () => {
             sessionName: GITHUB_SESSION_ALPHA,
             lastOutputEpochSeconds:
               nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+            hasInProgressToolCall: false,
           },
           {
             sessionName: GITHUB_SESSION_BRAVO,
             lastOutputEpochSeconds:
               nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+            hasInProgressToolCall: false,
           },
         ],
       );
