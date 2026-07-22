@@ -25,6 +25,15 @@ export const DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = 15 * 60;
 export const DEFAULT_NOTIFICATION_STAGGER_SECONDS = 25;
 export const DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS = 15 * 60;
 export const DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS = 5 * 60;
+// Upper bound on how long an in-progress tool call suppresses the main-stall
+// reminder. Set to 2 hours: comfortably above the ~1-hour maximum duration of
+// the longest legitimate single tool call (the Monitor tool's own timeout
+// ceiling), so every legitimate long-running tool call is still suppressed,
+// while a session whose transcript tail has been an unanswered tool_use for
+// longer than this — for example because the tool call itself hung and never
+// returned — still receives the stall reminder instead of being suppressed
+// forever.
+export const IN_PROGRESS_TOOL_CALL_MAX_SUPPRESS_SECONDS = 2 * 60 * 60;
 
 const GITHUB_ISSUE_OR_PULL_URL_PATTERN =
   /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/(?:issues|pull)\/(\d+)$/;
@@ -416,7 +425,17 @@ export class NotifySilentLiveSessionsUseCase {
     // the main-stall reminder in that case. Genuine thrashing silence — where
     // the last assistant tool_use was already answered (or there is none) — has
     // no pending tool call and is still flagged.
-    const suppressedByInProgressToolCall = snapshot.mainHasInProgressToolCall;
+    // The suppression is bounded by the pending tool call's own age
+    // (mainSilentSeconds, which for an in-progress tool call equals the age of
+    // the pending tool_use line) so it cannot last forever: a session stuck
+    // inside a tool call that never returns is reminded once that age exceeds
+    // IN_PROGRESS_TOOL_CALL_MAX_SUPPRESS_SECONDS, restoring the ~10-minute
+    // stall reminder for a truly hung session instead of suppressing it
+    // indefinitely.
+    const suppressedByInProgressToolCall =
+      snapshot.mainHasInProgressToolCall &&
+      mainSilentSeconds !== null &&
+      mainSilentSeconds < IN_PROGRESS_TOOL_CALL_MAX_SUPPRESS_SECONDS;
     const mainTriggered =
       mainSilentSeconds !== null &&
       mainSilentSeconds >= thresholds.mainSilentThresholdSeconds &&

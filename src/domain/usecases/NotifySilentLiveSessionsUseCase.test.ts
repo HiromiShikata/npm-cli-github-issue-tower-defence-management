@@ -10,6 +10,7 @@ import {
   DEFAULT_NOTIFICATION_STAGGER_SECONDS,
   DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS,
   DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS,
+  IN_PROGRESS_TOOL_CALL_MAX_SUPPRESS_SECONDS,
 } from './NotifySilentLiveSessionsUseCase';
 import { Issue } from '../entities/Issue';
 import { LiveSessionProcessSnapshotProvider } from './adapter-interfaces/LiveSessionProcessSnapshotProvider';
@@ -550,6 +551,33 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     expect(
       mockNotificationRepository.sendSelfCheckNotification,
     ).not.toHaveBeenCalled();
+  });
+
+  it('sends the main stalled section when the in-progress tool call has been pending longer than the suppression bound', async () => {
+    setupLiveInteractiveSession(GITHUB_SESSION);
+    const pendingToolCallAgeSeconds =
+      IN_PROGRESS_TOOL_CALL_MAX_SUPPRESS_SECONDS + 60 * 60;
+    mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
+      [
+        {
+          sessionName: GITHUB_SESSION,
+          lastOutputEpochSeconds: nowEpochSeconds - pendingToolCallAgeSeconds,
+          hasInProgressToolCall: true,
+        },
+      ],
+    );
+    mockOwnerCallStatusProvider.listUnansweredOwnerCallEpochSecondsBySessionName.mockResolvedValue(
+      new Map<string, number>(),
+    );
+
+    await useCase.run(runParams());
+
+    expect(mockMessageComposer.composeMainStalledSection).toHaveBeenCalledWith(
+      pendingToolCallAgeSeconds,
+    );
+    expect(
+      mockNotificationRepository.sendSelfCheckNotification,
+    ).toHaveBeenCalledWith(GITHUB_SESSION, MAIN_STALLED_SECTION);
   });
 
   it('does not send the main stalled section when output is within the threshold', async () => {
