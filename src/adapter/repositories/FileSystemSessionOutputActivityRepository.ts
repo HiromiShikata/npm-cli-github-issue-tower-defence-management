@@ -21,41 +21,54 @@ const parseEpochMilliseconds = (timestamp: string | null): number | null => {
   return Number.isNaN(parsed) ? null : parsed;
 };
 
-/**
- * Reads the last main-session activity time for each live session from its
- * already-resolved transcript path. Idle time is computed from the timestamp of
- * the latest entry of any kind (assistant text, owner replies, tool results, or
- * any other entry type) rather than from the transcript file modification time.
- * Because a session that is actively running tool calls keeps appending entries
- * such as `user` and `tool_result` even while it emits no assistant text, every
- * entry with a parseable timestamp counts as activity, so a working session is
- * not mistaken for a silent one.
- */
+const readContentBlocks = (
+  message: Record<string, unknown>,
+): Record<string, unknown>[] => {
+  const content = message.content;
+  if (!Array.isArray(content)) {
+    return [];
+  }
+  return content.filter(isRecord);
+};
+
+type TranscriptActivity = {
+  lastAssistantOutputEpochSeconds: number | null;
+  hasInProgressToolCall: boolean;
+};
+
 export class FileSystemSessionOutputActivityRepository implements SessionOutputActivityRepository {
   listSessionOutputActivities = async (
     transcriptPathBySessionName: Map<string, string>,
   ): Promise<LiveSessionOutputActivity[]> => {
     const activities: LiveSessionOutputActivity[] = [];
     for (const [sessionName, transcriptPath] of transcriptPathBySessionName) {
-      const lastOutputEpochSeconds =
-        this.readLastActivityEpochSeconds(transcriptPath);
-      if (lastOutputEpochSeconds !== null) {
-        activities.push({ sessionName, lastOutputEpochSeconds });
+      const { lastAssistantOutputEpochSeconds, hasInProgressToolCall } =
+        this.readTranscriptActivity(transcriptPath);
+      if (lastAssistantOutputEpochSeconds !== null) {
+        activities.push({
+          sessionName,
+          lastOutputEpochSeconds: lastAssistantOutputEpochSeconds,
+          hasInProgressToolCall,
+        });
       }
     }
     return activities;
   };
 
-  private readLastActivityEpochSeconds = (
+  private readTranscriptActivity = (
     transcriptPath: string,
-  ): number | null => {
+  ): TranscriptActivity => {
     let content: string;
     try {
       content = fs.readFileSync(transcriptPath, 'utf8');
     } catch {
-      return null;
+      return {
+        lastAssistantOutputEpochSeconds: null,
+        hasInProgressToolCall: false,
+      };
     }
-    let lastActivityEpochMs: number | null = null;
+    let lastAssistantOutputEpochMs: number | null = null;
+    const pendingToolUseIds = new Set<string>();
     for (const line of content.split('\n')) {
       const trimmed = line.trim();
       if (trimmed.length === 0) {
@@ -70,17 +83,37 @@ export class FileSystemSessionOutputActivityRepository implements SessionOutputA
       if (!isRecord(parsed)) {
         continue;
       }
-      const epochMs = parseEpochMilliseconds(readString(parsed, 'timestamp'));
-      if (epochMs === null) {
+      const message = parsed.message;
+      if (readString(parsed, 'type') === 'assistant') {
+        const epochMs = parseEpochMilliseconds(readString(parsed, 'timestamp'));
+        if (epochMs !== null) {
+          lastAssistantOutputEpochMs = epochMs;
+        }
+      }
+      if (!isRecord(message)) {
         continue;
       }
-      if (lastActivityEpochMs === null || epochMs > lastActivityEpochMs) {
-        lastActivityEpochMs = epochMs;
+      for (const block of readContentBlocks(message)) {
+        const blockType = readString(block, 'type');
+        if (blockType === 'tool_use') {
+          const toolUseId = readString(block, 'id');
+          if (toolUseId !== null) {
+            pendingToolUseIds.add(toolUseId);
+          }
+        } else if (blockType === 'tool_result') {
+          const toolUseId = readString(block, 'tool_use_id');
+          if (toolUseId !== null) {
+            pendingToolUseIds.delete(toolUseId);
+          }
+        }
       }
     }
-    if (lastActivityEpochMs === null) {
-      return null;
-    }
-    return Math.floor(lastActivityEpochMs / 1000);
+    return {
+      lastAssistantOutputEpochSeconds:
+        lastAssistantOutputEpochMs === null
+          ? null
+          : Math.floor(lastAssistantOutputEpochMs / 1000),
+      hasInProgressToolCall: pendingToolUseIds.size > 0,
+    };
   };
 }

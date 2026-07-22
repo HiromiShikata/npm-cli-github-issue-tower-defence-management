@@ -8,6 +8,7 @@ export type SubAgentActivity = {
 export type LiveSessionActivitySnapshot = {
   sessionName: string;
   mainSilentSeconds: number | null;
+  mainHasInProgressToolCall: boolean;
   subAgents: SubAgentActivity[];
   unansweredOwnerCallAgeSeconds: number | null;
 };
