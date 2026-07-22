@@ -36,8 +36,11 @@ const captureFetch = (): jest.Mock => {
   return fetchMock;
 };
 
-const lastBody = (fetchMock: jest.Mock): Record<string, unknown> =>
-  JSON.parse((fetchMock.mock.calls.at(-1)?.[1] as { body: string }).body);
+const lastBody = (fetchMock: jest.Mock): Record<string, unknown> => {
+  const lastCall = fetchMock.mock.calls.at(-1);
+  if (!lastCall) throw new Error('No fetch calls found');
+  return JSON.parse((lastCall[1] as { body: string }).body);
+};
 
 const setup = () => {
   localStorage.clear();
