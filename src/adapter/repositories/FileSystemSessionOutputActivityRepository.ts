@@ -21,24 +21,16 @@ const parseEpochMilliseconds = (timestamp: string | null): number | null => {
   return Number.isNaN(parsed) ? null : parsed;
 };
 
-/**
- * Reads the last main-session activity time for each live session from its
- * already-resolved transcript path. Idle time is computed from the timestamp of
- * the latest entry of any kind (assistant text, owner replies, tool results, or
- * any other entry type) rather than from the transcript file modification time.
- * Because a session that is actively running tool calls keeps appending entries
- * such as `user` and `tool_result` even while it emits no assistant text, every
- * entry with a parseable timestamp counts as activity, so a working session is
- * not mistaken for a silent one.
- */
-export class FileSystemSessionOutputActivityRepository implements SessionOutputActivityRepository {
+export class FileSystemSessionOutputActivityRepository
+  implements SessionOutputActivityRepository
+{
   listSessionOutputActivities = async (
     transcriptPathBySessionName: Map<string, string>,
   ): Promise<LiveSessionOutputActivity[]> => {
     const activities: LiveSessionOutputActivity[] = [];
     for (const [sessionName, transcriptPath] of transcriptPathBySessionName) {
       const lastOutputEpochSeconds =
-        this.readLastActivityEpochSeconds(transcriptPath);
+        this.readLastAssistantOutputEpochSeconds(transcriptPath);
       if (lastOutputEpochSeconds !== null) {
         activities.push({ sessionName, lastOutputEpochSeconds });
       }
@@ -46,7 +38,7 @@ export class FileSystemSessionOutputActivityRepository implements SessionOutputA
     return activities;
   };
 
-  private readLastActivityEpochSeconds = (
+  private readLastAssistantOutputEpochSeconds = (
     transcriptPath: string,
   ): number | null => {
     let content: string;
@@ -55,7 +47,7 @@ export class FileSystemSessionOutputActivityRepository implements SessionOutputA
     } catch {
       return null;
     }
-    let lastActivityEpochMs: number | null = null;
+    let lastAssistantOutputEpochMs: number | null = null;
     for (const line of content.split('\n')) {
       const trimmed = line.trim();
       if (trimmed.length === 0) {
@@ -70,17 +62,18 @@ export class FileSystemSessionOutputActivityRepository implements SessionOutputA
       if (!isRecord(parsed)) {
         continue;
       }
+      if (readString(parsed, 'type') !== 'assistant') {
+        continue;
+      }
       const epochMs = parseEpochMilliseconds(readString(parsed, 'timestamp'));
       if (epochMs === null) {
         continue;
       }
-      if (lastActivityEpochMs === null || epochMs > lastActivityEpochMs) {
-        lastActivityEpochMs = epochMs;
-      }
+      lastAssistantOutputEpochMs = epochMs;
     }
-    if (lastActivityEpochMs === null) {
+    if (lastAssistantOutputEpochMs === null) {
       return null;
     }
-    return Math.floor(lastActivityEpochMs / 1000);
+    return Math.floor(lastAssistantOutputEpochMs / 1000);
   };
 }

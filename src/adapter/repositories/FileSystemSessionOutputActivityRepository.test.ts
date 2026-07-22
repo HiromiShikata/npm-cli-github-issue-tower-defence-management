@@ -25,6 +25,14 @@ describe('FileSystemSessionOutputActivityRepository', () => {
     },
   });
 
+  const assistantEntryWithoutTimestamp = (): object => ({
+    type: 'assistant',
+    message: {
+      role: 'assistant',
+      content: [{ type: 'text', text: 'no timestamp on this entry' }],
+    },
+  });
+
   const userEntry = (timestamp: string): object => ({
     type: 'user',
     timestamp,
@@ -35,6 +43,12 @@ describe('FileSystemSessionOutputActivityRepository', () => {
     type: 'tool_result',
     timestamp,
     toolUseResult: { stdout: 'done', stderr: '' },
+  });
+
+  const systemEntry = (timestamp: string): object => ({
+    type: 'system',
+    timestamp,
+    content: 'Compacting conversation history',
   });
 
   const untimestampedEntry = (): object => ({
@@ -52,29 +66,51 @@ describe('FileSystemSessionOutputActivityRepository', () => {
     return filePath;
   };
 
-  it('returns the latest entry timestamp of any type as the last activity epoch', async () => {
-    const transcriptPath = writeTranscript('workbench.jsonl', [
-      assistantEntry('2026-06-27T10:00:00.000Z'),
-      userEntry('2026-06-27T10:30:00.000Z'),
-      assistantEntry('2026-06-27T10:05:00.000Z'),
+  it('returns the old last-assistant timestamp when recent system and tool entries follow it', async () => {
+    const transcriptPath = writeTranscript('thrashing.jsonl', [
+      assistantEntry('2026-06-27T01:00:00.000Z'),
+      systemEntry('2026-06-27T09:30:00.000Z'),
+      toolResultEntry('2026-06-27T09:45:00.000Z'),
+      systemEntry('2026-06-27T10:00:00.000Z'),
     ]);
     const repository = new FileSystemSessionOutputActivityRepository();
 
     const result = await repository.listSessionOutputActivities(
-      new Map([['workbench', transcriptPath]]),
+      new Map([['thrashing', transcriptPath]]),
     );
 
     expect(result).toEqual([
       {
-        sessionName: 'workbench',
+        sessionName: 'thrashing',
         lastOutputEpochSeconds: Math.floor(
-          Date.parse('2026-06-27T10:30:00.000Z') / 1000,
+          Date.parse('2026-06-27T01:00:00.000Z') / 1000,
         ),
       },
     ]);
   });
 
-  it('advances the last activity time when a later user entry follows an assistant entry', async () => {
+  it('returns the recent timestamp when the latest assistant entry is recent', async () => {
+    const transcriptPath = writeTranscript('working.jsonl', [
+      userEntry('2026-06-27T09:00:00.000Z'),
+      assistantEntry('2026-06-27T09:55:00.000Z'),
+    ]);
+    const repository = new FileSystemSessionOutputActivityRepository();
+
+    const result = await repository.listSessionOutputActivities(
+      new Map([['working', transcriptPath]]),
+    );
+
+    expect(result).toEqual([
+      {
+        sessionName: 'working',
+        lastOutputEpochSeconds: Math.floor(
+          Date.parse('2026-06-27T09:55:00.000Z') / 1000,
+        ),
+      },
+    ]);
+  });
+
+  it('ignores a later user entry and returns the last assistant timestamp', async () => {
     const transcriptPath = writeTranscript('workbench.jsonl', [
       assistantEntry('2026-06-27T10:00:00.000Z'),
       userEntry('2026-06-27T11:00:00.000Z'),
@@ -89,13 +125,13 @@ describe('FileSystemSessionOutputActivityRepository', () => {
       {
         sessionName: 'workbench',
         lastOutputEpochSeconds: Math.floor(
-          Date.parse('2026-06-27T11:00:00.000Z') / 1000,
+          Date.parse('2026-06-27T10:00:00.000Z') / 1000,
         ),
       },
     ]);
   });
 
-  it('advances the last activity time when a tool_result entry is the latest entry', async () => {
+  it('ignores a later tool_result entry and returns the last assistant timestamp', async () => {
     const transcriptPath = writeTranscript('workbench.jsonl', [
       assistantEntry('2026-06-27T10:00:00.000Z'),
       toolResultEntry('2026-06-27T10:45:00.000Z'),
@@ -110,7 +146,51 @@ describe('FileSystemSessionOutputActivityRepository', () => {
       {
         sessionName: 'workbench',
         lastOutputEpochSeconds: Math.floor(
-          Date.parse('2026-06-27T10:45:00.000Z') / 1000,
+          Date.parse('2026-06-27T10:00:00.000Z') / 1000,
+        ),
+      },
+    ]);
+  });
+
+  it('returns the last assistant entry timestamp when several entry types interleave', async () => {
+    const transcriptPath = writeTranscript('workbench.jsonl', [
+      assistantEntry('2026-06-27T10:00:00.000Z'),
+      userEntry('2026-06-27T10:10:00.000Z'),
+      assistantEntry('2026-06-27T10:05:00.000Z'),
+      systemEntry('2026-06-27T10:40:00.000Z'),
+    ]);
+    const repository = new FileSystemSessionOutputActivityRepository();
+
+    const result = await repository.listSessionOutputActivities(
+      new Map([['workbench', transcriptPath]]),
+    );
+
+    expect(result).toEqual([
+      {
+        sessionName: 'workbench',
+        lastOutputEpochSeconds: Math.floor(
+          Date.parse('2026-06-27T10:05:00.000Z') / 1000,
+        ),
+      },
+    ]);
+  });
+
+  it('falls back to the last assistant entry that has a parseable timestamp', async () => {
+    const transcriptPath = writeTranscript('workbench.jsonl', [
+      assistantEntry('2026-06-27T10:00:00.000Z'),
+      assistantEntryWithoutTimestamp(),
+    ]);
+    const repository = new FileSystemSessionOutputActivityRepository();
+
+    const result = await repository.listSessionOutputActivities(
+      new Map([['workbench', transcriptPath]]),
+    );
+
+    expect(result).toEqual([
+      {
+        sessionName: 'workbench',
+        lastOutputEpochSeconds: Math.floor(
+          Date.parse('2026-06-27T10:00:00.000Z') / 1000,
         ),
       },
     ]);
@@ -139,9 +219,11 @@ describe('FileSystemSessionOutputActivityRepository', () => {
     ]);
   });
 
-  it('resolves a transcript whose only entry is a non-assistant entry', async () => {
+  it('omits a transcript whose only entries are non-assistant entries', async () => {
     const transcriptPath = writeTranscript('workbench.jsonl', [
       userEntry('2026-06-27T10:00:00.000Z'),
+      toolResultEntry('2026-06-27T10:05:00.000Z'),
+      systemEntry('2026-06-27T10:10:00.000Z'),
     ]);
     const repository = new FileSystemSessionOutputActivityRepository();
 
@@ -149,14 +231,7 @@ describe('FileSystemSessionOutputActivityRepository', () => {
       new Map([['workbench', transcriptPath]]),
     );
 
-    expect(result).toEqual([
-      {
-        sessionName: 'workbench',
-        lastOutputEpochSeconds: Math.floor(
-          Date.parse('2026-06-27T10:00:00.000Z') / 1000,
-        ),
-      },
-    ]);
+    expect(result).toEqual([]);
   });
 
   it('omits sessions whose transcript has no parseable timestamp', async () => {
