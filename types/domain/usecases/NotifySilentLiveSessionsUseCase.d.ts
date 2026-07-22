@@ -17,6 +17,7 @@ export declare const DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS: number;
 export declare const DEFAULT_NOTIFICATION_STAGGER_SECONDS = 25;
 export declare const DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS: number;
 export declare const DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS: number;
+export declare const IN_PROGRESS_TOOL_CALL_MAX_SUPPRESS_SECONDS: number;
 export declare const parseHubTaskIssueUrlFromSessionName: (sessionName: string) => string | null;
 export declare const isGitHubIssueOrPullRequestSessionName: (sessionName: string) => boolean;
 export type HubTaskStatusResolver = Pick<IssueRepository, 'getIssueByUrl'>;

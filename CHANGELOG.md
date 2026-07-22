@@ -1,3 +1,10 @@
+## [1.126.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.126.2...v1.126.3) (2026-07-22)
+
+
+### Bug Fixes
+
+* **silent-monitor:** compute main-session last activity from the last assistant line only ([#1242](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1242)) ([1f11221](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1f11221dc8ef8d8c3c2c137e1b728297ccb4ddf2)), closes [#1241](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1241) [#1241](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1241) [#1241](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1241)
+
 ## [1.126.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.126.1...v1.126.2) (2026-07-20)
 
 

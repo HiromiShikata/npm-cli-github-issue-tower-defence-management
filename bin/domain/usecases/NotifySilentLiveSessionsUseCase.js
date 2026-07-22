@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.NotifySilentLiveSessionsUseCase = exports.isGitHubIssueOrPullRequestSessionName = exports.parseHubTaskIssueUrlFromSessionName = exports.DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS = exports.DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS = exports.DEFAULT_NOTIFICATION_STAGGER_SECONDS = exports.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = exports.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = exports.DEFAULT_UNANSWERED_OWNER_CALL_GRACE_SECONDS = exports.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = void 0;
+exports.NotifySilentLiveSessionsUseCase = exports.isGitHubIssueOrPullRequestSessionName = exports.parseHubTaskIssueUrlFromSessionName = exports.IN_PROGRESS_TOOL_CALL_MAX_SUPPRESS_SECONDS = exports.DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS = exports.DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS = exports.DEFAULT_NOTIFICATION_STAGGER_SECONDS = exports.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = exports.DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = exports.DEFAULT_UNANSWERED_OWNER_CALL_GRACE_SECONDS = exports.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = void 0;
 const ResolveInteractiveLiveSessionsUseCase_1 = require("./ResolveInteractiveLiveSessionsUseCase");
 exports.DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = 10 * 60;
 // Retained only for backward compatibility of the configuration surface
@@ -13,6 +13,15 @@ exports.DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = 15 * 60;
 exports.DEFAULT_NOTIFICATION_STAGGER_SECONDS = 25;
 exports.DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS = 15 * 60;
 exports.DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS = 5 * 60;
+// Upper bound on how long an in-progress tool call suppresses the main-stall
+// reminder. Set to 2 hours: comfortably above the ~1-hour maximum duration of
+// the longest legitimate single tool call (the Monitor tool's own timeout
+// ceiling), so every legitimate long-running tool call is still suppressed,
+// while a session whose transcript tail has been an unanswered tool_use for
+// longer than this — for example because the tool call itself hung and never
+// returned — still receives the stall reminder instead of being suppressed
+// forever.
+exports.IN_PROGRESS_TOOL_CALL_MAX_SUPPRESS_SECONDS = 2 * 60 * 60;
 const GITHUB_ISSUE_OR_PULL_URL_PATTERN = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/(?:issues|pull)\/(\d+)$/;
 const GITHUB_TMUX_SESSION_NAME_PATTERN = /^https_\/\/github_com\/([^/]+)\/([^/]+)\/(?:issues|pull)\/(\d+)$/;
 const parseHubTaskIssueUrlFromSessionName = (sessionName) => {
@@ -184,8 +193,10 @@ class NotifySilentLiveSessionsUseCase {
             const sessionNames = interactiveSessions.map((session) => session.sessionName);
             const activities = await this.sessionOutputActivityRepository.listSessionOutputActivities(transcriptPathBySessionName);
             const lastOutputBySessionName = new Map();
+            const inProgressToolCallBySessionName = new Map();
             for (const activity of activities) {
                 lastOutputBySessionName.set(activity.sessionName, activity.lastOutputEpochSeconds);
+                inProgressToolCallBySessionName.set(activity.sessionName, activity.hasInProgressToolCall);
             }
             const subAgentsBySessionName = await this.subAgentActivityRepository.listSubAgentActivitiesBySessionName(sessionNames, transcriptPathBySessionName);
             const unansweredOwnerCallEpochSecondsBySessionName = await this.ownerCallStatusProvider.listUnansweredOwnerCallEpochSecondsBySessionName(transcriptPathBySessionName);
@@ -199,6 +210,7 @@ class NotifySilentLiveSessionsUseCase {
                 return {
                     sessionName,
                     mainSilentSeconds,
+                    mainHasInProgressToolCall: inProgressToolCallBySessionName.get(sessionName) ?? false,
                     subAgents: subAgentsBySessionName.get(sessionName) ?? [],
                     unansweredOwnerCallAgeSeconds: unansweredOwnerCallEpochSeconds === undefined
                         ? null
@@ -220,9 +232,28 @@ class NotifySilentLiveSessionsUseCase {
             // is retained in the parameters only for backward compatibility of the
             // call signature and is intentionally ignored (treated as infinite).
             const suppressedByUnansweredOwnerCall = unansweredOwnerCallAgeSeconds !== null;
+            // A session whose transcript tail is an assistant tool_use with no matching
+            // tool_result is legitimately busy running one long tool call (e.g. a Bash
+            // command near its timeout, or a Monitor waiting up to an hour): it appends
+            // no new assistant line while the tool runs, so mainSilentSeconds crosses
+            // the threshold even though the session is working, not stalled. Suppress
+            // the main-stall reminder in that case. Genuine thrashing silence — where
+            // the last assistant tool_use was already answered (or there is none) — has
+            // no pending tool call and is still flagged.
+            // The suppression is bounded by the pending tool call's own age
+            // (mainSilentSeconds, which for an in-progress tool call equals the age of
+            // the pending tool_use line) so it cannot last forever: a session stuck
+            // inside a tool call that never returns is reminded once that age exceeds
+            // IN_PROGRESS_TOOL_CALL_MAX_SUPPRESS_SECONDS, restoring the ~10-minute
+            // stall reminder for a truly hung session instead of suppressing it
+            // indefinitely.
+            const suppressedByInProgressToolCall = snapshot.mainHasInProgressToolCall &&
+                mainSilentSeconds !== null &&
+                mainSilentSeconds < exports.IN_PROGRESS_TOOL_CALL_MAX_SUPPRESS_SECONDS;
             const mainTriggered = mainSilentSeconds !== null &&
                 mainSilentSeconds >= thresholds.mainSilentThresholdSeconds &&
-                !suppressedByUnansweredOwnerCall;
+                !suppressedByUnansweredOwnerCall &&
+                !suppressedByInProgressToolCall;
             if (mainTriggered) {
                 sections.push(this.messageComposer.composeMainStalledSection(mainSilentSeconds));
                 sectionLabels.push('main-stalled');
