@@ -11,6 +11,7 @@ export type ConfigFile = {
   maximumPreparingIssuesCount?: number;
   utilizationPercentageThreshold?: number;
   allowedIssueAuthors?: string;
+  autoAssignManagerAuthors?: string;
   thresholdForAutoReject?: number;
   workflowBlockerResolvedWebhookUrl?: string;
   projectName?: string;
@@ -88,6 +89,7 @@ const knownProjectReadmeConfigKeys = [
   'maximumPreparingIssuesCount',
   'utilizationPercentageThreshold',
   'allowedIssueAuthors',
+  'autoAssignManagerAuthors',
   'thresholdForAutoReject',
   'workflowBlockerResolvedWebhookUrl',
   'preparationProcessCheckCommand',
@@ -120,6 +122,10 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         'utilizationPercentageThreshold',
       ),
       allowedIssueAuthors: getStringValue(parsed, 'allowedIssueAuthors'),
+      autoAssignManagerAuthors: getStringValue(
+        parsed,
+        'autoAssignManagerAuthors',
+      ),
       thresholdForAutoReject: getNumberValue(parsed, 'thresholdForAutoReject'),
       workflowBlockerResolvedWebhookUrl: getStringValue(
         parsed,
@@ -199,6 +205,10 @@ export const parseProjectReadmeConfig = (
         'utilizationPercentageThreshold',
       ),
       allowedIssueAuthors: getStringValue(parsed, 'allowedIssueAuthors'),
+      autoAssignManagerAuthors: getStringValue(
+        parsed,
+        'autoAssignManagerAuthors',
+      ),
       thresholdForAutoReject: getNumberValue(parsed, 'thresholdForAutoReject'),
       workflowBlockerResolvedWebhookUrl: getStringValue(
         parsed,
@@ -263,6 +273,10 @@ export const mergeConfigs = (
     readmeOverrides.allowedIssueAuthors ??
     cliOverrides.allowedIssueAuthors ??
     configFile.allowedIssueAuthors,
+  autoAssignManagerAuthors:
+    readmeOverrides.autoAssignManagerAuthors ??
+    cliOverrides.autoAssignManagerAuthors ??
+    configFile.autoAssignManagerAuthors,
   thresholdForAutoReject:
     readmeOverrides.thresholdForAutoReject ??
     cliOverrides.thresholdForAutoReject ??

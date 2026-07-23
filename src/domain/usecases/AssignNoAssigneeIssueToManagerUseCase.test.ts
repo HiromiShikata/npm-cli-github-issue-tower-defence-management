@@ -180,6 +180,101 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
       consoleErrorSpy.mockRestore();
     });
 
+    it('should assign only issues whose author is in autoAssignManagerAuthors', async () => {
+      const allowedIssue = {
+        ...basicIssue,
+        author: 'renovate[bot]',
+      };
+      const disallowedIssue = {
+        ...basicIssue,
+        author: 'human-author',
+      };
+
+      await useCase.run({
+        issues: [allowedIssue, disallowedIssue],
+        manager: 'manager1',
+        cacheUsed: false,
+        autoAssignManagerAuthors: ['renovate[bot]'],
+      });
+
+      expect(mockIssueRepository.updateAssigneeList.mock.calls).toEqual([
+        [allowedIssue, ['manager1']],
+      ]);
+    });
+
+    it('should assign only listed authors in a mixed-author set', async () => {
+      const renovateIssue = {
+        ...basicIssue,
+        author: 'renovate[bot]',
+      };
+      const humanIssue = {
+        ...basicIssue,
+        author: 'human-author',
+      };
+      const dependabotIssue = {
+        ...basicIssue,
+        author: 'dependabot[bot]',
+      };
+
+      await useCase.run({
+        issues: [renovateIssue, humanIssue, dependabotIssue],
+        manager: 'manager1',
+        cacheUsed: false,
+        autoAssignManagerAuthors: ['renovate[bot]', 'dependabot[bot]'],
+      });
+
+      expect(mockIssueRepository.updateAssigneeList.mock.calls).toEqual([
+        [renovateIssue, ['manager1']],
+        [dependabotIssue, ['manager1']],
+      ]);
+    });
+
+    it('should assign all unassigned issues when autoAssignManagerAuthors is null', async () => {
+      const firstIssue = {
+        ...basicIssue,
+        author: 'renovate[bot]',
+      };
+      const secondIssue = {
+        ...basicIssue,
+        author: 'human-author',
+      };
+
+      await useCase.run({
+        issues: [firstIssue, secondIssue],
+        manager: 'manager1',
+        cacheUsed: false,
+        autoAssignManagerAuthors: null,
+      });
+
+      expect(mockIssueRepository.updateAssigneeList.mock.calls).toEqual([
+        [firstIssue, ['manager1']],
+        [secondIssue, ['manager1']],
+      ]);
+    });
+
+    it('should assign all unassigned issues when autoAssignManagerAuthors is an empty array', async () => {
+      const firstIssue = {
+        ...basicIssue,
+        author: 'renovate[bot]',
+      };
+      const secondIssue = {
+        ...basicIssue,
+        author: 'human-author',
+      };
+
+      await useCase.run({
+        issues: [firstIssue, secondIssue],
+        manager: 'manager1',
+        cacheUsed: false,
+        autoAssignManagerAuthors: [],
+      });
+
+      expect(mockIssueRepository.updateAssigneeList.mock.calls).toEqual([
+        [firstIssue, ['manager1']],
+        [secondIssue, ['manager1']],
+      ]);
+    });
+
     it('should rethrow non-Error thrown values without logging', async () => {
       const failingIssue = {
         ...basicIssue,
