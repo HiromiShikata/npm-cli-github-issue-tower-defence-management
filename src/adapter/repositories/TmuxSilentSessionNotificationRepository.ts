@@ -1,6 +1,9 @@
 import { SilentSessionNotificationRepository } from '../../domain/usecases/adapter-interfaces/SilentSessionNotificationRepository';
 import { LocalCommandRunner } from '../../domain/usecases/adapter-interfaces/LocalCommandRunner';
 
+const bracketedPasteStart = '\x1b[200~';
+const bracketedPasteEnd = '\x1b[201~';
+
 export class TmuxSilentSessionNotificationRepository implements SilentSessionNotificationRepository {
   constructor(private readonly localCommandRunner: LocalCommandRunner) {}
 
@@ -8,12 +11,13 @@ export class TmuxSilentSessionNotificationRepository implements SilentSessionNot
     sessionName: string,
     message: string,
   ): Promise<void> => {
+    const bracketedPastePayload = `${bracketedPasteStart}${message}${bracketedPasteEnd}`;
     const literalResult = await this.localCommandRunner.runCommand('tmux', [
       'send-keys',
       '-t',
       sessionName,
       '-l',
-      message,
+      bracketedPastePayload,
     ]);
     if (literalResult.exitCode !== 0) {
       throw new Error(
