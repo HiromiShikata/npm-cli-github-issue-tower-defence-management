@@ -86,4 +86,37 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
       );
     }
   };
+
+  sendKeys = async (
+    sessionName: string,
+    literalText: string,
+  ): Promise<void> => {
+    const literalResult = await this.localCommandRunner.runCommand('tmux', [
+      'send-keys',
+      '-t',
+      sessionName,
+      '-l',
+      literalText,
+    ]);
+    if (literalResult.exitCode !== 0) {
+      throw new Error(
+        `Failed to send keys to tmux session "${sessionName}": exit code ${literalResult.exitCode}${
+          literalResult.stderr ? `: ${literalResult.stderr}` : ''
+        }`,
+      );
+    }
+    const enterResult = await this.localCommandRunner.runCommand('tmux', [
+      'send-keys',
+      '-t',
+      sessionName,
+      'Enter',
+    ]);
+    if (enterResult.exitCode !== 0) {
+      throw new Error(
+        `Failed to send Enter to tmux session "${sessionName}": exit code ${enterResult.exitCode}${
+          enterResult.stderr ? `: ${enterResult.stderr}` : ''
+        }`,
+      );
+    }
+  };
 }
