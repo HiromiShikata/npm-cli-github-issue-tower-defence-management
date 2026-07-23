@@ -45,7 +45,10 @@ describe('TmuxSilentSessionNotificationRepository', () => {
       const runner = createMockRunner();
       const repository = new TmuxSilentSessionNotificationRepository(runner);
 
-      await repository.sendSelfCheckNotification('session', 'line-one\nline-two');
+      await repository.sendSelfCheckNotification(
+        'session',
+        'line-one\nline-two',
+      );
 
       const literalArg = runner.runCommand.mock.calls[0][1][4];
       expect(literalArg.startsWith(bracketedPasteStart)).toBe(true);
@@ -113,7 +116,9 @@ describe('TmuxSilentSessionNotificationRepository', () => {
 
       await expect(
         repository.sendSelfCheckNotification('session', 'message'),
-      ).rejects.toThrow('Failed to send notification to tmux session "session"');
+      ).rejects.toThrow(
+        'Failed to send notification to tmux session "session"',
+      );
     });
   });
 });
