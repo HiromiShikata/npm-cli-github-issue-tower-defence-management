@@ -88,9 +88,9 @@ describe('TokenExhaustionHandoverUseCase', () => {
     };
 
     useCase = new TokenExhaustionHandoverUseCase(
-      mockInteractiveSessionRepository as unknown as ClaudeInteractiveSessionRepository,
-      mockSnapshotRepository as unknown as TokenRateLimitSnapshotRepository,
-      mockTmuxSessionRepository as unknown as TmuxSessionRepository,
+      mockInteractiveSessionRepository,
+      mockSnapshotRepository,
+      mockTmuxSessionRepository,
     );
   });
 
@@ -219,7 +219,8 @@ describe('TokenExhaustionHandoverUseCase', () => {
   });
 
   it('does not send handover when session is within the grace period', async () => {
-    const handoverSentAt = nowEpochSeconds - DEFAULT_TOKEN_EXHAUSTION_GRACE_PERIOD_SECONDS + 10;
+    const handoverSentAt =
+      nowEpochSeconds - DEFAULT_TOKEN_EXHAUSTION_GRACE_PERIOD_SECONDS + 10;
     mockInteractiveSessionRepository.listInteractiveSessions.mockReturnValue([
       { token: TOKEN_A, sessionId: 'sid-1', issueUrl: ISSUE_URL_1 },
     ]);
@@ -229,7 +230,9 @@ describe('TokenExhaustionHandoverUseCase', () => {
 
     const result = await useCase.run(
       defaultRunInput({
-        handoverSentAtEpochBySessionName: new Map([[SESSION_1, handoverSentAt]]),
+        handoverSentAtEpochBySessionName: new Map([
+          [SESSION_1, handoverSentAt],
+        ]),
       }),
     );
 
@@ -240,7 +243,8 @@ describe('TokenExhaustionHandoverUseCase', () => {
   });
 
   it('kills a session after the grace period elapses', async () => {
-    const handoverSentAt = nowEpochSeconds - DEFAULT_TOKEN_EXHAUSTION_GRACE_PERIOD_SECONDS;
+    const handoverSentAt =
+      nowEpochSeconds - DEFAULT_TOKEN_EXHAUSTION_GRACE_PERIOD_SECONDS;
     mockInteractiveSessionRepository.listInteractiveSessions.mockReturnValue([
       { token: TOKEN_A, sessionId: 'sid-1', issueUrl: ISSUE_URL_1 },
     ]);
@@ -250,11 +254,15 @@ describe('TokenExhaustionHandoverUseCase', () => {
 
     const result = await useCase.run(
       defaultRunInput({
-        handoverSentAtEpochBySessionName: new Map([[SESSION_1, handoverSentAt]]),
+        handoverSentAtEpochBySessionName: new Map([
+          [SESSION_1, handoverSentAt],
+        ]),
       }),
     );
 
-    expect(mockTmuxSessionRepository.killSession).toHaveBeenCalledWith(SESSION_1);
+    expect(mockTmuxSessionRepository.killSession).toHaveBeenCalledWith(
+      SESSION_1,
+    );
     expect(result.killedSessionNames).toEqual([SESSION_1]);
     expect(result.newlyHandoverSentSessionNames).toEqual([]);
   });
@@ -274,7 +282,8 @@ describe('TokenExhaustionHandoverUseCase', () => {
   });
 
   it('does not call killSession when enabled is false', async () => {
-    const handoverSentAt = nowEpochSeconds - DEFAULT_TOKEN_EXHAUSTION_GRACE_PERIOD_SECONDS;
+    const handoverSentAt =
+      nowEpochSeconds - DEFAULT_TOKEN_EXHAUSTION_GRACE_PERIOD_SECONDS;
     mockInteractiveSessionRepository.listInteractiveSessions.mockReturnValue([
       { token: TOKEN_A, sessionId: 'sid-1', issueUrl: ISSUE_URL_1 },
     ]);
@@ -285,7 +294,9 @@ describe('TokenExhaustionHandoverUseCase', () => {
     const result = await useCase.run(
       defaultRunInput({
         enabled: false,
-        handoverSentAtEpochBySessionName: new Map([[SESSION_1, handoverSentAt]]),
+        handoverSentAtEpochBySessionName: new Map([
+          [SESSION_1, handoverSentAt],
+        ]),
       }),
     );
 
@@ -313,7 +324,10 @@ describe('TokenExhaustionHandoverUseCase', () => {
       SESSION_2,
       DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE,
     );
-    expect(result.newlyHandoverSentSessionNames).toEqual([SESSION_1, SESSION_2]);
+    expect(result.newlyHandoverSentSessionNames).toEqual([
+      SESSION_1,
+      SESSION_2,
+    ]);
   });
 
   it('ignores sessions whose token is not exhausted', async () => {
@@ -367,7 +381,9 @@ describe('TokenExhaustionHandoverUseCase', () => {
   });
 
   it('returns empty results when no sessions are running', async () => {
-    mockInteractiveSessionRepository.listInteractiveSessions.mockReturnValue([]);
+    mockInteractiveSessionRepository.listInteractiveSessions.mockReturnValue(
+      [],
+    );
     mockSnapshotRepository.listSnapshots.mockReturnValue([
       freshSnapshot(TOKEN_A, { blocked: true }),
     ]);
