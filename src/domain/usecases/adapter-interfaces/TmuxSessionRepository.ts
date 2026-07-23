@@ -11,4 +11,5 @@ export interface TmuxSessionRepository {
   ) => Promise<void>;
   killSession: (sessionName: string) => Promise<void>;
   killOwnSession: () => Promise<void>;
+  sendKeys: (sessionName: string, literalText: string) => Promise<void>;
 }
