@@ -26,9 +26,18 @@ export type TokenExhaustionHandoverResult = {
 
 export class TokenExhaustionHandoverUseCase {
   constructor(
-    private readonly interactiveSessionRepository: ClaudeInteractiveSessionRepository,
-    private readonly snapshotRepository: TokenRateLimitSnapshotRepository,
-    private readonly tmuxSessionRepository: TmuxSessionRepository,
+    private readonly interactiveSessionRepository: Pick<
+      ClaudeInteractiveSessionRepository,
+      'listInteractiveSessions'
+    >,
+    private readonly snapshotRepository: Pick<
+      TokenRateLimitSnapshotRepository,
+      'listSnapshots'
+    >,
+    private readonly tmuxSessionRepository: Pick<
+      TmuxSessionRepository,
+      'sendKeys' | 'killSession'
+    >,
   ) {}
 
   run = async (
