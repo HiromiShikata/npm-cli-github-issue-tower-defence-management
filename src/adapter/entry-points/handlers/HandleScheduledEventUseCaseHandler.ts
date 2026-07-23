@@ -96,9 +96,10 @@ export class HandleScheduledEventUseCaseHandler {
     const input: unknown = YAML.parse(configFileContent);
     type inputType = Omit<
       Parameters<HandleScheduledEventUseCase['run']>[0],
-      'allowedIssueAuthors'
+      'allowedIssueAuthors' | 'autoAssignManagerAuthors'
     > & {
       allowedIssueAuthors?: string | string[] | null;
+      autoAssignManagerAuthors?: string | string[] | null;
       claudeCodeOauthTokenListJsonPath?: string;
       consoleDataOutputDir?: string;
       dashboardDataDir?: string;
@@ -184,6 +185,9 @@ export class HandleScheduledEventUseCaseHandler {
       ...input,
       allowedIssueAuthors: normalizeAllowedIssueAuthors(
         input.allowedIssueAuthors,
+      ),
+      autoAssignManagerAuthors: normalizeAllowedIssueAuthors(
+        readmeConfig.autoAssignManagerAuthors ?? input.autoAssignManagerAuthors,
       ),
       claudeCodeOauthTokenListJsonPath:
         readmeConfig.claudeCodeOauthTokenListJsonPath ??

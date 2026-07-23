@@ -402,6 +402,72 @@ allowedIssueAuthors: 'user1, user2, user3'
         allowedIssueAuthors: ['owner', 'umino-bot', 'dependabot[bot]'],
       });
     });
+
+    it('should accept a top-level autoAssignManagerAuthors array from the YAML config and pass it through', async () => {
+      mockFetchReturningReadme(null);
+      const configWithAutoAssignManagerAuthors = {
+        ...validConfig,
+        autoAssignManagerAuthors: ['renovate[bot]', 'dependabot[bot]'],
+      };
+      jest
+        .mocked(fs.readFileSync)
+        .mockReturnValue(YAML.stringify(configWithAutoAssignManagerAuthors));
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(capturedRunInputs[0][0]).toMatchObject({
+        autoAssignManagerAuthors: ['renovate[bot]', 'dependabot[bot]'],
+      });
+    });
+
+    it('should split a comma-separated top-level autoAssignManagerAuthors string from the YAML config', async () => {
+      mockFetchReturningReadme(null);
+      const configWithCommaSeparatedManagerAuthors = {
+        ...validConfig,
+        autoAssignManagerAuthors: 'renovate[bot], dependabot[bot]',
+      };
+      jest
+        .mocked(fs.readFileSync)
+        .mockReturnValue(
+          YAML.stringify(configWithCommaSeparatedManagerAuthors),
+        );
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(capturedRunInputs[0][0]).toMatchObject({
+        autoAssignManagerAuthors: ['renovate[bot]', 'dependabot[bot]'],
+      });
+    });
+
+    it('should default autoAssignManagerAuthors to null when omitted from the YAML config', async () => {
+      mockFetchReturningReadme(null);
+      jest.mocked(fs.readFileSync).mockReturnValue(YAML.stringify(validConfig));
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(capturedRunInputs[0][0]).toMatchObject({
+        autoAssignManagerAuthors: null,
+      });
+    });
+
+    it('should split comma-separated autoAssignManagerAuthors from README config', async () => {
+      const readmeContent = `<details>
+<summary>config</summary>
+autoAssignManagerAuthors: 'renovate[bot], dependabot[bot]'
+</details>`;
+      mockFetchReturningReadme(readmeContent);
+      jest.mocked(fs.readFileSync).mockReturnValue(YAML.stringify(validConfig));
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(capturedRunInputs[0][0]).toMatchObject({
+        autoAssignManagerAuthors: ['renovate[bot]', 'dependabot[bot]'],
+      });
+    });
   });
 
   describe('Claude OAuth token rotation wiring', () => {

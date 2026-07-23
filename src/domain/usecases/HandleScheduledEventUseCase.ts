@@ -154,6 +154,7 @@ export class HandleScheduledEventUseCase {
     labelsAsLlmAgentName?: string[] | null;
     changeTargetPathAliases?: Record<string, string> | null;
     allowedIssueAuthors?: string[] | null;
+    autoAssignManagerAuthors?: string[] | null;
     startPreparation?: {
       defaultAgentName: string;
       defaultLlmModelName?: string | null;
@@ -549,6 +550,7 @@ ${JSON.stringify(e)}
       issues,
       manager: input.manager,
       cacheUsed,
+      autoAssignManagerAuthors: input.autoAssignManagerAuthors ?? null,
     });
     await this.updateIssueStatusByLabelUseCase.run({
       project,
