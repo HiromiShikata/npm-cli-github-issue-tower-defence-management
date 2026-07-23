@@ -363,6 +363,7 @@ ${JSON.stringify(e)}
                 issues,
                 manager: input.manager,
                 cacheUsed,
+                autoAssignManagerAuthors: input.autoAssignManagerAuthors ?? null,
             });
             await this.updateIssueStatusByLabelUseCase.run({
                 project,

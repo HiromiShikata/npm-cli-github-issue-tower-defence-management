@@ -86,6 +86,7 @@ const knownProjectReadmeConfigKeys = [
     'maximumPreparingIssuesCount',
     'utilizationPercentageThreshold',
     'allowedIssueAuthors',
+    'autoAssignManagerAuthors',
     'thresholdForAutoReject',
     'workflowBlockerResolvedWebhookUrl',
     'preparationProcessCheckCommand',
@@ -111,6 +112,7 @@ const loadConfigFile = (configFilePath) => {
             maximumPreparingIssuesCount: getNumberValue(parsed, 'maximumPreparingIssuesCount'),
             utilizationPercentageThreshold: getNumberValue(parsed, 'utilizationPercentageThreshold'),
             allowedIssueAuthors: getStringValue(parsed, 'allowedIssueAuthors'),
+            autoAssignManagerAuthors: getStringValue(parsed, 'autoAssignManagerAuthors'),
             thresholdForAutoReject: getNumberValue(parsed, 'thresholdForAutoReject'),
             workflowBlockerResolvedWebhookUrl: getStringValue(parsed, 'workflowBlockerResolvedWebhookUrl'),
             projectName: getStringValue(parsed, 'projectName'),
@@ -162,6 +164,7 @@ const parseProjectReadmeConfig = (readme, projectUrl) => {
             maximumPreparingIssuesCount: getNumberValue(parsed, 'maximumPreparingIssuesCount'),
             utilizationPercentageThreshold: getNumberValue(parsed, 'utilizationPercentageThreshold'),
             allowedIssueAuthors: getStringValue(parsed, 'allowedIssueAuthors'),
+            autoAssignManagerAuthors: getStringValue(parsed, 'autoAssignManagerAuthors'),
             thresholdForAutoReject: getNumberValue(parsed, 'thresholdForAutoReject'),
             workflowBlockerResolvedWebhookUrl: getStringValue(parsed, 'workflowBlockerResolvedWebhookUrl'),
             preparationProcessCheckCommand: getStringValue(parsed, 'preparationProcessCheckCommand'),
@@ -201,6 +204,9 @@ const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
     allowedIssueAuthors: readmeOverrides.allowedIssueAuthors ??
         cliOverrides.allowedIssueAuthors ??
         configFile.allowedIssueAuthors,
+    autoAssignManagerAuthors: readmeOverrides.autoAssignManagerAuthors ??
+        cliOverrides.autoAssignManagerAuthors ??
+        configFile.autoAssignManagerAuthors,
     thresholdForAutoReject: readmeOverrides.thresholdForAutoReject ??
         cliOverrides.thresholdForAutoReject ??
         configFile.thresholdForAutoReject,

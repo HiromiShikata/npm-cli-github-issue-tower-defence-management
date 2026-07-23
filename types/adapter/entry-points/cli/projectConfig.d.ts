@@ -7,6 +7,7 @@ export type ConfigFile = {
     maximumPreparingIssuesCount?: number;
     utilizationPercentageThreshold?: number;
     allowedIssueAuthors?: string;
+    autoAssignManagerAuthors?: string;
     thresholdForAutoReject?: number;
     workflowBlockerResolvedWebhookUrl?: string;
     projectName?: string;

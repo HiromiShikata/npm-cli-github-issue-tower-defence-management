@@ -8,8 +8,15 @@ class AssignNoAssigneeIssueToManagerUseCase {
             if (input.cacheUsed) {
                 return;
             }
+            const authorAllowList = input.autoAssignManagerAuthors &&
+                input.autoAssignManagerAuthors.length > 0
+                ? input.autoAssignManagerAuthors
+                : null;
             for (const issue of input.issues) {
                 if (issue.assignees.length > 0 || issue.state !== 'OPEN') {
+                    continue;
+                }
+                if (authorAllowList !== null && !authorAllowList.includes(issue.author)) {
                     continue;
                 }
                 try {

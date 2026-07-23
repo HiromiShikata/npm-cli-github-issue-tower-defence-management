@@ -8,6 +8,7 @@ export declare class AssignNoAssigneeIssueToManagerUseCase {
         issues: Issue[];
         manager: Member["name"];
         cacheUsed: boolean;
+        autoAssignManagerAuthors?: string[] | null;
     }) => Promise<void>;
 }
 //# sourceMappingURL=AssignNoAssigneeIssueToManagerUseCase.d.ts.map

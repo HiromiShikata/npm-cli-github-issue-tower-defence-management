@@ -1,3 +1,10 @@
+# [1.127.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.126.3...v1.127.0) (2026-07-23)
+
+
+### Features
+
+* add autoAssignManagerAuthors config to restrict no-assignee auto-assign by author ([#1248](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1248)) ([6d7da46](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6d7da46bbee1f92718c5c3ba50fcba9764323f15))
+
 ## [1.126.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.126.2...v1.126.3) (2026-07-22)
 
 
