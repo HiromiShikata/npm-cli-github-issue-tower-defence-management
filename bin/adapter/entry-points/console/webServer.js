@@ -151,7 +151,9 @@ const buildKeylessLocation = (requestUrl) => {
     const params = new URLSearchParams(requestUrl.searchParams);
     params.delete('k');
     const query = params.toString();
-    return query.length > 0 ? `${requestUrl.pathname}?${query}` : requestUrl.pathname;
+    return query.length > 0
+        ? `${requestUrl.pathname}?${query}`
+        : requestUrl.pathname;
 };
 exports.buildKeylessLocation = buildKeylessLocation;
 const contentTypeForPath = (filePath) => {

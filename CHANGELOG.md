@@ -1,3 +1,10 @@
+## [1.128.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.128.0...v1.128.1) (2026-07-24)
+
+
+### Bug Fixes
+
+* **console:** move access token from ?k= query into HttpOnly cookie and redirect to keyless URL ([#1251](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1251)) ([76851e3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/76851e3d7673b935e8ef59637796f8cfed19ced4)), closes [#1250](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1250)
+
 # [1.128.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.127.0...v1.128.0) (2026-07-24)
 
 
