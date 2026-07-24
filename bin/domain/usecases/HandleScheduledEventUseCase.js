@@ -264,6 +264,7 @@ ${JSON.stringify(e)}
                     maximumPreparingIssuesCount: input.startPreparation.maximumPreparingIssuesCount,
                     utilizationPercentageThreshold: input.startPreparation.utilizationPercentageThreshold ?? 90,
                     allowedIssueAuthors,
+                    manager: input.manager,
                     codexHomeCandidates: input.startPreparation.codexHomeCandidates ?? null,
                     labelsAsLlmAgentName,
                 });

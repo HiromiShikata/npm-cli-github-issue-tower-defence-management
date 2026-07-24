@@ -202,6 +202,7 @@ class StartPreparationUseCase {
                 futureNextActionDate: 0,
                 nextActionHourNotReached: 0,
                 authorNotAllowed: 0,
+                notAssignedToManager: 0,
             };
             const now = new Date();
             const currentHour = now.getHours();
@@ -227,6 +228,10 @@ class StartPreparationUseCase {
                     params.allowedIssueAuthors.length === 0 ||
                     !params.allowedIssueAuthors.includes(issue.author)) {
                     exclusionCounts.authorNotAllowed++;
+                    continue;
+                }
+                if (!issue.assignees.includes(params.manager)) {
+                    exclusionCounts.notAssignedToManager++;
                     continue;
                 }
                 const mappedAgentFromLabel = params.labelsAsLlmAgentName !== null
@@ -361,7 +366,7 @@ class StartPreparationUseCase {
                 startedInThisRunCount++;
                 updatedCurrentPreparationIssueCount++;
             }
-            console.log(`Spawn candidate exclusion summary for ${params.projectUrl}: dependedIssueUrls=${exclusionCounts.dependedIssueUrls}, futureNextActionDate=${exclusionCounts.futureNextActionDate}, nextActionHourNotReached=${exclusionCounts.nextActionHourNotReached}, authorNotAllowed=${exclusionCounts.authorNotAllowed}`);
+            console.log(`Spawn candidate exclusion summary for ${params.projectUrl}: dependedIssueUrls=${exclusionCounts.dependedIssueUrls}, futureNextActionDate=${exclusionCounts.futureNextActionDate}, nextActionHourNotReached=${exclusionCounts.nextActionHourNotReached}, authorNotAllowed=${exclusionCounts.authorNotAllowed}, notAssignedToManager=${exclusionCounts.notAssignedToManager}`);
             return { rotationOrder };
         };
     }

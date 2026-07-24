@@ -38,6 +38,7 @@ export declare class StartPreparationUseCase {
         maximumPreparingIssuesCount: number | null;
         utilizationPercentageThreshold: number;
         allowedIssueAuthors: string[] | null;
+        manager: string;
         codexHomeCandidates: string[] | null;
         labelsAsLlmAgentName: string[] | null;
     }) => Promise<{

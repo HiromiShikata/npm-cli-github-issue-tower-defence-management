@@ -105,6 +105,7 @@ const loadConfigFile = (configFilePath) => {
         }
         return {
             projectUrl: getStringValue(parsed, 'projectUrl'),
+            manager: getStringValue(parsed, 'manager'),
             defaultAgentName: getStringValue(parsed, 'defaultAgentName'),
             defaultLlmModelName: getStringValue(parsed, 'defaultLlmModelName'),
             fallbackLlmModelName: getStringValue(parsed, 'fallbackLlmModelName'),
@@ -183,6 +184,7 @@ const parseProjectReadmeConfig = (readme, projectUrl) => {
 exports.parseProjectReadmeConfig = parseProjectReadmeConfig;
 const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
     projectUrl: cliOverrides.projectUrl ?? configFile.projectUrl,
+    manager: cliOverrides.manager ?? configFile.manager,
     defaultAgentName: readmeOverrides.defaultAgentName ??
         cliOverrides.defaultAgentName ??
         configFile.defaultAgentName,

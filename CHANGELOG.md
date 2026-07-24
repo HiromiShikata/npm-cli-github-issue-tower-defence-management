@@ -1,3 +1,10 @@
+# [1.131.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.130.0...v1.131.0) (2026-07-24)
+
+
+### Features
+
+* gate preparation pickup on manager assignee ([#1258](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1258)) ([6a1630f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6a1630fb68cd51f503d7b93e8bea7c33f609ce1b)), closes [#1257](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1257)
+
 # [1.130.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.129.0...v1.130.0) (2026-07-24)
 
 

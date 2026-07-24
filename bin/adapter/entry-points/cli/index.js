@@ -110,6 +110,7 @@ exports.program
     .description('Start daemon to prepare GitHub issues')
     .requiredOption('--configFilePath <path>', 'Path to config file for tower defence management')
     .option('--projectUrl <url>', 'GitHub project URL')
+    .option('--manager <login>', 'GitHub login of the manager; only Awaiting Workspace issues assigned to this login are picked up')
     .option('--defaultAgentName <name>', 'Default agent name')
     .option('--defaultLlmModelName <name>', 'Default LLM model name')
     .option('--fallbackLlmModelName <name>', 'LLM model to fall back to when the default Sonnet model is selected but its 7-day weekly limit is exhausted across all tokens (default: claude-opus-4-8)')
@@ -127,6 +128,7 @@ exports.program
     const configFileValues = (0, projectConfig_2.loadConfigFile)(options.configFilePath);
     const cliOverrides = {
         projectUrl: options.projectUrl,
+        manager: options.manager,
         defaultAgentName: options.defaultAgentName,
         defaultLlmModelName: options.defaultLlmModelName,
         fallbackLlmModelName: options.fallbackLlmModelName,
@@ -151,12 +153,17 @@ exports.program
     const config = (0, projectConfig_2.mergeConfigs)(configFileValues, cliOverrides, readmeOverrides);
     const projectUrl = config.projectUrl;
     const defaultAgentName = config.defaultAgentName;
+    const manager = config.manager;
     if (!projectUrl) {
         console.error('projectUrl is required. Provide via --projectUrl, config file, or project README.');
         process.exit(1);
     }
     if (!defaultAgentName) {
         console.error('defaultAgentName is required. Provide via --defaultAgentName, config file, or project README.');
+        process.exit(1);
+    }
+    if (!manager) {
+        console.error('manager is required. Provide via the config file so that only issues assigned to the manager are picked up.');
         process.exit(1);
     }
     let maximumPreparingIssuesCount = null;
@@ -218,6 +225,7 @@ exports.program
         maximumPreparingIssuesCount,
         utilizationPercentageThreshold: config.utilizationPercentageThreshold ?? 90,
         allowedIssueAuthors,
+        manager,
         codexHomeCandidates,
         labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
     });

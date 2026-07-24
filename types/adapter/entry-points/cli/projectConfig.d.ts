@@ -1,5 +1,6 @@
 export type ConfigFile = {
     projectUrl?: string;
+    manager?: string;
     defaultAgentName?: string;
     defaultLlmModelName?: string;
     fallbackLlmModelName?: string;
