@@ -201,11 +201,30 @@ describe('ClearPastNextActionDateHourUseCase', () => {
         expectedClearProjectFieldCalls: [],
       },
       {
-        name: 'should clear nextActionHour and nextActionDate for issue with past nextActionHour at HH:45 target',
+        name: 'should not clear nextActionHour at 09:45 when scheduled hour 10 has not yet arrived',
         input: {
           targetDates: [
             new Date('2026-04-02T09:45:00'),
             new Date('2026-04-02T09:46:00'),
+          ],
+          project: basicProject,
+          issues: [
+            {
+              ...openIssueWithHour,
+              nextActionHour: 10,
+              nextActionDate: null,
+            },
+          ],
+          cacheUsed: false,
+        },
+        expectedClearProjectFieldCalls: [],
+      },
+      {
+        name: 'should clear nextActionHour when sweep has no minute-45 tick but scheduled hour has already passed',
+        input: {
+          targetDates: [
+            new Date('2026-04-02T10:05:00'),
+            new Date('2026-04-02T10:15:00'),
           ],
           project: basicProject,
           issues: [
@@ -239,7 +258,7 @@ describe('ClearPastNextActionDateHourUseCase', () => {
         ],
       },
       {
-        name: 'should not clear nextActionHour when no HH:45 in targetDates',
+        name: 'should not clear nextActionHour when scheduled hour has not yet arrived',
         input: {
           targetDates: [
             new Date('2026-04-02T09:00:00'),
@@ -268,7 +287,7 @@ describe('ClearPastNextActionDateHourUseCase', () => {
           issues: [
             {
               ...openIssueWithHour,
-              nextActionHour: 10,
+              nextActionHour: 9,
               nextActionDate: null,
             },
             {
@@ -284,7 +303,7 @@ describe('ClearPastNextActionDateHourUseCase', () => {
             'hourFieldId',
             {
               ...openIssueWithHour,
-              nextActionHour: 10,
+              nextActionHour: 9,
               nextActionDate: null,
             },
           ],
@@ -293,7 +312,7 @@ describe('ClearPastNextActionDateHourUseCase', () => {
             'dateFieldId',
             {
               ...openIssueWithHour,
-              nextActionHour: 10,
+              nextActionHour: 9,
               nextActionDate: null,
             },
           ],
