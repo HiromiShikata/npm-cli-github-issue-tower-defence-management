@@ -2,6 +2,7 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsageRepository';
+import { TakeOwnershipSpawnRepository } from './adapter-interfaces/TakeOwnershipSpawnRepository';
 import { ClaudeTokenUsage } from '../entities/ClaudeTokenUsage';
 import {
   AWAITING_WORKSPACE_STATUS_NAME,
@@ -38,6 +39,7 @@ export class StartPreparationUseCase {
     >,
     private readonly localCommandRunner: LocalCommandRunner,
     private readonly claudeTokenUsageRepository: ClaudeTokenUsageRepository,
+    private readonly takeOwnershipSpawnRepository: TakeOwnershipSpawnRepository,
   ) {}
 
   private weeklyLimitTypeForModel = (modelName: string | null): string => {
@@ -369,6 +371,9 @@ export class StartPreparationUseCase {
       return { rotationOrder };
     }
 
+    const runningIssueUrls = new Set(
+      this.takeOwnershipSpawnRepository.listRunningIssueUrls(),
+    );
     const awaitingWorkspaceIssues = allOpenedIssues
       .filter(
         (issue) =>
@@ -426,6 +431,10 @@ export class StartPreparationUseCase {
       const issue = awaitingWorkspaceIssues[i];
       if (issue.dependedIssueUrls.length > 0) {
         exclusionCounts.dependedIssueUrls++;
+        continue;
+      }
+      if (runningIssueUrls.has(issue.url)) {
+        console.warn(`Skipping ${issue.url}: worker already running.`);
         continue;
       }
       if (
