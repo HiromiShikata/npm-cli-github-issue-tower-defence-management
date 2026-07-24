@@ -1,3 +1,10 @@
+# [1.129.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.128.1...v1.129.0) (2026-07-24)
+
+
+### Features
+
+* **core:** add 'Todo by agent' workflow status (blue), mirroring 'Todo by human' ([#1254](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1254)) ([624bb49](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/624bb492f3f2da5ea601ae6ee39defe3946af3da))
+
 ## [1.128.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.128.0...v1.128.1) (2026-07-24)
 
 

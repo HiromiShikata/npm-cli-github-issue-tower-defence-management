@@ -33,6 +33,7 @@ class GenerateConsoleListsUseCase {
                     'unread',
                     'in tmux by human',
                     'in tmux by agent',
+                    'todo by agent',
                 ]),
                 'todo-by-human': buildStatusTab((issue) => issue.status === WorkflowStatus_1.TODO_STATUS_NAME ||
                     issue.status === WorkflowStatus_1.LEGACY_TODO_STATUS_NAME, [WorkflowStatus_1.TODO_STATUS_NAME.toLowerCase(), 'done']),
