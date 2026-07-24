@@ -297,6 +297,7 @@ export class StartPreparationUseCase {
     maximumPreparingIssuesCount: number | null;
     utilizationPercentageThreshold: number;
     allowedIssueAuthors: string[] | null;
+    manager: string;
     codexHomeCandidates: string[] | null;
     labelsAsLlmAgentName: string[] | null;
   }): Promise<{ rotationOrder: RotationOrderEntry[] | null }> => {
@@ -400,6 +401,7 @@ export class StartPreparationUseCase {
       futureNextActionDate: 0,
       nextActionHourNotReached: 0,
       authorNotAllowed: 0,
+      notAssignedToManager: 0,
     };
 
     const now = new Date();
@@ -443,6 +445,10 @@ export class StartPreparationUseCase {
         !params.allowedIssueAuthors.includes(issue.author)
       ) {
         exclusionCounts.authorNotAllowed++;
+        continue;
+      }
+      if (!issue.assignees.includes(params.manager)) {
+        exclusionCounts.notAssignedToManager++;
         continue;
       }
       const mappedAgentFromLabel =
@@ -624,7 +630,7 @@ export class StartPreparationUseCase {
       updatedCurrentPreparationIssueCount++;
     }
     console.log(
-      `Spawn candidate exclusion summary for ${params.projectUrl}: dependedIssueUrls=${exclusionCounts.dependedIssueUrls}, futureNextActionDate=${exclusionCounts.futureNextActionDate}, nextActionHourNotReached=${exclusionCounts.nextActionHourNotReached}, authorNotAllowed=${exclusionCounts.authorNotAllowed}`,
+      `Spawn candidate exclusion summary for ${params.projectUrl}: dependedIssueUrls=${exclusionCounts.dependedIssueUrls}, futureNextActionDate=${exclusionCounts.futureNextActionDate}, nextActionHourNotReached=${exclusionCounts.nextActionHourNotReached}, authorNotAllowed=${exclusionCounts.authorNotAllowed}, notAssignedToManager=${exclusionCounts.notAssignedToManager}`,
     );
     return { rotationOrder };
   };

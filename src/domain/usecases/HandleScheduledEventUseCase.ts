@@ -443,6 +443,7 @@ ${JSON.stringify(e)}
         utilizationPercentageThreshold:
           input.startPreparation.utilizationPercentageThreshold ?? 90,
         allowedIssueAuthors,
+        manager: input.manager,
         codexHomeCandidates: input.startPreparation.codexHomeCandidates ?? null,
         labelsAsLlmAgentName,
       });

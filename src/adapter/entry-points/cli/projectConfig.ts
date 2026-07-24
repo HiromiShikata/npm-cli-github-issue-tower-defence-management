@@ -4,6 +4,7 @@ import { fetchGithubGraphql } from '../../repositories/githubGraphqlClient';
 
 export type ConfigFile = {
   projectUrl?: string;
+  manager?: string;
   defaultAgentName?: string;
   defaultLlmModelName?: string;
   fallbackLlmModelName?: string;
@@ -109,6 +110,7 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
     }
     return {
       projectUrl: getStringValue(parsed, 'projectUrl'),
+      manager: getStringValue(parsed, 'manager'),
       defaultAgentName: getStringValue(parsed, 'defaultAgentName'),
       defaultLlmModelName: getStringValue(parsed, 'defaultLlmModelName'),
       fallbackLlmModelName: getStringValue(parsed, 'fallbackLlmModelName'),
@@ -245,6 +247,7 @@ export const mergeConfigs = (
   readmeOverrides: ConfigFile,
 ): ConfigFile => ({
   projectUrl: cliOverrides.projectUrl ?? configFile.projectUrl,
+  manager: cliOverrides.manager ?? configFile.manager,
   defaultAgentName:
     readmeOverrides.defaultAgentName ??
     cliOverrides.defaultAgentName ??
