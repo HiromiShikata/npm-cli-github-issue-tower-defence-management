@@ -93,6 +93,7 @@ exports.CONSOLE_DONE_TAB_NAMES = [
     'unread',
     'failed-preparation',
     'todo-by-human',
+    'todo-by-agent',
     'in-tmux-by-human',
 ];
 const recordDoneProjectItemIdAcrossTabs = (consoleDataOutputDir, pjcode, projectItemId) => {

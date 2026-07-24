@@ -37,6 +37,7 @@ class GenerateConsoleListsUseCase {
                 ]),
                 'todo-by-human': buildStatusTab((issue) => issue.status === WorkflowStatus_1.TODO_STATUS_NAME ||
                     issue.status === WorkflowStatus_1.LEGACY_TODO_STATUS_NAME, [WorkflowStatus_1.TODO_STATUS_NAME.toLowerCase(), 'done']),
+                'todo-by-agent': buildStatusTab((issue) => issue.status === WorkflowStatus_1.TODO_BY_AGENT_STATUS_NAME, [WorkflowStatus_1.TODO_BY_AGENT_STATUS_NAME.toLowerCase(), 'done']),
                 triage: {
                     pjcode,
                     generatedAt,

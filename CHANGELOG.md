@@ -1,3 +1,10 @@
+# [1.130.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.129.0...v1.130.0) (2026-07-24)
+
+
+### Features
+
+* **console:** add 'Todo by agent' console tab, routing, and snooze parity ([#1256](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1256)) ([b0c9dae](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b0c9daeed2d348effc18c0ca8ebba0cc608870f5)), closes [#1255](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1255)
+
 # [1.129.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.128.1...v1.129.0) (2026-07-24)
 
 
