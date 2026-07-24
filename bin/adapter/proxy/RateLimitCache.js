@@ -33,16 +33,20 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.readRateLimit = exports.parseModelRateLimitsFromHeaders = exports.parseModelRateLimitsFromBody = exports.writeSubscriptionDisabled = exports.writeModelRateLimit = exports.writeRateLimit = exports.cachePathForToken = exports.hashToken = exports.cacheDir = exports.PERMISSION_DISABLED_COOLDOWN_SECONDS = exports.HEADERLESS_429_MAX_COOLDOWN_SECONDS = exports.HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS = exports.PROXY_PORT = void 0;
+exports.readRateLimit = exports.parseModelRateLimitsFromHeaders = exports.parseModelRateLimitsFromBody = exports.writeSubscriptionDisabled = exports.writeFableRejection = exports.parseSevenDayRejection = exports.isFableModel = exports.writeModelRateLimit = exports.writeRateLimit = exports.cachePathForToken = exports.hashToken = exports.cacheDir = exports.PERMISSION_DISABLED_COOLDOWN_SECONDS = exports.HEADERLESS_429_MAX_COOLDOWN_SECONDS = exports.HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS = exports.FABLE_LIMIT_TYPE = exports.PROXY_PORT = void 0;
 const crypto = __importStar(require("crypto"));
 const fs = __importStar(require("fs"));
 const os = __importStar(require("os"));
 const path = __importStar(require("path"));
 exports.PROXY_PORT = 8787;
+exports.FABLE_LIMIT_TYPE = 'seven_day_fable';
 const HASH_ALGORITHM = 'sha256';
 exports.HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS = 90;
 exports.HEADERLESS_429_MAX_COOLDOWN_SECONDS = 600;
 exports.PERMISSION_DISABLED_COOLDOWN_SECONDS = 3600;
+const FIVE_HOUR_STATUS_HEADER = 'anthropic-ratelimit-unified-5h-status';
+const SEVEN_DAY_STATUS_HEADER = 'anthropic-ratelimit-unified-7d-status';
+const SEVEN_DAY_RESET_HEADER = 'anthropic-ratelimit-unified-7d-reset';
 const cacheDir = () => {
     const base = process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), '.cache');
     return path.join(base, 'tdpm', 'ratelimit');
@@ -166,6 +170,33 @@ const writeModelRateLimit = (token, limits) => {
     fs.writeFileSync(filePath, JSON.stringify(payload));
 };
 exports.writeModelRateLimit = writeModelRateLimit;
+const isFableModel = (modelName) => (modelName ?? '').toLowerCase().includes('fable');
+exports.isFableModel = isFableModel;
+const pickHeaderValue = (headers, key) => {
+    const value = headers[key];
+    return Array.isArray(value) ? value[0] : value;
+};
+const parseSevenDayRejection = (headers) => {
+    const status = pickHeaderValue(headers, SEVEN_DAY_STATUS_HEADER);
+    const resetRaw = pickHeaderValue(headers, SEVEN_DAY_RESET_HEADER);
+    const sevenDayReset = resetRaw !== undefined && Number.isFinite(Number(resetRaw))
+        ? Number(resetRaw)
+        : null;
+    return {
+        sevenDayRejected: status === 'rejected',
+        sevenDayReset,
+    };
+};
+exports.parseSevenDayRejection = parseSevenDayRejection;
+const writeFableRejection = (token, retryAfterSeconds, sevenDayReset = null) => {
+    const resetsAt = sevenDayReset !== null && sevenDayReset > 0
+        ? sevenDayReset
+        : cooldownEndFromRetryAfter(retryAfterSeconds, Date.now() / 1000);
+    (0, exports.writeModelRateLimit)(token, {
+        [exports.FABLE_LIMIT_TYPE]: { rejected: true, resetsAt },
+    });
+};
+exports.writeFableRejection = writeFableRejection;
 const writeSubscriptionDisabled = (token, baseDir = (0, exports.cacheDir)()) => {
     const dir = baseDir;
     if (!fs.existsSync(dir)) {
@@ -260,8 +291,8 @@ const readRateLimit = (token, baseDir = (0, exports.cacheDir)()) => {
             return Number.isFinite(parsedValue) ? parsedValue : 0;
         };
         const status = headers['anthropic-ratelimit-unified-status'];
-        const fiveHourStatus = headers['anthropic-ratelimit-unified-5h-status'];
-        const sevenDayStatus = headers['anthropic-ratelimit-unified-7d-status'];
+        const fiveHourStatus = headers[FIVE_HOUR_STATUS_HEADER];
+        const sevenDayStatus = headers[SEVEN_DAY_STATUS_HEADER];
         const overageDisabledReason = headers['anthropic-ratelimit-unified-overage-disabled-reason'];
         const unifiedRejected = status === 'rejected';
         const fiveHourRejected = fiveHourStatus === 'rejected';
@@ -282,7 +313,7 @@ const readRateLimit = (token, baseDir = (0, exports.cacheDir)()) => {
             fiveHourUtilization: num('anthropic-ratelimit-unified-5h-utilization'),
             fiveHourReset: num('anthropic-ratelimit-unified-5h-reset'),
             sevenDayUtilization: num('anthropic-ratelimit-unified-7d-utilization'),
-            sevenDayReset: num('anthropic-ratelimit-unified-7d-reset'),
+            sevenDayReset: num(SEVEN_DAY_RESET_HEADER),
             blocked: status === 'blocked' ||
                 fiveHourStatus === 'blocked' ||
                 sevenDayStatus === 'blocked',

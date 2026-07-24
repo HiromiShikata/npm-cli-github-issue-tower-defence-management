@@ -20,6 +20,7 @@ export interface RateLimitSnapshot {
     subscriptionDisabled: boolean;
 }
 export declare const PROXY_PORT = 8787;
+export declare const FABLE_LIMIT_TYPE = "seven_day_fable";
 export declare const HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS = 90;
 export declare const HEADERLESS_429_MAX_COOLDOWN_SECONDS = 600;
 export declare const PERMISSION_DISABLED_COOLDOWN_SECONDS = 3600;
@@ -28,6 +29,13 @@ export declare const hashToken: (token: string) => string;
 export declare const cachePathForToken: (token: string, baseDir?: string) => string;
 export declare const writeRateLimit: (token: string, headers: Record<string, string | string[] | undefined>, statusCode?: number | null) => void;
 export declare const writeModelRateLimit: (token: string, limits: Record<string, ModelWeeklyLimit>) => void;
+export declare const isFableModel: (modelName: string | null) => boolean;
+export interface SevenDayRejectionSignal {
+    sevenDayRejected: boolean;
+    sevenDayReset: number | null;
+}
+export declare const parseSevenDayRejection: (headers: Record<string, string | string[] | undefined>) => SevenDayRejectionSignal;
+export declare const writeFableRejection: (token: string, retryAfterSeconds: number | null, sevenDayReset?: number | null) => void;
 export declare const writeSubscriptionDisabled: (token: string, baseDir?: string) => void;
 export declare const parseModelRateLimitsFromBody: (body: string) => Record<string, ModelWeeklyLimit>;
 export declare const parseModelRateLimitsFromHeaders: (headers: Record<string, string>) => Record<string, ModelWeeklyLimit>;

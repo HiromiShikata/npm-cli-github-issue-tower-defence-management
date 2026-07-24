@@ -1,3 +1,10 @@
+# [1.128.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.127.0...v1.128.0) (2026-07-24)
+
+
+### Features
+
+* **proxy:** reactively exclude fable-exhausted tokens from fable token selection ([#1239](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1239)) ([c9e0b56](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c9e0b56a4b961921b83e3d21f40ddebe1b57a5e1)), closes [#1238](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1238)
+
 # [1.127.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.126.3...v1.127.0) (2026-07-23)
 
 

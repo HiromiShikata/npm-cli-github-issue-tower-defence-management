@@ -136,6 +136,7 @@ const writeTokenStatus = (params) => {
         snapshot: null,
         subscriptionDisabled: false,
         unifiedRejected: false,
+        fableRejected: false,
     }));
     const machineWideInTmuxByHumanIssues = [
         ...machineWideInTmuxByHumanUrls,

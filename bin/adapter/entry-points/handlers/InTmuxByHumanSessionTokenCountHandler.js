@@ -34,6 +34,7 @@ class InTmuxByHumanSessionTokenCountHandler {
                 snapshot: null,
                 subscriptionDisabled: false,
                 unifiedRejected: false,
+                fableRejected: false,
             }));
             const interactiveSessions = this.interactiveSessionRepository.listInteractiveSessions();
             const result = this.useCase.run(candidates, interactiveSessions, input.issues);

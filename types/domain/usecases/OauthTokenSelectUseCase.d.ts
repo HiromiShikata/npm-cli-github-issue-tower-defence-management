@@ -10,6 +10,7 @@ export type OauthTokenCandidate = {
     snapshot: OauthTokenWindowSnapshot | null;
     subscriptionDisabled: boolean;
     unifiedRejected: boolean;
+    fableRejected: boolean;
 };
 export type OauthTokenCandidateMetrics = {
     name: string;

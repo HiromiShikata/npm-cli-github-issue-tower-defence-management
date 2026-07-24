@@ -70,9 +70,43 @@ const isPermissionError = (body) => {
         return false;
     return error.type === 'permission_error';
 };
+const matchModelInBody = (requestBody) => {
+    const match = requestBody.match(/"model"\s*:\s*"([^"]+)"/);
+    return match !== null ? match[1] : null;
+};
+const extractRequestModel = (requestBody) => {
+    try {
+        const parsed = JSON.parse(requestBody);
+        if (isRecord(parsed) && typeof parsed.model === 'string') {
+            return parsed.model;
+        }
+        return null;
+    }
+    catch {
+        return matchModelInBody(requestBody);
+    }
+};
+const parseRetryAfterSeconds = (headers) => {
+    const raw = headers['retry-after'];
+    const value = typeof raw === 'string' ? raw : Array.isArray(raw) ? raw[0] : null;
+    if (typeof value !== 'string')
+        return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+};
 const startProxy = (port, claudeMessageResponseRepository = null) => {
     const server = http.createServer((clientRequest, clientResponse) => {
         const token = extractToken(clientRequest.headers['authorization']);
+        const requestChunks = [];
+        let requestBytes = 0;
+        if (token !== null) {
+            clientRequest.on('data', (chunk) => {
+                if (requestBytes >= MAX_INSPECTED_BODY_BYTES)
+                    return;
+                requestChunks.push(new Uint8Array(chunk));
+                requestBytes += chunk.length;
+            });
+        }
         const upstreamHeaders = {
             ...clientRequest.headers,
             host: UPSTREAM_HOST,
@@ -115,6 +149,20 @@ const startProxy = (port, claudeMessageResponseRepository = null) => {
                         }
                         catch (error) {
                             console.error('Failed to write subscription disabled cache:', error);
+                        }
+                    }
+                    if (upstreamResponse.statusCode === 429) {
+                        try {
+                            const requestModel = extractRequestModel(Buffer.concat(requestChunks).toString('utf8'));
+                            if ((0, RateLimitCache_1.isFableModel)(requestModel)) {
+                                const { sevenDayRejected, sevenDayReset } = (0, RateLimitCache_1.parseSevenDayRejection)(upstreamResponse.headers);
+                                if (sevenDayRejected) {
+                                    (0, RateLimitCache_1.writeFableRejection)(token, parseRetryAfterSeconds(upstreamResponse.headers), sevenDayReset);
+                                }
+                            }
+                        }
+                        catch (error) {
+                            console.error('Failed to write fable rejection cache:', error);
                         }
                     }
                     if (claudeMessageResponseRepository !== null) {

@@ -35,6 +35,10 @@ class LiveSessionOauthTokenSelectHandler {
             const cacheDirectory = (0, OauthTokenSelectHandler_1.resolveCacheDirectory)(input.cacheDirectory);
             const candidates = entries.map(({ name, token }) => {
                 const snapshot = (0, RateLimitCache_1.readRateLimit)(token, cacheDirectory);
+                const fableLimit = snapshot?.modelWeeklyLimits[RateLimitCache_1.FABLE_LIMIT_TYPE];
+                const fableRejected = fableLimit !== undefined &&
+                    fableLimit.rejected &&
+                    input.nowEpochSeconds <= fableLimit.resetsAt;
                 return {
                     name,
                     token,
@@ -48,6 +52,7 @@ class LiveSessionOauthTokenSelectHandler {
                         },
                     subscriptionDisabled: snapshot?.subscriptionDisabled ?? false,
                     unifiedRejected: snapshot?.unifiedRejected ?? false,
+                    fableRejected,
                 };
             });
             const liveSessions = this.liveSessionRepository.listLiveSessions();
