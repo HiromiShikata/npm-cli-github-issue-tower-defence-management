@@ -4,9 +4,6 @@ import {
   postConsoleReviewComment,
 } from './consoleApi';
 
-const appendToken = (url: string): string =>
-  url.includes('?') ? `${url}&k=token` : `${url}?k=token`;
-
 const mockFetchOnce = (body: unknown, ok = true): jest.Mock => {
   const fetchMock = jest.fn().mockResolvedValue({
     ok,
@@ -29,19 +26,19 @@ const mockFetchFailureOnce = (status: number, rawBody: string): jest.Mock => {
 };
 
 describe('createConsoleApiClient', () => {
-  it('reads the item body and appends the token to the url query', async () => {
+  it('reads the item body from the api root without a token query', async () => {
     const fetchMock = mockFetchOnce({ body: '# Title' });
-    const client = createConsoleApiClient(appendToken);
+    const client = createConsoleApiClient();
     const body = await client.fetchItemBody('https://github.com/o/r/issues/1');
     expect(body).toBe('# Title');
     const requested = fetchMock.mock.calls[0][0] as string;
     expect(requested).toContain('/api/itembody?url=');
-    expect(requested).toContain('&k=token');
+    expect(requested).not.toContain('k=');
   });
 
   it('anchors every read endpoint at the server root regardless of route', async () => {
     const readers: ((url: string) => Promise<unknown>)[] = [];
-    const client = createConsoleApiClient(appendToken);
+    const client = createConsoleApiClient();
     readers.push((url) => client.fetchItemBody(url));
     readers.push((url) => client.fetchComments(url));
     readers.push((url) => client.fetchPrFiles(url));
@@ -75,7 +72,7 @@ describe('createConsoleApiClient', () => {
         { author: 'a', body: 'hello', createdAt: '2026-06-19T00:00:00.000Z' },
       ],
     });
-    const client = createConsoleApiClient(appendToken);
+    const client = createConsoleApiClient();
     const comments = await client.fetchComments(
       'https://github.com/o/r/issues/1',
     );
@@ -91,14 +88,14 @@ describe('createConsoleApiClient', () => {
         { filename: 'b.ts', additions: 9, deletions: 0, status: 'added' },
       ],
     });
-    const client = createConsoleApiClient(appendToken);
+    const client = createConsoleApiClient();
     const files = await client.fetchPrFiles('https://github.com/o/r/pull/1');
     expect(files.map((file) => file.path)).toEqual(['a.ts', 'b.ts']);
   });
 
   it('returns no files when the response files array is null', async () => {
     mockFetchOnce({ files: null });
-    const client = createConsoleApiClient(appendToken);
+    const client = createConsoleApiClient();
     expect(await client.fetchPrFiles('https://github.com/o/r/pull/1')).toEqual(
       [],
     );
@@ -111,7 +108,7 @@ describe('createConsoleApiClient', () => {
       isPullRequest: true,
       title: 'Decorate PR links',
     });
-    const client = createConsoleApiClient(appendToken);
+    const client = createConsoleApiClient();
     expect(
       await client.fetchIssueState('https://github.com/o/r/pull/1'),
     ).toEqual({
@@ -124,7 +121,7 @@ describe('createConsoleApiClient', () => {
 
   it('defaults the title to an empty string when absent', async () => {
     mockFetchOnce({ state: 'open', merged: false, isPullRequest: false });
-    const client = createConsoleApiClient(appendToken);
+    const client = createConsoleApiClient();
     expect(
       await client.fetchIssueState('https://github.com/o/r/issues/1'),
     ).toEqual({
@@ -146,7 +143,7 @@ describe('createConsoleApiClient', () => {
         },
       ],
     });
-    const client = createConsoleApiClient(appendToken);
+    const client = createConsoleApiClient();
     const commits = await client.fetchPrCommits(
       'https://github.com/o/r/pull/1',
     );
@@ -177,7 +174,7 @@ describe('createConsoleApiClient', () => {
         },
       ],
     });
-    const client = createConsoleApiClient(appendToken);
+    const client = createConsoleApiClient();
     const related = await client.fetchRelatedPrs(
       'https://github.com/o/r/issues/1',
     );
@@ -198,7 +195,7 @@ describe('createConsoleApiClient', () => {
         missingRequiredCheckNames: ['build', 'test'],
       },
     });
-    const client = createConsoleApiClient(appendToken);
+    const client = createConsoleApiClient();
     expect(
       await client.fetchPullRequestStatus('https://github.com/o/r/pull/1'),
     ).toEqual({
@@ -223,7 +220,7 @@ describe('createConsoleApiClient', () => {
         missingRequiredCheckNames: [],
       },
     });
-    const client = createConsoleApiClient(appendToken);
+    const client = createConsoleApiClient();
     const status = await client.fetchPullRequestStatus(
       'https://github.com/o/r/pull/1',
     );
@@ -232,7 +229,7 @@ describe('createConsoleApiClient', () => {
 
   it('returns a not-found pull request status when the server reports none', async () => {
     mockFetchOnce({ found: false, status: null });
-    const client = createConsoleApiClient(appendToken);
+    const client = createConsoleApiClient();
     expect(
       await client.fetchPullRequestStatus('https://github.com/o/r/pull/1'),
     ).toEqual({
@@ -248,7 +245,7 @@ describe('createConsoleApiClient', () => {
 
   it('throws on a non-ok response', async () => {
     mockFetchOnce({}, false);
-    const client = createConsoleApiClient(appendToken);
+    const client = createConsoleApiClient();
     await expect(
       client.fetchComments('https://github.com/o/r/issues/1'),
     ).rejects.toThrow('HTTP 500');
@@ -256,21 +253,21 @@ describe('createConsoleApiClient', () => {
 });
 
 describe('postConsoleOperation', () => {
-  it('posts a JSON body and appends the token', async () => {
+  it('posts a JSON body to the operation endpoint', async () => {
     const fetchMock = mockFetchOnce({ ok: true });
-    await postConsoleOperation(appendToken, '/api/review', {
+    await postConsoleOperation('/api/review', {
       pjcode: 'umino',
       action: 'approve',
       prUrl: 'https://github.com/o/r/pull/1',
       projectItemId: 'PVTI_1',
     });
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe('/api/review?k=token');
+    expect(url).toBe('/api/review');
     expect(init).toMatchObject({ method: 'POST' });
   });
 
   const failingReview = (): Promise<void> =>
-    postConsoleOperation(appendToken, '/api/review', {
+    postConsoleOperation('/api/review', {
       pjcode: 'umino',
       action: 'approve',
       prUrl: 'https://github.com/o/r/pull/1',
@@ -301,7 +298,7 @@ describe('postConsoleOperation', () => {
 describe('postConsoleReviewComment', () => {
   it('posts the inline review comment body to the reviewcomment endpoint', async () => {
     const fetchMock = mockFetchOnce({ ok: true });
-    await postConsoleReviewComment(appendToken, {
+    await postConsoleReviewComment({
       pjcode: 'umino',
       url: 'https://github.com/o/r/pull/1',
       path: 'src/index.ts',
@@ -310,7 +307,7 @@ describe('postConsoleReviewComment', () => {
       body: 'Consider extracting this into a helper.',
     });
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe('/api/reviewcomment?k=token');
+    expect(url).toBe('/api/reviewcomment');
     expect(init).toMatchObject({ method: 'POST' });
     expect(JSON.parse((init as { body: string }).body)).toEqual({
       pjcode: 'umino',
@@ -331,7 +328,7 @@ describe('postConsoleReviewComment', () => {
       }),
     );
     await expect(
-      postConsoleReviewComment(appendToken, {
+      postConsoleReviewComment({
         pjcode: 'umino',
         url: 'https://github.com/o/r/pull/1',
         path: 'src/index.ts',

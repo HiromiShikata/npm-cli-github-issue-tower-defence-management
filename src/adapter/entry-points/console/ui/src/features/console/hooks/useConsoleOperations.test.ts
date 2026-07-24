@@ -63,7 +63,7 @@ describe('useConsoleOperations', () => {
         'totally_wrong',
       );
     });
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/review?k=token');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/review');
     expect(lastBody(fetchMock)).toMatchObject({
       pjcode: 'umino',
       action: 'close',
@@ -113,7 +113,7 @@ describe('useConsoleOperations', () => {
         'close_not_planned',
       );
     });
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/triage?k=token');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/triage');
     expect(lastBody(fetchMock)).toMatchObject({
       pjcode: 'umino',
       action: 'close_not_planned',
@@ -127,7 +127,7 @@ describe('useConsoleOperations', () => {
     await act(async () => {
       await result.current.operations.closeIssue(prItem, 'close');
     });
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/triage?k=token');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/triage');
     expect(lastBody(fetchMock)).toMatchObject({
       pjcode: 'umino',
       action: 'close',
@@ -164,7 +164,7 @@ describe('useConsoleOperations', () => {
     await act(async () => {
       await result.current.operations.setInTmuxByHuman(issueItem, option);
     });
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/intmux?k=token');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/intmux');
     expect(lastBody(fetchMock)).toMatchObject({
       pjcode: 'umino',
       action: 'set_intmux',
@@ -239,7 +239,7 @@ describe('useConsoleOperations', () => {
         'Thanks for the parity fix.',
       );
     });
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/comment?k=token');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/comment');
     expect(lastBody(fetchMock)).toMatchObject({
       pjcode: 'umino',
       url: issueItem.url,
@@ -264,7 +264,7 @@ describe('useConsoleOperations', () => {
         'Consider extracting this into a helper.',
       );
     });
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/reviewcomment?k=token');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/reviewcomment');
     expect(lastBody(fetchMock)).toEqual({
       pjcode: 'umino',
       url: prItem.url,
@@ -293,7 +293,7 @@ describe('useConsoleOperations', () => {
         ],
       );
     });
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/review?k=token');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/review');
     expect(lastBody(fetchMock)).toMatchObject({
       pjcode: 'umino',
       action: 'request_changes',

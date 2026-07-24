@@ -26,7 +26,6 @@ import type {
 } from '../logic/types';
 import type { ConsoleCaches } from './useConsoleCaches';
 import type { ConsoleOverlayState } from './useConsoleOverlay';
-import { useConsoleToken } from './useConsoleToken';
 
 export const REVIEW_OPERATION_PATH = '/api/review';
 export const TRIAGE_OPERATION_PATH = '/api/triage';
@@ -128,7 +127,6 @@ export const useConsoleOperations = (
   overlayState: ConsoleOverlayState,
   caches?: ConsoleCaches,
 ): ConsoleOperationsApi => {
-  const { appendToken } = useConsoleToken();
   const { patchOverlay } = overlayState;
 
   const invalidateItemContent = useCallback(
@@ -162,13 +160,12 @@ export const useConsoleOperations = (
         throw missingPjcodeError();
       }
       await postConsoleOperation(
-        appendToken,
         REVIEW_OPERATION_PATH,
         reviewRequest(pjcode, item, prUrl, action, pendingReviewComments),
       );
       markDone(item);
     },
-    [pjcode, appendToken, markDone],
+    [pjcode, markDone],
   );
 
   const setNextActionDate = useCallback(
@@ -182,10 +179,10 @@ export const useConsoleOperations = (
         issueUrl: item.url,
         projectItemId: item.projectItemId,
       };
-      await postConsoleOperation(appendToken, TRIAGE_OPERATION_PATH, request);
+      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       markDone(item);
     },
-    [pjcode, appendToken, markDone],
+    [pjcode, markDone],
   );
 
   const setStory = useCallback(
@@ -200,7 +197,7 @@ export const useConsoleOperations = (
         projectItemId: item.projectItemId,
         storyOptionId: option.id,
       };
-      await postConsoleOperation(appendToken, TRIAGE_OPERATION_PATH, request);
+      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       invalidateItemContent(item);
       patchOverlay(
         overlayKeyForItem(item),
@@ -208,7 +205,7 @@ export const useConsoleOperations = (
         mode,
       );
     },
-    [pjcode, appendToken, invalidateItemContent, patchOverlay, mode],
+    [pjcode, invalidateItemContent, patchOverlay, mode],
   );
 
   const setStatus = useCallback(
@@ -223,7 +220,7 @@ export const useConsoleOperations = (
         projectItemId: item.projectItemId,
         statusName: option.name,
       };
-      await postConsoleOperation(appendToken, TRIAGE_OPERATION_PATH, request);
+      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       invalidateItemContent(item);
       patchOverlay(
         overlayKeyForItem(item),
@@ -231,7 +228,7 @@ export const useConsoleOperations = (
         mode,
       );
     },
-    [pjcode, appendToken, invalidateItemContent, patchOverlay, mode],
+    [pjcode, invalidateItemContent, patchOverlay, mode],
   );
 
   const setInTmuxByHuman = useCallback(
@@ -245,7 +242,7 @@ export const useConsoleOperations = (
         issueUrl: item.url,
         projectItemId: item.projectItemId,
       };
-      await postConsoleOperation(appendToken, INTMUX_OPERATION_PATH, request);
+      await postConsoleOperation(INTMUX_OPERATION_PATH, request);
       invalidateItemContent(item);
       patchOverlay(
         overlayKeyForItem(item),
@@ -253,7 +250,7 @@ export const useConsoleOperations = (
         mode,
       );
     },
-    [pjcode, appendToken, invalidateItemContent, patchOverlay, mode],
+    [pjcode, invalidateItemContent, patchOverlay, mode],
   );
 
   const closeIssue = useCallback(
@@ -267,10 +264,10 @@ export const useConsoleOperations = (
         issueUrl: item.url,
         projectItemId: item.projectItemId,
       };
-      await postConsoleOperation(appendToken, TRIAGE_OPERATION_PATH, request);
+      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       markDone(item);
     },
-    [pjcode, appendToken, markDone],
+    [pjcode, markDone],
   );
 
   const addComment = useCallback(
@@ -278,7 +275,7 @@ export const useConsoleOperations = (
       if (pjcode === null) {
         throw missingPjcodeError();
       }
-      const comment = await postConsoleComment(appendToken, {
+      const comment = await postConsoleComment({
         pjcode,
         url: item.url,
         body,
@@ -286,7 +283,7 @@ export const useConsoleOperations = (
       invalidateItemContent(item);
       return comment;
     },
-    [pjcode, appendToken, invalidateItemContent],
+    [pjcode, invalidateItemContent],
   );
 
   const addInlineReviewComment = useCallback(
@@ -300,7 +297,7 @@ export const useConsoleOperations = (
       if (pjcode === null) {
         throw missingPjcodeError();
       }
-      await postConsoleReviewComment(appendToken, {
+      await postConsoleReviewComment({
         pjcode,
         url: prUrl,
         path,
@@ -309,7 +306,7 @@ export const useConsoleOperations = (
         body,
       });
     },
-    [pjcode, appendToken],
+    [pjcode],
   );
 
   return {

@@ -12,7 +12,6 @@ import type {
   ConsolePullRequestStatus,
   ConsoleRelatedPullRequest,
 } from '../logic/types';
-import { useConsoleToken } from './useConsoleToken';
 
 export type ConsoleCaches = {
   body: ResourceCache<string>;
@@ -26,9 +25,8 @@ export type ConsoleCaches = {
 };
 
 export const useConsoleCaches = (): ConsoleCaches => {
-  const { appendToken } = useConsoleToken();
   return useMemo(() => {
-    const client = createConsoleApiClient(appendToken);
+    const client = createConsoleApiClient();
     return {
       client,
       body: new ResourceCache<string>(client.fetchItemBody),
@@ -43,5 +41,5 @@ export const useConsoleCaches = (): ConsoleCaches => {
         client.fetchPullRequestStatus,
       ),
     };
-  }, [appendToken]);
+  }, []);
 };

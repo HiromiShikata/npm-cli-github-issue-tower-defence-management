@@ -6,11 +6,15 @@ import { ImageFetcher } from './consoleImageProxy';
 export declare const DEFAULT_WEB_PORT = 9981;
 export declare const DEFAULT_DASHBOARD_PROJECT_NAMES: string[];
 export declare const CONSOLE_TOKEN_HEADER = "x-pv-token";
+export declare const CONSOLE_TOKEN_COOKIE = "pv_token";
 export declare const hasDotSegment: (requestPath: string) => boolean;
 export declare const requiresToken: (requestPath: string) => boolean;
 export declare const isConsoleAppRoute: (requestPath: string) => boolean;
 export declare const isTokenValid: (expectedToken: string, providedToken: string | null) => boolean;
-export declare const extractProvidedToken: (queryToken: string | string[] | null, headerToken: string | string[] | undefined) => string | null;
+export declare const extractCookieToken: (cookieHeader: string | undefined) => string | null;
+export declare const extractProvidedToken: (queryToken: string | string[] | null, headerToken: string | string[] | undefined, cookieToken: string | null) => string | null;
+export declare const buildTokenCookie: (token: string) => string;
+export declare const buildKeylessLocation: (requestUrl: URL) => string;
 export type WebServerOptions = {
     accessToken: string;
     uiDistDir: string;

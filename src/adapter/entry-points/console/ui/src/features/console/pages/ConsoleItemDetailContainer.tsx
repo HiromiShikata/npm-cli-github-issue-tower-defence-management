@@ -6,7 +6,6 @@ import { ConsoleOperationMenu } from '../components/operations/ConsoleOperationM
 import type { ConsoleCaches } from '../hooks/useConsoleCaches';
 import { useConsoleItemDetailData } from '../hooks/useConsoleItemDetailData';
 import type { ConsoleOperationsApi } from '../hooks/useConsoleOperations';
-import { useConsoleToken } from '../hooks/useConsoleToken';
 import { buildImageProxyUrl } from '../lib/imageProxy';
 import type { ConsoleActionKind } from '../logic/actionToast';
 import { resolveStoryColorEnum } from '../logic/grouping';
@@ -58,10 +57,9 @@ export const ConsoleItemDetailContainer = ({
   onQueueAction,
 }: ConsoleItemDetailContainerProps) => {
   const detail = useConsoleItemDetailData(caches, item);
-  const { token } = useConsoleToken();
   const resolveImageProxyUrl = useCallback(
-    (src: string): string => buildImageProxyUrl(src, token),
-    [token],
+    (src: string): string => buildImageProxyUrl(src),
+    [],
   );
   const renderReferenceLink = useCallback(
     (href: string, fallbackText: string) => (
