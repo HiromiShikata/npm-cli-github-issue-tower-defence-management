@@ -40,7 +40,7 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   dependedIssueUrls: [],
   completionDate50PercentConfidence: null,
   url: 'https://github.com/user/repo/issues/1',
-  assignees: [],
+  assignees: ['manager-user'],
   labels: [],
   org: 'user',
   repo: 'repo',
@@ -156,6 +156,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -222,6 +223,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -280,6 +282,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -328,6 +331,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -378,6 +382,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -427,6 +432,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -495,6 +501,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -586,6 +593,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -650,6 +658,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -694,6 +703,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -751,6 +761,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -786,6 +797,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -831,6 +843,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -876,6 +889,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -921,6 +935,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -966,6 +981,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -1011,6 +1027,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -1059,6 +1076,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -1107,6 +1125,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -1157,6 +1176,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -1192,6 +1212,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: 3,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -1226,6 +1247,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -1287,6 +1309,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: 12,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -1357,6 +1380,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: 20,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -1421,6 +1445,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -1469,6 +1494,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -1524,6 +1550,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
       });
@@ -1582,6 +1609,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
       });
@@ -1630,6 +1658,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
       });
@@ -1678,6 +1707,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
       });
@@ -1726,6 +1756,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
       });
@@ -1780,6 +1811,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['user1', 'user2'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -1828,6 +1860,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -1865,6 +1898,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: [],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -1902,6 +1936,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['dependabot[bot]'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -1939,6 +1974,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['owner'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -1985,6 +2021,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['user1', 'user2'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -2025,12 +2062,222 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['user1'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+  });
+
+  it('should pick up an awaiting workspace issue assigned to the manager', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        title: 'Issue assigned to manager',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        author: 'testuser',
+        assignees: ['manager-user'],
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+    });
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+  });
+
+  it('should skip an awaiting workspace issue with no assignees', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        title: 'Issue with no assignees',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        author: 'testuser',
+        assignees: [],
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+  });
+
+  it('should skip an awaiting workspace issue assigned only to a non-manager', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        title: 'Issue assigned to non-manager only',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        author: 'testuser',
+        assignees: ['someone-else'],
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+  });
+
+  it('should pick up an awaiting workspace issue whose assignees include the manager alongside other assignees', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        title: 'Renovate PR auto-assigned to manager',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        author: 'testuser',
+        assignees: ['renovate[bot]', 'manager-user'],
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+  });
+
+  it('should pick up only the manager-assigned issue among mixed assignee issues', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        title: 'Assigned to manager',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        author: 'testuser',
+        assignees: ['manager-user'],
+        number: 1,
+        itemId: 'item-1',
+      }),
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/2',
+        title: 'Assigned to client only',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        author: 'testuser',
+        assignees: ['client-user'],
+        number: 2,
+        itemId: 'item-2',
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+      url: 'https://github.com/user/repo/issues/1',
+    });
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
   });
 
   it('should not pass --codexHome when codexHomeCandidates is null', async () => {
@@ -2062,6 +2309,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -2110,6 +2358,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: [],
       labelsAsLlmAgentName: null,
     });
@@ -2158,6 +2407,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: ['.codex-dev1'],
       labelsAsLlmAgentName: null,
     });
@@ -2226,6 +2476,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: ['.codex-dev1', '.codex-dev2'],
       labelsAsLlmAgentName: null,
     });
@@ -2291,6 +2542,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -2350,6 +2602,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -2378,6 +2631,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -2424,6 +2678,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -2476,6 +2731,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -2566,6 +2822,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -2623,6 +2880,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -2698,6 +2956,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -2776,6 +3035,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -2853,6 +3113,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -2927,6 +3188,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -3014,6 +3276,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -3080,6 +3343,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -3147,6 +3411,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -3216,6 +3481,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -3288,6 +3554,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -3402,6 +3669,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -3487,6 +3755,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -3547,6 +3816,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -3613,6 +3883,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -3679,6 +3950,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -3745,6 +4017,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -3814,6 +4087,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -3861,6 +4135,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -3930,6 +4205,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -3999,6 +4275,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -4068,6 +4345,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -4145,6 +4423,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -4222,6 +4501,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -4304,6 +4584,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -4415,6 +4696,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -4490,6 +4772,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -4562,6 +4845,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -4609,6 +4893,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: params.labelsAsLlmAgentName,
       });
@@ -4755,6 +5040,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
       });
@@ -4821,6 +5107,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
       });
@@ -4879,6 +5166,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
       });
@@ -4933,6 +5221,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
       });
@@ -4987,6 +5276,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
       });
@@ -5042,6 +5332,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
       });
@@ -5122,6 +5413,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
       });
@@ -5189,6 +5481,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
       });
@@ -5248,6 +5541,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
       });
@@ -5303,6 +5597,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
       });
@@ -5364,6 +5659,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
       });
@@ -5425,6 +5721,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
       });
@@ -5485,6 +5782,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
       });
@@ -5545,6 +5843,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
       });
@@ -5599,6 +5898,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
       });
@@ -5665,6 +5965,7 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
       });
@@ -5713,6 +6014,13 @@ describe('StartPreparationUseCase', () => {
         author: 'not-allowed-user',
       }),
       createMockIssue({
+        url: 'https://github.com/user/repo/issues/14b',
+        title: 'Not Assigned To Manager Issue',
+        status: 'Awaiting Workspace',
+        number: 145,
+        assignees: ['someone-else'],
+      }),
+      createMockIssue({
         url: 'https://github.com/user/repo/issues/15',
         title: 'Spawnable Issue',
         labels: ['category:impl'],
@@ -5742,6 +6050,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -5750,7 +6059,7 @@ describe('StartPreparationUseCase', () => {
     );
     expect(summaryCalls).toHaveLength(1);
     expect(summaryCalls[0][0]).toBe(
-      'Spawn candidate exclusion summary for https://github.com/user/repo: dependedIssueUrls=1, futureNextActionDate=1, nextActionHourNotReached=1, authorNotAllowed=1',
+      'Spawn candidate exclusion summary for https://github.com/user/repo: dependedIssueUrls=1, futureNextActionDate=1, nextActionHourNotReached=1, authorNotAllowed=1, notAssignedToManager=1',
     );
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][0]).toBe(
@@ -5791,6 +6100,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -5799,7 +6109,7 @@ describe('StartPreparationUseCase', () => {
     );
     expect(summaryCalls).toHaveLength(1);
     expect(summaryCalls[0][0]).toBe(
-      'Spawn candidate exclusion summary for https://github.com/user/repo: dependedIssueUrls=0, futureNextActionDate=0, nextActionHourNotReached=0, authorNotAllowed=0',
+      'Spawn candidate exclusion summary for https://github.com/user/repo: dependedIssueUrls=0, futureNextActionDate=0, nextActionHourNotReached=0, authorNotAllowed=0, notAssignedToManager=0',
     );
     consoleLogSpy.mockRestore();
   });
@@ -5862,6 +6172,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
@@ -5908,6 +6219,7 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });

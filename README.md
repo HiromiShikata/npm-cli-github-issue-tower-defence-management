@@ -36,6 +36,7 @@ Options for schedule:
 Options for startDaemon:
   --configFilePath <path>                          Path to config file for tower defence management (required)
   --projectUrl <url>                               GitHub project URL
+  --manager <login>                                GitHub login of the manager; only Awaiting Workspace issues assigned to this login are picked up (required)
   --defaultAgentName <name>                        Default agent name
   --defaultLlmModelName <name>                     Default LLM model name
   --fallbackLlmModelName <name>                    LLM model a token falls back to when the default Sonnet model's 7-day weekly limit is exhausted for that token while its fallback weekly window still has capacity; routing is decided per token, so tokens with Sonnet headroom keep using Sonnet in the same pass (default: claude-opus-4-8)

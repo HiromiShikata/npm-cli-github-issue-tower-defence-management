@@ -53,6 +53,7 @@ import { InTmuxByHumanSessionTokenCountHandler } from '../handlers/InTmuxByHuman
 
 type StartDaemonOptions = {
   projectUrl?: string;
+  manager?: string;
   defaultAgentName?: string;
   defaultLlmModelName?: string;
   fallbackLlmModelName?: string;
@@ -175,6 +176,10 @@ program
     'Path to config file for tower defence management',
   )
   .option('--projectUrl <url>', 'GitHub project URL')
+  .option(
+    '--manager <login>',
+    'GitHub login of the manager; only Awaiting Workspace issues assigned to this login are picked up',
+  )
   .option('--defaultAgentName <name>', 'Default agent name')
   .option('--defaultLlmModelName <name>', 'Default LLM model name')
   .option(
@@ -209,6 +214,7 @@ program
 
     const cliOverrides: ConfigFile = {
       projectUrl: options.projectUrl,
+      manager: options.manager,
       defaultAgentName: options.defaultAgentName,
       defaultLlmModelName: options.defaultLlmModelName,
       fallbackLlmModelName: options.fallbackLlmModelName,
@@ -242,6 +248,7 @@ program
 
     const projectUrl = config.projectUrl;
     const defaultAgentName = config.defaultAgentName;
+    const manager = config.manager;
 
     if (!projectUrl) {
       console.error(
@@ -252,6 +259,12 @@ program
     if (!defaultAgentName) {
       console.error(
         'defaultAgentName is required. Provide via --defaultAgentName, config file, or project README.',
+      );
+      process.exit(1);
+    }
+    if (!manager) {
+      console.error(
+        'manager is required. Provide via the config file so that only issues assigned to the manager are picked up.',
       );
       process.exit(1);
     }
@@ -368,6 +381,7 @@ program
       utilizationPercentageThreshold:
         config.utilizationPercentageThreshold ?? 90,
       allowedIssueAuthors,
+      manager,
       codexHomeCandidates,
       labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
     });

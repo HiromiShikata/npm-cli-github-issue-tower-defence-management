@@ -103,6 +103,7 @@ describe('CLI', () => {
     projectUrl: 'https://github.com/orgs/test/projects/1',
     defaultAgentName: 'agent1',
     projectName: 'test-project',
+    manager: 'test-manager',
   };
 
   const writeConfig = (config: Record<string, unknown>): void => {
@@ -721,6 +722,7 @@ mysteryKey: 'value'
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
+        manager: 'test-manager',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
       });
@@ -762,6 +764,7 @@ mysteryKey: 'value'
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
+        manager: 'test-manager',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
       });
@@ -1010,6 +1013,39 @@ mysteryKey: 'value'
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'defaultAgentName is required. Provide via --defaultAgentName, config file, or project README.',
+      );
+      expect(processExitSpy).toHaveBeenCalledWith(1);
+
+      consoleErrorSpy.mockRestore();
+      processExitSpy.mockRestore();
+    });
+
+    it('should exit with error when manager is missing', async () => {
+      const configMissing = {
+        projectUrl: 'https://github.com/orgs/test/projects/1',
+        defaultAgentName: 'agent1',
+      };
+      writeConfig(configMissing);
+
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
+
+      await expect(
+        program.parseAsync([
+          'node',
+          'test',
+          'startDaemon',
+          '--configFilePath',
+          configFilePath,
+        ]),
+      ).rejects.toThrow('process.exit called');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'manager is required. Provide via the config file so that only issues assigned to the manager are picked up.',
       );
       expect(processExitSpy).toHaveBeenCalledWith(1);
 
