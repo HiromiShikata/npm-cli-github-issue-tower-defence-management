@@ -57,8 +57,6 @@ export type ConsoleReviewCommentRequest = {
   body: string;
 };
 
-type AppendToken = (url: string) => string;
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 
@@ -71,14 +69,12 @@ const getNumber = (value: unknown): number =>
 const getBoolean = (value: unknown): boolean => value === true;
 
 const requestJson = async (
-  appendToken: AppendToken,
   apiPath: string,
   resourceUrl: string,
 ): Promise<unknown> => {
-  const target = appendToken(
+  const response = await fetch(
     `${apiPath}?url=${encodeURIComponent(resourceUrl)}`,
   );
-  const response = await fetch(target);
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}`);
   }
@@ -207,27 +203,23 @@ const parseState = (payload: unknown): ConsoleIssueState => {
   };
 };
 
-export const createConsoleApiClient = (
-  appendToken: AppendToken,
-): ConsoleApiClient => ({
+export const createConsoleApiClient = (): ConsoleApiClient => ({
   fetchItemBody: async (url) => {
-    const payload = await requestJson(appendToken, '/api/itembody', url);
+    const payload = await requestJson('/api/itembody', url);
     return isRecord(payload) ? getString(payload.body) : '';
   },
   fetchComments: async (url) =>
-    parseComments(await requestJson(appendToken, '/api/comments', url)),
+    parseComments(await requestJson('/api/comments', url)),
   fetchPrFiles: async (url) =>
-    parseFiles(await requestJson(appendToken, '/api/prfiles', url)),
+    parseFiles(await requestJson('/api/prfiles', url)),
   fetchPrCommits: async (url) =>
-    parseCommits(await requestJson(appendToken, '/api/prcommits', url)),
+    parseCommits(await requestJson('/api/prcommits', url)),
   fetchRelatedPrs: async (url) =>
-    parseRelatedPrs(await requestJson(appendToken, '/api/relatedprs', url)),
+    parseRelatedPrs(await requestJson('/api/relatedprs', url)),
   fetchIssueState: async (url) =>
-    parseState(await requestJson(appendToken, '/api/issuetitle', url)),
+    parseState(await requestJson('/api/issuetitle', url)),
   fetchPullRequestStatus: async (url) =>
-    parsePullRequestStatus(
-      await requestJson(appendToken, '/api/pullrequeststatus', url),
-    ),
+    parsePullRequestStatus(await requestJson('/api/pullrequeststatus', url)),
 });
 
 const readOperationErrorReason = async (
@@ -249,11 +241,10 @@ const readOperationErrorReason = async (
 };
 
 export const postConsoleOperation = async (
-  appendToken: AppendToken,
   apiPath: string,
   body: ConsoleReviewRequest | ConsoleTriageRequest | ConsoleIntmuxRequest,
 ): Promise<void> => {
-  const response = await fetch(appendToken(apiPath), {
+  const response = await fetch(apiPath, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -283,10 +274,9 @@ const parsePostedComment = (payload: unknown): ConsoleComment => {
 };
 
 export const postConsoleComment = async (
-  appendToken: AppendToken,
   request: ConsoleCommentRequest,
 ): Promise<ConsoleComment> => {
-  const response = await fetch(appendToken(COMMENT_OPERATION_PATH), {
+  const response = await fetch(COMMENT_OPERATION_PATH, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
@@ -300,10 +290,9 @@ export const postConsoleComment = async (
 export const REVIEW_COMMENT_OPERATION_PATH = '/api/reviewcomment';
 
 export const postConsoleReviewComment = async (
-  appendToken: AppendToken,
   request: ConsoleReviewCommentRequest,
 ): Promise<void> => {
-  const response = await fetch(appendToken(REVIEW_COMMENT_OPERATION_PATH), {
+  const response = await fetch(REVIEW_COMMENT_OPERATION_PATH, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),

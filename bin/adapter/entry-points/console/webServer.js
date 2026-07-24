@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.startWebServer = exports.createWebServer = exports.handleWebRequest = exports.resolveDashboardContent = exports.resolveFlatInTmuxFilePath = exports.resolveDashboardFilePath = exports.IMAGE_PROXY_REQUEST_PATH = exports.DASHBOARD_REQUEST_PATH = exports.extractProvidedToken = exports.isTokenValid = exports.isConsoleAppRoute = exports.requiresToken = exports.hasDotSegment = exports.CONSOLE_TOKEN_HEADER = exports.DEFAULT_DASHBOARD_PROJECT_NAMES = exports.DEFAULT_WEB_PORT = void 0;
+exports.startWebServer = exports.createWebServer = exports.handleWebRequest = exports.resolveDashboardContent = exports.resolveFlatInTmuxFilePath = exports.resolveDashboardFilePath = exports.IMAGE_PROXY_REQUEST_PATH = exports.DASHBOARD_REQUEST_PATH = exports.buildKeylessLocation = exports.buildTokenCookie = exports.extractProvidedToken = exports.extractCookieToken = exports.isTokenValid = exports.isConsoleAppRoute = exports.requiresToken = exports.hasDotSegment = exports.CONSOLE_TOKEN_COOKIE = exports.CONSOLE_TOKEN_HEADER = exports.DEFAULT_DASHBOARD_PROJECT_NAMES = exports.DEFAULT_WEB_PORT = void 0;
 const http = __importStar(require("http"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
@@ -46,6 +46,7 @@ const DashboardProjectCode_1 = require("../../../domain/usecases/dashboard/Dashb
 exports.DEFAULT_WEB_PORT = 9981;
 exports.DEFAULT_DASHBOARD_PROJECT_NAMES = DashboardProjectCode_1.DASHBOARD_PROJECT_NAMES;
 exports.CONSOLE_TOKEN_HEADER = 'x-pv-token';
+exports.CONSOLE_TOKEN_COOKIE = 'pv_token';
 const PLACEHOLDER_INDEX_HTML = `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -109,16 +110,50 @@ const isConsoleAppRoute = (requestPath) => {
 exports.isConsoleAppRoute = isConsoleAppRoute;
 const isTokenValid = (expectedToken, providedToken) => providedToken !== null && providedToken === expectedToken;
 exports.isTokenValid = isTokenValid;
-const extractProvidedToken = (queryToken, headerToken) => {
+const extractCookieToken = (cookieHeader) => {
+    if (typeof cookieHeader !== 'string' || cookieHeader.length === 0) {
+        return null;
+    }
+    for (const segment of cookieHeader.split(';')) {
+        const separatorIndex = segment.indexOf('=');
+        if (separatorIndex === -1) {
+            continue;
+        }
+        const name = segment.slice(0, separatorIndex).trim();
+        if (name !== exports.CONSOLE_TOKEN_COOKIE) {
+            continue;
+        }
+        const value = segment.slice(separatorIndex + 1).trim();
+        if (value.length === 0) {
+            return null;
+        }
+        return decodeURIComponent(value);
+    }
+    return null;
+};
+exports.extractCookieToken = extractCookieToken;
+const extractProvidedToken = (queryToken, headerToken, cookieToken) => {
     if (typeof queryToken === 'string' && queryToken.length > 0) {
         return queryToken;
     }
     if (typeof headerToken === 'string' && headerToken.length > 0) {
         return headerToken;
     }
+    if (cookieToken !== null && cookieToken.length > 0) {
+        return cookieToken;
+    }
     return null;
 };
 exports.extractProvidedToken = extractProvidedToken;
+const buildTokenCookie = (token) => `${exports.CONSOLE_TOKEN_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict`;
+exports.buildTokenCookie = buildTokenCookie;
+const buildKeylessLocation = (requestUrl) => {
+    const params = new URLSearchParams(requestUrl.searchParams);
+    params.delete('k');
+    const query = params.toString();
+    return query.length > 0 ? `${requestUrl.pathname}?${query}` : requestUrl.pathname;
+};
+exports.buildKeylessLocation = buildKeylessLocation;
 const contentTypeForPath = (filePath) => {
     const extension = path.extname(filePath).toLowerCase();
     return MIME_TYPES[extension] ?? 'application/octet-stream';
@@ -202,6 +237,7 @@ const serveBootstrapIndex = (response) => {
     response.writeHead(200, {
         'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'no-store',
+        'Referrer-Policy': 'no-referrer',
     });
     response.end(PLACEHOLDER_INDEX_HTML);
 };
@@ -215,8 +251,18 @@ const serveIndexHtml = (options, response) => {
     response.writeHead(200, {
         'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'no-store',
+        'Referrer-Policy': 'no-referrer',
     });
     response.end(indexContent);
+};
+const redirectStrippingToken = (response, requestUrl, token) => {
+    response.writeHead(302, {
+        Location: (0, exports.buildKeylessLocation)(requestUrl),
+        'Set-Cookie': (0, exports.buildTokenCookie)(token),
+        'Referrer-Policy': 'no-referrer',
+        'Cache-Control': 'no-store',
+    });
+    response.end();
 };
 const sendJson = (response, statusCode, body) => {
     response.writeHead(statusCode, {
@@ -477,7 +523,7 @@ const handleWebRequest = async (options, request, response) => {
         return;
     }
     if ((0, exports.requiresToken)(requestPath)) {
-        const providedToken = (0, exports.extractProvidedToken)(requestUrl.searchParams.get('k'), request.headers[exports.CONSOLE_TOKEN_HEADER]);
+        const providedToken = (0, exports.extractProvidedToken)(requestUrl.searchParams.get('k'), request.headers[exports.CONSOLE_TOKEN_HEADER], (0, exports.extractCookieToken)(request.headers.cookie));
         if (!(0, exports.isTokenValid)(options.accessToken, providedToken)) {
             sendUnauthorized(response);
             return;
@@ -488,6 +534,11 @@ const handleWebRequest = async (options, request, response) => {
     if (requestPath === '/' ||
         requestPath === '/index.html' ||
         (0, exports.isConsoleAppRoute)(requestPath)) {
+        const queryToken = requestUrl.searchParams.get('k');
+        if (queryToken !== null && queryToken.length > 0) {
+            redirectStrippingToken(response, requestUrl, queryToken);
+            return;
+        }
         serveIndexHtml(options, response);
         return;
     }

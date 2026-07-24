@@ -35,8 +35,7 @@ export const WithCodeFence: Story = {
 export const WithProxiedGitHubImages: Story = {
   args: {
     body: consoleMarkdownImageBodyFixture,
-    buildImageProxyUrl: (src) =>
-      buildImageProxyUrl(src, 'console-token-fixture'),
+    buildImageProxyUrl: (src) => buildImageProxyUrl(src),
   },
 };
 
