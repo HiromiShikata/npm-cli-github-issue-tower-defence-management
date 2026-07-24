@@ -28,6 +28,8 @@ export interface RateLimitSnapshot {
 
 export const PROXY_PORT = 8787;
 
+export const FABLE_LIMIT_TYPE = 'seven_day_fable';
+
 const HASH_ALGORITHM = 'sha256';
 
 export const HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS = 90;
@@ -35,6 +37,12 @@ export const HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS = 90;
 export const HEADERLESS_429_MAX_COOLDOWN_SECONDS = 600;
 
 export const PERMISSION_DISABLED_COOLDOWN_SECONDS = 3600;
+
+const FIVE_HOUR_STATUS_HEADER = 'anthropic-ratelimit-unified-5h-status';
+
+const SEVEN_DAY_STATUS_HEADER = 'anthropic-ratelimit-unified-7d-status';
+
+const SEVEN_DAY_RESET_HEADER = 'anthropic-ratelimit-unified-7d-reset';
 
 export const cacheDir = (): string => {
   const base = process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), '.cache');
@@ -182,6 +190,51 @@ export const writeModelRateLimit = (
   fs.writeFileSync(filePath, JSON.stringify(payload));
 };
 
+export const isFableModel = (modelName: string | null): boolean =>
+  (modelName ?? '').toLowerCase().includes('fable');
+
+export interface SevenDayRejectionSignal {
+  sevenDayRejected: boolean;
+  sevenDayReset: number | null;
+}
+
+const pickHeaderValue = (
+  headers: Record<string, string | string[] | undefined>,
+  key: string,
+): string | undefined => {
+  const value = headers[key];
+  return Array.isArray(value) ? value[0] : value;
+};
+
+export const parseSevenDayRejection = (
+  headers: Record<string, string | string[] | undefined>,
+): SevenDayRejectionSignal => {
+  const status = pickHeaderValue(headers, SEVEN_DAY_STATUS_HEADER);
+  const resetRaw = pickHeaderValue(headers, SEVEN_DAY_RESET_HEADER);
+  const sevenDayReset =
+    resetRaw !== undefined && Number.isFinite(Number(resetRaw))
+      ? Number(resetRaw)
+      : null;
+  return {
+    sevenDayRejected: status === 'rejected',
+    sevenDayReset,
+  };
+};
+
+export const writeFableRejection = (
+  token: string,
+  retryAfterSeconds: number | null,
+  sevenDayReset: number | null = null,
+): void => {
+  const resetsAt =
+    sevenDayReset !== null && sevenDayReset > 0
+      ? sevenDayReset
+      : cooldownEndFromRetryAfter(retryAfterSeconds, Date.now() / 1000);
+  writeModelRateLimit(token, {
+    [FABLE_LIMIT_TYPE]: { rejected: true, resetsAt },
+  });
+};
+
 export const writeSubscriptionDisabled = (
   token: string,
   baseDir: string = cacheDir(),
@@ -283,8 +336,8 @@ export const readRateLimit = (
       return Number.isFinite(parsedValue) ? parsedValue : 0;
     };
     const status = headers['anthropic-ratelimit-unified-status'];
-    const fiveHourStatus = headers['anthropic-ratelimit-unified-5h-status'];
-    const sevenDayStatus = headers['anthropic-ratelimit-unified-7d-status'];
+    const fiveHourStatus = headers[FIVE_HOUR_STATUS_HEADER];
+    const sevenDayStatus = headers[SEVEN_DAY_STATUS_HEADER];
     const overageDisabledReason =
       headers['anthropic-ratelimit-unified-overage-disabled-reason'];
     const unifiedRejected = status === 'rejected';
@@ -309,7 +362,7 @@ export const readRateLimit = (
       fiveHourUtilization: num('anthropic-ratelimit-unified-5h-utilization'),
       fiveHourReset: num('anthropic-ratelimit-unified-5h-reset'),
       sevenDayUtilization: num('anthropic-ratelimit-unified-7d-utilization'),
-      sevenDayReset: num('anthropic-ratelimit-unified-7d-reset'),
+      sevenDayReset: num(SEVEN_DAY_RESET_HEADER),
       blocked:
         status === 'blocked' ||
         fiveHourStatus === 'blocked' ||

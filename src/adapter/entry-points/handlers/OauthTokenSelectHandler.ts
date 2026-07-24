@@ -3,7 +3,11 @@ import {
   OauthTokenSelectResult,
   OauthTokenSelectUseCase,
 } from '../../../domain/usecases/OauthTokenSelectUseCase';
-import { cacheDir, readRateLimit } from '../../proxy/RateLimitCache';
+import {
+  FABLE_LIMIT_TYPE,
+  cacheDir,
+  readRateLimit,
+} from '../../proxy/RateLimitCache';
 import { loadTokenEntries } from '../../proxy/TokenListLoader';
 
 export type OauthTokenSelectHandlerInput = {
@@ -81,6 +85,11 @@ export class OauthTokenSelectHandler {
 
     const candidates: OauthTokenCandidate[] = entries.map(({ name, token }) => {
       const snapshot = readRateLimit(token, cacheDirectory);
+      const fableLimit = snapshot?.modelWeeklyLimits[FABLE_LIMIT_TYPE];
+      const fableRejected =
+        fableLimit !== undefined &&
+        fableLimit.rejected &&
+        input.nowEpochSeconds <= fableLimit.resetsAt;
       return {
         name,
         token,
@@ -95,6 +104,7 @@ export class OauthTokenSelectHandler {
               },
         subscriptionDisabled: snapshot?.subscriptionDisabled ?? false,
         unifiedRejected: snapshot?.unifiedRejected ?? false,
+        fableRejected,
       };
     });
 

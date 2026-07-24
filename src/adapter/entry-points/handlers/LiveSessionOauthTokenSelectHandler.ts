@@ -9,7 +9,7 @@ import {
   SEVEN_DAY_MIN_FREE_RATIO,
 } from '../../../domain/usecases/OauthTokenSelectUseCase';
 import { ProcClaudeLiveSessionRepository } from '../../repositories/ProcClaudeLiveSessionRepository';
-import { readRateLimit } from '../../proxy/RateLimitCache';
+import { FABLE_LIMIT_TYPE, readRateLimit } from '../../proxy/RateLimitCache';
 import { loadTokenEntries } from '../../proxy/TokenListLoader';
 import {
   resolveCacheDirectory,
@@ -63,6 +63,11 @@ export class LiveSessionOauthTokenSelectHandler {
 
     const candidates: OauthTokenCandidate[] = entries.map(({ name, token }) => {
       const snapshot = readRateLimit(token, cacheDirectory);
+      const fableLimit = snapshot?.modelWeeklyLimits[FABLE_LIMIT_TYPE];
+      const fableRejected =
+        fableLimit !== undefined &&
+        fableLimit.rejected &&
+        input.nowEpochSeconds <= fableLimit.resetsAt;
       return {
         name,
         token,
@@ -77,6 +82,7 @@ export class LiveSessionOauthTokenSelectHandler {
               },
         subscriptionDisabled: snapshot?.subscriptionDisabled ?? false,
         unifiedRejected: snapshot?.unifiedRejected ?? false,
+        fableRejected,
       };
     });
 

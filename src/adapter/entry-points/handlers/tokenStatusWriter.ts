@@ -199,6 +199,7 @@ export const writeTokenStatus = (params: TokenStatusWriterParams): void => {
     snapshot: null,
     subscriptionDisabled: false,
     unifiedRejected: false,
+    fableRejected: false,
   }));
   const machineWideInTmuxByHumanIssues: Issue[] = [
     ...machineWideInTmuxByHumanUrls,
