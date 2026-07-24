@@ -61,6 +61,21 @@ class NodeTmuxSessionRepository {
                 throw new Error(`Failed to kill tmux session "${sessionName}": exit code ${exitCode}${stderr ? `: ${stderr}` : ''}`);
             }
         };
+        this.sendKeys = async (sessionName, literalText) => {
+            await this.localCommandRunner.runCommand('tmux', [
+                'send-keys',
+                '-t',
+                sessionName,
+                '-l',
+                literalText,
+            ]);
+            await this.localCommandRunner.runCommand('tmux', [
+                'send-keys',
+                '-t',
+                sessionName,
+                'Enter',
+            ]);
+        };
     }
 }
 exports.NodeTmuxSessionRepository = NodeTmuxSessionRepository;

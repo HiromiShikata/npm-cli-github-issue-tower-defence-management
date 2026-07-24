@@ -86,4 +86,23 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
       );
     }
   };
+
+  sendKeys = async (
+    sessionName: string,
+    literalText: string,
+  ): Promise<void> => {
+    await this.localCommandRunner.runCommand('tmux', [
+      'send-keys',
+      '-t',
+      sessionName,
+      '-l',
+      literalText,
+    ]);
+    await this.localCommandRunner.runCommand('tmux', [
+      'send-keys',
+      '-t',
+      sessionName,
+      'Enter',
+    ]);
+  };
 }
