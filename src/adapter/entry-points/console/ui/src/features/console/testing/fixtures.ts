@@ -15,6 +15,7 @@ export const consoleStatusOptionsFixture: ConsoleFieldOption[] = [
   { id: 'f57f1ce9', name: 'Preparation', color: 'YELLOW' },
   { id: 'fd313492', name: 'Failed Preparation', color: 'RED' },
   { id: 'e9931e57', name: 'Todo by human', color: 'PINK' },
+  { id: 'a1e4b7c9', name: 'Todo by agent', color: 'BLUE' },
   { id: 'c2d278b2', name: 'In Tmux by human', color: 'RED' },
   { id: 'e9f6a726', name: 'In Tmux by agent', color: 'YELLOW' },
   { id: 'bd8358eb', name: 'Icebox', color: 'GRAY' },

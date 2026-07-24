@@ -2,10 +2,10 @@ import { fireEvent, render } from '@testing-library/react';
 import { ConsoleNextActionDateActions } from './ConsoleNextActionDateActions';
 
 describe('ConsoleNextActionDateActions', () => {
-  it('shows +1 day and +1 week outside the todo-by-human tab', () => {
+  it('shows +1 day and +1 week outside manual triage tabs', () => {
     const { getByText, queryByText } = render(
       <ConsoleNextActionDateActions
-        isTodoByHuman={false}
+        isManualTriage={false}
         onSetNextActionDate={() => {}}
       />,
     );
@@ -14,10 +14,10 @@ describe('ConsoleNextActionDateActions', () => {
     expect(queryByText('+1 week and skip')).toBeNull();
   });
 
-  it('shows +1 week and skip on the todo-by-human tab', () => {
+  it('shows +1 week and skip on manual triage tabs', () => {
     const { getByText } = render(
       <ConsoleNextActionDateActions
-        isTodoByHuman
+        isManualTriage
         onSetNextActionDate={() => {}}
       />,
     );
@@ -28,7 +28,7 @@ describe('ConsoleNextActionDateActions', () => {
     const onSetNextActionDate = jest.fn();
     const { getByText } = render(
       <ConsoleNextActionDateActions
-        isTodoByHuman={false}
+        isManualTriage={false}
         onSetNextActionDate={onSetNextActionDate}
       />,
     );

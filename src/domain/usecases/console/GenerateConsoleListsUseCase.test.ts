@@ -201,6 +201,25 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(result['todo-by-human'].items).toHaveLength(0);
     });
 
+    it('selects todo-by-agent items for the exact status only', () => {
+      const result = run([
+        makeIssue({ status: 'Todo by agent' }),
+        makeIssue({ status: 'todo by agent' }),
+        makeIssue({ status: 'Todo by human' }),
+        makeIssue({ status: 'Unread' }),
+      ]);
+      expect(result['todo-by-agent'].items.map((item) => item.number)).toEqual([
+        1,
+      ]);
+    });
+
+    it('rejects a non-actionable todo-by-agent issue', () => {
+      const result = run([
+        makeIssue({ status: 'Todo by agent', nextActionHour: 9 }),
+      ]);
+      expect(result['todo-by-agent'].items).toHaveLength(0);
+    });
+
     it('selects no-story items case-insensitively for triage', () => {
       const result = run([
         makeIssue({ story: 'regular / NO STORY; SET STORY FIELD' }),
@@ -441,6 +460,13 @@ describe('GenerateConsoleListsUseCase', () => {
     it('excludes todo by human and done from todo-by-human status options', () => {
       const names = run([])['todo-by-human'].statusOptions.map((o) => o.name);
       expect(names).not.toContain('Todo by human');
+      expect(names).not.toContain('Done');
+      expect(names).toContain('Awaiting Workspace');
+    });
+
+    it('excludes todo by agent and done from todo-by-agent status options', () => {
+      const names = run([])['todo-by-agent'].statusOptions.map((o) => o.name);
+      expect(names).not.toContain('Todo by agent');
       expect(names).not.toContain('Done');
       expect(names).toContain('Awaiting Workspace');
     });

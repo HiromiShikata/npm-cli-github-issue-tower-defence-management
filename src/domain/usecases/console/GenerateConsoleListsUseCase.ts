@@ -3,6 +3,7 @@ import { FieldOption, Project } from '../../entities/Project';
 import {
   IN_TMUX_BY_AGENT_STATUS_NAME,
   LEGACY_TODO_STATUS_NAME,
+  TODO_BY_AGENT_STATUS_NAME,
   TODO_STATUS_NAME,
 } from '../../entities/WorkflowStatus';
 
@@ -56,7 +57,8 @@ export type ConsoleTabName =
   | 'triage'
   | 'unread'
   | 'failed-preparation'
-  | 'todo-by-human';
+  | 'todo-by-human'
+  | 'todo-by-agent';
 
 export type ConsoleLists = {
   'workflow-blocker': ConsoleStatusTab;
@@ -65,6 +67,7 @@ export type ConsoleLists = {
   unread: ConsoleStatusTab;
   'failed-preparation': ConsoleStatusTab;
   'todo-by-human': ConsoleStatusTab;
+  'todo-by-agent': ConsoleStatusTab;
 };
 
 export type GenerateConsoleListsInput = {
@@ -154,6 +157,10 @@ export class GenerateConsoleListsUseCase {
           issue.status === TODO_STATUS_NAME ||
           issue.status === LEGACY_TODO_STATUS_NAME,
         [TODO_STATUS_NAME.toLowerCase(), 'done'],
+      ),
+      'todo-by-agent': buildStatusTab(
+        (issue) => issue.status === TODO_BY_AGENT_STATUS_NAME,
+        [TODO_BY_AGENT_STATUS_NAME.toLowerCase(), 'done'],
       ),
       triage: {
         pjcode,

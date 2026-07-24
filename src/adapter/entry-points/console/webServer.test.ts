@@ -82,6 +82,7 @@ describe('webServer pure helpers', () => {
         true,
       );
       expect(isConsoleAppRoute('/projects/utage3/todo-by-human')).toBe(true);
+      expect(isConsoleAppRoute('/projects/utage3/todo-by-agent')).toBe(true);
     });
 
     it('does not match data, api, or unknown tab routes', () => {

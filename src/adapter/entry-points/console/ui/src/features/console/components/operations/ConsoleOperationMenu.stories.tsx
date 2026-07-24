@@ -63,3 +63,11 @@ export const TodoByHumanTabIssue: Story = {
     hasPullRequest: false,
   },
 };
+
+export const TodoByAgentTabIssue: Story = {
+  args: {
+    tab: 'todo-by-agent',
+    item: consoleListItemsFixture[2],
+    hasPullRequest: false,
+  },
+};

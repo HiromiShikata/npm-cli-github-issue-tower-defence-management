@@ -22,6 +22,12 @@ describe('parseConsoleDataRoute', () => {
     ).toEqual({ kind: 'list', pjcode: 'umino', tab: 'todo-by-human' });
   });
 
+  it('parses a list route for todo-by-agent', () => {
+    expect(
+      parseConsoleDataRoute('/projects/umino/todo-by-agent/list.json'),
+    ).toEqual({ kind: 'list', pjcode: 'umino', tab: 'todo-by-agent' });
+  });
+
   it('parses a detail route', () => {
     expect(
       parseConsoleDataRoute('/projects/umino/triage/detail/123.json'),

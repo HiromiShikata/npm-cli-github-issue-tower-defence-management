@@ -1,7 +1,7 @@
 import {
   buildRequestChangesBody,
   IN_TMUX_BY_HUMAN_NAME,
-  isTodoByHumanTab,
+  isManualTriageTab,
   STATUS_BUTTON_NAMES,
   TOTALLY_WRONG_COMMENT_BODY,
   UNNECESSARY_COMMENT_BODY,
@@ -21,6 +21,7 @@ describe('operation constants', () => {
       'In Tmux by agent',
       'In Tmux by human',
       'Todo by human',
+      'Todo by agent',
       'Awaiting Workspace',
     ]);
   });
@@ -30,10 +31,11 @@ describe('operation constants', () => {
   });
 });
 
-describe('isTodoByHumanTab', () => {
-  it('is true only for the todo-by-human tab', () => {
-    expect(isTodoByHumanTab('todo-by-human')).toBe(true);
-    expect(isTodoByHumanTab('prs')).toBe(false);
+describe('isManualTriageTab', () => {
+  it('is true for the manual triage tabs and false otherwise', () => {
+    expect(isManualTriageTab('todo-by-human')).toBe(true);
+    expect(isManualTriageTab('todo-by-agent')).toBe(true);
+    expect(isManualTriageTab('prs')).toBe(false);
   });
 });
 

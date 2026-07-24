@@ -105,6 +105,7 @@ const STATUS_OPTIONS: ConsoleFixtureFieldOption[] = [
   { id: 'f57f1ce9', name: 'Preparation', color: 'YELLOW' },
   { id: 'fd313492', name: 'Failed Preparation', color: 'RED' },
   { id: 'e9931e57', name: 'Todo by human', color: 'PINK' },
+  { id: 'a1e4b7c9', name: 'Todo by agent', color: 'BLUE' },
   { id: 'c2d278b2', name: 'In Tmux by human', color: 'RED' },
   { id: 'e9f6a726', name: 'In Tmux by agent', color: 'YELLOW' },
 ];
@@ -253,6 +254,15 @@ export const CONSOLE_E2E_TAB_ITEMS: Record<string, ConsoleFixtureListItem[]> = {
       'TODO00869',
       'TDPM Console port',
       '2026-06-18T00:14:51.000Z',
+    ),
+  ],
+  'todo-by-agent': [
+    issueItem(
+      871,
+      'Route console items into the Todo by agent manual triage bucket',
+      'TDAG00871',
+      'TDPM Console port',
+      '2026-06-18T00:41:27.000Z',
     ),
   ],
 };

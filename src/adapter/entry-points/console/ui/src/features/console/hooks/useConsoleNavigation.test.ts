@@ -15,6 +15,7 @@ const counts = (
   unread: 0,
   'failed-preparation': 0,
   'todo-by-human': 0,
+  'todo-by-agent': 0,
   ...overrides,
 });
 

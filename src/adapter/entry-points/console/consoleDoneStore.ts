@@ -85,6 +85,7 @@ export const CONSOLE_DONE_TAB_NAMES: string[] = [
   'unread',
   'failed-preparation',
   'todo-by-human',
+  'todo-by-agent',
   'in-tmux-by-human',
 ];
 
