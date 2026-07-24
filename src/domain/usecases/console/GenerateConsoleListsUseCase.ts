@@ -146,6 +146,7 @@ export class GenerateConsoleListsUseCase {
           'unread',
           'in tmux by human',
           'in tmux by agent',
+          'todo by agent',
         ],
       ),
       'todo-by-human': buildStatusTab(

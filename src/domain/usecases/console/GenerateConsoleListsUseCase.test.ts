@@ -23,6 +23,7 @@ const STATUS_OPTIONS: FieldOption[] = [
   storyOption('st-failed', 'Failed Preparation', 'RED'),
   storyOption('st-aqc', 'Awaiting Quality Check', 'GREEN'),
   storyOption('st-todo', 'Todo by human', 'PINK'),
+  storyOption('st-todo-agent', 'Todo by agent', 'BLUE'),
   storyOption('st-tmux', 'In Tmux by human', 'RED'),
   storyOption('st-tmux-agent', 'In Tmux by agent', 'YELLOW'),
   storyOption('st-done', 'Done', 'PURPLE'),
@@ -430,6 +431,7 @@ describe('GenerateConsoleListsUseCase', () => {
         'Unread',
         'In Tmux by human',
         'In Tmux by agent',
+        'Todo by agent',
       ]) {
         expect(names).not.toContain(excluded);
       }
