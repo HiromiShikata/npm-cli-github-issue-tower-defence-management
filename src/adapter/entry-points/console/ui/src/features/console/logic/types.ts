@@ -144,7 +144,8 @@ export type ConsoleTabName =
   | 'triage'
   | 'unread'
   | 'failed-preparation'
-  | 'todo-by-human';
+  | 'todo-by-human'
+  | 'todo-by-agent';
 
 export type ConsoleTab = {
   name: ConsoleTabName;
@@ -158,4 +159,5 @@ export const CONSOLE_TABS: ConsoleTab[] = [
   { name: 'unread', label: 'Unread' },
   { name: 'failed-preparation', label: 'Failed Preparation' },
   { name: 'todo-by-human', label: 'Todo by human' },
+  { name: 'todo-by-agent', label: 'Todo by agent' },
 ];

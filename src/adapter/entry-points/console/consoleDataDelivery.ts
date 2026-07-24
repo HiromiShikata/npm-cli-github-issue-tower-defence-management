@@ -9,6 +9,7 @@ export const CONSOLE_LIST_TAB_NAMES: string[] = [
   'unread',
   'failed-preparation',
   'todo-by-human',
+  'todo-by-agent',
 ];
 
 export type ConsoleDataRoute =

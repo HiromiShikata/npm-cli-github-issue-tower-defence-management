@@ -44,13 +44,16 @@ describe('actionToastMessage', () => {
     ).toBe('Marked unnecessary');
   });
 
-  it('labels the +1 week snooze differently on the todo-by-human tab', () => {
+  it('labels the +1 week snooze differently on the manual triage tabs', () => {
     const kind: ConsoleActionKind = {
       type: 'next_action_date',
       action: 'snooze_1week',
     };
     expect(actionToastMessage(kind, 'prs')).toBe('Next Action Date +1 week');
     expect(actionToastMessage(kind, 'todo-by-human')).toBe(
+      'Next Action Date +1 week and skip',
+    );
+    expect(actionToastMessage(kind, 'todo-by-agent')).toBe(
       'Next Action Date +1 week and skip',
     );
   });
@@ -134,13 +137,14 @@ describe('actionAdvances', () => {
     );
   });
 
-  it('does not advance a snooze except on the todo-by-human tab', () => {
+  it('does not advance a snooze except on the manual triage tabs', () => {
     const kind: ConsoleActionKind = {
       type: 'next_action_date',
       action: 'snooze_1week',
     };
     expect(actionAdvances(kind, 'prs')).toBe(false);
     expect(actionAdvances(kind, 'todo-by-human')).toBe(true);
+    expect(actionAdvances(kind, 'todo-by-agent')).toBe(true);
   });
 });
 

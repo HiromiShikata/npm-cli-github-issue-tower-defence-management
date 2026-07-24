@@ -1,6 +1,6 @@
 import {
   type ConsoleOperationHandlers,
-  isTodoByHumanTab,
+  isManualTriageTab,
 } from '../../logic/operations';
 import type {
   ConsoleFieldOption,
@@ -41,7 +41,7 @@ export const ConsoleOperationMenu = ({
         />
       )}
       <ConsoleNextActionDateActions
-        isTodoByHuman={isTodoByHumanTab(tab)}
+        isManualTriage={isManualTriageTab(tab)}
         onSetNextActionDate={handlers.onSetNextActionDate}
       />
       {showStory && (

@@ -97,6 +97,10 @@ describe('consoleDoneStore', () => {
       }
     });
 
+    it('includes the todo-by-agent tab so processed items are excluded', () => {
+      expect(CONSOLE_DONE_TAB_NAMES).toContain('todo-by-agent');
+    });
+
     it('includes the workflow-blocker tab so processed blockers are excluded', () => {
       expect(CONSOLE_DONE_TAB_NAMES).toContain('workflow-blocker');
       recordDoneProjectItemIdAcrossTabs(baseDir, 'umino', 'PVTI_7');

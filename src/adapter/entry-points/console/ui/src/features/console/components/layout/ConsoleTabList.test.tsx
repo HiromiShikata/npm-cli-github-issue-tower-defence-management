@@ -9,6 +9,7 @@ const counts: Record<ConsoleTabName, number> = {
   unread: 5,
   'failed-preparation': 0,
   'todo-by-human': 2,
+  'todo-by-agent': 3,
 };
 
 const baseProps = {
@@ -26,6 +27,7 @@ describe('ConsoleTabList', () => {
     expect(queryByText('Awaiting Quality Check')).not.toBeNull();
     expect(queryByText('Unread')).not.toBeNull();
     expect(queryByText('Todo by human')).not.toBeNull();
+    expect(queryByText('Todo by agent')).not.toBeNull();
     expect(queryByText('Triage')).toBeNull();
     expect(queryByText('Failed Preparation')).toBeNull();
   });

@@ -73,6 +73,21 @@ describe('ConsoleOperationMenu', () => {
     expect(getByText('+1 week and skip')).toBeInTheDocument();
   });
 
+  it('shows +1 week and skip on the todo-by-agent tab', () => {
+    const { getByText } = render(
+      <ConsoleOperationMenu
+        tab="todo-by-agent"
+        item={issueItem}
+        hasPullRequest={false}
+        rejectEnabled={false}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        handlers={handlers}
+      />,
+    );
+    expect(getByText('+1 week and skip')).toBeInTheDocument();
+  });
+
   it('hides the review group when there is no pull request', () => {
     const { queryByText } = render(
       <ConsoleOperationMenu

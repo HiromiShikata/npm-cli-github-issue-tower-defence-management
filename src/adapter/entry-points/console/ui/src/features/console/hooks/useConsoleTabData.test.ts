@@ -1,4 +1,5 @@
 import { renderHook, waitFor } from '@testing-library/react';
+import { CONSOLE_TABS } from '../logic/types';
 import { useConsoleTabData } from './useConsoleTabData';
 
 describe('useConsoleTabData', () => {
@@ -27,7 +28,7 @@ describe('useConsoleTabData', () => {
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
     });
-    expect(fetchMock).toHaveBeenCalledTimes(6);
+    expect(fetchMock).toHaveBeenCalledTimes(CONSOLE_TABS.length);
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining('/projects/umino/prs/list.json'),
     );
