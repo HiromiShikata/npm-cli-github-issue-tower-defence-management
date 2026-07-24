@@ -70,9 +70,10 @@ jest.mock('../../repositories/FetchWebhookRepository', () => ({
     sendGetRequest: jest.fn(),
   })),
 }));
+const mockScheduleHandle = jest.fn().mockResolvedValue(null);
 jest.mock('../handlers/HandleScheduledEventUseCaseHandler', () => ({
   HandleScheduledEventUseCaseHandler: jest.fn().mockImplementation(() => ({
-    handle: jest.fn().mockResolvedValue(null),
+    handle: mockScheduleHandle,
   })),
 }));
 import type { StartWebServerOptions } from '../console/webServer';
@@ -155,6 +156,46 @@ describe('CLI', () => {
 
   it('should export program', () => {
     expect(program).toBeDefined();
+  });
+
+  describe('schedule --inTmuxProjectOrder', () => {
+    it('should pass the parsed, trimmed project order to the handler', async () => {
+      await program.parseAsync([
+        'node',
+        'test',
+        'schedule',
+        '-t',
+        'schedule',
+        '-c',
+        configFilePath,
+        '--inTmuxProjectOrder',
+        'alpha, beta ,gamma',
+      ]);
+
+      expect(mockScheduleHandle).toHaveBeenCalledWith(
+        configFilePath,
+        undefined,
+        ['alpha', 'beta', 'gamma'],
+      );
+    });
+
+    it('should pass null when --inTmuxProjectOrder is omitted', async () => {
+      await program.parseAsync([
+        'node',
+        'test',
+        'schedule',
+        '-t',
+        'schedule',
+        '-c',
+        configFilePath,
+      ]);
+
+      expect(mockScheduleHandle).toHaveBeenCalledWith(
+        configFilePath,
+        undefined,
+        null,
+      );
+    });
   });
 
   describe('loadConfigFile', () => {
