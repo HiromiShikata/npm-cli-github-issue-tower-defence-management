@@ -836,11 +836,11 @@ addServeWebOptions(program.command('serveConsole'))
 program
   .command('selectOauthToken')
   .description(
-    'Print exactly one Claude Code OAuth token chosen by a rate-limit-aware filter. The token string is written to stdout (pipeable); the per-candidate decision trace is written to stderr. Exits non-zero when no token passes the filter.',
+    'Print exactly one Claude Code OAuth token chosen by a rate-limit-aware filter. When tokens carry differing per-token selectionWeight values, the choice among rate-limit-eligible tokens is weighted-random by that weight (default 1), so a lower-weight token is chosen proportionally less often; uniform weights preserve the deterministic soonest-7d-reset choice. The token string is written to stdout (pipeable); the per-candidate decision trace is written to stderr. Exits non-zero when no token passes the filter.',
   )
   .option(
     '--tokenListJsonPath <path>',
-    'Path to the JSON array of { name, token } records. Falls back to the CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH environment variable.',
+    'Path to the JSON array of { name, token, selectionWeight? } records. selectionWeight is an optional positive number (default 1) that biases how often this token is chosen among rate-limit-eligible candidates; a smaller weight is chosen proportionally less often and never bypasses eligibility filtering or starves a sole eligible token. Falls back to the CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH environment variable.',
   )
   .option(
     '--cacheDir <path>',
@@ -868,11 +868,11 @@ program
 program
   .command('selectLiveSessionOauthToken')
   .description(
-    'Print exactly one Claude Code OAuth token chosen for a new live interactive session. Among rate-limit-eligible tokens it prefers the one with the fewest current live sessions (by distinct CLAUDE_CODE_SESSION_ID found in running Claude Code processes), tiebreaking on the soonest 7d reset. The token string is written to stdout (pipeable); the per-candidate decision trace is written to stderr. Exits non-zero when no token passes the filter.',
+    'Print exactly one Claude Code OAuth token chosen for a new live interactive session. Among rate-limit-eligible tokens it prefers the one with the fewest current live sessions (by distinct CLAUDE_CODE_SESSION_ID found in running Claude Code processes), tiebreaking on the soonest 7d reset. When tokens carry differing per-token selectionWeight values, the choice among eligible tokens is weighted-random by that weight (default 1), so a lower-weight token is chosen proportionally less often; uniform weights preserve the fewest-live-sessions-then-soonest-7d-reset choice. The token string is written to stdout (pipeable); the per-candidate decision trace is written to stderr. Exits non-zero when no token passes the filter.',
   )
   .option(
     '--tokenListJsonPath <path>',
-    'Path to the JSON array of { name, token } records. Falls back to the CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH environment variable.',
+    'Path to the JSON array of { name, token, selectionWeight? } records. selectionWeight is an optional positive number (default 1) that biases how often this token is chosen among rate-limit-eligible candidates; a smaller weight is chosen proportionally less often and never bypasses eligibility filtering or starves a sole eligible token. Falls back to the CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH environment variable.',
   )
   .option(
     '--cacheDir <path>',

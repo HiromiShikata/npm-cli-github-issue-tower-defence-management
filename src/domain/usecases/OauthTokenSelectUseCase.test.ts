@@ -247,3 +247,165 @@ describe('OauthTokenSelectUseCase', () => {
     expect(alive?.eligible).toBe(true);
   });
 });
+
+const sweepingRandom = (count: number): (() => number) => {
+  let index = 0;
+  return () => {
+    const value = (index + 0.5) / count;
+    index += 1;
+    return value;
+  };
+};
+
+const throwingRandom = (): number => {
+  throw new Error('random source must not be consulted');
+};
+
+const withSelectionWeight = (
+  base: OauthTokenCandidate,
+  selectionWeight: number,
+): OauthTokenCandidate => ({ ...base, selectionWeight });
+
+describe('OauthTokenSelectUseCase selectionWeight', () => {
+  const useCase = new OauthTokenSelectUseCase();
+
+  it('keeps the deterministic soonest-7d selection and never consults random when weights are uniform', () => {
+    const result = useCase.run(
+      [
+        candidate(
+          'far',
+          snapshot({ sevenDayUtilization: 0.1, sevenDayReset: NOW + 6 * DAY }),
+        ),
+        candidate(
+          'soon',
+          snapshot({ sevenDayUtilization: 0.1, sevenDayReset: NOW + 2 * DAY }),
+        ),
+      ],
+      NOW,
+      throwingRandom,
+    );
+
+    expect(result.selected?.name).toBe('soon');
+  });
+
+  it('treats an absent selectionWeight the same as weight 1 (uniform, deterministic)', () => {
+    const result = useCase.run(
+      [
+        withSelectionWeight(
+          candidate('far', snapshot({ sevenDayReset: NOW + 6 * DAY })),
+          1,
+        ),
+        candidate('soon', snapshot({ sevenDayReset: NOW + 2 * DAY })),
+      ],
+      NOW,
+      throwingRandom,
+    );
+
+    expect(result.selected?.name).toBe('soon');
+  });
+
+  it('selects a sole eligible low-weight token without consulting random (no starvation)', () => {
+    const result = useCase.run(
+      [
+        withSelectionWeight(candidate('lowWeightOnly', snapshot({})), 0.01),
+        candidate('blocked', snapshot({ fiveHourUtilization: 0.9 })),
+      ],
+      NOW,
+      throwingRandom,
+    );
+
+    expect(result.selected?.name).toBe('lowWeightOnly');
+  });
+
+  it('chooses a lower-weight token proportionally less often among eligible candidates', () => {
+    const count = 1000;
+    const random = sweepingRandom(count);
+    const selectionCounts = new Map<string, number>();
+
+    for (let i = 0; i < count; i += 1) {
+      const result = useCase.run(
+        [
+          withSelectionWeight(candidate('heavy', snapshot({})), 1),
+          withSelectionWeight(candidate('light', snapshot({})), 0.5),
+        ],
+        NOW,
+        random,
+      );
+      const name = result.selected?.name ?? 'none';
+      selectionCounts.set(name, (selectionCounts.get(name) ?? 0) + 1);
+    }
+
+    const heavy = selectionCounts.get('heavy') ?? 0;
+    const light = selectionCounts.get('light') ?? 0;
+    expect(heavy + light).toBe(count);
+    expect(light).toBeGreaterThan(0);
+    expect(light).toBeLessThan(heavy);
+    expect(Math.abs(light / count - 1 / 3)).toBeLessThan(0.02);
+    expect(Math.abs(heavy / count - 2 / 3)).toBeLessThan(0.02);
+  });
+
+  it('chooses a higher-weight token more often among eligible candidates', () => {
+    const count = 1000;
+    const random = sweepingRandom(count);
+    const selectionCounts = new Map<string, number>();
+
+    for (let i = 0; i < count; i += 1) {
+      const result = useCase.run(
+        [
+          withSelectionWeight(candidate('double', snapshot({})), 2),
+          withSelectionWeight(candidate('single', snapshot({})), 1),
+        ],
+        NOW,
+        random,
+      );
+      const name = result.selected?.name ?? 'none';
+      selectionCounts.set(name, (selectionCounts.get(name) ?? 0) + 1);
+    }
+
+    const double = selectionCounts.get('double') ?? 0;
+    const single = selectionCounts.get('single') ?? 0;
+    expect(double).toBeGreaterThan(single);
+    expect(single).toBeGreaterThan(0);
+  });
+
+  it('gives a zero-weight token no chance while other eligible tokens exist', () => {
+    const count = 100;
+    const random = sweepingRandom(count);
+    const selectionCounts = new Map<string, number>();
+
+    for (let i = 0; i < count; i += 1) {
+      const result = useCase.run(
+        [
+          withSelectionWeight(candidate('zero', snapshot({})), 0),
+          withSelectionWeight(candidate('positive', snapshot({})), 1),
+        ],
+        NOW,
+        random,
+      );
+      const name = result.selected?.name ?? 'none';
+      selectionCounts.set(name, (selectionCounts.get(name) ?? 0) + 1);
+    }
+
+    expect(selectionCounts.get('zero') ?? 0).toBe(0);
+    expect(selectionCounts.get('positive') ?? 0).toBe(count);
+  });
+
+  it('falls back to the deterministic best when every eligible weight is zero', () => {
+    const result = useCase.run(
+      [
+        withSelectionWeight(
+          candidate('far', snapshot({ sevenDayReset: NOW + 6 * DAY })),
+          0,
+        ),
+        withSelectionWeight(
+          candidate('soon', snapshot({ sevenDayReset: NOW + 2 * DAY })),
+          0,
+        ),
+      ],
+      NOW,
+      throwingRandom,
+    );
+
+    expect(result.selected?.name).toBe('soon');
+  });
+});

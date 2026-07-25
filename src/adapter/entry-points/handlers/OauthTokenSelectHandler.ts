@@ -1,4 +1,5 @@
 import {
+  DEFAULT_SELECTION_WEIGHT,
   OauthTokenCandidate,
   OauthTokenSelectResult,
   OauthTokenSelectUseCase,
@@ -83,30 +84,33 @@ export class OauthTokenSelectHandler {
 
     const cacheDirectory = resolveCacheDirectory(input.cacheDirectory);
 
-    const candidates: OauthTokenCandidate[] = entries.map(({ name, token }) => {
-      const snapshot = readRateLimit(token, cacheDirectory);
-      const fableLimit = snapshot?.modelWeeklyLimits[FABLE_LIMIT_TYPE];
-      const fableRejected =
-        fableLimit !== undefined &&
-        fableLimit.rejected &&
-        input.nowEpochSeconds <= fableLimit.resetsAt;
-      return {
-        name,
-        token,
-        snapshot:
-          snapshot === null
-            ? null
-            : {
-                fiveHourUtilization: snapshot.fiveHourUtilization,
-                fiveHourReset: snapshot.fiveHourReset,
-                sevenDayUtilization: snapshot.sevenDayUtilization,
-                sevenDayReset: snapshot.sevenDayReset,
-              },
-        subscriptionDisabled: snapshot?.subscriptionDisabled ?? false,
-        unifiedRejected: snapshot?.unifiedRejected ?? false,
-        fableRejected,
-      };
-    });
+    const candidates: OauthTokenCandidate[] = entries.map(
+      ({ name, token, selectionWeight }) => {
+        const snapshot = readRateLimit(token, cacheDirectory);
+        const fableLimit = snapshot?.modelWeeklyLimits[FABLE_LIMIT_TYPE];
+        const fableRejected =
+          fableLimit !== undefined &&
+          fableLimit.rejected &&
+          input.nowEpochSeconds <= fableLimit.resetsAt;
+        return {
+          name,
+          token,
+          snapshot:
+            snapshot === null
+              ? null
+              : {
+                  fiveHourUtilization: snapshot.fiveHourUtilization,
+                  fiveHourReset: snapshot.fiveHourReset,
+                  sevenDayUtilization: snapshot.sevenDayUtilization,
+                  sevenDayReset: snapshot.sevenDayReset,
+                },
+          subscriptionDisabled: snapshot?.subscriptionDisabled ?? false,
+          unifiedRejected: snapshot?.unifiedRejected ?? false,
+          fableRejected,
+          selectionWeight: selectionWeight ?? DEFAULT_SELECTION_WEIGHT,
+        };
+      },
+    );
 
     const result = this.useCase.run(candidates, input.nowEpochSeconds);
 
