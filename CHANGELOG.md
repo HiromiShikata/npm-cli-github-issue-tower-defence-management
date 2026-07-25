@@ -1,3 +1,10 @@
+## [1.131.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.131.0...v1.131.1) (2026-07-25)
+
+
+### Bug Fixes
+
+* crash on startup with Node.js v22+ due to removed SlowBuffer in buffer-equal-constant-time ([#826](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/826)) ([626853b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/626853b32fe8ca0f8985983b9bbf161b1a2e616d))
+
 # [1.131.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.130.0...v1.131.0) (2026-07-24)
 
 
