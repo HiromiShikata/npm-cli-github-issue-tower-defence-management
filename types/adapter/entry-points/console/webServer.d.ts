@@ -3,7 +3,7 @@ import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/Iss
 import { IssueTitleStateCache, PullRequestStatusCache } from './consoleReadApi';
 import { ConsolePjcodeValidator, ConsoleProjectResolver } from './consoleOperationApi';
 import { ImageFetcher } from './consoleImageProxy';
-export declare const DEFAULT_WEB_PORT = 9981;
+export declare const DEFAULT_WEB_PORT = 9980;
 export declare const DEFAULT_DASHBOARD_PROJECT_NAMES: string[];
 export declare const CONSOLE_TOKEN_HEADER = "x-pv-token";
 export declare const CONSOLE_TOKEN_COOKIE = "pv_token";

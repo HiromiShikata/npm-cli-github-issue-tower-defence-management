@@ -1,3 +1,10 @@
+# [1.132.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.131.1...v1.132.0) (2026-07-25)
+
+
+### Features
+
+* **cli:** auto-start web console server at daemon startup ([#967](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/967)) ([22795a5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/22795a539bed69f59d04174bab2517076d988ebf)), closes [#791](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/791)
+
 ## [1.131.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.131.0...v1.131.1) (2026-07-25)
 
 

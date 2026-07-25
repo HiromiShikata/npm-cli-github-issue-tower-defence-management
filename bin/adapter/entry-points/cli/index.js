@@ -61,6 +61,7 @@ const FetchWebhookRepository_1 = require("../../repositories/FetchWebhookReposit
 const RevertOrphanedPreparationUseCase_1 = require("../../../domain/usecases/RevertOrphanedPreparationUseCase");
 const path = __importStar(require("path"));
 const webServer_1 = require("../console/webServer");
+const ensureConsoleRunning_1 = require("../console/ensureConsoleRunning");
 const consoleReadApi_1 = require("../console/consoleReadApi");
 const consoleProjectResolver_1 = require("../console/consoleProjectResolver");
 const OauthTokenSelectHandler_1 = require("../handlers/OauthTokenSelectHandler");
@@ -215,6 +216,19 @@ exports.program
     const codexHomeCandidates = config.codexHomeCandidates && config.codexHomeCandidates.length > 0
         ? config.codexHomeCandidates
         : null;
+    if (config.consoleAccessToken) {
+        const consoleProcess = await (0, ensureConsoleRunning_1.ensureConsoleRunning)(options.configFilePath, webServer_1.DEFAULT_WEB_PORT);
+        if (consoleProcess !== null) {
+            process.once('SIGTERM', () => {
+                consoleProcess.kill();
+                process.exit(0);
+            });
+            process.once('SIGINT', () => {
+                consoleProcess.kill();
+                process.exit(0);
+            });
+        }
+    }
     const preparationResult = await useCase.run({
         projectUrl,
         defaultAgentName,
