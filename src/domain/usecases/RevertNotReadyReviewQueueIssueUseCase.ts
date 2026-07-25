@@ -69,6 +69,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
 
   run = async (params: {
     projectUrl: string;
+    manager: string;
     labelsAsLlmAgentName?: string[] | null;
     changeTargetPathAliases?: Record<string, string> | null;
     allowedIssueAuthors?: string[] | null;
@@ -128,6 +129,9 @@ export class RevertNotReadyReviewQueueIssueUseCase {
             },
           );
         if (rejections.length > 0) {
+          if (!issue.assignees.includes(params.manager)) {
+            continue;
+          }
           try {
             await this.issueRepository.updateStatus(
               project,
@@ -194,6 +198,9 @@ export class RevertNotReadyReviewQueueIssueUseCase {
           params.labelsAsLlmAgentName ?? [],
         );
         if (rejections.length > 0) {
+          if (!pullRequest.assignees.includes(params.manager)) {
+            continue;
+          }
           try {
             await this.issueRepository.updateStatus(
               project,

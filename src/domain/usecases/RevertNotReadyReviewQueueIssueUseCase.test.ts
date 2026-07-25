@@ -69,7 +69,7 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   dependedIssueUrls: [],
   completionDate50PercentConfidence: null,
   url: 'https://github.com/user/repo/issues/1',
-  assignees: [],
+  assignees: ['manager-user'],
   labels: [],
   org: 'user',
   repo: 'repo',
@@ -217,6 +217,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -237,6 +238,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -256,6 +258,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -287,6 +290,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         labelsAsLlmAgentName: ['story', 'chore', 'accounting'],
         allowedIssueAuthors: ['owner'],
@@ -308,6 +312,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         labelsAsLlmAgentName: ['story', 'chore'],
         allowedIssueAuthors: ['owner'],
@@ -329,6 +334,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -356,6 +362,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         labelsAsLlmAgentName: null,
         allowedIssueAuthors: ['owner'],
@@ -375,6 +382,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [createReadyPr()]);
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -392,6 +400,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       ]);
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -424,6 +433,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       ]);
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -452,6 +462,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       ]);
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -480,6 +491,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       ]);
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -509,6 +521,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       ]);
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -542,6 +555,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       ]);
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -605,6 +619,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         );
 
         await useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
           allowedIssueAuthors: ['owner'],
         });
@@ -650,6 +665,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         );
 
         await useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
           allowedIssueAuthors: ['owner'],
         });
@@ -682,6 +698,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         });
 
         await useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
           allowedIssueAuthors: ['owner'],
         });
@@ -713,6 +730,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       const runCycle = () =>
         useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
           allowedIssueAuthors: ['owner'],
         });
@@ -912,6 +930,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         ]);
 
         await useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
           allowedIssueAuthors: ['owner'],
           changeTargetPathAliases: {
@@ -931,6 +950,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         ]);
 
         await useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
           allowedIssueAuthors: ['owner'],
           changeTargetPathAliases: {
@@ -955,6 +975,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -977,6 +998,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -998,6 +1020,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -1019,6 +1042,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       mockIssueRepository.getOpenPullRequest.mockResolvedValue(createReadyPr());
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -1043,6 +1067,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -1083,6 +1108,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -1118,6 +1144,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -1155,6 +1182,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -1190,6 +1218,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -1222,6 +1251,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       mockIssueRepository.getOpenPullRequest.mockResolvedValue(null);
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -1260,6 +1290,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -1305,6 +1336,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -1331,6 +1363,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         });
 
         await useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
           allowedIssueAuthors: ['owner'],
         });
@@ -1356,6 +1389,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         });
 
         await useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
           allowedIssueAuthors: ['owner'],
         });
@@ -1392,6 +1426,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         });
 
         await useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
           allowedIssueAuthors: ['owner'],
         });
@@ -1417,6 +1452,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         });
 
         await useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
           allowedIssueAuthors: ['owner', 'dependabot[bot]'],
         });
@@ -1448,6 +1484,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         });
 
         await useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
           allowedIssueAuthors: null,
         });
@@ -1473,6 +1510,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         });
 
         await useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
         });
 
@@ -1497,6 +1535,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         });
 
         await useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
           allowedIssueAuthors: [],
         });
@@ -1547,6 +1586,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -1589,6 +1629,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       await expect(
         useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
           allowedIssueAuthors: ['owner'],
         }),
@@ -1632,6 +1673,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -1688,6 +1730,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       await expect(
         useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
           allowedIssueAuthors: ['owner'],
         }),
@@ -1743,6 +1786,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -1796,6 +1840,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -1842,6 +1887,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
       });
@@ -1894,10 +1940,120 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       await expect(
         useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
           allowedIssueAuthors: ['owner'],
         }),
       ).rejects.toThrow('Something went wrong');
+    });
+  });
+
+  describe('manager-assignee gating', () => {
+    it('should not revert a rejected Awaiting Quality Check issue that is not assigned to the manager', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+        assignees: ['other-user'],
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('should revert a rejected Awaiting Quality Check issue that is assigned to the manager', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+        assignees: ['manager-user'],
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        issue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('Auto Status Check: REJECTED'),
+      );
+    });
+
+    it('should not revert a rejected Unread pull request that is not assigned to the manager', async () => {
+      const pullRequest = createMockPullRequest({
+        status: 'Unread',
+        assignees: ['other-user'],
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [pullRequest],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequest.mockResolvedValue({
+        ...createReadyPr(),
+        isConflicted: true,
+      });
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('should revert a rejected Unread pull request that is assigned to the manager', async () => {
+      const pullRequest = createMockPullRequest({
+        status: 'Unread',
+        assignees: ['manager-user'],
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [pullRequest],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequest.mockResolvedValue({
+        ...createReadyPr(),
+        isConflicted: true,
+      });
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        pullRequest,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        pullRequest,
+        expect.stringContaining('Auto Status Check: REJECTED'),
+      );
     });
   });
 });
