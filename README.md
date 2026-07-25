@@ -28,10 +28,11 @@ Commands:
   help [command]                        display help for command
 
 Options for schedule:
-  -t, --trigger <type>  Trigger type: issue or schedule
-  -c, --config <path>   Path to config YAML file
-  -v, --verbose         Verbose output
-  -i, --issue <url>     GitHub Issue URL
+  -t, --trigger <type>          Trigger type: issue or schedule
+  -c, --config <path>           Path to config YAML file
+  -v, --verbose                 Verbose output
+  -i, --issue <url>             GitHub Issue URL
+  --inTmuxProjectOrder <names>  Comma-separated project names, in display order, for the in-tmux-by-human session list. When omitted, falls back to the inTmuxProjectOrder value in the config file.
 
 Options for startDaemon:
   --configFilePath <path>                          Path to config file for tower defence management (required)
