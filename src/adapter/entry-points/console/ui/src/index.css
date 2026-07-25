@@ -562,8 +562,11 @@ body {
 }
 
 .console-comment {
-  border-top: 1px solid #21262d;
-  padding-top: 8px;
+  padding: 12px 16px;
+  margin-bottom: 10px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
 }
 
 .console-comment-header {
@@ -571,6 +574,23 @@ body {
   gap: 8px;
   font-size: 0.75rem;
   color: #8b949e;
+}
+
+.console-comment-show-all {
+  padding: 6px 12px;
+  margin-bottom: 10px;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #21262d;
+  color: #e6edf3;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.console-comment-show-all:hover {
+  border-color: #484f58;
+  background-color: #262c34;
 }
 
 .console-comment-author {
