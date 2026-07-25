@@ -2,6 +2,8 @@ import { ClaudeLiveSession } from './adapter-interfaces/ClaudeLiveSessionReposit
 import {
   OauthTokenCandidate,
   OauthTokenSelectUseCase,
+  SelectionRandom,
+  selectWeightedCandidate,
 } from './OauthTokenSelectUseCase';
 
 export type LiveSessionOauthTokenCandidateMetrics = {
@@ -28,10 +30,12 @@ export class LiveSessionOauthTokenSelectUseCase {
     candidates: OauthTokenCandidate[],
     liveSessions: ClaudeLiveSession[],
     nowEpochSeconds: number,
+    random: SelectionRandom = Math.random,
   ): LiveSessionOauthTokenSelectResult => {
     const rateLimitResult = this.rateLimitSelectUseCase.run(
       candidates,
       nowEpochSeconds,
+      () => 0,
     );
     const liveSessionCountByToken = this.liveSessionCountByToken(liveSessions);
 
@@ -60,13 +64,20 @@ export class LiveSessionOauthTokenSelectUseCase {
       return { selected: null, metrics };
     }
 
-    const best = eligible.reduce((bestEntry, currentEntry) =>
+    const deterministicBest = eligible.reduce((bestEntry, currentEntry) =>
       this.preferred(currentEntry.metric, bestEntry.metric)
         ? currentEntry
         : bestEntry,
     );
 
-    return { selected: best.candidate, metrics };
+    const selected = selectWeightedCandidate(
+      eligible,
+      (entry) => entry.candidate,
+      deterministicBest,
+      random,
+    );
+
+    return { selected: selected.candidate, metrics };
   };
 
   private preferred = (

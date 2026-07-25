@@ -50,6 +50,58 @@ describe('loadTokenEntries', () => {
     fs.writeFileSync(filePath, JSON.stringify([{ name: 'no-token' }]));
     expect(loadTokenEntries(filePath)).toBeNull();
   });
+
+  it('should include selectionWeight when the entry has a finite number', () => {
+    const filePath = path.join(tempDir, 'tokens.json');
+    fs.writeFileSync(
+      filePath,
+      JSON.stringify([
+        { name: 'alice', token: 'token-a', selectionWeight: 0.8 },
+        { name: 'bob', token: 'token-b', selectionWeight: 2 },
+      ]),
+    );
+    expect(loadTokenEntries(filePath)).toEqual([
+      { name: 'alice', token: 'token-a', selectionWeight: 0.8 },
+      { name: 'bob', token: 'token-b', selectionWeight: 2 },
+    ]);
+  });
+
+  it('should omit selectionWeight when it is absent', () => {
+    const filePath = path.join(tempDir, 'tokens.json');
+    fs.writeFileSync(
+      filePath,
+      JSON.stringify([{ name: 'alice', token: 'token-a' }]),
+    );
+    expect(loadTokenEntries(filePath)).toEqual([
+      { name: 'alice', token: 'token-a' },
+    ]);
+  });
+
+  it('should ignore a non-numeric selectionWeight', () => {
+    const filePath = path.join(tempDir, 'tokens.json');
+    fs.writeFileSync(
+      filePath,
+      JSON.stringify([
+        { name: 'alice', token: 'token-a', selectionWeight: 'high' },
+        { name: 'bob', token: 'token-b', selectionWeight: null },
+      ]),
+    );
+    expect(loadTokenEntries(filePath)).toEqual([
+      { name: 'alice', token: 'token-a' },
+      { name: 'bob', token: 'token-b' },
+    ]);
+  });
+
+  it('should carry selectionWeight on a positionally named entry', () => {
+    const filePath = path.join(tempDir, 'tokens.json');
+    fs.writeFileSync(
+      filePath,
+      JSON.stringify([{ token: 'token-a', selectionWeight: 0.5 }]),
+    );
+    expect(loadTokenEntries(filePath)).toEqual([
+      { name: 'token-1', token: 'token-a', selectionWeight: 0.5 },
+    ]);
+  });
 });
 
 describe('TokenListLoader', () => {

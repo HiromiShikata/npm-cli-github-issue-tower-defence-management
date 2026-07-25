@@ -209,3 +209,77 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(rejected?.exclusionReason).toContain('rejected');
   });
 });
+
+const sweepingRandom = (count: number): (() => number) => {
+  let index = 0;
+  return () => {
+    const value = (index + 0.5) / count;
+    index += 1;
+    return value;
+  };
+};
+
+const throwingRandom = (): number => {
+  throw new Error('random source must not be consulted');
+};
+
+const withSelectionWeight = (
+  base: OauthTokenCandidate,
+  selectionWeight: number,
+): OauthTokenCandidate => ({ ...base, selectionWeight });
+
+describe('LiveSessionOauthTokenSelectUseCase selectionWeight', () => {
+  const useCase = new LiveSessionOauthTokenSelectUseCase();
+
+  it('keeps the deterministic fewest-live-sessions selection and never consults random when weights are uniform', () => {
+    const result = useCase.run(
+      [candidate('busy', snapshot({})), candidate('idle', snapshot({}))],
+      [session('busy', 'session-a')],
+      NOW,
+      throwingRandom,
+    );
+
+    expect(result.selected?.name).toBe('idle');
+  });
+
+  it('selects a sole eligible low-weight token without consulting random (no starvation)', () => {
+    const result = useCase.run(
+      [
+        withSelectionWeight(candidate('lowWeightOnly', snapshot({})), 0.01),
+        candidate('blocked', snapshot({ fiveHourUtilization: 0.9 })),
+      ],
+      [],
+      NOW,
+      throwingRandom,
+    );
+
+    expect(result.selected?.name).toBe('lowWeightOnly');
+  });
+
+  it('chooses a lower-weight token proportionally less often among equally-idle eligible candidates', () => {
+    const count = 1000;
+    const random = sweepingRandom(count);
+    const selectionCounts = new Map<string, number>();
+
+    for (let i = 0; i < count; i += 1) {
+      const result = useCase.run(
+        [
+          withSelectionWeight(candidate('heavy', snapshot({})), 1),
+          withSelectionWeight(candidate('light', snapshot({})), 0.5),
+        ],
+        [],
+        NOW,
+        random,
+      );
+      const name = result.selected?.name ?? 'none';
+      selectionCounts.set(name, (selectionCounts.get(name) ?? 0) + 1);
+    }
+
+    const heavy = selectionCounts.get('heavy') ?? 0;
+    const light = selectionCounts.get('light') ?? 0;
+    expect(heavy + light).toBe(count);
+    expect(light).toBeGreaterThan(0);
+    expect(light).toBeLessThan(heavy);
+    expect(Math.abs(light / count - 1 / 3)).toBeLessThan(0.02);
+  });
+});
