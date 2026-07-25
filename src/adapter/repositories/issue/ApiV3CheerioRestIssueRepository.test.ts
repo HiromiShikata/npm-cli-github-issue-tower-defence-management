@@ -2107,7 +2107,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     fetchSpy: FetchSpy,
     predicate: (url: string, body: string) => boolean,
   ): number =>
-    fetchSpy.mock.calls.filter(([input, init]) =>
+    fetchSpy.mock.calls.filter(([input, init]: Parameters<typeof fetch>) =>
       predicate(requestUrlOf(input), requestBodyOf(init)),
     ).length;
 
@@ -2275,6 +2275,28 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         }),
         combinedStatus: () => ({
           statuses: [{ context: 'external-ci', state: 'success' }],
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.isCiStateSuccess).toBe(true);
+      expect(result?.isPassedAllCiJob).toBe(true);
+    });
+
+    it('returns isCiStateSuccess true when check run conclusions are neutral or skipped', async () => {
+      mockFetchRoutes({
+        slimPullRequest: () => buildSlimPullRequestResponse(),
+        checkRuns: () => ({
+          total_count: 2,
+          check_runs: [
+            { id: 100, name: 'lint', conclusion: 'neutral' },
+            { id: 200, name: 'docs', conclusion: 'skipped' },
+          ],
         }),
       });
 
@@ -2625,13 +2647,14 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         ),
       ).toBe(2);
       const secondSlimCall = fetchSpy.mock.calls
-        .map(([input, init]) =>
+        .map(([input, init]): GraphqlRequestBody | null =>
           requestUrlOf(input) === 'https://api.github.com/graphql'
             ? parseGraphqlRequestBody(init)
             : null,
         )
         .filter(
-          (body) => body !== null && body.query.includes('headRefOid'),
+          (body): body is GraphqlRequestBody =>
+            body !== null && body.query.includes('headRefOid'),
         )[1];
       expect(secondSlimCall?.variables.reviewThreadsAfter).toBe('cursor-1');
     });
