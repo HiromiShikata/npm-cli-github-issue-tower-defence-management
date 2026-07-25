@@ -26,8 +26,8 @@ import { Issue } from '../../../domain/entities/Issue';
 
 describe('webServer pure helpers', () => {
   describe('DEFAULT_WEB_PORT', () => {
-    it('is 9981', () => {
-      expect(DEFAULT_WEB_PORT).toBe(9981);
+    it('is 9980', () => {
+      expect(DEFAULT_WEB_PORT).toBe(9980);
     });
   });
 

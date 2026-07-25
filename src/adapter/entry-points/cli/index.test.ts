@@ -86,7 +86,7 @@ const mockStartWebServer = jest
   .fn<Promise<unknown>, [StartWebServerOptions]>()
   .mockResolvedValue({
     close: jest.fn(),
-    address: jest.fn().mockReturnValue({ port: 9981 }),
+    address: jest.fn().mockReturnValue({ port: 9980 }),
   });
 jest.mock('../console/webServer', () => {
   const actual: Record<string, unknown> = jest.requireActual(
@@ -1281,7 +1281,7 @@ mysteryKey: 'value'
       expect(callOrder).toEqual(['ensureWebConsoleRunning', 'preparationRun']);
       expect(
         ensureConsoleRunningModule.ensureConsoleRunning,
-      ).toHaveBeenCalledWith(configFilePath, 9981);
+      ).toHaveBeenCalledWith(configFilePath, 9980);
     });
 
     it('should not start web console when consoleAccessToken is not provided', async () => {
@@ -1851,7 +1851,7 @@ mysteryKey: 'value'
       expect(helpText).toContain('serveWeb');
     });
 
-    it('should start the server on the default port 9981 when --port is omitted', async () => {
+    it('should start the server on the default port 9980 when --port is omitted', async () => {
       writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
       const logSpy = jest.spyOn(console, 'log').mockImplementation();
 
@@ -1865,7 +1865,7 @@ mysteryKey: 'value'
 
       expect(mockStartWebServer).toHaveBeenCalledTimes(1);
       const callArg = mockStartWebServer.mock.calls[0][0];
-      expect(callArg.port).toBe(9981);
+      expect(callArg.port).toBe(9980);
       expect(callArg.accessToken).toBe('config-token');
       expect(callArg.consoleDataOutputDir).toBeNull();
       expect(callArg.uiDistDir).toBe(
@@ -2054,7 +2054,7 @@ mysteryKey: 'value'
       expect(helpText).toContain('serveConsole');
     });
 
-    it('should route to the same handler as serveWeb on the default port 9981', async () => {
+    it('should route to the same handler as serveWeb on the default port 9980', async () => {
       writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
       const logSpy = jest.spyOn(console, 'log').mockImplementation();
 
@@ -2068,7 +2068,7 @@ mysteryKey: 'value'
 
       expect(mockStartWebServer).toHaveBeenCalledTimes(1);
       const callArg = mockStartWebServer.mock.calls[0][0];
-      expect(callArg.port).toBe(9981);
+      expect(callArg.port).toBe(9980);
       expect(callArg.accessToken).toBe('config-token');
       expect(callArg.consoleDataOutputDir).toBeNull();
       expect(callArg.uiDistDir).toBe(
