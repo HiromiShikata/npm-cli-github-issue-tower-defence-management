@@ -28,5 +28,6 @@ export declare class ProcHostMetricsRepository {
     readCpuUsedPercent: () => Promise<number>;
     readLoadAverages: () => LoadAverages;
     readDiskUsedPercent: () => number;
+    readDiskUsedPercentForMountpoint: (mountpoint: string) => number;
 }
 //# sourceMappingURL=ProcHostMetricsRepository.d.ts.map

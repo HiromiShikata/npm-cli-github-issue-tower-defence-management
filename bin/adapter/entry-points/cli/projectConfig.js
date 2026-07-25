@@ -78,6 +78,25 @@ const getStringArrayValue = (obj, key) => {
 };
 const isRecord = (value) => typeof value === 'object' && value !== null && !Array.isArray(value);
 exports.isRecord = isRecord;
+const getDisksValue = (obj, key) => {
+    const value = obj[key];
+    if (!Array.isArray(value)) {
+        return undefined;
+    }
+    const disks = [];
+    for (const item of value) {
+        if (!(0, exports.isRecord)(item)) {
+            return undefined;
+        }
+        const title = item['title'];
+        const mountpoint = item['mountpoint'];
+        if (typeof title !== 'string' || typeof mountpoint !== 'string') {
+            return undefined;
+        }
+        disks.push({ title, mountpoint });
+    }
+    return disks;
+};
 const knownProjectReadmeConfigKeys = [
     'defaultAgentName',
     'defaultLlmModelName',
@@ -126,6 +145,7 @@ const loadConfigFile = (configFilePath) => {
             changeTargetPathAliases: getStringRecordValue(parsed, 'changeTargetPathAliases'),
             consoleAccessToken: getStringValue(parsed, 'consoleAccessToken'),
             consoleProjects: getStringRecordValue(parsed, 'consoleProjects'),
+            disks: getDisksValue(parsed, 'disks'),
         };
     }
     catch (error) {
@@ -239,6 +259,7 @@ const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
         configFile.changeTargetPathAliases,
     consoleAccessToken: cliOverrides.consoleAccessToken ?? configFile.consoleAccessToken,
     consoleProjects: cliOverrides.consoleProjects ?? configFile.consoleProjects,
+    disks: cliOverrides.disks ?? configFile.disks,
 });
 exports.mergeConfigs = mergeConfigs;
 const isGraphqlProjectV2ReadmeResponse = (value) => {

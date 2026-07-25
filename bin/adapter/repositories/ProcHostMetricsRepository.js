@@ -158,6 +158,10 @@ class ProcHostMetricsRepository {
             const { blocks, bfree, bavail } = this.readDiskBlocks(this.rootPath);
             return (0, exports.parseDiskUsedPercent)(blocks, bfree, bavail);
         };
+        this.readDiskUsedPercentForMountpoint = (mountpoint) => {
+            const { blocks, bfree, bavail } = this.readDiskBlocks(mountpoint);
+            return (0, exports.parseDiskUsedPercent)(blocks, bfree, bavail);
+        };
     }
 }
 exports.ProcHostMetricsRepository = ProcHostMetricsRepository;

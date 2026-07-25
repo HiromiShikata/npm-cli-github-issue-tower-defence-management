@@ -45,6 +45,11 @@ const writeMachineStatus = async (params) => {
     const cpuPct = await hostMetricsRepository.readCpuUsedPercent();
     const diskPct = hostMetricsRepository.readDiskUsedPercent();
     const load = hostMetricsRepository.readLoadAverages();
+    const configuredDisks = params.disks ?? [];
+    const disks = configuredDisks.map((disk) => ({
+        title: disk.title,
+        pct: hostMetricsRepository.readDiskUsedPercentForMountpoint(disk.mountpoint),
+    }));
     const machineStatusPath = path_1.default.join(dashboardDataDir, 'machine-status.json');
     const previousLastFetchedAt = readLastFetchedAtFromJsonFile(machineStatusPath);
     const currentLastFetchedAt = allIssuesCacheDir
@@ -55,6 +60,7 @@ const writeMachineStatus = async (params) => {
         memPct,
         cpuPct,
         diskPct,
+        ...(disks.length > 0 ? { disks } : {}),
         load: [load.oneMinute, load.fiveMinute, load.fifteenMinute],
         cycleMinutes,
         lastFetchedAt: currentLastFetchedAt,

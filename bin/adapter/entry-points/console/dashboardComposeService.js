@@ -92,6 +92,23 @@ const parseLoad = (value) => {
     }
     return [oneMinute, fiveMinute, fifteenMinute];
 };
+const parseDisks = (value) => {
+    if (!Array.isArray(value)) {
+        return null;
+    }
+    const disks = [];
+    for (const entry of value) {
+        if (!isRecord(entry) || typeof entry.title !== 'string') {
+            return null;
+        }
+        const pct = asFiniteNumber(entry.pct);
+        if (pct === null) {
+            return null;
+        }
+        disks.push({ title: entry.title, pct });
+    }
+    return disks;
+};
 const readMachineStatus = (dashboardDataDir) => {
     const value = readJsonFile(path.join(dashboardDataDir, 'machine-status.json'));
     if (!isRecord(value)) {
@@ -103,6 +120,7 @@ const readMachineStatus = (dashboardDataDir) => {
         memPct: asFiniteNumber(value.memPct),
         cpuPct: asFiniteNumber(value.cpuPct),
         diskPct: asFiniteNumber(value.diskPct),
+        disks: parseDisks(value.disks),
         load: parseLoad(value.load),
         cycleMinutes,
     };
