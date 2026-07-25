@@ -1,6 +1,7 @@
 import { LocalCommandRunner } from '../../domain/usecases/adapter-interfaces/LocalCommandRunner';
 import { TmuxSessionRepository } from '../../domain/usecases/adapter-interfaces/TmuxSessionRepository';
 import { LiveTmuxSession } from '../../domain/entities/LiveTmuxSession';
+import { clSessionScopeUnitName } from './clSessionScopeUnitName';
 
 export class NodeTmuxSessionRepository implements TmuxSessionRepository {
   constructor(private readonly localCommandRunner: LocalCommandRunner) {}
@@ -81,6 +82,32 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
     if (exitCode !== 0) {
       throw new Error(
         `Failed to kill tmux session "${sessionName}": exit code ${exitCode}${
+          stderr ? `: ${stderr}` : ''
+        }`,
+      );
+    }
+    await this.stopClSessionScope(sessionName);
+  };
+
+  private stopClSessionScope = async (sessionName: string): Promise<void> => {
+    const scopeUnitName = clSessionScopeUnitName(sessionName);
+    await this.localCommandRunner.runCommand('systemctl', [
+      '--user',
+      'reset-failed',
+      scopeUnitName,
+    ]);
+    const { stderr, exitCode } = await this.localCommandRunner.runCommand(
+      'systemctl',
+      ['--user', 'stop', scopeUnitName],
+    );
+    await this.localCommandRunner.runCommand('systemctl', [
+      '--user',
+      'reset-failed',
+      scopeUnitName,
+    ]);
+    if (exitCode !== 0) {
+      console.error(
+        `Failed to stop systemd user scope "${scopeUnitName}" for tmux session "${sessionName}": exit code ${exitCode}${
           stderr ? `: ${stderr}` : ''
         }`,
       );
