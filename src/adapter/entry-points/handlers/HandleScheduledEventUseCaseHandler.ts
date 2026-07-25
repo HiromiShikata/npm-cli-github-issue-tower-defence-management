@@ -103,6 +103,7 @@ export class HandleScheduledEventUseCaseHandler {
       claudeCodeOauthTokenListJsonPath?: string;
       consoleDataOutputDir?: string;
       dashboardDataDir?: string;
+      disks?: { title: string; mountpoint: string }[];
       workflowBlockerStoryName?: string;
       inTmuxDataOutputDir?: string;
       newIssueRepo?: string;
@@ -492,6 +493,7 @@ export class HandleScheduledEventUseCaseHandler {
         await writeMachineStatus({
           dashboardDataDir,
           allIssuesCacheDir: `${cachePath}/allIssues-${result.project.id}`,
+          disks: mergedInput.disks ?? null,
         });
       } catch (error) {
         console.error(

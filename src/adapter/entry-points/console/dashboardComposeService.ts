@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import {
+  ComposeDashboardDisk,
   ComposeDashboardInput,
   ComposeDashboardMachineStatus,
   ComposeDashboardProject,
@@ -88,6 +89,24 @@ const parseLoad = (value: unknown): [number, number, number] | null => {
   return [oneMinute, fiveMinute, fifteenMinute];
 };
 
+const parseDisks = (value: unknown): ComposeDashboardDisk[] | null => {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  const disks: ComposeDashboardDisk[] = [];
+  for (const entry of value) {
+    if (!isRecord(entry) || typeof entry.title !== 'string') {
+      return null;
+    }
+    const pct = asFiniteNumber(entry.pct);
+    if (pct === null) {
+      return null;
+    }
+    disks.push({ title: entry.title, pct });
+  }
+  return disks;
+};
+
 const readMachineStatus = (
   dashboardDataDir: string,
 ): ComposeDashboardMachineStatus | null => {
@@ -104,6 +123,7 @@ const readMachineStatus = (
     memPct: asFiniteNumber(value.memPct),
     cpuPct: asFiniteNumber(value.cpuPct),
     diskPct: asFiniteNumber(value.diskPct),
+    disks: parseDisks(value.disks),
     load: parseLoad(value.load),
     cycleMinutes,
   };
