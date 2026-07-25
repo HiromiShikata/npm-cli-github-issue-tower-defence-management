@@ -1,3 +1,10 @@
+# [1.133.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.132.1...v1.133.0) (2026-07-25)
+
+
+### Features
+
+* **oauth-token-select:** add per-token selectionWeight to bias OAuth token selection ([#1269](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1269)) ([6355297](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6355297d57a869df353b5864e55b705d01d9a076)), closes [#1267](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1267)
+
 ## [1.132.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.132.0...v1.132.1) (2026-07-25)
 
 

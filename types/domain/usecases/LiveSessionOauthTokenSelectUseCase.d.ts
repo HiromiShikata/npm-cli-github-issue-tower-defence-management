@@ -1,5 +1,5 @@
 import { ClaudeLiveSession } from './adapter-interfaces/ClaudeLiveSessionRepository';
-import { OauthTokenCandidate, OauthTokenSelectUseCase } from './OauthTokenSelectUseCase';
+import { OauthTokenCandidate, OauthTokenSelectUseCase, SelectionRandom } from './OauthTokenSelectUseCase';
 export type LiveSessionOauthTokenCandidateMetrics = {
     name: string;
     fiveHourFreeRatio: number;
@@ -16,7 +16,7 @@ export type LiveSessionOauthTokenSelectResult = {
 export declare class LiveSessionOauthTokenSelectUseCase {
     private readonly rateLimitSelectUseCase;
     constructor(rateLimitSelectUseCase?: OauthTokenSelectUseCase);
-    run: (candidates: OauthTokenCandidate[], liveSessions: ClaudeLiveSession[], nowEpochSeconds: number) => LiveSessionOauthTokenSelectResult;
+    run: (candidates: OauthTokenCandidate[], liveSessions: ClaudeLiveSession[], nowEpochSeconds: number, random?: SelectionRandom) => LiveSessionOauthTokenSelectResult;
     private preferred;
     private liveSessionCountByToken;
 }

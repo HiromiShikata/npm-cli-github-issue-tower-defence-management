@@ -53,7 +53,7 @@ class OauthTokenSelectHandler {
                 };
             }
             const cacheDirectory = (0, exports.resolveCacheDirectory)(input.cacheDirectory);
-            const candidates = entries.map(({ name, token }) => {
+            const candidates = entries.map(({ name, token, selectionWeight }) => {
                 const snapshot = (0, RateLimitCache_1.readRateLimit)(token, cacheDirectory);
                 const fableLimit = snapshot?.modelWeeklyLimits[RateLimitCache_1.FABLE_LIMIT_TYPE];
                 const fableRejected = fableLimit !== undefined &&
@@ -73,6 +73,7 @@ class OauthTokenSelectHandler {
                     subscriptionDisabled: snapshot?.subscriptionDisabled ?? false,
                     unifiedRejected: snapshot?.unifiedRejected ?? false,
                     fableRejected,
+                    selectionWeight: selectionWeight ?? OauthTokenSelectUseCase_1.DEFAULT_SELECTION_WEIGHT,
                 };
             });
             const result = this.useCase.run(candidates, input.nowEpochSeconds);
