@@ -1,6 +1,14 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import YAML from 'yaml';
+
+jest.mock('fs', () => {
+  const actualFs: typeof fs = jest.requireActual('fs');
+  return {
+    ...actualFs,
+    readFileSync: jest.fn(actualFs.readFileSync),
+  };
+});
 import {
   program,
   loadConfigFile,
@@ -53,8 +61,14 @@ jest.mock('../../repositories/issue/ApiV3CheerioRestIssueRepository', () => ({
     getCachedProject: jest.fn().mockResolvedValue(null),
   })),
 }));
+const mockRunCommand = jest.fn<
+  Promise<{ stdout: string; stderr: string; exitCode: number }>,
+  [string, string[]]
+>();
 jest.mock('../../repositories/NodeLocalCommandRunner', () => ({
-  NodeLocalCommandRunner: jest.fn().mockImplementation(() => ({})),
+  NodeLocalCommandRunner: jest.fn().mockImplementation(() => ({
+    runCommand: mockRunCommand,
+  })),
 }));
 jest.mock('../../repositories/OauthAPIClaudeRepository', () => ({
   OauthAPIClaudeRepository: jest.fn().mockImplementation(() => ({
@@ -151,6 +165,7 @@ describe('CLI', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockFetchReturningReadme(null);
+    mockRunCommand.mockResolvedValue({ stdout: '', stderr: '', exitCode: 0 });
     process.env = { ...originalEnv, GH_TOKEN: 'test-token' };
     writeConfig(defaultConfig);
   });
@@ -2140,6 +2155,108 @@ mysteryKey: 'value'
       expect(callArg.consoleDataOutputDir).toBe('/tmp/console-data');
 
       logSpy.mockRestore();
+    });
+  });
+
+  describe('killTmuxSession', () => {
+    it('reaches the real repository command sequence to kill a named session via --session', async () => {
+      await program.parseAsync([
+        'node',
+        'test',
+        'killTmuxSession',
+        '--session',
+        'https_//github_com/owner/repo/issues/9',
+      ]);
+
+      const expectedScopeUnitName =
+        'cl-https---github-com-owner-repo-issues-9.scope';
+      expect(mockRunCommand.mock.calls).toEqual([
+        ['systemctl', ['--user', 'reset-failed', expectedScopeUnitName]],
+        ['systemctl', ['--user', 'stop', expectedScopeUnitName]],
+        ['systemctl', ['--user', 'reset-failed', expectedScopeUnitName]],
+        [
+          'tmux',
+          ['kill-session', '-t', '=https_//github_com/owner/repo/issues/9'],
+        ],
+      ]);
+    });
+
+    it('reaches the real repository command sequence to stop its own scope via --self, without calling tmux', async () => {
+      const actualFs = jest.requireActual<typeof fs>('fs');
+      const readFileSyncMock = jest.mocked(fs.readFileSync);
+      readFileSyncMock.mockImplementation(
+        (
+          filePath: Parameters<typeof fs.readFileSync>[0],
+          options: Parameters<typeof fs.readFileSync>[1],
+        ): ReturnType<typeof fs.readFileSync> => {
+          if (filePath === '/proc/self/cgroup') {
+            return '0::/user.slice/user-1000.slice/user@1000.service/app.slice/cl-current-session.scope\n';
+          }
+          return actualFs.readFileSync(filePath, options);
+        },
+      );
+
+      await program.parseAsync(['node', 'test', 'killTmuxSession', '--self']);
+
+      expect(mockRunCommand.mock.calls).toEqual([
+        ['systemctl', ['--user', 'reset-failed', 'cl-current-session.scope']],
+        ['systemctl', ['--user', 'stop', 'cl-current-session.scope']],
+        ['systemctl', ['--user', 'reset-failed', 'cl-current-session.scope']],
+      ]);
+      expect(mockRunCommand.mock.calls.some((call) => call[0] === 'tmux')).toBe(
+        false,
+      );
+
+      readFileSyncMock.mockImplementation(actualFs.readFileSync);
+    });
+
+    it('exits with an error when neither --session nor --self is provided', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
+
+      await expect(
+        program.parseAsync(['node', 'test', 'killTmuxSession']),
+      ).rejects.toThrow('process.exit called');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Either --session <name> or --self is required',
+      );
+      expect(processExitSpy).toHaveBeenCalledWith(1);
+
+      consoleErrorSpy.mockRestore();
+      processExitSpy.mockRestore();
+    });
+
+    it('exits with an error when both --session and --self are provided', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
+
+      await expect(
+        program.parseAsync([
+          'node',
+          'test',
+          'killTmuxSession',
+          '--session',
+          'some_session',
+          '--self',
+        ]),
+      ).rejects.toThrow('process.exit called');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '--session and --self cannot be used together',
+      );
+      expect(processExitSpy).toHaveBeenCalledWith(1);
+
+      consoleErrorSpy.mockRestore();
+      processExitSpy.mockRestore();
     });
   });
 });
