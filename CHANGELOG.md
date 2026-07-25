@@ -1,3 +1,10 @@
+## [1.132.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.132.0...v1.132.1) (2026-07-25)
+
+
+### Bug Fixes
+
+* stop systemd cl scope when killing tmux session ([#1262](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1262)) ([dd062f7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/dd062f7082fa927525055b372be8c31f0f392cfd))
+
 # [1.132.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.131.1...v1.132.0) (2026-07-25)
 
 

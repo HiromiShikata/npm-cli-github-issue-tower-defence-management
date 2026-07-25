@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NodeTmuxSessionRepository = void 0;
+const clSessionScopeUnitName_1 = require("./clSessionScopeUnitName");
 class NodeTmuxSessionRepository {
     constructor(localCommandRunner) {
         this.localCommandRunner = localCommandRunner;
@@ -59,6 +60,24 @@ class NodeTmuxSessionRepository {
             const { stderr, exitCode } = await this.localCommandRunner.runCommand('tmux', ['kill-session', '-t', sessionName]);
             if (exitCode !== 0) {
                 throw new Error(`Failed to kill tmux session "${sessionName}": exit code ${exitCode}${stderr ? `: ${stderr}` : ''}`);
+            }
+            await this.stopClSessionScope(sessionName);
+        };
+        this.stopClSessionScope = async (sessionName) => {
+            const scopeUnitName = (0, clSessionScopeUnitName_1.clSessionScopeUnitName)(sessionName);
+            await this.localCommandRunner.runCommand('systemctl', [
+                '--user',
+                'reset-failed',
+                scopeUnitName,
+            ]);
+            const { stderr, exitCode } = await this.localCommandRunner.runCommand('systemctl', ['--user', 'stop', scopeUnitName]);
+            await this.localCommandRunner.runCommand('systemctl', [
+                '--user',
+                'reset-failed',
+                scopeUnitName,
+            ]);
+            if (exitCode !== 0) {
+                console.error(`Failed to stop systemd user scope "${scopeUnitName}" for tmux session "${sessionName}": exit code ${exitCode}${stderr ? `: ${stderr}` : ''}`);
             }
         };
     }
