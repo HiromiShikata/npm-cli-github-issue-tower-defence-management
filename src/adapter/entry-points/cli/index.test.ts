@@ -75,13 +75,18 @@ jest.mock('../handlers/HandleScheduledEventUseCaseHandler', () => ({
     handle: jest.fn().mockResolvedValue(null),
   })),
 }));
+jest.mock('../console/ensureConsoleRunning', () => ({
+  ensureConsoleRunning: jest.fn().mockResolvedValue(null),
+}));
+import * as ensureConsoleRunningModule from '../console/ensureConsoleRunning';
+
 import type { StartWebServerOptions } from '../console/webServer';
 
 const mockStartWebServer = jest
   .fn<Promise<unknown>, [StartWebServerOptions]>()
   .mockResolvedValue({
     close: jest.fn(),
-    address: jest.fn().mockReturnValue({ port: 9981 }),
+    address: jest.fn().mockReturnValue({ port: 9980 }),
   });
 jest.mock('../console/webServer', () => {
   const actual: Record<string, unknown> = jest.requireActual(
@@ -1237,6 +1242,137 @@ mysteryKey: 'value'
         }),
       );
     });
+
+    it('should start web console before preparation cycle when consoleAccessToken is provided', async () => {
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
+      MockedStartPreparationUseCase.mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      const mockKill = jest.fn();
+      const callOrder: string[] = [];
+      jest
+        .mocked(ensureConsoleRunningModule.ensureConsoleRunning)
+        .mockImplementationOnce(async () => {
+          callOrder.push('ensureWebConsoleRunning');
+          return { kill: mockKill };
+        });
+      mockRun.mockImplementationOnce(async () => {
+        callOrder.push('preparationRun');
+        return { rotationOrder: null };
+      });
+
+      writeConfig({ ...defaultConfig, consoleAccessToken: 'test-key-abc' });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'startDaemon',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(callOrder).toEqual(['ensureWebConsoleRunning', 'preparationRun']);
+      expect(
+        ensureConsoleRunningModule.ensureConsoleRunning,
+      ).toHaveBeenCalledWith(configFilePath, 9980);
+    });
+
+    it('should not start web console when consoleAccessToken is not provided', async () => {
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
+      MockedStartPreparationUseCase.mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      jest.mocked(ensureConsoleRunningModule.ensureConsoleRunning).mockClear();
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'startDaemon',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(
+        ensureConsoleRunningModule.ensureConsoleRunning,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('should register SIGTERM and SIGINT handlers when a new web console process is started', async () => {
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
+      MockedStartPreparationUseCase.mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      const mockKill = jest.fn();
+      jest
+        .mocked(ensureConsoleRunningModule.ensureConsoleRunning)
+        .mockResolvedValueOnce({ kill: mockKill });
+
+      const processOnceSpy = jest.spyOn(process, 'once');
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
+
+      writeConfig({ ...defaultConfig, consoleAccessToken: 'test-key-sigterm' });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'startDaemon',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      const sigtermCall = processOnceSpy.mock.calls.find(
+        ([event]) => event === 'SIGTERM',
+      );
+      const sigintCall = processOnceSpy.mock.calls.find(
+        ([event]) => event === 'SIGINT',
+      );
+      expect(sigtermCall).toBeDefined();
+      expect(sigintCall).toBeDefined();
+
+      processOnceSpy.mockRestore();
+
+      const rawSigtermHandler = sigtermCall?.[1];
+      const rawSigintHandler = sigintCall?.[1];
+      if (typeof rawSigtermHandler !== 'function') {
+        throw new Error('Expected SIGTERM handler to be a function');
+      }
+      if (typeof rawSigintHandler !== 'function') {
+        throw new Error('Expected SIGINT handler to be a function');
+      }
+      expect(() => rawSigtermHandler()).toThrow('process.exit called');
+      expect(mockKill).toHaveBeenCalledTimes(1);
+      expect(processExitSpy).toHaveBeenCalledWith(0);
+      expect(() => rawSigintHandler()).toThrow('process.exit called');
+      expect(mockKill).toHaveBeenCalledTimes(2);
+      expect(processExitSpy).toHaveBeenCalledTimes(2);
+
+      processExitSpy.mockRestore();
+    });
   });
 
   describe('notifyFinishedIssuePreparation', () => {
@@ -1715,7 +1851,7 @@ mysteryKey: 'value'
       expect(helpText).toContain('serveWeb');
     });
 
-    it('should start the server on the default port 9981 when --port is omitted', async () => {
+    it('should start the server on the default port 9980 when --port is omitted', async () => {
       writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
       const logSpy = jest.spyOn(console, 'log').mockImplementation();
 
@@ -1729,7 +1865,7 @@ mysteryKey: 'value'
 
       expect(mockStartWebServer).toHaveBeenCalledTimes(1);
       const callArg = mockStartWebServer.mock.calls[0][0];
-      expect(callArg.port).toBe(9981);
+      expect(callArg.port).toBe(9980);
       expect(callArg.accessToken).toBe('config-token');
       expect(callArg.consoleDataOutputDir).toBeNull();
       expect(callArg.uiDistDir).toBe(
@@ -1918,7 +2054,7 @@ mysteryKey: 'value'
       expect(helpText).toContain('serveConsole');
     });
 
-    it('should route to the same handler as serveWeb on the default port 9981', async () => {
+    it('should route to the same handler as serveWeb on the default port 9980', async () => {
       writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
       const logSpy = jest.spyOn(console, 'log').mockImplementation();
 
@@ -1932,7 +2068,7 @@ mysteryKey: 'value'
 
       expect(mockStartWebServer).toHaveBeenCalledTimes(1);
       const callArg = mockStartWebServer.mock.calls[0][0];
-      expect(callArg.port).toBe(9981);
+      expect(callArg.port).toBe(9980);
       expect(callArg.accessToken).toBe('config-token');
       expect(callArg.consoleDataOutputDir).toBeNull();
       expect(callArg.uiDistDir).toBe(
