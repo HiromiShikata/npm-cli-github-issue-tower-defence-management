@@ -9,6 +9,7 @@ export declare class TranscriptSessionSubAgentActivityRepository implements Sess
     private readonly now;
     constructor(directoryResolver: SubAgentTranscriptDirectoryResolver, processLister: SubAgentProcessLister, now: Date);
     listSubAgentActivitiesBySessionName: (sessionNames: string[], transcriptPathBySessionName: Map<string, string>) => Promise<Map<string, SubAgentActivity[]>>;
+    private loadKilledOrFailedAgentIds;
     private collectActivities;
     private toActivity;
     private hasLiveMatchingProcess;

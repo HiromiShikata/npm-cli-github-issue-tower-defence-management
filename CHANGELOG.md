@@ -1,3 +1,10 @@
+## [1.135.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.135.0...v1.135.1) (2026-07-25)
+
+
+### Bug Fixes
+
+* **silent-session:** exclude TaskStop-killed and crashed subagents from false-positive alerts ([#1107](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1107)) ([024e59c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/024e59ca765c248e991f8dea7d4a4806593785d1)), closes [#1105](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1105)
+
 # [1.135.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.134.0...v1.135.0) (2026-07-25)
 
 

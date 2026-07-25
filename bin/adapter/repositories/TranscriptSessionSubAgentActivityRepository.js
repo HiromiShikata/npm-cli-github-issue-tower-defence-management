@@ -186,6 +186,45 @@ const parseTranscript = (content) => {
     };
 };
 const clampToZero = (value) => (value > 0 ? value : 0);
+const parseKilledOrFailedAgentIds = (content) => {
+    const result = new Set();
+    for (const line of content.split('\n')) {
+        const trimmed = line.trim();
+        if (trimmed.length === 0) {
+            continue;
+        }
+        let parsed;
+        try {
+            parsed = JSON.parse(trimmed);
+        }
+        catch {
+            continue;
+        }
+        if (!isRecord(parsed)) {
+            continue;
+        }
+        if (readString(parsed, 'type') !== 'queue-operation') {
+            continue;
+        }
+        if (readString(parsed, 'operation') !== 'enqueue') {
+            continue;
+        }
+        const notifContent = readString(parsed, 'content');
+        if (notifContent === null) {
+            continue;
+        }
+        const taskIdMatch = notifContent.match(/<task-id>(a[0-9a-f]+)<\/task-id>/);
+        const statusMatch = notifContent.match(/<status>([^<]+)<\/status>/);
+        if (!taskIdMatch || !statusMatch) {
+            continue;
+        }
+        const status = statusMatch[1];
+        if (status === 'killed' || status === 'failed') {
+            result.add(taskIdMatch[1]);
+        }
+    }
+    return result;
+};
 class TranscriptSessionSubAgentActivityRepository {
     constructor(directoryResolver, processLister, now) {
         this.directoryResolver = directoryResolver;
@@ -208,14 +247,28 @@ class TranscriptSessionSubAgentActivityRepository {
                 if (directory === null) {
                     continue;
                 }
-                const activities = await this.collectActivities(directory, nowEpochSeconds, loadNormalizedProcessCommandLines);
+                const killedOrFailedAgentIds = this.loadKilledOrFailedAgentIds(mainTranscriptPath);
+                const activities = await this.collectActivities(directory, nowEpochSeconds, killedOrFailedAgentIds, loadNormalizedProcessCommandLines);
                 if (activities.length > 0) {
                     result.set(sessionName, activities);
                 }
             }
             return result;
         };
-        this.collectActivities = async (directory, nowEpochSeconds, loadNormalizedProcessCommandLines) => {
+        this.loadKilledOrFailedAgentIds = (mainTranscriptPath) => {
+            if (mainTranscriptPath === null) {
+                return new Set();
+            }
+            let content;
+            try {
+                content = fs.readFileSync(mainTranscriptPath, 'utf8');
+            }
+            catch {
+                return new Set();
+            }
+            return parseKilledOrFailedAgentIds(content);
+        };
+        this.collectActivities = async (directory, nowEpochSeconds, killedOrFailedAgentIds, loadNormalizedProcessCommandLines) => {
             let entries;
             try {
                 entries = fs.readdirSync(directory, { withFileTypes: true });
@@ -227,6 +280,10 @@ class TranscriptSessionSubAgentActivityRepository {
             for (const entry of entries) {
                 const fileName = entry.name;
                 if (!fileName.startsWith('agent-') || !fileName.endsWith('.jsonl')) {
+                    continue;
+                }
+                const agentId = fileName.slice('agent-'.length, -'.jsonl'.length);
+                if (killedOrFailedAgentIds.has(agentId)) {
                     continue;
                 }
                 const filePath = path.join(directory, fileName);
