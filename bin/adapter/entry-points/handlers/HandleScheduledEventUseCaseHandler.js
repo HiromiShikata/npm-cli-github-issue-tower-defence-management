@@ -70,7 +70,7 @@ const readSilentSeconds = (configValue, envValue, defaultValue) => {
 };
 class HandleScheduledEventUseCaseHandler {
     constructor() {
-        this.handle = async (configFilePath, _verbose) => {
+        this.handle = async (configFilePath, _verbose, inTmuxProjectOrderOverride = null) => {
             const configFileContent = fs_1.default.readFileSync(configFilePath, 'utf8');
             const input = yaml_1.default.parse(configFileContent);
             if (!typia_1.default.is(input)) {
@@ -236,6 +236,7 @@ class HandleScheduledEventUseCaseHandler {
                     await (0, machineStatusWriter_1.writeMachineStatus)({
                         dashboardDataDir,
                         allIssuesCacheDir: `${cachePath}/allIssues-${result.project.id}`,
+                        disks: mergedInput.disks ?? null,
                     });
                 }
                 catch (error) {
@@ -258,7 +259,9 @@ class HandleScheduledEventUseCaseHandler {
                         inTmuxDataOutputDir: mergedInput.inTmuxDataOutputDir ?? null,
                         inTmuxConsoleBaseUrl: mergedInput.inTmuxConsoleBaseUrl ?? null,
                         inTmuxConsoleToken: mergedInput.inTmuxConsoleToken ?? null,
-                        inTmuxProjectOrder: mergedInput.inTmuxProjectOrder ?? null,
+                        inTmuxProjectOrder: inTmuxProjectOrderOverride ??
+                            mergedInput.inTmuxProjectOrder ??
+                            null,
                         pjcode: input.projectName,
                         assigneeLogin: input.manager,
                         org: input.org,
