@@ -18,44 +18,38 @@ export class ClearPastNextActionDateHourUseCase {
     }
     const now = input.targetDates[input.targetDates.length - 1];
 
-    const nextActionHour = input.project.nextActionHour;
-    if (nextActionHour) {
-      const nextActionDate = input.project.nextActionDate;
-      const targetDatesAtHour45 = input.targetDates
-        .filter((targetDate) => targetDate.getMinutes() === 45)
-        .reverse();
-      if (targetDatesAtHour45.length > 0) {
-        const targetDate = new Date(
-          targetDatesAtHour45[targetDatesAtHour45.length - 1].getTime() +
-            5 * 60 * 1000,
-        );
-        const targetHour = targetDate.getHours() + 1;
-        for (const issue of input.issues) {
-          if (
-            issue.nextActionHour === null ||
-            issue.nextActionHour > targetHour ||
-            (issue.nextActionDate !== null &&
-              issue.nextActionDate.getTime() > targetDate.getTime()) ||
-            issue.state !== 'OPEN'
-          ) {
-            continue;
-          }
-          await this.issueRepository.clearProjectField(
-            input.project,
-            nextActionHour.fieldId,
-            issue,
-          );
-          await new Promise((resolve) => setTimeout(resolve, 5000));
-          if (!nextActionDate) {
-            continue;
-          }
-          await this.issueRepository.clearProjectField(
-            input.project,
-            nextActionDate.fieldId,
-            issue,
-          );
-          await new Promise((resolve) => setTimeout(resolve, 5000));
+    const nextActionHourField = input.project.nextActionHour;
+    if (nextActionHourField) {
+      const nextActionDateField = input.project.nextActionDate;
+      for (const issue of input.issues) {
+        if (issue.nextActionHour === null || issue.state !== 'OPEN') {
+          continue;
         }
+        const scheduledDate = issue.nextActionDate ?? now;
+        const scheduledTime = new Date(
+          scheduledDate.getFullYear(),
+          scheduledDate.getMonth(),
+          scheduledDate.getDate(),
+          issue.nextActionHour,
+        );
+        if (scheduledTime.getTime() > now.getTime()) {
+          continue;
+        }
+        await this.issueRepository.clearProjectField(
+          input.project,
+          nextActionHourField.fieldId,
+          issue,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        if (!nextActionDateField) {
+          continue;
+        }
+        await this.issueRepository.clearProjectField(
+          input.project,
+          nextActionDateField.fieldId,
+          issue,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 5000));
       }
     }
 
