@@ -1,3 +1,10 @@
+## [1.135.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.135.1...v1.135.2) (2026-07-25)
+
+
+### Bug Fixes
+
+* **use-case:** clear past nextActionHour on every sweep without minute-45 dependency ([#1234](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1234)) ([54d6b8f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/54d6b8fecbd94c6068ae5c85f6d347ad38378725)), closes [HiromiShikata/secretary#2794](https://github.com/HiromiShikata/secretary/issues/2794)
+
 ## [1.135.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.135.0...v1.135.1) (2026-07-25)
 
 
