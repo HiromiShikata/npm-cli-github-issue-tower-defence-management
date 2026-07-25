@@ -398,6 +398,7 @@ ${JSON.stringify(e)}
     });
     await this.revertNotReadyReviewQueueIssueUseCase.run({
       projectUrl: input.projectUrl,
+      manager: input.manager,
       labelsAsLlmAgentName,
       changeTargetPathAliases: input.changeTargetPathAliases,
       allowedIssueAuthors,
