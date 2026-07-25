@@ -58,6 +58,9 @@ class RevertNotReadyReviewQueueIssueUseCase {
                         relatedOpenPrUrls: relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? [],
                     });
                     if (rejections.length > 0) {
+                        if (!issue.assignees.includes(params.manager)) {
+                            continue;
+                        }
                         try {
                             await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
                         }
@@ -94,6 +97,9 @@ class RevertNotReadyReviewQueueIssueUseCase {
                 try {
                     const { rejections } = await this.issueRejectionEvaluator.evaluate(pullRequest, params.labelsAsLlmAgentName ?? []);
                     if (rejections.length > 0) {
+                        if (!pullRequest.assignees.includes(params.manager)) {
+                            continue;
+                        }
                         try {
                             await this.issueRepository.updateStatus(project, pullRequest, awaitingWorkspaceStatusOption.id);
                         }

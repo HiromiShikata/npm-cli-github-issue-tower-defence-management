@@ -1,3 +1,10 @@
+# [1.134.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.133.0...v1.134.0) (2026-07-25)
+
+
+### Features
+
+* **core:** gate revert auto-advance to Awaiting Workspace on manager assignee ([#1268](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1268)) ([ae8c221](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ae8c2217a5551b04385dcf37333edb9de9937b35)), closes [#1266](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1266)
+
 # [1.133.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.132.1...v1.133.0) (2026-07-25)
 
 
