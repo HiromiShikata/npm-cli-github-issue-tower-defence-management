@@ -123,6 +123,61 @@ describe('NodeTmuxSessionRepository', () => {
         'Failed to kill tmux session "missing_session": exit code 1',
       );
     });
+
+    it('stops the systemd user scope for the session after killing it, wrapping the stop with reset-failed', async () => {
+      const runner = createMockRunner();
+      runner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      const repository = new NodeTmuxSessionRepository(runner);
+
+      await repository.killSession('https_//github_com/owner/repo/issues/9');
+
+      const expectedScopeUnitName =
+        'cl-https---github-com-owner-repo-issues-9.scope';
+      const calls = runner.runCommand.mock.calls;
+      expect(calls[0]).toEqual([
+        'tmux',
+        ['kill-session', '-t', 'https_//github_com/owner/repo/issues/9'],
+      ]);
+      const systemctlCalls = calls.filter((call) => call[0] === 'systemctl');
+      expect(systemctlCalls).toEqual([
+        ['systemctl', ['--user', 'reset-failed', expectedScopeUnitName]],
+        ['systemctl', ['--user', 'stop', expectedScopeUnitName]],
+        ['systemctl', ['--user', 'reset-failed', expectedScopeUnitName]],
+      ]);
+    });
+
+    it('logs an error but does not throw when stopping the systemd user scope fails', async () => {
+      const runner = createMockRunner();
+      runner.runCommand.mockImplementation(async (program: string) => {
+        if (program === 'systemctl') {
+          return {
+            stdout: '',
+            stderr: 'Failed to stop cl-leader-session.scope: Unit not loaded.',
+            exitCode: 5,
+          };
+        }
+        return { stdout: '', stderr: '', exitCode: 0 };
+      });
+      const errorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const repository = new NodeTmuxSessionRepository(runner);
+
+      await expect(
+        repository.killSession('leader_session'),
+      ).resolves.toBeUndefined();
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Failed to stop systemd user scope "cl-leader-session.scope"',
+        ),
+      );
+      errorSpy.mockRestore();
+    });
   });
 
   describe('listInteractiveProcessCommandLines', () => {
