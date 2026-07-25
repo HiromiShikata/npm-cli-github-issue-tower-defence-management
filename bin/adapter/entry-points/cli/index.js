@@ -84,6 +84,15 @@ const buildGithubRepositoryParams = (localStorageRepository, token) => [
     localStorageRepository,
     token,
 ];
+const parseInTmuxProjectOrder = (raw) => {
+    if (raw === undefined) {
+        return null;
+    }
+    return raw
+        .split(',')
+        .map((name) => name.trim())
+        .filter((name) => name.length > 0);
+};
 exports.program = new commander_1.Command();
 exports.program
     .name('github-issue-tower-defence-management')
@@ -95,6 +104,7 @@ exports.program
     .requiredOption('-c, --config <path>', 'Path to config YAML file')
     .option('-v, --verbose', 'Verbose output')
     .option('-i, --issue <url>', 'GitHub Issue URL')
+    .option('--inTmuxProjectOrder <names>', 'Comma-separated project names, in display order, for the in-tmux-by-human session list. When omitted, falls back to the inTmuxProjectOrder value in the config file.')
     .action(async (options) => {
     if (options.trigger === 'issue' && !options.issue) {
         console.error('Issue URL is required when trigger type is "issue"');
@@ -103,7 +113,7 @@ exports.program
     if (options.trigger === 'schedule') {
         const { HandleScheduledEventUseCaseHandler } = await Promise.resolve().then(() => __importStar(require('../handlers/HandleScheduledEventUseCaseHandler')));
         const handler = new HandleScheduledEventUseCaseHandler();
-        await handler.handle(options.config, options.verbose);
+        await handler.handle(options.config, options.verbose, parseInTmuxProjectOrder(options.inTmuxProjectOrder));
     }
 });
 exports.program

@@ -1,3 +1,11 @@
+# [1.135.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.134.0...v1.135.0) (2026-07-25)
+
+
+### Features
+
+* **cli:** add global --inTmuxProjectOrder option to schedule command with config fallback ([#1237](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1237)) ([9080ee5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9080ee540eb69472e0142786d18a371712e39f42)), closes [#1236](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1236)
+* **dashboard:** render multiple disk partitions from a configurable disks list ([#1118](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1118)) ([1dd5d15](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1dd5d153f4c5b025f3ab4ffd3a11d8cc57ef43ee))
+
 # [1.134.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.133.0...v1.134.0) (2026-07-25)
 
 
