@@ -40,6 +40,7 @@ const createMockRunner = (): Mocked<LocalCommandRunner> => ({
 describe('notifySilentTmuxSessions', () => {
   let configDir: string;
   let candidateStateFilePath: string;
+  let notifiedStateFilePath: string;
   let hubTaskStatusCacheStateFilePath: string;
 
   beforeEach(() => {
@@ -48,6 +49,10 @@ describe('notifySilentTmuxSessions', () => {
     candidateStateFilePath = path.join(
       configDir,
       'silent-session-candidates.json',
+    );
+    notifiedStateFilePath = path.join(
+      configDir,
+      'silent-session-notified.json',
     );
     hubTaskStatusCacheStateFilePath = path.join(
       configDir,
@@ -141,6 +146,7 @@ describe('notifySilentTmuxSessions', () => {
     subAgentTranscriptRootDirectory: null,
     subAgentRuntimeRootDirectory: null,
     candidateDebounceStateFilePath: candidateStateFilePath,
+    notifiedStateFilePath: notifiedStateFilePath,
     activeHubTaskStatus: null,
     hubTaskStatusResolver: null,
     hubTaskStatusCacheStateFilePath: hubTaskStatusCacheStateFilePath,
@@ -161,6 +167,30 @@ describe('notifySilentTmuxSessions', () => {
     );
     expect(sendCall?.[1][2]).toBe(SESSION_NAME);
     expect(sendCall?.[1][4]).toContain('No output has been observed for');
+    expect(sendCall?.[1][4].startsWith('\x1b[200~')).toBe(true);
+    expect(sendCall?.[1][4].endsWith('\x1b[201~')).toBe(true);
+  });
+
+  it('notifies a persistent stall only once across repeated cycles (fire-once)', async () => {
+    silentAssistantTranscript();
+    seedPreviousCandidates([SESSION_NAME]);
+
+    const firstRunner = liveSessionRunner();
+    await notifySilentTmuxSessions(baseParams(firstRunner));
+    const firstSendCall = firstRunner.runCommand.mock.calls.find(
+      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
+    );
+    expect(firstSendCall?.[1][2]).toBe(SESSION_NAME);
+
+    const secondRunner = liveSessionRunner();
+    await notifySilentTmuxSessions({
+      ...baseParams(secondRunner),
+      now: new Date(NOW.getTime() + 90 * 1000),
+    });
+    const secondSendCall = secondRunner.runCommand.mock.calls.find(
+      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
+    );
+    expect(secondSendCall).toBeUndefined();
   });
 
   it('does not notify a silent github-named live session on its first candidate cycle', async () => {

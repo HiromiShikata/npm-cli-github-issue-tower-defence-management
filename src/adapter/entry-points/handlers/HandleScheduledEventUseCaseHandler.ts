@@ -128,6 +128,7 @@ export class HandleScheduledEventUseCaseHandler {
       silentNotificationStaggerSeconds?: number;
       candidateDebounceRecencyWindowSeconds?: number;
       candidateDebounceStateFilePath?: string;
+      notifiedStateFilePath?: string;
       activeHubTaskStatus?: string;
       hubTaskStatusCacheStateFilePath?: string;
       hubTaskStatusCacheTtlSeconds?: number;
@@ -653,6 +654,10 @@ export class HandleScheduledEventUseCaseHandler {
           candidateDebounceStateFilePath:
             mergedInput.candidateDebounceStateFilePath ??
             process.env.TDPM_SILENT_CANDIDATE_DEBOUNCE_STATE_FILE_PATH ??
+            null,
+          notifiedStateFilePath:
+            mergedInput.notifiedStateFilePath ??
+            process.env.TDPM_SILENT_NOTIFIED_STATE_FILE_PATH ??
             null,
           activeHubTaskStatus:
             mergedInput.activeHubTaskStatus ??
