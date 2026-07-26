@@ -50,12 +50,27 @@ class NotifySilentLiveSessionsUseCase {
         this.run = async (params) => {
             const snapshot = await this.liveSessionProcessSnapshotProvider.getSnapshot();
             const allInteractiveSessions = this.resolveInteractiveLiveSessions.resolve(snapshot);
-            const interactiveSessions = allInteractiveSessions.filter((session) => (0, exports.isGitHubIssueOrPullRequestSessionName)(session.sessionName));
-            const skippedNonGitHubSessionCount = allInteractiveSessions.length - interactiveSessions.length;
-            if (skippedNonGitHubSessionCount > 0) {
-                console.log(`Silent live session notification: ignoring ${skippedNonGitHubSessionCount} non-github-named interactive session(s); only sessions named after a github.com issue or pull-request URL are monitored.`);
+            // Resolve the on-disk Claude transcript for every interactive session
+            // before any name-based narrowing. A resolvable transcript is the proof
+            // that a session is a live Claude agent session (its transcript, keyed by
+            // the session id, is actively present on disk), independent of how the tmux
+            // session is named.
+            const transcriptPathBySessionName = this.interactiveLiveSessionTranscriptResolver.resolveTranscriptPaths(allInteractiveSessions);
+            // Monitor a session when it is either named after a github.com issue or
+            // pull-request URL (the hub-task sessions) or has a resolvable Claude agent
+            // transcript (role-named resident leader / PM agent sessions such as app,
+            // tdpm-cli, secretary, and the per-project *pm sessions). Gating the
+            // broadened inclusion on the resolvable transcript rather than on merely
+            // being a tmux session keeps the fail-direction safe: a genuine non-agent
+            // interactive session — a login shell, or a viewer such as sso_login or a
+            // tdpm viewer — exposes no Claude transcript on disk, so it is still
+            // excluded and never reminded.
+            const interactiveSessions = allInteractiveSessions.filter((session) => (0, exports.isGitHubIssueOrPullRequestSessionName)(session.sessionName) ||
+                transcriptPathBySessionName.has(session.sessionName));
+            const skippedNonAgentSessionCount = allInteractiveSessions.length - interactiveSessions.length;
+            if (skippedNonAgentSessionCount > 0) {
+                console.log(`Silent live session notification: ignoring ${skippedNonAgentSessionCount} interactive session(s) that are neither named after a github.com issue or pull-request URL nor have a resolvable Claude agent transcript.`);
             }
-            const transcriptPathBySessionName = this.interactiveLiveSessionTranscriptResolver.resolveTranscriptPaths(interactiveSessions);
             // A session whose most recent assistant turn is a model refusal is
             // excluded from ALL reminder candidates (main-stall and sub-agent
             // branches alike): each reminder delivery re-sends the full session

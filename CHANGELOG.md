@@ -1,3 +1,10 @@
+## [1.140.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.140.1...v1.140.2) (2026-07-26)
+
+
+### Bug Fixes
+
+* include role-named leader and PM sessions in the silent-session reminder ([#1284](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1284)) ([dd5cb46](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/dd5cb460e626c53ca03859dacd4a333938e19b5f)), closes [#1283](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1283)
+
 ## [1.140.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.140.0...v1.140.1) (2026-07-26)
 
 
