@@ -4,5 +4,6 @@ export type TakeOwnershipSpawn = {
 };
 export interface TakeOwnershipSpawnRepository {
     listSpawns: () => TakeOwnershipSpawn[];
+    listRunningIssueUrls: () => string[];
 }
 //# sourceMappingURL=TakeOwnershipSpawnRepository.d.ts.map

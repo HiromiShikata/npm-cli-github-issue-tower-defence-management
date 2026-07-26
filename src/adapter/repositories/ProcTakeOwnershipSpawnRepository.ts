@@ -9,6 +9,7 @@ const DEFAULT_PROC_DIRECTORY = '/proc';
 const OAUTH_TOKEN_ENVIRON_KEY = 'CLAUDE_CODE_OAUTH_TOKEN';
 const TAKE_OWNERSHIP_MARKER = 'Take ownership';
 const LOG_PATH_PATTERN = /\/logs-aw\/[^\0"]+\.log/;
+const ISSUE_URL_PATTERN = /Take ownership of (https:\/\/github\.com\/[^ \0"]+)/;
 
 const parseCommandLineArguments = (cmdline: string): string[] =>
   cmdline.split('\0').filter((argument) => argument.length > 0);
@@ -35,6 +36,21 @@ export class ProcTakeOwnershipSpawnRepository implements TakeOwnershipSpawnRepos
       }
     }
     return spawns;
+  };
+
+  listRunningIssueUrls = (): string[] => {
+    const urls: string[] = [];
+    for (const pidDirectory of this.listProcessIdDirectories()) {
+      const rawCmdline = this.readRawCmdline(pidDirectory);
+      if (rawCmdline === null) {
+        continue;
+      }
+      const match = rawCmdline.match(ISSUE_URL_PATTERN);
+      if (match !== null) {
+        urls.push(match[1]);
+      }
+    }
+    return urls;
   };
 
   private listProcessIdDirectories = (): string[] => {

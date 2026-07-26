@@ -127,4 +127,105 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
 
     expect(repository.listSpawns()).toEqual([]);
   });
+
+  describe('listRunningIssueUrls', () => {
+    it('extracts issue URL from a bash-c style Take ownership spawn', () => {
+      writeProcess({
+        pid: 401,
+        cmdline: argv(
+          'bash',
+          '-c',
+          `claude-agent -p "Take ownership of ${issueUrl}" | tee /home/user/logs-aw/20260626_120000_abc.log`,
+        ),
+        environ: { CLAUDE_CODE_OAUTH_TOKEN: 'token-a' },
+      });
+
+      const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
+
+      expect(repository.listRunningIssueUrls()).toEqual([issueUrl]);
+    });
+
+    it('extracts issue URL from a null-separated claude-agent spawn', () => {
+      writeProcess({
+        pid: 402,
+        cmdline: argv(
+          'timeout',
+          '--kill-after=60s',
+          '3h',
+          'claude-agent',
+          '--agent',
+          'impl',
+          '-p',
+          `Take ownership of ${issueUrl} and finish it`,
+          '--model',
+          'claude-sonnet-4-6',
+        ),
+        environ: { CLAUDE_CODE_OAUTH_TOKEN: 'token-b' },
+      });
+
+      const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
+
+      expect(repository.listRunningIssueUrls()).toEqual([issueUrl]);
+    });
+
+    it('returns empty list when no Take ownership process is running', () => {
+      writeProcess({
+        pid: 403,
+        cmdline: argv('claude', '--name', issueUrl),
+        environ: { CLAUDE_CODE_OAUTH_TOKEN: 'token-c' },
+      });
+
+      const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
+
+      expect(repository.listRunningIssueUrls()).toEqual([]);
+    });
+
+    it('returns URLs from all matching processes', () => {
+      const issueUrl2 = 'https://github.com/HiromiShikata/example/issues/2';
+      writeProcess({
+        pid: 404,
+        cmdline: argv(
+          'timeout',
+          '--kill-after=60s',
+          '3h',
+          'claude-agent',
+          '--agent',
+          'impl',
+          '-p',
+          `Take ownership of ${issueUrl} and finish it`,
+          '--model',
+          'claude-sonnet-4-6',
+        ),
+        environ: { CLAUDE_CODE_OAUTH_TOKEN: 'token-d' },
+      });
+      writeProcess({
+        pid: 405,
+        cmdline: argv(
+          'timeout',
+          '--kill-after=60s',
+          '3h',
+          'claude-agent',
+          '--agent',
+          'impl',
+          '-p',
+          `Take ownership of ${issueUrl2} and finish it`,
+          '--model',
+          'claude-sonnet-4-6',
+        ),
+        environ: { CLAUDE_CODE_OAUTH_TOKEN: 'token-e' },
+      });
+
+      const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
+
+      expect(repository.listRunningIssueUrls()).toEqual([issueUrl, issueUrl2]);
+    });
+
+    it('returns empty list when the proc directory does not exist', () => {
+      const repository = new ProcTakeOwnershipSpawnRepository(
+        path.join(procDirectory, 'missing'),
+      );
+
+      expect(repository.listRunningIssueUrls()).toEqual([]);
+    });
+  });
 });
