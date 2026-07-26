@@ -1,10 +1,47 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NodeTmuxSessionRepository = void 0;
+const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
 const clSessionScopeUnitName_1 = require("./clSessionScopeUnitName");
+const clSessionScopeUnitNameFromCgroupContent_1 = require("./clSessionScopeUnitNameFromCgroupContent");
 class NodeTmuxSessionRepository {
-    constructor(localCommandRunner) {
+    constructor(localCommandRunner, procDirectory = '/proc') {
         this.localCommandRunner = localCommandRunner;
+        this.procDirectory = procDirectory;
         this.listLiveSessionNames = async () => {
             const { stdout, exitCode } = await this.localCommandRunner.runCommand('tmux', ['list-sessions', '-F', '#{session_name}']);
             if (exitCode !== 0) {
@@ -57,14 +94,22 @@ class NodeTmuxSessionRepository {
             ]);
         };
         this.killSession = async (sessionName) => {
-            const { stderr, exitCode } = await this.localCommandRunner.runCommand('tmux', ['kill-session', '-t', sessionName]);
+            const scopeUnitName = (0, clSessionScopeUnitName_1.clSessionScopeUnitName)(sessionName);
+            await this.stopScopeUnit(scopeUnitName);
+            const { stderr, exitCode } = await this.localCommandRunner.runCommand('tmux', ['kill-session', '-t', `=${sessionName}`]);
             if (exitCode !== 0) {
                 throw new Error(`Failed to kill tmux session "${sessionName}": exit code ${exitCode}${stderr ? `: ${stderr}` : ''}`);
             }
-            await this.stopClSessionScope(sessionName);
         };
-        this.stopClSessionScope = async (sessionName) => {
-            const scopeUnitName = (0, clSessionScopeUnitName_1.clSessionScopeUnitName)(sessionName);
+        this.killOwnSession = async () => {
+            const cgroupContent = fs.readFileSync(path.join(this.procDirectory, 'self', 'cgroup'), 'utf8');
+            const scopeUnitName = (0, clSessionScopeUnitNameFromCgroupContent_1.clSessionScopeUnitNameFromCgroupContent)(cgroupContent);
+            if (scopeUnitName === null) {
+                throw new Error('Failed to determine the current cl-*.scope systemd user unit from /proc/self/cgroup');
+            }
+            await this.stopScopeUnit(scopeUnitName);
+        };
+        this.stopScopeUnit = async (scopeUnitName) => {
             await this.localCommandRunner.runCommand('systemctl', [
                 '--user',
                 'reset-failed',
@@ -77,7 +122,7 @@ class NodeTmuxSessionRepository {
                 scopeUnitName,
             ]);
             if (exitCode !== 0) {
-                console.error(`Failed to stop systemd user scope "${scopeUnitName}" for tmux session "${sessionName}": exit code ${exitCode}${stderr ? `: ${stderr}` : ''}`);
+                console.error(`Failed to stop systemd user scope "${scopeUnitName}": exit code ${exitCode}${stderr ? `: ${stderr}` : ''}`);
             }
         };
     }

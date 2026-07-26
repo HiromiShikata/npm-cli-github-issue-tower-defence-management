@@ -56,6 +56,7 @@ const ApiV3CheerioRestIssueRepository_1 = require("../../repositories/issue/ApiV
 const LocalStorageCacheRepository_1 = require("../../repositories/LocalStorageCacheRepository");
 const SystemDateRepository_1 = require("../../repositories/SystemDateRepository");
 const NodeLocalCommandRunner_1 = require("../../repositories/NodeLocalCommandRunner");
+const NodeTmuxSessionRepository_1 = require("../../repositories/NodeTmuxSessionRepository");
 const GitHubIssueCommentRepository_1 = require("../../repositories/GitHubIssueCommentRepository");
 const FetchWebhookRepository_1 = require("../../repositories/FetchWebhookRepository");
 const RevertOrphanedPreparationUseCase_1 = require("../../../domain/usecases/RevertOrphanedPreparationUseCase");
@@ -588,6 +589,29 @@ exports.program
     }
     for (const line of output.lines) {
         process.stdout.write(`${line}\n`);
+    }
+});
+exports.program
+    .command('killTmuxSession')
+    .description('Cleanly kill a tmux session by running tmux kill-session and stopping its cl-*.scope systemd --user unit. Use --session <name> to kill another named session, or --self to terminate the current session from inside it.')
+    .option('--session <name>', 'Name of the tmux session to kill')
+    .option('--self', 'Terminate the current session by stopping its own cl-*.scope systemd user unit, derived from /proc/self/cgroup')
+    .action(async (options) => {
+    if (!options.session && !options.self) {
+        console.error('Either --session <name> or --self is required');
+        process.exit(1);
+    }
+    if (options.session && options.self) {
+        console.error('--session and --self cannot be used together');
+        process.exit(1);
+    }
+    const localCommandRunner = new NodeLocalCommandRunner_1.NodeLocalCommandRunner();
+    const tmuxSessionRepository = new NodeTmuxSessionRepository_1.NodeTmuxSessionRepository(localCommandRunner);
+    if (options.self) {
+        await tmuxSessionRepository.killOwnSession();
+    }
+    else if (options.session) {
+        await tmuxSessionRepository.killSession(options.session);
     }
 });
 /* istanbul ignore next */
