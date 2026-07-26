@@ -9,6 +9,7 @@ import { SessionSubAgentActivityRepository } from './adapter-interfaces/SessionS
 import { SilentSessionMessageComposer } from './adapter-interfaces/SilentSessionMessageComposer';
 import { SilentSessionNotificationRepository } from './adapter-interfaces/SilentSessionNotificationRepository';
 import { SilentSessionCandidateStateRepository } from './adapter-interfaces/SilentSessionCandidateStateRepository';
+import { SilentSessionNotifiedStateRepository } from './adapter-interfaces/SilentSessionNotifiedStateRepository';
 import { SilentSessionHubTaskStatusCacheRepository } from './adapter-interfaces/SilentSessionHubTaskStatusCacheRepository';
 import { Sleeper } from './adapter-interfaces/Sleeper';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
@@ -70,6 +71,7 @@ type NotifyCandidate = {
   sessionName: string;
   message: string;
   sectionLabels: string[];
+  mainInputBusy: boolean;
 };
 
 export class NotifySilentLiveSessionsUseCase {
@@ -84,6 +86,7 @@ export class NotifySilentLiveSessionsUseCase {
     private readonly ownerCallStatusProvider: OwnerCallStatusProvider,
     private readonly notificationRepository: SilentSessionNotificationRepository,
     private readonly candidateStateRepository: SilentSessionCandidateStateRepository,
+    private readonly notifiedStateRepository: SilentSessionNotifiedStateRepository,
     private readonly messageComposer: SilentSessionMessageComposer,
     private readonly sleeper: Sleeper,
     private readonly hubTaskStatusResolver: HubTaskStatusResolver | null = null,
@@ -185,8 +188,44 @@ export class NotifySilentLiveSessionsUseCase {
       `Silent live session notification: ${debouncedCandidates.length} debounced candidate(s) of ${candidates.length} current candidate(s) across ${interactiveSessions.length} interactive session(s); ${suppressedFirstCycleCount} first-cycle candidate(s) deferred until they persist into the next cycle.`,
     );
 
+    // Fire-once latch: the set of sessions already reminded during their
+    // current silent episode. A session that is still a candidate this cycle
+    // and was already reminded is NOT re-injected, so a continuous silent
+    // episode produces exactly one reminder instead of one every schedule
+    // cycle. The latch is keyed by the globally-unique session name and
+    // persisted across the per-cycle fresh monitor process on disk.
+    const currentCandidateSessionNames = new Set(
+      candidates.map((candidate) => candidate.sessionName),
+    );
+    const previouslyNotifiedSessionNames =
+      await this.notifiedStateRepository.loadRecentNotifiedSessionNames({
+        now: params.now,
+        recencyWindowSeconds: params.candidateDebounceRecencyWindowSeconds,
+      });
+
     let sentCount = 0;
+    const notifiedThisCycleSessionNames: string[] = [];
     for (const candidate of debouncedCandidates) {
+      if (previouslyNotifiedSessionNames.has(candidate.sessionName)) {
+        console.log(
+          `Skipping ${candidate.sessionName}: the current silent-episode reminder was already delivered; not re-injecting until the condition resolves and re-arises.`,
+        );
+        continue;
+      }
+      // Input-state gating: a session whose main REPL is mid-turn — currently
+      // running an in-progress tool call, which includes waiting on a
+      // long-running sub-agent — cannot accept an injected prompt cleanly, so
+      // the reminder is deferred rather than piled into a busy input box. The
+      // session stays a candidate, so it is reminded once it becomes
+      // input-ready. A tool call pending past
+      // IN_PROGRESS_TOOL_CALL_MAX_SUPPRESS_SECONDS is treated as hung and no
+      // longer counts as busy (see composeCandidate).
+      if (candidate.mainInputBusy) {
+        console.log(
+          `Skipping ${candidate.sessionName}: main REPL is not in an input-accepting state (in-progress tool call); deferring reminder until it is idle.`,
+        );
+        continue;
+      }
       if (
         !(await this.isHubTaskActive(
           candidate.sessionName,
@@ -205,6 +244,7 @@ export class NotifySilentLiveSessionsUseCase {
         candidate.message,
       );
       sentCount += 1;
+      notifiedThisCycleSessionNames.push(candidate.sessionName);
       // One line per send, grep-stable on the `Notified ` prefix: the
       // ISO-8601 UTC timestamp disambiguates concurrent schedule runs and
       // the section list records what the message actually contained.
@@ -212,6 +252,25 @@ export class NotifySilentLiveSessionsUseCase {
         `Notified ${candidate.sessionName} at=${params.now.toISOString()} sections=[${candidate.sectionLabels.join(',')}]`,
       );
     }
+
+    // Persist the latch for the next cycle: keep every already-latched session
+    // that is STILL a candidate (refreshing its timestamp so a continuous
+    // episode stays latched) plus the sessions notified this cycle, and prune
+    // any latched session that is no longer a candidate so its episode ends and
+    // a later re-qualification fires a fresh reminder.
+    const retainedNotifiedSessionNames = [
+      ...previouslyNotifiedSessionNames,
+    ].filter((sessionName) => currentCandidateSessionNames.has(sessionName));
+    const notifiedSessionNamesToPersist = Array.from(
+      new Set([
+        ...retainedNotifiedSessionNames,
+        ...notifiedThisCycleSessionNames,
+      ]),
+    );
+    await this.notifiedStateRepository.saveNotifiedSessionNames({
+      sessionNames: notifiedSessionNamesToPersist,
+      now: params.now,
+    });
   };
 
   private isHubTaskActive = async (
@@ -488,6 +547,7 @@ export class NotifySilentLiveSessionsUseCase {
       sessionName: snapshot.sessionName,
       message: sections.join('\n\n'),
       sectionLabels,
+      mainInputBusy: suppressedByInProgressToolCall,
     };
   };
 }

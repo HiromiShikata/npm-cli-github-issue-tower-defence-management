@@ -34,6 +34,7 @@ import {
 } from '../../repositories/ConfigurableSilentSessionMessageComposer';
 import { RealSleeper } from '../../repositories/RealSleeper';
 import { FileSystemSilentSessionCandidateStateRepository } from '../../repositories/FileSystemSilentSessionCandidateStateRepository';
+import { FileSystemSilentSessionNotifiedStateRepository } from '../../repositories/FileSystemSilentSessionNotifiedStateRepository';
 import { FileSystemSilentSessionHubTaskStatusCacheRepository } from '../../repositories/FileSystemSilentSessionHubTaskStatusCacheRepository';
 
 export type NotifySilentTmuxSessionsParams = {
@@ -52,6 +53,7 @@ export type NotifySilentTmuxSessionsParams = {
   staggerSeconds: number;
   candidateDebounceRecencyWindowSeconds: number;
   candidateDebounceStateFilePath: string | null;
+  notifiedStateFilePath: string | null;
   activeHubTaskStatus: string | null;
   hubTaskStatusResolver: HubTaskStatusResolver | null;
   hubTaskStatusCacheStateFilePath: string | null;
@@ -116,6 +118,7 @@ export const notifySilentTmuxSessions = async (
     staggerSeconds,
     candidateDebounceRecencyWindowSeconds,
     candidateDebounceStateFilePath,
+    notifiedStateFilePath,
     activeHubTaskStatus,
     hubTaskStatusResolver,
     hubTaskStatusCacheStateFilePath,
@@ -155,6 +158,11 @@ export const notifySilentTmuxSessions = async (
           candidateDebounceStateFilePath,
         )
       : new FileSystemSilentSessionCandidateStateRepository(),
+    notifiedStateFilePath !== null
+      ? new FileSystemSilentSessionNotifiedStateRepository(
+          notifiedStateFilePath,
+        )
+      : new FileSystemSilentSessionNotifiedStateRepository(),
     messageComposer,
     new RealSleeper(),
     hubTaskStatusResolver,
