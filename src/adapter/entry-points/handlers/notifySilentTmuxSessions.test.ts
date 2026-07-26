@@ -139,6 +139,7 @@ describe('notifySilentTmuxSessions', () => {
     subAgentOutputRootDirectory: null,
     subAgentProcessMatchPattern: null,
     subAgentTranscriptRootDirectory: null,
+    subAgentRuntimeRootDirectory: null,
     candidateDebounceStateFilePath: candidateStateFilePath,
     activeHubTaskStatus: null,
     hubTaskStatusResolver: null,

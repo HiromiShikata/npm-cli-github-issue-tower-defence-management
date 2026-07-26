@@ -2,8 +2,13 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { SubAgentActivity } from '../../domain/entities/LiveSessionActivitySnapshot';
 import { SessionSubAgentActivityRepository } from '../../domain/usecases/adapter-interfaces/SessionSubAgentActivityRepository';
+import { SubAgentLivenessResolver } from '../../domain/usecases/adapter-interfaces/SubAgentLivenessResolver';
 import { SubAgentProcessLister } from '../../domain/usecases/adapter-interfaces/SubAgentProcessLister';
 import { SubAgentTranscriptDirectoryResolver } from '../../domain/usecases/adapter-interfaces/SubAgentTranscriptDirectoryResolver';
+
+const alwaysIndeterminateLivenessResolver: SubAgentLivenessResolver = {
+  resolveLiveSubAgentIds: async () => null,
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -190,7 +195,14 @@ const parseTranscript = (content: string): ParsedTranscript => {
 
 const clampToZero = (value: number): number => (value > 0 ? value : 0);
 
-const parseKilledOrFailedAgentIds = (content: string): Set<string> => {
+const TERMINAL_TASK_NOTIFICATION_STATUSES = new Set([
+  'completed',
+  'killed',
+  'failed',
+  'stopped',
+]);
+
+const parseTerminalAgentIds = (content: string): Set<string> => {
   const result = new Set<string>();
   for (const line of content.split('\n')) {
     const trimmed = line.trim();
@@ -216,13 +228,16 @@ const parseKilledOrFailedAgentIds = (content: string): Set<string> => {
     if (notifContent === null) {
       continue;
     }
-    const taskIdMatch = notifContent.match(/<task-id>(a[0-9a-f]+)<\/task-id>/);
     const statusMatch = notifContent.match(/<status>([^<]+)<\/status>/);
-    if (!taskIdMatch || !statusMatch) {
+    if (statusMatch === null) {
       continue;
     }
-    const status = statusMatch[1];
-    if (status === 'killed' || status === 'failed') {
+    if (!TERMINAL_TASK_NOTIFICATION_STATUSES.has(statusMatch[1])) {
+      continue;
+    }
+    for (const taskIdMatch of notifContent.matchAll(
+      /<task-id>(a[0-9a-f]+)<\/task-id>/g,
+    )) {
       result.add(taskIdMatch[1]);
     }
   }
@@ -234,6 +249,7 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
     private readonly directoryResolver: SubAgentTranscriptDirectoryResolver,
     private readonly processLister: SubAgentProcessLister,
     private readonly now: Date,
+    private readonly livenessResolver: SubAgentLivenessResolver = alwaysIndeterminateLivenessResolver,
   ) {}
 
   listSubAgentActivitiesBySessionName = async (
@@ -262,12 +278,17 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
       if (directory === null) {
         continue;
       }
-      const killedOrFailedAgentIds =
-        this.loadKilledOrFailedAgentIds(mainTranscriptPath);
+      const terminalAgentIds = this.loadTerminalAgentIds(mainTranscriptPath);
+      const liveSubAgentIds =
+        await this.livenessResolver.resolveLiveSubAgentIds({
+          sessionName,
+          mainTranscriptPath,
+        });
       const activities = await this.collectActivities(
         directory,
         nowEpochSeconds,
-        killedOrFailedAgentIds,
+        terminalAgentIds,
+        liveSubAgentIds,
         loadNormalizedProcessCommandLines,
       );
       if (activities.length > 0) {
@@ -277,7 +298,7 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
     return result;
   };
 
-  private loadKilledOrFailedAgentIds = (
+  private loadTerminalAgentIds = (
     mainTranscriptPath: string | null,
   ): Set<string> => {
     if (mainTranscriptPath === null) {
@@ -289,13 +310,14 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
     } catch {
       return new Set();
     }
-    return parseKilledOrFailedAgentIds(content);
+    return parseTerminalAgentIds(content);
   };
 
   private collectActivities = async (
     directory: string,
     nowEpochSeconds: number,
-    killedOrFailedAgentIds: Set<string>,
+    terminalAgentIds: Set<string>,
+    liveSubAgentIds: Set<string> | null,
     loadNormalizedProcessCommandLines: () => Promise<string[]>,
   ): Promise<SubAgentActivity[]> => {
     let entries: fs.Dirent[];
@@ -311,7 +333,10 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
         continue;
       }
       const agentId = fileName.slice('agent-'.length, -'.jsonl'.length);
-      if (killedOrFailedAgentIds.has(agentId)) {
+      if (terminalAgentIds.has(agentId)) {
+        continue;
+      }
+      if (liveSubAgentIds !== null && !liveSubAgentIds.has(agentId)) {
         continue;
       }
       const filePath = path.join(directory, fileName);

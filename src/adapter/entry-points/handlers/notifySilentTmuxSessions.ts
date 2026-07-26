@@ -25,6 +25,7 @@ import { TranscriptRefusalTailStatusProvider } from '../../repositories/Transcri
 import { ProcessListSessionSubAgentActivityRepository } from '../../repositories/ProcessListSessionSubAgentActivityRepository';
 import { TranscriptSessionSubAgentActivityRepository } from '../../repositories/TranscriptSessionSubAgentActivityRepository';
 import { FileSystemSubAgentTranscriptDirectoryResolver } from '../../repositories/FileSystemSubAgentTranscriptDirectoryResolver';
+import { FileSystemSubAgentLivenessResolver } from '../../repositories/FileSystemSubAgentLivenessResolver';
 import { NodeSubAgentProcessLister } from '../../repositories/NodeSubAgentProcessLister';
 import { FileSystemSubAgentSilentSecondsResolver } from '../../repositories/FileSystemSubAgentSilentSecondsResolver';
 import {
@@ -43,6 +44,7 @@ export type NotifySilentTmuxSessionsParams = {
   subAgentOutputRootDirectory: string | null;
   subAgentProcessMatchPattern: string | null;
   subAgentTranscriptRootDirectory: string | null;
+  subAgentRuntimeRootDirectory: string | null;
   mainSilentThresholdSeconds: number;
   unansweredOwnerCallGraceSeconds: number;
   subAgentSilentThresholdSeconds: number;
@@ -69,6 +71,7 @@ const createOwnerCallStatusProvider = (
 
 const createSubAgentActivityRepository = (
   subAgentTranscriptRootDirectory: string | null,
+  subAgentRuntimeRootDirectory: string | null,
   subAgentProcessMatchPattern: string | null,
   subAgentOutputRootDirectory: string | null,
   localCommandRunner: LocalCommandRunner,
@@ -81,6 +84,7 @@ const createSubAgentActivityRepository = (
       ),
       new NodeSubAgentProcessLister(localCommandRunner),
       now,
+      new FileSystemSubAgentLivenessResolver(subAgentRuntimeRootDirectory),
     );
   }
   return new ProcessListSessionSubAgentActivityRepository(
@@ -104,6 +108,7 @@ export const notifySilentTmuxSessions = async (
     subAgentOutputRootDirectory,
     subAgentProcessMatchPattern,
     subAgentTranscriptRootDirectory,
+    subAgentRuntimeRootDirectory,
     mainSilentThresholdSeconds,
     unansweredOwnerCallGraceSeconds,
     subAgentSilentThresholdSeconds,
@@ -137,6 +142,7 @@ export const notifySilentTmuxSessions = async (
     new FileSystemSessionOutputActivityRepository(),
     createSubAgentActivityRepository(
       subAgentTranscriptRootDirectory,
+      subAgentRuntimeRootDirectory,
       subAgentProcessMatchPattern,
       subAgentOutputRootDirectory,
       localCommandRunner,

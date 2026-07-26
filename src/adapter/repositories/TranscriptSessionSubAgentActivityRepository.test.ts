@@ -6,6 +6,7 @@ import {
   SubAgentProcess,
   SubAgentProcessLister,
 } from '../../domain/usecases/adapter-interfaces/SubAgentProcessLister';
+import { SubAgentLivenessResolver } from '../../domain/usecases/adapter-interfaces/SubAgentLivenessResolver';
 import { FileSystemSubAgentTranscriptDirectoryResolver } from './FileSystemSubAgentTranscriptDirectoryResolver';
 import { TranscriptSessionSubAgentActivityRepository } from './TranscriptSessionSubAgentActivityRepository';
 
@@ -1085,6 +1086,23 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     content: `<task-notification>\n<task-id>${agentId}</task-id>\n<status>completed</status>\n</task-notification>`,
   });
 
+  const stoppedNotificationEntry = (
+    agentId: string,
+    timestamp: string,
+  ): object => ({
+    type: 'queue-operation',
+    operation: 'enqueue',
+    timestamp,
+    content: `<task-notification>\n<task-id>${agentId}</task-id>\n<status>stopped</status>\n</task-notification>`,
+  });
+
+  const livenessResolverWith = (
+    liveIds: string[] | null,
+  ): SubAgentLivenessResolver => ({
+    resolveLiveSubAgentIds: async () =>
+      liveIds === null ? null : new Set(liveIds),
+  });
+
   it('excludes a sub-agent killed via TaskStop when the parent transcript records a killed notification for its id', async () => {
     const sessionName = 'https_//github_com/owner/repo/issues/9';
     const killedAgentId = 'aaabbbbcccc00001';
@@ -1137,7 +1155,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
     expect(result.size).toBe(0);
   });
 
-  it('does not exclude a sub-agent whose parent transcript records only a completed notification for its id', async () => {
+  it('excludes a sub-agent whose parent transcript records a completed notification for its id', async () => {
     const sessionName = 'https_//github_com/owner/repo/issues/9';
     const startTimestamp = '2026-06-27T11:45:00.000Z';
     const completedAgentId = 'aaabbbbcccc00003';
@@ -1161,14 +1179,71 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
       transcriptMapFor([sessionName]),
     );
 
-    expect(result.get(sessionName)).toEqual([
+    expect(result.size).toBe(0);
+  });
+
+  it('excludes a sub-agent whose parent transcript records a stopped notification for its id', async () => {
+    const sessionName = 'https_//github_com/owner/repo/issues/9';
+    const stoppedAgentId = 'aaabbbbcccc00006';
+    writeAgentTranscript(
+      sessionName,
+      stoppedAgentId,
+      pendingToolUseEntries('2026-06-27T11:00:00.000Z'),
+      nowEpochSeconds - 300,
+    );
+    writeMainTranscript(sessionName, [
+      stoppedNotificationEntry(stoppedAgentId, '2026-06-27T11:55:00.000Z'),
+    ]);
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      emptyProcessLister(),
+      now,
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.size).toBe(0);
+  });
+
+  it('excludes every task id listed in a single multi-id terminal notification', async () => {
+    const sessionName = 'https_//github_com/owner/repo/issues/9';
+    const firstAgentId = 'aaabbbbcccc10001';
+    const secondAgentId = 'aaabbbbcccc10002';
+    writeAgentTranscript(
+      sessionName,
+      firstAgentId,
+      pendingToolUseEntries('2026-06-27T11:00:00.000Z'),
+      nowEpochSeconds - 300,
+    );
+    writeAgentTranscript(
+      sessionName,
+      secondAgentId,
+      pendingToolUseEntries('2026-06-27T11:00:00.000Z'),
+      nowEpochSeconds - 300,
+    );
+    writeMainTranscript(sessionName, [
       {
-        label: `agent-${completedAgentId}`,
-        silentSeconds: 120,
-        runningSeconds: 900,
-        waitingOnExternalProcess: false,
+        type: 'queue-operation',
+        operation: 'enqueue',
+        timestamp: '2026-06-27T11:55:00.000Z',
+        content: `<task-notification>\n<task-id>${firstAgentId}</task-id>\n<task-id>${secondAgentId}</task-id>\n<status>completed</status>\n</task-notification>`,
       },
     ]);
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      emptyProcessLister(),
+      now,
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.size).toBe(0);
   });
 
   it('excludes a killed sub-agent but reports a still-active sibling in the same session', async () => {
@@ -1205,6 +1280,61 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
       {
         label: `agent-${aliveAgentId}`,
         silentSeconds: 120,
+        runningSeconds: 900,
+        waitingOnExternalProcess: false,
+      },
+    ]);
+  });
+
+  it('excludes a stale sub-agent whose tail is a plain tool result when no live process exists for its id', async () => {
+    const sessionName = 'https_//github_com/owner/repo/issues/9';
+    const deadAgentId = 'aaabbbbcccc20001';
+    writeAgentTranscript(
+      sessionName,
+      deadAgentId,
+      inFlightToolResultTailEntries('2026-06-27T11:00:00.000Z'),
+      nowEpochSeconds - 3600,
+    );
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      emptyProcessLister(),
+      now,
+      livenessResolverWith(['aaabbbbcccc20002']),
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.size).toBe(0);
+  });
+
+  it('flags a genuinely-running silent sub-agent whose id is present in the live process set', async () => {
+    const sessionName = 'https_//github_com/owner/repo/issues/9';
+    const liveAgentId = 'aaabbbbcccc20003';
+    writeAgentTranscript(
+      sessionName,
+      liveAgentId,
+      pendingToolUseEntries('2026-06-27T11:45:00.000Z'),
+      nowEpochSeconds - 600,
+    );
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      emptyProcessLister(),
+      now,
+      livenessResolverWith([liveAgentId]),
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.get(sessionName)).toEqual([
+      {
+        label: `agent-${liveAgentId}`,
+        silentSeconds: 600,
         runningSeconds: 900,
         waitingOnExternalProcess: false,
       },
