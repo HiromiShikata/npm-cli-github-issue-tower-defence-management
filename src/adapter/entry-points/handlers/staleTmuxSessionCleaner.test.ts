@@ -102,7 +102,7 @@ describe('cleanStaleTmuxSessions', () => {
     expect(killCall?.[1]).toEqual([
       'kill-session',
       '-t',
-      'https_//github_com/demo/repo/issues/1',
+      '=https_//github_com/demo/repo/issues/1',
     ]);
   });
 
@@ -160,6 +160,6 @@ describe('cleanStaleTmuxSessions', () => {
       (call) => call[0] === 'tmux' && call[1][0] === 'kill-session',
     );
     expect(killCalls).toHaveLength(1);
-    expect(killCalls[0][1]).toEqual(['kill-session', '-t', 'idle_no_task']);
+    expect(killCalls[0][1]).toEqual(['kill-session', '-t', '=idle_no_task']);
   });
 });

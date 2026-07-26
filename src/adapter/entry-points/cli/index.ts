@@ -29,6 +29,7 @@ import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCach
 import { SystemDateRepository } from '../../repositories/SystemDateRepository';
 import { BaseGitHubRepository } from '../../repositories/BaseGitHubRepository';
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
+import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRepository';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
@@ -122,6 +123,11 @@ type CountInTmuxByHumanSessionsPerTokenOptions = {
   configFilePath: string;
   projectUrl?: string;
   tokenListJsonPath?: string;
+};
+
+type KillTmuxSessionOptions = {
+  session?: string;
+  self?: boolean;
 };
 
 const buildGithubRepositoryParams = (
@@ -1025,6 +1031,38 @@ program
 
     for (const line of output.lines) {
       process.stdout.write(`${line}\n`);
+    }
+  });
+
+program
+  .command('killTmuxSession')
+  .description(
+    'Cleanly kill a tmux session by running tmux kill-session and stopping its cl-*.scope systemd --user unit. Use --session <name> to kill another named session, or --self to terminate the current session from inside it.',
+  )
+  .option('--session <name>', 'Name of the tmux session to kill')
+  .option(
+    '--self',
+    'Terminate the current session by stopping its own cl-*.scope systemd user unit, derived from /proc/self/cgroup',
+  )
+  .action(async (options: KillTmuxSessionOptions) => {
+    if (!options.session && !options.self) {
+      console.error('Either --session <name> or --self is required');
+      process.exit(1);
+    }
+    if (options.session && options.self) {
+      console.error('--session and --self cannot be used together');
+      process.exit(1);
+    }
+
+    const localCommandRunner = new NodeLocalCommandRunner();
+    const tmuxSessionRepository = new NodeTmuxSessionRepository(
+      localCommandRunner,
+    );
+
+    if (options.self) {
+      await tmuxSessionRepository.killOwnSession();
+    } else if (options.session) {
+      await tmuxSessionRepository.killSession(options.session);
     }
   });
 

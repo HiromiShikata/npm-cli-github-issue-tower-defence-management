@@ -1,3 +1,6 @@
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import { LocalCommandRunner } from '../../domain/usecases/adapter-interfaces/LocalCommandRunner';
 import { NodeTmuxSessionRepository } from './NodeTmuxSessionRepository';
 
@@ -91,7 +94,7 @@ describe('NodeTmuxSessionRepository', () => {
   });
 
   describe('killSession', () => {
-    it('kills the tmux session by name', async () => {
+    it('kills the tmux session by exact name', async () => {
       const runner = createMockRunner();
       runner.runCommand.mockResolvedValue({
         stdout: '',
@@ -102,20 +105,22 @@ describe('NodeTmuxSessionRepository', () => {
 
       await repository.killSession('no_task_session');
 
-      expect(runner.runCommand.mock.calls[0][0]).toBe('tmux');
-      expect(runner.runCommand.mock.calls[0][1]).toEqual([
-        'kill-session',
-        '-t',
-        'no_task_session',
+      const tmuxCall = runner.runCommand.mock.calls.find(
+        (call) => call[0] === 'tmux',
+      );
+      expect(tmuxCall).toEqual([
+        'tmux',
+        ['kill-session', '-t', '=no_task_session'],
       ]);
     });
 
     it('throws when tmux exits non-zero', async () => {
       const runner = createMockRunner();
-      runner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: "can't find session",
-        exitCode: 1,
+      runner.runCommand.mockImplementation(async (program: string) => {
+        if (program === 'tmux') {
+          return { stdout: '', stderr: "can't find session", exitCode: 1 };
+        }
+        return { stdout: '', stderr: '', exitCode: 0 };
       });
       const repository = new NodeTmuxSessionRepository(runner);
 
@@ -124,7 +129,7 @@ describe('NodeTmuxSessionRepository', () => {
       );
     });
 
-    it('stops the systemd user scope for the session after killing it, wrapping the stop with reset-failed', async () => {
+    it('stops the systemd user scope for the session before killing it, wrapping the stop with reset-failed', async () => {
       const runner = createMockRunner();
       runner.runCommand.mockResolvedValue({
         stdout: '',
@@ -137,16 +142,14 @@ describe('NodeTmuxSessionRepository', () => {
 
       const expectedScopeUnitName =
         'cl-https---github-com-owner-repo-issues-9.scope';
-      const calls = runner.runCommand.mock.calls;
-      expect(calls[0]).toEqual([
-        'tmux',
-        ['kill-session', '-t', 'https_//github_com/owner/repo/issues/9'],
-      ]);
-      const systemctlCalls = calls.filter((call) => call[0] === 'systemctl');
-      expect(systemctlCalls).toEqual([
+      expect(runner.runCommand.mock.calls).toEqual([
         ['systemctl', ['--user', 'reset-failed', expectedScopeUnitName]],
         ['systemctl', ['--user', 'stop', expectedScopeUnitName]],
         ['systemctl', ['--user', 'reset-failed', expectedScopeUnitName]],
+        [
+          'tmux',
+          ['kill-session', '-t', '=https_//github_com/owner/repo/issues/9'],
+        ],
       ]);
     });
 
@@ -177,6 +180,63 @@ describe('NodeTmuxSessionRepository', () => {
         ),
       );
       errorSpy.mockRestore();
+    });
+  });
+
+  describe('killOwnSession', () => {
+    let procDirectory: string;
+
+    beforeEach(() => {
+      procDirectory = fs.mkdtempSync(
+        path.join(os.tmpdir(), 'node-tmux-session-repository-proc-'),
+      );
+    });
+
+    afterEach(() => {
+      fs.rmSync(procDirectory, { recursive: true, force: true });
+    });
+
+    const writeCgroupContent = (content: string): void => {
+      const selfDirectory = path.join(procDirectory, 'self');
+      fs.mkdirSync(selfDirectory, { recursive: true });
+      fs.writeFileSync(path.join(selfDirectory, 'cgroup'), content);
+    };
+
+    it('stops only the current session scope derived from /proc/self/cgroup, without calling tmux', async () => {
+      writeCgroupContent(
+        '0::/user.slice/user-1000.slice/user@1000.service/app.slice/cl-leader-session.scope\n',
+      );
+      const runner = createMockRunner();
+      runner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      const repository = new NodeTmuxSessionRepository(runner, procDirectory);
+
+      await repository.killOwnSession();
+
+      expect(runner.runCommand.mock.calls).toEqual([
+        ['systemctl', ['--user', 'reset-failed', 'cl-leader-session.scope']],
+        ['systemctl', ['--user', 'stop', 'cl-leader-session.scope']],
+        ['systemctl', ['--user', 'reset-failed', 'cl-leader-session.scope']],
+      ]);
+      expect(
+        runner.runCommand.mock.calls.some((call) => call[0] === 'tmux'),
+      ).toBe(false);
+    });
+
+    it('throws when no cl-*.scope unit can be found in /proc/self/cgroup', async () => {
+      writeCgroupContent(
+        '0::/user.slice/user-1000.slice/user@1000.service/app.slice/vte-spawn-abc.scope\n',
+      );
+      const runner = createMockRunner();
+      const repository = new NodeTmuxSessionRepository(runner, procDirectory);
+
+      await expect(repository.killOwnSession()).rejects.toThrow(
+        'Failed to determine the current cl-*.scope systemd user unit from /proc/self/cgroup',
+      );
+      expect(runner.runCommand.mock.calls).toHaveLength(0);
     });
   });
 
