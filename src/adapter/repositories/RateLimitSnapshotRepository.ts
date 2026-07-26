@@ -1,4 +1,5 @@
 import {
+  TokenModelWeeklyLimit,
   TokenRateLimitSnapshot,
   TokenRateLimitSnapshotRepository,
 } from '../../domain/usecases/adapter-interfaces/TokenRateLimitSnapshotRepository';
@@ -26,13 +27,24 @@ export class RateLimitSnapshotRepository implements TokenRateLimitSnapshotReposi
         token,
         name,
         fiveHourUtilization: snapshot.fiveHourUtilization,
+        fiveHourReset: snapshot.fiveHourReset,
         sevenDayUtilization: snapshot.sevenDayUtilization,
+        sevenDayReset: snapshot.sevenDayReset,
         blocked: snapshot.blocked,
         rejected: snapshot.rejected,
         blockedUntilEpoch: snapshot.blockedUntilEpoch,
+        modelWeeklyLimits: this.toModelWeeklyLimits(snapshot.modelWeeklyLimits),
         lastUpdatedEpoch: snapshot.lastUpdatedEpoch,
       });
     }
     return snapshots;
   };
+
+  private toModelWeeklyLimits = (
+    modelWeeklyLimits: Record<string, { rejected: boolean; resetsAt: number }>,
+  ): TokenModelWeeklyLimit[] =>
+    Object.values(modelWeeklyLimits).map((limit) => ({
+      rejected: limit.rejected,
+      resetsAt: limit.resetsAt,
+    }));
 }

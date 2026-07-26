@@ -294,4 +294,136 @@ describe('NodeTmuxSessionRepository', () => {
       ]);
     });
   });
+
+  describe('sendKeys', () => {
+    it('sends the literal text then Enter and stops when the composer is empty', async () => {
+      const runner = createMockRunner();
+      runner.runCommand
+        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 })
+        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 })
+        .mockResolvedValueOnce({
+          stdout: 'idle pane content\n> ',
+          stderr: '',
+          exitCode: 0,
+        });
+      const repository = new NodeTmuxSessionRepository(runner, '/proc', 0);
+
+      await repository.sendKeys('session-a', 'checkpoint now');
+
+      expect(runner.runCommand.mock.calls[0][1]).toEqual([
+        'send-keys',
+        '-t',
+        'session-a',
+        '-l',
+        'checkpoint now',
+      ]);
+      expect(runner.runCommand.mock.calls[1][1]).toEqual([
+        'send-keys',
+        '-t',
+        'session-a',
+        'Enter',
+      ]);
+      expect(runner.runCommand.mock.calls[2][1]).toEqual([
+        'capture-pane',
+        '-p',
+        '-t',
+        'session-a',
+      ]);
+      expect(runner.runCommand.mock.calls).toHaveLength(3);
+    });
+
+    it('re-sends Enter when the message is still visible in the composer', async () => {
+      const runner = createMockRunner();
+      runner.runCommand
+        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 })
+        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 })
+        .mockResolvedValueOnce({
+          stdout: '> checkpoint now',
+          stderr: '',
+          exitCode: 0,
+        })
+        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 });
+      const repository = new NodeTmuxSessionRepository(runner, '/proc', 0);
+
+      await repository.sendKeys('session-a', 'checkpoint now');
+
+      expect(runner.runCommand.mock.calls).toHaveLength(4);
+      expect(runner.runCommand.mock.calls[3][1]).toEqual([
+        'send-keys',
+        '-t',
+        'session-a',
+        'Enter',
+      ]);
+    });
+
+    it('throws when sending the literal text fails', async () => {
+      const runner = createMockRunner();
+      runner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: 'no session',
+        exitCode: 1,
+      });
+      const repository = new NodeTmuxSessionRepository(runner, '/proc', 0);
+
+      await expect(repository.sendKeys('session-a', 'text')).rejects.toThrow(
+        'Failed to send keys to tmux session "session-a"',
+      );
+    });
+  });
+
+  describe('launchBareNameLeaderSession', () => {
+    it('creates a detached tmux session running cl for the bare name', async () => {
+      const runner = createMockRunner();
+      runner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      const repository = new NodeTmuxSessionRepository(runner);
+
+      await repository.launchBareNameLeaderSession('app');
+
+      expect(runner.runCommand.mock.calls[0][0]).toBe('tmux');
+      expect(runner.runCommand.mock.calls[0][1]).toEqual([
+        'new-session',
+        '-d',
+        '-s',
+        'app',
+        'bash',
+        '-lc',
+        "cl 'app'; exec /bin/bash",
+      ]);
+    });
+
+    it('normalizes dots and colons in the session name', async () => {
+      const runner = createMockRunner();
+      runner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      const repository = new NodeTmuxSessionRepository(runner);
+
+      await repository.launchBareNameLeaderSession('tdpm-cli.v2');
+
+      expect(runner.runCommand.mock.calls[0][1][3]).toBe('tdpm-cli_v2');
+      expect(runner.runCommand.mock.calls[0][1][6]).toBe(
+        "cl 'tdpm-cli.v2'; exec /bin/bash",
+      );
+    });
+
+    it('throws when tmux fails to create the session', async () => {
+      const runner = createMockRunner();
+      runner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: 'duplicate session',
+        exitCode: 1,
+      });
+      const repository = new NodeTmuxSessionRepository(runner);
+
+      await expect(
+        repository.launchBareNameLeaderSession('app'),
+      ).rejects.toThrow('Failed to relaunch bare-name leader session "app"');
+    });
+  });
 });

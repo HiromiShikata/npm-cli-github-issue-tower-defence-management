@@ -1,428 +1,624 @@
 import {
   TokenExhaustionHandoverUseCase,
   DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE,
+  DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE_BARE_NAME_LEADER,
   DEFAULT_TOKEN_EXHAUSTION_GRACE_PERIOD_SECONDS,
   TOKEN_EXHAUSTION_SNAPSHOT_STALE_THRESHOLD_SECONDS,
+  TOKEN_EXHAUSTION_SNAPSHOT_HARD_STALE_THRESHOLD_SECONDS,
 } from './TokenExhaustionHandoverUseCase';
-import { ClaudeInteractiveSessionRepository } from './adapter-interfaces/ClaudeInteractiveSessionRepository';
+import { ClaudeHandoverSession } from '../entities/ClaudeHandoverSession';
+import { TokenExhaustionHandoverState } from '../entities/TokenExhaustionHandoverState';
+import { ClaudeHandoverSessionRepository } from './adapter-interfaces/ClaudeHandoverSessionRepository';
+import { ProcessSignalRepository } from './adapter-interfaces/ProcessSignalRepository';
 import { TmuxSessionRepository } from './adapter-interfaces/TmuxSessionRepository';
-import { TokenRateLimitSnapshotRepository } from './adapter-interfaces/TokenRateLimitSnapshotRepository';
-import { toTmuxSessionName } from './intmux/InTmuxByHumanSessionReconcileUseCase';
+import {
+  TokenModelWeeklyLimit,
+  TokenRateLimitSnapshot,
+  TokenRateLimitSnapshotRepository,
+} from './adapter-interfaces/TokenRateLimitSnapshotRepository';
 
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
-const TOKEN_A = 'token-a';
-const TOKEN_B = 'token-b';
-const ISSUE_URL_1 = 'https://github.com/owner/repo/issues/1';
-const ISSUE_URL_2 = 'https://github.com/owner/repo/issues/2';
-const SESSION_1 = toTmuxSessionName(ISSUE_URL_1);
-const SESSION_2 = toTmuxSessionName(ISSUE_URL_2);
+const TOKEN_EXHAUSTED = 'token-exhausted';
+const TOKEN_FRESH = 'token-fresh';
+const ISSUE_URL = 'https://github.com/owner/repo/issues/1';
+const ISSUE_URL_SESSION = ISSUE_URL.replace(/[.:]/g, '_');
+const BARE_NAME = 'app';
+const IMPL_PID = 4242;
+const LEADER_PID = 1111;
 
 const now = new Date('2026-01-01T12:00:00Z');
 const nowEpochSeconds = Math.floor(now.getTime() / 1000);
 
-const freshSnapshot = (
+const snapshot = (
   token: string,
-  overrides: Partial<{
-    fiveHourUtilization: number;
-    sevenDayUtilization: number;
-    blocked: boolean;
-    rejected: boolean;
-    blockedUntilEpoch: number;
-    lastUpdatedEpoch: number;
-  }> = {},
-) => ({
+  overrides: Partial<TokenRateLimitSnapshot> = {},
+): TokenRateLimitSnapshot => ({
   token,
   name: `name-${token}`,
   fiveHourUtilization: 0,
+  fiveHourReset: 0,
   sevenDayUtilization: 0,
+  sevenDayReset: 0,
   blocked: false,
   rejected: false,
   blockedUntilEpoch: 0,
+  modelWeeklyLimits: [],
   lastUpdatedEpoch: nowEpochSeconds - 60,
   ...overrides,
 });
 
-const defaultRunInput = (
+const issueUrlLeaderSession = (): ClaudeHandoverSession => ({
+  kind: 'issueUrlLeader',
+  pid: LEADER_PID,
+  token: TOKEN_EXHAUSTED,
+  sessionName: ISSUE_URL_SESSION,
+  name: ISSUE_URL,
+  issueUrl: ISSUE_URL,
+});
+
+const bareNameLeaderSession = (): ClaudeHandoverSession => ({
+  kind: 'bareNameLeader',
+  pid: LEADER_PID,
+  token: TOKEN_EXHAUSTED,
+  sessionName: BARE_NAME,
+  name: BARE_NAME,
+  issueUrl: null,
+});
+
+const implSubagentSession = (): ClaudeHandoverSession => ({
+  kind: 'implSubagent',
+  pid: IMPL_PID,
+  token: TOKEN_EXHAUSTED,
+  sessionName: null,
+  name: null,
+  issueUrl: ISSUE_URL,
+});
+
+const defaultInput = (
   overrides: Partial<{
     enabled: boolean;
-    handoverMessage: string;
+    issueUrlLeaderMessage: string;
+    bareNameLeaderMessage: string;
     gracePeriodSeconds: number;
-    handoverSentAtEpochBySessionName: ReadonlyMap<string, number>;
+    state: TokenExhaustionHandoverState;
     now: Date;
   }> = {},
 ) => ({
   enabled: true,
-  handoverMessage: DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE,
+  issueUrlLeaderMessage: DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE,
+  bareNameLeaderMessage:
+    DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE_BARE_NAME_LEADER,
   gracePeriodSeconds: DEFAULT_TOKEN_EXHAUSTION_GRACE_PERIOD_SECONDS,
-  handoverSentAtEpochBySessionName: new Map<string, number>(),
+  state: { entries: {} },
   now,
   ...overrides,
 });
 
 describe('TokenExhaustionHandoverUseCase', () => {
   let useCase: TokenExhaustionHandoverUseCase;
-  let mockInteractiveSessionRepository: Mocked<
-    Pick<ClaudeInteractiveSessionRepository, 'listInteractiveSessions'>
+  let handoverSessionRepository: Mocked<
+    Pick<ClaudeHandoverSessionRepository, 'listHandoverSessions'>
   >;
-  let mockSnapshotRepository: Mocked<
+  let snapshotRepository: Mocked<
     Pick<TokenRateLimitSnapshotRepository, 'listSnapshots'>
   >;
-  let mockTmuxSessionRepository: Mocked<
-    Pick<TmuxSessionRepository, 'sendKeys' | 'killSession'>
+  let tmuxSessionRepository: Mocked<
+    Pick<
+      TmuxSessionRepository,
+      | 'sendKeys'
+      | 'killSession'
+      | 'listLiveSessionNames'
+      | 'launchBareNameLeaderSession'
+    >
   >;
+  let processSignalRepository: Mocked<ProcessSignalRepository>;
+
+  const exhaustedFiveHour = (): TokenModelWeeklyLimit[] => [];
 
   beforeEach(() => {
     jest.resetAllMocks();
     jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
-    mockInteractiveSessionRepository = {
-      listInteractiveSessions: jest.fn().mockReturnValue([]),
+    handoverSessionRepository = {
+      listHandoverSessions: jest.fn().mockReturnValue([]),
     };
-    mockSnapshotRepository = {
+    snapshotRepository = {
       listSnapshots: jest.fn().mockReturnValue([]),
     };
-    mockTmuxSessionRepository = {
+    tmuxSessionRepository = {
       sendKeys: jest.fn().mockResolvedValue(undefined),
       killSession: jest.fn().mockResolvedValue(undefined),
+      listLiveSessionNames: jest.fn().mockResolvedValue([]),
+      launchBareNameLeaderSession: jest.fn().mockResolvedValue(undefined),
+    };
+    processSignalRepository = {
+      isProcessAlive: jest.fn().mockReturnValue(true),
+      terminateProcess: jest.fn(),
+      killProcess: jest.fn(),
     };
 
     useCase = new TokenExhaustionHandoverUseCase(
-      mockInteractiveSessionRepository,
-      mockSnapshotRepository,
-      mockTmuxSessionRepository,
+      handoverSessionRepository,
+      snapshotRepository,
+      tmuxSessionRepository,
+      processSignalRepository,
     );
   });
 
-  it('exposes default constants', () => {
-    expect(DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE).toBeTruthy();
-    expect(DEFAULT_TOKEN_EXHAUSTION_GRACE_PERIOD_SECONDS).toBe(180);
-    expect(TOKEN_EXHAUSTION_SNAPSHOT_STALE_THRESHOLD_SECONDS).toBe(900);
-  });
+  it('does nothing when there are no sessions', async () => {
+    const result = await useCase.run(defaultInput());
 
-  it('sends handover to a session whose token fiveHourUtilization meets the exhaustion threshold', async () => {
-    mockInteractiveSessionRepository.listInteractiveSessions.mockReturnValue([
-      { token: TOKEN_A, sessionId: 'sid-1', issueUrl: ISSUE_URL_1 },
-    ]);
-    mockSnapshotRepository.listSnapshots.mockReturnValue([
-      freshSnapshot(TOKEN_A, { fiveHourUtilization: 0.9 }),
-    ]);
-
-    const result = await useCase.run(defaultRunInput());
-
-    expect(mockTmuxSessionRepository.sendKeys).toHaveBeenCalledWith(
-      SESSION_1,
-      DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE,
-    );
-    expect(result.newlyHandoverSentSessionNames).toEqual([SESSION_1]);
+    expect(result.newlyHandoverSentSessionNames).toEqual([]);
     expect(result.killedSessionNames).toEqual([]);
+    expect(tmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
   });
 
-  it('sends handover to a session whose token sevenDayUtilization meets the exhaustion threshold', async () => {
-    mockInteractiveSessionRepository.listInteractiveSessions.mockReturnValue([
-      { token: TOKEN_A, sessionId: 'sid-1', issueUrl: ISSUE_URL_1 },
+  it('skips a session whose token has no snapshot', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      issueUrlLeaderSession(),
     ]);
-    mockSnapshotRepository.listSnapshots.mockReturnValue([
-      freshSnapshot(TOKEN_A, { sevenDayUtilization: 0.95 }),
+    snapshotRepository.listSnapshots.mockReturnValue([]);
+
+    const result = await useCase.run(defaultInput());
+
+    expect(result.newlyHandoverSentSessionNames).toEqual([]);
+    expect(tmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
+  });
+
+  it('skips a non-exhausted session and clears any stale state entry', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      issueUrlLeaderSession(),
+    ]);
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED),
+      snapshot(TOKEN_FRESH),
     ]);
 
-    const result = await useCase.run(defaultRunInput());
-
-    expect(mockTmuxSessionRepository.sendKeys).toHaveBeenCalledWith(
-      SESSION_1,
-      DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE,
+    const result = await useCase.run(
+      defaultInput({
+        state: {
+          entries: {
+            [ISSUE_URL_SESSION]: {
+              signaledAtEpoch: nowEpochSeconds,
+              pid: LEADER_PID,
+            },
+          },
+        },
+      }),
     );
-    expect(result.newlyHandoverSentSessionNames).toEqual([SESSION_1]);
+
+    expect(result.newlyHandoverSentSessionNames).toEqual([]);
+    expect(result.state.entries[ISSUE_URL_SESSION]).toBeUndefined();
   });
 
-  it('sends handover to a session whose token is blocked', async () => {
-    mockInteractiveSessionRepository.listInteractiveSessions.mockReturnValue([
-      { token: TOKEN_A, sessionId: 'sid-1', issueUrl: ISSUE_URL_1 },
+  it('skips a hard-stale snapshot even when the last reading was exhausted', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      issueUrlLeaderSession(),
     ]);
-    mockSnapshotRepository.listSnapshots.mockReturnValue([
-      freshSnapshot(TOKEN_A, { blocked: true }),
-    ]);
-
-    await useCase.run(defaultRunInput());
-
-    expect(mockTmuxSessionRepository.sendKeys).toHaveBeenCalledWith(
-      SESSION_1,
-      DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE,
-    );
-  });
-
-  it('sends handover to a session whose token is rejected', async () => {
-    mockInteractiveSessionRepository.listInteractiveSessions.mockReturnValue([
-      { token: TOKEN_A, sessionId: 'sid-1', issueUrl: ISSUE_URL_1 },
-    ]);
-    mockSnapshotRepository.listSnapshots.mockReturnValue([
-      freshSnapshot(TOKEN_A, { rejected: true }),
-    ]);
-
-    await useCase.run(defaultRunInput());
-
-    expect(mockTmuxSessionRepository.sendKeys).toHaveBeenCalledWith(
-      SESSION_1,
-      DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE,
-    );
-  });
-
-  it('sends handover to a session whose token has a blockedUntilEpoch in the future', async () => {
-    mockInteractiveSessionRepository.listInteractiveSessions.mockReturnValue([
-      { token: TOKEN_A, sessionId: 'sid-1', issueUrl: ISSUE_URL_1 },
-    ]);
-    mockSnapshotRepository.listSnapshots.mockReturnValue([
-      freshSnapshot(TOKEN_A, { blockedUntilEpoch: nowEpochSeconds + 60 }),
-    ]);
-
-    await useCase.run(defaultRunInput());
-
-    expect(mockTmuxSessionRepository.sendKeys).toHaveBeenCalledWith(
-      SESSION_1,
-      DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE,
-    );
-  });
-
-  it('does not send handover when token snapshot is stale', async () => {
-    mockInteractiveSessionRepository.listInteractiveSessions.mockReturnValue([
-      { token: TOKEN_A, sessionId: 'sid-1', issueUrl: ISSUE_URL_1 },
-    ]);
-    mockSnapshotRepository.listSnapshots.mockReturnValue([
-      freshSnapshot(TOKEN_A, {
-        fiveHourUtilization: 0.9,
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, {
+        fiveHourUtilization: 0.99,
         lastUpdatedEpoch:
-          nowEpochSeconds - TOKEN_EXHAUSTION_SNAPSHOT_STALE_THRESHOLD_SECONDS,
+          nowEpochSeconds -
+          TOKEN_EXHAUSTION_SNAPSHOT_HARD_STALE_THRESHOLD_SECONDS -
+          1,
       }),
+      snapshot(TOKEN_FRESH),
     ]);
 
-    const result = await useCase.run(defaultRunInput());
+    const result = await useCase.run(defaultInput());
 
-    expect(mockTmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
+    expect(result.newlyHandoverSentSessionNames).toEqual([]);
+    expect(tmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
+  });
+
+  it('acts on a slightly-stale snapshot when the last reading was near exhaustion', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      issueUrlLeaderSession(),
+    ]);
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, {
+        fiveHourUtilization: 0.99,
+        lastUpdatedEpoch:
+          nowEpochSeconds -
+          TOKEN_EXHAUSTION_SNAPSHOT_STALE_THRESHOLD_SECONDS -
+          10,
+      }),
+      snapshot(TOKEN_FRESH),
+    ]);
+
+    const result = await useCase.run(defaultInput());
+
+    expect(result.newlyHandoverSentSessionNames).toEqual([ISSUE_URL_SESSION]);
+    expect(tmuxSessionRepository.sendKeys).toHaveBeenCalledWith(
+      ISSUE_URL_SESSION,
+      DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE,
+    );
+  });
+
+  it('skips a slightly-stale snapshot when the last reading was healthy', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      issueUrlLeaderSession(),
+    ]);
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, {
+        fiveHourUtilization: 0,
+        lastUpdatedEpoch:
+          nowEpochSeconds -
+          TOKEN_EXHAUSTION_SNAPSHOT_STALE_THRESHOLD_SECONDS -
+          10,
+      }),
+      snapshot(TOKEN_FRESH),
+    ]);
+
+    const result = await useCase.run(defaultInput());
+
     expect(result.newlyHandoverSentSessionNames).toEqual([]);
   });
 
-  it('does not send handover when no exhaustion criteria are met', async () => {
-    mockInteractiveSessionRepository.listInteractiveSessions.mockReturnValue([
-      { token: TOKEN_A, sessionId: 'sid-1', issueUrl: ISSUE_URL_1 },
+  it('leaves an exhausted session alive when no fresher token is available', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      issueUrlLeaderSession(),
     ]);
-    mockSnapshotRepository.listSnapshots.mockReturnValue([
-      freshSnapshot(TOKEN_A, {
-        fiveHourUtilization: 0.89,
-        sevenDayUtilization: 0.94,
-      }),
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, { fiveHourUtilization: 0.99 }),
+      snapshot(TOKEN_FRESH, { fiveHourUtilization: 0.99 }),
     ]);
 
-    const result = await useCase.run(defaultRunInput());
+    const result = await useCase.run(defaultInput());
 
-    expect(mockTmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
+    expect(result.leftAliveSessionNames).toEqual([ISSUE_URL_SESSION]);
     expect(result.newlyHandoverSentSessionNames).toEqual([]);
+    expect(tmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
   });
 
-  it('does not send handover when session is within the grace period', async () => {
-    const handoverSentAt =
-      nowEpochSeconds - DEFAULT_TOKEN_EXHAUSTION_GRACE_PERIOD_SECONDS + 10;
-    mockInteractiveSessionRepository.listInteractiveSessions.mockReturnValue([
-      { token: TOKEN_A, sessionId: 'sid-1', issueUrl: ISSUE_URL_1 },
+  it('sends the issue-URL leader checkpoint message on first detection', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      issueUrlLeaderSession(),
     ]);
-    mockSnapshotRepository.listSnapshots.mockReturnValue([
-      freshSnapshot(TOKEN_A, { fiveHourUtilization: 0.9 }),
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, { fiveHourUtilization: 0.95 }),
+      snapshot(TOKEN_FRESH),
+    ]);
+
+    const result = await useCase.run(defaultInput());
+
+    expect(tmuxSessionRepository.sendKeys).toHaveBeenCalledWith(
+      ISSUE_URL_SESSION,
+      DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE,
+    );
+    expect(result.state.entries[ISSUE_URL_SESSION]).toEqual({
+      signaledAtEpoch: nowEpochSeconds,
+      pid: LEADER_PID,
+    });
+  });
+
+  it('sends the bare-name leader checkpoint message on first detection', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      bareNameLeaderSession(),
+    ]);
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, { fiveHourUtilization: 0.95 }),
+      snapshot(TOKEN_FRESH),
+    ]);
+
+    await useCase.run(defaultInput());
+
+    expect(tmuxSessionRepository.sendKeys).toHaveBeenCalledWith(
+      BARE_NAME,
+      DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE_BARE_NAME_LEADER,
+    );
+  });
+
+  it('sends SIGTERM to an impl subagent on first detection', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      implSubagentSession(),
+    ]);
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, { fiveHourUtilization: 0.95 }),
+      snapshot(TOKEN_FRESH),
+    ]);
+
+    const result = await useCase.run(defaultInput());
+
+    expect(processSignalRepository.terminateProcess).toHaveBeenCalledWith(
+      IMPL_PID,
+    );
+    expect(tmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
+    expect(result.state.entries[`pid:${IMPL_PID}`]).toEqual({
+      signaledAtEpoch: nowEpochSeconds,
+      pid: IMPL_PID,
+    });
+  });
+
+  it('does not treat an impl subagent as exhausted on seven-day utilization alone', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      implSubagentSession(),
+    ]);
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, {
+        fiveHourUtilization: 0,
+        sevenDayUtilization: 0.99,
+      }),
+      snapshot(TOKEN_FRESH),
+    ]);
+
+    const result = await useCase.run(defaultInput());
+
+    expect(result.newlyHandoverSentSessionNames).toEqual([]);
+    expect(processSignalRepository.terminateProcess).not.toHaveBeenCalled();
+  });
+
+  it('waits while the grace period has not elapsed', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      issueUrlLeaderSession(),
+    ]);
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, { fiveHourUtilization: 0.95 }),
+      snapshot(TOKEN_FRESH),
     ]);
 
     const result = await useCase.run(
-      defaultRunInput({
-        handoverSentAtEpochBySessionName: new Map([
-          [SESSION_1, handoverSentAt],
-        ]),
+      defaultInput({
+        state: {
+          entries: {
+            [ISSUE_URL_SESSION]: {
+              signaledAtEpoch: nowEpochSeconds - 10,
+              pid: LEADER_PID,
+            },
+          },
+        },
       }),
     );
 
-    expect(mockTmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
-    expect(mockTmuxSessionRepository.killSession).not.toHaveBeenCalled();
-    expect(result.newlyHandoverSentSessionNames).toEqual([]);
     expect(result.killedSessionNames).toEqual([]);
+    expect(tmuxSessionRepository.killSession).not.toHaveBeenCalled();
+    expect(result.state.entries[ISSUE_URL_SESSION]).toEqual({
+      signaledAtEpoch: nowEpochSeconds - 10,
+      pid: LEADER_PID,
+    });
   });
 
-  it('kills a session after the grace period elapses', async () => {
-    const handoverSentAt =
-      nowEpochSeconds - DEFAULT_TOKEN_EXHAUSTION_GRACE_PERIOD_SECONDS;
-    mockInteractiveSessionRepository.listInteractiveSessions.mockReturnValue([
-      { token: TOKEN_A, sessionId: 'sid-1', issueUrl: ISSUE_URL_1 },
+  it('kills an issue-URL leader after the grace period without relaunching it', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      issueUrlLeaderSession(),
     ]);
-    mockSnapshotRepository.listSnapshots.mockReturnValue([
-      freshSnapshot(TOKEN_A, { fiveHourUtilization: 0.9 }),
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, { fiveHourUtilization: 0.95 }),
+      snapshot(TOKEN_FRESH),
+    ]);
+    tmuxSessionRepository.listLiveSessionNames.mockResolvedValue([
+      ISSUE_URL_SESSION,
     ]);
 
     const result = await useCase.run(
-      defaultRunInput({
-        handoverSentAtEpochBySessionName: new Map([
-          [SESSION_1, handoverSentAt],
-        ]),
+      defaultInput({
+        state: {
+          entries: {
+            [ISSUE_URL_SESSION]: {
+              signaledAtEpoch:
+                nowEpochSeconds -
+                DEFAULT_TOKEN_EXHAUSTION_GRACE_PERIOD_SECONDS -
+                1,
+              pid: LEADER_PID,
+            },
+          },
+        },
       }),
     );
 
-    expect(mockTmuxSessionRepository.killSession).toHaveBeenCalledWith(
-      SESSION_1,
+    expect(tmuxSessionRepository.killSession).toHaveBeenCalledWith(
+      ISSUE_URL_SESSION,
     );
-    expect(result.killedSessionNames).toEqual([SESSION_1]);
-    expect(result.newlyHandoverSentSessionNames).toEqual([]);
+    expect(
+      tmuxSessionRepository.launchBareNameLeaderSession,
+    ).not.toHaveBeenCalled();
+    expect(result.killedSessionNames).toEqual([ISSUE_URL_SESSION]);
+    expect(result.state.entries[ISSUE_URL_SESSION]).toBeUndefined();
   });
 
-  it('does not call sendKeys when enabled is false', async () => {
-    mockInteractiveSessionRepository.listInteractiveSessions.mockReturnValue([
-      { token: TOKEN_A, sessionId: 'sid-1', issueUrl: ISSUE_URL_1 },
+  it('kills and relaunches a bare-name leader after the grace period', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      bareNameLeaderSession(),
     ]);
-    mockSnapshotRepository.listSnapshots.mockReturnValue([
-      freshSnapshot(TOKEN_A, { fiveHourUtilization: 0.9 }),
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, { fiveHourUtilization: 0.95 }),
+      snapshot(TOKEN_FRESH),
     ]);
-
-    const result = await useCase.run(defaultRunInput({ enabled: false }));
-
-    expect(mockTmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
-    expect(result.newlyHandoverSentSessionNames).toEqual([SESSION_1]);
-  });
-
-  it('does not call killSession when enabled is false', async () => {
-    const handoverSentAt =
-      nowEpochSeconds - DEFAULT_TOKEN_EXHAUSTION_GRACE_PERIOD_SECONDS;
-    mockInteractiveSessionRepository.listInteractiveSessions.mockReturnValue([
-      { token: TOKEN_A, sessionId: 'sid-1', issueUrl: ISSUE_URL_1 },
-    ]);
-    mockSnapshotRepository.listSnapshots.mockReturnValue([
-      freshSnapshot(TOKEN_A, { fiveHourUtilization: 0.9 }),
-    ]);
+    tmuxSessionRepository.listLiveSessionNames.mockResolvedValue([BARE_NAME]);
 
     const result = await useCase.run(
-      defaultRunInput({
-        enabled: false,
-        handoverSentAtEpochBySessionName: new Map([
-          [SESSION_1, handoverSentAt],
-        ]),
+      defaultInput({
+        state: {
+          entries: {
+            [BARE_NAME]: {
+              signaledAtEpoch:
+                nowEpochSeconds -
+                DEFAULT_TOKEN_EXHAUSTION_GRACE_PERIOD_SECONDS -
+                1,
+              pid: LEADER_PID,
+            },
+          },
+        },
       }),
     );
 
-    expect(mockTmuxSessionRepository.killSession).not.toHaveBeenCalled();
-    expect(result.killedSessionNames).toEqual([SESSION_1]);
+    expect(tmuxSessionRepository.killSession).toHaveBeenCalledWith(BARE_NAME);
+    expect(
+      tmuxSessionRepository.launchBareNameLeaderSession,
+    ).toHaveBeenCalledWith(BARE_NAME);
+    expect(result.relaunchedLeaderNames).toEqual([BARE_NAME]);
+    expect(result.killedSessionNames).toEqual([BARE_NAME]);
   });
 
-  it('sends handover to all sessions using exhausted tokens across multiple sessions', async () => {
-    mockInteractiveSessionRepository.listInteractiveSessions.mockReturnValue([
-      { token: TOKEN_A, sessionId: 'sid-1', issueUrl: ISSUE_URL_1 },
-      { token: TOKEN_A, sessionId: 'sid-2', issueUrl: ISSUE_URL_2 },
+  it('SIGKILLs an impl subagent that is still alive after the grace period', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      implSubagentSession(),
     ]);
-    mockSnapshotRepository.listSnapshots.mockReturnValue([
-      freshSnapshot(TOKEN_A, { blocked: true }),
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, { fiveHourUtilization: 0.95 }),
+      snapshot(TOKEN_FRESH),
     ]);
+    processSignalRepository.isProcessAlive.mockReturnValue(true);
 
-    const result = await useCase.run(defaultRunInput());
+    const result = await useCase.run(
+      defaultInput({
+        state: {
+          entries: {
+            [`pid:${IMPL_PID}`]: {
+              signaledAtEpoch:
+                nowEpochSeconds -
+                DEFAULT_TOKEN_EXHAUSTION_GRACE_PERIOD_SECONDS -
+                1,
+              pid: IMPL_PID,
+            },
+          },
+        },
+      }),
+    );
 
-    expect(mockTmuxSessionRepository.sendKeys).toHaveBeenCalledTimes(2);
-    expect(mockTmuxSessionRepository.sendKeys).toHaveBeenCalledWith(
-      SESSION_1,
-      DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE,
-    );
-    expect(mockTmuxSessionRepository.sendKeys).toHaveBeenCalledWith(
-      SESSION_2,
-      DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE,
-    );
-    expect(result.newlyHandoverSentSessionNames).toEqual([
-      SESSION_1,
-      SESSION_2,
-    ]);
+    expect(processSignalRepository.killProcess).toHaveBeenCalledWith(IMPL_PID);
+    expect(result.terminatedPids).toEqual([IMPL_PID]);
   });
 
-  it('ignores sessions whose token is not exhausted', async () => {
-    mockInteractiveSessionRepository.listInteractiveSessions.mockReturnValue([
-      { token: TOKEN_A, sessionId: 'sid-1', issueUrl: ISSUE_URL_1 },
-      { token: TOKEN_B, sessionId: 'sid-2', issueUrl: ISSUE_URL_2 },
+  it('clears state and relaunches a bare-name leader that already exited after handover', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      bareNameLeaderSession(),
     ]);
-    mockSnapshotRepository.listSnapshots.mockReturnValue([
-      freshSnapshot(TOKEN_A, { blocked: true }),
-      freshSnapshot(TOKEN_B),
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, { fiveHourUtilization: 0.95 }),
+      snapshot(TOKEN_FRESH),
     ]);
+    tmuxSessionRepository.listLiveSessionNames.mockResolvedValue([]);
 
-    const result = await useCase.run(defaultRunInput());
-
-    expect(mockTmuxSessionRepository.sendKeys).toHaveBeenCalledTimes(1);
-    expect(mockTmuxSessionRepository.sendKeys).toHaveBeenCalledWith(
-      SESSION_1,
-      DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE,
+    const result = await useCase.run(
+      defaultInput({
+        state: {
+          entries: {
+            [BARE_NAME]: {
+              signaledAtEpoch:
+                nowEpochSeconds -
+                DEFAULT_TOKEN_EXHAUSTION_GRACE_PERIOD_SECONDS -
+                1,
+              pid: LEADER_PID,
+            },
+          },
+        },
+      }),
     );
-    expect(result.newlyHandoverSentSessionNames).toEqual([SESSION_1]);
+
+    expect(tmuxSessionRepository.killSession).not.toHaveBeenCalled();
+    expect(
+      tmuxSessionRepository.launchBareNameLeaderSession,
+    ).toHaveBeenCalledWith(BARE_NAME);
+    expect(result.state.entries[BARE_NAME]).toBeUndefined();
   });
 
-  it('ignores sessions whose token has no snapshot in the repository', async () => {
-    mockInteractiveSessionRepository.listInteractiveSessions.mockReturnValue([
-      { token: TOKEN_A, sessionId: 'sid-1', issueUrl: ISSUE_URL_1 },
+  it('treats a rejected weekly hard cap with a future reset as exhausted', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      issueUrlLeaderSession(),
     ]);
-    mockSnapshotRepository.listSnapshots.mockReturnValue([]);
+    const weeklyCap: TokenModelWeeklyLimit[] = [
+      { rejected: true, resetsAt: nowEpochSeconds + 3600 },
+    ];
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, { modelWeeklyLimits: weeklyCap }),
+      snapshot(TOKEN_FRESH),
+    ]);
 
-    const result = await useCase.run(defaultRunInput());
+    const result = await useCase.run(defaultInput());
 
-    expect(mockTmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
+    expect(result.newlyHandoverSentSessionNames).toEqual([ISSUE_URL_SESSION]);
+  });
+
+  it('ignores a rejected weekly hard cap whose reset is already in the past', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      issueUrlLeaderSession(),
+    ]);
+    const weeklyCap: TokenModelWeeklyLimit[] = [
+      { rejected: true, resetsAt: nowEpochSeconds - 3600 },
+    ];
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, { modelWeeklyLimits: weeklyCap }),
+      snapshot(TOKEN_FRESH),
+    ]);
+
+    const result = await useCase.run(defaultInput());
+
     expect(result.newlyHandoverSentSessionNames).toEqual([]);
   });
 
-  it('derives the tmux session name from the issue URL using the dot-and-colon convention', async () => {
-    const issueUrl = 'https://github.com/owner/repo/issues/42';
-    const expectedSessionName = 'https_//github_com/owner/repo/issues/42';
-    mockInteractiveSessionRepository.listInteractiveSessions.mockReturnValue([
-      { token: TOKEN_A, sessionId: 'sid-42', issueUrl },
+  it('performs no side effects in dry-run mode but still records grace state', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      issueUrlLeaderSession(),
     ]);
-    mockSnapshotRepository.listSnapshots.mockReturnValue([
-      freshSnapshot(TOKEN_A, { blocked: true }),
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, { fiveHourUtilization: 0.95 }),
+      snapshot(TOKEN_FRESH),
     ]);
 
-    await useCase.run(defaultRunInput());
+    const result = await useCase.run(defaultInput({ enabled: false }));
 
-    expect(mockTmuxSessionRepository.sendKeys).toHaveBeenCalledWith(
-      expectedSessionName,
-      expect.any(String),
+    expect(tmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
+    expect(result.newlyHandoverSentSessionNames).toEqual([ISSUE_URL_SESSION]);
+    expect(result.state.entries[ISSUE_URL_SESSION]).toEqual({
+      signaledAtEpoch: nowEpochSeconds,
+      pid: LEADER_PID,
+    });
+  });
+
+  it('uses a custom issue-URL leader message when provided', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      issueUrlLeaderSession(),
+    ]);
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, { fiveHourUtilization: 0.95 }),
+      snapshot(TOKEN_FRESH),
+    ]);
+
+    await useCase.run(
+      defaultInput({ issueUrlLeaderMessage: 'custom checkpoint now' }),
+    );
+
+    expect(tmuxSessionRepository.sendKeys).toHaveBeenCalledWith(
+      ISSUE_URL_SESSION,
+      'custom checkpoint now',
     );
   });
 
-  it('returns empty results when no sessions are running', async () => {
-    mockInteractiveSessionRepository.listInteractiveSessions.mockReturnValue(
-      [],
-    );
-    mockSnapshotRepository.listSnapshots.mockReturnValue([
-      freshSnapshot(TOKEN_A, { blocked: true }),
+  it('detects exhaustion via a rejected window status', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      issueUrlLeaderSession(),
+    ]);
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, {
+        rejected: true,
+        modelWeeklyLimits: exhaustedFiveHour(),
+      }),
+      snapshot(TOKEN_FRESH),
     ]);
 
-    const result = await useCase.run(defaultRunInput());
+    const result = await useCase.run(defaultInput());
 
-    expect(mockTmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
-    expect(result.newlyHandoverSentSessionNames).toEqual([]);
-    expect(result.killedSessionNames).toEqual([]);
+    expect(result.newlyHandoverSentSessionNames).toEqual([ISSUE_URL_SESSION]);
   });
 
-  it('uses a custom handover message when provided', async () => {
-    const customMessage = 'Custom handover message for testing';
-    mockInteractiveSessionRepository.listInteractiveSessions.mockReturnValue([
-      { token: TOKEN_A, sessionId: 'sid-1', issueUrl: ISSUE_URL_1 },
+  it('treats the five-hour window as free after its reset epoch has passed', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      issueUrlLeaderSession(),
     ]);
-    mockSnapshotRepository.listSnapshots.mockReturnValue([
-      freshSnapshot(TOKEN_A, { blocked: true }),
-    ]);
-
-    await useCase.run(defaultRunInput({ handoverMessage: customMessage }));
-
-    expect(mockTmuxSessionRepository.sendKeys).toHaveBeenCalledWith(
-      SESSION_1,
-      customMessage,
-    );
-  });
-
-  it('handles a blockedUntilEpoch exactly equal to now as not exhausted', async () => {
-    mockInteractiveSessionRepository.listInteractiveSessions.mockReturnValue([
-      { token: TOKEN_A, sessionId: 'sid-1', issueUrl: ISSUE_URL_1 },
-    ]);
-    mockSnapshotRepository.listSnapshots.mockReturnValue([
-      freshSnapshot(TOKEN_A, { blockedUntilEpoch: nowEpochSeconds }),
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, {
+        fiveHourUtilization: 1,
+        fiveHourReset: nowEpochSeconds - 1,
+      }),
+      snapshot(TOKEN_FRESH),
     ]);
 
-    const result = await useCase.run(defaultRunInput());
+    const result = await useCase.run(defaultInput());
 
-    expect(mockTmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
     expect(result.newlyHandoverSentSessionNames).toEqual([]);
   });
 });

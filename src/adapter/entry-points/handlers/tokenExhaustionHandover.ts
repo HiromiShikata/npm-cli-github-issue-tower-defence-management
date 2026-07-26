@@ -2,23 +2,29 @@ import { LocalCommandRunner } from '../../../domain/usecases/adapter-interfaces/
 import {
   TokenExhaustionHandoverUseCase,
   DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE,
+  DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE_BARE_NAME_LEADER,
   DEFAULT_TOKEN_EXHAUSTION_GRACE_PERIOD_SECONDS,
 } from '../../../domain/usecases/TokenExhaustionHandoverUseCase';
 import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRepository';
 import { RateLimitSnapshotRepository } from '../../repositories/RateLimitSnapshotRepository';
-import { ProcClaudeInteractiveSessionRepository } from '../../repositories/ProcClaudeInteractiveSessionRepository';
+import { ProcClaudeHandoverSessionRepository } from '../../repositories/ProcClaudeHandoverSessionRepository';
+import { NodeProcessSignalRepository } from '../../repositories/NodeProcessSignalRepository';
+import {
+  FileHandoverStateRepository,
+  defaultHandoverStateFilePath,
+} from '../../repositories/FileHandoverStateRepository';
 
 export type TokenExhaustionHandoverParams = {
   enabled: boolean;
   tokenListJsonPath: string | null;
   handoverMessage?: string | null;
+  bareNameLeaderHandoverMessage?: string | null;
   tokenRateLimitSnapshotBaseDir?: string | null;
   gracePeriodSeconds?: number | null;
+  stateFilePath?: string | null;
   localCommandRunner: LocalCommandRunner;
   now: Date;
 };
-
-const sentHandoverTimestamps: Map<string, number> = new Map();
 
 export const handleTokenExhaustionHandover = async (
   params: TokenExhaustionHandoverParams,
@@ -27,8 +33,10 @@ export const handleTokenExhaustionHandover = async (
     enabled,
     tokenListJsonPath,
     handoverMessage,
+    bareNameLeaderHandoverMessage,
     tokenRateLimitSnapshotBaseDir,
     gracePeriodSeconds,
+    stateFilePath,
     localCommandRunner,
     now,
   } = params;
@@ -44,27 +52,28 @@ export const handleTokenExhaustionHandover = async (
     tokenListJsonPath,
     tokenRateLimitSnapshotBaseDir ?? undefined,
   );
+  const stateRepository = new FileHandoverStateRepository(
+    stateFilePath ?? defaultHandoverStateFilePath(),
+  );
   const useCase = new TokenExhaustionHandoverUseCase(
-    new ProcClaudeInteractiveSessionRepository(),
+    new ProcClaudeHandoverSessionRepository(),
     snapshotRepository,
     new NodeTmuxSessionRepository(localCommandRunner),
+    new NodeProcessSignalRepository(),
   );
 
   const result = await useCase.run({
     enabled,
-    handoverMessage:
+    issueUrlLeaderMessage:
       handoverMessage ?? DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE,
+    bareNameLeaderMessage:
+      bareNameLeaderHandoverMessage ??
+      DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE_BARE_NAME_LEADER,
     gracePeriodSeconds:
       gracePeriodSeconds ?? DEFAULT_TOKEN_EXHAUSTION_GRACE_PERIOD_SECONDS,
-    handoverSentAtEpochBySessionName: sentHandoverTimestamps,
+    state: stateRepository.load(),
     now,
   });
 
-  const nowEpochSeconds = Math.floor(now.getTime() / 1000);
-  for (const sessionName of result.newlyHandoverSentSessionNames) {
-    sentHandoverTimestamps.set(sessionName, nowEpochSeconds);
-  }
-  for (const sessionName of result.killedSessionNames) {
-    sentHandoverTimestamps.delete(sessionName);
-  }
+  stateRepository.save(result.state);
 };
