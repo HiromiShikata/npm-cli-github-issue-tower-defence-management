@@ -1,3 +1,10 @@
+## [1.140.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.140.0...v1.140.1) (2026-07-26)
+
+
+### Bug Fixes
+
+* always remind genuinely-silent sessions, remove in-progress-tool-call suppression ([#1281](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1281)) ([6d13212](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6d1321225687e02db713a8795e3eb1a91eb0c1fe)), closes [#1279](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1279)
+
 # [1.140.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.139.1...v1.140.0) (2026-07-26)
 
 

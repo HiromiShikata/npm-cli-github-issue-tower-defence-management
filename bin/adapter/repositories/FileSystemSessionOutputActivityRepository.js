@@ -47,42 +47,30 @@ const parseEpochMilliseconds = (timestamp) => {
     const parsed = Date.parse(timestamp);
     return Number.isNaN(parsed) ? null : parsed;
 };
-const readContentBlocks = (message) => {
-    const content = message.content;
-    if (!Array.isArray(content)) {
-        return [];
-    }
-    return content.filter(isRecord);
-};
 class FileSystemSessionOutputActivityRepository {
     constructor() {
         this.listSessionOutputActivities = async (transcriptPathBySessionName) => {
             const activities = [];
             for (const [sessionName, transcriptPath] of transcriptPathBySessionName) {
-                const { lastAssistantOutputEpochSeconds, hasInProgressToolCall } = this.readTranscriptActivity(transcriptPath);
+                const lastAssistantOutputEpochSeconds = this.readLastAssistantOutputEpochSeconds(transcriptPath);
                 if (lastAssistantOutputEpochSeconds !== null) {
                     activities.push({
                         sessionName,
                         lastOutputEpochSeconds: lastAssistantOutputEpochSeconds,
-                        hasInProgressToolCall,
                     });
                 }
             }
             return activities;
         };
-        this.readTranscriptActivity = (transcriptPath) => {
+        this.readLastAssistantOutputEpochSeconds = (transcriptPath) => {
             let content;
             try {
                 content = fs.readFileSync(transcriptPath, 'utf8');
             }
             catch {
-                return {
-                    lastAssistantOutputEpochSeconds: null,
-                    hasInProgressToolCall: false,
-                };
+                return null;
             }
             let lastAssistantOutputEpochMs = null;
-            const pendingToolUseIds = new Set();
             for (const line of content.split('\n')) {
                 const trimmed = line.trim();
                 if (trimmed.length === 0) {
@@ -98,38 +86,16 @@ class FileSystemSessionOutputActivityRepository {
                 if (!isRecord(parsed)) {
                     continue;
                 }
-                const message = parsed.message;
                 if (readString(parsed, 'type') === 'assistant') {
                     const epochMs = parseEpochMilliseconds(readString(parsed, 'timestamp'));
                     if (epochMs !== null) {
                         lastAssistantOutputEpochMs = epochMs;
                     }
                 }
-                if (!isRecord(message)) {
-                    continue;
-                }
-                for (const block of readContentBlocks(message)) {
-                    const blockType = readString(block, 'type');
-                    if (blockType === 'tool_use') {
-                        const toolUseId = readString(block, 'id');
-                        if (toolUseId !== null) {
-                            pendingToolUseIds.add(toolUseId);
-                        }
-                    }
-                    else if (blockType === 'tool_result') {
-                        const toolUseId = readString(block, 'tool_use_id');
-                        if (toolUseId !== null) {
-                            pendingToolUseIds.delete(toolUseId);
-                        }
-                    }
-                }
             }
-            return {
-                lastAssistantOutputEpochSeconds: lastAssistantOutputEpochMs === null
-                    ? null
-                    : Math.floor(lastAssistantOutputEpochMs / 1000),
-                hasInProgressToolCall: pendingToolUseIds.size > 0,
-            };
+            return lastAssistantOutputEpochMs === null
+                ? null
+                : Math.floor(lastAssistantOutputEpochMs / 1000);
         };
     }
 }
