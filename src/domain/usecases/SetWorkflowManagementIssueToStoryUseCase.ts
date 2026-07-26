@@ -25,7 +25,7 @@ export class SetWorkflowManagementIssueToStoryUseCase {
     cacheUsed: boolean;
   }): Promise<void> => {
     const story = input.project.story;
-    if (!story || input.cacheUsed) {
+    if (!story) {
       return;
     }
     for (const issue of input.issues) {
