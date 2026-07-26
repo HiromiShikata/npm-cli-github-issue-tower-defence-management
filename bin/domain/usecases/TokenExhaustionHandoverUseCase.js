@@ -102,6 +102,7 @@ class TokenExhaustionHandoverUseCase {
                     console.error(`Token exhaustion handover: error processing ${this.displayName(session)}: ${error instanceof Error ? error.message : String(error)}`);
                 }
             }
+            console.log(`Token exhaustion handover: cycle summary evaluated=${sessions.length} enabled=${input.enabled} signaled=${newlyHandoverSentSessionNames.length} killed=${killedSessionNames.length} terminatedPids=${terminatedPids.length} relaunched=${relaunchedLeaderNames.length} leftAlive=${leftAliveSessionNames.length}`);
             return {
                 newlyHandoverSentSessionNames,
                 killedSessionNames,

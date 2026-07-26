@@ -155,6 +155,16 @@ describe('TokenExhaustionHandoverUseCase', () => {
     expect(tmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
   });
 
+  it('logs a cycle summary every run so the dry-run step is observable', async () => {
+    const logSpy = jest.spyOn(console, 'log');
+
+    await useCase.run(defaultInput({ enabled: false }));
+
+    expect(logSpy).toHaveBeenCalledWith(
+      'Token exhaustion handover: cycle summary evaluated=0 enabled=false signaled=0 killed=0 terminatedPids=0 relaunched=0 leftAlive=0',
+    );
+  });
+
   it('skips a session whose token has no snapshot', async () => {
     handoverSessionRepository.listHandoverSessions.mockReturnValue([
       issueUrlLeaderSession(),
