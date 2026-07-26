@@ -218,8 +218,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
