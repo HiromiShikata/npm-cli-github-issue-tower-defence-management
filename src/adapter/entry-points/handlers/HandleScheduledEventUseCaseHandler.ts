@@ -16,6 +16,10 @@ import {
   notifySilentTmuxSessions,
   DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS,
 } from './notifySilentTmuxSessions';
+import {
+  resetDegeneratedTmuxSessions,
+  DEFAULT_RESET_DEGENERATED_TMUX_SESSIONS_PARAMS,
+} from './resetDegeneratedTmuxSessions';
 import { writeRotationOrderFile } from './rotationOrderFileWriter';
 import {
   fetchProjectReadme,
@@ -145,6 +149,11 @@ export class HandleScheduledEventUseCaseHandler {
       silentSubAgentIdleMessageFooter?: string;
       silentSubAgentLongRunningMessageHeader?: string;
       silentSubAgentLongRunningMessageFooter?: string;
+      outputDegenerationResetEnabled?: boolean;
+      outputDegenerationWarningMessage?: string;
+      outputDegenerationGraceSeconds?: number;
+      outputDegenerationCooldownSeconds?: number;
+      outputDegenerationCooldownStateFilePath?: string;
       credentials: {
         manager: {
           github: {
@@ -736,6 +745,41 @@ export class HandleScheduledEventUseCaseHandler {
       } catch (error) {
         console.error(
           `Failed to notify silent tmux sessions: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+
+      try {
+        const outputDegenerationResetEnabled =
+          mergedInput.outputDegenerationResetEnabled ??
+          process.env.TDPM_OUTPUT_DEGENERATION_RESET_ENABLED === 'true';
+        await resetDegeneratedTmuxSessions({
+          enabled: outputDegenerationResetEnabled,
+          localCommandRunner: nodeLocalCommandRunner,
+          warningMessage:
+            mergedInput.outputDegenerationWarningMessage ??
+            process.env.TDPM_OUTPUT_DEGENERATION_WARNING_MESSAGE ??
+            DEFAULT_RESET_DEGENERATED_TMUX_SESSIONS_PARAMS.warningMessage,
+          graceSeconds: readSilentSeconds(
+            mergedInput.outputDegenerationGraceSeconds,
+            process.env.TDPM_OUTPUT_DEGENERATION_GRACE_SECONDS,
+            DEFAULT_RESET_DEGENERATED_TMUX_SESSIONS_PARAMS.graceSeconds,
+          ),
+          cooldownSeconds: readSilentSeconds(
+            mergedInput.outputDegenerationCooldownSeconds,
+            process.env.TDPM_OUTPUT_DEGENERATION_COOLDOWN_SECONDS,
+            DEFAULT_RESET_DEGENERATED_TMUX_SESSIONS_PARAMS.cooldownSeconds,
+          ),
+          cooldownStateFilePath:
+            mergedInput.outputDegenerationCooldownStateFilePath ??
+            process.env.TDPM_OUTPUT_DEGENERATION_COOLDOWN_STATE_FILE_PATH ??
+            null,
+          now: inTmuxNow,
+        });
+      } catch (error) {
+        console.error(
+          `Failed to reset degenerated tmux sessions: ${
             error instanceof Error ? error.message : String(error)
           }`,
         );
