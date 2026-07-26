@@ -199,6 +199,10 @@ export class TokenExhaustionHandoverUseCase {
       }
     }
 
+    console.log(
+      `Token exhaustion handover: cycle summary evaluated=${sessions.length} enabled=${input.enabled} signaled=${newlyHandoverSentSessionNames.length} killed=${killedSessionNames.length} terminatedPids=${terminatedPids.length} relaunched=${relaunchedLeaderNames.length} leftAlive=${leftAliveSessionNames.length}`,
+    );
+
     return {
       newlyHandoverSentSessionNames,
       killedSessionNames,
