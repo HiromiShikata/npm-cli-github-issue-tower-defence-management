@@ -331,7 +331,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     ).toHaveBeenCalledWith(pullRequestSession, MAIN_STALLED_SECTION);
   });
 
-  it('excludes a non-github-named session from selection so it is never notified', async () => {
+  it('excludes a non-github-named session that has no resolvable transcript so it is never notified', async () => {
     mockSnapshotProvider.getSnapshot.mockResolvedValue(
       snapshotWithSessions(['workbench']),
     );
@@ -347,9 +347,9 @@ describe('NotifySilentLiveSessionsUseCase', () => {
 
     await useCase.run(runParams());
 
-    expect(mockTranscriptResolver.resolveTranscriptPaths).toHaveBeenCalledWith(
-      [],
-    );
+    expect(mockTranscriptResolver.resolveTranscriptPaths).toHaveBeenCalledWith([
+      sessionFor('workbench'),
+    ]);
     expect(
       mockSubAgentActivityRepository.listSubAgentActivitiesBySessionName,
     ).toHaveBeenCalledWith([], new Map());
@@ -361,7 +361,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     ).not.toHaveBeenCalled();
   });
 
-  it('monitors only the github-named session when mixed with a non-github-named session', async () => {
+  it('monitors the github-named session and excludes a non-github-named session that has no resolvable transcript', async () => {
     mockSnapshotProvider.getSnapshot.mockResolvedValue(
       snapshotWithSessions([GITHUB_SESSION, 'orchestrator']),
     );
@@ -387,6 +387,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
 
     expect(mockTranscriptResolver.resolveTranscriptPaths).toHaveBeenCalledWith([
       sessionFor(GITHUB_SESSION),
+      sessionFor('orchestrator'),
     ]);
     expect(
       mockNotificationRepository.sendSelfCheckNotification,
@@ -689,6 +690,117 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     expect(
       mockNotificationRepository.sendSelfCheckNotification,
     ).not.toHaveBeenCalled();
+  });
+
+  describe('role-named resident leader and PM agent sessions', () => {
+    it('reminds a role-named leader agent session that has a resolvable transcript and is silent past the threshold', async () => {
+      setupLiveInteractiveSession('secretary');
+      mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
+        [
+          {
+            sessionName: 'secretary',
+            lastOutputEpochSeconds:
+              nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+          },
+        ],
+      );
+
+      await useCase.run(runParams());
+
+      expect(
+        mockMessageComposer.composeMainStalledSection,
+      ).toHaveBeenCalledWith(DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS);
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledWith('secretary', MAIN_STALLED_SECTION);
+    });
+
+    it('excludes a non-agent interactive session with no resolvable transcript (for example a viewer named sso_login)', async () => {
+      mockSnapshotProvider.getSnapshot.mockResolvedValue(
+        snapshotWithSessions(['sso_login']),
+      );
+      mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
+        [
+          {
+            sessionName: 'sso_login',
+            lastOutputEpochSeconds:
+              nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+          },
+        ],
+      );
+
+      await useCase.run(runParams());
+
+      expect(
+        mockTranscriptResolver.resolveTranscriptPaths,
+      ).toHaveBeenCalledWith([sessionFor('sso_login')]);
+      expect(
+        mockMessageComposer.composeMainStalledSection,
+      ).not.toHaveBeenCalled();
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('reminds both a github-named session and a role-named leader session in the same cycle', async () => {
+      mockSnapshotProvider.getSnapshot.mockResolvedValue(
+        snapshotWithSessions([GITHUB_SESSION, 'app']),
+      );
+      mockTranscriptResolver.resolveTranscriptPaths.mockReturnValue(
+        transcriptMapFor([GITHUB_SESSION, 'app']),
+      );
+      mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
+        [
+          {
+            sessionName: GITHUB_SESSION,
+            lastOutputEpochSeconds:
+              nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+          },
+          {
+            sessionName: 'app',
+            lastOutputEpochSeconds:
+              nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+          },
+        ],
+      );
+
+      await useCase.run(runParams());
+
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledTimes(2);
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledWith(GITHUB_SESSION, MAIN_STALLED_SECTION);
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledWith('app', MAIN_STALLED_SECTION);
+    });
+
+    it('parks a role-named leader session while its latest owner call is unanswered', async () => {
+      setupLiveInteractiveSession('uminopm');
+      mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
+        [
+          {
+            sessionName: 'uminopm',
+            lastOutputEpochSeconds:
+              nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+          },
+        ],
+      );
+      mockOwnerCallStatusProvider.listUnansweredOwnerCallEpochSecondsBySessionName.mockResolvedValue(
+        new Map([['uminopm', nowEpochSeconds - 60]]),
+      );
+
+      await useCase.run(runParams());
+
+      expect(
+        mockMessageComposer.composeMainStalledSection,
+      ).not.toHaveBeenCalled();
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).not.toHaveBeenCalled();
+    });
   });
 
   it('notifies a persistent stall only once per silent episode instead of every cycle', async () => {
@@ -1221,15 +1333,15 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       ).not.toHaveBeenCalled();
     });
 
-    it('excludes a non-github-named session before the hub-task gate so the resolver is never consulted', async () => {
-      setupSilentMainSession('workbench');
+    it('does not consult the hub-task resolver for a role-named leader session that has no hub task URL, and still reminds it', async () => {
+      setupSilentMainSession('tdpm-cli');
 
       await useCase.run(runParams({ activeHubTaskStatus: ACTIVE_STATUS }));
 
       expect(mockHubTaskStatusResolver.getIssueByUrl).not.toHaveBeenCalled();
       expect(
         mockNotificationRepository.sendSelfCheckNotification,
-      ).not.toHaveBeenCalled();
+      ).toHaveBeenCalledWith('tdpm-cli', MAIN_STALLED_SECTION);
     });
 
     it('does not call the resolver at all when the active status is unconfigured', async () => {
