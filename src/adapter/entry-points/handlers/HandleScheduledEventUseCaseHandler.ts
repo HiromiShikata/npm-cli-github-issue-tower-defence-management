@@ -1,6 +1,8 @@
 import YAML from 'yaml';
 import TYPIA from 'typia';
 import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { writeSituationFile } from './situationFileWriter';
 import { writeConsoleLists } from './consoleListsWriter';
 import { writeDashboardRow } from './dashboardRowWriter';
@@ -118,6 +120,7 @@ export class HandleScheduledEventUseCaseHandler {
       subAgentOutputRootDirectory?: string;
       subAgentProcessMatchPattern?: string;
       subAgentTranscriptRootDirectory?: string;
+      subAgentRuntimeRootDirectory?: string;
       mainSilentThresholdSeconds?: number;
       unansweredOwnerCallGraceSeconds?: number;
       subAgentSilentThresholdSeconds?: number;
@@ -602,6 +605,13 @@ export class HandleScheduledEventUseCaseHandler {
           mergedInput.subAgentTranscriptRootDirectory ??
           process.env.TDPM_SUBAGENT_TRANSCRIPT_ROOT_DIRECTORY ??
           null;
+        const getuid = process.getuid?.bind(process);
+        const subAgentRuntimeRootDirectory =
+          mergedInput.subAgentRuntimeRootDirectory ??
+          process.env.TDPM_SUBAGENT_RUNTIME_ROOT_DIRECTORY ??
+          (getuid === undefined
+            ? null
+            : path.join(os.tmpdir(), `claude-${getuid()}`));
         await notifySilentTmuxSessions({
           enabled: silentNotificationEnabled,
           localCommandRunner: nodeLocalCommandRunner,
@@ -609,6 +619,7 @@ export class HandleScheduledEventUseCaseHandler {
           subAgentOutputRootDirectory,
           subAgentProcessMatchPattern,
           subAgentTranscriptRootDirectory,
+          subAgentRuntimeRootDirectory,
           mainSilentThresholdSeconds: readSilentSeconds(
             mergedInput.mainSilentThresholdSeconds,
             process.env.TDPM_MAIN_SILENT_THRESHOLD_SECONDS,
