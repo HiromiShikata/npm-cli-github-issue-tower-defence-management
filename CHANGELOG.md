@@ -1,3 +1,10 @@
+## [1.139.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.139.0...v1.139.1) (2026-07-26)
+
+
+### Bug Fixes
+
+* **silent-session:** fire-once, input-state gating, and bracketed-paste delivery for reminders ([#1274](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1274)) ([563f045](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/563f045608fe80680df3fc22bb75c7b0891c58ab))
+
 # [1.139.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.138.0...v1.139.0) (2026-07-26)
 
 
