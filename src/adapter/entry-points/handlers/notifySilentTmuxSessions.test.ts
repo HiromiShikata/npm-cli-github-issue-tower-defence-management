@@ -205,19 +205,49 @@ describe('notifySilentTmuxSessions', () => {
     expect(sendCall).toBeUndefined();
   });
 
-  it('sends no notification to a silent non-github-named live session', async () => {
+  it('sends a main stalled notification to a silent role-named leader live session that has a resolvable transcript', async () => {
     silentAssistantTranscript();
+    seedPreviousCandidates(['secretary']);
     const runner = createMockRunner();
     runner.runCommand.mockImplementation(async (program, args) => {
       if (program === 'tmux' && args[0] === 'list-sessions') {
-        return { stdout: 'orchestrator\n', stderr: '', exitCode: 0 };
+        return { stdout: 'secretary\n', stderr: '', exitCode: 0 };
       }
       if (program === 'tmux' && args[0] === 'list-panes') {
         return { stdout: `${PANE_PID}\n`, stderr: '', exitCode: 0 };
       }
       if (program === 'ps') {
         return {
-          stdout: `  ${PANE_PID}       1 shell\n  ${CLAUDE_PID}     ${PANE_PID} claude --name orchestrator\n`,
+          stdout: `  ${PANE_PID}       1 shell\n  ${CLAUDE_PID}     ${PANE_PID} claude --name secretary\n`,
+          stderr: '',
+          exitCode: 0,
+        };
+      }
+      return { stdout: '', stderr: '', exitCode: 0 };
+    });
+
+    await notifySilentTmuxSessions(baseParams(runner));
+
+    const sendCall = runner.runCommand.mock.calls.find(
+      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
+    );
+    expect(sendCall?.[1][2]).toBe('secretary');
+    expect(sendCall?.[1][4]).toContain('No output has been observed for');
+  });
+
+  it('sends no notification to a non-agent live session that has no resolvable transcript, even when it was already a candidate', async () => {
+    seedPreviousCandidates(['sso_login']);
+    const runner = createMockRunner();
+    runner.runCommand.mockImplementation(async (program, args) => {
+      if (program === 'tmux' && args[0] === 'list-sessions') {
+        return { stdout: 'sso_login\n', stderr: '', exitCode: 0 };
+      }
+      if (program === 'tmux' && args[0] === 'list-panes') {
+        return { stdout: `${PANE_PID}\n`, stderr: '', exitCode: 0 };
+      }
+      if (program === 'ps') {
+        return {
+          stdout: `  ${PANE_PID}       1 shell\n  ${CLAUDE_PID}     ${PANE_PID} claude --name sso_login\n`,
           stderr: '',
           exitCode: 0,
         };
