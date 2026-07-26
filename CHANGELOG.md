@@ -1,3 +1,10 @@
+# [1.136.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.135.2...v1.136.0) (2026-07-26)
+
+
+### Features
+
+* **console:** hide 'In Tmux by agent' status tasks from every serveWeb console tab ([#1187](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1187)) ([366c626](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/366c626a7c23942029635d2cfabb3926a00c3856))
+
 ## [1.135.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.135.1...v1.135.2) (2026-07-25)
 
 

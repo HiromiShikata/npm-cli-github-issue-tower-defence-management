@@ -10,7 +10,9 @@ class GenerateConsoleListsUseCase {
             const storyOptions = project.story ? project.story.stories : [];
             const storyOrder = storyOptions.map((option) => option.name);
             const statusOptions = project.status.statuses;
-            const actionableIssues = issues.filter((issue) => this.isActionable(issue, assigneeLogin));
+            const visibleIssues = issues.filter((issue) => issue.status?.toLowerCase() !==
+                WorkflowStatus_1.IN_TMUX_BY_AGENT_STATUS_NAME.toLowerCase());
+            const actionableIssues = visibleIssues.filter((issue) => this.isActionable(issue, assigneeLogin));
             const buildStatusTabFromSource = (sourceIssues, selector, excludedStatusNames) => ({
                 pjcode,
                 generatedAt,
@@ -21,7 +23,7 @@ class GenerateConsoleListsUseCase {
             });
             const buildStatusTab = (selector, excludedStatusNames) => buildStatusTabFromSource(actionableIssues, selector, excludedStatusNames);
             return {
-                'workflow-blocker': buildStatusTabFromSource(issues.filter((issue) => issue.isClosed === false), this.workflowBlockerSelector(workflowBlockerStoryName), ['done']),
+                'workflow-blocker': buildStatusTabFromSource(visibleIssues.filter((issue) => issue.isClosed === false), this.workflowBlockerSelector(workflowBlockerStoryName), ['done']),
                 prs: buildStatusTab((issue) => issue.status !== null &&
                     issue.status.toLowerCase() === 'awaiting quality check', ['awaiting quality check', 'done']),
                 unread: buildStatusTab((issue) => issue.status !== null && issue.status.toLowerCase() === 'unread', ['unread', 'done']),
