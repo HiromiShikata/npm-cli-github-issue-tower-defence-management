@@ -1,3 +1,10 @@
+# [1.140.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.139.1...v1.140.0) (2026-07-26)
+
+
+### Features
+
+* log token-exhaustion handover dry-run cycle summary ([#1278](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1278)) ([d6c54c8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d6c54c8f180430e1c0b6a2959284422b57249568)), closes [#1249](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1249)
+
 ## [1.139.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.139.0...v1.139.1) (2026-07-26)
 
 
