@@ -72,6 +72,8 @@ const createFakeTmuxSessionRepository = (state: {
     },
     killSession: async () => undefined,
     killOwnSession: async () => undefined,
+    sendKeys: async () => undefined,
+    launchBareNameLeaderSession: async () => undefined,
   };
 };
 

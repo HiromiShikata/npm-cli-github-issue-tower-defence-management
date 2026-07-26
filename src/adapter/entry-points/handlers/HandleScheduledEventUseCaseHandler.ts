@@ -10,6 +10,7 @@ import { writeMachineStatus } from './machineStatusWriter';
 import { writeTokenStatus } from './tokenStatusWriter';
 import { writeInTmuxByHumanData } from './inTmuxByHumanDataWriter';
 import { reconcileInTmuxByHumanSessions } from './inTmuxByHumanSessionReconciler';
+import { handleTokenExhaustionHandover } from './tokenExhaustionHandover';
 import { cleanStaleTmuxSessions } from './staleTmuxSessionCleaner';
 import {
   notifySilentTmuxSessions,
@@ -115,6 +116,12 @@ export class HandleScheduledEventUseCaseHandler {
       inTmuxConsoleToken?: string;
       inTmuxProjectOrder?: string[];
       inTmuxLauncherCommand?: string;
+      tokenExhaustionHandoverEnabled?: boolean;
+      tokenExhaustionHandoverMessage?: string;
+      tokenExhaustionHandoverBareNameLeaderMessage?: string;
+      tokenRateLimitSnapshotBaseDir?: string;
+      tokenExhaustionGracePeriodSeconds?: number;
+      tokenExhaustionHandoverStateFilePath?: string;
       silentNotificationEnabled?: boolean;
       ownerCallMarker?: string;
       subAgentOutputRootDirectory?: string;
@@ -549,6 +556,31 @@ export class HandleScheduledEventUseCaseHandler {
       } catch (error) {
         console.error(
           `Failed to write in-tmux-by-human data: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+
+      try {
+        await handleTokenExhaustionHandover({
+          enabled: mergedInput.tokenExhaustionHandoverEnabled ?? false,
+          tokenListJsonPath:
+            mergedInput.claudeCodeOauthTokenListJsonPath ?? null,
+          handoverMessage: mergedInput.tokenExhaustionHandoverMessage ?? null,
+          bareNameLeaderHandoverMessage:
+            mergedInput.tokenExhaustionHandoverBareNameLeaderMessage ?? null,
+          tokenRateLimitSnapshotBaseDir:
+            mergedInput.tokenRateLimitSnapshotBaseDir ?? null,
+          gracePeriodSeconds:
+            mergedInput.tokenExhaustionGracePeriodSeconds ?? null,
+          stateFilePath:
+            mergedInput.tokenExhaustionHandoverStateFilePath ?? null,
+          localCommandRunner: nodeLocalCommandRunner,
+          now: inTmuxNow,
+        });
+      } catch (error) {
+        console.error(
+          `Failed to handle token exhaustion handover: ${
             error instanceof Error ? error.message : String(error)
           }`,
         );

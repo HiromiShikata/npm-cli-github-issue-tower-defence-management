@@ -6,10 +6,18 @@ import { LiveTmuxSession } from '../../domain/entities/LiveTmuxSession';
 import { clSessionScopeUnitName } from './clSessionScopeUnitName';
 import { clSessionScopeUnitNameFromCgroupContent } from './clSessionScopeUnitNameFromCgroupContent';
 
+const DEFAULT_SEND_KEYS_SUBMIT_DELAY_MS = 1000;
+const SEND_KEYS_COMPOSER_PROBE_LENGTH = 40;
+const SEND_KEYS_COMPOSER_TAIL_LINES = 8;
+
+const shellSingleQuote = (value: string): string =>
+  `'${value.replace(/'/g, `'\\''`)}'`;
+
 export class NodeTmuxSessionRepository implements TmuxSessionRepository {
   constructor(
     private readonly localCommandRunner: LocalCommandRunner,
     private readonly procDirectory: string = '/proc',
+    private readonly submitDelayMilliseconds: number = DEFAULT_SEND_KEYS_SUBMIT_DELAY_MS,
   ) {}
 
   listLiveSessionNames = async (): Promise<string[]> => {
@@ -133,5 +141,97 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
         }`,
       );
     }
+  };
+
+  sendKeys = async (
+    sessionName: string,
+    literalText: string,
+  ): Promise<void> => {
+    const literalResult = await this.localCommandRunner.runCommand('tmux', [
+      'send-keys',
+      '-t',
+      sessionName,
+      '-l',
+      literalText,
+    ]);
+    if (literalResult.exitCode !== 0) {
+      throw new Error(
+        `Failed to send keys to tmux session "${sessionName}": exit code ${literalResult.exitCode}${
+          literalResult.stderr ? `: ${literalResult.stderr}` : ''
+        }`,
+      );
+    }
+    await this.delaySubmit();
+    await this.sendEnter(sessionName);
+    if (await this.messageStillInComposer(sessionName, literalText)) {
+      await this.delaySubmit();
+      await this.sendEnter(sessionName);
+    }
+  };
+
+  launchBareNameLeaderSession = async (name: string): Promise<void> => {
+    const sessionName = name.replace(/[.:]/g, '_');
+    const leaderCommand = `cl ${shellSingleQuote(name)}; exec /bin/bash`;
+    const { stderr, exitCode } = await this.localCommandRunner.runCommand(
+      'tmux',
+      ['new-session', '-d', '-s', sessionName, 'bash', '-lc', leaderCommand],
+    );
+    if (exitCode !== 0) {
+      throw new Error(
+        `Failed to relaunch bare-name leader session "${sessionName}": exit code ${exitCode}${
+          stderr ? `: ${stderr}` : ''
+        }`,
+      );
+    }
+  };
+
+  private sendEnter = async (sessionName: string): Promise<void> => {
+    const enterResult = await this.localCommandRunner.runCommand('tmux', [
+      'send-keys',
+      '-t',
+      sessionName,
+      'Enter',
+    ]);
+    if (enterResult.exitCode !== 0) {
+      throw new Error(
+        `Failed to send Enter to tmux session "${sessionName}": exit code ${enterResult.exitCode}${
+          enterResult.stderr ? `: ${enterResult.stderr}` : ''
+        }`,
+      );
+    }
+  };
+
+  private messageStillInComposer = async (
+    sessionName: string,
+    literalText: string,
+  ): Promise<boolean> => {
+    const probe = literalText
+      .trim()
+      .split('\n', 1)[0]
+      .slice(0, SEND_KEYS_COMPOSER_PROBE_LENGTH);
+    if (probe.length === 0) {
+      return false;
+    }
+    const { stdout, exitCode } = await this.localCommandRunner.runCommand(
+      'tmux',
+      ['capture-pane', '-p', '-t', sessionName],
+    );
+    if (exitCode !== 0) {
+      return false;
+    }
+    const tail = stdout
+      .split('\n')
+      .slice(-SEND_KEYS_COMPOSER_TAIL_LINES)
+      .join('\n');
+    return tail.includes(probe);
+  };
+
+  private delaySubmit = async (): Promise<void> => {
+    if (this.submitDelayMilliseconds <= 0) {
+      return;
+    }
+    await new Promise((resolve) =>
+      setTimeout(resolve, this.submitDelayMilliseconds),
+    );
   };
 }
