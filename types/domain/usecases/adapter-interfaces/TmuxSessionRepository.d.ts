@@ -6,5 +6,7 @@ export interface TmuxSessionRepository {
     launchDetachedSession: (sessionName: string, launcherCommand: string, issueUrl: string) => Promise<void>;
     killSession: (sessionName: string) => Promise<void>;
     killOwnSession: () => Promise<void>;
+    sendKeys: (sessionName: string, literalText: string) => Promise<void>;
+    launchBareNameLeaderSession: (name: string) => Promise<void>;
 }
 //# sourceMappingURL=TmuxSessionRepository.d.ts.map

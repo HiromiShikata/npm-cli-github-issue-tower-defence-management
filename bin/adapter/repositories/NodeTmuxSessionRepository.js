@@ -38,10 +38,15 @@ const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const clSessionScopeUnitName_1 = require("./clSessionScopeUnitName");
 const clSessionScopeUnitNameFromCgroupContent_1 = require("./clSessionScopeUnitNameFromCgroupContent");
+const DEFAULT_SEND_KEYS_SUBMIT_DELAY_MS = 1000;
+const SEND_KEYS_COMPOSER_PROBE_LENGTH = 40;
+const SEND_KEYS_COMPOSER_TAIL_LINES = 8;
+const shellSingleQuote = (value) => `'${value.replace(/'/g, `'\\''`)}'`;
 class NodeTmuxSessionRepository {
-    constructor(localCommandRunner, procDirectory = '/proc') {
+    constructor(localCommandRunner, procDirectory = '/proc', submitDelayMilliseconds = DEFAULT_SEND_KEYS_SUBMIT_DELAY_MS) {
         this.localCommandRunner = localCommandRunner;
         this.procDirectory = procDirectory;
+        this.submitDelayMilliseconds = submitDelayMilliseconds;
         this.listLiveSessionNames = async () => {
             const { stdout, exitCode } = await this.localCommandRunner.runCommand('tmux', ['list-sessions', '-F', '#{session_name}']);
             if (exitCode !== 0) {
@@ -124,6 +129,67 @@ class NodeTmuxSessionRepository {
             if (exitCode !== 0) {
                 console.error(`Failed to stop systemd user scope "${scopeUnitName}": exit code ${exitCode}${stderr ? `: ${stderr}` : ''}`);
             }
+        };
+        this.sendKeys = async (sessionName, literalText) => {
+            const literalResult = await this.localCommandRunner.runCommand('tmux', [
+                'send-keys',
+                '-t',
+                sessionName,
+                '-l',
+                literalText,
+            ]);
+            if (literalResult.exitCode !== 0) {
+                throw new Error(`Failed to send keys to tmux session "${sessionName}": exit code ${literalResult.exitCode}${literalResult.stderr ? `: ${literalResult.stderr}` : ''}`);
+            }
+            await this.delaySubmit();
+            await this.sendEnter(sessionName);
+            if (await this.messageStillInComposer(sessionName, literalText)) {
+                await this.delaySubmit();
+                await this.sendEnter(sessionName);
+            }
+        };
+        this.launchBareNameLeaderSession = async (name) => {
+            const sessionName = name.replace(/[.:]/g, '_');
+            const leaderCommand = `cl ${shellSingleQuote(name)}; exec /bin/bash`;
+            const { stderr, exitCode } = await this.localCommandRunner.runCommand('tmux', ['new-session', '-d', '-s', sessionName, 'bash', '-lc', leaderCommand]);
+            if (exitCode !== 0) {
+                throw new Error(`Failed to relaunch bare-name leader session "${sessionName}": exit code ${exitCode}${stderr ? `: ${stderr}` : ''}`);
+            }
+        };
+        this.sendEnter = async (sessionName) => {
+            const enterResult = await this.localCommandRunner.runCommand('tmux', [
+                'send-keys',
+                '-t',
+                sessionName,
+                'Enter',
+            ]);
+            if (enterResult.exitCode !== 0) {
+                throw new Error(`Failed to send Enter to tmux session "${sessionName}": exit code ${enterResult.exitCode}${enterResult.stderr ? `: ${enterResult.stderr}` : ''}`);
+            }
+        };
+        this.messageStillInComposer = async (sessionName, literalText) => {
+            const probe = literalText
+                .trim()
+                .split('\n', 1)[0]
+                .slice(0, SEND_KEYS_COMPOSER_PROBE_LENGTH);
+            if (probe.length === 0) {
+                return false;
+            }
+            const { stdout, exitCode } = await this.localCommandRunner.runCommand('tmux', ['capture-pane', '-p', '-t', sessionName]);
+            if (exitCode !== 0) {
+                return false;
+            }
+            const tail = stdout
+                .split('\n')
+                .slice(-SEND_KEYS_COMPOSER_TAIL_LINES)
+                .join('\n');
+            return tail.includes(probe);
+        };
+        this.delaySubmit = async () => {
+            if (this.submitDelayMilliseconds <= 0) {
+                return;
+            }
+            await new Promise((resolve) => setTimeout(resolve, this.submitDelayMilliseconds));
         };
     }
 }

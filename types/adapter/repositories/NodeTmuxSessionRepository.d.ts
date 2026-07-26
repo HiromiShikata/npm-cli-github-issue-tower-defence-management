@@ -4,7 +4,8 @@ import { LiveTmuxSession } from '../../domain/entities/LiveTmuxSession';
 export declare class NodeTmuxSessionRepository implements TmuxSessionRepository {
     private readonly localCommandRunner;
     private readonly procDirectory;
-    constructor(localCommandRunner: LocalCommandRunner, procDirectory?: string);
+    private readonly submitDelayMilliseconds;
+    constructor(localCommandRunner: LocalCommandRunner, procDirectory?: string, submitDelayMilliseconds?: number);
     listLiveSessionNames: () => Promise<string[]>;
     listLiveSessionsWithActivity: () => Promise<LiveTmuxSession[]>;
     listInteractiveProcessCommandLines: () => Promise<string[]>;
@@ -12,5 +13,10 @@ export declare class NodeTmuxSessionRepository implements TmuxSessionRepository 
     killSession: (sessionName: string) => Promise<void>;
     killOwnSession: () => Promise<void>;
     private stopScopeUnit;
+    sendKeys: (sessionName: string, literalText: string) => Promise<void>;
+    launchBareNameLeaderSession: (name: string) => Promise<void>;
+    private sendEnter;
+    private messageStillInComposer;
+    private delaySubmit;
 }
 //# sourceMappingURL=NodeTmuxSessionRepository.d.ts.map

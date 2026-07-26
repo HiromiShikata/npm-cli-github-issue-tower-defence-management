@@ -1,0 +1,1 @@
+{"version":3,"file":"ProcessSignalRepository.d.ts","sourceRoot":"","sources":["../../../../src/domain/usecases/adapter-interfaces/ProcessSignalRepository.ts"],"names":[],"mappings":"AAAA,MAAM,WAAW,uBAAuB;IACtC,cAAc,EAAE,CAAC,GAAG,EAAE,MAAM,KAAK,OAAO,CAAC;IACzC,gBAAgB,EAAE,CAAC,GAAG,EAAE,MAAM,KAAK,IAAI,CAAC;IACxC,WAAW,EAAE,CAAC,GAAG,EAAE,MAAM,KAAK,IAAI,CAAC;CACpC"}
