@@ -478,6 +478,23 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 missingRequiredCheckNames,
             };
         };
+        this.prBodyContainsCrossRepoClosingKeyword = (prBody, issueUrl) => {
+            if (!prBody)
+                return false;
+            const closingKeywords = /(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+/gi;
+            const normalizedIssueUrl = issueUrl.replace(/\/+$/, '');
+            let match;
+            while ((match = closingKeywords.exec(prBody)) !== null) {
+                const afterKeyword = prBody.slice(match.index + match[0].length);
+                const urlMatch = afterKeyword.match(/^https?:\/\/[^\s]+/);
+                if (!urlMatch)
+                    continue;
+                const candidateUrl = urlMatch[0].replace(/\/+$/, '');
+                if (candidateUrl.toLowerCase() === normalizedIssueUrl.toLowerCase())
+                    return true;
+            }
+            return false;
+        };
         this.requiredCheckNamesCache = new Map();
         this.getRequiredCheckNames = async (owner, repo, branch) => {
             const cacheKey = `${owner}/${repo}/${branch}`;
@@ -769,6 +786,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                     ... on PullRequest {
                       url
                       number
+                      body
                       state
                       createdAt
                       isDraft
@@ -814,7 +832,8 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                         continue;
                     if (item.source.state !== 'OPEN')
                         continue;
-                    if (!item.willCloseTarget)
+                    if (!item.willCloseTarget &&
+                        !this.prBodyContainsCrossRepoClosingKeyword(item.source.body ?? null, issueUrl))
                         continue;
                     const pr = item.source;
                     const prUrl = pr.url || '';

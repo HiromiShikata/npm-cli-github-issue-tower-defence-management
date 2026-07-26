@@ -81,6 +81,7 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     update: (issue: Issue, _project: Project) => Promise<void>;
     private parseIssueUrl;
     private computePrStatus;
+    private prBodyContainsCrossRepoClosingKeyword;
     private readonly requiredCheckNamesCache;
     private getRequiredCheckNames;
     private getCommitCiContexts;

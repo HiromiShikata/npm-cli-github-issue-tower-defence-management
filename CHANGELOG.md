@@ -1,3 +1,10 @@
+## [1.137.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.137.1...v1.137.2) (2026-07-26)
+
+
+### Bug Fixes
+
+* **issue-repository:** include cross-repo PRs with closing keywords in findRelatedOpenPRs ([#1007](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1007)) ([a96e605](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a96e60502d21fcf6d1a0ffc3418557f32203c2e4))
+
 ## [1.137.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.137.0...v1.137.1) (2026-07-26)
 
 
