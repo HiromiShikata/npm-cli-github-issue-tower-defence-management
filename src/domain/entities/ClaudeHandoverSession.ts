@@ -1,7 +1,5 @@
 export type ClaudeHandoverSessionKind =
-  | 'issueUrlLeader'
-  | 'bareNameLeader'
-  | 'implSubagent';
+  'issueUrlLeader' | 'bareNameLeader' | 'implSubagent';
 
 export type ClaudeHandoverSession = {
   kind: ClaudeHandoverSessionKind;
