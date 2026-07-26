@@ -19,7 +19,7 @@ export declare class StartPreparationUseCase {
     private readonly localCommandRunner;
     private readonly claudeTokenUsageRepository;
     private readonly takeOwnershipSpawnRepository;
-    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl'>, issueRepository: Pick<IssueRepository, 'getStoryObjectMap' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'closePullRequest' | 'deletePullRequestBranch' | 'createCommentByUrl'>, localCommandRunner: LocalCommandRunner, claudeTokenUsageRepository: ClaudeTokenUsageRepository, takeOwnershipSpawnRepository: TakeOwnershipSpawnRepository);
+    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl'>, issueRepository: Pick<IssueRepository, 'getStoryObjectMap' | 'getAllOpened' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'closePullRequest' | 'deletePullRequestBranch' | 'createCommentByUrl'>, localCommandRunner: LocalCommandRunner, claudeTokenUsageRepository: ClaudeTokenUsageRepository, takeOwnershipSpawnRepository: TakeOwnershipSpawnRepository);
     private weeklyLimitTypeForModel;
     private isWithinCooldown;
     private isModelWeeklyLimitRejected;
@@ -40,8 +40,8 @@ export declare class StartPreparationUseCase {
         maximumPreparingIssuesCount: number | null;
         utilizationPercentageThreshold: number;
         allowedIssueAuthors: string[] | null;
+        manager: string;
         codexHomeCandidates: string[] | null;
-        allowIssueCacheMinutes: number;
         labelsAsLlmAgentName: string[] | null;
     }) => Promise<{
         rotationOrder: RotationOrderEntry[] | null;

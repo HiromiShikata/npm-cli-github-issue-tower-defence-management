@@ -1,3 +1,10 @@
+# [1.138.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.137.2...v1.138.0) (2026-07-26)
+
+
+### Features
+
+* **start-preparation-use-case:** Add duplicate aw-worker prevention in TDPM StartPreparationUseCase via running-process URL check ([#1032](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1032)) ([62d322e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/62d322ed25477080f5f6fa9907d5faea90f9f7ea)), closes [HiromiShikata/umino-corporait-operation#29838](https://github.com/HiromiShikata/umino-corporait-operation/issues/29838)
+
 ## [1.137.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.137.1...v1.137.2) (2026-07-26)
 
 
