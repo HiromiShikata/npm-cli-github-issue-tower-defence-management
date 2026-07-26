@@ -1,5 +1,6 @@
 import { Issue } from '../../entities/Issue';
 import { IN_TMUX_STATUS_NAME } from '../../entities/WorkflowStatus';
+import { IssueRepository } from '../adapter-interfaces/IssueRepository';
 import { TmuxSessionRepository } from '../adapter-interfaces/TmuxSessionRepository';
 import {
   InTmuxByHumanSessionReconcileUseCase,
@@ -74,6 +75,25 @@ const createFakeTmuxSessionRepository = (state: {
   };
 };
 
+const createFakeIssueStateRepository = (
+  stateByUrl: Record<string, string> = {},
+): Pick<IssueRepository, 'getIssueOrPullRequestState'> & {
+  fetchedUrls: string[];
+} => {
+  const fetchedUrls: string[] = [];
+  return {
+    fetchedUrls,
+    getIssueOrPullRequestState: async (url: string) => {
+      fetchedUrls.push(url);
+      return {
+        state: stateByUrl[url] ?? 'open',
+        merged: false,
+        isPullRequest: false,
+      };
+    },
+  };
+};
+
 describe('InTmuxByHumanSessionReconcileUseCase', () => {
   beforeEach(() => {
     issueCounter = 0;
@@ -85,7 +105,10 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
       liveSessionNames: [],
       processCommandLines: [],
     });
-    const useCase = new InTmuxByHumanSessionReconcileUseCase(repository);
+    const useCase = new InTmuxByHumanSessionReconcileUseCase(
+      repository,
+      createFakeIssueStateRepository(),
+    );
 
     const result = await useCase.run({
       issues: [issue],
@@ -112,7 +135,10 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
         `claude --model opus --agent leader --name ${issue.url}`,
       ],
     });
-    const useCase = new InTmuxByHumanSessionReconcileUseCase(repository);
+    const useCase = new InTmuxByHumanSessionReconcileUseCase(
+      repository,
+      createFakeIssueStateRepository(),
+    );
 
     const result = await useCase.run({
       issues: [issue],
@@ -131,7 +157,10 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
       liveSessionNames: [toTmuxSessionName(issue.url)],
       processCommandLines: ['claude --model opus --name some-other-task'],
     });
-    const useCase = new InTmuxByHumanSessionReconcileUseCase(repository);
+    const useCase = new InTmuxByHumanSessionReconcileUseCase(
+      repository,
+      createFakeIssueStateRepository(),
+    );
 
     const result = await useCase.run({
       issues: [issue],
@@ -152,7 +181,10 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
       liveSessionNames: [toTmuxSessionName(liveIssue.url)],
       processCommandLines: [`claude --model opus --name ${liveIssue.url}`],
     });
-    const useCase = new InTmuxByHumanSessionReconcileUseCase(repository);
+    const useCase = new InTmuxByHumanSessionReconcileUseCase(
+      repository,
+      createFakeIssueStateRepository(),
+    );
 
     const result = await useCase.run({
       issues: [liveIssue, missingIssueOne, missingIssueTwo],
@@ -179,7 +211,10 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
       liveSessionNames: [],
       processCommandLines: [],
     });
-    const useCase = new InTmuxByHumanSessionReconcileUseCase(repository);
+    const useCase = new InTmuxByHumanSessionReconcileUseCase(
+      repository,
+      createFakeIssueStateRepository(),
+    );
 
     const result = await useCase.run({
       issues: [otherStatusIssue, closedIssue, otherAssigneeIssue],
@@ -200,7 +235,10 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
       liveSessionNames: [],
       processCommandLines: [],
     });
-    const useCase = new InTmuxByHumanSessionReconcileUseCase(repository);
+    const useCase = new InTmuxByHumanSessionReconcileUseCase(
+      repository,
+      createFakeIssueStateRepository(),
+    );
 
     const result = await useCase.run({
       issues: [futureIssue],
@@ -219,7 +257,10 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
       liveSessionNames: [],
       processCommandLines: [],
     });
-    const useCase = new InTmuxByHumanSessionReconcileUseCase(repository);
+    const useCase = new InTmuxByHumanSessionReconcileUseCase(
+      repository,
+      createFakeIssueStateRepository(),
+    );
 
     const result = await useCase.run({
       issues: [hourIssue],
@@ -240,7 +281,10 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
       liveSessionNames: [],
       processCommandLines: [],
     });
-    const useCase = new InTmuxByHumanSessionReconcileUseCase(repository);
+    const useCase = new InTmuxByHumanSessionReconcileUseCase(
+      repository,
+      createFakeIssueStateRepository(),
+    );
 
     const result = await useCase.run({
       issues: [dueIssue],
@@ -250,6 +294,85 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
     });
 
     expect(result.launchedIssueUrls).toEqual([dueIssue.url]);
+  });
+
+  it('does not launch a session for an issue whose live GitHub state is closed even when the cached issue still reports it as open', async () => {
+    const staleCachedIssue = makeIssue({ isClosed: false });
+    const repository = createFakeTmuxSessionRepository({
+      liveSessionNames: [],
+      processCommandLines: [],
+    });
+    const issueStateRepository = createFakeIssueStateRepository({
+      [staleCachedIssue.url]: 'closed',
+    });
+    const useCase = new InTmuxByHumanSessionReconcileUseCase(
+      repository,
+      issueStateRepository,
+    );
+
+    const result = await useCase.run({
+      issues: [staleCachedIssue],
+      assigneeLogin: ASSIGNEE,
+      launcherCommand: LAUNCHER,
+      now: NOW,
+    });
+
+    expect(issueStateRepository.fetchedUrls).toEqual([staleCachedIssue.url]);
+    expect(repository.launches).toEqual([]);
+    expect(result.launchedIssueUrls).toEqual([]);
+  });
+
+  it('launches only the issues whose live GitHub state is open when a stale cached issue is mixed in', async () => {
+    const staleClosedIssue = makeIssue({ isClosed: false });
+    const openIssue = makeIssue();
+    const repository = createFakeTmuxSessionRepository({
+      liveSessionNames: [],
+      processCommandLines: [],
+    });
+    const issueStateRepository = createFakeIssueStateRepository({
+      [staleClosedIssue.url]: 'closed',
+      [openIssue.url]: 'open',
+    });
+    const useCase = new InTmuxByHumanSessionReconcileUseCase(
+      repository,
+      issueStateRepository,
+    );
+
+    const result = await useCase.run({
+      issues: [staleClosedIssue, openIssue],
+      assigneeLogin: ASSIGNEE,
+      launcherCommand: LAUNCHER,
+      now: NOW,
+    });
+
+    expect(result.launchedIssueUrls).toEqual([openIssue.url]);
+    expect(repository.launches.map((launch) => launch.issueUrl)).toEqual([
+      openIssue.url,
+    ]);
+  });
+
+  it('does not fetch the live state for an issue that already has a live session', async () => {
+    const issue = makeIssue();
+    const repository = createFakeTmuxSessionRepository({
+      liveSessionNames: [toTmuxSessionName(issue.url)],
+      processCommandLines: [
+        `claude --model opus --agent leader --name ${issue.url}`,
+      ],
+    });
+    const issueStateRepository = createFakeIssueStateRepository();
+    const useCase = new InTmuxByHumanSessionReconcileUseCase(
+      repository,
+      issueStateRepository,
+    );
+
+    await useCase.run({
+      issues: [issue],
+      assigneeLogin: ASSIGNEE,
+      launcherCommand: LAUNCHER,
+      now: NOW,
+    });
+
+    expect(issueStateRepository.fetchedUrls).toEqual([]);
   });
 
   it('transforms an issue url into the same session name tmux derives from the raw url, replacing only "." and ":" and keeping "/"', () => {
