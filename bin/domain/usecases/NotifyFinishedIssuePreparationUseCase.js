@@ -50,7 +50,7 @@ class NotifyFinishedIssuePreparationUseCase {
             }
             if (issue.dependedIssueUrls.length === 0) {
                 try {
-                    const storyObjectMap = await this.issueRepository.getStoryObjectMap(project, 0);
+                    const storyObjectMap = await this.issueRepository.getStoryObjectMap(project);
                     for (const storyObject of storyObjectMap.values()) {
                         const towerDefenceIssue = storyObject.issues.find((i) => i.url === issue.url);
                         if (towerDefenceIssue) {
@@ -184,7 +184,7 @@ class NotifyFinishedIssuePreparationUseCase {
                 return;
             }
             try {
-                const storyObjectMap = await this.issueRepository.getStoryObjectMap(project, 0);
+                const storyObjectMap = await this.issueRepository.getStoryObjectMap(project);
                 const isWorkflowBlocker = Array.from(storyObjectMap.entries()).some(([storyName, storyObject]) => storyName.toLowerCase().includes('workflow blocker') &&
                     storyObject.issues.some((issue) => issue.url === issueUrl));
                 if (!isWorkflowBlocker) {

@@ -86,7 +86,7 @@ const ConsoleInlineCommentComposer = ({
         commenting on line {target.line} ({target.side})
       </div>
       {status.kind === 'posted' ? (
-        <p className="console-diff-composer-posted">Comment posted.</p>
+        <p className="console-diff-composer-posted">Comment saved.</p>
       ) : (
         <>
           <textarea

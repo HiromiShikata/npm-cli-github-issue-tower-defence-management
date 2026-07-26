@@ -123,6 +123,32 @@ describe('filterPendingItems', () => {
   });
 });
 
+describe('workflow-blocker items are filtered by the done overlay like every other tab', () => {
+  it('subtracts a processed workflow-blocker item from the count', () => {
+    const overlay: ConsoleOverlay = {
+      PVTI_1: { ts: 100, mode: 'workflow-blocker', done: true },
+    };
+    expect(countPendingItems([item(1), item(2)], overlay)).toBe(1);
+  });
+
+  it('removes a processed workflow-blocker item from the list', () => {
+    const overlay: ConsoleOverlay = {
+      PVTI_1: { ts: 100, mode: 'workflow-blocker', done: true },
+    };
+    const result = filterPendingItems([item(1), item(2)], overlay);
+    expect(result.map((entry) => entry.number)).toEqual([2]);
+  });
+
+  it('drives the count to zero when every workflow-blocker item is processed', () => {
+    const overlay: ConsoleOverlay = {
+      PVTI_1: { ts: 100, mode: 'workflow-blocker', done: true },
+      PVTI_2: { ts: 100, mode: 'workflow-blocker', done: true },
+    };
+    expect(countPendingItems([item(1), item(2)], overlay)).toBe(0);
+    expect(filterPendingItems([item(1), item(2)], overlay)).toEqual([]);
+  });
+});
+
 describe('writeOverlayEntry', () => {
   it('stamps the timestamp and mode on write', () => {
     const next = writeOverlayEntry({}, 'PVTI_1', { done: true }, 'prs', 1234);

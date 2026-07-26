@@ -5,6 +5,7 @@ export declare const PREPARATION_STATUS_NAME = "Preparation";
 export declare const FAILED_PREPARATION_STATUS_NAME = "Failed Preparation";
 export declare const AWAITING_QUALITY_CHECK_STATUS_NAME = "Awaiting Quality Check";
 export declare const TODO_STATUS_NAME = "Todo by human";
+export declare const TODO_BY_AGENT_STATUS_NAME = "Todo by agent";
 export declare const PC_TODO_STATUS_NAME = "PC Todo";
 export declare const IN_TMUX_STATUS_NAME = "In Tmux by human";
 export declare const IN_TMUX_BY_AGENT_STATUS_NAME = "In Tmux by agent";

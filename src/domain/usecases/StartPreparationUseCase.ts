@@ -28,6 +28,7 @@ export class StartPreparationUseCase {
     private readonly issueRepository: Pick<
       IssueRepository,
       | 'getStoryObjectMap'
+      | 'getAllOpened'
       | 'updateStatus'
       | 'findRelatedOpenPRs'
       | 'getOpenPullRequest'
@@ -296,8 +297,8 @@ export class StartPreparationUseCase {
     maximumPreparingIssuesCount: number | null;
     utilizationPercentageThreshold: number;
     allowedIssueAuthors: string[] | null;
+    manager: string;
     codexHomeCandidates: string[] | null;
-    allowIssueCacheMinutes: number;
     labelsAsLlmAgentName: string[] | null;
   }): Promise<{ rotationOrder: RotationOrderEntry[] | null }> => {
     const tokenUsages =
@@ -352,10 +353,8 @@ export class StartPreparationUseCase {
     }
 
     const project = await this.projectRepository.getByUrl(params.projectUrl);
-    const storyObjectMap = await this.issueRepository.getStoryObjectMap(
-      project,
-      params.allowIssueCacheMinutes,
-    );
+    const storyObjectMap =
+      await this.issueRepository.getStoryObjectMap(project);
 
     const allOpenedIssues = Array.from(storyObjectMap.values()).flatMap(
       (storyObject) => storyObject.issues,
@@ -376,12 +375,34 @@ export class StartPreparationUseCase {
           issue.status === AWAITING_WORKSPACE_STATUS_NAME && !issue.isClosed,
       )
       .map((issue) => ({ ...issue }));
+    const allProjectOpenIssues =
+      await this.issueRepository.getAllOpened(project);
+    const storyUnsetAwaitingWorkspaceIssueUrls = allProjectOpenIssues
+      .filter(
+        (issue) =>
+          issue.status === AWAITING_WORKSPACE_STATUS_NAME &&
+          !issue.isClosed &&
+          issue.story === null,
+      )
+      .map((issue) => issue.url);
+    if (storyUnsetAwaitingWorkspaceIssueUrls.length > 0) {
+      console.warn(
+        `Awaiting Workspace issue(s) invisible to spawn candidate selection because Story is unset: ${storyUnsetAwaitingWorkspaceIssueUrls.join(', ')}`,
+      );
+    }
     const currentPreparationIssueCount = allOpenedIssues.filter(
       (issue) => issue.status === PREPARATION_STATUS_NAME,
     ).length;
     let updatedCurrentPreparationIssueCount = currentPreparationIssueCount;
     let startedInThisRunCount = 0;
     const spawnedInThisRunByToken: Record<string, number> = {};
+    const exclusionCounts = {
+      dependedIssueUrls: 0,
+      futureNextActionDate: 0,
+      nextActionHourNotReached: 0,
+      authorNotAllowed: 0,
+      notAssignedToManager: 0,
+    };
 
     const now = new Date();
     const currentHour = now.getHours();
@@ -404,15 +425,18 @@ export class StartPreparationUseCase {
     ) {
       const issue = awaitingWorkspaceIssues[i];
       if (issue.dependedIssueUrls.length > 0) {
+        exclusionCounts.dependedIssueUrls++;
         continue;
       }
       if (
         issue.nextActionDate !== null &&
         issue.nextActionDate >= tomorrowStart
       ) {
+        exclusionCounts.futureNextActionDate++;
         continue;
       }
       if (issue.nextActionHour !== null && currentHour < issue.nextActionHour) {
+        exclusionCounts.nextActionHourNotReached++;
         continue;
       }
       if (
@@ -420,6 +444,11 @@ export class StartPreparationUseCase {
         params.allowedIssueAuthors.length === 0 ||
         !params.allowedIssueAuthors.includes(issue.author)
       ) {
+        exclusionCounts.authorNotAllowed++;
+        continue;
+      }
+      if (!issue.assignees.includes(params.manager)) {
+        exclusionCounts.notAssignedToManager++;
         continue;
       }
       const mappedAgentFromLabel =
@@ -600,6 +629,9 @@ export class StartPreparationUseCase {
       startedInThisRunCount++;
       updatedCurrentPreparationIssueCount++;
     }
+    console.log(
+      `Spawn candidate exclusion summary for ${params.projectUrl}: dependedIssueUrls=${exclusionCounts.dependedIssueUrls}, futureNextActionDate=${exclusionCounts.futureNextActionDate}, nextActionHourNotReached=${exclusionCounts.nextActionHourNotReached}, authorNotAllowed=${exclusionCounts.authorNotAllowed}, notAssignedToManager=${exclusionCounts.notAssignedToManager}`,
+    );
     return { rotationOrder };
   };
 }

@@ -92,6 +92,7 @@ const createPassingPr = () => ({
   createdAt: new Date('2024-01-01T00:00:00Z'),
   isDraft: false,
   isConflicted: false,
+  mergeable: null,
   isPassedAllCiJob: true,
   isCiStateSuccess: true,
   isResolvedAllReviewComments: true,
@@ -127,9 +128,11 @@ describe('RevertOrphanedPreparationUseCase', () => {
       getProject: jest.fn().mockResolvedValue(mockProject),
     };
     mockIssueRepository = {
-      getAllIssues: jest
-        .fn()
-        .mockResolvedValue({ issues: [], cacheUsed: false }),
+      getAllIssues: jest.fn().mockResolvedValue({
+        project: mockProject,
+        issues: [],
+        cacheUsed: false,
+      }),
       updateStatus: jest.fn().mockResolvedValue(undefined),
       findRelatedOpenPRs: jest.fn().mockResolvedValue([]),
       getOpenPullRequest: jest.fn().mockResolvedValue(null),
@@ -155,6 +158,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       status: 'Preparation',
     });
     mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
       issues: [stuckIssue],
       cacheUsed: false,
     });
@@ -167,7 +171,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
       thresholdForAutoReject: 3,
     });
@@ -192,6 +195,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       status: 'Preparation',
     });
     mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
       issues: [stuckIssue],
       cacheUsed: false,
     });
@@ -213,7 +217,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
       thresholdForAutoReject: 3,
     });
@@ -228,6 +231,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       status: 'Preparation',
     });
     mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
       issues: [stuckIssue],
       cacheUsed: false,
     });
@@ -252,7 +256,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
       thresholdForAutoReject: 3,
     });
@@ -267,6 +270,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       status: 'Preparation',
     });
     mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
       issues: [stuckIssue],
       cacheUsed: false,
     });
@@ -286,7 +290,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
       thresholdForAutoReject: 3,
     });
@@ -302,6 +305,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       labels: ['llm-agent'],
     });
     mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
       issues: [stuckIssue],
       cacheUsed: false,
     });
@@ -320,7 +324,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
       thresholdForAutoReject: 3,
     });
@@ -337,6 +340,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       labels: ['story'],
     });
     mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
       issues: [stuckIssue],
       cacheUsed: false,
     });
@@ -355,7 +359,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
       thresholdForAutoReject: 3,
       labelsAsLlmAgentName: ['story'],
@@ -373,6 +376,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       labels: ['story'],
     });
     mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
       issues: [stuckIssue],
       cacheUsed: false,
     });
@@ -392,7 +396,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
       thresholdForAutoReject: 3,
       labelsAsLlmAgentName: ['bug'],
@@ -409,6 +412,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       status: 'Preparation',
     });
     mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
       issues: [stuckIssue],
       cacheUsed: false,
     });
@@ -428,7 +432,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
       thresholdForAutoReject: 3,
     });
@@ -443,6 +446,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       status: 'Preparation',
     });
     mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
       issues: [stuckIssue],
       cacheUsed: false,
     });
@@ -462,7 +466,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
       thresholdForAutoReject: 3,
     });
@@ -477,6 +480,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       status: 'Preparation',
     });
     mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
       issues: [stuckIssue],
       cacheUsed: false,
     });
@@ -489,7 +493,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
       thresholdForAutoReject: 3,
     });
@@ -511,6 +514,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       status: 'Preparation',
     });
     mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
       issues: [inFlightIssue],
       cacheUsed: false,
     });
@@ -522,7 +526,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
       thresholdForAutoReject: 3,
     });
@@ -543,6 +546,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       status: 'Awaiting Workspace',
     });
     mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
       issues: [preparationIssue, awaitingIssue],
       cacheUsed: false,
     });
@@ -555,7 +559,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'check {URL}',
       thresholdForAutoReject: 3,
     });
@@ -581,6 +584,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       status: 'Preparation',
     });
     mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
       issues: [stuckIssue, inFlightIssue],
       cacheUsed: false,
     });
@@ -595,7 +599,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'check {URL}',
       thresholdForAutoReject: 3,
     });
@@ -610,7 +613,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
     await expect(
       useCase.run({
         projectUrl: 'https://github.com/user/repo',
-        allowIssueCacheMinutes: 0,
         preparationProcessCheckCommand: 'check {URL}',
         thresholdForAutoReject: 3,
       }),
@@ -624,7 +626,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
     await expect(
       useCase.run({
         projectUrl: 'https://github.com/user/repo',
-        allowIssueCacheMinutes: 0,
         preparationProcessCheckCommand: 'check {URL}',
         thresholdForAutoReject: 3,
       }),
@@ -649,6 +650,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectWithoutAwaitingWorkspace,
     );
     mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
       issues: [preparationIssue],
       cacheUsed: false,
     });
@@ -660,7 +662,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      allowIssueCacheMinutes: 0,
       preparationProcessCheckCommand: 'check {URL}',
       thresholdForAutoReject: 3,
     });
@@ -670,6 +671,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
   it('should do nothing when there are no Preparation issues', async () => {
     mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
       issues: [
         createMockIssue({ status: 'Awaiting Workspace' }),
         createMockIssue({ status: 'Done' }),
@@ -679,7 +681,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'check {URL}',
       thresholdForAutoReject: 3,
     });
@@ -697,6 +698,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       status: 'Preparation',
     });
     mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
       issues: [zombieIssue],
       cacheUsed: false,
     });
@@ -716,7 +718,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "Please handover {URL}"',
       thresholdForAutoReject: 3,
       awLogDirectoryPath: '/home/user/logs-aw',
@@ -757,6 +758,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       status: 'Preparation',
     });
     mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
       issues: [activeIssue],
       cacheUsed: false,
     });
@@ -779,7 +781,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "Please handover {URL}"',
       thresholdForAutoReject: 3,
       awLogDirectoryPath: '/home/user/logs-aw',
@@ -801,6 +802,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       status: 'Preparation',
     });
     mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
       issues: [newIssue],
       cacheUsed: false,
     });
@@ -814,7 +816,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "Please handover {URL}"',
       thresholdForAutoReject: 3,
       awLogDirectoryPath: '/home/user/logs-aw',
@@ -834,6 +835,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       status: 'Preparation',
     });
     mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
       issues: [inFlightIssue],
       cacheUsed: false,
     });
@@ -845,7 +847,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
       thresholdForAutoReject: 3,
     });
@@ -863,6 +864,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       status: 'Preparation',
     });
     mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
       issues: [stuckIssue],
       cacheUsed: false,
     });
@@ -875,7 +877,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "Please handover {URL}"',
       thresholdForAutoReject: 3,
       awLogDirectoryPath: '/home/user/logs-aw',
@@ -892,6 +893,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       status: 'Preparation',
     });
     mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
       issues: [issue],
       cacheUsed: false,
     });
@@ -903,7 +905,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      allowIssueCacheMinutes: 0,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
       thresholdForAutoReject: 3,
     });
@@ -925,6 +926,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       isClosed: true,
     });
     mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
       issues: [closedIssue],
       cacheUsed: false,
     });
@@ -936,7 +938,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
       thresholdForAutoReject: 3,
     });
@@ -955,6 +956,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       status: 'Preparation',
     });
     mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
       issues: [stuckIssue],
       cacheUsed: false,
     });
@@ -978,7 +980,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
       thresholdForAutoReject: 3,
     });
@@ -1002,6 +1003,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       status: 'Preparation',
     });
     mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
       issues: [stuckIssue],
       cacheUsed: false,
     });
@@ -1020,7 +1022,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
       thresholdForAutoReject: 3,
     });
@@ -1039,6 +1040,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       status: 'Preparation',
     });
     mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
       issues: [stuckIssue],
       cacheUsed: false,
     });
@@ -1068,7 +1070,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
       thresholdForAutoReject: 3,
     });
@@ -1087,6 +1088,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       status: 'Preparation',
     });
     mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
       issues: [stuckIssue],
       cacheUsed: false,
     });
@@ -1108,7 +1110,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
       thresholdForAutoReject: 3,
     });
@@ -1136,6 +1137,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       status: 'Preparation',
     });
     mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
       issues: [stuckIssue],
       cacheUsed: false,
     });
@@ -1159,7 +1161,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
-      allowIssueCacheMinutes: 60,
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
       thresholdForAutoReject: 3,
     });

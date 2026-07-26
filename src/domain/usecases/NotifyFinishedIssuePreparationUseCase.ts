@@ -33,9 +33,7 @@ export class IllegalIssueStatusError extends Error {
   }
 }
 type RejectedReasonType =
-  | 'NO_REPORT_FROM_AGENT_BOT'
-  | 'REPORT_HAS_NEXT_STEP'
-  | PrRejectedReasonType;
+  'NO_REPORT_FROM_AGENT_BOT' | 'REPORT_HAS_NEXT_STEP' | PrRejectedReasonType;
 
 export class NotifyFinishedIssuePreparationUseCase {
   private readonly issueRejectionEvaluator: IssueRejectionEvaluator;
@@ -124,10 +122,8 @@ export class NotifyFinishedIssuePreparationUseCase {
 
     if (issue.dependedIssueUrls.length === 0) {
       try {
-        const storyObjectMap = await this.issueRepository.getStoryObjectMap(
-          project,
-          0,
-        );
+        const storyObjectMap =
+          await this.issueRepository.getStoryObjectMap(project);
         for (const storyObject of storyObjectMap.values()) {
           const towerDefenceIssue = storyObject.issues.find(
             (i) => i.url === issue.url,
@@ -387,10 +383,8 @@ export class NotifyFinishedIssuePreparationUseCase {
     }
 
     try {
-      const storyObjectMap = await this.issueRepository.getStoryObjectMap(
-        project,
-        0,
-      );
+      const storyObjectMap =
+        await this.issueRepository.getStoryObjectMap(project);
 
       const isWorkflowBlocker = Array.from(storyObjectMap.entries()).some(
         ([storyName, storyObject]) =>

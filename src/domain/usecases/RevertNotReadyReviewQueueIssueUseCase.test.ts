@@ -69,7 +69,7 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   dependedIssueUrls: [],
   completionDate50PercentConfidence: null,
   url: 'https://github.com/user/repo/issues/1',
-  assignees: [],
+  assignees: ['manager-user'],
   labels: [],
   org: 'user',
   repo: 'repo',
@@ -138,6 +138,7 @@ const linkRelatedOpenPrsToIssue = (
     }),
   );
   mockIssueRepository.getAllIssues.mockResolvedValue({
+    project: createMockProject(),
     issues: [issue, ...prItems],
     cacheUsed: false,
   });
@@ -179,9 +180,11 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
     };
 
     mockIssueRepository = {
-      getAllIssues: jest
-        .fn()
-        .mockResolvedValue({ issues: [], cacheUsed: false }),
+      getAllIssues: jest.fn().mockResolvedValue({
+        project: mockProject,
+        issues: [],
+        cacheUsed: false,
+      }),
       updateStatus: jest.fn().mockResolvedValue(undefined),
       updateStory: jest.fn().mockResolvedValue(undefined),
       findRelatedOpenPRs: jest.fn().mockResolvedValue([]),
@@ -205,6 +208,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
   describe('Awaiting Quality Check processing', () => {
     it('should do nothing when there are no Awaiting Quality Check issues', async () => {
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [
           createMockIssue({ status: 'Awaiting Workspace' }),
           createMockIssue({ status: 'Preparation' }),
@@ -213,8 +217,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -228,13 +232,14 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         labels: ['llm-agent'],
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [issue],
         cacheUsed: false,
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -247,13 +252,14 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         status: 'Awaiting Quality Check',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [issue],
         cacheUsed: false,
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -278,13 +284,14 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         labels: ['story'],
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [issue],
         cacheUsed: false,
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         labelsAsLlmAgentName: ['story', 'chore', 'accounting'],
         allowedIssueAuthors: ['owner'],
       });
@@ -299,13 +306,14 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         labels: ['chore'],
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [issue],
         cacheUsed: false,
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         labelsAsLlmAgentName: ['story', 'chore'],
         allowedIssueAuthors: ['owner'],
       });
@@ -320,13 +328,14 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         labels: ['story'],
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [issue],
         cacheUsed: false,
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -347,13 +356,14 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         labels: ['story'],
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [issue],
         cacheUsed: false,
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         labelsAsLlmAgentName: null,
         allowedIssueAuthors: ['owner'],
       });
@@ -372,8 +382,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [createReadyPr()]);
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -390,8 +400,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       ]);
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -423,8 +433,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       ]);
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -452,8 +462,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       ]);
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -481,8 +491,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       ]);
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -511,8 +521,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       ]);
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -545,8 +555,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       ]);
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -589,6 +599,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           closingIssueReferenceUrls: ['https://github.com/user/repo/issues/2'],
         });
         mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mockProject,
           issues: [readyIssue, notReadyIssue, readyPrItem, conflictedPrItem],
           cacheUsed: false,
         });
@@ -608,8 +619,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         );
 
         await useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
-          allowIssueCacheMinutes: 10,
           allowedIssueAuthors: ['owner'],
         });
 
@@ -645,6 +656,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           closingIssueReferenceUrls: ['https://github.com/user/repo/issues/42'],
         });
         mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mockProject,
           issues: [prItem, issue],
           cacheUsed: false,
         });
@@ -653,8 +665,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         );
 
         await useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
-          allowIssueCacheMinutes: 10,
           allowedIssueAuthors: ['owner'],
         });
 
@@ -680,13 +692,14 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           closingIssueReferenceUrls: ['https://github.com/user/repo/issues/9'],
         });
         mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mockProject,
           issues: [issue, closedPrItem],
           cacheUsed: false,
         });
 
         await useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
-          allowIssueCacheMinutes: 10,
           allowedIssueAuthors: ['owner'],
         });
 
@@ -717,8 +730,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       const runCycle = () =>
         useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
-          allowIssueCacheMinutes: 10,
           allowedIssueAuthors: ['owner'],
         });
 
@@ -917,8 +930,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         ]);
 
         await useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
-          allowIssueCacheMinutes: 10,
           allowedIssueAuthors: ['owner'],
           changeTargetPathAliases: {
             adapters: 'src/domain/usecases/adapter-interfaces',
@@ -937,8 +950,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         ]);
 
         await useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
-          allowIssueCacheMinutes: 10,
           allowedIssueAuthors: ['owner'],
           changeTargetPathAliases: {
             adapters: 'src/domain/usecases/adapter-interfaces',
@@ -953,6 +966,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
   describe('Unread pull request processing', () => {
     it('should do nothing when there are no Unread pull requests', async () => {
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [
           createMockPullRequest({ status: 'Awaiting Workspace' }),
           createMockPullRequest({ status: 'Preparation' }),
@@ -961,8 +975,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -978,13 +992,14 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         url: 'https://github.com/user/repo/issues/1',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [issue],
         cacheUsed: false,
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -999,13 +1014,14 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         labels: ['llm-agent'],
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [pullRequest],
         cacheUsed: false,
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -1019,14 +1035,15 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         status: 'Unread',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [pullRequest],
         cacheUsed: false,
       });
       mockIssueRepository.getOpenPullRequest.mockResolvedValue(createReadyPr());
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -1040,6 +1057,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         status: 'Unread',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [pullRequest],
         cacheUsed: false,
       });
@@ -1049,8 +1067,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -1079,6 +1097,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         status: 'Unread',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [pullRequest],
         cacheUsed: false,
       });
@@ -1089,8 +1108,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -1115,6 +1134,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         status: 'Unread',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [pullRequest],
         cacheUsed: false,
       });
@@ -1124,8 +1144,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -1150,6 +1170,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         status: 'Unread',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [pullRequest],
         cacheUsed: false,
       });
@@ -1161,8 +1182,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -1187,6 +1208,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         status: 'Unread',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [pullRequest],
         cacheUsed: false,
       });
@@ -1196,8 +1218,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -1222,14 +1244,15 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         status: 'Unread',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [pullRequest],
         cacheUsed: false,
       });
       mockIssueRepository.getOpenPullRequest.mockResolvedValue(null);
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -1257,6 +1280,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         status: 'Unread',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [pullRequest],
         cacheUsed: false,
       });
@@ -1266,8 +1290,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -1306,13 +1330,14 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         status: 'Unread',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
         issues: [pullRequest],
         cacheUsed: false,
       });
 
       await useCase.run({
+        manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
-        allowIssueCacheMinutes: 10,
         allowedIssueAuthors: ['owner'],
       });
 
@@ -1328,6 +1353,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           author: 'outside-contributor',
         });
         mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mockProject,
           issues: [pullRequest],
           cacheUsed: false,
         });
@@ -1337,8 +1363,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         });
 
         await useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
-          allowIssueCacheMinutes: 10,
           allowedIssueAuthors: ['owner'],
         });
 
@@ -1353,6 +1379,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           author: 'owner',
         });
         mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mockProject,
           issues: [pullRequest],
           cacheUsed: false,
         });
@@ -1362,8 +1389,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         });
 
         await useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
-          allowIssueCacheMinutes: 10,
           allowedIssueAuthors: ['owner'],
         });
 
@@ -1389,6 +1416,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           author: 'dependabot[bot]',
         });
         mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mockProject,
           issues: [pullRequest],
           cacheUsed: false,
         });
@@ -1398,8 +1426,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         });
 
         await useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
-          allowIssueCacheMinutes: 10,
           allowedIssueAuthors: ['owner'],
         });
 
@@ -1414,6 +1442,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           author: 'dependabot[bot]',
         });
         mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mockProject,
           issues: [pullRequest],
           cacheUsed: false,
         });
@@ -1423,8 +1452,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         });
 
         await useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
-          allowIssueCacheMinutes: 10,
           allowedIssueAuthors: ['owner', 'dependabot[bot]'],
         });
 
@@ -1445,6 +1474,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           author: 'outside-contributor',
         });
         mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mockProject,
           issues: [pullRequest],
           cacheUsed: false,
         });
@@ -1454,8 +1484,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         });
 
         await useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
-          allowIssueCacheMinutes: 10,
           allowedIssueAuthors: null,
         });
 
@@ -1470,6 +1500,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           author: 'owner',
         });
         mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mockProject,
           issues: [pullRequest],
           cacheUsed: false,
         });
@@ -1479,8 +1510,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         });
 
         await useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
-          allowIssueCacheMinutes: 10,
         });
 
         expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
@@ -1494,6 +1525,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           author: 'owner',
         });
         mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mockProject,
           issues: [pullRequest],
           cacheUsed: false,
         });
@@ -1503,8 +1535,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         });
 
         await useCase.run({
+          manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
-          allowIssueCacheMinutes: 10,
           allowedIssueAuthors: [],
         });
 
@@ -1512,6 +1544,516 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
         expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  describe('archived project item containment', () => {
+    let warnSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      warnSpy.mockRestore();
+    });
+
+    it('should skip an archived issue on updateStatus failure and continue with remaining issues', async () => {
+      const archivedIssue = createMockIssue({
+        number: 1,
+        url: 'https://github.com/user/repo/issues/1',
+        itemId: 'archived-item',
+        status: 'Awaiting Quality Check',
+      });
+      const normalIssue = createMockIssue({
+        number: 2,
+        url: 'https://github.com/user/repo/issues/2',
+        itemId: 'normal-item',
+        status: 'Awaiting Quality Check',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [archivedIssue, normalIssue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.updateStatus.mockImplementation(
+        (_project: Project, issue: Issue) =>
+          issue.url === archivedIssue.url
+            ? Promise.reject(
+                new Error('The item is archived and cannot be updated'),
+              )
+            : Promise.resolve(undefined),
+      );
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        archivedIssue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        normalIssue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        archivedIssue,
+        expect.anything(),
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        normalIssue,
+        expect.stringContaining('Auto Status Check: REJECTED'),
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(archivedIssue.url),
+      );
+    });
+
+    it('should propagate a non-archived updateStatus error for issues unchanged', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.updateStatus.mockRejectedValue(
+        new Error('Something went wrong'),
+      );
+
+      await expect(
+        useCase.run({
+          manager: 'manager-user',
+          projectUrl: 'https://github.com/users/user/projects/1',
+          allowedIssueAuthors: ['owner'],
+        }),
+      ).rejects.toThrow('Something went wrong');
+
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('should skip an archived Unread pull request on updateStatus failure and continue with remaining pull requests', async () => {
+      const archivedPullRequest = createMockPullRequest({
+        number: 1,
+        url: 'https://github.com/user/repo/pull/1',
+        itemId: 'archived-pr-item',
+        status: 'Unread',
+      });
+      const normalPullRequest = createMockPullRequest({
+        number: 2,
+        url: 'https://github.com/user/repo/pull/2',
+        itemId: 'normal-pr-item',
+        status: 'Unread',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [archivedPullRequest, normalPullRequest],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequest.mockImplementation(
+        (prUrl: string) =>
+          Promise.resolve({
+            ...createReadyPr(prUrl),
+            isConflicted: true,
+          }),
+      );
+      mockIssueRepository.updateStatus.mockImplementation(
+        (_project: Project, issue: Issue) =>
+          issue.url === archivedPullRequest.url
+            ? Promise.reject(
+                new Error('The item is archived and cannot be updated'),
+              )
+            : Promise.resolve(undefined),
+      );
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        archivedPullRequest,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalledWith(
+        expect.anything(),
+        archivedPullRequest,
+        expect.anything(),
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        archivedPullRequest,
+        expect.anything(),
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        normalPullRequest,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'project-1' }),
+        normalPullRequest,
+        'workflow-management-story-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        normalPullRequest,
+        expect.stringContaining('Auto Status Check: REJECTED'),
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(archivedPullRequest.url),
+      );
+    });
+
+    it('should propagate a non-archived updateStatus error for Unread pull requests unchanged', async () => {
+      const pullRequest = createMockPullRequest({
+        status: 'Unread',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [pullRequest],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequest.mockResolvedValue({
+        ...createReadyPr(),
+        isConflicted: true,
+      });
+      mockIssueRepository.updateStatus.mockRejectedValue(
+        new Error('Something went wrong'),
+      );
+
+      await expect(
+        useCase.run({
+          manager: 'manager-user',
+          projectUrl: 'https://github.com/users/user/projects/1',
+          allowedIssueAuthors: ['owner'],
+        }),
+      ).rejects.toThrow('Something went wrong');
+
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('ky TimeoutError containment', () => {
+    let warnSpy: jest.SpyInstance;
+
+    const createKyTimeoutError = (): Error => {
+      const error = new Error(
+        'Request timed out: POST https://api.github.com/graphql',
+      );
+      error.name = 'TimeoutError';
+      return error;
+    };
+
+    beforeEach(() => {
+      warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      warnSpy.mockRestore();
+    });
+
+    it('should skip an issue whose updateStatus times out and continue with remaining issues', async () => {
+      const timedOutIssue = createMockIssue({
+        number: 1,
+        url: 'https://github.com/user/repo/issues/1',
+        itemId: 'timed-out-item',
+        status: 'Awaiting Quality Check',
+      });
+      const normalIssue = createMockIssue({
+        number: 2,
+        url: 'https://github.com/user/repo/issues/2',
+        itemId: 'normal-item',
+        status: 'Awaiting Quality Check',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [timedOutIssue, normalIssue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.updateStatus.mockImplementation(
+        (_project: Project, issue: Issue) =>
+          issue.url === timedOutIssue.url
+            ? Promise.reject(createKyTimeoutError())
+            : Promise.resolve(undefined),
+      );
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        timedOutIssue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        normalIssue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        timedOutIssue,
+        expect.anything(),
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        normalIssue,
+        expect.stringContaining('Auto Status Check: REJECTED'),
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(timedOutIssue.url),
+      );
+    });
+
+    it('should skip an issue whose createComment times out and continue with remaining issues', async () => {
+      const timedOutIssue = createMockIssue({
+        number: 1,
+        url: 'https://github.com/user/repo/issues/1',
+        itemId: 'timed-out-item',
+        status: 'Awaiting Quality Check',
+      });
+      const normalIssue = createMockIssue({
+        number: 2,
+        url: 'https://github.com/user/repo/issues/2',
+        itemId: 'normal-item',
+        status: 'Awaiting Quality Check',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [timedOutIssue, normalIssue],
+        cacheUsed: false,
+      });
+      mockIssueCommentRepository.createComment.mockImplementation(
+        (issue: Issue) =>
+          issue.url === timedOutIssue.url
+            ? Promise.reject(createKyTimeoutError())
+            : Promise.resolve(undefined),
+      );
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        normalIssue,
+        expect.stringContaining('Auto Status Check: REJECTED'),
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(timedOutIssue.url),
+      );
+    });
+
+    it('should skip an Unread pull request whose updateStatus times out and continue with remaining pull requests', async () => {
+      const timedOutPullRequest = createMockPullRequest({
+        number: 1,
+        url: 'https://github.com/user/repo/pull/1',
+        itemId: 'timed-out-pr-item',
+        status: 'Unread',
+      });
+      const normalPullRequest = createMockPullRequest({
+        number: 2,
+        url: 'https://github.com/user/repo/pull/2',
+        itemId: 'normal-pr-item',
+        status: 'Unread',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [timedOutPullRequest, normalPullRequest],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequest.mockImplementation(
+        (prUrl: string) =>
+          Promise.resolve({
+            ...createReadyPr(prUrl),
+            isConflicted: true,
+          }),
+      );
+      mockIssueRepository.updateStatus.mockImplementation(
+        (_project: Project, issue: Issue) =>
+          issue.url === timedOutPullRequest.url
+            ? Promise.reject(createKyTimeoutError())
+            : Promise.resolve(undefined),
+      );
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        timedOutPullRequest,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalledWith(
+        expect.anything(),
+        timedOutPullRequest,
+        expect.anything(),
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        timedOutPullRequest,
+        expect.anything(),
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        normalPullRequest,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'project-1' }),
+        normalPullRequest,
+        'workflow-management-story-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        normalPullRequest,
+        expect.stringContaining('Auto Status Check: REJECTED'),
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(timedOutPullRequest.url),
+      );
+    });
+
+    it('should propagate a non-timeout non-archived error from createComment unchanged', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueCommentRepository.createComment.mockRejectedValue(
+        new Error('Something went wrong'),
+      );
+
+      await expect(
+        useCase.run({
+          manager: 'manager-user',
+          projectUrl: 'https://github.com/users/user/projects/1',
+          allowedIssueAuthors: ['owner'],
+        }),
+      ).rejects.toThrow('Something went wrong');
+    });
+  });
+
+  describe('manager-assignee gating', () => {
+    it('should not revert a rejected Awaiting Quality Check issue that is not assigned to the manager', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+        assignees: ['other-user'],
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('should revert a rejected Awaiting Quality Check issue that is assigned to the manager', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+        assignees: ['manager-user'],
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        issue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('Auto Status Check: REJECTED'),
+      );
+    });
+
+    it('should not revert a rejected Unread pull request that is not assigned to the manager', async () => {
+      const pullRequest = createMockPullRequest({
+        status: 'Unread',
+        assignees: ['other-user'],
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [pullRequest],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequest.mockResolvedValue({
+        ...createReadyPr(),
+        isConflicted: true,
+      });
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('should revert a rejected Unread pull request that is assigned to the manager', async () => {
+      const pullRequest = createMockPullRequest({
+        status: 'Unread',
+        assignees: ['manager-user'],
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [pullRequest],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequest.mockResolvedValue({
+        ...createReadyPr(),
+        isConflicted: true,
+      });
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        pullRequest,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        pullRequest,
+        expect.stringContaining('Auto Status Check: REJECTED'),
+      );
     });
   });
 });

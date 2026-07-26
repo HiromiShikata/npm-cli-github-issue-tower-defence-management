@@ -1,6 +1,6 @@
 export type ClaudeLiveSession = {
   token: string;
-  sessionId: string;
+  sessionKey: string;
 };
 
 export interface ClaudeLiveSessionRepository {

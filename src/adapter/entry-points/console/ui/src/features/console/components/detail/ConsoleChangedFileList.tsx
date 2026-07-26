@@ -1,5 +1,9 @@
 import { useState } from 'react';
 import { fileStatusBadge } from '../../logic/fileStatus';
+import {
+  buildConsoleFileTree,
+  type ConsoleFileTreeNode,
+} from '../../logic/fileTree';
 import type { ConsoleChangedFile } from '../../logic/types';
 import {
   type ConsoleAddInlineComment,
@@ -13,11 +17,19 @@ export type ConsoleChangedFileListProps = {
   onAddInlineComment?: ConsoleAddInlineComment;
 };
 
+const indentStyle = (depth: number): { paddingLeft: string } => ({
+  paddingLeft: `${depth * 16}px`,
+});
+
 const ConsoleChangedFileRow = ({
   file,
+  depth,
+  name,
   onAddInlineComment,
 }: {
   file: ConsoleChangedFile;
+  depth: number;
+  name: string;
   onAddInlineComment?: ConsoleAddInlineComment;
 }) => {
   const [expanded, setExpanded] = useState<boolean>(false);
@@ -27,6 +39,7 @@ const ConsoleChangedFileRow = ({
       <button
         type="button"
         className="console-file-row"
+        style={indentStyle(depth)}
         aria-expanded={expanded}
         onClick={() => setExpanded((value) => !value)}
       >
@@ -37,7 +50,7 @@ const ConsoleChangedFileRow = ({
         >
           {badge.label}
         </span>
-        <span className="console-file-path">{file.path}</span>
+        <span className="console-file-path">{name}</span>
         <span className="console-file-stat console-file-add">
           +{file.additions}
         </span>
@@ -52,6 +65,47 @@ const ConsoleChangedFileRow = ({
           onAddInlineComment={onAddInlineComment}
         />
       )}
+    </li>
+  );
+};
+
+const ConsoleChangedFileTreeNode = ({
+  node,
+  depth,
+  onAddInlineComment,
+}: {
+  node: ConsoleFileTreeNode;
+  depth: number;
+  onAddInlineComment?: ConsoleAddInlineComment;
+}) => {
+  if (node.kind === 'file') {
+    return (
+      <ConsoleChangedFileRow
+        file={node.file}
+        depth={depth}
+        name={node.name}
+        onAddInlineComment={onAddInlineComment}
+      />
+    );
+  }
+  return (
+    <li className="console-file-tree-dir">
+      <div className="console-file-tree-dir-name" style={indentStyle(depth)}>
+        <span className="console-file-tree-dir-icon" aria-hidden="true">
+          📁
+        </span>
+        {node.name}
+      </div>
+      <ul className="console-file-tree-children">
+        {node.children.map((child) => (
+          <ConsoleChangedFileTreeNode
+            key={child.path}
+            node={child}
+            depth={depth + 1}
+            onAddInlineComment={onAddInlineComment}
+          />
+        ))}
+      </ul>
     </li>
   );
 };
@@ -78,12 +132,15 @@ export const ConsoleChangedFileList = ({
     return <p className="console-files-empty">No changed files.</p>;
   }
 
+  const tree = buildConsoleFileTree(files);
+
   return (
-    <ul className="console-files">
-      {files.map((file) => (
-        <ConsoleChangedFileRow
-          key={file.path}
-          file={file}
+    <ul className="console-files console-file-tree">
+      {tree.map((node) => (
+        <ConsoleChangedFileTreeNode
+          key={node.path}
+          node={node}
+          depth={0}
           onAddInlineComment={onAddInlineComment}
         />
       ))}

@@ -4,15 +4,37 @@ import * as path from 'path';
 import {
   cacheDir,
   cachePathForToken,
+  FABLE_LIMIT_TYPE,
   hashToken,
   HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS,
   HEADERLESS_429_MAX_COOLDOWN_SECONDS,
+  isFableModel,
   parseModelRateLimitsFromBody,
   parseModelRateLimitsFromHeaders,
+  parseSevenDayRejection,
+  PERMISSION_DISABLED_COOLDOWN_SECONDS,
   readRateLimit,
+  writeFableRejection,
   writeModelRateLimit,
   writeRateLimit,
+  writeSubscriptionDisabled,
 } from './RateLimitCache';
+import { OauthTokenSelectUseCase } from '../../domain/usecases/OauthTokenSelectUseCase';
+
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  v !== null && typeof v === 'object' && !Array.isArray(v);
+
+const writeSubscriptionDisabledEpoch = (
+  token: string,
+  epochSeconds: number,
+): void => {
+  const filePath = cachePathForToken(token);
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(
+    filePath,
+    JSON.stringify({ subscriptionDisabledEpoch: epochSeconds }),
+  );
+};
 
 describe('RateLimitCache', () => {
   let tempDir: string;
@@ -681,6 +703,149 @@ describe('RateLimitCache', () => {
     });
   });
 
+  describe('isFableModel', () => {
+    it('should return true for the fable model id', () => {
+      expect(isFableModel('claude-fable-5')).toBe(true);
+    });
+
+    it('should be case insensitive', () => {
+      expect(isFableModel('Claude-FABLE-5')).toBe(true);
+    });
+
+    it('should return false for sonnet and opus models', () => {
+      expect(isFableModel('claude-sonnet-4-6')).toBe(false);
+      expect(isFableModel('claude-opus-4-8')).toBe(false);
+    });
+
+    it('should return false for a null model', () => {
+      expect(isFableModel(null)).toBe(false);
+    });
+  });
+
+  describe('writeFableRejection', () => {
+    it('should persist a rejected fable weekly limit readable by readRateLimit', () => {
+      const token = 'fable-rejection-token';
+      const nowEpochSeconds = Date.now() / 1000;
+      writeFableRejection(token, 120);
+      const snapshot = readRateLimit(token);
+      const fableLimit = snapshot?.modelWeeklyLimits[FABLE_LIMIT_TYPE];
+      expect(fableLimit?.rejected).toBe(true);
+      expect(fableLimit?.resetsAt).toBeGreaterThanOrEqual(
+        nowEpochSeconds + 120,
+      );
+      expect(fableLimit?.resetsAt).toBeLessThanOrEqual(
+        nowEpochSeconds + 120 + 5,
+      );
+    });
+
+    it('should cap the reset from an oversized retry-after at the max cooldown', () => {
+      const token = 'fable-rejection-cap-token';
+      const nowEpochSeconds = Date.now() / 1000;
+      writeFableRejection(token, HEADERLESS_429_MAX_COOLDOWN_SECONDS + 10_000);
+      const fableLimit =
+        readRateLimit(token)?.modelWeeklyLimits[FABLE_LIMIT_TYPE];
+      expect(fableLimit?.resetsAt).toBeLessThanOrEqual(
+        nowEpochSeconds + HEADERLESS_429_MAX_COOLDOWN_SECONDS + 5,
+      );
+    });
+
+    it('should use the default cooldown when retry-after is absent', () => {
+      const token = 'fable-rejection-default-token';
+      const nowEpochSeconds = Date.now() / 1000;
+      writeFableRejection(token, null);
+      const fableLimit =
+        readRateLimit(token)?.modelWeeklyLimits[FABLE_LIMIT_TYPE];
+      expect(fableLimit?.resetsAt).toBeGreaterThanOrEqual(
+        nowEpochSeconds + HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS,
+      );
+      expect(fableLimit?.resetsAt).toBeLessThanOrEqual(
+        nowEpochSeconds + HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS + 5,
+      );
+    });
+
+    it('should preserve other model weekly limits already recorded', () => {
+      const token = 'fable-rejection-merge-token';
+      writeModelRateLimit(token, {
+        seven_day_sonnet: { rejected: true, resetsAt: 1779642000 },
+      });
+      writeFableRejection(token, 90);
+      const limits = readRateLimit(token)?.modelWeeklyLimits;
+      expect(limits?.seven_day_sonnet).toEqual({
+        rejected: true,
+        resetsAt: 1779642000,
+      });
+      expect(limits?.[FABLE_LIMIT_TYPE]?.rejected).toBe(true);
+    });
+
+    it('should use the seven-day reset for resetsAt when provided instead of the retry-after cooldown', () => {
+      const token = 'fable-rejection-sevenday-reset-token';
+      const sevenDayReset = 1893456000;
+      writeFableRejection(token, 120, sevenDayReset);
+      const fableLimit =
+        readRateLimit(token)?.modelWeeklyLimits[FABLE_LIMIT_TYPE];
+      expect(fableLimit?.rejected).toBe(true);
+      expect(fableLimit?.resetsAt).toBe(sevenDayReset);
+    });
+
+    it('should fall back to the retry-after cooldown when the seven-day reset is null', () => {
+      const token = 'fable-rejection-null-reset-token';
+      const nowEpochSeconds = Date.now() / 1000;
+      writeFableRejection(token, 120, null);
+      const fableLimit =
+        readRateLimit(token)?.modelWeeklyLimits[FABLE_LIMIT_TYPE];
+      expect(fableLimit?.resetsAt).toBeGreaterThanOrEqual(
+        nowEpochSeconds + 120,
+      );
+      expect(fableLimit?.resetsAt).toBeLessThanOrEqual(
+        nowEpochSeconds + 120 + 5,
+      );
+    });
+  });
+
+  describe('parseSevenDayRejection', () => {
+    it('should report a rejection and the reset epoch when the 7-day status is rejected', () => {
+      expect(
+        parseSevenDayRejection({
+          'anthropic-ratelimit-unified-7d-status': 'rejected',
+          'anthropic-ratelimit-unified-7d-reset': '1893456000',
+        }),
+      ).toEqual({ sevenDayRejected: true, sevenDayReset: 1893456000 });
+    });
+
+    it('should report no rejection when only the 5-hour status is rejected', () => {
+      expect(
+        parseSevenDayRejection({
+          'anthropic-ratelimit-unified-5h-status': 'rejected',
+          'anthropic-ratelimit-unified-7d-status': 'allowed',
+        }),
+      ).toEqual({ sevenDayRejected: false, sevenDayReset: null });
+    });
+
+    it('should report no rejection when no rate-limit headers are present', () => {
+      expect(parseSevenDayRejection({})).toEqual({
+        sevenDayRejected: false,
+        sevenDayReset: null,
+      });
+    });
+
+    it('should return a null reset when the 7-day status is rejected but no reset header is present', () => {
+      expect(
+        parseSevenDayRejection({
+          'anthropic-ratelimit-unified-7d-status': 'rejected',
+        }),
+      ).toEqual({ sevenDayRejected: true, sevenDayReset: null });
+    });
+
+    it('should pick the first value when a header is an array', () => {
+      expect(
+        parseSevenDayRejection({
+          'anthropic-ratelimit-unified-7d-status': ['rejected', 'allowed'],
+          'anthropic-ratelimit-unified-7d-reset': ['1893456000'],
+        }),
+      ).toEqual({ sevenDayRejected: true, sevenDayReset: 1893456000 });
+    });
+  });
+
   describe('parseModelRateLimitsFromHeaders', () => {
     it('should extract a rejected seven_day_sonnet limit from the per-model unified headers', () => {
       expect(
@@ -772,6 +937,141 @@ describe('RateLimitCache', () => {
       expect(snapshot?.modelWeeklyLimits).toEqual({
         seven_day_sonnet: { rejected: true, resetsAt: 1779642000 },
       });
+    });
+  });
+
+  describe('writeSubscriptionDisabled', () => {
+    it('should persist subscriptionDisabledEpoch to the cache file', () => {
+      const token = 'sub-disabled-token';
+      writeSubscriptionDisabled(token);
+      const filePath = cachePathForToken(token);
+      const raw: unknown = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const epoch = isRecord(raw) ? raw.subscriptionDisabledEpoch : undefined;
+      expect(typeof epoch).toBe('number');
+    });
+
+    it('should preserve existing cache fields when writing subscriptionDisabledEpoch', () => {
+      const token = 'sub-disabled-preserve-token';
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': '2000100',
+        'anthropic-ratelimit-unified-5h-utilization': '0.1',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '2000200',
+        'anthropic-ratelimit-unified-7d-utilization': '0.1',
+      });
+      writeSubscriptionDisabled(token);
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.subscriptionDisabled).toBe(true);
+      expect(snapshot?.fiveHourReset).toBe(2000100);
+    });
+  });
+
+  describe('readRateLimit subscriptionDisabled', () => {
+    it('returns subscriptionDisabled: true after writeSubscriptionDisabled is called', () => {
+      const token = 'sub-disabled-read-token';
+      writeSubscriptionDisabled(token);
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.subscriptionDisabled).toBe(true);
+    });
+
+    it('returns subscriptionDisabled: false when no subscriptionDisabledEpoch is in the cache', () => {
+      const token = 'sub-not-disabled-token';
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': '2000100',
+        'anthropic-ratelimit-unified-5h-utilization': '0.1',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '2000200',
+        'anthropic-ratelimit-unified-7d-utilization': '0.1',
+      });
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.subscriptionDisabled).toBe(false);
+    });
+
+    it('returns subscriptionDisabled: true while within the cooldown window', () => {
+      const token = 'sub-disabled-within-cooldown-token';
+      const nowEpochSeconds = Date.now() / 1000;
+      writeSubscriptionDisabledEpoch(
+        token,
+        nowEpochSeconds - (PERMISSION_DISABLED_COOLDOWN_SECONDS - 60),
+      );
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.subscriptionDisabled).toBe(true);
+    });
+
+    it('returns subscriptionDisabled: false once the cooldown window has elapsed', () => {
+      const token = 'sub-disabled-cooldown-elapsed-token';
+      const nowEpochSeconds = Date.now() / 1000;
+      writeSubscriptionDisabledEpoch(
+        token,
+        nowEpochSeconds - (PERMISSION_DISABLED_COOLDOWN_SECONDS + 60),
+      );
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.subscriptionDisabled).toBe(false);
+    });
+  });
+
+  describe('writeRateLimit preserves subscriptionDisabledEpoch across header writes', () => {
+    const headerBearingResponse: Record<string, string> = {
+      'anthropic-ratelimit-unified-status': 'allowed',
+      'anthropic-ratelimit-unified-5h-status': 'allowed',
+      'anthropic-ratelimit-unified-5h-reset': '2000100',
+      'anthropic-ratelimit-unified-5h-utilization': '0.1',
+      'anthropic-ratelimit-unified-7d-status': 'allowed',
+      'anthropic-ratelimit-unified-7d-reset': '2000200',
+      'anthropic-ratelimit-unified-7d-utilization': '0.1',
+    };
+
+    it('keeps subscriptionDisabled: true after a later header-bearing 200 response', () => {
+      const token = 'sub-disabled-then-200-token';
+      writeSubscriptionDisabled(token);
+      writeRateLimit(token, headerBearingResponse, 200);
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.subscriptionDisabled).toBe(true);
+      expect(snapshot?.fiveHourReset).toBe(2000100);
+    });
+
+    it('keeps subscriptionDisabled: true after a later header-bearing 429 response', () => {
+      const token = 'sub-disabled-then-429-token';
+      writeSubscriptionDisabled(token);
+      writeRateLimit(token, headerBearingResponse, 429);
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.subscriptionDisabled).toBe(true);
+    });
+
+    it('still excludes the token from selection after a header-bearing response', () => {
+      const token = 'sub-disabled-then-200-selection-token';
+      writeSubscriptionDisabled(token);
+      writeRateLimit(token, headerBearingResponse, 200);
+      const snapshot = readRateLimit(token);
+      const useCase = new OauthTokenSelectUseCase();
+      const result = useCase.run(
+        [
+          {
+            name: 'disabled-token',
+            token,
+            snapshot:
+              snapshot === null
+                ? null
+                : {
+                    fiveHourUtilization: snapshot.fiveHourUtilization,
+                    fiveHourReset: snapshot.fiveHourReset,
+                    sevenDayUtilization: snapshot.sevenDayUtilization,
+                    sevenDayReset: snapshot.sevenDayReset,
+                  },
+            subscriptionDisabled: snapshot?.subscriptionDisabled ?? false,
+            unifiedRejected: snapshot?.unifiedRejected ?? false,
+            fableRejected: false,
+          },
+        ],
+        Date.now() / 1000,
+      );
+      expect(result.selected).toBeNull();
+      expect(result.metrics[0]?.eligible).toBe(false);
+      expect(result.metrics[0]?.exclusionReason).toBe(
+        'organization has disabled Claude subscription access for Claude Code',
+      );
     });
   });
 });

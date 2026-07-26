@@ -1,7 +1,9 @@
 import { Issue } from '../../entities/Issue';
 import { FieldOption, Project } from '../../entities/Project';
 import {
+  IN_TMUX_BY_AGENT_STATUS_NAME,
   LEGACY_TODO_STATUS_NAME,
+  TODO_BY_AGENT_STATUS_NAME,
   TODO_STATUS_NAME,
 } from '../../entities/WorkflowStatus';
 
@@ -55,7 +57,8 @@ export type ConsoleTabName =
   | 'triage'
   | 'unread'
   | 'failed-preparation'
-  | 'todo-by-human';
+  | 'todo-by-human'
+  | 'todo-by-agent';
 
 export type ConsoleLists = {
   'workflow-blocker': ConsoleStatusTab;
@@ -64,6 +67,7 @@ export type ConsoleLists = {
   unread: ConsoleStatusTab;
   'failed-preparation': ConsoleStatusTab;
   'todo-by-human': ConsoleStatusTab;
+  'todo-by-agent': ConsoleStatusTab;
 };
 
 export type GenerateConsoleListsInput = {
@@ -92,7 +96,13 @@ export class GenerateConsoleListsUseCase {
     const storyOrder = storyOptions.map((option) => option.name);
     const statusOptions = project.status.statuses;
 
-    const actionableIssues = issues.filter((issue) =>
+    const visibleIssues = issues.filter(
+      (issue) =>
+        issue.status?.toLowerCase() !==
+        IN_TMUX_BY_AGENT_STATUS_NAME.toLowerCase(),
+    );
+
+    const actionableIssues = visibleIssues.filter((issue) =>
       this.isActionable(issue, assigneeLogin),
     );
 
@@ -120,7 +130,7 @@ export class GenerateConsoleListsUseCase {
 
     return {
       'workflow-blocker': buildStatusTabFromSource(
-        issues.filter((issue) => issue.isClosed === false),
+        visibleIssues.filter((issue) => issue.isClosed === false),
         this.workflowBlockerSelector(workflowBlockerStoryName),
         ['done'],
       ),
@@ -145,6 +155,7 @@ export class GenerateConsoleListsUseCase {
           'unread',
           'in tmux by human',
           'in tmux by agent',
+          'todo by agent',
         ],
       ),
       'todo-by-human': buildStatusTab(
@@ -152,6 +163,10 @@ export class GenerateConsoleListsUseCase {
           issue.status === TODO_STATUS_NAME ||
           issue.status === LEGACY_TODO_STATUS_NAME,
         [TODO_STATUS_NAME.toLowerCase(), 'done'],
+      ),
+      'todo-by-agent': buildStatusTab(
+        (issue) => issue.status === TODO_BY_AGENT_STATUS_NAME,
+        [TODO_BY_AGENT_STATUS_NAME.toLowerCase(), 'done'],
       ),
       triage: {
         pjcode,
@@ -164,7 +179,9 @@ export class GenerateConsoleListsUseCase {
             .filter(
               (issue) =>
                 issue.story !== null &&
-                issue.story.toLowerCase().includes('no story'),
+                issue.story.toLowerCase().includes('no story') &&
+                issue.status?.toLowerCase() !==
+                  IN_TMUX_BY_AGENT_STATUS_NAME.toLowerCase(),
             )
             .map((issue) => this.projectItem(issue)),
           storyOrder,

@@ -1,7 +1,8 @@
-import type {
-  ConsoleCloseAction,
-  ConsoleNextActionDateAction,
-  ConsoleReviewAction,
+import {
+  type ConsoleCloseAction,
+  type ConsoleNextActionDateAction,
+  type ConsoleReviewAction,
+  isManualTriageTab,
 } from './operations';
 import type { ConsoleListItem, ConsoleTabName } from './types';
 
@@ -46,7 +47,7 @@ export const actionToastMessage = (
       if (kind.action === 'snooze_1day') {
         return 'Next Action Date +1 day';
       }
-      return tab === 'todo-by-human'
+      return isManualTriageTab(tab)
         ? 'Next Action Date +1 week and skip'
         : 'Next Action Date +1 week';
     case 'set_story':
@@ -91,7 +92,7 @@ export const actionAdvances = (
   tab: ConsoleTabName,
 ): boolean => {
   if (kind.type === 'next_action_date') {
-    return tab === 'todo-by-human';
+    return isManualTriageTab(tab);
   }
   return true;
 };

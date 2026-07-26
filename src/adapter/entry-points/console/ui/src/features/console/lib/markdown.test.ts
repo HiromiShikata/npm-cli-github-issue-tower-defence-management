@@ -54,6 +54,43 @@ describe('renderMarkdownToSafeHtml', () => {
     expect(html).not.toContain(':sparkles:');
     expect(html).not.toContain(':rocket:');
   });
+
+  it('links a bare #N reference to the provided repo issues path', () => {
+    const html = renderMarkdownToSafeHtml('close #127', {
+      owner: 'HiromiShikata',
+      repo: 'npm-cli-github-issue-tower-defence-management',
+    });
+    expect(html).toContain(
+      '<a href="https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/127">#127</a>',
+    );
+  });
+
+  it('keeps a bare #N reference as plain text when no repo context is given', () => {
+    const html = renderMarkdownToSafeHtml('close #127');
+    expect(html).toContain('#127');
+    expect(html).not.toContain('<a ');
+  });
+
+  it('keeps a full GitHub URL as a rendered link', () => {
+    const html = renderMarkdownToSafeHtml(
+      'see https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/42',
+      {
+        owner: 'HiromiShikata',
+        repo: 'npm-cli-github-issue-tower-defence-management',
+      },
+    );
+    expect(html).toContain(
+      'href="https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/42"',
+    );
+  });
+
+  it('preserves the href attribute on issue reference anchors after sanitization', () => {
+    const html = renderMarkdownToSafeHtml('resolves #9', {
+      owner: 'owner',
+      repo: 'repo',
+    });
+    expect(html).toContain('href="https://github.com/owner/repo/issues/9"');
+  });
 });
 
 describe('splitMarkdownSegments', () => {
@@ -80,6 +117,55 @@ describe('splitMarkdownSegments', () => {
     const segments = splitMarkdownSegments('```mermaid\ngraph TD; A-->B;');
     expect(segments.map(stripKey)).toEqual([
       { kind: 'markdown', source: '```mermaid\ngraph TD; A-->B;' },
+    ]);
+  });
+
+  it('keeps a regular fenced code block as a single markdown segment', () => {
+    const segments = splitMarkdownSegments('```ts\nconst answer = 42;\n```');
+    expect(segments.map(stripKey)).toEqual([
+      { kind: 'markdown', source: '```ts\nconst answer = 42;\n```' },
+    ]);
+    const html = renderMarkdownToSafeHtml(
+      (segments[0] as { source: string }).source,
+    );
+    expect(html).toContain('<pre>');
+    expect(html).toContain('<code');
+    expect(html).toContain('const answer = 42;');
+    expect(html).not.toContain('```');
+  });
+
+  it('does not treat a mermaid fence inside a regular code block as a diagram', () => {
+    const segments = splitMarkdownSegments(
+      '```text\n```mermaid\ngraph TD; A-->B;\n```\n```',
+    );
+    expect(segments.map(stripKey)).toEqual([
+      {
+        kind: 'markdown',
+        source: '```text\n```mermaid\ngraph TD; A-->B;\n```\n```',
+      },
+    ]);
+  });
+
+  it('separates a mermaid fence from a following regular code fence', () => {
+    const segments = splitMarkdownSegments(
+      'intro\n\n```mermaid\ngraph TD; A-->B;\n```\n\n```ts\nconst answer = 42;\n```',
+    );
+    expect(segments.map(stripKey)).toEqual([
+      { kind: 'markdown', source: 'intro\n' },
+      { kind: 'mermaid', code: 'graph TD; A-->B;' },
+      { kind: 'markdown', source: '\n```ts\nconst answer = 42;\n```' },
+    ]);
+    const codeSegment = segments[2] as { source: string };
+    const html = renderMarkdownToSafeHtml(codeSegment.source);
+    expect(html).toContain('<pre>');
+    expect(html).toContain('<code');
+    expect(html).not.toContain('```');
+  });
+
+  it('keeps an unterminated regular fence as markdown', () => {
+    const segments = splitMarkdownSegments('```ts\nconst answer = 42;');
+    expect(segments.map(stripKey)).toEqual([
+      { kind: 'markdown', source: '```ts\nconst answer = 42;' },
     ]);
   });
 });

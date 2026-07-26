@@ -6,7 +6,6 @@ import type {
   ConsoleTabName,
 } from '../logic/types';
 import { CONSOLE_TABS } from '../logic/types';
-import { useConsoleToken } from './useConsoleToken';
 
 export type ConsoleTabSnapshot = {
   items: ConsoleListItem[];
@@ -70,7 +69,6 @@ const buildListUrl = (pjcode: string, tab: ConsoleTabName): string =>
 export const useConsoleTabData = (
   pjcode: string | null,
 ): ConsoleTabDataState => {
-  const { appendToken } = useConsoleToken();
   const [snapshots, setSnapshots] =
     useState<Record<ConsoleTabName, ConsoleTabSnapshot | null>>(emptySnapshots);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -92,8 +90,7 @@ export const useConsoleTabData = (
 
     Promise.all(
       CONSOLE_TABS.map(async (tab) => {
-        const url = appendToken(buildListUrl(pjcode, tab.name));
-        const response = await fetch(url);
+        const response = await fetch(buildListUrl(pjcode, tab.name));
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }
@@ -123,7 +120,7 @@ export const useConsoleTabData = (
     return () => {
       cancelled = true;
     };
-  }, [pjcode, appendToken]);
+  }, [pjcode]);
 
   return { snapshots, isLoading, error };
 };

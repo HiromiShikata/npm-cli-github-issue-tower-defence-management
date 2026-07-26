@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { ImageProxyUrlBuilder } from '../../lib/imageProxy';
 import { colorFromEnum } from '../../logic/colors';
+import { parseNameWithOwner } from '../../logic/references';
 import {
   formatFullTimestamp,
   formatRelativeTime,
@@ -13,16 +14,20 @@ import type {
   ConsoleIssueState,
   ConsoleListItem,
   ConsoleOverlayStatus,
+  ConsolePullRequestStatus,
   ConsoleRelatedPullRequest,
 } from '../../logic/types';
+import type { ConsoleReferenceLinkRenderer } from '../content/ConsoleMarkdownContent';
 import { ConsoleMarkdownContent } from '../content/ConsoleMarkdownContent';
 import { ConsolePanel } from '../layout/ConsolePanel';
 import { ConsoleChangedFileList } from './ConsoleChangedFileList';
 import { ConsoleCommentList } from './ConsoleCommentList';
 import { ConsoleCommitList } from './ConsoleCommitList';
+import { ConsoleCopyUrlButton } from './ConsoleCopyUrlButton';
 import type { ConsoleAddInlineComment } from './ConsoleFileDiff';
 import { ConsoleItemIcon } from './ConsoleItemIcon';
 import { ConsolePullRequestDetail } from './ConsolePullRequestDetail';
+import { ConsolePullRequestStatusBadges } from './ConsolePullRequestStatusBadges';
 
 export type ConsoleRelatedPullRequestView = {
   pullRequest: ConsoleRelatedPullRequest;
@@ -52,11 +57,13 @@ export type ConsoleItemDetailProps = {
   commits: ConsoleCommit[];
   commitsAreLoading: boolean;
   commitsError: string | null;
+  pullRequestStatus: ConsolePullRequestStatus | null;
   relatedPullRequests: ConsoleRelatedPullRequestView[];
   now: number;
   commentComposer: ReactNode;
   operationBar: ReactNode;
   buildImageProxyUrl?: ImageProxyUrlBuilder;
+  renderReferenceLink?: ConsoleReferenceLinkRenderer;
   onAddInlineComment?: ConsoleAddInlineComment;
 };
 
@@ -78,17 +85,20 @@ export const ConsoleItemDetail = ({
   commits,
   commitsAreLoading,
   commitsError,
+  pullRequestStatus,
   relatedPullRequests,
   now,
   commentComposer,
   operationBar,
   buildImageProxyUrl,
+  renderReferenceLink,
   onAddInlineComment,
 }: ConsoleItemDetailProps) => {
   const resolvedState = state?.state ?? 'open';
   const merged = state?.merged ?? false;
   const closedStateLabel =
     !item.isPr && resolvedState === 'closed' ? 'Closed' : null;
+  const repoContext = parseNameWithOwner(item.nameWithOwner) ?? undefined;
   const storyPalette = colorFromEnum(storyColorEnum);
   const statusPalette = overlayStatus
     ? colorFromEnum(overlayStatus.color)
@@ -114,20 +124,19 @@ export const ConsoleItemDetail = ({
         </div>
       )}
 
-      {overlayStatus !== null && statusPalette !== null && (
-        <span
-          className="console-detail-status-chip"
-          style={{
-            color: statusPalette.fg,
-            borderColor: statusPalette.border,
-            backgroundColor: statusPalette.bg,
-          }}
-        >
-          {overlayStatus.name}
-        </span>
-      )}
-
       <h2 className="console-detail-title">
+        {overlayStatus !== null && statusPalette !== null && (
+          <span
+            className="console-detail-status-chip"
+            style={{
+              color: statusPalette.fg,
+              borderColor: statusPalette.border,
+              backgroundColor: statusPalette.bg,
+            }}
+          >
+            {overlayStatus.name}
+          </span>
+        )}
         <ConsoleItemIcon
           isPr={item.isPr}
           state={resolvedState}
@@ -146,6 +155,20 @@ export const ConsoleItemDetail = ({
         )}
       </h2>
 
+      {item.isPr && pullRequestStatus?.found && (
+        <div className="console-detail-pr-status-row">
+          <ConsolePullRequestStatusBadges
+            mergeableStatus={pullRequestStatus.mergeableStatus}
+            isPassedAllCiJob={pullRequestStatus.isPassedAllCiJob}
+            isCiStateSuccess={pullRequestStatus.isCiStateSuccess}
+            isBranchOutOfDate={pullRequestStatus.isBranchOutOfDate}
+            missingRequiredCheckNames={
+              pullRequestStatus.missingRequiredCheckNames
+            }
+          />
+        </div>
+      )}
+
       <div className="console-detail-subbar">
         <a
           href={item.url}
@@ -159,6 +182,7 @@ export const ConsoleItemDetail = ({
         <span className="console-detail-pill">
           {item.isPr ? 'PR' : 'Issue'}
         </span>
+        <ConsoleCopyUrlButton url={item.url} />
       </div>
 
       {item.labels.length > 0 && (
@@ -201,6 +225,8 @@ export const ConsoleItemDetail = ({
           <ConsoleMarkdownContent
             body={body}
             buildImageProxyUrl={buildImageProxyUrl}
+            renderReferenceLink={renderReferenceLink}
+            repoContext={repoContext}
           />
         )}
       </ConsolePanel>
@@ -227,6 +253,8 @@ export const ConsoleItemDetail = ({
           error={commentsError}
           now={now}
           buildImageProxyUrl={buildImageProxyUrl}
+          renderReferenceLink={renderReferenceLink}
+          repoContext={repoContext}
         />
       </ConsolePanel>
 
@@ -256,6 +284,8 @@ export const ConsoleItemDetail = ({
             commitsError={related.commitsError}
             now={now}
             buildImageProxyUrl={buildImageProxyUrl}
+            renderReferenceLink={renderReferenceLink}
+            onAddInlineComment={onAddInlineComment}
           />
         ))}
 

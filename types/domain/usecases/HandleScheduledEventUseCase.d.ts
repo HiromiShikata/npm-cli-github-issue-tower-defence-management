@@ -67,10 +67,10 @@ export declare class HandleScheduledEventUseCase {
         };
         urlOfStoryView: string;
         disabled: boolean;
-        allowIssueCacheMinutes: number;
         labelsAsLlmAgentName?: string[] | null;
         changeTargetPathAliases?: Record<string, string> | null;
         allowedIssueAuthors?: string[] | null;
+        autoAssignManagerAuthors?: string[] | null;
         startPreparation?: {
             defaultAgentName: string;
             defaultLlmModelName?: string | null;
@@ -88,6 +88,7 @@ export declare class HandleScheduledEventUseCase {
             labelsAsLlmAgentName?: string[] | null;
         } | null;
         thresholdForAutoReject?: number;
+        createTaskFromStoryBodyCheckboxEnabled?: boolean;
         dailySecurityScan?: DailySecurityScanConfig | null;
     }) => Promise<{
         project: Project;

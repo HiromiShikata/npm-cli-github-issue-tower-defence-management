@@ -97,6 +97,7 @@ describe('GenerateInTmuxByHumanDataUseCase', () => {
       project?: Project;
       consoleBaseUrl?: string | null;
       consoleToken?: string | null;
+      newIssueRepo?: string;
     } = {},
   ) =>
     usecase.run({
@@ -106,6 +107,7 @@ describe('GenerateInTmuxByHumanDataUseCase', () => {
       assigneeLogin: ASSIGNEE,
       org: 'demo-org',
       repo: 'demo-repo',
+      newIssueRepo: overrides.newIssueRepo,
       consoleBaseUrl:
         overrides.consoleBaseUrl === undefined
           ? CONSOLE_BASE_URL
@@ -290,6 +292,15 @@ describe('GenerateInTmuxByHumanDataUseCase', () => {
           },
         ],
       });
+    });
+
+    it('overrides only the repo segment of the new issue url with newIssueRepo, leaving org and assignee unchanged', () => {
+      const result = run([makeIssue({ story: 'Story Alpha' })], {
+        newIssueRepo: 'other-repo',
+      });
+      expect(result.v4?.newIssueUrl).toBe(
+        'https://github.com/demo-org/other-repo/issues/new?assignees=owner-login',
+      );
     });
 
     it('maps each session to the issue url as name and the issue title as description', () => {

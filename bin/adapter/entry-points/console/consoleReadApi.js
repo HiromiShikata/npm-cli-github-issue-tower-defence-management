@@ -1,7 +1,18 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleIssueTitle = exports.handleRelatedPrs = exports.handlePrCommits = exports.handlePrFiles = exports.handleComments = exports.handleItemBody = exports.IssueTitleStateCache = exports.ISSUE_TITLE_CACHE_TTL_MS = void 0;
+exports.handlePullRequestStatus = exports.handleIssueTitle = exports.handleRelatedPrs = exports.handlePrCommits = exports.handlePrFiles = exports.handleComments = exports.handleItemBody = exports.PullRequestStatusCache = exports.IssueTitleStateCache = exports.deriveMergeableStatus = exports.PULL_REQUEST_STATUS_CACHE_TTL_MS = exports.ISSUE_TITLE_CACHE_TTL_MS = void 0;
 exports.ISSUE_TITLE_CACHE_TTL_MS = 300 * 1000;
+exports.PULL_REQUEST_STATUS_CACHE_TTL_MS = 30 * 1000;
+const deriveMergeableStatus = (mergeable) => {
+    if (mergeable === 'MERGEABLE') {
+        return 'MERGEABLE';
+    }
+    if (mergeable === 'CONFLICTING') {
+        return 'CONFLICTING';
+    }
+    return 'UNKNOWN';
+};
+exports.deriveMergeableStatus = deriveMergeableStatus;
 class IssueTitleStateCache {
     constructor(nowMs = () => Date.now()) {
         this.nowMs = nowMs;
@@ -25,6 +36,26 @@ class IssueTitleStateCache {
     }
 }
 exports.IssueTitleStateCache = IssueTitleStateCache;
+class PullRequestStatusCache {
+    constructor(nowMs = () => Date.now()) {
+        this.nowMs = nowMs;
+        this.entries = new Map();
+        this.get = (url) => {
+            const entry = this.entries.get(url);
+            if (!entry) {
+                return null;
+            }
+            if (this.nowMs() - entry.fetchedAtMs >= exports.PULL_REQUEST_STATUS_CACHE_TTL_MS) {
+                return null;
+            }
+            return entry.status;
+        };
+        this.set = (url, status) => {
+            this.entries.set(url, { status, fetchedAtMs: this.nowMs() });
+        };
+    }
+}
+exports.PullRequestStatusCache = PullRequestStatusCache;
 const badRequest = (message) => ({
     statusCode: 400,
     body: { error: message },
@@ -92,6 +123,7 @@ const handleRelatedPrs = async (issueRepository, url) => {
             createdAt: relatedPullRequest.createdAt.toISOString(),
             isDraft: relatedPullRequest.isDraft,
             isConflicted: relatedPullRequest.isConflicted,
+            mergeableStatus: (0, exports.deriveMergeableStatus)(relatedPullRequest.mergeable),
             isPassedAllCiJob: relatedPullRequest.isPassedAllCiJob,
             isCiStateSuccess: relatedPullRequest.isCiStateSuccess,
             isResolvedAllReviewComments: relatedPullRequest.isResolvedAllReviewComments,
@@ -103,6 +135,14 @@ const handleRelatedPrs = async (issueRepository, url) => {
     return ok({ relatedPullRequests: withSummaries });
 };
 exports.handleRelatedPrs = handleRelatedPrs;
+const resolveIssueOrPullRequestTitle = async (issueRepository, url, isPullRequest) => {
+    if (isPullRequest) {
+        const summary = await issueRepository.getPullRequestSummary(url);
+        return summary?.title ?? '';
+    }
+    const issue = await issueRepository.getIssueByUrl(url);
+    return issue?.title ?? '';
+};
 const handleIssueTitle = async (issueRepository, cache, url) => {
     if (!url) {
         return badRequest('url query parameter is required');
@@ -111,9 +151,37 @@ const handleIssueTitle = async (issueRepository, cache, url) => {
     if (cached !== null) {
         return ok(cached);
     }
-    const state = await issueRepository.getIssueOrPullRequestState(url);
+    const baseState = await issueRepository.getIssueOrPullRequestState(url);
+    const title = await resolveIssueOrPullRequestTitle(issueRepository, url, baseState.isPullRequest);
+    const state = { ...baseState, title };
     cache.set(url, state);
     return ok(state);
 };
 exports.handleIssueTitle = handleIssueTitle;
+const handlePullRequestStatus = async (issueRepository, cache, url) => {
+    if (!url) {
+        return badRequest('url query parameter is required');
+    }
+    const cached = cache.get(url);
+    if (cached !== null) {
+        return ok(cached);
+    }
+    const pullRequest = await issueRepository.getOpenPullRequest(url);
+    const response = pullRequest === null
+        ? { found: false, status: null }
+        : {
+            found: true,
+            status: {
+                isConflicted: pullRequest.isConflicted,
+                mergeableStatus: (0, exports.deriveMergeableStatus)(pullRequest.mergeable),
+                isPassedAllCiJob: pullRequest.isPassedAllCiJob,
+                isCiStateSuccess: pullRequest.isCiStateSuccess,
+                isBranchOutOfDate: pullRequest.isBranchOutOfDate,
+                missingRequiredCheckNames: pullRequest.missingRequiredCheckNames,
+            },
+        };
+    cache.set(url, response);
+    return ok(response);
+};
+exports.handlePullRequestStatus = handlePullRequestStatus;
 //# sourceMappingURL=consoleReadApi.js.map

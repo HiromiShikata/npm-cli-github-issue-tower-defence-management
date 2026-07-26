@@ -20,7 +20,8 @@ const parseMeminfo = (meminfo) => {
 exports.parseMeminfo = parseMeminfo;
 const kbToGib = (kb) => Math.round((kb / 1024 / 1024) * 100) / 100;
 const toPercent = (used, total) => total > 0 ? Math.round((used / total) * 1000) / 10 : 0;
-const isImmediatelyActionable = (issue) => issue.dependedIssueUrls.length === 0 &&
+const isImmediatelyActionable = (issue) => !issue.isClosed &&
+    issue.dependedIssueUrls.length === 0 &&
     issue.nextActionDate === null &&
     issue.nextActionHour === null;
 const countRunningProcesses = async (preparationIssues, commandTemplate, localCommandRunner) => {

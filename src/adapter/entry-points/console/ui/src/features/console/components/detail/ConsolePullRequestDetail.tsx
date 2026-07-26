@@ -4,10 +4,14 @@ import type {
   ConsoleCommit,
   ConsoleRelatedPullRequest,
 } from '../../logic/types';
+import type { ConsoleReferenceLinkRenderer } from '../content/ConsoleMarkdownContent';
 import { ConsoleMarkdownContent } from '../content/ConsoleMarkdownContent';
 import { ConsolePanel } from '../layout/ConsolePanel';
 import { ConsoleChangedFileList } from './ConsoleChangedFileList';
 import { ConsoleCommitList } from './ConsoleCommitList';
+import { ConsoleCopyUrlButton } from './ConsoleCopyUrlButton';
+import type { ConsoleAddInlineComment } from './ConsoleFileDiff';
+import { ConsolePullRequestStatusBadges } from './ConsolePullRequestStatusBadges';
 
 export type ConsolePullRequestSectionProps = {
   pullRequest: ConsoleRelatedPullRequest;
@@ -21,6 +25,8 @@ export type ConsolePullRequestSectionProps = {
   commitsError: string | null;
   now: number;
   buildImageProxyUrl?: ImageProxyUrlBuilder;
+  renderReferenceLink?: ConsoleReferenceLinkRenderer;
+  onAddInlineComment?: ConsoleAddInlineComment;
 };
 
 export const ConsolePullRequestDetail = ({
@@ -35,6 +41,8 @@ export const ConsolePullRequestDetail = ({
   commitsError,
   now,
   buildImageProxyUrl,
+  renderReferenceLink,
+  onAddInlineComment,
 }: ConsolePullRequestSectionProps) => {
   const summary = pullRequest.summary;
   const filesCount =
@@ -55,6 +63,14 @@ export const ConsolePullRequestDetail = ({
         {pullRequest.isDraft && (
           <span className="console-pr-section-state">draft</span>
         )}
+        <ConsolePullRequestStatusBadges
+          mergeableStatus={pullRequest.mergeableStatus}
+          isPassedAllCiJob={pullRequest.isPassedAllCiJob}
+          isCiStateSuccess={pullRequest.isCiStateSuccess}
+          isBranchOutOfDate={pullRequest.isBranchOutOfDate}
+          missingRequiredCheckNames={pullRequest.missingRequiredCheckNames}
+        />
+        <ConsoleCopyUrlButton url={pullRequest.url} label="Copy PR URL" />
         <div className="console-pr-statbar">
           {pullRequest.branchName !== null && (
             <span className="console-pr-branch">{pullRequest.branchName}</span>
@@ -77,6 +93,7 @@ export const ConsolePullRequestDetail = ({
           <ConsoleMarkdownContent
             body={summary?.body ?? body}
             buildImageProxyUrl={buildImageProxyUrl}
+            renderReferenceLink={renderReferenceLink}
           />
         )}
       </ConsolePanel>
@@ -85,6 +102,7 @@ export const ConsolePullRequestDetail = ({
           files={files}
           isLoading={filesAreLoading}
           error={filesError}
+          onAddInlineComment={onAddInlineComment}
         />
       </ConsolePanel>
       <ConsolePanel title="Commits" count={commitsCount} defaultCollapsed>

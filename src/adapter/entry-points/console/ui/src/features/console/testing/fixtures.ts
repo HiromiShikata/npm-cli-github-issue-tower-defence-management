@@ -15,6 +15,7 @@ export const consoleStatusOptionsFixture: ConsoleFieldOption[] = [
   { id: 'f57f1ce9', name: 'Preparation', color: 'YELLOW' },
   { id: 'fd313492', name: 'Failed Preparation', color: 'RED' },
   { id: 'e9931e57', name: 'Todo by human', color: 'PINK' },
+  { id: 'a1e4b7c9', name: 'Todo by agent', color: 'BLUE' },
   { id: 'c2d278b2', name: 'In Tmux by human', color: 'RED' },
   { id: 'e9f6a726', name: 'In Tmux by agent', color: 'YELLOW' },
   { id: 'bd8358eb', name: 'Icebox', color: 'GRAY' },
@@ -155,6 +156,45 @@ console bundle and the token-protected \`/api\` endpoints.
 - [x] Token validation via \`?k=\` and the \`x-pv-token\` header
 `;
 
+export const consoleMarkdownReferenceBodyFixture = `## Related work
+
+The console scaffold landed in
+https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/851
+and follow-up work continues in
+https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/845.
+
+For context see the documentation site task at
+https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/692.
+
+External references such as https://example.com/spec stay as plain links.
+`;
+
+export const consoleReferenceStatesFixture: Record<string, ConsoleIssueState> =
+  {
+    'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/851':
+      {
+        state: 'closed',
+        merged: true,
+        isPullRequest: true,
+        title: 'Add serveConsole subcommand under entry-points',
+      },
+    'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/845':
+      {
+        state: 'open',
+        merged: false,
+        isPullRequest: false,
+        title:
+          'Scaffold React console UI under entry-points with build bundling',
+      },
+    'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/692':
+      {
+        state: 'closed',
+        merged: false,
+        isPullRequest: false,
+        title: 'Publish the generated documentation site to GitHub Pages',
+      },
+  };
+
 export const consoleMarkdownImageBodyFixture = `## Screenshot
 
 The failing screen is attached below.
@@ -164,6 +204,39 @@ The failing screen is attached below.
 For reference, the avatar comes from an external host:
 
 ![external avatar](https://example.com/avatar.png)
+`;
+
+export const consoleCodeFenceBodyFixture = `## Reproduction
+
+A TypeScript fenced code block MUST render as a styled code box rather than
+literal backticks:
+
+\`\`\`ts
+export const splitMarkdownSegments = (source: string): ConsoleMarkdownSegment[] => {
+  const lines = source.split('\\n');
+  return lines.length > 0 ? parse(lines) : [];
+};
+\`\`\`
+
+A code block that documents a mermaid fence MUST stay literal text and MUST NOT
+be turned into a diagram:
+
+\`\`\`text
+\`\`\`mermaid
+graph TD; A-->B;
+\`\`\`
+
+The diagram below MUST still render as an actual diagram:
+
+\`\`\`mermaid
+sequenceDiagram
+  participant Browser
+  participant ConsoleServer
+  Browser->>ConsoleServer: GET /api/itembody?url=...
+  ConsoleServer-->>Browser: { body }
+\`\`\`
+
+Inline \`code\` spans are unaffected.
 `;
 
 export const consoleMermaidBodyFixture = `Here is the request flow:
@@ -271,6 +344,7 @@ export const consoleRelatedPullRequestsFixture: ConsoleRelatedPullRequest[] = [
     createdAt: '2026-06-16T22:30:00.000Z',
     isDraft: false,
     isConflicted: false,
+    mergeableStatus: 'MERGEABLE',
     isPassedAllCiJob: true,
     isCiStateSuccess: true,
     isResolvedAllReviewComments: true,
@@ -290,4 +364,5 @@ export const consoleIssueStateFixture: ConsoleIssueState = {
   state: 'open',
   merged: false,
   isPullRequest: true,
+  title: 'Add serveConsole subcommand under entry-points',
 };

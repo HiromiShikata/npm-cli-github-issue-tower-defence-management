@@ -13,6 +13,7 @@ const counts = (
   unread: 0,
   'failed-preparation': 0,
   'todo-by-human': 0,
+  'todo-by-agent': 0,
   ...overrides,
 });
 
@@ -32,6 +33,15 @@ describe('findNextNonEmptyTabToRight', () => {
     ).toBe('todo-by-human');
   });
 
+  it('advances from todo-by-human to todo-by-agent when it has items', () => {
+    expect(
+      findNextNonEmptyTabToRight(
+        'todo-by-human',
+        counts({ 'todo-by-agent': 2 }),
+      ),
+    ).toBe('todo-by-agent');
+  });
+
   it('returns the immediately adjacent tab when it is non-empty', () => {
     expect(
       findNextNonEmptyTabToRight('prs', counts({ triage: 12, unread: 7 })),
@@ -46,7 +56,7 @@ describe('findNextNonEmptyTabToRight', () => {
 
   it('returns null when the active tab is the last tab', () => {
     expect(
-      findNextNonEmptyTabToRight('todo-by-human', counts({ prs: 35 })),
+      findNextNonEmptyTabToRight('todo-by-agent', counts({ prs: 35 })),
     ).toBeNull();
   });
 });

@@ -1,16 +1,18 @@
 import YAML from 'yaml';
 import * as fs from 'fs';
+import { fetchGithubGraphql } from '../../repositories/githubGraphqlClient';
 
 export type ConfigFile = {
   projectUrl?: string;
+  manager?: string;
   defaultAgentName?: string;
   defaultLlmModelName?: string;
   fallbackLlmModelName?: string;
   defaultLlmAgentName?: string;
   maximumPreparingIssuesCount?: number;
-  allowIssueCacheMinutes?: number;
   utilizationPercentageThreshold?: number;
   allowedIssueAuthors?: string;
+  autoAssignManagerAuthors?: string;
   thresholdForAutoReject?: number;
   workflowBlockerResolvedWebhookUrl?: string;
   projectName?: string;
@@ -23,6 +25,12 @@ export type ConfigFile = {
   changeTargetPathAliases?: Record<string, string>;
   consoleAccessToken?: string;
   consoleProjects?: Record<string, string>;
+  disks?: DiskConfig[];
+};
+
+export type DiskConfig = {
+  title: string;
+  mountpoint: string;
 };
 
 const getStringValue = (
@@ -80,15 +88,38 @@ const getStringArrayValue = (
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+const getDisksValue = (
+  obj: Record<string, unknown>,
+  key: string,
+): DiskConfig[] | undefined => {
+  const value = obj[key];
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const disks: DiskConfig[] = [];
+  for (const item of value) {
+    if (!isRecord(item)) {
+      return undefined;
+    }
+    const title = item['title'];
+    const mountpoint = item['mountpoint'];
+    if (typeof title !== 'string' || typeof mountpoint !== 'string') {
+      return undefined;
+    }
+    disks.push({ title, mountpoint });
+  }
+  return disks;
+};
+
 const knownProjectReadmeConfigKeys = [
   'defaultAgentName',
   'defaultLlmModelName',
   'fallbackLlmModelName',
   'defaultLlmAgentName',
   'maximumPreparingIssuesCount',
-  'allowIssueCacheMinutes',
   'utilizationPercentageThreshold',
   'allowedIssueAuthors',
+  'autoAssignManagerAuthors',
   'thresholdForAutoReject',
   'workflowBlockerResolvedWebhookUrl',
   'preparationProcessCheckCommand',
@@ -108,6 +139,7 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
     }
     return {
       projectUrl: getStringValue(parsed, 'projectUrl'),
+      manager: getStringValue(parsed, 'manager'),
       defaultAgentName: getStringValue(parsed, 'defaultAgentName'),
       defaultLlmModelName: getStringValue(parsed, 'defaultLlmModelName'),
       fallbackLlmModelName: getStringValue(parsed, 'fallbackLlmModelName'),
@@ -116,12 +148,15 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         parsed,
         'maximumPreparingIssuesCount',
       ),
-      allowIssueCacheMinutes: getNumberValue(parsed, 'allowIssueCacheMinutes'),
       utilizationPercentageThreshold: getNumberValue(
         parsed,
         'utilizationPercentageThreshold',
       ),
       allowedIssueAuthors: getStringValue(parsed, 'allowedIssueAuthors'),
+      autoAssignManagerAuthors: getStringValue(
+        parsed,
+        'autoAssignManagerAuthors',
+      ),
       thresholdForAutoReject: getNumberValue(parsed, 'thresholdForAutoReject'),
       workflowBlockerResolvedWebhookUrl: getStringValue(
         parsed,
@@ -149,6 +184,7 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
       ),
       consoleAccessToken: getStringValue(parsed, 'consoleAccessToken'),
       consoleProjects: getStringRecordValue(parsed, 'consoleProjects'),
+      disks: getDisksValue(parsed, 'disks'),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -196,12 +232,15 @@ export const parseProjectReadmeConfig = (
         parsed,
         'maximumPreparingIssuesCount',
       ),
-      allowIssueCacheMinutes: getNumberValue(parsed, 'allowIssueCacheMinutes'),
       utilizationPercentageThreshold: getNumberValue(
         parsed,
         'utilizationPercentageThreshold',
       ),
       allowedIssueAuthors: getStringValue(parsed, 'allowedIssueAuthors'),
+      autoAssignManagerAuthors: getStringValue(
+        parsed,
+        'autoAssignManagerAuthors',
+      ),
       thresholdForAutoReject: getNumberValue(parsed, 'thresholdForAutoReject'),
       workflowBlockerResolvedWebhookUrl: getStringValue(
         parsed,
@@ -238,6 +277,7 @@ export const mergeConfigs = (
   readmeOverrides: ConfigFile,
 ): ConfigFile => ({
   projectUrl: cliOverrides.projectUrl ?? configFile.projectUrl,
+  manager: cliOverrides.manager ?? configFile.manager,
   defaultAgentName:
     readmeOverrides.defaultAgentName ??
     cliOverrides.defaultAgentName ??
@@ -258,10 +298,6 @@ export const mergeConfigs = (
     readmeOverrides.maximumPreparingIssuesCount ??
     cliOverrides.maximumPreparingIssuesCount ??
     configFile.maximumPreparingIssuesCount,
-  allowIssueCacheMinutes:
-    readmeOverrides.allowIssueCacheMinutes ??
-    cliOverrides.allowIssueCacheMinutes ??
-    configFile.allowIssueCacheMinutes,
   utilizationPercentageThreshold:
     readmeOverrides.utilizationPercentageThreshold ??
     cliOverrides.utilizationPercentageThreshold ??
@@ -270,6 +306,10 @@ export const mergeConfigs = (
     readmeOverrides.allowedIssueAuthors ??
     cliOverrides.allowedIssueAuthors ??
     configFile.allowedIssueAuthors,
+  autoAssignManagerAuthors:
+    readmeOverrides.autoAssignManagerAuthors ??
+    cliOverrides.autoAssignManagerAuthors ??
+    configFile.autoAssignManagerAuthors,
   thresholdForAutoReject:
     readmeOverrides.thresholdForAutoReject ??
     cliOverrides.thresholdForAutoReject ??
@@ -310,6 +350,7 @@ export const mergeConfigs = (
   consoleAccessToken:
     cliOverrides.consoleAccessToken ?? configFile.consoleAccessToken,
   consoleProjects: cliOverrides.consoleProjects ?? configFile.consoleProjects,
+  disks: cliOverrides.disks ?? configFile.disks,
 });
 
 type GraphqlProjectV2ReadmeResponse = {
@@ -338,7 +379,7 @@ export const fetchProjectReadme = async (
     const owner = urlParts[urlParts.length - 3];
 
     const query = `
-      query($owner: String!, $number: Int!) {
+      query ProjectReadme($owner: String!, $number: Int!) {
         organization(login: $owner) {
           projectV2(number: $number) {
             readme
@@ -352,16 +393,10 @@ export const fetchProjectReadme = async (
       }
     `;
 
-    const response = await fetch('https://api.github.com/graphql', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query,
-        variables: { owner, number: projectNumber },
-      }),
+    const response = await fetchGithubGraphql({
+      ghToken: token,
+      query,
+      variables: { owner, number: projectNumber },
     });
 
     if (!response.ok) {

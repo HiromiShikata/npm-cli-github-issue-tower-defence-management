@@ -26,21 +26,28 @@ import { RestIssueRepository } from '../../repositories/issue/RestIssueRepositor
 import { GraphqlProjectItemRepository } from '../../repositories/issue/GraphqlProjectItemRepository';
 import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3CheerioRestIssueRepository';
 import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
+import { SystemDateRepository } from '../../repositories/SystemDateRepository';
 import { BaseGitHubRepository } from '../../repositories/BaseGitHubRepository';
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
+import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRepository';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import * as path from 'path';
 import {
-  DEFAULT_DASHBOARD_PROJECT_CODES,
+  DEFAULT_DASHBOARD_PROJECT_NAMES,
   DEFAULT_WEB_PORT,
   startWebServer,
 } from '../console/webServer';
-import { IssueTitleStateCache } from '../console/consoleReadApi';
+import { ensureConsoleRunning } from '../console/ensureConsoleRunning';
+import {
+  IssueTitleStateCache,
+  PullRequestStatusCache,
+} from '../console/consoleReadApi';
 import {
   buildPjcodeToProjectUrl,
   createConsoleProjectResolver,
+  createPjcodeConfigChecker,
 } from '../console/consoleProjectResolver';
 import { OauthTokenSelectHandler } from '../handlers/OauthTokenSelectHandler';
 import { LiveSessionOauthTokenSelectHandler } from '../handlers/LiveSessionOauthTokenSelectHandler';
@@ -48,12 +55,12 @@ import { InTmuxByHumanSessionTokenCountHandler } from '../handlers/InTmuxByHuman
 
 type StartDaemonOptions = {
   projectUrl?: string;
+  manager?: string;
   defaultAgentName?: string;
   defaultLlmModelName?: string;
   fallbackLlmModelName?: string;
   defaultLlmAgentName?: string;
   maximumPreparingIssuesCount?: string;
-  allowIssueCacheMinutes?: string;
   utilizationPercentageThreshold?: string;
   allowedIssueAuthors?: string;
   preparationProcessCheckCommand?: string;
@@ -81,7 +88,7 @@ type ServeWebOptions = {
   inTmuxDataDir?: string;
   dashboardDir?: string;
   dashboardDataDir?: string;
-  dashboardProjectCodes?: string;
+  dashboardProjectNames?: string;
 };
 
 const DEFAULT_IN_TMUX_DATA_DIR =
@@ -91,15 +98,15 @@ const DEFAULT_DASHBOARD_DIR = '/home/hiromi/0_workspaces/workspace1/jsonpub';
 
 const DEFAULT_DASHBOARD_DATA_DIR: string | null = null;
 
-const parseDashboardProjectCodes = (raw: string | undefined): string[] => {
+const parseDashboardProjectNames = (raw: string | undefined): string[] => {
   if (raw === undefined) {
-    return DEFAULT_DASHBOARD_PROJECT_CODES;
+    return DEFAULT_DASHBOARD_PROJECT_NAMES;
   }
-  const codes = raw
+  const names = raw
     .split(',')
-    .map((code) => code.trim())
-    .filter((code) => code.length > 0);
-  return codes.length > 0 ? codes : DEFAULT_DASHBOARD_PROJECT_CODES;
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0);
+  return names.length > 0 ? names : DEFAULT_DASHBOARD_PROJECT_NAMES;
 };
 
 type SelectOauthTokenOptions = {
@@ -118,6 +125,11 @@ type CountInTmuxByHumanSessionsPerTokenOptions = {
   tokenListJsonPath?: string;
 };
 
+type KillTmuxSessionOptions = {
+  session?: string;
+  self?: boolean;
+};
+
 const buildGithubRepositoryParams = (
   localStorageRepository: LocalStorageRepository,
   token: string,
@@ -126,11 +138,22 @@ const buildGithubRepositoryParams = (
   token,
 ];
 
+const parseInTmuxProjectOrder = (raw: string | undefined): string[] | null => {
+  if (raw === undefined) {
+    return null;
+  }
+  return raw
+    .split(',')
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0);
+};
+
 interface ScheduleOptions {
   trigger: 'issue' | 'schedule';
   config: string;
   issue?: string;
   verbose: boolean;
+  inTmuxProjectOrder?: string;
 }
 
 export const program = new Command();
@@ -150,6 +173,10 @@ program
   .requiredOption('-c, --config <path>', 'Path to config YAML file')
   .option('-v, --verbose', 'Verbose output')
   .option('-i, --issue <url>', 'GitHub Issue URL')
+  .option(
+    '--inTmuxProjectOrder <names>',
+    'Comma-separated project names, in display order, for the in-tmux-by-human session list. When omitted, falls back to the inTmuxProjectOrder value in the config file.',
+  )
   .action(async (options: ScheduleOptions) => {
     if (options.trigger === 'issue' && !options.issue) {
       console.error('Issue URL is required when trigger type is "issue"');
@@ -159,7 +186,11 @@ program
       const { HandleScheduledEventUseCaseHandler } =
         await import('../handlers/HandleScheduledEventUseCaseHandler');
       const handler = new HandleScheduledEventUseCaseHandler();
-      await handler.handle(options.config, options.verbose);
+      await handler.handle(
+        options.config,
+        options.verbose,
+        parseInTmuxProjectOrder(options.inTmuxProjectOrder),
+      );
     }
   });
 
@@ -171,6 +202,10 @@ program
     'Path to config file for tower defence management',
   )
   .option('--projectUrl <url>', 'GitHub project URL')
+  .option(
+    '--manager <login>',
+    'GitHub login of the manager; only Awaiting Workspace issues assigned to this login are picked up',
+  )
   .option('--defaultAgentName <name>', 'Default agent name')
   .option('--defaultLlmModelName <name>', 'Default LLM model name')
   .option(
@@ -181,10 +216,6 @@ program
   .option(
     '--maximumPreparingIssuesCount <count>',
     'Maximum number of issues in preparation status (default: 6 per available Claude OAuth token, otherwise 6)',
-  )
-  .option(
-    '--allowIssueCacheMinutes <minutes>',
-    'Allow cache for issues in minutes (default: 10)',
   )
   .option(
     '--utilizationPercentageThreshold <percent>',
@@ -209,15 +240,13 @@ program
 
     const cliOverrides: ConfigFile = {
       projectUrl: options.projectUrl,
+      manager: options.manager,
       defaultAgentName: options.defaultAgentName,
       defaultLlmModelName: options.defaultLlmModelName,
       fallbackLlmModelName: options.fallbackLlmModelName,
       defaultLlmAgentName: options.defaultLlmAgentName,
       maximumPreparingIssuesCount: options.maximumPreparingIssuesCount
         ? Number(options.maximumPreparingIssuesCount)
-        : undefined,
-      allowIssueCacheMinutes: options.allowIssueCacheMinutes
-        ? Number(options.allowIssueCacheMinutes)
         : undefined,
       utilizationPercentageThreshold: options.utilizationPercentageThreshold
         ? Number(options.utilizationPercentageThreshold)
@@ -245,6 +274,7 @@ program
 
     const projectUrl = config.projectUrl;
     const defaultAgentName = config.defaultAgentName;
+    const manager = config.manager;
 
     if (!projectUrl) {
       console.error(
@@ -255,6 +285,12 @@ program
     if (!defaultAgentName) {
       console.error(
         'defaultAgentName is required. Provide via --defaultAgentName, config file, or project README.',
+      );
+      process.exit(1);
+    }
+    if (!manager) {
+      console.error(
+        'manager is required. Provide via the config file so that only issues assigned to the manager are picked up.',
       );
       process.exit(1);
     }
@@ -275,8 +311,6 @@ program
       }
       maximumPreparingIssuesCount = parsedCount;
     }
-
-    const allowIssueCacheMinutes = config.allowIssueCacheMinutes ?? 10;
 
     console.log(
       `maximumPreparingIssuesCount: ${maximumPreparingIssuesCount ?? 'null (default: 6 per available Claude OAuth token, otherwise 6)'}`,
@@ -311,6 +345,8 @@ program
       restIssueRepository,
       graphqlProjectItemRepository,
       localStorageCacheRepository,
+      projectRepository,
+      new SystemDateRepository(),
       ...githubRepositoryParams,
     );
     const localCommandRunner = new NodeLocalCommandRunner();
@@ -329,7 +365,6 @@ program
       );
       await revertUseCase.run({
         projectUrl,
-        allowIssueCacheMinutes,
         preparationProcessCheckCommand,
         thresholdForAutoReject: config.thresholdForAutoReject ?? 3,
         awLogDirectoryPath: config.awLogDirectoryPath,
@@ -361,6 +396,23 @@ program
         ? config.codexHomeCandidates
         : null;
 
+    if (config.consoleAccessToken) {
+      const consoleProcess = await ensureConsoleRunning(
+        options.configFilePath,
+        DEFAULT_WEB_PORT,
+      );
+      if (consoleProcess !== null) {
+        process.once('SIGTERM', () => {
+          consoleProcess.kill();
+          process.exit(0);
+        });
+        process.once('SIGINT', () => {
+          consoleProcess.kill();
+          process.exit(0);
+        });
+      }
+    }
+
     const preparationResult = await useCase.run({
       projectUrl,
       defaultAgentName,
@@ -372,8 +424,8 @@ program
       utilizationPercentageThreshold:
         config.utilizationPercentageThreshold ?? 90,
       allowedIssueAuthors,
+      manager,
       codexHomeCandidates,
-      allowIssueCacheMinutes,
       labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
     });
     if (preparationResult.rotationOrder !== null) {
@@ -491,6 +543,8 @@ program
       restIssueRepository,
       graphqlProjectItemRepository,
       localStorageCacheRepository,
+      projectRepository,
+      new SystemDateRepository(),
       ...githubRepositoryParams,
     );
     const issueCommentRepository = new GitHubIssueCommentRepository(token);
@@ -583,11 +637,17 @@ program
     const graphqlProjectItemRepository = new GraphqlProjectItemRepository(
       ...githubRepositoryParams,
     );
+    const projectRepository = new GraphqlProjectRepository(
+      ...githubRepositoryParams,
+      localStorageCacheRepository,
+    );
     const issueRepository = new ApiV3CheerioRestIssueRepository(
       apiV3IssueRepository,
       restIssueRepository,
       graphqlProjectItemRepository,
       localStorageCacheRepository,
+      projectRepository,
+      new SystemDateRepository(),
       ...githubRepositoryParams,
     );
     const issueCommentRepository = new GitHubIssueCommentRepository(token);
@@ -685,6 +745,8 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     restIssueRepository,
     graphqlProjectItemRepository,
     localStorageCacheRepository,
+    projectRepository,
+    new SystemDateRepository(),
     ...githubRepositoryParams,
   );
 
@@ -693,6 +755,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     projectUrl,
     config.consoleProjects ?? null,
   );
+  const isPjcodeConfigured = createPjcodeConfigChecker(pjcodeToProjectUrl);
   const resolveProject = createConsoleProjectResolver(
     pjcodeToProjectUrl,
     async (targetProjectUrl: string) => {
@@ -701,6 +764,14 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
       if (!targetProjectId) {
         console.error(`No project found for projectUrl ${targetProjectUrl}`);
         return null;
+      }
+      // Prefer the Project the TDPM daemon already cached locally (status/story
+      // option ids and field ids), which needs no GraphQL. Fall back to a
+      // GraphQL project load only when the cache has not been populated yet.
+      const cachedProject =
+        await issueRepository.getCachedProject(targetProjectId);
+      if (cachedProject) {
+        return cachedProject;
       }
       const loadedProject = await projectRepository.getProject(targetProjectId);
       if (!loadedProject) {
@@ -719,8 +790,8 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
   const dashboardDir = options.dashboardDir ?? DEFAULT_DASHBOARD_DIR;
   const dashboardDataDir =
     options.dashboardDataDir ?? DEFAULT_DASHBOARD_DATA_DIR;
-  const dashboardProjectCodes = parseDashboardProjectCodes(
-    options.dashboardProjectCodes,
+  const dashboardProjectNames = parseDashboardProjectNames(
+    options.dashboardProjectNames,
   );
 
   await startWebServer({
@@ -730,11 +801,13 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     inTmuxDataDir,
     dashboardDir,
     dashboardDataDir,
-    dashboardProjectCodes,
+    dashboardProjectNames,
     githubToken: token,
     issueRepository,
     resolveProject,
+    isPjcodeConfigured,
     issueTitleStateCache: new IssueTitleStateCache(),
+    pullRequestStatusCache: new PullRequestStatusCache(),
     port,
   });
   console.log(`TDPM web server listening on port ${port}`);
@@ -764,11 +837,11 @@ const addServeWebOptions = (command: Command): Command =>
     )
     .option(
       '--dashboardDataDir <path>',
-      'Directory containing the dashboard data files (projects/<pjcode>.json, machine-status.json, token-status.json); when set and every required file is present the server composes the /tdpm.txt fragment from them at request time, otherwise it falls back to serving the static tdpm.txt from --dashboardDir (unset when not configured)',
+      'Directory containing the dashboard data files (projects/<projectName>.json, machine-status.json, token-status.json); when set and every required file is present the server composes the /tdpm.txt fragment from them at request time, otherwise it falls back to serving the static tdpm.txt from --dashboardDir (unset when not configured)',
     )
     .option(
-      '--dashboardProjectCodes <codes>',
-      `Comma-separated project codes, in display order, for the dashboard project grid (default: ${DEFAULT_DASHBOARD_PROJECT_CODES.join(',')})`,
+      '--dashboardProjectNames <names>',
+      `Comma-separated project names, in display order, for the dashboard project grid (default: ${DEFAULT_DASHBOARD_PROJECT_NAMES.join(',')})`,
     );
 
 addServeWebOptions(program.command('serveWeb'))
@@ -788,11 +861,11 @@ addServeWebOptions(program.command('serveConsole'))
 program
   .command('selectOauthToken')
   .description(
-    'Print exactly one Claude Code OAuth token chosen by a rate-limit-aware filter. The token string is written to stdout (pipeable); the per-candidate decision trace is written to stderr. Exits non-zero when no token passes the filter.',
+    'Print exactly one Claude Code OAuth token chosen by a rate-limit-aware filter. When tokens carry differing per-token selectionWeight values, the choice among rate-limit-eligible tokens is weighted-random by that weight (default 1), so a lower-weight token is chosen proportionally less often; uniform weights preserve the deterministic soonest-7d-reset choice. The token string is written to stdout (pipeable); the per-candidate decision trace is written to stderr. Exits non-zero when no token passes the filter.',
   )
   .option(
     '--tokenListJsonPath <path>',
-    'Path to the JSON array of { name, token } records. Falls back to the CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH environment variable.',
+    'Path to the JSON array of { name, token, selectionWeight? } records. selectionWeight is an optional positive number (default 1) that biases how often this token is chosen among rate-limit-eligible candidates; a smaller weight is chosen proportionally less often and never bypasses eligibility filtering or starves a sole eligible token. Falls back to the CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH environment variable.',
   )
   .option(
     '--cacheDir <path>',
@@ -820,11 +893,11 @@ program
 program
   .command('selectLiveSessionOauthToken')
   .description(
-    'Print exactly one Claude Code OAuth token chosen for a new live interactive session. Among rate-limit-eligible tokens it prefers the one with the fewest current live sessions (by distinct CLAUDE_CODE_SESSION_ID found in running Claude Code processes), tiebreaking on the soonest 7d reset. The token string is written to stdout (pipeable); the per-candidate decision trace is written to stderr. Exits non-zero when no token passes the filter.',
+    'Print exactly one Claude Code OAuth token chosen for a new live interactive session. Among rate-limit-eligible tokens it prefers the one with the fewest current live sessions (by distinct CLAUDE_CODE_SESSION_ID found in running Claude Code processes), tiebreaking on the soonest 7d reset. When tokens carry differing per-token selectionWeight values, the choice among eligible tokens is weighted-random by that weight (default 1), so a lower-weight token is chosen proportionally less often; uniform weights preserve the fewest-live-sessions-then-soonest-7d-reset choice. The token string is written to stdout (pipeable); the per-candidate decision trace is written to stderr. Exits non-zero when no token passes the filter.',
   )
   .option(
     '--tokenListJsonPath <path>',
-    'Path to the JSON array of { name, token } records. Falls back to the CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH environment variable.',
+    'Path to the JSON array of { name, token, selectionWeight? } records. selectionWeight is an optional positive number (default 1) that biases how often this token is chosen among rate-limit-eligible candidates; a smaller weight is chosen proportionally less often and never bypasses eligibility filtering or starves a sole eligible token. Falls back to the CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH environment variable.',
   )
   .option(
     '--cacheDir <path>',
@@ -930,6 +1003,8 @@ program
       restIssueRepository,
       graphqlProjectItemRepository,
       localStorageCacheRepository,
+      projectRepository,
+      new SystemDateRepository(),
       ...githubRepositoryParams,
     );
 
@@ -939,11 +1014,7 @@ program
       process.exit(1);
     }
 
-    const allowIssueCacheMinutes = config.allowIssueCacheMinutes ?? 10;
-    const { issues } = await issueRepository.getAllIssues(
-      projectId,
-      allowIssueCacheMinutes,
-    );
+    const { issues } = await issueRepository.getAllIssues(projectId);
 
     const handler = new InTmuxByHumanSessionTokenCountHandler();
     const output = handler.handle({
@@ -960,6 +1031,38 @@ program
 
     for (const line of output.lines) {
       process.stdout.write(`${line}\n`);
+    }
+  });
+
+program
+  .command('killTmuxSession')
+  .description(
+    'Cleanly kill a tmux session by running tmux kill-session and stopping its cl-*.scope systemd --user unit. Use --session <name> to kill another named session, or --self to terminate the current session from inside it.',
+  )
+  .option('--session <name>', 'Name of the tmux session to kill')
+  .option(
+    '--self',
+    'Terminate the current session by stopping its own cl-*.scope systemd user unit, derived from /proc/self/cgroup',
+  )
+  .action(async (options: KillTmuxSessionOptions) => {
+    if (!options.session && !options.self) {
+      console.error('Either --session <name> or --self is required');
+      process.exit(1);
+    }
+    if (options.session && options.self) {
+      console.error('--session and --self cannot be used together');
+      process.exit(1);
+    }
+
+    const localCommandRunner = new NodeLocalCommandRunner();
+    const tmuxSessionRepository = new NodeTmuxSessionRepository(
+      localCommandRunner,
+    );
+
+    if (options.self) {
+      await tmuxSessionRepository.killOwnSession();
+    } else if (options.session) {
+      await tmuxSessionRepository.killSession(options.session);
     }
   });
 

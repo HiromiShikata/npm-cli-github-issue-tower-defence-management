@@ -1,6 +1,6 @@
 import {
   type ConsoleOperationHandlers,
-  isTodoByHumanTab,
+  isManualTriageTab,
 } from '../../logic/operations';
 import type {
   ConsoleFieldOption,
@@ -17,6 +17,7 @@ export type ConsoleOperationBarProps = {
   tab: ConsoleTabName;
   item: ConsoleListItem;
   hasPullRequest: boolean;
+  rejectEnabled: boolean;
   statusOptions: ConsoleFieldOption[];
   storyOptions: ConsoleFieldOption[];
   handlers: ConsoleOperationHandlers;
@@ -24,21 +25,23 @@ export type ConsoleOperationBarProps = {
 
 export const ConsoleOperationMenu = ({
   tab,
-  item,
   hasPullRequest,
+  rejectEnabled,
   statusOptions,
   storyOptions,
   handlers,
 }: ConsoleOperationBarProps) => {
   const showStory = tab === 'triage';
-  const showClose = tab === 'workflow-blocker' || !item.isPr;
   return (
     <div className="console-operation-bar">
       {hasPullRequest && (
-        <ConsolePullRequestReviewActions onReview={handlers.onReview} />
+        <ConsolePullRequestReviewActions
+          onReview={handlers.onReview}
+          rejectEnabled={rejectEnabled}
+        />
       )}
       <ConsoleNextActionDateActions
-        isTodoByHuman={isTodoByHumanTab(tab)}
+        isManualTriage={isManualTriageTab(tab)}
         onSetNextActionDate={handlers.onSetNextActionDate}
       />
       {showStory && (
@@ -52,7 +55,7 @@ export const ConsoleOperationMenu = ({
         onSetStatus={handlers.onSetStatus}
         onSetInTmuxByHuman={handlers.onSetInTmuxByHuman}
       />
-      {showClose && <ConsoleCloseActions onClose={handlers.onClose} />}
+      <ConsoleCloseActions onClose={handlers.onClose} />
     </div>
   );
 };

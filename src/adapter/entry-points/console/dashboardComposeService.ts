@@ -1,11 +1,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import {
+  ComposeDashboardDisk,
   ComposeDashboardInput,
   ComposeDashboardMachineStatus,
   ComposeDashboardProject,
   ComposeDashboardUseCase,
 } from '../../../domain/usecases/dashboard/ComposeDashboardUseCase';
+import { toDashboardDisplayLabel } from '../../../domain/usecases/dashboard/DashboardProjectCode';
 import { DashboardRow } from '../../../domain/usecases/dashboard/GenerateDashboardRowUseCase';
 import {
   TokenStatus,
@@ -14,7 +16,7 @@ import {
 
 export type DashboardComposeOptions = {
   dashboardDataDir: string;
-  projectCodes: string[];
+  projectNames: string[];
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -66,10 +68,12 @@ const parseDashboardRow = (value: unknown): DashboardRow | null => {
 
 const readProjectRow = (
   dashboardDataDir: string,
-  code: string,
+  projectName: string,
 ): DashboardRow | null =>
   parseDashboardRow(
-    readJsonFile(path.join(dashboardDataDir, 'projects', `${code}.json`)),
+    readJsonFile(
+      path.join(dashboardDataDir, 'projects', `${projectName}.json`),
+    ),
   );
 
 const parseLoad = (value: unknown): [number, number, number] | null => {
@@ -83,6 +87,24 @@ const parseLoad = (value: unknown): [number, number, number] | null => {
     return null;
   }
   return [oneMinute, fiveMinute, fifteenMinute];
+};
+
+const parseDisks = (value: unknown): ComposeDashboardDisk[] | null => {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  const disks: ComposeDashboardDisk[] = [];
+  for (const entry of value) {
+    if (!isRecord(entry) || typeof entry.title !== 'string') {
+      return null;
+    }
+    const pct = asFiniteNumber(entry.pct);
+    if (pct === null) {
+      return null;
+    }
+    disks.push({ title: entry.title, pct });
+  }
+  return disks;
 };
 
 const readMachineStatus = (
@@ -101,6 +123,7 @@ const readMachineStatus = (
     memPct: asFiniteNumber(value.memPct),
     cpuPct: asFiniteNumber(value.cpuPct),
     diskPct: asFiniteNumber(value.diskPct),
+    disks: parseDisks(value.disks),
     load: parseLoad(value.load),
     cycleMinutes,
   };
@@ -158,10 +181,10 @@ const readTokenStatuses = (dashboardDataDir: string): TokenStatus[] => {
 export const buildComposeDashboardInput = (
   options: DashboardComposeOptions,
 ): ComposeDashboardInput => {
-  const projects: ComposeDashboardProject[] = options.projectCodes.map(
-    (code) => ({
-      code,
-      row: readProjectRow(options.dashboardDataDir, code),
+  const projects: ComposeDashboardProject[] = options.projectNames.map(
+    (projectName) => ({
+      code: toDashboardDisplayLabel(projectName),
+      row: readProjectRow(options.dashboardDataDir, projectName),
     }),
   );
   return {
@@ -182,14 +205,14 @@ const isExistingFile = (filePath: string): boolean => {
 export const dashboardComposeFilesPresent = (
   options: DashboardComposeOptions,
 ): boolean => {
-  if (options.projectCodes.length === 0) {
+  if (options.projectNames.length === 0) {
     return false;
   }
   const requiredFiles = [
     path.join(options.dashboardDataDir, 'machine-status.json'),
     path.join(options.dashboardDataDir, 'token-status.json'),
-    ...options.projectCodes.map((code) =>
-      path.join(options.dashboardDataDir, 'projects', `${code}.json`),
+    ...options.projectNames.map((projectName) =>
+      path.join(options.dashboardDataDir, 'projects', `${projectName}.json`),
     ),
   ];
   return requiredFiles.every((filePath) => isExistingFile(filePath));

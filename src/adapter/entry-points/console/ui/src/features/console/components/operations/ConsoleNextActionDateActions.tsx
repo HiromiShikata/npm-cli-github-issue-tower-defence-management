@@ -1,12 +1,12 @@
 import type { ConsoleNextActionDateAction } from '../../logic/operations';
 
 export type ConsoleNextActionDateGroupProps = {
-  isTodoByHuman: boolean;
+  isManualTriage: boolean;
   onSetNextActionDate: (action: ConsoleNextActionDateAction) => void;
 };
 
 export const ConsoleNextActionDateActions = ({
-  isTodoByHuman,
+  isManualTriage,
   onSetNextActionDate,
 }: ConsoleNextActionDateGroupProps) => (
   <div className="console-op-group">
@@ -22,7 +22,7 @@ export const ConsoleNextActionDateActions = ({
       className="console-op-button console-op-button-snooze"
       onClick={() => onSetNextActionDate('snooze_1week')}
     >
-      {isTodoByHuman ? '+1 week and skip' : '+1 week'}
+      {isManualTriage ? '+1 week and skip' : '+1 week'}
     </button>
   </div>
 );

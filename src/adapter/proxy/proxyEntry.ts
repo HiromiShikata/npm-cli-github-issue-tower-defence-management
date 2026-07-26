@@ -3,9 +3,13 @@ import * as https from 'https';
 import {
   PROXY_PORT,
   hashToken,
+  isFableModel,
   parseModelRateLimitsFromBody,
+  parseSevenDayRejection,
+  writeFableRejection,
   writeModelRateLimit,
   writeRateLimit,
+  writeSubscriptionDisabled,
 } from './RateLimitCache';
 import { ClaudeMessageResponseRepository } from '../../domain/usecases/adapter-interfaces/ClaudeMessageResponseRepository';
 import { parseClaudeMessageResponse } from './ClaudeMessageResponseParser';
@@ -29,12 +33,65 @@ const extractToken = (
   return token.length > 0 ? token : null;
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+
+const isPermissionError = (body: string): boolean => {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return false;
+  }
+  if (!isRecord(parsed)) return false;
+  const error = parsed.error;
+  if (!isRecord(error)) return false;
+  return error.type === 'permission_error';
+};
+
+const matchModelInBody = (requestBody: string): string | null => {
+  const match = requestBody.match(/"model"\s*:\s*"([^"]+)"/);
+  return match !== null ? match[1] : null;
+};
+
+const extractRequestModel = (requestBody: string): string | null => {
+  try {
+    const parsed: unknown = JSON.parse(requestBody);
+    if (isRecord(parsed) && typeof parsed.model === 'string') {
+      return parsed.model;
+    }
+    return null;
+  } catch {
+    return matchModelInBody(requestBody);
+  }
+};
+
+const parseRetryAfterSeconds = (
+  headers: http.IncomingHttpHeaders,
+): number | null => {
+  const raw = headers['retry-after'];
+  const value =
+    typeof raw === 'string' ? raw : Array.isArray(raw) ? raw[0] : null;
+  if (typeof value !== 'string') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
 const startProxy = (
   port: number,
   claudeMessageResponseRepository: ClaudeMessageResponseRepository | null = null,
 ): http.Server => {
   const server = http.createServer((clientRequest, clientResponse) => {
     const token = extractToken(clientRequest.headers['authorization']);
+    const requestChunks: Uint8Array[] = [];
+    let requestBytes = 0;
+    if (token !== null) {
+      clientRequest.on('data', (chunk: Buffer) => {
+        if (requestBytes >= MAX_INSPECTED_BODY_BYTES) return;
+        requestChunks.push(new Uint8Array(chunk));
+        requestBytes += chunk.length;
+      });
+    }
     const upstreamHeaders: Record<string, string | string[] | undefined> = {
       ...clientRequest.headers,
       host: UPSTREAM_HOST,
@@ -72,6 +129,41 @@ const startProxy = (
               writeModelRateLimit(token, limits);
             } catch (error) {
               console.error('Failed to write model rate limit cache:', error);
+            }
+            if (
+              body.includes(
+                'Your organization has disabled Claude subscription access for Claude Code',
+              ) ||
+              (upstreamResponse.statusCode === 403 && isPermissionError(body))
+            ) {
+              try {
+                writeSubscriptionDisabled(token);
+              } catch (error) {
+                console.error(
+                  'Failed to write subscription disabled cache:',
+                  error,
+                );
+              }
+            }
+            if (upstreamResponse.statusCode === 429) {
+              try {
+                const requestModel = extractRequestModel(
+                  Buffer.concat(requestChunks).toString('utf8'),
+                );
+                if (isFableModel(requestModel)) {
+                  const { sevenDayRejected, sevenDayReset } =
+                    parseSevenDayRejection(upstreamResponse.headers);
+                  if (sevenDayRejected) {
+                    writeFableRejection(
+                      token,
+                      parseRetryAfterSeconds(upstreamResponse.headers),
+                      sevenDayReset,
+                    );
+                  }
+                }
+              } catch (error) {
+                console.error('Failed to write fable rejection cache:', error);
+              }
             }
             if (claudeMessageResponseRepository !== null) {
               try {

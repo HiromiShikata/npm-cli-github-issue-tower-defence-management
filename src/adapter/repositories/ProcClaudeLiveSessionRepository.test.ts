@@ -37,12 +37,13 @@ describe('ProcClaudeLiveSessionRepository', () => {
     fs.mkdirSync(path.join(procDirectory, name), { recursive: true });
   };
 
-  it('reads token and session id from a claude process environ', () => {
+  it('uses the config dir as the session key when present', () => {
     writeProcess({
       pid: 101,
       cmdline: '/home/user/.local/share/claude/cli.js\0--print\0',
       environ: {
         CLAUDE_CODE_OAUTH_TOKEN: 'token-a',
+        CLAUDE_CONFIG_DIR: '/home/user/.config/claude-a',
         CLAUDE_CODE_SESSION_ID: 'session-a',
       },
     });
@@ -50,11 +51,11 @@ describe('ProcClaudeLiveSessionRepository', () => {
     const repository = new ProcClaudeLiveSessionRepository(procDirectory);
 
     expect(repository.listLiveSessions()).toEqual([
-      { token: 'token-a', sessionId: 'session-a' },
+      { token: 'token-a', sessionKey: '/home/user/.config/claude-a' },
     ]);
   });
 
-  it('identifies a claude process by the claude executable name', () => {
+  it('falls back to the session id when no config dir is present', () => {
     writeProcess({
       pid: 102,
       cmdline: '/usr/local/bin/claude\0',
@@ -67,8 +68,69 @@ describe('ProcClaudeLiveSessionRepository', () => {
     const repository = new ProcClaudeLiveSessionRepository(procDirectory);
 
     expect(repository.listLiveSessions()).toEqual([
-      { token: 'token-b', sessionId: 'session-b' },
+      { token: 'token-b', sessionKey: 'session-b' },
     ]);
+  });
+
+  it('counts a resumed session with an empty session id by its config dir', () => {
+    writeProcess({
+      pid: 110,
+      cmdline: '/home/user/.local/share/claude/cli.js\0--resume\0abc\0',
+      environ: {
+        CLAUDE_CODE_OAUTH_TOKEN: 'token-resumed',
+        CLAUDE_CONFIG_DIR: '/home/user/.config/claude-resumed',
+        CLAUDE_CODE_SESSION_ID: '',
+      },
+    });
+
+    const repository = new ProcClaudeLiveSessionRepository(procDirectory);
+
+    expect(repository.listLiveSessions()).toEqual([
+      {
+        token: 'token-resumed',
+        sessionKey: '/home/user/.config/claude-resumed',
+      },
+    ]);
+  });
+
+  it('returns one entry per process sharing a config dir so the use case can dedupe to one session', () => {
+    writeProcess({
+      pid: 111,
+      cmdline: '/home/user/.local/share/claude/cli.js\0',
+      environ: {
+        CLAUDE_CODE_OAUTH_TOKEN: 'token-shared',
+        CLAUDE_CONFIG_DIR: '/home/user/.config/claude-shared',
+      },
+    });
+    writeProcess({
+      pid: 112,
+      cmdline: '/home/user/.local/share/claude/cli.js\0',
+      environ: {
+        CLAUDE_CODE_OAUTH_TOKEN: 'token-shared',
+        CLAUDE_CONFIG_DIR: '/home/user/.config/claude-shared',
+      },
+    });
+
+    const repository = new ProcClaudeLiveSessionRepository(procDirectory);
+
+    expect(repository.listLiveSessions()).toEqual([
+      { token: 'token-shared', sessionKey: '/home/user/.config/claude-shared' },
+      { token: 'token-shared', sessionKey: '/home/user/.config/claude-shared' },
+    ]);
+  });
+
+  it('ignores a claude process with a token but neither config dir nor session id', () => {
+    writeProcess({
+      pid: 113,
+      cmdline: '/usr/local/bin/claude\0',
+      environ: {
+        CLAUDE_CODE_OAUTH_TOKEN: 'token-no-key',
+      },
+    });
+
+    const repository = new ProcClaudeLiveSessionRepository(procDirectory);
+
+    expect(repository.listLiveSessions()).toEqual([]);
   });
 
   it('ignores a process without an oauth token (for example an api-key session)', () => {
@@ -101,7 +163,7 @@ describe('ProcClaudeLiveSessionRepository', () => {
     expect(repository.listLiveSessions()).toEqual([]);
   });
 
-  it('returns one entry per child process so the use case can dedupe by session id', () => {
+  it('returns one entry per child process sharing a session id so the use case can dedupe', () => {
     writeProcess({
       pid: 105,
       cmdline: '/home/user/.local/share/claude/cli.js\0',
@@ -122,8 +184,8 @@ describe('ProcClaudeLiveSessionRepository', () => {
     const repository = new ProcClaudeLiveSessionRepository(procDirectory);
 
     expect(repository.listLiveSessions()).toEqual([
-      { token: 'token-e', sessionId: 'session-e' },
-      { token: 'token-e', sessionId: 'session-e' },
+      { token: 'token-e', sessionKey: 'session-e' },
+      { token: 'token-e', sessionKey: 'session-e' },
     ]);
   });
 

@@ -1,6 +1,5 @@
-import ky from 'ky';
-import typia from 'typia';
 import { BaseGitHubRepository } from './BaseGitHubRepository';
+import { postGithubGraphqlJson } from './githubGraphqlClient';
 import { LocalStorageCacheRepository } from './LocalStorageCacheRepository';
 import { LocalStorageRepository } from './LocalStorageRepository';
 import { ProjectRepository } from '../../domain/usecases/adapter-interfaces/ProjectRepository';
@@ -9,23 +8,7 @@ import { normalizeFieldName } from './utils';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
-const DEFAULT_PROJECT_CACHE_TTL_MS = 30 * 60 * 1000;
-
-export const resolveProjectCacheTtlMs = (
-  rawValue: string | undefined,
-): number => {
-  if (rawValue === undefined) {
-    return DEFAULT_PROJECT_CACHE_TTL_MS;
-  }
-  const parsed = Number(rawValue);
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    return DEFAULT_PROJECT_CACHE_TTL_MS;
-  }
-  return parsed;
-};
-
 const PROJECT_ID_DISK_CACHE_KEY_PREFIX = 'projectId';
-const PROJECT_DISK_CACHE_KEY_PREFIX = 'project';
 
 export const convertToFieldOptionColor = (
   color: string,
@@ -63,19 +46,14 @@ export class GraphqlProjectRepository
     LocalStorageCacheRepository,
     'getLatest' | 'set'
   >;
-  private readonly projectCacheTtlMs: number;
 
   constructor(
     localStorageRepository: LocalStorageRepository,
     ghToken: string = process.env.GH_TOKEN || 'dummy',
     projectCache?: Pick<LocalStorageCacheRepository, 'getLatest' | 'set'>,
-    projectCacheTtlMs: number = resolveProjectCacheTtlMs(
-      process.env.TDPM_PROJECT_CACHE_TTL_MS,
-    ),
   ) {
     super(localStorageRepository, ghToken);
     this.projectCache = projectCache;
-    this.projectCacheTtlMs = projectCacheTtlMs;
   }
 
   private readProjectIdFromDiskCache = async (
@@ -89,7 +67,7 @@ export class GraphqlProjectRepository
       cache = await this.projectCache.getLatest(
         `${PROJECT_ID_DISK_CACHE_KEY_PREFIX}-${cacheKey}`,
       );
-    } catch (error) {
+    } catch {
       return null;
     }
     if (!cache) {
@@ -116,51 +94,7 @@ export class GraphqlProjectRepository
         `${PROJECT_ID_DISK_CACHE_KEY_PREFIX}-${cacheKey}`,
         { projectId },
       );
-    } catch (error) {
-      return;
-    }
-  };
-
-  private readProjectFromDiskCache = async (
-    projectId: string,
-  ): Promise<Project | null> => {
-    if (!this.projectCache) {
-      return null;
-    }
-    let cache: { value: object; timestamp: Date } | null;
-    try {
-      cache = await this.projectCache.getLatest(
-        `${PROJECT_DISK_CACHE_KEY_PREFIX}-${projectId}`,
-      );
-    } catch (error) {
-      return null;
-    }
-    if (!cache) {
-      return null;
-    }
-    const age = Date.now() - cache.timestamp.getTime();
-    if (age >= this.projectCacheTtlMs) {
-      return null;
-    }
-    if (!typia.is<Project>(cache.value)) {
-      return null;
-    }
-    return cache.value;
-  };
-
-  private writeProjectToDiskCache = async (
-    projectId: string,
-    project: Project,
-  ): Promise<void> => {
-    if (!this.projectCache) {
-      return;
-    }
-    try {
-      await this.projectCache.set(
-        `${PROJECT_DISK_CACHE_KEY_PREFIX}-${projectId}`,
-        project,
-      );
-    } catch (error) {
+    } catch {
       return;
     }
   };
@@ -236,18 +170,32 @@ export class GraphqlProjectRepository
       errors?: { message: string }[];
     };
     try {
-      response = await ky
-        .post('https://api.github.com/graphql', {
-          json: graphqlQuery,
-          headers: {
-            Authorization: `Bearer ${this.ghToken}`,
-          },
-        })
-        .json();
+      response = await postGithubGraphqlJson<{
+        data?: {
+          organization?: {
+            projectV2?: {
+              id: string;
+              databaseId: number;
+            } | null;
+          } | null;
+          user?: {
+            projectV2?: {
+              id: string;
+              databaseId: number;
+            } | null;
+          } | null;
+        } | null;
+        errors?: { message: string }[];
+      }>({
+        ghToken: this.ghToken,
+        query: graphqlQuery.query,
+        variables: graphqlQuery.variables,
+      });
     } catch (error) {
       this.fetchProjectIdFailedAt.set(cacheKey, Date.now());
       throw new Error(
         `fetchProjectId network error for ${login}/${projectNumber}: ${String(error)}`,
+        { cause: error },
       );
     }
 
@@ -280,10 +228,6 @@ export class GraphqlProjectRepository
     return await this.fetchProjectId(owner, projectNumber);
   };
   getProject = async (projectId: Project['id']): Promise<Project | null> => {
-    const diskCached = await this.readProjectFromDiskCache(projectId);
-    if (diskCached) {
-      return diskCached;
-    }
     const query = `query GetProjectV2($projectId: ID!) {
   node(id: $projectId) {
     ... on ProjectV2 {
@@ -340,51 +284,48 @@ export class GraphqlProjectRepository
     const variables = {
       projectId: projectId,
     };
-    const response = await ky
-      .post('https://api.github.com/graphql', {
-        json: { query, variables },
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-        },
-      })
-      .json<{
-        data?: {
-          node: {
-            id: string;
-            databaseId: number;
-            title: string;
-            shortDescription: string;
-            public: boolean;
-            closed: boolean;
-            createdAt: string;
-            updatedAt: string;
-            number: number;
-            url: string;
-            fields: {
-              nodes: {
-                id: string;
-                databaseId: number;
-                name: string;
-                dataType: string;
-                configuration: {
-                  iterations: {
-                    startDate: string;
-                    duration: string;
-                    title: string;
-                  }[];
-                };
-                options: {
-                  id: string;
-                  name: string;
-                  description: string;
-                  color: string;
+    const response = await postGithubGraphqlJson<{
+      data?: {
+        node: {
+          id: string;
+          databaseId: number;
+          title: string;
+          shortDescription: string;
+          public: boolean;
+          closed: boolean;
+          createdAt: string;
+          updatedAt: string;
+          number: number;
+          url: string;
+          fields: {
+            nodes: {
+              id: string;
+              databaseId: number;
+              name: string;
+              dataType: string;
+              configuration: {
+                iterations: {
+                  startDate: string;
+                  duration: string;
+                  title: string;
                 }[];
+              };
+              options: {
+                id: string;
+                name: string;
+                description: string;
+                color: string;
               }[];
-            };
+            }[];
           };
         };
-        errors?: { message: string }[];
-      }>();
+      };
+      errors?: { message: string }[];
+    }>({
+      ghToken: this.ghToken,
+      query,
+      variables,
+    });
     if (!response.data) {
       const errorMessages = response.errors
         ? response.errors.map((e) => e.message).join('; ')
@@ -428,7 +369,7 @@ export class GraphqlProjectRepository
     const completionDate50PercentConfidence = project.fields.nodes.find(
       (field) => normalizeFieldName(field.name).startsWith('completiondate'),
     );
-    const result: Project = {
+    return {
       id: project.id,
       url: project.url,
       databaseId: project.databaseId,
@@ -489,8 +430,6 @@ export class GraphqlProjectRepository
           }
         : null,
     };
-    await this.writeProjectToDiskCache(projectId, result);
-    return result;
   };
   getByUrl = async (url: string): Promise<Project> => {
     const projectId = await this.findProjectIdByUrl(url);
@@ -538,22 +477,19 @@ export class GraphqlProjectRepository
         description,
       })),
     };
-    const response = await ky
-      .post('https://api.github.com/graphql', {
-        json: { query: mutation, variables },
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-        },
-      })
-      .json<{
-        data: {
-          updateProjectV2Field: {
-            projectV2Field: {
-              options: FieldOption[];
-            };
+    const response = await postGithubGraphqlJson<{
+      data: {
+        updateProjectV2Field: {
+          projectV2Field: {
+            options: FieldOption[];
           };
         };
-      }>();
+      };
+    }>({
+      ghToken: this.ghToken,
+      query: mutation,
+      variables,
+    });
     return response.data.updateProjectV2Field.projectV2Field.options;
   };
   updateStatusList = async (
@@ -588,22 +524,19 @@ export class GraphqlProjectRepository
         description,
       })),
     };
-    const response = await ky
-      .post('https://api.github.com/graphql', {
-        json: { query: mutation, variables },
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-        },
-      })
-      .json<{
-        data: {
-          updateProjectV2Field: {
-            projectV2Field: {
-              options: FieldOption[];
-            };
+    const response = await postGithubGraphqlJson<{
+      data: {
+        updateProjectV2Field: {
+          projectV2Field: {
+            options: FieldOption[];
           };
         };
-      }>();
+      };
+    }>({
+      ghToken: this.ghToken,
+      query: mutation,
+      variables,
+    });
     return response.data.updateProjectV2Field.projectV2Field.options;
   };
 }

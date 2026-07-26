@@ -10,7 +10,6 @@ export declare class RevertOrphanedPreparationUseCase {
     constructor(projectRepository: Pick<ProjectRepository, 'findProjectIdByUrl' | 'getProject'>, issueRepository: Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest'>, issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>, localCommandRunner: LocalCommandRunner);
     run: (params: {
         projectUrl: string;
-        allowIssueCacheMinutes: number;
         preparationProcessCheckCommand: string;
         thresholdForAutoReject: number;
         awLogDirectoryPath?: string;

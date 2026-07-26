@@ -5,6 +5,7 @@ export declare class ProcClaudeLiveSessionRepository implements ClaudeLiveSessio
     listLiveSessions: () => ClaudeLiveSession[];
     private listProcessIdDirectories;
     private readLiveSession;
+    private deriveSessionKey;
     private isClaudeProcess;
     private readEnviron;
 }

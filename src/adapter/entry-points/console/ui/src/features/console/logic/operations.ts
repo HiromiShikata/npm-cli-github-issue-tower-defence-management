@@ -1,7 +1,22 @@
+import type { ConsoleReviewCommentSide } from '../lib/consoleApi';
 import type { ConsoleFieldOption, ConsoleTabName } from './types';
 
 export const TOTALLY_WRONG_COMMENT_BODY = 'totally wrong';
 export const UNNECESSARY_COMMENT_BODY = 'This pull request is unnecessary.';
+
+export type ConsolePendingReviewComment = {
+  path: string;
+  line: number;
+  side: ConsoleReviewCommentSide;
+  body: string;
+};
+
+export const buildRequestChangesBody = (
+  comments: ConsolePendingReviewComment[],
+): string =>
+  comments
+    .map((comment) => `${comment.path}:${comment.line} ${comment.body}`)
+    .join('\n\n');
 
 export type ConsoleReviewAction =
   | 'approve'
@@ -26,10 +41,11 @@ export const STATUS_BUTTON_NAMES: string[] = [
   'In Tmux by agent',
   'In Tmux by human',
   'Todo by human',
+  'Todo by agent',
   'Awaiting Workspace',
 ];
 
 export const IN_TMUX_BY_HUMAN_NAME = 'In Tmux by human';
 
-export const isTodoByHumanTab = (tab: ConsoleTabName): boolean =>
-  tab === 'todo-by-human';
+export const isManualTriageTab = (tab: ConsoleTabName): boolean =>
+  tab === 'todo-by-human' || tab === 'todo-by-agent';

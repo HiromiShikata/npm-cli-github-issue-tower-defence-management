@@ -22,6 +22,8 @@ import { HTTPError } from 'ky';
 import {
   GraphqlProjectItemRepository,
   PAGINATION_DELAY_MS,
+  PROJECT_ITEM_ASSIGNEES_FIRST,
+  PROJECT_ITEM_LABELS_FIRST,
   RATE_LIMIT_MAX_RETRIES,
   callWithRateLimitRetry,
 } from './GraphqlProjectItemRepository';
@@ -158,6 +160,66 @@ describe('GraphqlProjectItemRepository', () => {
     afterEach(() => {
       jest.useRealTimers();
       mockPost.mockReset();
+    });
+
+    it('requests the reduced labels and assignees selection sizes', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost.mockReturnValueOnce(makePageResponse(false, 'cursor-1', 1));
+
+      await repository.fetchProjectItems('test-project-id');
+
+      expect(PROJECT_ITEM_LABELS_FIRST).toBe(20);
+      expect(PROJECT_ITEM_ASSIGNEES_FIRST).toBe(10);
+      const sentQuery = extractRequestedQueryFromMockCall(
+        mockPost.mock.calls[0],
+      );
+      expect(sentQuery).toContain(
+        `labels(first: ${PROJECT_ITEM_LABELS_FIRST})`,
+      );
+      expect(sentQuery).toContain(
+        `assignees(first: ${PROJECT_ITEM_ASSIGNEES_FIRST})`,
+      );
+      expect(sentQuery).not.toContain('labels(first: 100)');
+      expect(sentQuery).not.toContain('assignees(first: 20)');
+    });
+
+    it('logs the rateLimit cost of the request in one line', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            node: {
+              items: {
+                totalCount: 0,
+                pageInfo: {
+                  endCursor: 'cursor-1',
+                  startCursor: 'cursor-start',
+                  hasNextPage: false,
+                },
+                nodes: [],
+              },
+            },
+            rateLimit: { cost: 3, remaining: 4200 },
+          },
+        }),
+      );
+      const consoleLogSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+      try {
+        await repository.fetchProjectItems('test-project-id');
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+          'githubGraphqlClient: query=GetProjectItems cost=3 remaining=4200',
+        );
+      } finally {
+        consoleLogSpy.mockRestore();
+      }
     });
 
     it('should sleep between paginated requests to avoid 403', async () => {
@@ -466,7 +528,7 @@ describe('GraphqlProjectItemRepository', () => {
       expect(requestedFirstSeries).toEqual([100, 50, 25, 12, 6, 3, 1]);
     });
 
-    it('should not sleep the legacy 5000ms blanket delay between pages', async () => {
+    it('should sleep the 5000ms blanket delay between pages', async () => {
       const localStorageRepository = new LocalStorageRepository();
       const repository = new GraphqlProjectItemRepository(
         localStorageRepository,
@@ -483,11 +545,8 @@ describe('GraphqlProjectItemRepository', () => {
       const result = await resultPromise;
 
       expect(result).toHaveLength(2);
-      expect(PAGINATION_DELAY_MS).toBeLessThanOrEqual(500);
-      expect(setTimeoutSpy).not.toHaveBeenCalledWith(
-        expect.any(Function),
-        5000,
-      );
+      expect(PAGINATION_DELAY_MS).toBe(5000);
+      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 5000);
       setTimeoutSpy.mockRestore();
     });
 
@@ -605,6 +664,448 @@ describe('GraphqlProjectItemRepository', () => {
       );
       expect(requestedFirstSeries.every((first) => first === 100)).toBe(true);
     }, 30000);
+  });
+
+  const extractRequestedVariablesFromMockCall = (
+    call: unknown,
+  ): Record<string, unknown> | undefined => {
+    if (!Array.isArray(call)) {
+      return undefined;
+    }
+    const second: unknown = call[1];
+    if (!isRecord(second)) {
+      return undefined;
+    }
+    const json: unknown = second.json;
+    if (!isRecord(json)) {
+      return undefined;
+    }
+    const variables: unknown = json.variables;
+    return isRecord(variables) ? variables : undefined;
+  };
+
+  describe('fetchProjectItemsLight', () => {
+    const makeLightPageResponse = (
+      hasNextPage: boolean,
+      endCursor: string,
+      nodes: {
+        id: string;
+        updatedAt: string;
+        content: { url: string; number: number } | null;
+      }[],
+      totalCount = nodes.length,
+    ) =>
+      mockJsonResponse({
+        data: {
+          node: {
+            items: {
+              totalCount,
+              pageInfo: { endCursor, hasNextPage },
+              nodes,
+            },
+          },
+        },
+      });
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+      mockPost.mockReset();
+    });
+
+    it('requests only id, updatedAt and content url/number without fieldValues and passes the query filter', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost.mockReturnValueOnce(
+        makeLightPageResponse(false, 'cursor-1', [
+          {
+            id: 'PVTI_1',
+            updatedAt: '2026-07-07T10:00:00Z',
+            content: {
+              url: 'https://github.com/o/r/issues/1',
+              number: 1,
+            },
+          },
+        ]),
+      );
+
+      const result = await repository.fetchProjectItemsLight(
+        'test-project-id',
+        'updated:>=2026-07-07',
+      );
+
+      const sentQuery = extractRequestedQueryFromMockCall(
+        mockPost.mock.calls[0],
+      );
+      expect(sentQuery).toContain('updatedAt');
+      expect(sentQuery).toContain('url');
+      expect(sentQuery).toContain('number');
+      expect(sentQuery).not.toContain('fieldValues');
+      const sentVariables = extractRequestedVariablesFromMockCall(
+        mockPost.mock.calls[0],
+      );
+      expect(sentVariables?.query).toBe('updated:>=2026-07-07');
+      expect(result).toEqual([
+        {
+          id: 'PVTI_1',
+          updatedAt: '2026-07-07T10:00:00Z',
+          url: 'https://github.com/o/r/issues/1',
+          number: 1,
+        },
+      ]);
+    });
+
+    it('paginates all pages and accumulates every light item', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost
+        .mockReturnValueOnce(
+          makeLightPageResponse(
+            true,
+            'cursor-1',
+            [
+              {
+                id: 'PVTI_1',
+                updatedAt: '2026-07-07T10:00:00Z',
+                content: { url: 'https://github.com/o/r/issues/1', number: 1 },
+              },
+            ],
+            2,
+          ),
+        )
+        .mockReturnValueOnce(
+          makeLightPageResponse(
+            false,
+            'cursor-2',
+            [
+              {
+                id: 'PVTI_2',
+                updatedAt: '2026-07-07T11:00:00Z',
+                content: { url: 'https://github.com/o/r/issues/2', number: 2 },
+              },
+            ],
+            2,
+          ),
+        );
+
+      const resultPromise = repository.fetchProjectItemsLight(
+        'test-project-id',
+        'updated:>=2026-07-07',
+      );
+      await jest.advanceTimersByTimeAsync(PAGINATION_DELAY_MS);
+      const result = await resultPromise;
+
+      expect(mockPost).toHaveBeenCalledTimes(2);
+      expect(result.map((item) => item.id)).toEqual(['PVTI_1', 'PVTI_2']);
+    });
+
+    it('skips nodes whose content has no url (draft items) but still counts them for totalCount', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost.mockReturnValueOnce(
+        makeLightPageResponse(
+          false,
+          'cursor-1',
+          [
+            {
+              id: 'PVTI_draft',
+              updatedAt: '2026-07-07T10:00:00Z',
+              content: null,
+            },
+            {
+              id: 'PVTI_1',
+              updatedAt: '2026-07-07T10:00:00Z',
+              content: { url: 'https://github.com/o/r/issues/1', number: 1 },
+            },
+          ],
+          2,
+        ),
+      );
+
+      const result = await repository.fetchProjectItemsLight(
+        'test-project-id',
+        'updated:>=2026-07-07',
+      );
+
+      expect(result.map((item) => item.id)).toEqual(['PVTI_1']);
+    });
+
+    it('retries the full fetch exactly once when the last page reports fewer accumulated items than totalCount and returns the consistent retry result', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost
+        .mockReturnValueOnce(
+          makeLightPageResponse(
+            false,
+            'cursor-1',
+            [
+              {
+                id: 'PVTI_1',
+                updatedAt: '2026-07-07T10:00:00Z',
+                content: { url: 'https://github.com/o/r/issues/1', number: 1 },
+              },
+            ],
+            2,
+          ),
+        )
+        .mockReturnValueOnce(
+          makeLightPageResponse(
+            false,
+            'cursor-1',
+            [
+              {
+                id: 'PVTI_1',
+                updatedAt: '2026-07-07T10:00:00Z',
+                content: { url: 'https://github.com/o/r/issues/1', number: 1 },
+              },
+              {
+                id: 'PVTI_2',
+                updatedAt: '2026-07-07T11:00:00Z',
+                content: { url: 'https://github.com/o/r/issues/2', number: 2 },
+              },
+            ],
+            2,
+          ),
+        );
+
+      const result = await repository.fetchProjectItemsLight(
+        'test-project-id',
+        'updated:>=2026-07-07',
+      );
+
+      expect(mockPost).toHaveBeenCalledTimes(2);
+      expect(result.map((item) => item.id)).toEqual(['PVTI_1', 'PVTI_2']);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'page 1 has 1 nodes with hasNextPage=false but only 1/2 items accumulated',
+        ),
+      );
+      warnSpy.mockRestore();
+    });
+
+    it('warns and returns the accumulated items without throwing when the retry is still inconsistent', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      const inconsistentPage = () =>
+        makeLightPageResponse(
+          false,
+          'cursor-1',
+          [
+            {
+              id: 'PVTI_1',
+              updatedAt: '2026-07-07T10:00:00Z',
+              content: { url: 'https://github.com/o/r/issues/1', number: 1 },
+            },
+          ],
+          2,
+        );
+      mockPost
+        .mockReturnValueOnce(inconsistentPage())
+        .mockReturnValueOnce(inconsistentPage());
+
+      const result = await repository.fetchProjectItemsLight(
+        'test-project-id',
+        'updated:>=2026-07-07',
+      );
+
+      expect(mockPost).toHaveBeenCalledTimes(2);
+      expect(result.map((item) => item.id)).toEqual(['PVTI_1']);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'page 1 has 1 nodes with hasNextPage=false but only 1/2 items accumulated',
+        ),
+      );
+      warnSpy.mockRestore();
+    });
+
+    it('retries exactly once when the accumulated count exceeds totalCount after the loop and returns the consistent retry result', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost
+        .mockReturnValueOnce(
+          makeLightPageResponse(
+            false,
+            'cursor-1',
+            [
+              {
+                id: 'PVTI_1',
+                updatedAt: '2026-07-07T10:00:00Z',
+                content: { url: 'https://github.com/o/r/issues/1', number: 1 },
+              },
+              {
+                id: 'PVTI_2',
+                updatedAt: '2026-07-07T11:00:00Z',
+                content: { url: 'https://github.com/o/r/issues/2', number: 2 },
+              },
+            ],
+            1,
+          ),
+        )
+        .mockReturnValueOnce(
+          makeLightPageResponse(
+            false,
+            'cursor-1',
+            [
+              {
+                id: 'PVTI_1',
+                updatedAt: '2026-07-07T10:00:00Z',
+                content: { url: 'https://github.com/o/r/issues/1', number: 1 },
+              },
+            ],
+            1,
+          ),
+        );
+
+      const result = await repository.fetchProjectItemsLight(
+        'test-project-id',
+        'updated:>=2026-07-07',
+      );
+
+      expect(mockPost).toHaveBeenCalledTimes(2);
+      expect(result.map((item) => item.id)).toEqual(['PVTI_1']);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('expected 1 items but accumulated 2'),
+      );
+      warnSpy.mockRestore();
+    });
+  });
+
+  describe('fetchProjectItemsByIds', () => {
+    const makeByIdsResponse = (nodes: (Record<string, unknown> | null)[]) =>
+      mockJsonResponse({
+        data: {
+          nodes,
+        },
+      });
+
+    const makeDetailNode = (id: string, url: string, title: string) => ({
+      id,
+      fieldValues: {
+        nodes: [
+          {
+            name: 'In Progress',
+            field: { name: 'Status' },
+          },
+        ],
+      },
+      content: {
+        repository: { nameWithOwner: 'o/r' },
+        number: 1,
+        title,
+        state: 'OPEN',
+        url,
+        createdAt: '2026-07-01T00:00:00Z',
+        updatedAt: '2026-07-07T10:00:00Z',
+        author: { login: 'octocat' },
+        labels: { nodes: [{ name: 'bug' }] },
+        assignees: { nodes: [{ login: 'octocat' }] },
+      },
+    });
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+      mockPost.mockReset();
+    });
+
+    it('returns an empty array and makes no request when ids is empty', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+
+      const result = await repository.fetchProjectItemsByIds([]);
+
+      expect(result).toEqual([]);
+      expect(mockPost).not.toHaveBeenCalled();
+    });
+
+    it('fetches full detail via nodes(ids:) and maps each to a ProjectItem', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost.mockReturnValueOnce(
+        makeByIdsResponse([
+          makeDetailNode('PVTI_1', 'https://github.com/o/r/issues/1', 'first'),
+          null,
+        ]),
+      );
+
+      const result = await repository.fetchProjectItemsByIds(['PVTI_1', 'bad']);
+
+      const sentQuery = extractRequestedQueryFromMockCall(
+        mockPost.mock.calls[0],
+      );
+      expect(sentQuery).toContain('nodes(ids: $ids)');
+      expect(sentQuery).toContain('... on ProjectV2Item');
+      expect(sentQuery).toContain('fieldValues');
+      const sentVariables = extractRequestedVariablesFromMockCall(
+        mockPost.mock.calls[0],
+      );
+      expect(sentVariables?.ids).toEqual(['PVTI_1', 'bad']);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        expect.objectContaining({
+          id: 'PVTI_1',
+          url: 'https://github.com/o/r/issues/1',
+          title: 'first',
+          body: null,
+          labels: ['bug'],
+          assignees: ['octocat'],
+          customFields: [{ name: 'Status', value: 'In Progress' }],
+        }),
+      );
+    });
+
+    it('batches ids into groups of at most 100', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      const ids = Array.from(
+        { length: 150 },
+        (_unused, index) => `PVTI_${index}`,
+      );
+      mockPost
+        .mockReturnValueOnce(makeByIdsResponse([]))
+        .mockReturnValueOnce(makeByIdsResponse([]));
+
+      const resultPromise = repository.fetchProjectItemsByIds(ids);
+      await jest.advanceTimersByTimeAsync(PAGINATION_DELAY_MS);
+      await resultPromise;
+
+      expect(mockPost).toHaveBeenCalledTimes(2);
+      const firstBatch = extractRequestedVariablesFromMockCall(
+        mockPost.mock.calls[0],
+      );
+      const secondBatch = extractRequestedVariablesFromMockCall(
+        mockPost.mock.calls[1],
+      );
+      expect(firstBatch?.ids).toHaveLength(100);
+      expect(secondBatch?.ids).toHaveLength(50);
+    });
   });
 
   describe('callWithRateLimitRetry', () => {
@@ -910,6 +1411,36 @@ describe('GraphqlProjectItemRepository', () => {
 
       const result = await repository.fetchProjectItemByUrl(
         'https://github.com/owner/repo/issues/123',
+      );
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null when repository is null (NOT_FOUND partial result) instead of throwing', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            repository: null,
+          },
+          errors: [
+            {
+              type: 'NOT_FOUND',
+              path: ['repository'],
+              message:
+                'Could not resolve to a Repository with the name owner/repo.',
+            },
+          ],
+        }),
+      );
+
+      const result = await repository.fetchProjectItemByUrl(
+        'https://github.com/owner/repo/issues/2350',
       );
 
       expect(result).toBeNull();

@@ -9,6 +9,19 @@ export type OauthTokenCandidate = {
   name: string;
   token: string;
   snapshot: OauthTokenWindowSnapshot | null;
+  subscriptionDisabled: boolean;
+  unifiedRejected: boolean;
+  fableRejected: boolean;
+  selectionWeight?: number;
+};
+
+export type SelectionRandom = () => number;
+
+export const DEFAULT_SELECTION_WEIGHT = 1;
+
+export const selectionWeightOf = (candidate: OauthTokenCandidate): number => {
+  const weight = candidate.selectionWeight ?? DEFAULT_SELECTION_WEIGHT;
+  return weight > 0 ? weight : 0;
 };
 
 export type OauthTokenCandidateMetrics = {
@@ -29,12 +42,40 @@ const SECONDS_PER_DAY = 86400;
 const SEVEN_DAYS_IN_SECONDS = 7 * SECONDS_PER_DAY;
 
 export const FIVE_HOUR_MIN_FREE_RATIO = 0.6;
-export const SEVEN_DAY_MIN_FREE_RATIO = 0.3;
+export const SEVEN_DAY_MIN_FREE_RATIO = 0.07;
+
+export const selectWeightedCandidate = <Entry>(
+  eligible: Entry[],
+  candidateOf: (entry: Entry) => OauthTokenCandidate,
+  deterministicBest: Entry,
+  random: SelectionRandom,
+): Entry => {
+  if (eligible.length <= 1) {
+    return deterministicBest;
+  }
+  const weights = eligible.map((entry) =>
+    selectionWeightOf(candidateOf(entry)),
+  );
+  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+  const uniform = weights.every((weight) => weight === weights[0]);
+  if (uniform || totalWeight <= 0) {
+    return deterministicBest;
+  }
+  let threshold = random() * totalWeight;
+  for (let index = 0; index < eligible.length; index += 1) {
+    threshold -= weights[index];
+    if (threshold < 0) {
+      return eligible[index];
+    }
+  }
+  return eligible[eligible.length - 1];
+};
 
 export class OauthTokenSelectUseCase {
   run = (
     candidates: OauthTokenCandidate[],
     nowEpochSeconds: number,
+    random: SelectionRandom = Math.random,
   ): OauthTokenSelectResult => {
     const evaluated = candidates.map((candidate) => ({
       candidate,
@@ -48,13 +89,20 @@ export class OauthTokenSelectUseCase {
       return { selected: null, metrics };
     }
 
-    const best = eligible.reduce((bestEntry, currentEntry) =>
+    const deterministicBest = eligible.reduce((bestEntry, currentEntry) =>
       currentEntry.metric.sevenDayEndEpoch < bestEntry.metric.sevenDayEndEpoch
         ? currentEntry
         : bestEntry,
     );
 
-    return { selected: best.candidate, metrics };
+    const selected = selectWeightedCandidate(
+      eligible,
+      (entry) => entry.candidate,
+      deterministicBest,
+      random,
+    );
+
+    return { selected: selected.candidate, metrics };
   };
 
   private evaluate = (
@@ -75,6 +123,9 @@ export class OauthTokenSelectUseCase {
     );
 
     const exclusionReason = this.exclusionReason(
+      candidate.subscriptionDisabled,
+      candidate.unifiedRejected,
+      candidate.fableRejected,
       fiveHourFreeRatio,
       sevenDayFreeRatio,
     );
@@ -90,9 +141,21 @@ export class OauthTokenSelectUseCase {
   };
 
   private exclusionReason = (
+    subscriptionDisabled: boolean,
+    unifiedRejected: boolean,
+    fableRejected: boolean,
     fiveHourFreeRatio: number,
     sevenDayFreeRatio: number,
   ): string | null => {
+    if (subscriptionDisabled) {
+      return 'organization has disabled Claude subscription access for Claude Code';
+    }
+    if (unifiedRejected) {
+      return 'token request was rejected (anthropic-ratelimit-unified-status: rejected)';
+    }
+    if (fableRejected) {
+      return 'fable weekly limit exhausted (a fable request was rejected with HTTP 429)';
+    }
     if (fiveHourFreeRatio < FIVE_HOUR_MIN_FREE_RATIO) {
       return `5h window only ${this.toPercent(fiveHourFreeRatio)}% free (requires >= ${this.toPercent(FIVE_HOUR_MIN_FREE_RATIO)}%)`;
     }

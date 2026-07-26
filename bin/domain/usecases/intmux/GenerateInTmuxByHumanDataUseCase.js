@@ -6,7 +6,7 @@ const UNKNOWN_STORY_SORT_INDEX = 999999;
 class GenerateInTmuxByHumanDataUseCase {
     constructor() {
         this.run = (input) => {
-            const { project, issues, pjcode, assigneeLogin, org, repo, consoleBaseUrl, consoleToken, } = input;
+            const { project, issues, pjcode, assigneeLogin, org, repo, newIssueRepo, consoleBaseUrl, consoleToken, } = input;
             const storyOrder = project.story
                 ? project.story.stories.map((option) => option.name)
                 : [];
@@ -47,7 +47,7 @@ class GenerateInTmuxByHumanDataUseCase {
                     version: 4,
                     overviewUrl,
                     tdpmConsoleUrl: `${tdpmConsoleUrl}?k=${consoleToken}`,
-                    newIssueUrl: `https://github.com/${org}/${repo}/issues/new?assignees=${assigneeLogin}`,
+                    newIssueUrl: `https://github.com/${org}/${newIssueRepo ?? repo}/issues/new?assignees=${assigneeLogin}`,
                     groups: v4Groups,
                 }
                 : null;

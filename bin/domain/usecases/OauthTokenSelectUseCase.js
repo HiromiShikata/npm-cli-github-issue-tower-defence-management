@@ -1,13 +1,39 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.OauthTokenSelectUseCase = exports.SEVEN_DAY_MIN_FREE_RATIO = exports.FIVE_HOUR_MIN_FREE_RATIO = void 0;
+exports.OauthTokenSelectUseCase = exports.selectWeightedCandidate = exports.SEVEN_DAY_MIN_FREE_RATIO = exports.FIVE_HOUR_MIN_FREE_RATIO = exports.selectionWeightOf = exports.DEFAULT_SELECTION_WEIGHT = void 0;
+exports.DEFAULT_SELECTION_WEIGHT = 1;
+const selectionWeightOf = (candidate) => {
+    const weight = candidate.selectionWeight ?? exports.DEFAULT_SELECTION_WEIGHT;
+    return weight > 0 ? weight : 0;
+};
+exports.selectionWeightOf = selectionWeightOf;
 const SECONDS_PER_DAY = 86400;
 const SEVEN_DAYS_IN_SECONDS = 7 * SECONDS_PER_DAY;
 exports.FIVE_HOUR_MIN_FREE_RATIO = 0.6;
-exports.SEVEN_DAY_MIN_FREE_RATIO = 0.3;
+exports.SEVEN_DAY_MIN_FREE_RATIO = 0.07;
+const selectWeightedCandidate = (eligible, candidateOf, deterministicBest, random) => {
+    if (eligible.length <= 1) {
+        return deterministicBest;
+    }
+    const weights = eligible.map((entry) => (0, exports.selectionWeightOf)(candidateOf(entry)));
+    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+    const uniform = weights.every((weight) => weight === weights[0]);
+    if (uniform || totalWeight <= 0) {
+        return deterministicBest;
+    }
+    let threshold = random() * totalWeight;
+    for (let index = 0; index < eligible.length; index += 1) {
+        threshold -= weights[index];
+        if (threshold < 0) {
+            return eligible[index];
+        }
+    }
+    return eligible[eligible.length - 1];
+};
+exports.selectWeightedCandidate = selectWeightedCandidate;
 class OauthTokenSelectUseCase {
     constructor() {
-        this.run = (candidates, nowEpochSeconds) => {
+        this.run = (candidates, nowEpochSeconds, random = Math.random) => {
             const evaluated = candidates.map((candidate) => ({
                 candidate,
                 metric: this.evaluate(candidate, nowEpochSeconds),
@@ -17,16 +43,17 @@ class OauthTokenSelectUseCase {
             if (eligible.length === 0) {
                 return { selected: null, metrics };
             }
-            const best = eligible.reduce((bestEntry, currentEntry) => currentEntry.metric.sevenDayEndEpoch < bestEntry.metric.sevenDayEndEpoch
+            const deterministicBest = eligible.reduce((bestEntry, currentEntry) => currentEntry.metric.sevenDayEndEpoch < bestEntry.metric.sevenDayEndEpoch
                 ? currentEntry
                 : bestEntry);
-            return { selected: best.candidate, metrics };
+            const selected = (0, exports.selectWeightedCandidate)(eligible, (entry) => entry.candidate, deterministicBest, random);
+            return { selected: selected.candidate, metrics };
         };
         this.evaluate = (candidate, nowEpochSeconds) => {
             const fiveHourFreeRatio = this.fiveHourFreeRatio(candidate.snapshot, nowEpochSeconds);
             const sevenDayFreeRatio = this.sevenDayFreeRatio(candidate.snapshot, nowEpochSeconds);
             const sevenDayEndEpoch = this.sevenDayEndEpoch(candidate.snapshot, nowEpochSeconds);
-            const exclusionReason = this.exclusionReason(fiveHourFreeRatio, sevenDayFreeRatio);
+            const exclusionReason = this.exclusionReason(candidate.subscriptionDisabled, candidate.unifiedRejected, candidate.fableRejected, fiveHourFreeRatio, sevenDayFreeRatio);
             return {
                 name: candidate.name,
                 fiveHourFreeRatio,
@@ -36,7 +63,16 @@ class OauthTokenSelectUseCase {
                 exclusionReason,
             };
         };
-        this.exclusionReason = (fiveHourFreeRatio, sevenDayFreeRatio) => {
+        this.exclusionReason = (subscriptionDisabled, unifiedRejected, fableRejected, fiveHourFreeRatio, sevenDayFreeRatio) => {
+            if (subscriptionDisabled) {
+                return 'organization has disabled Claude subscription access for Claude Code';
+            }
+            if (unifiedRejected) {
+                return 'token request was rejected (anthropic-ratelimit-unified-status: rejected)';
+            }
+            if (fableRejected) {
+                return 'fable weekly limit exhausted (a fable request was rejected with HTTP 429)';
+            }
             if (fiveHourFreeRatio < exports.FIVE_HOUR_MIN_FREE_RATIO) {
                 return `5h window only ${this.toPercent(fiveHourFreeRatio)}% free (requires >= ${this.toPercent(exports.FIVE_HOUR_MIN_FREE_RATIO)}%)`;
             }

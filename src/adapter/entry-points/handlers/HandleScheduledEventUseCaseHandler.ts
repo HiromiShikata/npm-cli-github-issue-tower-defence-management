@@ -9,6 +9,10 @@ import { writeTokenStatus } from './tokenStatusWriter';
 import { writeInTmuxByHumanData } from './inTmuxByHumanDataWriter';
 import { reconcileInTmuxByHumanSessions } from './inTmuxByHumanSessionReconciler';
 import { cleanStaleTmuxSessions } from './staleTmuxSessionCleaner';
+import {
+  notifySilentTmuxSessions,
+  DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS,
+} from './notifySilentTmuxSessions';
 import { writeRotationOrderFile } from './rotationOrderFileWriter';
 import {
   fetchProjectReadme,
@@ -61,10 +65,28 @@ import {
 
 const DEFAULT_DASHBOARD_DATA_DIR: string | null = null;
 
+const readSilentSeconds = (
+  configValue: number | undefined,
+  envValue: string | undefined,
+  defaultValue: number,
+): number => {
+  if (configValue !== undefined) {
+    return configValue;
+  }
+  if (envValue !== undefined) {
+    const parsed = Number(envValue);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return defaultValue;
+};
+
 export class HandleScheduledEventUseCaseHandler {
   handle = async (
     configFilePath: string,
     _verbose: boolean,
+    inTmuxProjectOrderOverride: string[] | null = null,
   ): Promise<{
     project: Project;
     issues: Issue[];
@@ -75,18 +97,42 @@ export class HandleScheduledEventUseCaseHandler {
     const input: unknown = YAML.parse(configFileContent);
     type inputType = Omit<
       Parameters<HandleScheduledEventUseCase['run']>[0],
-      'allowedIssueAuthors'
+      'allowedIssueAuthors' | 'autoAssignManagerAuthors'
     > & {
       allowedIssueAuthors?: string | string[] | null;
+      autoAssignManagerAuthors?: string | string[] | null;
       claudeCodeOauthTokenListJsonPath?: string;
       consoleDataOutputDir?: string;
       dashboardDataDir?: string;
+      disks?: { title: string; mountpoint: string }[];
       workflowBlockerStoryName?: string;
       inTmuxDataOutputDir?: string;
+      newIssueRepo?: string;
       inTmuxConsoleBaseUrl?: string;
       inTmuxConsoleToken?: string;
       inTmuxProjectOrder?: string[];
       inTmuxLauncherCommand?: string;
+      silentNotificationEnabled?: boolean;
+      ownerCallMarker?: string;
+      subAgentOutputRootDirectory?: string;
+      subAgentProcessMatchPattern?: string;
+      subAgentTranscriptRootDirectory?: string;
+      mainSilentThresholdSeconds?: number;
+      unansweredOwnerCallGraceSeconds?: number;
+      subAgentSilentThresholdSeconds?: number;
+      subAgentRunningThresholdSeconds?: number;
+      silentNotificationStaggerSeconds?: number;
+      candidateDebounceRecencyWindowSeconds?: number;
+      candidateDebounceStateFilePath?: string;
+      activeHubTaskStatus?: string;
+      hubTaskStatusCacheStateFilePath?: string;
+      hubTaskStatusCacheTtlSeconds?: number;
+      silentMainStalledMessage?: string;
+      silentMainStalledStaleOwnerCallMessage?: string;
+      silentSubAgentIdleMessageHeader?: string;
+      silentSubAgentIdleMessageFooter?: string;
+      silentSubAgentLongRunningMessageHeader?: string;
+      silentSubAgentLongRunningMessageFooter?: string;
       credentials: {
         manager: {
           github: {
@@ -142,8 +188,9 @@ export class HandleScheduledEventUseCaseHandler {
       allowedIssueAuthors: normalizeAllowedIssueAuthors(
         input.allowedIssueAuthors,
       ),
-      allowIssueCacheMinutes:
-        readmeConfig.allowIssueCacheMinutes ?? input.allowIssueCacheMinutes,
+      autoAssignManagerAuthors: normalizeAllowedIssueAuthors(
+        readmeConfig.autoAssignManagerAuthors ?? input.autoAssignManagerAuthors,
+      ),
       claudeCodeOauthTokenListJsonPath:
         readmeConfig.claudeCodeOauthTokenListJsonPath ??
         input.claudeCodeOauthTokenListJsonPath,
@@ -262,6 +309,8 @@ export class HandleScheduledEventUseCaseHandler {
       restIssueRepository,
       graphqlProjectItemRepository,
       localStorageCacheRepository,
+      projectRepository,
+      systemDateRepository,
       ...githubRepositoryParams,
     );
     const setupTowerDefenceProjectUseCase = new SetupTowerDefenceProjectUseCase(
@@ -398,7 +447,6 @@ export class HandleScheduledEventUseCaseHandler {
             mergedInput.startPreparation?.maximumPreparingIssuesCount ?? null,
           utilizationPercentageThreshold:
             mergedInput.startPreparation?.utilizationPercentageThreshold ?? 90,
-          allowIssueCacheMinutes: mergedInput.allowIssueCacheMinutes,
           thresholdForAutoReject: 3,
         },
         preparationProcessCheckCommand:
@@ -446,6 +494,7 @@ export class HandleScheduledEventUseCaseHandler {
         await writeMachineStatus({
           dashboardDataDir,
           allIssuesCacheDir: `${cachePath}/allIssues-${result.project.id}`,
+          disks: mergedInput.disks ?? null,
         });
       } catch (error) {
         console.error(
@@ -461,6 +510,7 @@ export class HandleScheduledEventUseCaseHandler {
           tokenListJsonPath:
             mergedInput.claudeCodeOauthTokenListJsonPath ?? null,
           issues: result.issues,
+          pjcode: input.projectName,
         });
       } catch (error) {
         console.error(
@@ -477,11 +527,15 @@ export class HandleScheduledEventUseCaseHandler {
           inTmuxDataOutputDir: mergedInput.inTmuxDataOutputDir ?? null,
           inTmuxConsoleBaseUrl: mergedInput.inTmuxConsoleBaseUrl ?? null,
           inTmuxConsoleToken: mergedInput.inTmuxConsoleToken ?? null,
-          inTmuxProjectOrder: mergedInput.inTmuxProjectOrder ?? null,
+          inTmuxProjectOrder:
+            inTmuxProjectOrderOverride ??
+            mergedInput.inTmuxProjectOrder ??
+            null,
           pjcode: input.projectName,
           assigneeLogin: input.manager,
           org: input.org,
           repo: input.workingReport.repo,
+          newIssueRepo: mergedInput.newIssueRepo ?? undefined,
           project: result.project,
           issues: result.issues,
           now: inTmuxNow,
@@ -513,7 +567,6 @@ export class HandleScheduledEventUseCaseHandler {
       try {
         await cleanStaleTmuxSessions({
           project: result.project,
-          allowCacheMinutes: mergedInput.allowIssueCacheMinutes,
           issueRepository,
           localCommandRunner: nodeLocalCommandRunner,
           now: inTmuxNow,
@@ -521,6 +574,117 @@ export class HandleScheduledEventUseCaseHandler {
       } catch (error) {
         console.error(
           `Failed to clean stale tmux sessions: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+
+      try {
+        const silentNotificationEnabled =
+          mergedInput.silentNotificationEnabled ??
+          process.env.TDPM_SILENT_NOTIFICATION_ENABLED === 'true';
+        const subAgentOutputRootDirectory =
+          mergedInput.subAgentOutputRootDirectory ??
+          process.env.TDPM_SUBAGENT_OUTPUT_ROOT_DIRECTORY ??
+          null;
+        const subAgentProcessMatchPattern =
+          mergedInput.subAgentProcessMatchPattern ??
+          process.env.TDPM_SUBAGENT_PROCESS_MATCH_PATTERN ??
+          null;
+        const ownerCallMarker =
+          mergedInput.ownerCallMarker ??
+          process.env.TDPM_SILENT_OWNER_CALL_MARKER ??
+          null;
+        const subAgentTranscriptRootDirectory =
+          mergedInput.subAgentTranscriptRootDirectory ??
+          process.env.TDPM_SUBAGENT_TRANSCRIPT_ROOT_DIRECTORY ??
+          null;
+        await notifySilentTmuxSessions({
+          enabled: silentNotificationEnabled,
+          localCommandRunner: nodeLocalCommandRunner,
+          ownerCallMarker,
+          subAgentOutputRootDirectory,
+          subAgentProcessMatchPattern,
+          subAgentTranscriptRootDirectory,
+          mainSilentThresholdSeconds: readSilentSeconds(
+            mergedInput.mainSilentThresholdSeconds,
+            process.env.TDPM_MAIN_SILENT_THRESHOLD_SECONDS,
+            DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.mainSilentThresholdSeconds,
+          ),
+          unansweredOwnerCallGraceSeconds: readSilentSeconds(
+            mergedInput.unansweredOwnerCallGraceSeconds,
+            process.env.TDPM_SILENT_UNANSWERED_OWNER_CALL_GRACE_SECONDS,
+            DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.unansweredOwnerCallGraceSeconds,
+          ),
+          subAgentSilentThresholdSeconds: readSilentSeconds(
+            mergedInput.subAgentSilentThresholdSeconds,
+            process.env.TDPM_SUBAGENT_SILENT_THRESHOLD_SECONDS,
+            DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.subAgentSilentThresholdSeconds,
+          ),
+          subAgentRunningThresholdSeconds: readSilentSeconds(
+            mergedInput.subAgentRunningThresholdSeconds,
+            process.env.TDPM_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
+            DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.subAgentRunningThresholdSeconds,
+          ),
+          staggerSeconds: readSilentSeconds(
+            mergedInput.silentNotificationStaggerSeconds,
+            process.env.TDPM_SILENT_NOTIFICATION_STAGGER_SECONDS,
+            DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.staggerSeconds,
+          ),
+          candidateDebounceRecencyWindowSeconds: readSilentSeconds(
+            mergedInput.candidateDebounceRecencyWindowSeconds,
+            process.env.TDPM_SILENT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS,
+            DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.candidateDebounceRecencyWindowSeconds,
+          ),
+          candidateDebounceStateFilePath:
+            mergedInput.candidateDebounceStateFilePath ??
+            process.env.TDPM_SILENT_CANDIDATE_DEBOUNCE_STATE_FILE_PATH ??
+            null,
+          activeHubTaskStatus:
+            mergedInput.activeHubTaskStatus ??
+            process.env.TDPM_ACTIVE_HUB_TASK_STATUS ??
+            null,
+          hubTaskStatusResolver: issueRepository,
+          hubTaskStatusCacheStateFilePath:
+            mergedInput.hubTaskStatusCacheStateFilePath ??
+            process.env.TDPM_SILENT_HUB_TASK_STATUS_CACHE_STATE_FILE_PATH ??
+            null,
+          hubTaskStatusCacheTtlSeconds: readSilentSeconds(
+            mergedInput.hubTaskStatusCacheTtlSeconds,
+            process.env.TDPM_SILENT_HUB_TASK_STATUS_CACHE_TTL_SECONDS,
+            DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.hubTaskStatusCacheTtlSeconds,
+          ),
+          messageTemplates: {
+            mainStalledMessage:
+              mergedInput.silentMainStalledMessage ??
+              process.env.TDPM_SILENT_MAIN_STALLED_MESSAGE ??
+              null,
+            mainStalledStaleOwnerCallMessage:
+              mergedInput.silentMainStalledStaleOwnerCallMessage ??
+              process.env.TDPM_SILENT_MAIN_STALLED_STALE_OWNER_CALL_MESSAGE ??
+              null,
+            subAgentIdleMessageHeader:
+              mergedInput.silentSubAgentIdleMessageHeader ??
+              process.env.TDPM_SILENT_SUBAGENT_IDLE_MESSAGE_HEADER ??
+              null,
+            subAgentIdleMessageFooter:
+              mergedInput.silentSubAgentIdleMessageFooter ??
+              process.env.TDPM_SILENT_SUBAGENT_IDLE_MESSAGE_FOOTER ??
+              null,
+            subAgentLongRunningMessageHeader:
+              mergedInput.silentSubAgentLongRunningMessageHeader ??
+              process.env.TDPM_SILENT_SUBAGENT_LONG_RUNNING_MESSAGE_HEADER ??
+              null,
+            subAgentLongRunningMessageFooter:
+              mergedInput.silentSubAgentLongRunningMessageFooter ??
+              process.env.TDPM_SILENT_SUBAGENT_LONG_RUNNING_MESSAGE_FOOTER ??
+              null,
+          },
+          now: inTmuxNow,
+        });
+      } catch (error) {
+        console.error(
+          `Failed to notify silent tmux sessions: ${
             error instanceof Error ? error.message : String(error)
           }`,
         );

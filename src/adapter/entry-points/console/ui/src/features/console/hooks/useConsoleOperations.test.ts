@@ -1,14 +1,30 @@
 import { act, renderHook } from '@testing-library/react';
+import { ResourceCache } from '../lib/resourceCache';
 import { overlayStorageKey } from '../logic/overlay';
 import {
   consoleListItemsFixture,
   consoleStatusOptionsFixture,
 } from '../testing/fixtures';
+import type { ConsoleCaches } from './useConsoleCaches';
 import { useConsoleOperations } from './useConsoleOperations';
 import { useConsoleOverlay } from './useConsoleOverlay';
 
 const prItem = consoleListItemsFixture[0];
 const issueItem = consoleListItemsFixture[2];
+
+const buildOperationCaches = (): ConsoleCaches => {
+  const never = () => new Promise<never>(() => {});
+  return {
+    client: {} as ConsoleCaches['client'],
+    body: new ResourceCache<string>(never),
+    comments: new ResourceCache(never),
+    files: new ResourceCache(never),
+    commits: new ResourceCache(never),
+    relatedPrs: new ResourceCache(never),
+    state: new ResourceCache(never),
+    prStatus: new ResourceCache(never),
+  };
+};
 
 const captureFetch = (): jest.Mock => {
   const fetchMock = jest.fn(async () => ({
@@ -20,8 +36,11 @@ const captureFetch = (): jest.Mock => {
   return fetchMock;
 };
 
-const lastBody = (fetchMock: jest.Mock): Record<string, unknown> =>
-  JSON.parse((fetchMock.mock.calls.at(-1)?.[1] as { body: string }).body);
+const lastBody = (fetchMock: jest.Mock): Record<string, unknown> => {
+  const lastCall = fetchMock.mock.calls.at(-1);
+  if (!lastCall) throw new Error('No fetch calls found');
+  return JSON.parse((lastCall[1] as { body: string }).body);
+};
 
 const setup = () => {
   localStorage.clear();
@@ -44,7 +63,7 @@ describe('useConsoleOperations', () => {
         'totally_wrong',
       );
     });
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/review?k=token');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/review');
     expect(lastBody(fetchMock)).toMatchObject({
       pjcode: 'umino',
       action: 'close',
@@ -94,12 +113,31 @@ describe('useConsoleOperations', () => {
         'close_not_planned',
       );
     });
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/triage?k=token');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/triage');
     expect(lastBody(fetchMock)).toMatchObject({
       pjcode: 'umino',
       action: 'close_not_planned',
       issueUrl: issueItem.url,
     });
+  });
+
+  it('posts a pull-request close through the triage endpoint with the pull-request url and resolves', async () => {
+    const fetchMock = captureFetch();
+    const { result } = setup();
+    await act(async () => {
+      await result.current.operations.closeIssue(prItem, 'close');
+    });
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/triage');
+    expect(lastBody(fetchMock)).toMatchObject({
+      pjcode: 'umino',
+      action: 'close',
+      issueUrl: prItem.url,
+    });
+    expect(prItem.url).toContain('/pull/');
+    const stored = JSON.parse(
+      localStorage.getItem(overlayStorageKey('umino')) ?? '{}',
+    );
+    expect(stored[prItem.projectItemId].done).toBe(true);
   });
 
   it('posts set_status and records the overlay status', async () => {
@@ -126,7 +164,7 @@ describe('useConsoleOperations', () => {
     await act(async () => {
       await result.current.operations.setInTmuxByHuman(issueItem, option);
     });
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/intmux?k=token');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/intmux');
     expect(lastBody(fetchMock)).toMatchObject({
       pjcode: 'umino',
       action: 'set_intmux',
@@ -201,7 +239,7 @@ describe('useConsoleOperations', () => {
         'Thanks for the parity fix.',
       );
     });
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/comment?k=token');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/comment');
     expect(lastBody(fetchMock)).toMatchObject({
       pjcode: 'umino',
       url: issueItem.url,
@@ -226,7 +264,7 @@ describe('useConsoleOperations', () => {
         'Consider extracting this into a helper.',
       );
     });
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/reviewcomment?k=token');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/reviewcomment');
     expect(lastBody(fetchMock)).toEqual({
       pjcode: 'umino',
       url: prItem.url,
@@ -235,6 +273,120 @@ describe('useConsoleOperations', () => {
       side: 'RIGHT',
       body: 'Consider extracting this into a helper.',
     });
+  });
+
+  it('sends the entered inline comment as the request-changes body and anchor', async () => {
+    const fetchMock = captureFetch();
+    const { result } = setup();
+    await act(async () => {
+      await result.current.operations.reviewPullRequest(
+        prItem,
+        prItem.url,
+        'request_changes',
+        [
+          {
+            path: 'src/index.ts',
+            line: 17,
+            side: 'RIGHT',
+            body: 'Please rename this variable.',
+          },
+        ],
+      );
+    });
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/review');
+    expect(lastBody(fetchMock)).toMatchObject({
+      pjcode: 'umino',
+      action: 'request_changes',
+      prUrl: prItem.url,
+      commentBody: 'src/index.ts:17 Please rename this variable.',
+      changedFilePath: 'src/index.ts',
+      line: 17,
+      side: 'RIGHT',
+    });
+  });
+
+  it('aggregates multiple entered inline comments into the request-changes body', async () => {
+    const fetchMock = captureFetch();
+    const { result } = setup();
+    await act(async () => {
+      await result.current.operations.reviewPullRequest(
+        prItem,
+        prItem.url,
+        'request_changes',
+        [
+          {
+            path: 'src/a.ts',
+            line: 3,
+            side: 'RIGHT',
+            body: 'First concern.',
+          },
+          {
+            path: 'src/b.ts',
+            line: 9,
+            side: 'LEFT',
+            body: 'Second concern.',
+          },
+        ],
+      );
+    });
+    expect(lastBody(fetchMock)).toMatchObject({
+      action: 'request_changes',
+      commentBody: 'src/a.ts:3 First concern.\n\nsrc/b.ts:9 Second concern.',
+      changedFilePath: 'src/a.ts',
+      line: 3,
+      side: 'RIGHT',
+    });
+  });
+
+  it('invalidates the operated item body and comments cache on a review', async () => {
+    captureFetch();
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/umino/prs?k=token');
+    const caches = buildOperationCaches();
+    const bodyInvalidate = jest.spyOn(caches.body, 'invalidate');
+    const commentsInvalidate = jest.spyOn(caches.comments, 'invalidate');
+    const { result } = renderHook(() => {
+      const overlay = useConsoleOverlay('umino');
+      const operations = useConsoleOperations('umino', 'prs', overlay, caches);
+      return { overlay, operations };
+    });
+    await act(async () => {
+      await result.current.operations.reviewPullRequest(
+        prItem,
+        prItem.url,
+        'approve',
+      );
+    });
+    const key = `${prItem.repo}#${prItem.number}`;
+    expect(bodyInvalidate).toHaveBeenCalledWith(key);
+    expect(commentsInvalidate).toHaveBeenCalledWith(key);
+  });
+
+  it('invalidates the operated item cache after posting a comment', async () => {
+    const fetchMock: jest.Mock = jest.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        ok: true,
+        comment: { author: 'a', body: 'b', createdAt: 'c' },
+      }),
+    }));
+    global.fetch = fetchMock as unknown as typeof fetch;
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/umino/prs?k=token');
+    const caches = buildOperationCaches();
+    const commentsInvalidate = jest.spyOn(caches.comments, 'invalidate');
+    const { result } = renderHook(() => {
+      const overlay = useConsoleOverlay('umino');
+      const operations = useConsoleOperations('umino', 'prs', overlay, caches);
+      return { overlay, operations };
+    });
+    await act(async () => {
+      await result.current.operations.addComment(issueItem, 'hello');
+    });
+    expect(commentsInvalidate).toHaveBeenCalledWith(
+      `${issueItem.repo}#${issueItem.number}`,
+    );
   });
 
   it('rejects an operation and posts nothing when no pjcode is available', async () => {

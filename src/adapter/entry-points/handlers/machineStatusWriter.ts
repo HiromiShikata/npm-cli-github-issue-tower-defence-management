@@ -1,23 +1,32 @@
 import fs from 'fs';
 import path from 'path';
+import { DiskConfig } from '../cli/projectConfig';
 import {
   ProcHostMetricsRepository,
-  cycleMinutesFromMtimes,
+  cycleMinutesFromFetchTimestamps,
 } from '../../repositories/ProcHostMetricsRepository';
 
 export type MachineStatusWriterParams = {
   dashboardDataDir: string | null | undefined;
   allIssuesCacheDir: string | null | undefined;
+  disks?: DiskConfig[] | null;
   hostMetricsRepository?: ProcHostMetricsRepository;
   now?: Date;
+};
+
+export type MachineStatusDisk = {
+  title: string;
+  pct: number;
 };
 
 export type MachineStatusFile = {
   memPct: number;
   cpuPct: number;
   diskPct: number;
+  disks?: MachineStatusDisk[];
   load: [number, number, number];
   cycleMinutes: number | null;
+  lastFetchedAt: string | null;
   capturedAt: string;
 };
 
@@ -29,24 +38,26 @@ const writeJsonAtomic = (filePath: string, data: unknown): void => {
   fs.renameSync(tmpPath, filePath);
 };
 
-const cacheFileMtimesDescending = (allIssuesCacheDir: string): number[] => {
-  let entries: string[];
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const readLastFetchedAtFromJsonFile = (filePath: string): string | null => {
+  let raw: string;
   try {
-    entries = fs.readdirSync(allIssuesCacheDir);
+    raw = fs.readFileSync(filePath, 'utf8');
   } catch {
-    return [];
+    return null;
   }
-  return entries
-    .filter((entry) => entry.endsWith('.json'))
-    .map((entry) => {
-      try {
-        return fs.statSync(path.join(allIssuesCacheDir, entry)).mtimeMs / 1000;
-      } catch {
-        return null;
-      }
-    })
-    .filter((value): value is number => value !== null)
-    .sort((a, b) => b - a);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (isRecord(parsed) && typeof parsed.lastFetchedAt === 'string') {
+    return parsed.lastFetchedAt;
+  }
+  return null;
 };
 
 export const writeMachineStatus = async (
@@ -65,18 +76,35 @@ export const writeMachineStatus = async (
   const diskPct = hostMetricsRepository.readDiskUsedPercent();
   const load = hostMetricsRepository.readLoadAverages();
 
-  const cycleMinutes = allIssuesCacheDir
-    ? cycleMinutesFromMtimes(cacheFileMtimesDescending(allIssuesCacheDir))
+  const configuredDisks = params.disks ?? [];
+  const disks: MachineStatusDisk[] = configuredDisks.map((disk) => ({
+    title: disk.title,
+    pct: hostMetricsRepository.readDiskUsedPercentForMountpoint(
+      disk.mountpoint,
+    ),
+  }));
+
+  const machineStatusPath = path.join(dashboardDataDir, 'machine-status.json');
+  const previousLastFetchedAt =
+    readLastFetchedAtFromJsonFile(machineStatusPath);
+  const currentLastFetchedAt = allIssuesCacheDir
+    ? readLastFetchedAtFromJsonFile(path.join(allIssuesCacheDir, 'latest.json'))
     : null;
+  const cycleMinutes = cycleMinutesFromFetchTimestamps(
+    previousLastFetchedAt,
+    currentLastFetchedAt,
+  );
 
   const file: MachineStatusFile = {
     memPct,
     cpuPct,
     diskPct,
+    ...(disks.length > 0 ? { disks } : {}),
     load: [load.oneMinute, load.fiveMinute, load.fifteenMinute],
     cycleMinutes,
+    lastFetchedAt: currentLastFetchedAt,
     capturedAt: (params.now ?? new Date()).toISOString(),
   };
 
-  writeJsonAtomic(path.join(dashboardDataDir, 'machine-status.json'), file);
+  writeJsonAtomic(machineStatusPath, file);
 };

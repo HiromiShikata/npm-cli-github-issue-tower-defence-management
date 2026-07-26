@@ -61,6 +61,19 @@ export type ConsoleIssueState = {
   state: string;
   merged: boolean;
   isPullRequest: boolean;
+  title: string;
+};
+
+export type ConsoleMergeableStatus = 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN';
+
+export type ConsolePullRequestStatus = {
+  found: boolean;
+  isConflicted: boolean;
+  mergeableStatus: ConsoleMergeableStatus;
+  isPassedAllCiJob: boolean;
+  isCiStateSuccess: boolean;
+  isBranchOutOfDate: boolean;
+  missingRequiredCheckNames: string[];
 };
 
 export type ConsoleComment = {
@@ -90,6 +103,7 @@ export type ConsoleRelatedPullRequest = {
   createdAt: string;
   isDraft: boolean;
   isConflicted: boolean;
+  mergeableStatus: ConsoleMergeableStatus;
   isPassedAllCiJob: boolean;
   isCiStateSuccess: boolean;
   isResolvedAllReviewComments: boolean;
@@ -130,7 +144,8 @@ export type ConsoleTabName =
   | 'triage'
   | 'unread'
   | 'failed-preparation'
-  | 'todo-by-human';
+  | 'todo-by-human'
+  | 'todo-by-agent';
 
 export type ConsoleTab = {
   name: ConsoleTabName;
@@ -144,4 +159,5 @@ export const CONSOLE_TABS: ConsoleTab[] = [
   { name: 'unread', label: 'Unread' },
   { name: 'failed-preparation', label: 'Failed Preparation' },
   { name: 'todo-by-human', label: 'Todo by human' },
+  { name: 'todo-by-agent', label: 'Todo by agent' },
 ];

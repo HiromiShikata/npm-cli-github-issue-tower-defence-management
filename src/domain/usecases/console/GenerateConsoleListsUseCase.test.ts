@@ -23,6 +23,7 @@ const STATUS_OPTIONS: FieldOption[] = [
   storyOption('st-failed', 'Failed Preparation', 'RED'),
   storyOption('st-aqc', 'Awaiting Quality Check', 'GREEN'),
   storyOption('st-todo', 'Todo by human', 'PINK'),
+  storyOption('st-todo-agent', 'Todo by agent', 'BLUE'),
   storyOption('st-tmux', 'In Tmux by human', 'RED'),
   storyOption('st-tmux-agent', 'In Tmux by agent', 'YELLOW'),
   storyOption('st-done', 'Done', 'PURPLE'),
@@ -200,6 +201,25 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(result['todo-by-human'].items).toHaveLength(0);
     });
 
+    it('selects todo-by-agent items for the exact status only', () => {
+      const result = run([
+        makeIssue({ status: 'Todo by agent' }),
+        makeIssue({ status: 'todo by agent' }),
+        makeIssue({ status: 'Todo by human' }),
+        makeIssue({ status: 'Unread' }),
+      ]);
+      expect(result['todo-by-agent'].items.map((item) => item.number)).toEqual([
+        1,
+      ]);
+    });
+
+    it('rejects a non-actionable todo-by-agent issue', () => {
+      const result = run([
+        makeIssue({ status: 'Todo by agent', nextActionHour: 9 }),
+      ]);
+      expect(result['todo-by-agent'].items).toHaveLength(0);
+    });
+
     it('selects no-story items case-insensitively for triage', () => {
       const result = run([
         makeIssue({ story: 'regular / NO STORY; SET STORY FIELD' }),
@@ -208,6 +228,16 @@ describe('GenerateConsoleListsUseCase', () => {
         makeIssue({ story: null }),
       ]);
       expect(result.triage.items).toHaveLength(2);
+    });
+
+    it('excludes no-story items whose status is In Tmux by agent', () => {
+      const result = run([
+        makeIssue({ story: 'no story', status: 'In Tmux by agent' }),
+        makeIssue({ story: 'no story', status: 'in tmux by agent' }),
+        makeIssue({ story: 'no story', status: 'Unread' }),
+      ]);
+      const statuses = result.triage.items.map((item) => item.status);
+      expect(statuses).toEqual(['Unread']);
     });
   });
 
@@ -268,6 +298,60 @@ describe('GenerateConsoleListsUseCase', () => {
         null,
       );
       expect(result['workflow-blocker'].items).toHaveLength(0);
+    });
+  });
+
+  describe('In Tmux by agent shared exclusion', () => {
+    const allTabItems = (
+      result: ReturnType<GenerateConsoleListsUseCase['run']>,
+    ) => [
+      ...result['workflow-blocker'].items,
+      ...result.prs.items,
+      ...result.triage.items,
+      ...result.unread.items,
+      ...result['failed-preparation'].items,
+      ...result['todo-by-human'].items,
+    ];
+
+    it('hides a workflow-blocker-story In Tmux by agent issue from every tab', () => {
+      const result = run([
+        makeIssue({
+          story: 'regular / WORKFLOW BLOCKER',
+          status: 'In Tmux by agent',
+        }),
+      ]);
+      expect(allTabItems(result)).toHaveLength(0);
+    });
+
+    it('hides In Tmux by agent case-insensitively from every tab', () => {
+      const result = run([
+        makeIssue({
+          story: 'regular / WORKFLOW BLOCKER',
+          status: 'in tmux by agent',
+        }),
+      ]);
+      expect(allTabItems(result)).toHaveLength(0);
+    });
+
+    it('keeps sibling issues with other statuses displaying as before', () => {
+      const result = run([
+        makeIssue({
+          story: 'regular / WORKFLOW BLOCKER',
+          status: 'In Tmux by agent',
+        }),
+        makeIssue({
+          story: 'regular / WORKFLOW BLOCKER',
+          status: 'In Tmux by human',
+        }),
+        makeIssue({ status: 'Unread' }),
+      ]);
+      expect(
+        result['workflow-blocker'].items.map((item) => item.status),
+      ).toEqual(['In Tmux by human']);
+      expect(result.unread.items.map((item) => item.number)).toEqual([3]);
+      expect(
+        allTabItems(result).some((item) => item.status === 'In Tmux by agent'),
+      ).toBe(false);
     });
   });
 
@@ -420,6 +504,7 @@ describe('GenerateConsoleListsUseCase', () => {
         'Unread',
         'In Tmux by human',
         'In Tmux by agent',
+        'Todo by agent',
       ]) {
         expect(names).not.toContain(excluded);
       }
@@ -429,6 +514,13 @@ describe('GenerateConsoleListsUseCase', () => {
     it('excludes todo by human and done from todo-by-human status options', () => {
       const names = run([])['todo-by-human'].statusOptions.map((o) => o.name);
       expect(names).not.toContain('Todo by human');
+      expect(names).not.toContain('Done');
+      expect(names).toContain('Awaiting Workspace');
+    });
+
+    it('excludes todo by agent and done from todo-by-agent status options', () => {
+      const names = run([])['todo-by-agent'].statusOptions.map((o) => o.name);
+      expect(names).not.toContain('Todo by agent');
       expect(names).not.toContain('Done');
       expect(names).toContain('Awaiting Workspace');
     });

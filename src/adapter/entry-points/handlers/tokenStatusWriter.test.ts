@@ -8,7 +8,7 @@ import { RateLimitSnapshot } from '../../proxy/RateLimitCache';
 import { TokenStatusFile, writeTokenStatus } from './tokenStatusWriter';
 
 const readJson = (filePath: string): unknown =>
-  JSON.parse(fs.readFileSync(filePath, 'utf8')) as unknown;
+  JSON.parse(fs.readFileSync(filePath, 'utf8'));
 
 const ASSIGNEE = 'HiromiShikata';
 
@@ -29,6 +29,7 @@ const baseSnapshot = (
   modelWeeklyLimits: {},
   lastUpdatedEpoch: 0,
   blockedUntilEpoch: 0,
+  subscriptionDisabled: false,
   ...overrides,
 });
 
@@ -148,6 +149,84 @@ describe('writeTokenStatus', () => {
       ],
     };
     expect(written).toEqual(expected);
+  });
+
+  it('aggregates In-Tmux-by-human sessions across multiple projects, not just the last project written', () => {
+    const interactiveSessions: ClaudeInteractiveSession[] = [
+      {
+        token: 'token-a',
+        sessionId: 'session-project-a',
+        issueUrl: 'https://github.com/demo/repo/issues/100',
+      },
+      {
+        token: 'token-a',
+        sessionId: 'session-project-b',
+        issueUrl: 'https://github.com/demo/repo/issues/200',
+      },
+    ];
+    const sharedRepositories = {
+      readSnapshot: () => null,
+      interactiveSessionRepository: {
+        listInteractiveSessions: () => interactiveSessions,
+      },
+      spawnRepository: { listSpawns: () => [] },
+    };
+
+    writeTokenStatus({
+      dashboardDataDir: dir,
+      tokenListJsonPath: tokenListPath,
+      pjcode: 'projectA',
+      issues: [
+        makeIssue({
+          status: 'In Tmux by human',
+          url: 'https://github.com/demo/repo/issues/100',
+        }),
+      ],
+      now,
+      ...sharedRepositories,
+    });
+
+    writeTokenStatus({
+      dashboardDataDir: dir,
+      tokenListJsonPath: tokenListPath,
+      pjcode: 'projectB',
+      issues: [
+        makeIssue({
+          status: 'In Tmux by human',
+          url: 'https://github.com/demo/repo/issues/200',
+        }),
+      ],
+      now,
+      ...sharedRepositories,
+    });
+
+    const written = readJson(path.join(dir, 'token-status.json'));
+    const expectedAlice: TokenStatusFile['tokens'][number] = {
+      name: 'alice',
+      fiveHourUtilizationPercent: null,
+      fiveHourResetSeconds: null,
+      sevenDayUtilizationPercent: null,
+      sevenDayResetSeconds: null,
+      color: 'Y',
+      prep: 0,
+      hum: 2,
+    };
+    expect(written).toEqual({
+      capturedAt: '2026-06-26T12:00:00.000Z',
+      tokens: [
+        expectedAlice,
+        {
+          name: 'bob',
+          fiveHourUtilizationPercent: null,
+          fiveHourResetSeconds: null,
+          sevenDayUtilizationPercent: null,
+          sevenDayResetSeconds: null,
+          color: 'Y',
+          prep: 0,
+          hum: 0,
+        },
+      ],
+    });
   });
 
   it('is a no-op when dashboardDataDir is unset', () => {

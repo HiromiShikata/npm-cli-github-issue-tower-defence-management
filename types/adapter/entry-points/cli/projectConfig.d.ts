@@ -1,13 +1,14 @@
 export type ConfigFile = {
     projectUrl?: string;
+    manager?: string;
     defaultAgentName?: string;
     defaultLlmModelName?: string;
     fallbackLlmModelName?: string;
     defaultLlmAgentName?: string;
     maximumPreparingIssuesCount?: number;
-    allowIssueCacheMinutes?: number;
     utilizationPercentageThreshold?: number;
     allowedIssueAuthors?: string;
+    autoAssignManagerAuthors?: string;
     thresholdForAutoReject?: number;
     workflowBlockerResolvedWebhookUrl?: string;
     projectName?: string;
@@ -20,6 +21,11 @@ export type ConfigFile = {
     changeTargetPathAliases?: Record<string, string>;
     consoleAccessToken?: string;
     consoleProjects?: Record<string, string>;
+    disks?: DiskConfig[];
+};
+export type DiskConfig = {
+    title: string;
+    mountpoint: string;
 };
 export declare const isRecord: (value: unknown) => value is Record<string, unknown>;
 export declare const loadConfigFile: (configFilePath: string) => ConfigFile;

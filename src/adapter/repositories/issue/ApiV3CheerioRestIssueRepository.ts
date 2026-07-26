@@ -6,6 +6,7 @@ import {
   PullRequestFile,
   PullRequestCommit,
   PullRequestReviewCommentSide,
+  PullRequestReviewInlineLocation,
 } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
@@ -19,9 +20,30 @@ import {
 import { LocalStorageCacheRepository } from '../LocalStorageCacheRepository';
 import typia from 'typia';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
+import { fetchGithubGraphql } from '../githubGraphqlClient';
 import { normalizeFieldName } from '../utils';
 import { LocalStorageRepository } from '../LocalStorageRepository';
 import { Member } from '../../../domain/entities/Member';
+import { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
+import { DateRepository } from '../../../domain/usecases/adapter-interfaces/DateRepository';
+import {
+  Sleep,
+  realSleep,
+  fetchWithGitHubRateLimitRetry,
+  computeRateLimitResetIso,
+  hasRateLimitSignals,
+} from './githubRateLimitRetry';
+
+export const FULL_ISSUE_FETCH_INTERVAL_MS = 60 * 60 * 1000;
+export const INCREMENTAL_FETCH_SKEW_BUFFER_MS = 5 * 60 * 1000;
+export const REQUIRED_CHECKS_CACHE_TTL_MS = 10 * 60 * 1000;
+
+export type CachedProjectIssues = {
+  lastFetchedAt: string;
+  lastFullFetchAt: string;
+  project: Project;
+  issues: Issue[];
+};
 
 type TimelineItem = {
   __typename: string;
@@ -37,69 +59,6 @@ type TimelineItem = {
     mergeable?: string;
     headRefName?: string;
     baseRefName?: string;
-    baseRepository?: {
-      branchProtectionRules?: {
-        nodes: Array<{
-          pattern: string;
-          requiredStatusCheckContexts: string[];
-        }>;
-      };
-      defaultBranchRef?: {
-        name: string;
-      } | null;
-      rulesets?: {
-        nodes: Array<{
-          name: string;
-          enforcement: string;
-          conditions: {
-            refName: {
-              include: string[];
-              exclude: string[];
-            };
-          };
-          rules: {
-            nodes: Array<{
-              type: string;
-              parameters:
-                | {
-                    requiredStatusChecks: Array<{
-                      context: string;
-                    }>;
-                  }
-                | Record<string, never>;
-            }>;
-          };
-        }>;
-      };
-    };
-    commits?: {
-      nodes: Array<{
-        commit: {
-          statusCheckRollup?: {
-            contexts?: {
-              nodes: Array<
-                | {
-                    __typename: 'CheckRun';
-                    name: string;
-                    conclusion: string | null;
-                    databaseId: number;
-                  }
-                | {
-                    __typename: 'StatusContext';
-                    context: string;
-                    state: string;
-                  }
-              >;
-            };
-          } | null;
-        };
-      }>;
-    };
-    reviewThreads?: {
-      nodes: Array<{
-        isResolved: boolean;
-      }>;
-    };
     baseRef?: {
       name: string;
     } | null;
@@ -123,84 +82,109 @@ type IssueTimelineResponse = {
   errors?: Array<{ message: string }>;
 };
 
+type CiContextNode =
+  | {
+      __typename: 'CheckRun';
+      name: string;
+      conclusion: string | null;
+      databaseId: number;
+    }
+  | {
+      __typename: 'StatusContext';
+      context: string;
+      state: string;
+    };
+
 type PrStatusComputationData = {
   isDraft?: boolean;
   mergeable?: string;
-  baseRepository?: {
-    branchProtectionRules?: {
-      nodes: Array<{
-        pattern: string;
-        requiredStatusCheckContexts: string[];
-      }>;
-    };
-    defaultBranchRef?: {
-      name: string;
-    } | null;
-    rulesets?: {
-      nodes: Array<{
-        name: string;
-        enforcement: string;
-        conditions: {
-          refName: {
-            include: string[];
-            exclude: string[];
-          };
-        };
-        rules: {
-          nodes: Array<{
-            type: string;
-            parameters:
-              | {
-                  requiredStatusChecks: Array<{
-                    context: string;
-                  }>;
-                }
-              | Record<string, never>;
-          }>;
-        };
-      }>;
-    };
-  };
-  commits?: {
-    nodes: Array<{
-      commit: {
-        statusCheckRollup?: {
-          contexts?: {
-            nodes: Array<
-              | {
-                  __typename: 'CheckRun';
-                  name: string;
-                  conclusion: string | null;
-                  databaseId: number;
-                }
-              | {
-                  __typename: 'StatusContext';
-                  context: string;
-                  state: string;
-                }
-            >;
-          };
-        } | null;
-      };
-    }>;
-  };
-  reviewThreads?: {
-    nodes: Array<{
-      isResolved: boolean;
-    }>;
-  };
+  requiredCheckNames: string[];
+  ciContexts: CiContextNode[];
+  reviewThreads: Array<{
+    isResolved: boolean;
+  }>;
 };
 
-type DirectPullRequestResponse = {
+type SlimPullRequestResponse = {
   data?: {
     repository?: {
       pullRequest?: {
         url: string;
         state: string;
+        isDraft?: boolean;
         headRefName?: string;
         baseRefName?: string;
-      } & PrStatusComputationData;
-    };
+        mergeable?: string;
+        headRefOid?: string;
+        reviewThreads?: {
+          pageInfo: {
+            endCursor: string | null;
+            hasNextPage: boolean;
+          };
+          nodes: Array<{
+            isResolved: boolean;
+          }>;
+        };
+      } | null;
+    } | null;
+  };
+  errors?: Array<{ message: string }>;
+};
+
+type SlimPullRequest = {
+  url: string;
+  state: string;
+  isDraft?: boolean;
+  headRefName?: string;
+  baseRefName?: string;
+  mergeable?: string;
+  headRefOid?: string;
+  reviewThreads: Array<{
+    isResolved: boolean;
+  }>;
+};
+
+type BranchRulesResponseItem = {
+  type: string;
+  parameters?: {
+    required_status_checks?: Array<{
+      context: string;
+    }>;
+  };
+};
+
+type BranchDetailResponse = {
+  protection?: {
+    required_status_checks?: {
+      contexts?: string[];
+    } | null;
+  } | null;
+};
+
+type CheckRunsResponse = {
+  total_count: number;
+  check_runs: Array<{
+    id: number;
+    name: string;
+    conclusion: string | null;
+  }>;
+};
+
+type CombinedStatusResponse = {
+  statuses: Array<{
+    context: string;
+    state: string;
+  }>;
+};
+
+type PullRequestMergeabilityResponse = {
+  data?: {
+    repository?: {
+      pullRequest?: {
+        mergeable?: string | null;
+        mergeStateStatus?: string | null;
+      } | null;
+    } | null;
   };
   errors?: Array<{ message: string }>;
 };
@@ -212,9 +196,39 @@ function isIssueTimelineResponse(
   return true;
 }
 
-function isDirectPullRequestResponse(
+function isSlimPullRequestResponse(
   value: unknown,
-): value is DirectPullRequestResponse {
+): value is SlimPullRequestResponse {
+  if (typeof value !== 'object' || value === null) return false;
+  return true;
+}
+
+function isBranchRulesResponse(
+  value: unknown,
+): value is BranchRulesResponseItem[] {
+  return Array.isArray(value);
+}
+
+function isBranchDetailResponse(value: unknown): value is BranchDetailResponse {
+  if (typeof value !== 'object' || value === null) return false;
+  return true;
+}
+
+function isCheckRunsResponse(value: unknown): value is CheckRunsResponse {
+  if (typeof value !== 'object' || value === null) return false;
+  return 'check_runs' in value && Array.isArray(value.check_runs);
+}
+
+function isCombinedStatusResponse(
+  value: unknown,
+): value is CombinedStatusResponse {
+  if (typeof value !== 'object' || value === null) return false;
+  return 'statuses' in value && Array.isArray(value.statuses);
+}
+
+function isPullRequestMergeabilityResponse(
+  value: unknown,
+): value is PullRequestMergeabilityResponse {
   if (typeof value !== 'object' || value === null) return false;
   return true;
 }
@@ -389,58 +403,6 @@ function isPullRequestCommitsResponse(
   return Array.isArray(value) && value.every(isPullRequestCommitsResponseItem);
 }
 
-const fnmatch = (pattern: string, str: string): boolean => {
-  let regexStr = '^';
-  let i = 0;
-  while (i < pattern.length) {
-    const c = pattern[i];
-    if (c === '*') {
-      if (pattern[i + 1] === '*') {
-        regexStr += '.*';
-        i += 2;
-        if (pattern[i] === '/') {
-          i++;
-        }
-      } else {
-        regexStr += '[^/]*';
-        i++;
-      }
-    } else if (c === '?') {
-      regexStr += '[^/]';
-      i++;
-    } else if (c === '[') {
-      let j = i + 1;
-      while (j < pattern.length && pattern[j] !== ']') {
-        j++;
-      }
-      if (j >= pattern.length) {
-        regexStr += '\\[';
-        i++;
-        continue;
-      }
-      const content = pattern.slice(i + 1, j);
-      if (content.length > 0 && (content[0] === '!' || content[0] === '^')) {
-        const body = content.slice(1).replace(/\\/g, '\\\\');
-        regexStr += '[^' + body + ']';
-      } else {
-        const escapedContent = content.replace(/\\/g, '\\\\');
-        regexStr += '[' + escapedContent + ']';
-      }
-      i = j + 1;
-    } else {
-      regexStr += c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      i++;
-    }
-  }
-  regexStr += '$';
-  try {
-    const regex = new RegExp(regexStr);
-    return regex.test(str);
-  } catch {
-    return pattern === str;
-  }
-};
-
 export class ApiV3CheerioRestIssueRepository
   extends BaseGitHubRepository
   implements IssueRepository
@@ -460,6 +422,8 @@ export class ApiV3CheerioRestIssueRepository
     readonly graphqlProjectItemRepository: Pick<
       GraphqlProjectItemRepository,
       | 'fetchProjectItems'
+      | 'fetchProjectItemsLight'
+      | 'fetchProjectItemsByIds'
       | 'fetchProjectItemByUrl'
       | 'updateProjectField'
       | 'clearProjectField'
@@ -468,13 +432,25 @@ export class ApiV3CheerioRestIssueRepository
     >,
     readonly localStorageCacheRepository: Pick<
       LocalStorageCacheRepository,
-      'getLatest' | 'set'
+      'getSingle' | 'setSingle'
     >,
+    readonly projectRepository: Pick<ProjectRepository, 'getProject'>,
+    readonly dateRepository: DateRepository,
     readonly localStorageRepository: LocalStorageRepository,
     readonly ghToken: string = process.env.GH_TOKEN || 'dummy',
+    readonly sleep: Sleep = realSleep,
   ) {
     super(localStorageRepository, ghToken);
   }
+
+  private readonly getAllIssuesRefreshMemo = new Map<
+    Project['id'],
+    { issues: Issue[]; project: Project; cacheUsed: boolean }
+  >();
+
+  private fetchWithRateLimitRetry = (
+    request: () => Promise<Response>,
+  ): Promise<Response> => fetchWithGitHubRateLimitRetry(request, this.sleep);
 
   updateStatus: (
     project: Project,
@@ -547,91 +523,188 @@ export class ApiV3CheerioRestIssueRepository
       closingIssueReferenceUrls: item.closingIssueReferenceUrls,
     };
   };
-  getAllIssuesFromCache = async (
-    cacheKey: string,
-    allowCacheMinutes: number,
-  ): Promise<Issue[] | null> => {
-    const cache = await this.localStorageCacheRepository.getLatest(cacheKey);
-    if (cache) {
-      const now = new Date();
-      const cacheTimestamp = cache.timestamp;
-      const diff = now.getTime() - cacheTimestamp.getTime();
-      if (diff < allowCacheMinutes * 60 * 1000) {
-        if (!Array.isArray(cache.value)) {
-          return null;
-        }
-        const issues = cache.value
-          .filter(
-            (issue: unknown): issue is object => typeof issue === 'object',
+  private restoreIssuesFromCache = (rawIssues: unknown): Issue[] | null => {
+    if (!Array.isArray(rawIssues)) {
+      return null;
+    }
+    const issues = rawIssues
+      .filter(
+        (issue: unknown): issue is object =>
+          typeof issue === 'object' && issue !== null,
+      )
+      .map((issue: object): object => {
+        const nextActionDate =
+          !('nextActionDate' in issue) ||
+          typeof issue.nextActionDate !== 'string' ||
+          issue.nextActionDate === null
+            ? null
+            : new Date(issue.nextActionDate);
+        const completionDate50PercentConfidence =
+          !('completionDate50PercentConfidence' in issue) ||
+          typeof issue.completionDate50PercentConfidence !== 'string'
+            ? null
+            : new Date(issue.completionDate50PercentConfidence);
+        const createdAt =
+          !('createdAt' in issue) || typeof issue.createdAt !== 'string'
+            ? new Date()
+            : new Date(issue.createdAt);
+        const closingIssueReferenceUrls =
+          'closingIssueReferenceUrls' in issue &&
+          Array.isArray(issue.closingIssueReferenceUrls) &&
+          issue.closingIssueReferenceUrls.every(
+            (url): url is string => typeof url === 'string',
           )
-          .map((issue: object): object => {
-            const nextActionDate =
-              !('nextActionDate' in issue) ||
-              typeof issue.nextActionDate !== 'string' ||
-              issue.nextActionDate === null
-                ? null
-                : new Date(issue.nextActionDate);
-            const completionDate50PercentConfidence =
-              !('completionDate50PercentConfidence' in issue) ||
-              typeof issue.completionDate50PercentConfidence !== 'string'
-                ? null
-                : new Date(issue.completionDate50PercentConfidence);
-            const createdAt =
-              !('createdAt' in issue) || typeof issue.createdAt !== 'string'
-                ? new Date()
-                : new Date(issue.createdAt);
-            const closingIssueReferenceUrls =
-              'closingIssueReferenceUrls' in issue &&
-              Array.isArray(issue.closingIssueReferenceUrls) &&
-              issue.closingIssueReferenceUrls.every(
-                (url): url is string => typeof url === 'string',
-              )
-                ? issue.closingIssueReferenceUrls
-                : [];
+            ? issue.closingIssueReferenceUrls
+            : [];
 
-            return {
-              ...issue,
-              nextActionDate: nextActionDate,
-              completionDate50PercentConfidence:
-                completionDate50PercentConfidence,
-              createdAt: createdAt,
-              closingIssueReferenceUrls: closingIssueReferenceUrls,
-            };
-          });
+        return {
+          ...issue,
+          nextActionDate: nextActionDate,
+          completionDate50PercentConfidence: completionDate50PercentConfidence,
+          createdAt: createdAt,
+          closingIssueReferenceUrls: closingIssueReferenceUrls,
+        };
+      });
 
-        if (typia.is<Issue[]>(issues)) {
-          return issues;
-        }
-      }
+    if (typia.is<Issue[]>(issues)) {
+      return issues;
     }
     return null;
   };
 
+  private readCachedProjectIssues = async (
+    cacheKey: string,
+  ): Promise<CachedProjectIssues | null> => {
+    const raw = await this.localStorageCacheRepository.getSingle(cacheKey);
+    if (typeof raw !== 'object' || raw === null) {
+      return null;
+    }
+    if (
+      !('lastFetchedAt' in raw) ||
+      typeof raw.lastFetchedAt !== 'string' ||
+      !('lastFullFetchAt' in raw) ||
+      typeof raw.lastFullFetchAt !== 'string' ||
+      !('project' in raw) ||
+      !('issues' in raw)
+    ) {
+      return null;
+    }
+    if (!typia.is<Project>(raw.project)) {
+      return null;
+    }
+    const issues = this.restoreIssuesFromCache(raw.issues);
+    if (!issues) {
+      return null;
+    }
+    return {
+      lastFetchedAt: raw.lastFetchedAt,
+      lastFullFetchAt: raw.lastFullFetchAt,
+      project: raw.project,
+      issues,
+    };
+  };
+
+  // Reads the Project (status/story option ids and field ids) that the TDPM
+  // daemon persisted into the `allIssues-${projectId}` cache, without any
+  // GraphQL call. Returns null on cache miss so callers can fall back to a
+  // GraphQL project load only when the daemon has not populated the cache yet.
+  getCachedProject = async (
+    projectId: Project['id'],
+  ): Promise<Project | null> => {
+    const raw = await this.localStorageCacheRepository.getSingle(
+      `allIssues-${projectId}`,
+    );
+    if (typeof raw !== 'object' || raw === null || !('project' in raw)) {
+      return null;
+    }
+    if (!typia.is<Project>(raw.project)) {
+      return null;
+    }
+    return raw.project;
+  };
+
+  private toDateString = (date: Date): string =>
+    `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+
   getAllIssues = async (
     projectId: Project['id'],
-    allowCacheMinutes: number,
   ): Promise<{
     issues: Issue[];
+    project: Project;
     cacheUsed: boolean;
   }> => {
-    const cacheKey = `allIssues-${projectId}`;
-    const cachedIssues = await this.getAllIssuesFromCache(
-      cacheKey,
-      allowCacheMinutes,
-    );
-    if (cachedIssues) {
-      return { issues: cachedIssues, cacheUsed: true };
+    const memoized = this.getAllIssuesRefreshMemo.get(projectId);
+    if (memoized) {
+      return memoized;
     }
-    const issues = await this.getAllIssuesFromGitHub(projectId);
-    await this.localStorageCacheRepository.set(cacheKey, issues);
-    return { issues, cacheUsed: false };
+    const result = await this.refreshAllIssues(projectId);
+    this.getAllIssuesRefreshMemo.set(projectId, result);
+    return result;
   };
-  getAllIssuesFromGitHub = async (
+
+  private refreshAllIssues = async (
     projectId: Project['id'],
-  ): Promise<Issue[]> => {
-    const items =
-      await this.graphqlProjectItemRepository.fetchProjectItems(projectId);
-    return items.map((item) => this.convertProjectItemToIssue(item));
+  ): Promise<{ issues: Issue[]; project: Project; cacheUsed: boolean }> => {
+    const cacheKey = `allIssues-${projectId}`;
+    const now = await this.dateRepository.now();
+    const cache = await this.readCachedProjectIssues(cacheKey);
+    const isFullFetch =
+      cache === null ||
+      now.getTime() - new Date(cache.lastFullFetchAt).getTime() >=
+        FULL_ISSUE_FETCH_INTERVAL_MS;
+
+    if (isFullFetch) {
+      const project = await this.projectRepository.getProject(projectId);
+      if (!project) {
+        throw new Error(`Project not found. projectId: ${projectId}`);
+      }
+      const items =
+        await this.graphqlProjectItemRepository.fetchProjectItems(projectId);
+      const issues = items.map((item) => this.convertProjectItemToIssue(item));
+      const nowIso = now.toISOString();
+      await this.localStorageCacheRepository.setSingle(cacheKey, {
+        lastFetchedAt: nowIso,
+        lastFullFetchAt: nowIso,
+        project,
+        issues,
+      } satisfies CachedProjectIssues);
+      return { issues, project, cacheUsed: false };
+    }
+
+    const project = cache.project;
+    const lastFetchedAt = new Date(cache.lastFetchedAt);
+    const cutoff = new Date(
+      lastFetchedAt.getTime() - INCREMENTAL_FETCH_SKEW_BUFFER_MS,
+    );
+    const lightItems =
+      await this.graphqlProjectItemRepository.fetchProjectItemsLight(
+        projectId,
+        `updated:>=${this.toDateString(cutoff)}`,
+      );
+    const changedItemIds = lightItems
+      .filter((item) => new Date(item.updatedAt).getTime() >= cutoff.getTime())
+      .map((item) => item.id);
+    const issuesByUrl = new Map<string, Issue>(
+      cache.issues.map((issue) => [issue.url, issue]),
+    );
+    if (changedItemIds.length > 0) {
+      const changedItems =
+        await this.graphqlProjectItemRepository.fetchProjectItemsByIds(
+          changedItemIds,
+        );
+      for (const item of changedItems) {
+        const issue = this.convertProjectItemToIssue(item);
+        issuesByUrl.set(issue.url, issue);
+      }
+    }
+    const issues = Array.from(issuesByUrl.values());
+    await this.localStorageCacheRepository.setSingle(cacheKey, {
+      lastFetchedAt: now.toISOString(),
+      lastFullFetchAt: cache.lastFullFetchAt,
+      project,
+      issues,
+    } satisfies CachedProjectIssues);
+    return { issues, project, cacheUsed: true };
   };
   createNewIssue = async (
     org: string,
@@ -725,22 +798,30 @@ export class ApiV3CheerioRestIssueRepository
     issueUrl: string,
     project: Project,
     date: Date,
+    projectItemId?: string,
   ): Promise<void> => {
     if (!project.nextActionDate) {
       return;
     }
-    const projectItem =
-      await this.graphqlProjectItemRepository.fetchProjectItemByUrl(
-        issueUrl,
-        project.id,
-      );
-    if (!projectItem) {
+    // When the caller already knows the project item id (e.g. the console,
+    // which receives it in the request body), use it directly and skip the
+    // GraphQL fetchProjectItemByUrl lookup. Fall back to the lookup only when
+    // no id was supplied, preserving the original behavior for other callers.
+    const itemId =
+      projectItemId ??
+      (
+        await this.graphqlProjectItemRepository.fetchProjectItemByUrl(
+          issueUrl,
+          project.id,
+        )
+      )?.id;
+    if (!itemId) {
       return;
     }
     return this.graphqlProjectItemRepository.updateProjectField(
       project.id,
       project.nextActionDate.fieldId,
-      projectItem.id,
+      itemId,
       { date: date.toISOString().split('T')[0] },
     );
   };
@@ -842,73 +923,13 @@ export class ApiV3CheerioRestIssueRepository
   private computePrStatus = (
     prUrl: string,
     headRefName: string | undefined,
-    baseRefName: string | undefined,
     data: PrStatusComputationData,
   ): RelatedPullRequest => {
     const isConflicted = data.mergeable === 'CONFLICTING';
-    const lastCommit = data.commits?.nodes[0]?.commit;
-    const statusCheckRollup = lastCommit?.statusCheckRollup;
-    const contexts = statusCheckRollup?.contexts?.nodes || [];
+    const hasStatusCheckRollup = data.ciContexts.length > 0;
+    const contexts = data.ciContexts;
 
-    const branchProtectionRules =
-      data.baseRepository?.branchProtectionRules?.nodes || [];
-    const matchingRules = baseRefName
-      ? branchProtectionRules.filter(
-          (rule) =>
-            rule.pattern === baseRefName || fnmatch(rule.pattern, baseRefName),
-        )
-      : [];
-    const requiredCheckNamesSet = new Set<string>();
-    for (const rule of matchingRules) {
-      for (const name of rule.requiredStatusCheckContexts) {
-        requiredCheckNamesSet.add(name);
-      }
-    }
-
-    const rulesets = data.baseRepository?.rulesets?.nodes || [];
-    const defaultBranchName = data.baseRepository?.defaultBranchRef?.name || '';
-    for (const ruleset of rulesets) {
-      if (ruleset.enforcement !== 'ACTIVE') continue;
-      const refIncludes = ruleset.conditions.refName.include;
-      const refExcludes = ruleset.conditions.refName.exclude;
-      const matchesInclude =
-        baseRefName !== undefined &&
-        refIncludes.some((pattern) => {
-          if (pattern === '~DEFAULT_BRANCH') {
-            return baseRefName === defaultBranchName;
-          }
-          if (pattern === '~ALL') {
-            return true;
-          }
-          const branchPattern = pattern.replace(/^refs\/heads\//, '');
-          return (
-            branchPattern === baseRefName || fnmatch(branchPattern, baseRefName)
-          );
-        });
-      if (!matchesInclude) continue;
-      const matchesExclude =
-        baseRefName !== undefined &&
-        refExcludes.some((pattern) => {
-          if (pattern === '~DEFAULT_BRANCH') {
-            return baseRefName === defaultBranchName;
-          }
-          const branchPattern = pattern.replace(/^refs\/heads\//, '');
-          return (
-            branchPattern === baseRefName || fnmatch(branchPattern, baseRefName)
-          );
-        });
-      if (matchesExclude) continue;
-      for (const rule of ruleset.rules.nodes) {
-        if (rule.type !== 'REQUIRED_STATUS_CHECKS') continue;
-        if ('requiredStatusChecks' in rule.parameters) {
-          for (const check of rule.parameters.requiredStatusChecks) {
-            requiredCheckNamesSet.add(check.context);
-          }
-        }
-      }
-    }
-
-    const requiredCheckNames = Array.from(requiredCheckNamesSet);
+    const requiredCheckNames = data.requiredCheckNames;
     const seenContextNames = new Set<string>();
     for (const ctx of contexts) {
       if ('name' in ctx) {
@@ -948,7 +969,7 @@ export class ApiV3CheerioRestIssueRepository
       'STALE',
     ]);
     const isCiStateSuccess = (() => {
-      if (!statusCheckRollup) return false;
+      if (!hasStatusCheckRollup) return false;
       const latestRuns = [...latestCheckRunByName.values()];
       const statusContexts = contexts.filter(
         (
@@ -974,7 +995,7 @@ export class ApiV3CheerioRestIssueRepository
     })();
     const isPassedAllCiJob = isCiStateSuccess && allRequiredChecksPassed;
 
-    const reviewThreads = data.reviewThreads?.nodes || [];
+    const reviewThreads = data.reviewThreads;
     const isResolvedAllReviewComments =
       reviewThreads.length === 0 ||
       reviewThreads.every((thread) => thread.isResolved);
@@ -985,6 +1006,7 @@ export class ApiV3CheerioRestIssueRepository
       createdAt: new Date(0),
       isDraft: data.isDraft === true,
       isConflicted,
+      mergeable: data.mergeable ?? null,
       isPassedAllCiJob,
       isCiStateSuccess,
       isResolvedAllReviewComments,
@@ -1013,6 +1035,396 @@ export class ApiV3CheerioRestIssueRepository
     return false;
   };
 
+  private readonly requiredCheckNamesCache = new Map<
+    string,
+    { fetchedAtMs: number; names: string[] }
+  >();
+
+  private getRequiredCheckNames = async (
+    owner: string,
+    repo: string,
+    branch: string,
+  ): Promise<string[]> => {
+    const cacheKey = `${owner}/${repo}/${branch}`;
+    const nowMs = (await this.dateRepository.now()).getTime();
+    const cached = this.requiredCheckNamesCache.get(cacheKey);
+    if (cached && nowMs - cached.fetchedAtMs < REQUIRED_CHECKS_CACHE_TTL_MS) {
+      return cached.names;
+    }
+
+    const ownerSegment = encodeURIComponent(owner);
+    const repoSegment = encodeURIComponent(repo);
+    const branchSegment = encodeURIComponent(branch);
+    const requiredCheckNamesSet = new Set<string>();
+
+    const rulesResponse = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${ownerSegment}/${repoSegment}/rules/branches/${branchSegment}?per_page=100`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            Accept: 'application/vnd.github+json',
+          },
+        },
+      ),
+    );
+    if (rulesResponse.ok) {
+      const rulesBody: unknown = await rulesResponse.json();
+      if (!isBranchRulesResponse(rulesBody)) {
+        throw new Error(
+          `Unexpected response shape when fetching branch rules: ${owner}/${repo}/${branch}`,
+        );
+      }
+      for (const rule of rulesBody) {
+        if (rule.type !== 'required_status_checks') continue;
+        for (const check of rule.parameters?.required_status_checks || []) {
+          requiredCheckNamesSet.add(check.context);
+        }
+      }
+    } else if (rulesResponse.status === 403) {
+      const reason = await this.formatGitHubErrorWithStatus(rulesResponse);
+      console.warn(
+        `ApiV3CheerioRestIssueRepository: branch rules are not accessible for ${owner}/${repo}/${branch}, treating as no required checks. reason: ${reason}`,
+      );
+    } else if (rulesResponse.status !== 404) {
+      const reason = await this.formatGitHubErrorWithStatus(rulesResponse);
+      throw new Error(
+        `Failed to fetch branch rules for ${owner}/${repo}/${branch}: ${reason}`,
+      );
+    }
+
+    const branchResponse = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${ownerSegment}/${repoSegment}/branches/${branchSegment}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            Accept: 'application/vnd.github+json',
+          },
+        },
+      ),
+    );
+    if (branchResponse.ok) {
+      const branchBody: unknown = await branchResponse.json();
+      if (!isBranchDetailResponse(branchBody)) {
+        throw new Error(
+          `Unexpected response shape when fetching branch detail: ${owner}/${repo}/${branch}`,
+        );
+      }
+      for (const context of branchBody.protection?.required_status_checks
+        ?.contexts || []) {
+        requiredCheckNamesSet.add(context);
+      }
+    } else if (branchResponse.status === 403) {
+      const reason = await this.formatGitHubErrorWithStatus(branchResponse);
+      console.warn(
+        `ApiV3CheerioRestIssueRepository: branch detail (classic protection) is not accessible for ${owner}/${repo}/${branch}, treating as no required checks. reason: ${reason}`,
+      );
+    } else if (branchResponse.status !== 404) {
+      const reason = await this.formatGitHubErrorWithStatus(branchResponse);
+      throw new Error(
+        `Failed to fetch branch detail for ${owner}/${repo}/${branch}: ${reason}`,
+      );
+    }
+
+    const names = Array.from(requiredCheckNamesSet);
+    this.requiredCheckNamesCache.set(cacheKey, {
+      fetchedAtMs: nowMs,
+      names,
+    });
+    return names;
+  };
+
+  private getCommitCiContexts = async (
+    owner: string,
+    repo: string,
+    commitSha: string,
+  ): Promise<CiContextNode[]> => {
+    const ownerSegment = encodeURIComponent(owner);
+    const repoSegment = encodeURIComponent(repo);
+    const shaSegment = encodeURIComponent(commitSha);
+    const contexts: CiContextNode[] = [];
+
+    const perPage = 100;
+    let page = 1;
+    let hasMore = true;
+    while (hasMore) {
+      const checkRunsResponse = await this.fetchWithRateLimitRetry(() =>
+        fetch(
+          `https://api.github.com/repos/${ownerSegment}/${repoSegment}/commits/${shaSegment}/check-runs?per_page=${perPage}&page=${page}`,
+          {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${this.ghToken}`,
+              Accept: 'application/vnd.github+json',
+            },
+          },
+        ),
+      );
+      if (!checkRunsResponse.ok) {
+        const reason =
+          await this.formatGitHubErrorWithStatus(checkRunsResponse);
+        throw new Error(
+          `Failed to fetch check runs for ${owner}/${repo}@${commitSha}: ${reason}`,
+        );
+      }
+      const checkRunsBody: unknown = await checkRunsResponse.json();
+      if (!isCheckRunsResponse(checkRunsBody)) {
+        throw new Error(
+          `Unexpected response shape when fetching check runs: ${owner}/${repo}@${commitSha}`,
+        );
+      }
+      for (const checkRun of checkRunsBody.check_runs) {
+        contexts.push({
+          __typename: 'CheckRun',
+          name: checkRun.name,
+          conclusion: checkRun.conclusion
+            ? checkRun.conclusion.toUpperCase()
+            : null,
+          databaseId: checkRun.id,
+        });
+      }
+      if (
+        checkRunsBody.check_runs.length < perPage ||
+        page * perPage >= checkRunsBody.total_count
+      ) {
+        hasMore = false;
+      } else {
+        page += 1;
+      }
+    }
+
+    const combinedStatusResponse = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${ownerSegment}/${repoSegment}/commits/${shaSegment}/status?per_page=100`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            Accept: 'application/vnd.github+json',
+          },
+        },
+      ),
+    );
+    if (!combinedStatusResponse.ok) {
+      const reason = await this.formatGitHubErrorWithStatus(
+        combinedStatusResponse,
+      );
+      throw new Error(
+        `Failed to fetch combined status for ${owner}/${repo}@${commitSha}: ${reason}`,
+      );
+    }
+    const combinedStatusBody: unknown = await combinedStatusResponse.json();
+    if (!isCombinedStatusResponse(combinedStatusBody)) {
+      throw new Error(
+        `Unexpected response shape when fetching combined status: ${owner}/${repo}@${commitSha}`,
+      );
+    }
+    for (const status of combinedStatusBody.statuses) {
+      contexts.push({
+        __typename: 'StatusContext',
+        context: status.context,
+        state: status.state.toUpperCase(),
+      });
+    }
+
+    return contexts;
+  };
+
+  private fetchSlimPullRequest = async (
+    owner: string,
+    repo: string,
+    prNumber: number,
+  ): Promise<SlimPullRequest | null> => {
+    const query = `
+      query PullRequestSlimStatus($owner: String!, $repo: String!, $prNumber: Int!, $reviewThreadsAfter: String) {
+        repository(owner: $owner, name: $repo) {
+          pullRequest(number: $prNumber) {
+            url
+            state
+            isDraft
+            headRefName
+            baseRefName
+            mergeable
+            headRefOid
+            reviewThreads(first: 100, after: $reviewThreadsAfter) {
+              pageInfo {
+                endCursor
+                hasNextPage
+              }
+              nodes {
+                isResolved
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    let slimPullRequest: SlimPullRequest | null = null;
+    let reviewThreadsAfter: string | null = null;
+    let hasNextPage = true;
+
+    while (hasNextPage) {
+      const response = await this.fetchWithRateLimitRetry(() =>
+        fetchGithubGraphql({
+          ghToken: this.ghToken,
+          query,
+          variables: { owner, repo, prNumber, reviewThreadsAfter },
+        }),
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch pull request from GitHub GraphQL API: HTTP ${response.status}`,
+        );
+      }
+
+      const responseData: unknown = await response.json();
+      if (!isSlimPullRequestResponse(responseData)) {
+        throw new Error('Unexpected response shape when fetching pull request');
+      }
+
+      if (responseData.errors && responseData.errors.length > 0) {
+        throw new Error(
+          `GraphQL errors: ${JSON.stringify(responseData.errors)}`,
+        );
+      }
+
+      const pr = responseData.data?.repository?.pullRequest;
+      if (!pr) {
+        return null;
+      }
+
+      if (!slimPullRequest) {
+        slimPullRequest = {
+          url: pr.url,
+          state: pr.state,
+          isDraft: pr.isDraft,
+          headRefName: pr.headRefName,
+          baseRefName: pr.baseRefName,
+          mergeable: pr.mergeable,
+          headRefOid: pr.headRefOid,
+          reviewThreads: [],
+        };
+      }
+      for (const thread of pr.reviewThreads?.nodes || []) {
+        slimPullRequest.reviewThreads.push({ isResolved: thread.isResolved });
+      }
+
+      hasNextPage = pr.reviewThreads?.pageInfo.hasNextPage === true;
+      reviewThreadsAfter = pr.reviewThreads?.pageInfo.endCursor ?? null;
+    }
+
+    return slimPullRequest;
+  };
+
+  private buildRelatedPullRequestFromSlim = async (
+    owner: string,
+    repo: string,
+    slimPullRequest: SlimPullRequest,
+  ): Promise<RelatedPullRequest> => {
+    const requiredCheckNames = slimPullRequest.baseRefName
+      ? await this.getRequiredCheckNames(
+          owner,
+          repo,
+          slimPullRequest.baseRefName,
+        )
+      : [];
+    const ciContexts = slimPullRequest.headRefOid
+      ? await this.getCommitCiContexts(owner, repo, slimPullRequest.headRefOid)
+      : [];
+    return this.computePrStatus(
+      slimPullRequest.url,
+      slimPullRequest.headRefName,
+      {
+        isDraft: slimPullRequest.isDraft,
+        mergeable: slimPullRequest.mergeable,
+        requiredCheckNames,
+        ciContexts,
+        reviewThreads: slimPullRequest.reviewThreads,
+      },
+    );
+  };
+
+  private resolveMergeabilityWithRetry = async (
+    owner: string,
+    repo: string,
+    prNumber: number,
+  ): Promise<{
+    mergeable: string | null;
+    mergeStateStatus: string | null;
+  } | null> => {
+    const query = `
+      query PullRequestMergeability($owner: String!, $repo: String!, $prNumber: Int!) {
+        repository(owner: $owner, name: $repo) {
+          pullRequest(number: $prNumber) {
+            mergeable
+            mergeStateStatus
+          }
+        }
+      }
+    `;
+
+    const maxAttempts = 3;
+    const retryDelayMilliseconds = 1000;
+    let lastResult: {
+      mergeable: string | null;
+      mergeStateStatus: string | null;
+    } | null = null;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (attempt > 0) {
+        await this.sleep(retryDelayMilliseconds);
+      }
+
+      const response = await this.fetchWithRateLimitRetry(() =>
+        fetchGithubGraphql({
+          ghToken: this.ghToken,
+          query,
+          variables: { owner, repo, prNumber },
+        }),
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch pull request mergeability from GitHub GraphQL API: HTTP ${response.status}`,
+        );
+      }
+
+      const responseData: unknown = await response.json();
+      if (!isPullRequestMergeabilityResponse(responseData)) {
+        throw new Error(
+          `Unexpected response shape when fetching pull request mergeability: ${owner}/${repo}#${prNumber}`,
+        );
+      }
+
+      if (responseData.errors && responseData.errors.length > 0) {
+        throw new Error(
+          `GraphQL errors: ${JSON.stringify(responseData.errors)}`,
+        );
+      }
+
+      const pr = responseData.data?.repository?.pullRequest;
+      if (!pr) {
+        return null;
+      }
+
+      lastResult = {
+        mergeable: pr.mergeable ?? null,
+        mergeStateStatus: pr.mergeStateStatus ?? null,
+      };
+
+      if (lastResult.mergeable !== null && lastResult.mergeable !== 'UNKNOWN') {
+        return lastResult;
+      }
+    }
+
+    return lastResult;
+  };
+
   findRelatedOpenPRs = async (
     issueUrl: string,
   ): Promise<RelatedPullRequest[]> => {
@@ -1024,7 +1436,7 @@ export class ApiV3CheerioRestIssueRepository
     }
 
     const query = `
-      query($owner: String!, $repo: String!, $issueNumber: Int!, $after: String) {
+      query IssueRelatedOpenPullRequests($owner: String!, $repo: String!, $issueNumber: Int!, $after: String) {
         repository(owner: $owner, name: $repo) {
           issue(number: $issueNumber) {
             timelineItems(first: 100, after: $after, itemTypes: [CROSS_REFERENCED_EVENT]) {
@@ -1048,68 +1460,6 @@ export class ApiV3CheerioRestIssueRepository
                       mergeable
                       headRefName
                       baseRefName
-                      baseRepository {
-                        branchProtectionRules(first: 100) {
-                          nodes {
-                            pattern
-                            requiredStatusCheckContexts
-                          }
-                        }
-                        defaultBranchRef {
-                          name
-                        }
-                        rulesets(first: 100) {
-                          nodes {
-                            name
-                            enforcement
-                            conditions {
-                              refName {
-                                include
-                                exclude
-                              }
-                            }
-                            rules(first: 100) {
-                              nodes {
-                                type
-                                parameters {
-                                  ... on RequiredStatusChecksParameters {
-                                    requiredStatusChecks {
-                                      context
-                                    }
-                                  }
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                      commits(last: 1) {
-                        nodes {
-                          commit {
-                            statusCheckRollup {
-                              contexts(first: 100) {
-                                nodes {
-                                  __typename
-                                  ... on CheckRun {
-                                    databaseId
-                                    name
-                                    conclusion
-                                  }
-                                  ... on StatusContext {
-                                    context
-                                    state
-                                  }
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                      reviewThreads(first: 100) {
-                        nodes {
-                          isResolved
-                        }
-                      }
                       baseRef {
                         name
                       }
@@ -1128,17 +1478,13 @@ export class ApiV3CheerioRestIssueRepository
     let hasNextPage = true;
 
     while (hasNextPage) {
-      const response = await fetch('https://api.github.com/graphql', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const response = await this.fetchWithRateLimitRetry(() =>
+        fetchGithubGraphql({
+          ghToken: this.ghToken,
           query,
           variables: { owner, repo, issueNumber, after },
         }),
-      });
+      );
 
       if (!response.ok) {
         throw new Error(
@@ -1175,16 +1521,91 @@ export class ApiV3CheerioRestIssueRepository
 
         const pr = item.source;
         const prUrl = pr.url || '';
-        const baseRefName = pr.baseRefName ?? pr.baseRef?.name;
-        const prStatus = this.computePrStatus(
-          prUrl,
-          pr.headRefName,
-          baseRefName,
-          pr,
-        );
+
+        if (!prUrl) continue;
+
+        const { owner: prOwner, repo: prRepo } = this.parseIssueUrl(prUrl);
+
+        let isConflicted = pr.mergeable === 'CONFLICTING';
+        let mergeable: string | null = pr.mergeable ?? null;
+        if (
+          pr.number !== undefined &&
+          (pr.mergeable === undefined ||
+            pr.mergeable === null ||
+            pr.mergeable === 'UNKNOWN')
+        ) {
+          let resolved: {
+            mergeable: string | null;
+            mergeStateStatus: string | null;
+          } | null;
+          try {
+            resolved = await this.resolveMergeabilityWithRetry(
+              prOwner,
+              prRepo,
+              pr.number,
+            );
+          } catch (error) {
+            const errorMessage =
+              error instanceof Error ? error.message : String(error);
+            if (errorMessage.includes('NOT_FOUND')) {
+              console.info(
+                `ApiV3CheerioRestIssueRepository: pull request no longer exists, excluding it from related open PRs. prUrl: ${prUrl}`,
+              );
+            } else {
+              console.warn(
+                `ApiV3CheerioRestIssueRepository: resolveMergeabilityWithRetry failed, skipping PR for this cycle. prUrl: ${prUrl} error: ${errorMessage}`,
+              );
+            }
+            continue;
+          }
+          if (resolved !== null) {
+            mergeable = resolved.mergeable;
+            isConflicted =
+              resolved.mergeable === 'CONFLICTING' ||
+              resolved.mergeStateStatus === 'DIRTY';
+          }
+        }
+
+        if (pr.number === undefined) continue;
+
+        let prStatus: RelatedPullRequest;
+        try {
+          const slimPullRequest = await this.fetchSlimPullRequest(
+            prOwner,
+            prRepo,
+            pr.number,
+          );
+          if (!slimPullRequest || slimPullRequest.state !== 'OPEN') {
+            console.info(
+              `ApiV3CheerioRestIssueRepository: pull request is no longer open, excluding it from related open PRs. prUrl: ${prUrl}`,
+            );
+            continue;
+          }
+          const baseRefName =
+            slimPullRequest.baseRefName ?? pr.baseRefName ?? pr.baseRef?.name;
+          prStatus = await this.buildRelatedPullRequestFromSlim(
+            prOwner,
+            prRepo,
+            {
+              ...slimPullRequest,
+              url: slimPullRequest.url || prUrl,
+              headRefName: slimPullRequest.headRefName ?? pr.headRefName,
+              baseRefName,
+            },
+          );
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          console.warn(
+            `ApiV3CheerioRestIssueRepository: fetching pull request status failed, skipping PR for this cycle. prUrl: ${prUrl} error: ${errorMessage}`,
+          );
+          continue;
+        }
 
         relatedPRsMap.set(prUrl, {
           ...prStatus,
+          isConflicted,
+          mergeable,
           createdAt: pr.createdAt ? new Date(pr.createdAt) : new Date(0),
         });
       }
@@ -1196,19 +1617,13 @@ export class ApiV3CheerioRestIssueRepository
     return Array.from(relatedPRsMap.values());
   };
 
-  getAllOpened = async (
-    project: Project,
-    allowCacheMinutes: number,
-  ): Promise<Issue[]> => {
-    const { issues } = await this.getAllIssues(project.id, allowCacheMinutes);
+  getAllOpened = async (project: Project): Promise<Issue[]> => {
+    const { issues } = await this.getAllIssues(project.id);
     return issues.filter((issue) => !issue.isClosed);
   };
 
-  getStoryObjectMap = async (
-    project: Project,
-    allowCacheMinutes: number,
-  ): Promise<StoryObjectMap> => {
-    const { issues } = await this.getAllIssues(project.id, allowCacheMinutes);
+  getStoryObjectMap = async (project: Project): Promise<StoryObjectMap> => {
+    const { issues } = await this.getAllIssues(project.id);
     const storyObjectMap: StoryObjectMap = new Map();
     const targetStories = project.story?.stories || [];
     for (const story of targetStories) {
@@ -1237,133 +1652,36 @@ export class ApiV3CheerioRestIssueRepository
     }
     const { owner, repo, issueNumber: prNumber } = parsedUrl;
 
-    const query = `
-      query($owner: String!, $repo: String!, $prNumber: Int!) {
-        repository(owner: $owner, name: $repo) {
-          pullRequest(number: $prNumber) {
-            url
-            state
-            isDraft
-            headRefName
-            baseRefName
-            mergeable
-            baseRepository {
-              branchProtectionRules(first: 100) {
-                nodes {
-                  pattern
-                  requiredStatusCheckContexts
-                }
-              }
-              defaultBranchRef {
-                name
-              }
-              rulesets(first: 100) {
-                nodes {
-                  name
-                  enforcement
-                  conditions {
-                    refName {
-                      include
-                      exclude
-                    }
-                  }
-                  rules(first: 100) {
-                    nodes {
-                      type
-                      parameters {
-                        ... on RequiredStatusChecksParameters {
-                          requiredStatusChecks {
-                            context
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-            commits(last: 1) {
-              nodes {
-                commit {
-                  statusCheckRollup {
-                    contexts(first: 100) {
-                      nodes {
-                        __typename
-                        ... on CheckRun {
-                          databaseId
-                          name
-                          conclusion
-                        }
-                        ... on StatusContext {
-                          context
-                          state
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-            reviewThreads(first: 100) {
-              nodes {
-                isResolved
-              }
-            }
-          }
-        }
-      }
-    `;
-
-    const response = await fetch('https://api.github.com/graphql', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.ghToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query,
-        variables: { owner, repo, prNumber },
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(
-        `Failed to fetch pull request from GitHub GraphQL API: HTTP ${response.status}`,
-      );
-    }
-
-    const responseData: unknown = await response.json();
-    if (!isDirectPullRequestResponse(responseData)) {
-      throw new Error('Unexpected response shape when fetching pull request');
-    }
-
-    if (responseData.errors && responseData.errors.length > 0) {
-      throw new Error(`GraphQL errors: ${JSON.stringify(responseData.errors)}`);
-    }
-
-    const pr = responseData.data?.repository?.pullRequest;
-    if (!pr || pr.state !== 'OPEN') {
+    const slimPullRequest = await this.fetchSlimPullRequest(
+      owner,
+      repo,
+      prNumber,
+    );
+    if (!slimPullRequest || slimPullRequest.state !== 'OPEN') {
       return null;
     }
 
-    return this.computePrStatus(pr.url, pr.headRefName, pr.baseRefName, pr);
+    return this.buildRelatedPullRequestFromSlim(owner, repo, slimPullRequest);
   };
 
   closePullRequest = async (prUrl: string): Promise<void> => {
     const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
-      {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          'Content-Type': 'application/json',
+    const response = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ state: 'closed' }),
         },
-        body: JSON.stringify({ state: 'closed' }),
-      },
+      ),
     );
     if (!response.ok) {
-      throw new Error(`Failed to close PR ${prUrl}: HTTP ${response.status}`);
+      const reason = await this.formatGitHubErrorWithStatus(response);
+      throw new Error(`Failed to close PR ${prUrl}: ${reason}`);
     }
   };
 
@@ -1374,21 +1692,22 @@ export class ApiV3CheerioRestIssueRepository
     const { owner, repo, issueNumber } = this.parseIssueUrl(issueUrl);
     const ownerSegment = encodeURIComponent(owner);
     const repoSegment = encodeURIComponent(repo);
-    const response = await fetch(
-      `https://api.github.com/repos/${ownerSegment}/${repoSegment}/issues/${issueNumber}`,
-      {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          'Content-Type': 'application/json',
+    const response = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${ownerSegment}/${repoSegment}/issues/${issueNumber}`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ state: 'closed', state_reason: stateReason }),
         },
-        body: JSON.stringify({ state: 'closed', state_reason: stateReason }),
-      },
+      ),
     );
     if (!response.ok) {
-      throw new Error(
-        `Failed to close issue ${issueUrl}: HTTP ${response.status}`,
-      );
+      const reason = await this.formatGitHubErrorWithStatus(response);
+      throw new Error(`Failed to close issue ${issueUrl}: ${reason}`);
     }
   };
 
@@ -1399,19 +1718,22 @@ export class ApiV3CheerioRestIssueRepository
     let page = 1;
     let hasMore = true;
     while (hasMore) {
-      const response = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=${perPage}&page=${page}`,
-        {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${this.ghToken}`,
-            Accept: 'application/vnd.github+json',
+      const response = await this.fetchWithRateLimitRetry(() =>
+        fetch(
+          `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/files?per_page=${perPage}&page=${page}`,
+          {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${this.ghToken}`,
+              Accept: 'application/vnd.github+json',
+            },
           },
-        },
+        ),
       );
       if (!response.ok) {
+        const reason = await this.formatGitHubErrorWithStatus(response);
         throw new Error(
-          `Failed to fetch changed files for PR ${prUrl}: HTTP ${response.status}`,
+          `Failed to fetch changed files for PR ${prUrl}: ${reason}`,
         );
       }
       const body: unknown = await response.json();
@@ -1434,20 +1756,23 @@ export class ApiV3CheerioRestIssueRepository
 
   approvePullRequest = async (prUrl: string): Promise<void> => {
     const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/vnd.github+json',
+    const response = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/reviews`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/vnd.github+json',
+          },
+          body: JSON.stringify({ event: 'APPROVE' }),
         },
-        body: JSON.stringify({ event: 'APPROVE' }),
-      },
+      ),
     );
     if (!response.ok) {
-      throw new Error(`Failed to approve PR ${prUrl}: HTTP ${response.status}`);
+      const reason = await this.formatGitHubErrorWithStatus(response);
+      throw new Error(`Failed to approve PR ${prUrl}: ${reason}`);
     }
   };
 
@@ -1455,38 +1780,44 @@ export class ApiV3CheerioRestIssueRepository
     prUrl: string,
     changedFilePath: string | null,
     commentBody: string,
+    inlineCommentLocation: PullRequestReviewInlineLocation | null = null,
   ): Promise<void> => {
     const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
     if (changedFilePath === null) {
       await this.createCommentByUrl(prUrl, commentBody);
       return;
     }
+    const inlineComment =
+      inlineCommentLocation === null
+        ? { path: changedFilePath, position: 1, body: commentBody }
+        : {
+            path: changedFilePath,
+            line: inlineCommentLocation.line,
+            side: inlineCommentLocation.side,
+            body: commentBody,
+          };
     const reviewBody: Record<string, unknown> = {
       event: 'REQUEST_CHANGES',
-      comments: [
-        {
-          path: changedFilePath,
-          position: 1,
-          body: commentBody,
-        },
-      ],
+      body: commentBody,
+      comments: [inlineComment],
     };
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/vnd.github+json',
+    const response = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/reviews`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/vnd.github+json',
+          },
+          body: JSON.stringify(reviewBody),
         },
-        body: JSON.stringify(reviewBody),
-      },
+      ),
     );
     if (!response.ok) {
-      throw new Error(
-        `Failed to request changes on PR ${prUrl}: HTTP ${response.status}`,
-      );
+      const reason = await this.formatGitHubErrorWithStatus(response);
+      throw new Error(`Failed to request changes on PR ${prUrl}: ${reason}`);
     }
   };
 
@@ -1498,20 +1829,21 @@ export class ApiV3CheerioRestIssueRepository
   ): Promise<string> => {
     const ownerSegment = encodeURIComponent(owner);
     const repoSegment = encodeURIComponent(repo);
-    const response = await fetch(
-      `https://api.github.com/repos/${ownerSegment}/${repoSegment}/pulls/${prNumber}`,
-      {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          Accept: 'application/vnd.github+json',
+    const response = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${ownerSegment}/${repoSegment}/pulls/${prNumber}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            Accept: 'application/vnd.github+json',
+          },
         },
-      },
+      ),
     );
     if (!response.ok) {
-      throw new Error(
-        `Failed to fetch head commit for PR ${prUrl}: HTTP ${response.status}`,
-      );
+      const reason = await this.formatGitHubErrorWithStatus(response);
+      throw new Error(`Failed to fetch head commit for PR ${prUrl}: ${reason}`);
     }
     const body: unknown = await response.json();
     if (
@@ -1542,52 +1874,57 @@ export class ApiV3CheerioRestIssueRepository
     );
     const ownerSegment = encodeURIComponent(owner);
     const repoSegment = encodeURIComponent(repo);
-    const response = await fetch(
-      `https://api.github.com/repos/${ownerSegment}/${repoSegment}/pulls/${prNumber}/comments`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/vnd.github+json',
+    const response = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${ownerSegment}/${repoSegment}/pulls/${prNumber}/comments`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/vnd.github+json',
+          },
+          body: JSON.stringify({
+            body: commentBody,
+            commit_id: commitId,
+            path,
+            line,
+            side,
+          }),
         },
-        body: JSON.stringify({
-          body: commentBody,
-          commit_id: commitId,
-          path,
-          line,
-          side,
-        }),
-      },
+      ),
     );
     if (!response.ok) {
-      const reason = await this.readGitHubErrorMessage(response);
+      const reason = await this.formatGitHubErrorWithStatus(response);
       throw new Error(
         `Failed to create review comment on PR ${prUrl}: ${reason}`,
       );
     }
   };
 
-  private readGitHubErrorMessage = async (
+  private readGitHubErrorReason = async (
     response: Response,
-  ): Promise<string> => {
-    const fallback = `HTTP ${response.status}`;
+  ): Promise<string | null> => {
     let parsed: unknown;
     try {
       parsed = await response.json();
     } catch {
-      return fallback;
+      return null;
     }
     if (!isRecord(parsed) || typeof parsed.message !== 'string') {
-      return fallback;
+      return null;
     }
     if (Array.isArray(parsed.errors) && parsed.errors.length > 0) {
       const details = parsed.errors
-        .map((error) =>
-          isRecord(error) && typeof error.message === 'string'
-            ? error.message
-            : '',
-        )
+        .map((error) => {
+          if (typeof error === 'string') {
+            return error;
+          }
+          if (isRecord(error) && typeof error.message === 'string') {
+            return error.message;
+          }
+          return '';
+        })
         .filter((detail) => detail.length > 0)
         .join('; ');
       if (details.length > 0) {
@@ -1597,23 +1934,47 @@ export class ApiV3CheerioRestIssueRepository
     return parsed.message;
   };
 
+  private formatGitHubErrorWithStatus = async (
+    response: Response,
+  ): Promise<string> => {
+    const status = `HTTP ${response.status}`;
+    const bodyText = await response.clone().text();
+    const reason = await this.readGitHubErrorReason(response);
+    if (hasRateLimitSignals(response.status, response.headers, bodyText)) {
+      const resetIso = computeRateLimitResetIso(response.headers);
+      const resetSuffix = resetIso === null ? '' : ` (resets at ${resetIso})`;
+      return `${status} GitHub rate limit exceeded, please retry shortly${resetSuffix}`;
+    }
+    if (response.status === 403) {
+      const permissionSuffix = reason === null ? '' : ` ${reason}`;
+      return `${status} permission denied, the token cannot perform this operation${permissionSuffix}`;
+    }
+    if (reason === null) {
+      return status;
+    }
+    return `${status} ${reason}`;
+  };
+
   deletePullRequestBranch = async (
     prUrl: string,
     branchName: string,
   ): Promise<void> => {
     const { owner, repo } = this.parseIssueUrl(prUrl);
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${encodeURIComponent(branchName)}`,
-      {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
+    const response = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/refs/heads/${encodeURIComponent(branchName)}`,
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+          },
         },
-      },
+      ),
     );
     if (!response.ok && response.status !== 422) {
+      const reason = await this.formatGitHubErrorWithStatus(response);
       throw new Error(
-        `Failed to delete branch ${branchName} for PR ${prUrl}: HTTP ${response.status}`,
+        `Failed to delete branch ${branchName} for PR ${prUrl}: ${reason}`,
       );
     }
   };
@@ -1627,20 +1988,21 @@ export class ApiV3CheerioRestIssueRepository
 
   getIssueOrPullRequestBody = async (url: string): Promise<string> => {
     const { owner, repo, issueNumber } = this.parseIssueUrl(url);
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`,
-      {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          Accept: 'application/vnd.github+json',
+    const response = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            Accept: 'application/vnd.github+json',
+          },
         },
-      },
+      ),
     );
     if (!response.ok) {
-      throw new Error(
-        `Failed to fetch body for ${url}: HTTP ${response.status}`,
-      );
+      const reason = await this.formatGitHubErrorWithStatus(response);
+      throw new Error(`Failed to fetch body for ${url}: ${reason}`);
     }
     const body: unknown = await response.json();
     if (!isIssueOrPullRequestBodyResponse(body)) {
@@ -1660,20 +2022,21 @@ export class ApiV3CheerioRestIssueRepository
     let page = 1;
     let hasMore = true;
     while (hasMore) {
-      const response = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments?per_page=${perPage}&page=${page}`,
-        {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${this.ghToken}`,
-            Accept: 'application/vnd.github+json',
+      const response = await this.fetchWithRateLimitRetry(() =>
+        fetch(
+          `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/comments?per_page=${perPage}&page=${page}`,
+          {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${this.ghToken}`,
+              Accept: 'application/vnd.github+json',
+            },
           },
-        },
+        ),
       );
       if (!response.ok) {
-        throw new Error(
-          `Failed to fetch comments for ${url}: HTTP ${response.status}`,
-        );
+        const reason = await this.formatGitHubErrorWithStatus(response);
+        throw new Error(`Failed to fetch comments for ${url}: ${reason}`);
       }
       const body: unknown = await response.json();
       if (!isIssueCommentsResponse(body)) {
@@ -1709,20 +2072,21 @@ export class ApiV3CheerioRestIssueRepository
     if (!isPr) {
       return null;
     }
-    const detailResponse = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
-      {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          Accept: 'application/vnd.github+json',
+    const detailResponse = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            Accept: 'application/vnd.github+json',
+          },
         },
-      },
+      ),
     );
     if (!detailResponse.ok) {
-      throw new Error(
-        `Failed to fetch detail for PR ${prUrl}: HTTP ${detailResponse.status}`,
-      );
+      const reason = await this.formatGitHubErrorWithStatus(detailResponse);
+      throw new Error(`Failed to fetch detail for PR ${prUrl}: ${reason}`);
     }
     const detailBody: unknown = await detailResponse.json();
     if (!isPullRequestDetailResponse(detailBody)) {
@@ -1762,20 +2126,21 @@ export class ApiV3CheerioRestIssueRepository
     let page = 1;
     let hasMore = true;
     while (hasMore) {
-      const response = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=${perPage}&page=${page}`,
-        {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${this.ghToken}`,
-            Accept: 'application/vnd.github+json',
+      const response = await this.fetchWithRateLimitRetry(() =>
+        fetch(
+          `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/files?per_page=${perPage}&page=${page}`,
+          {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${this.ghToken}`,
+              Accept: 'application/vnd.github+json',
+            },
           },
-        },
+        ),
       );
       if (!response.ok) {
-        throw new Error(
-          `Failed to fetch files for PR ${prUrl}: HTTP ${response.status}`,
-        );
+        const reason = await this.formatGitHubErrorWithStatus(response);
+        throw new Error(`Failed to fetch files for PR ${prUrl}: ${reason}`);
       }
       const body: unknown = await response.json();
       if (!isPullRequestDetailFilesResponse(body)) {
@@ -1818,20 +2183,21 @@ export class ApiV3CheerioRestIssueRepository
     let page = 1;
     let hasMore = true;
     while (hasMore) {
-      const response = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/commits?per_page=${perPage}&page=${page}`,
-        {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${this.ghToken}`,
-            Accept: 'application/vnd.github+json',
+      const response = await this.fetchWithRateLimitRetry(() =>
+        fetch(
+          `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/commits?per_page=${perPage}&page=${page}`,
+          {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${this.ghToken}`,
+              Accept: 'application/vnd.github+json',
+            },
           },
-        },
+        ),
       );
       if (!response.ok) {
-        throw new Error(
-          `Failed to fetch commits for PR ${prUrl}: HTTP ${response.status}`,
-        );
+        const reason = await this.formatGitHubErrorWithStatus(response);
+        throw new Error(`Failed to fetch commits for PR ${prUrl}: ${reason}`);
       }
       const body: unknown = await response.json();
       if (!isPullRequestCommitsResponse(body)) {
@@ -1861,20 +2227,21 @@ export class ApiV3CheerioRestIssueRepository
   ): Promise<{ state: string; merged: boolean; isPullRequest: boolean }> => {
     const { owner, repo, issueNumber, isPr } = this.parseIssueUrl(url);
     if (isPr) {
-      const response = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/pulls/${issueNumber}`,
-        {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${this.ghToken}`,
-            Accept: 'application/vnd.github+json',
+      const response = await this.fetchWithRateLimitRetry(() =>
+        fetch(
+          `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${issueNumber}`,
+          {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${this.ghToken}`,
+              Accept: 'application/vnd.github+json',
+            },
           },
-        },
+        ),
       );
       if (!response.ok) {
-        throw new Error(
-          `Failed to fetch state for ${url}: HTTP ${response.status}`,
-        );
+        const reason = await this.formatGitHubErrorWithStatus(response);
+        throw new Error(`Failed to fetch state for ${url}: ${reason}`);
       }
       const body: unknown = await response.json();
       if (!isPullRequestDetailResponse(body)) {
@@ -1884,20 +2251,21 @@ export class ApiV3CheerioRestIssueRepository
       }
       return { state: body.state, merged: body.merged, isPullRequest: true };
     }
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`,
-      {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          Accept: 'application/vnd.github+json',
+    const response = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            Accept: 'application/vnd.github+json',
+          },
         },
-      },
+      ),
     );
     if (!response.ok) {
-      throw new Error(
-        `Failed to fetch state for ${url}: HTTP ${response.status}`,
-      );
+      const reason = await this.formatGitHubErrorWithStatus(response);
+      throw new Error(`Failed to fetch state for ${url}: ${reason}`);
     }
     const body: unknown = await response.json();
     if (!isIssueOrPullRequestStateResponse(body)) {
@@ -1926,20 +2294,21 @@ export class ApiV3CheerioRestIssueRepository
     if (!isPr) {
       return null;
     }
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
-      {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          Accept: 'application/vnd.github+json',
+    const response = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            Accept: 'application/vnd.github+json',
+          },
         },
-      },
+      ),
     );
     if (!response.ok) {
-      throw new Error(
-        `Failed to fetch summary for PR ${prUrl}: HTTP ${response.status}`,
-      );
+      const reason = await this.formatGitHubErrorWithStatus(response);
+      throw new Error(`Failed to fetch summary for PR ${prUrl}: ${reason}`);
     }
     const body: unknown = await response.json();
     if (!isPullRequestDetailResponse(body)) {

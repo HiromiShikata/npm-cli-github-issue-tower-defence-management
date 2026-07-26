@@ -40,7 +40,7 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   dependedIssueUrls: [],
   completionDate50PercentConfidence: null,
   url: 'https://github.com/user/repo/issues/1',
-  assignees: [],
+  assignees: ['manager-user'],
   labels: [],
   org: 'user',
   repo: 'repo',
@@ -84,6 +84,7 @@ describe('StartPreparationUseCase', () => {
     Pick<
       IssueRepository,
       | 'getStoryObjectMap'
+      | 'getAllOpened'
       | 'updateStatus'
       | 'findRelatedOpenPRs'
       | 'getOpenPullRequest'
@@ -103,6 +104,7 @@ describe('StartPreparationUseCase', () => {
     };
     mockIssueRepository = {
       getStoryObjectMap: jest.fn().mockResolvedValue(new Map()),
+      getAllOpened: jest.fn().mockResolvedValue([]),
       updateStatus: jest.fn(),
       findRelatedOpenPRs: jest.fn().mockResolvedValue([]),
       getOpenPullRequest: jest.fn().mockResolvedValue(null),
@@ -154,8 +156,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -194,6 +196,7 @@ describe('StartPreparationUseCase', () => {
       createdAt: new Date('2024-01-01'),
       isDraft: false,
       isConflicted: false,
+      mergeable: null,
       isPassedAllCiJob: false,
       isCiStateSuccess: false,
       isResolvedAllReviewComments: false,
@@ -220,8 +223,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -257,6 +260,7 @@ describe('StartPreparationUseCase', () => {
       createdAt: new Date('2024-01-01'),
       isDraft: false,
       isConflicted: false,
+      mergeable: null,
       isPassedAllCiJob: false,
       isCiStateSuccess: false,
       isResolvedAllReviewComments: false,
@@ -278,8 +282,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -327,8 +331,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
@@ -358,6 +362,7 @@ describe('StartPreparationUseCase', () => {
       createdAt: new Date('2024-01-01'),
       isDraft: false,
       isConflicted: false,
+      mergeable: null,
       isPassedAllCiJob: false,
       isCiStateSuccess: false,
       isResolvedAllReviewComments: false,
@@ -377,8 +382,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
@@ -407,6 +412,7 @@ describe('StartPreparationUseCase', () => {
       createdAt: new Date('2024-01-01'),
       isDraft: false,
       isConflicted: false,
+      mergeable: null,
       isPassedAllCiJob: false,
       isCiStateSuccess: false,
       isResolvedAllReviewComments: false,
@@ -426,8 +432,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
@@ -452,6 +458,7 @@ describe('StartPreparationUseCase', () => {
       createdAt: new Date('2024-01-01T00:00:00Z'),
       isDraft: false,
       isConflicted: false,
+      mergeable: null,
       isPassedAllCiJob: false,
       isCiStateSuccess: false,
       isResolvedAllReviewComments: false,
@@ -464,6 +471,7 @@ describe('StartPreparationUseCase', () => {
       createdAt: new Date('2024-01-02T00:00:00Z'),
       isDraft: false,
       isConflicted: false,
+      mergeable: null,
       isPassedAllCiJob: false,
       isCiStateSuccess: false,
       isResolvedAllReviewComments: false,
@@ -493,8 +501,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
@@ -544,6 +552,7 @@ describe('StartPreparationUseCase', () => {
       createdAt: new Date('2024-01-01T00:00:00Z'),
       isDraft: false,
       isConflicted: false,
+      mergeable: null,
       isPassedAllCiJob: false,
       isCiStateSuccess: false,
       isResolvedAllReviewComments: false,
@@ -556,6 +565,7 @@ describe('StartPreparationUseCase', () => {
       createdAt: new Date('2024-01-02T00:00:00Z'),
       isDraft: false,
       isConflicted: false,
+      mergeable: null,
       isPassedAllCiJob: false,
       isCiStateSuccess: false,
       isResolvedAllReviewComments: false,
@@ -583,8 +593,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
@@ -621,6 +631,7 @@ describe('StartPreparationUseCase', () => {
       createdAt: new Date('2024-01-01'),
       isDraft: false,
       isConflicted: false,
+      mergeable: null,
       isPassedAllCiJob: false,
       isCiStateSuccess: false,
       isResolvedAllReviewComments: false,
@@ -647,8 +658,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
@@ -692,8 +703,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     // Both awaiting issues should be updated (forward iteration: url1 first, then url2)
@@ -750,8 +761,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     // Loop doesn't run because we're already at max (6 >= 6)
@@ -786,8 +797,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -832,8 +843,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -878,8 +889,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -924,8 +935,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -970,8 +981,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -1016,8 +1027,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -1065,8 +1076,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -1114,8 +1125,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -1165,8 +1176,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     // No issues are in 'Awaiting Workspace' status, so no updates should happen
@@ -1201,8 +1212,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: 3,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(3);
@@ -1236,8 +1247,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(6);
@@ -1298,8 +1309,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: 12,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -1369,8 +1380,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: 20,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -1434,8 +1445,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -1483,8 +1494,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -1539,8 +1550,8 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -1598,8 +1609,8 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -1647,8 +1658,8 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -1696,8 +1707,8 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -1745,8 +1756,8 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -1800,8 +1811,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['user1', 'user2'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -1849,8 +1860,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -1887,8 +1898,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: [],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -1925,8 +1936,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['dependabot[bot]'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -1963,8 +1974,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['owner'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2010,8 +2021,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['user1', 'user2'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2051,13 +2062,222 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['user1'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+  });
+
+  it('should pick up an awaiting workspace issue assigned to the manager', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        title: 'Issue assigned to manager',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        author: 'testuser',
+        assignees: ['manager-user'],
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+    });
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+  });
+
+  it('should skip an awaiting workspace issue with no assignees', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        title: 'Issue with no assignees',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        author: 'testuser',
+        assignees: [],
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+  });
+
+  it('should skip an awaiting workspace issue assigned only to a non-manager', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        title: 'Issue assigned to non-manager only',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        author: 'testuser',
+        assignees: ['someone-else'],
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+  });
+
+  it('should pick up an awaiting workspace issue whose assignees include the manager alongside other assignees', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        title: 'Renovate PR auto-assigned to manager',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        author: 'testuser',
+        assignees: ['renovate[bot]', 'manager-user'],
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+  });
+
+  it('should pick up only the manager-assigned issue among mixed assignee issues', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        title: 'Assigned to manager',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        author: 'testuser',
+        assignees: ['manager-user'],
+        number: 1,
+        itemId: 'item-1',
+      }),
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/2',
+        title: 'Assigned to client only',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        author: 'testuser',
+        assignees: ['client-user'],
+        number: 2,
+        itemId: 'item-2',
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+      url: 'https://github.com/user/repo/issues/1',
+    });
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
   });
 
   it('should not pass --codexHome when codexHomeCandidates is null', async () => {
@@ -2089,8 +2309,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2138,8 +2358,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: [],
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2187,8 +2407,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: ['.codex-dev1'],
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2256,8 +2476,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: ['.codex-dev1', '.codex-dev2'],
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2322,8 +2542,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2382,8 +2602,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2395,7 +2615,7 @@ describe('StartPreparationUseCase', () => {
     consoleErrorSpy.mockRestore();
   });
 
-  it('should pass allowIssueCacheMinutes to getStoryObjectMap', async () => {
+  it('should call getStoryObjectMap with the resolved project', async () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap([]),
@@ -2411,14 +2631,13 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 5,
       labelsAsLlmAgentName: null,
     });
 
     expect(mockIssueRepository.getStoryObjectMap).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'project-1' }),
-      5,
     );
   });
 
@@ -2459,8 +2678,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2512,8 +2731,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2603,8 +2822,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2661,8 +2880,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2737,8 +2956,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2816,8 +3035,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2894,8 +3113,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -2969,8 +3188,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3057,8 +3276,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3124,8 +3343,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3192,8 +3411,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3262,8 +3481,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3335,8 +3554,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3450,8 +3669,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3536,8 +3755,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3597,8 +3816,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3664,8 +3883,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3731,8 +3950,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3798,8 +4017,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3868,8 +4087,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3916,8 +4135,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -3986,8 +4205,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -4056,8 +4275,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -4126,8 +4345,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -4204,8 +4423,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -4282,8 +4501,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -4365,8 +4584,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -4477,8 +4696,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -4553,8 +4772,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -4626,8 +4845,8 @@ describe('StartPreparationUseCase', () => {
       maximumPreparingIssuesCount: null,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
       codexHomeCandidates: null,
-      allowIssueCacheMinutes: 0,
       labelsAsLlmAgentName: null,
     });
 
@@ -4674,8 +4893,8 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: params.labelsAsLlmAgentName,
       });
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -4821,8 +5040,8 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -4888,8 +5107,8 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -4947,8 +5166,8 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -5002,8 +5221,8 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -5057,8 +5276,8 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -5113,8 +5332,8 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -5194,8 +5413,8 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -5262,8 +5481,8 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -5322,8 +5541,8 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -5378,8 +5597,8 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -5440,8 +5659,8 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -5502,8 +5721,8 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -5563,8 +5782,8 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -5624,8 +5843,8 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -5679,8 +5898,8 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -5746,8 +5965,8 @@ describe('StartPreparationUseCase', () => {
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 0,
         labelsAsLlmAgentName: null,
       });
 
@@ -5759,6 +5978,256 @@ describe('StartPreparationUseCase', () => {
         },
       });
     });
+  });
+
+  it('should log one aggregate spawn candidate exclusion summary per run with counts by reason', async () => {
+    const currentHour = new Date().getHours();
+    const dayAfterTomorrow = new Date();
+    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/11',
+        title: 'Depended Issue',
+        status: 'Awaiting Workspace',
+        number: 11,
+        dependedIssueUrls: ['https://github.com/user/repo/issues/99'],
+      }),
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/12',
+        title: 'Future Next Action Date Issue',
+        status: 'Awaiting Workspace',
+        number: 12,
+        nextActionDate: dayAfterTomorrow,
+      }),
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/13',
+        title: 'Future Next Action Hour Issue',
+        status: 'Awaiting Workspace',
+        number: 13,
+        nextActionHour: currentHour + 1,
+      }),
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/14',
+        title: 'Disallowed Author Issue',
+        status: 'Awaiting Workspace',
+        number: 14,
+        author: 'not-allowed-user',
+      }),
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/14b',
+        title: 'Not Assigned To Manager Issue',
+        status: 'Awaiting Workspace',
+        number: 145,
+        assignees: ['someone-else'],
+      }),
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/15',
+        title: 'Spawnable Issue',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        number: 15,
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    const consoleLogSpy = jest
+      .spyOn(console, 'log')
+      .mockImplementation(() => {});
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+    const summaryCalls = consoleLogSpy.mock.calls.filter((call) =>
+      String(call[0]).includes('Spawn candidate exclusion summary'),
+    );
+    expect(summaryCalls).toHaveLength(1);
+    expect(summaryCalls[0][0]).toBe(
+      'Spawn candidate exclusion summary for https://github.com/user/repo: dependedIssueUrls=1, futureNextActionDate=1, nextActionHourNotReached=1, authorNotAllowed=1, notAssignedToManager=1',
+    );
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][0]).toBe(
+      'https://github.com/user/repo/issues/15',
+    );
+    consoleLogSpy.mockRestore();
+  });
+
+  it('should log the aggregate exclusion summary with zero counts when nothing is excluded', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/21',
+        title: 'Spawnable Issue',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        number: 21,
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    const consoleLogSpy = jest
+      .spyOn(console, 'log')
+      .mockImplementation(() => {});
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+    const summaryCalls = consoleLogSpy.mock.calls.filter((call) =>
+      String(call[0]).includes('Spawn candidate exclusion summary'),
+    );
+    expect(summaryCalls).toHaveLength(1);
+    expect(summaryCalls[0][0]).toBe(
+      'Spawn candidate exclusion summary for https://github.com/user/repo: dependedIssueUrls=0, futureNextActionDate=0, nextActionHourNotReached=0, authorNotAllowed=0, notAssignedToManager=0',
+    );
+    consoleLogSpy.mockRestore();
+  });
+
+  it('should warn with URLs of Awaiting Workspace issues invisible to selection because Story is unset', async () => {
+    const issueWithStory = createMockIssue({
+      url: 'https://github.com/user/repo/issues/31',
+      title: 'Issue With Story',
+      labels: ['category:impl'],
+      status: 'Awaiting Workspace',
+      number: 31,
+      story: 'Default Story',
+    });
+    const storyUnsetAwaitingWorkspaceIssueOne = createMockIssue({
+      url: 'https://github.com/user/repo/issues/32',
+      title: 'Story Unset Issue One',
+      status: 'Awaiting Workspace',
+      number: 32,
+      story: null,
+    });
+    const storyUnsetAwaitingWorkspaceIssueTwo = createMockIssue({
+      url: 'https://github.com/user/repo/issues/33',
+      title: 'Story Unset Issue Two',
+      status: 'Awaiting Workspace',
+      number: 33,
+      story: null,
+    });
+    const storyUnsetOtherStatusIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/34',
+      title: 'Story Unset Other Status Issue',
+      status: 'Todo',
+      number: 34,
+      story: null,
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([issueWithStory]),
+    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([
+      issueWithStory,
+      storyUnsetAwaitingWorkspaceIssueOne,
+      storyUnsetAwaitingWorkspaceIssueTwo,
+      storyUnsetOtherStatusIssue,
+    ]);
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    const consoleWarnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => {});
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+    const storyUnsetWarningCalls = consoleWarnSpy.mock.calls.filter((call) =>
+      String(call[0]).includes('Story is unset'),
+    );
+    expect(storyUnsetWarningCalls).toHaveLength(1);
+    expect(storyUnsetWarningCalls[0][0]).toBe(
+      'Awaiting Workspace issue(s) invisible to spawn candidate selection because Story is unset: https://github.com/user/repo/issues/32, https://github.com/user/repo/issues/33',
+    );
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    consoleWarnSpy.mockRestore();
+  });
+
+  it('should not warn about Story-unset issues when every Awaiting Workspace issue has a Story', async () => {
+    const issueWithStory = createMockIssue({
+      url: 'https://github.com/user/repo/issues/41',
+      title: 'Issue With Story',
+      labels: ['category:impl'],
+      status: 'Awaiting Workspace',
+      number: 41,
+      story: 'Default Story',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([issueWithStory]),
+    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([issueWithStory]);
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    const consoleWarnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => {});
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+    const storyUnsetWarningCalls = consoleWarnSpy.mock.calls.filter((call) =>
+      String(call[0]).includes('Story is unset'),
+    );
+    expect(storyUnsetWarningCalls).toHaveLength(0);
+    consoleWarnSpy.mockRestore();
   });
 });
 
@@ -5772,6 +6241,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
     Pick<
       IssueRepository,
       | 'getStoryObjectMap'
+      | 'getAllOpened'
       | 'updateStatus'
       | 'findRelatedOpenPRs'
       | 'getOpenPullRequest'
@@ -5781,6 +6251,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
     >
   > = {
     getStoryObjectMap: jest.fn(),
+    getAllOpened: jest.fn(),
     updateStatus: jest.fn(),
     findRelatedOpenPRs: jest.fn(),
     getOpenPullRequest: jest.fn(),
@@ -6078,6 +6549,7 @@ describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
       { getByUrl: jest.fn() },
       {
         getStoryObjectMap: jest.fn(),
+        getAllOpened: jest.fn(),
         updateStatus: jest.fn(),
         findRelatedOpenPRs: jest.fn(),
         getOpenPullRequest: jest.fn(),

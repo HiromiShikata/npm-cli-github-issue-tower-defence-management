@@ -39,6 +39,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.fetchProjectReadme = exports.mergeConfigs = exports.parseProjectReadmeConfig = exports.loadConfigFile = exports.isRecord = void 0;
 const yaml_1 = __importDefault(require("yaml"));
 const fs = __importStar(require("fs"));
+const githubGraphqlClient_1 = require("../../repositories/githubGraphqlClient");
 const getStringValue = (obj, key) => {
     const value = obj[key];
     return typeof value === 'string' ? value : undefined;
@@ -77,15 +78,34 @@ const getStringArrayValue = (obj, key) => {
 };
 const isRecord = (value) => typeof value === 'object' && value !== null && !Array.isArray(value);
 exports.isRecord = isRecord;
+const getDisksValue = (obj, key) => {
+    const value = obj[key];
+    if (!Array.isArray(value)) {
+        return undefined;
+    }
+    const disks = [];
+    for (const item of value) {
+        if (!(0, exports.isRecord)(item)) {
+            return undefined;
+        }
+        const title = item['title'];
+        const mountpoint = item['mountpoint'];
+        if (typeof title !== 'string' || typeof mountpoint !== 'string') {
+            return undefined;
+        }
+        disks.push({ title, mountpoint });
+    }
+    return disks;
+};
 const knownProjectReadmeConfigKeys = [
     'defaultAgentName',
     'defaultLlmModelName',
     'fallbackLlmModelName',
     'defaultLlmAgentName',
     'maximumPreparingIssuesCount',
-    'allowIssueCacheMinutes',
     'utilizationPercentageThreshold',
     'allowedIssueAuthors',
+    'autoAssignManagerAuthors',
     'thresholdForAutoReject',
     'workflowBlockerResolvedWebhookUrl',
     'preparationProcessCheckCommand',
@@ -104,14 +124,15 @@ const loadConfigFile = (configFilePath) => {
         }
         return {
             projectUrl: getStringValue(parsed, 'projectUrl'),
+            manager: getStringValue(parsed, 'manager'),
             defaultAgentName: getStringValue(parsed, 'defaultAgentName'),
             defaultLlmModelName: getStringValue(parsed, 'defaultLlmModelName'),
             fallbackLlmModelName: getStringValue(parsed, 'fallbackLlmModelName'),
             defaultLlmAgentName: getStringValue(parsed, 'defaultLlmAgentName'),
             maximumPreparingIssuesCount: getNumberValue(parsed, 'maximumPreparingIssuesCount'),
-            allowIssueCacheMinutes: getNumberValue(parsed, 'allowIssueCacheMinutes'),
             utilizationPercentageThreshold: getNumberValue(parsed, 'utilizationPercentageThreshold'),
             allowedIssueAuthors: getStringValue(parsed, 'allowedIssueAuthors'),
+            autoAssignManagerAuthors: getStringValue(parsed, 'autoAssignManagerAuthors'),
             thresholdForAutoReject: getNumberValue(parsed, 'thresholdForAutoReject'),
             workflowBlockerResolvedWebhookUrl: getStringValue(parsed, 'workflowBlockerResolvedWebhookUrl'),
             projectName: getStringValue(parsed, 'projectName'),
@@ -124,6 +145,7 @@ const loadConfigFile = (configFilePath) => {
             changeTargetPathAliases: getStringRecordValue(parsed, 'changeTargetPathAliases'),
             consoleAccessToken: getStringValue(parsed, 'consoleAccessToken'),
             consoleProjects: getStringRecordValue(parsed, 'consoleProjects'),
+            disks: getDisksValue(parsed, 'disks'),
         };
     }
     catch (error) {
@@ -161,9 +183,9 @@ const parseProjectReadmeConfig = (readme, projectUrl) => {
             fallbackLlmModelName: getStringValue(parsed, 'fallbackLlmModelName'),
             defaultLlmAgentName: getStringValue(parsed, 'defaultLlmAgentName'),
             maximumPreparingIssuesCount: getNumberValue(parsed, 'maximumPreparingIssuesCount'),
-            allowIssueCacheMinutes: getNumberValue(parsed, 'allowIssueCacheMinutes'),
             utilizationPercentageThreshold: getNumberValue(parsed, 'utilizationPercentageThreshold'),
             allowedIssueAuthors: getStringValue(parsed, 'allowedIssueAuthors'),
+            autoAssignManagerAuthors: getStringValue(parsed, 'autoAssignManagerAuthors'),
             thresholdForAutoReject: getNumberValue(parsed, 'thresholdForAutoReject'),
             workflowBlockerResolvedWebhookUrl: getStringValue(parsed, 'workflowBlockerResolvedWebhookUrl'),
             preparationProcessCheckCommand: getStringValue(parsed, 'preparationProcessCheckCommand'),
@@ -182,6 +204,7 @@ const parseProjectReadmeConfig = (readme, projectUrl) => {
 exports.parseProjectReadmeConfig = parseProjectReadmeConfig;
 const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
     projectUrl: cliOverrides.projectUrl ?? configFile.projectUrl,
+    manager: cliOverrides.manager ?? configFile.manager,
     defaultAgentName: readmeOverrides.defaultAgentName ??
         cliOverrides.defaultAgentName ??
         configFile.defaultAgentName,
@@ -197,15 +220,15 @@ const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
     maximumPreparingIssuesCount: readmeOverrides.maximumPreparingIssuesCount ??
         cliOverrides.maximumPreparingIssuesCount ??
         configFile.maximumPreparingIssuesCount,
-    allowIssueCacheMinutes: readmeOverrides.allowIssueCacheMinutes ??
-        cliOverrides.allowIssueCacheMinutes ??
-        configFile.allowIssueCacheMinutes,
     utilizationPercentageThreshold: readmeOverrides.utilizationPercentageThreshold ??
         cliOverrides.utilizationPercentageThreshold ??
         configFile.utilizationPercentageThreshold,
     allowedIssueAuthors: readmeOverrides.allowedIssueAuthors ??
         cliOverrides.allowedIssueAuthors ??
         configFile.allowedIssueAuthors,
+    autoAssignManagerAuthors: readmeOverrides.autoAssignManagerAuthors ??
+        cliOverrides.autoAssignManagerAuthors ??
+        configFile.autoAssignManagerAuthors,
     thresholdForAutoReject: readmeOverrides.thresholdForAutoReject ??
         cliOverrides.thresholdForAutoReject ??
         configFile.thresholdForAutoReject,
@@ -236,6 +259,7 @@ const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
         configFile.changeTargetPathAliases,
     consoleAccessToken: cliOverrides.consoleAccessToken ?? configFile.consoleAccessToken,
     consoleProjects: cliOverrides.consoleProjects ?? configFile.consoleProjects,
+    disks: cliOverrides.disks ?? configFile.disks,
 });
 exports.mergeConfigs = mergeConfigs;
 const isGraphqlProjectV2ReadmeResponse = (value) => {
@@ -252,7 +276,7 @@ const fetchProjectReadme = async (projectUrl, token) => {
         const projectNumber = parseInt(urlParts[urlParts.length - 1], 10);
         const owner = urlParts[urlParts.length - 3];
         const query = `
-      query($owner: String!, $number: Int!) {
+      query ProjectReadme($owner: String!, $number: Int!) {
         organization(login: $owner) {
           projectV2(number: $number) {
             readme
@@ -265,16 +289,10 @@ const fetchProjectReadme = async (projectUrl, token) => {
         }
       }
     `;
-        const response = await fetch('https://api.github.com/graphql', {
-            method: 'POST',
-            headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                query,
-                variables: { owner, number: projectNumber },
-            }),
+        const response = await (0, githubGraphqlClient_1.fetchGithubGraphql)({
+            ghToken: token,
+            query,
+            variables: { owner, number: projectNumber },
         });
         if (!response.ok) {
             throw new Error(`GraphQL request failed: ${response.status}`);

@@ -22,7 +22,6 @@ export class GetStoryObjectMapUseCase {
 
   run = async (input: {
     projectUrl: string;
-    allowIssueCacheMinutes: number;
   }): Promise<{
     project: Project;
     issues: Issue[];
@@ -44,10 +43,7 @@ export class GetStoryObjectMapUseCase {
       );
     }
     const { issues, cacheUsed }: { issues: Issue[]; cacheUsed: boolean } =
-      await this.issueRepository.getAllIssues(
-        projectId,
-        input.allowIssueCacheMinutes,
-      );
+      await this.issueRepository.getAllIssues(projectId);
     const storyObjectMap: StoryObjectMap = this.createStoryObjectMap({
       project,
       issues,

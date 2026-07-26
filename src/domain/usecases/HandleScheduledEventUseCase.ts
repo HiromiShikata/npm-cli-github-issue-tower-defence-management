@@ -43,6 +43,73 @@ export class ProjectNotFoundError extends Error {
 }
 
 const SLOW_SWEEP_INTERVAL_SECONDS = 600;
+const WORKFLOW_INCIDENT_ISSUE_TITLE =
+  'Error in HandleScheduledEvent / workflow incident';
+
+const isTransientApiError = (error: Error): boolean => {
+  const msg = error.message;
+  return (
+    /\b(401|403|429|500|502|503|504)\b/.test(msg) ||
+    /rate.?limit|RATE_LIMIT/i.test(msg) ||
+    /bad credentials/i.test(msg) ||
+    error.name === 'TimeoutError' ||
+    /request timed out/i.test(msg)
+  );
+};
+
+const TRANSIENT_NETWORK_ERROR_CODE_PATTERN =
+  /\b(ECONNRESET|ECONNREFUSED|ECONNABORTED|ETIMEDOUT|EPIPE|ENOTFOUND|EAI_AGAIN|ERR_NETWORK|ERR_SOCKET_CONNECTION_TIMEOUT)\b/;
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const extractHttpStatusFromError = (error: Error): number | null => {
+  if (!isRecord(error)) {
+    return null;
+  }
+  const response: unknown = error.response;
+  const values: unknown[] = [
+    error.status,
+    isRecord(response) ? response.status : null,
+    error.code,
+  ];
+  for (const value of values) {
+    if (typeof value === 'number' && Number.isInteger(value)) {
+      return value;
+    }
+    if (typeof value === 'string' && /^\d{3}$/.test(value)) {
+      return Number(value);
+    }
+  }
+  return null;
+};
+
+const isTransientSpreadsheetApiError = (error: Error): boolean => {
+  const status = extractHttpStatusFromError(error);
+  if (status !== null) {
+    return status === 429 || (status >= 500 && status <= 599);
+  }
+  if (
+    error.name === 'TimeoutError' ||
+    /request timed out/i.test(error.message)
+  ) {
+    return true;
+  }
+  const code: unknown = isRecord(error) ? error.code : null;
+  if (
+    typeof code === 'string' &&
+    TRANSIENT_NETWORK_ERROR_CODE_PATTERN.test(code)
+  ) {
+    return true;
+  }
+  return (
+    /\b(429|500|502|503|504)\b/.test(error.message) ||
+    /rate.?limit/i.test(error.message) ||
+    /internal error encountered/i.test(error.message) ||
+    /socket hang up/i.test(error.message) ||
+    TRANSIENT_NETWORK_ERROR_CODE_PATTERN.test(error.message)
+  );
+};
 
 export class HandleScheduledEventUseCase {
   constructor(
@@ -84,10 +151,10 @@ export class HandleScheduledEventUseCase {
     };
     urlOfStoryView: string;
     disabled: boolean;
-    allowIssueCacheMinutes: number;
     labelsAsLlmAgentName?: string[] | null;
     changeTargetPathAliases?: Record<string, string> | null;
     allowedIssueAuthors?: string[] | null;
+    autoAssignManagerAuthors?: string[] | null;
     startPreparation?: {
       defaultAgentName: string;
       defaultLlmModelName?: string | null;
@@ -105,6 +172,7 @@ export class HandleScheduledEventUseCase {
       labelsAsLlmAgentName?: string[] | null;
     } | null;
     thresholdForAutoReject?: number;
+    createTaskFromStoryBodyCheckboxEnabled?: boolean;
     dailySecurityScan?: DailySecurityScanConfig | null;
   }): Promise<{
     project: Project;
@@ -128,20 +196,13 @@ export class HandleScheduledEventUseCase {
         `Project not found. projectUrl: ${input.projectUrl}`,
       );
     }
-    const project = await this.projectRepository.getProject(projectId);
-    if (!project) {
-      throw new ProjectNotFoundError(
-        `Project not found. projectId: ${
-          projectId
-        } projectUrl: ${input.projectUrl}`,
-      );
-    }
     const now: Date = await this.dateRepository.now();
-    const { issues, cacheUsed }: { issues: Issue[]; cacheUsed: boolean } =
-      await this.issueRepository.getAllIssues(
-        projectId,
-        input.allowIssueCacheMinutes,
-      );
+    const {
+      issues,
+      project,
+      cacheUsed,
+    }: { issues: Issue[]; project: Project; cacheUsed: boolean } =
+      await this.issueRepository.getAllIssues(projectId);
     const storyIssues: StoryObjectMap = await this.storyIssues({
       project,
       issues,
@@ -211,24 +272,43 @@ export class HandleScheduledEventUseCase {
       );
     }
 
-    const targetDateTimes: Date[] =
-      await this.findTargetDateAndUpdateLastExecutionDateTime(
+    let targetDateTimes: Date[] = [];
+    try {
+      targetDateTimes = await this.findTargetDateAndUpdateLastExecutionDateTime(
         input.workingReport.spreadsheetUrl,
         now,
         input.org,
         input.workingReport.repo,
         input.manager,
       );
+    } catch (e) {
+      if (!(e instanceof Error) || !isTransientSpreadsheetApiError(e)) {
+        throw e;
+      }
+      console.warn(
+        `[HandleScheduledEvent] Transient spreadsheet API error while updating last execution date time, skipping this spreadsheet operation and continuing the cycle: ${e.name}: ${e.message}`,
+      );
+    }
 
-    const runSlowSweep = await this.shouldRunSlowSweep(
-      input.workingReport.spreadsheetUrl,
-      now,
-      input.org,
-      input.workingReport.repo,
-      input.manager,
-    );
+    let runSlowSweep = false;
+    try {
+      runSlowSweep = await this.shouldRunSlowSweep(
+        input.workingReport.spreadsheetUrl,
+        now,
+        input.org,
+        input.workingReport.repo,
+        input.manager,
+      );
+    } catch (e) {
+      if (!(e instanceof Error) || !isTransientSpreadsheetApiError(e)) {
+        throw e;
+      }
+      console.warn(
+        `[HandleScheduledEvent] Transient spreadsheet API error while checking slow sweep schedule, skipping slow sweep for this cycle: ${e.name}: ${e.message}`,
+      );
+    }
 
-    let rotationOrder: RotationOrderEntry[] | null = null;
+    let rotationOrder: RotationOrderEntry[] | null;
     try {
       const useCaseResult = await this.runEachUseCases(
         input,
@@ -244,11 +324,8 @@ export class HandleScheduledEventUseCase {
       if (!(e instanceof Error)) {
         throw e;
       }
-      await this.issueRepository.createNewIssue(
-        input.org,
-        input.workingReport.repo,
-        `Error in HandleScheduledEvent / workflow incident`,
-        `${e.message}
+      if (!isTransientApiError(e)) {
+        const errorBody = `${e.message}
 \`\`\`
 ${e.stack}
 \`\`\`
@@ -256,10 +333,30 @@ ${e.stack}
 ${JSON.stringify(e)}
 \`\`\`
 
-`,
-        [input.manager],
-        ['error'],
-      );
+`;
+        const existingIncidentIssues = await this.issueRepository.searchIssue({
+          owner: input.org,
+          repositoryName: input.workingReport.repo,
+          type: 'issue',
+          state: 'open',
+          title: WORKFLOW_INCIDENT_ISSUE_TITLE,
+        });
+        if (existingIncidentIssues.length > 0) {
+          await this.issueRepository.createCommentByUrl(
+            existingIncidentIssues[0].url,
+            errorBody,
+          );
+        } else {
+          await this.issueRepository.createNewIssue(
+            input.org,
+            input.workingReport.repo,
+            WORKFLOW_INCIDENT_ISSUE_TITLE,
+            errorBody,
+            [input.manager],
+            ['error'],
+          );
+        }
+      }
       throw e;
     }
 
@@ -301,7 +398,7 @@ ${JSON.stringify(e)}
     });
     await this.revertNotReadyReviewQueueIssueUseCase.run({
       projectUrl: input.projectUrl,
-      allowIssueCacheMinutes: input.allowIssueCacheMinutes,
+      manager: input.manager,
       labelsAsLlmAgentName,
       changeTargetPathAliases: input.changeTargetPathAliases,
       allowedIssueAuthors,
@@ -323,7 +420,6 @@ ${JSON.stringify(e)}
       if (input.startPreparation.preparationProcessCheckCommand) {
         await this.revertOrphanedPreparationUseCase.run({
           projectUrl: input.projectUrl,
-          allowIssueCacheMinutes: input.allowIssueCacheMinutes,
           preparationProcessCheckCommand:
             input.startPreparation.preparationProcessCheckCommand,
           thresholdForAutoReject: input.thresholdForAutoReject ?? 3,
@@ -348,8 +444,8 @@ ${JSON.stringify(e)}
         utilizationPercentageThreshold:
           input.startPreparation.utilizationPercentageThreshold ?? 90,
         allowedIssueAuthors,
+        manager: input.manager,
         codexHomeCandidates: input.startPreparation.codexHomeCandidates ?? null,
-        allowIssueCacheMinutes: input.allowIssueCacheMinutes,
         labelsAsLlmAgentName,
       });
       return { rotationOrder: preparationResult.rotationOrder };
@@ -434,6 +530,8 @@ ${JSON.stringify(e)}
       urlOfStoryView: input.urlOfStoryView,
       storyObjectMap: storyObjectMap,
       manager: input.manager,
+      createTaskFromStoryBodyCheckboxEnabled:
+        input.createTaskFromStoryBodyCheckboxEnabled ?? false,
     });
     await this.changeStatusByStoryColorUseCase.run({
       project,
@@ -454,6 +552,7 @@ ${JSON.stringify(e)}
       issues,
       manager: input.manager,
       cacheUsed,
+      autoAssignManagerAuthors: input.autoAssignManagerAuthors ?? null,
     });
     await this.updateIssueStatusByLabelUseCase.run({
       project,
@@ -493,6 +592,12 @@ ${JSON.stringify(e)}
       return await action();
     } catch (e) {
       if (!(e instanceof Error)) {
+        throw e;
+      }
+      if (isTransientSpreadsheetApiError(e)) {
+        console.warn(
+          `[HandleScheduledEvent] Transient spreadsheet API error on ${operation} (${spreadsheetUrl}): ${e.name}: ${e.message}`,
+        );
         throw e;
       }
       await this.issueRepository.createNewIssue(

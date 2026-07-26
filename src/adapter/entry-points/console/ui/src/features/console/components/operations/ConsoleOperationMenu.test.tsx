@@ -20,12 +20,13 @@ const prItem = consoleListItemsFixture[0];
 const issueItem = consoleListItemsFixture[2];
 
 describe('ConsoleOperationMenu', () => {
-  it('shows the review group for a PR and hides story and close groups outside triage', () => {
+  it('shows the review and close groups for a PR while hiding the story group outside triage', () => {
     const { getByText, queryByText } = render(
       <ConsoleOperationMenu
         tab="prs"
         item={prItem}
         hasPullRequest
+        rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
         storyOptions={consoleStoryOptionsFixture}
         handlers={handlers}
@@ -34,7 +35,9 @@ describe('ConsoleOperationMenu', () => {
     expect(getByText('Approve')).toBeInTheDocument();
     expect(getByText('+1 day')).toBeInTheDocument();
     expect(getByText('Awaiting Workspace')).toBeInTheDocument();
-    expect(queryByText('Close')).toBeNull();
+    expect(getByText('Close')).toBeInTheDocument();
+    expect(getByText('Close as not planned')).toBeInTheDocument();
+    expect(queryByText('Move to Okinawa')).toBeNull();
     expect(queryByText('TDPM Console port')).toBeNull();
   });
 
@@ -44,6 +47,7 @@ describe('ConsoleOperationMenu', () => {
         tab="triage"
         item={issueItem}
         hasPullRequest={false}
+        rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
         storyOptions={consoleStoryOptionsFixture}
         handlers={handlers}
@@ -60,6 +64,22 @@ describe('ConsoleOperationMenu', () => {
         tab="todo-by-human"
         item={issueItem}
         hasPullRequest={false}
+        rejectEnabled={false}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        handlers={handlers}
+      />,
+    );
+    expect(getByText('+1 week and skip')).toBeInTheDocument();
+  });
+
+  it('shows +1 week and skip on the todo-by-agent tab', () => {
+    const { getByText } = render(
+      <ConsoleOperationMenu
+        tab="todo-by-agent"
+        item={issueItem}
+        hasPullRequest={false}
+        rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
         storyOptions={consoleStoryOptionsFixture}
         handlers={handlers}
@@ -74,6 +94,7 @@ describe('ConsoleOperationMenu', () => {
         tab="unread"
         item={issueItem}
         hasPullRequest={false}
+        rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
         storyOptions={consoleStoryOptionsFixture}
         handlers={handlers}
@@ -89,6 +110,7 @@ describe('ConsoleOperationMenu', () => {
         tab="workflow-blocker"
         item={issueItem}
         hasPullRequest={false}
+        rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
         storyOptions={consoleStoryOptionsFixture}
         handlers={handlers}
@@ -108,6 +130,7 @@ describe('ConsoleOperationMenu', () => {
         tab="workflow-blocker"
         item={prItem}
         hasPullRequest
+        rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
         storyOptions={consoleStoryOptionsFixture}
         handlers={handlers}
@@ -115,5 +138,32 @@ describe('ConsoleOperationMenu', () => {
     );
     expect(getByText('Approve')).toBeInTheDocument();
     expect(getByText('Close')).toBeInTheDocument();
+  });
+
+  it('forwards the reject-enabled state to the review group', () => {
+    const { getByText, rerender } = render(
+      <ConsoleOperationMenu
+        tab="prs"
+        item={prItem}
+        hasPullRequest
+        rejectEnabled={false}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        handlers={handlers}
+      />,
+    );
+    expect(getByText('Reject')).toBeDisabled();
+    rerender(
+      <ConsoleOperationMenu
+        tab="prs"
+        item={prItem}
+        hasPullRequest
+        rejectEnabled={true}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        handlers={handlers}
+      />,
+    );
+    expect(getByText('Reject')).not.toBeDisabled();
   });
 });

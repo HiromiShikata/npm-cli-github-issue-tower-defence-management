@@ -1,0 +1,1 @@
+{"version":3,"file":"LiveSessionProcessSnapshotProvider.d.ts","sourceRoot":"","sources":["../../../../src/domain/usecases/adapter-interfaces/LiveSessionProcessSnapshotProvider.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,0BAA0B,EAAE,MAAM,2CAA2C,CAAC;AAEvF,MAAM,WAAW,kCAAkC;IACjD,WAAW,EAAE,MAAM,OAAO,CAAC,0BAA0B,CAAC,CAAC;CACxD"}

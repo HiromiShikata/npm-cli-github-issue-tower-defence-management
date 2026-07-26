@@ -56,7 +56,6 @@ const baseParams = {
   config: {
     maximumPreparingIssuesCount: 6,
     utilizationPercentageThreshold: 90,
-    allowIssueCacheMinutes: 5,
     thresholdForAutoReject: 3,
   },
 };
@@ -119,6 +118,42 @@ describe('writeSituationFile', () => {
         expect.stringContaining(
           '"awaitingQualityCheckImmediatelyActionable":1',
         ),
+      );
+    });
+
+    it('excludes closed items without reactivation triggers from immediately actionable counts', async () => {
+      const issues = [
+        createIssue({
+          status: 'Awaiting quality check',
+          state: 'CLOSED',
+          isClosed: true,
+        }),
+        createIssue({
+          status: 'Awaiting quality check',
+          state: 'MERGED',
+          isClosed: true,
+          isPr: true,
+        }),
+        createIssue({ status: 'Awaiting quality check' }),
+        createIssue({
+          status: 'Awaiting workspace',
+          state: 'CLOSED',
+          isClosed: true,
+        }),
+        createIssue({ status: 'Awaiting workspace' }),
+      ];
+
+      await writeSituationFile({ ...baseParams, issues });
+
+      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining(
+          '"awaitingQualityCheckImmediatelyActionable":1',
+        ),
+      );
+      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining('"awaitingWorkspaceImmediatelyActionable":1'),
       );
     });
 
@@ -354,10 +389,6 @@ describe('writeSituationFile', () => {
       expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
         expect.any(String),
         expect.stringContaining('"utilizationPercentageThreshold":90'),
-      );
-      expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.stringContaining('"allowIssueCacheMinutes":5'),
       );
       expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
         expect.any(String),

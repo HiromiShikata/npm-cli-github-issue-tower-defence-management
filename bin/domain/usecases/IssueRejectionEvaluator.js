@@ -13,16 +13,35 @@ class IssueRejectionEvaluator {
             if (!hasLlmAgentLabel &&
                 !hasLabelAsLlmAgentName &&
                 (categoryLabels.length <= 0 || categoryLabels.includes('category:e2e'))) {
-                const prsToCheck = issue.isPr
-                    ? await this.resolveOpenPrsForPrItem(issue.url)
-                    : options.relatedOpenPrUrls != null
-                        ? await this.resolveOpenPrsFromUrls(options.relatedOpenPrUrls)
-                        : await this.issueRepository.findRelatedOpenPRs(issue.url);
+                let prsToCheck;
+                let anyPrResolutionFailed = false;
+                if (issue.isPr) {
+                    const resolved = await this.resolveOpenPrsForPrItem(issue.url);
+                    if (resolved === null) {
+                        // getOpenPullRequest failed transiently: the PR's state is unknown
+                        // for this cycle, so skip it without emitting any rejection.
+                        return { rejections, approvedPrUrl };
+                    }
+                    prsToCheck = resolved;
+                }
+                else if (options.relatedOpenPrUrls != null) {
+                    const resolved = await this.resolveOpenPrsFromUrls(options.relatedOpenPrUrls);
+                    prsToCheck = resolved.prs;
+                    anyPrResolutionFailed = resolved.anyResolutionFailed;
+                }
+                else {
+                    prsToCheck = await this.issueRepository.findRelatedOpenPRs(issue.url);
+                }
                 if (prsToCheck.length <= 0) {
-                    rejections.push({
-                        type: 'PULL_REQUEST_NOT_FOUND',
-                        detail: 'PULL_REQUEST_NOT_FOUND',
-                    });
+                    if (!anyPrResolutionFailed) {
+                        rejections.push({
+                            type: 'PULL_REQUEST_NOT_FOUND',
+                            detail: 'PULL_REQUEST_NOT_FOUND',
+                        });
+                    }
+                    // When a resolution failed and no PR resolved, the related PR state is
+                    // unknown for this cycle; emit no rejection so a transient GraphQL
+                    // error cannot cause a false PULL_REQUEST_NOT_FOUND revert.
                 }
                 else if (prsToCheck.length > 1) {
                     rejections.push({
@@ -95,8 +114,18 @@ class IssueRejectionEvaluator {
             }
             return { rejections, approvedPrUrl };
         };
+        // Returns null when getOpenPullRequest throws (e.g. a transient GitHub
+        // GraphQL server error): the PR's state is unknown for this cycle and the
+        // caller skips it instead of letting the error abort the schedule cycle.
         this.resolveOpenPrsForPrItem = async (prUrl) => {
-            const pr = await this.issueRepository.getOpenPullRequest(prUrl);
+            let pr;
+            try {
+                pr = await this.issueRepository.getOpenPullRequest(prUrl);
+            }
+            catch (error) {
+                console.warn(`IssueRejectionEvaluator: getOpenPullRequest failed, skipping PR for this cycle. prUrl: ${prUrl} error: ${error instanceof Error ? error.message : String(error)}`);
+                return null;
+            }
             if (pr === null) {
                 return [];
             }
@@ -108,16 +137,31 @@ class IssueRejectionEvaluator {
         // so the resulting set is equivalent while avoiding the per-issue timeline
         // query. Duplicate URLs are de-duplicated to mirror findRelatedOpenPRs, which
         // collapses duplicates via its internal Map keyed by PR URL.
+        //
+        // When getOpenPullRequest throws for a URL (e.g. a transient GitHub GraphQL
+        // server error), that PR is logged and skipped for this cycle while the
+        // remaining URLs are still resolved; anyResolutionFailed reports whether at
+        // least one URL failed so the caller can avoid treating an unknown state as
+        // PULL_REQUEST_NOT_FOUND.
         this.resolveOpenPrsFromUrls = async (prUrls) => {
             const uniquePrUrls = Array.from(new Set(prUrls));
             const resolvedPrs = [];
+            let anyResolutionFailed = false;
             for (const prUrl of uniquePrUrls) {
-                const pr = await this.issueRepository.getOpenPullRequest(prUrl);
+                let pr;
+                try {
+                    pr = await this.issueRepository.getOpenPullRequest(prUrl);
+                }
+                catch (error) {
+                    console.warn(`IssueRejectionEvaluator: getOpenPullRequest failed, skipping PR for this cycle. prUrl: ${prUrl} error: ${error instanceof Error ? error.message : String(error)}`);
+                    anyResolutionFailed = true;
+                    continue;
+                }
                 if (pr !== null) {
                     resolvedPrs.push(pr);
                 }
             }
-            return resolvedPrs;
+            return { prs: resolvedPrs, anyResolutionFailed };
         };
         this.extractChangeTargetMustPaths = (labels) => {
             const prefix = 'change-target-must:';

@@ -111,15 +111,19 @@ export const parseLoadAverages = (loadavgText: string): LoadAverages => {
   return { oneMinute, fiveMinute, fifteenMinute };
 };
 
-export const cycleMinutesFromMtimes = (
-  mtimesDescendingSeconds: number[],
+export const cycleMinutesFromFetchTimestamps = (
+  previousFetchedAtIso: string | null,
+  currentFetchedAtIso: string | null,
 ): number | null => {
-  if (mtimesDescendingSeconds.length < 2) {
+  if (previousFetchedAtIso === null || currentFetchedAtIso === null) {
     return null;
   }
-  return Math.round(
-    (mtimesDescendingSeconds[0] - mtimesDescendingSeconds[1]) / 60,
-  );
+  const previousMs = new Date(previousFetchedAtIso).getTime();
+  const currentMs = new Date(currentFetchedAtIso).getTime();
+  if (!Number.isFinite(previousMs) || !Number.isFinite(currentMs)) {
+    return null;
+  }
+  return Math.round((currentMs - previousMs) / 60000);
 };
 
 export class ProcHostMetricsRepository {
@@ -167,6 +171,11 @@ export class ProcHostMetricsRepository {
 
   readDiskUsedPercent = (): number => {
     const { blocks, bfree, bavail } = this.readDiskBlocks(this.rootPath);
+    return parseDiskUsedPercent(blocks, bfree, bavail);
+  };
+
+  readDiskUsedPercentForMountpoint = (mountpoint: string): number => {
+    const { blocks, bfree, bavail } = this.readDiskBlocks(mountpoint);
     return parseDiskUsedPercent(blocks, bfree, bavail);
   };
 }

@@ -63,6 +63,24 @@ const formatResetCountdown = (totalSeconds) => {
     return `${days}d${padStartZero(String(hours), 2)}h${padStartZero(String(minutes), 2)}`;
 };
 exports.formatResetCountdown = formatResetCountdown;
+const packTokensWithinBudget = (tokens) => {
+    const lines = [];
+    let current = '';
+    for (const token of tokens) {
+        const candidate = current === '' ? token : `${current} ${token}`;
+        if (current !== '' && candidate.length > exports.PROJECT_ROW_WIDTH_BUDGET) {
+            lines.push(current);
+            current = token;
+        }
+        else {
+            current = candidate;
+        }
+    }
+    if (current !== '') {
+        lines.push(current);
+    }
+    return lines;
+};
 const formatMachineStatusLines = (machineStatus) => {
     const memText = machineStatus !== null && machineStatus.memPct !== null
         ? `${machineStatus.memPct}%`
@@ -80,10 +98,14 @@ const formatMachineStatusLines = (machineStatus) => {
     const cycle = machineStatus !== null && machineStatus.cycleMinutes !== null
         ? `cy${machineStatus.cycleMinutes}`
         : 'cy-';
-    return [
-        `M${memText} C${cpuText} D${diskText} ${cycle}`,
-        `LA ${oneMinute} ${fiveMinute} ${fifteenMinute}`,
-    ];
+    const loadLine = `LA ${oneMinute} ${fiveMinute} ${fifteenMinute}`;
+    const disks = machineStatus !== null && machineStatus.disks ? machineStatus.disks : null;
+    if (disks !== null && disks.length > 0) {
+        const diskTokens = disks.map((disk) => `${disk.title}${disk.pct}%`);
+        const diskLines = packTokensWithinBudget(diskTokens);
+        return [`M${memText} C${cpuText} ${cycle}`, ...diskLines, loadLine];
+    }
+    return [`M${memText} C${cpuText} D${diskText} ${cycle}`, loadLine];
 };
 exports.formatMachineStatusLines = formatMachineStatusLines;
 const capThreeDigits = (value) => value > 999 ? '999' : String(value);

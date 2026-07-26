@@ -103,6 +103,7 @@ describe('startProxy', () => {
   let proxyPort = 0;
   let writeRateLimitSpy: jest.SpyInstance;
   let writeModelRateLimitSpy: jest.SpyInstance;
+  let writeFableRejectionSpy: jest.SpyInstance;
 
   const listen = (server: http.Server): Promise<number> =>
     new Promise((resolve) => {
@@ -191,6 +192,9 @@ describe('startProxy', () => {
     writeModelRateLimitSpy = jest
       .spyOn(RateLimitCache, 'writeModelRateLimit')
       .mockImplementation(() => undefined);
+    writeFableRejectionSpy = jest
+      .spyOn(RateLimitCache, 'writeFableRejection')
+      .mockImplementation(() => undefined);
 
     proxyPort = await new Promise<number>((resolve) => {
       const probe = http.createServer();
@@ -207,6 +211,7 @@ describe('startProxy', () => {
     httpsRequestImpl = null;
     writeRateLimitSpy.mockRestore();
     writeModelRateLimitSpy.mockRestore();
+    writeFableRejectionSpy.mockRestore();
     await closeServer(proxyServer);
     await closeServer(upstreamServer);
   });
@@ -308,6 +313,127 @@ describe('startProxy', () => {
     );
   });
 
+  it('should mark the fable weekly limit when a fable 429 carries a rejected 7-day status, using the 7-day reset', async () => {
+    const sevenDayReset = 1893456000;
+    upstreamHandler = (_request, response) => {
+      response.writeHead(429, {
+        'content-type': 'application/json',
+        'retry-after': '120',
+        'anthropic-ratelimit-unified-7d-status': 'rejected',
+        'anthropic-ratelimit-unified-7d-reset': String(sevenDayReset),
+      });
+      response.end('{"type":"error","error":{"type":"rate_limit_error"}}');
+    };
+
+    const response = await requestThroughProxy(
+      'POST',
+      '/v1/messages',
+      JSON.stringify({ model: 'claude-fable-5', messages: [] }),
+    );
+
+    expect(response.statusCode).toBe(429);
+    expect(writeFableRejectionSpy).toHaveBeenCalledTimes(1);
+    expect(writeFableRejectionSpy).toHaveBeenCalledWith(
+      TOKEN,
+      120,
+      sevenDayReset,
+    );
+  });
+
+  it('should fall back to retry-after for the reset when a rejected 7-day status carries no 7-day reset header', async () => {
+    upstreamHandler = (_request, response) => {
+      response.writeHead(429, {
+        'content-type': 'application/json',
+        'retry-after': '120',
+        'anthropic-ratelimit-unified-7d-status': 'rejected',
+      });
+      response.end('{"type":"error","error":{"type":"rate_limit_error"}}');
+    };
+
+    const response = await requestThroughProxy(
+      'POST',
+      '/v1/messages',
+      JSON.stringify({ model: 'claude-fable-5', messages: [] }),
+    );
+
+    expect(response.statusCode).toBe(429);
+    expect(writeFableRejectionSpy).toHaveBeenCalledTimes(1);
+    expect(writeFableRejectionSpy).toHaveBeenCalledWith(TOKEN, 120, null);
+  });
+
+  it('should not mark the fable weekly limit when a fable 429 is a 5-hour rejection without a 7-day rejection', async () => {
+    upstreamHandler = (_request, response) => {
+      response.writeHead(429, {
+        'content-type': 'application/json',
+        'retry-after': '120',
+        'anthropic-ratelimit-unified-5h-status': 'rejected',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+      });
+      response.end('{"type":"error","error":{"type":"rate_limit_error"}}');
+    };
+
+    const response = await requestThroughProxy(
+      'POST',
+      '/v1/messages',
+      JSON.stringify({ model: 'claude-fable-5', messages: [] }),
+    );
+
+    expect(response.statusCode).toBe(429);
+    expect(writeFableRejectionSpy).not.toHaveBeenCalled();
+  });
+
+  it('should not mark the fable weekly limit when a fable 429 carries no rate-limit rejection headers', async () => {
+    upstreamHandler = (_request, response) => {
+      response.writeHead(429, { 'content-type': 'application/json' });
+      response.end('{"type":"error","error":{"type":"rate_limit_error"}}');
+    };
+
+    const response = await requestThroughProxy(
+      'POST',
+      '/v1/messages',
+      JSON.stringify({ model: 'claude-fable-5', messages: [] }),
+    );
+
+    expect(response.statusCode).toBe(429);
+    expect(writeFableRejectionSpy).not.toHaveBeenCalled();
+  });
+
+  it('should not mark the fable weekly limit when a non-fable request is rejected with a 7-day-rejected 429', async () => {
+    upstreamHandler = (_request, response) => {
+      response.writeHead(429, {
+        'content-type': 'application/json',
+        'anthropic-ratelimit-unified-7d-status': 'rejected',
+        'anthropic-ratelimit-unified-7d-reset': '1893456000',
+      });
+      response.end('{"type":"error","error":{"type":"rate_limit_error"}}');
+    };
+
+    const response = await requestThroughProxy(
+      'POST',
+      '/v1/messages',
+      JSON.stringify({ model: 'claude-sonnet-4-6', messages: [] }),
+    );
+
+    expect(response.statusCode).toBe(429);
+    expect(writeFableRejectionSpy).not.toHaveBeenCalled();
+  });
+
+  it('should not mark the fable weekly limit when a fable request succeeds', async () => {
+    upstreamHandler = (_request, response) => {
+      response.writeHead(200, { 'content-type': 'application/json' });
+      response.end('{"model":"claude-fable-5"}');
+    };
+
+    const response = await requestThroughProxy(
+      'POST',
+      '/v1/messages',
+      JSON.stringify({ model: 'claude-fable-5', messages: [] }),
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(writeFableRejectionSpy).not.toHaveBeenCalled();
+  });
+
   it('should forward non-SSE responses without crashing', async () => {
     upstreamHandler = (_request, response) => {
       response.writeHead(200, { 'content-type': 'application/json' });
@@ -330,5 +456,97 @@ describe('startProxy', () => {
     expect(response.statusCode).toBe(502);
     expect(response.body).toBe('Upstream error');
     expect(writeModelRateLimitSpy).not.toHaveBeenCalled();
+  });
+
+  it('should call writeSubscriptionDisabled when the response body contains the subscription-disabled message', async () => {
+    const writeSubscriptionDisabledSpy = jest
+      .spyOn(RateLimitCache, 'writeSubscriptionDisabled')
+      .mockImplementation(() => undefined);
+
+    upstreamHandler = (_request, response) => {
+      response.writeHead(403, { 'content-type': 'application/json' });
+      response.end(
+        JSON.stringify({
+          error: {
+            message:
+              'Your organization has disabled Claude subscription access for Claude Code',
+          },
+        }),
+      );
+    };
+
+    await requestThroughProxy('POST', '/v1/messages', null);
+
+    expect(writeSubscriptionDisabledSpy).toHaveBeenCalledTimes(1);
+    expect(writeSubscriptionDisabledSpy).toHaveBeenCalledWith(TOKEN);
+    writeSubscriptionDisabledSpy.mockRestore();
+  });
+
+  it('should call writeSubscriptionDisabled when a 403 response body is a permission_error', async () => {
+    const writeSubscriptionDisabledSpy = jest
+      .spyOn(RateLimitCache, 'writeSubscriptionDisabled')
+      .mockImplementation(() => undefined);
+
+    upstreamHandler = (_request, response) => {
+      response.writeHead(403, { 'content-type': 'application/json' });
+      response.end(
+        JSON.stringify({
+          type: 'error',
+          error: {
+            type: 'permission_error',
+            message:
+              'OAuth authentication is currently not allowed for this organization',
+          },
+        }),
+      );
+    };
+
+    await requestThroughProxy('POST', '/v1/messages', null);
+
+    expect(writeSubscriptionDisabledSpy).toHaveBeenCalledTimes(1);
+    expect(writeSubscriptionDisabledSpy).toHaveBeenCalledWith(TOKEN);
+    writeSubscriptionDisabledSpy.mockRestore();
+  });
+
+  it('should not call writeSubscriptionDisabled when a permission_error body has a non-403 status', async () => {
+    const writeSubscriptionDisabledSpy = jest
+      .spyOn(RateLimitCache, 'writeSubscriptionDisabled')
+      .mockImplementation(() => undefined);
+
+    upstreamHandler = (_request, response) => {
+      response.writeHead(200, { 'content-type': 'application/json' });
+      response.end(
+        JSON.stringify({
+          type: 'error',
+          error: { type: 'permission_error', message: 'noise' },
+        }),
+      );
+    };
+
+    await requestThroughProxy('POST', '/v1/messages', null);
+
+    expect(writeSubscriptionDisabledSpy).not.toHaveBeenCalled();
+    writeSubscriptionDisabledSpy.mockRestore();
+  });
+
+  it('should not call writeSubscriptionDisabled when a 403 body is not a permission_error', async () => {
+    const writeSubscriptionDisabledSpy = jest
+      .spyOn(RateLimitCache, 'writeSubscriptionDisabled')
+      .mockImplementation(() => undefined);
+
+    upstreamHandler = (_request, response) => {
+      response.writeHead(403, { 'content-type': 'application/json' });
+      response.end(
+        JSON.stringify({
+          type: 'error',
+          error: { type: 'authentication_error', message: 'bad token' },
+        }),
+      );
+    };
+
+    await requestThroughProxy('POST', '/v1/messages', null);
+
+    expect(writeSubscriptionDisabledSpy).not.toHaveBeenCalled();
+    writeSubscriptionDisabledSpy.mockRestore();
   });
 });

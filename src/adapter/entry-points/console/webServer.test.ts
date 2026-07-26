@@ -6,17 +6,19 @@ import { mock } from 'jest-mock-extended';
 import {
   DEFAULT_WEB_PORT,
   CONSOLE_TOKEN_HEADER,
+  CONSOLE_TOKEN_COOKIE,
   hasDotSegment,
   requiresToken,
   isTokenValid,
   isConsoleAppRoute,
   extractProvidedToken,
+  extractCookieToken,
   resolveFlatInTmuxFilePath,
   resolveDashboardFilePath,
   startWebServer,
 } from './webServer';
 import type { ImageFetcher } from './consoleImageProxy';
-import { IssueTitleStateCache } from './consoleReadApi';
+import { IssueTitleStateCache, PullRequestStatusCache } from './consoleReadApi';
 import { readDoneProjectItemIds } from './consoleDoneStore';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Project } from '../../../domain/entities/Project';
@@ -24,8 +26,8 @@ import { Issue } from '../../../domain/entities/Issue';
 
 describe('webServer pure helpers', () => {
   describe('DEFAULT_WEB_PORT', () => {
-    it('is 9981', () => {
-      expect(DEFAULT_WEB_PORT).toBe(9981);
+    it('is 9980', () => {
+      expect(DEFAULT_WEB_PORT).toBe(9980);
     });
   });
 
@@ -80,6 +82,7 @@ describe('webServer pure helpers', () => {
         true,
       );
       expect(isConsoleAppRoute('/projects/utage3/todo-by-human')).toBe(true);
+      expect(isConsoleAppRoute('/projects/utage3/todo-by-agent')).toBe(true);
     });
 
     it('does not match data, api, or unknown tab routes', () => {
@@ -109,16 +112,53 @@ describe('webServer pure helpers', () => {
 
   describe('extractProvidedToken', () => {
     it('prefers the query token', () => {
-      expect(extractProvidedToken('fromQuery', 'fromHeader')).toBe('fromQuery');
+      expect(
+        extractProvidedToken('fromQuery', 'fromHeader', 'fromCookie'),
+      ).toBe('fromQuery');
     });
 
-    it('falls back to the header token', () => {
-      expect(extractProvidedToken(null, 'fromHeader')).toBe('fromHeader');
+    it('falls back to the header token before the cookie token', () => {
+      expect(extractProvidedToken(null, 'fromHeader', 'fromCookie')).toBe(
+        'fromHeader',
+      );
     });
 
-    it('returns null when neither is present', () => {
-      expect(extractProvidedToken(null, undefined)).toBeNull();
-      expect(extractProvidedToken('', undefined)).toBeNull();
+    it('falls back to the cookie token when query and header are absent', () => {
+      expect(extractProvidedToken(null, undefined, 'fromCookie')).toBe(
+        'fromCookie',
+      );
+    });
+
+    it('returns null when none is present', () => {
+      expect(extractProvidedToken(null, undefined, null)).toBeNull();
+      expect(extractProvidedToken('', undefined, '')).toBeNull();
+    });
+  });
+
+  describe('extractCookieToken', () => {
+    it('reads the token cookie value from a cookie header', () => {
+      expect(extractCookieToken(`${CONSOLE_TOKEN_COOKIE}=cookie-value`)).toBe(
+        'cookie-value',
+      );
+    });
+
+    it('reads the token cookie when other cookies are present', () => {
+      expect(
+        extractCookieToken(
+          `other=1; ${CONSOLE_TOKEN_COOKIE}=cookie-value; a=b`,
+        ),
+      ).toBe('cookie-value');
+    });
+
+    it('decodes a percent-encoded cookie value', () => {
+      expect(extractCookieToken(`${CONSOLE_TOKEN_COOKIE}=a%20b`)).toBe('a b');
+    });
+
+    it('returns null when the token cookie is absent, empty, or undefined', () => {
+      expect(extractCookieToken('other=1')).toBeNull();
+      expect(extractCookieToken(`${CONSOLE_TOKEN_COOKIE}=`)).toBeNull();
+      expect(extractCookieToken(undefined)).toBeNull();
+      expect(extractCookieToken('')).toBeNull();
     });
   });
 });
@@ -182,7 +222,7 @@ describe('webServer integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       port: 0,
     });
     const address = server.address();
@@ -201,7 +241,7 @@ describe('webServer integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       port: 0,
     });
     try {
@@ -229,7 +269,7 @@ describe('webServer integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       port: 0,
     });
     try {
@@ -261,7 +301,7 @@ describe('webServer integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       port: 0,
     });
     try {
@@ -295,7 +335,7 @@ describe('webServer integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       port: 0,
     });
     try {
@@ -326,7 +366,7 @@ describe('webServer integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       port: 0,
     });
     try {
@@ -351,7 +391,7 @@ describe('webServer integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       port: 0,
     });
     try {
@@ -379,7 +419,7 @@ describe('webServer integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       port: 0,
     });
     try {
@@ -519,7 +559,7 @@ describe('webServer new routes integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       port: 0,
     });
     try {
@@ -558,7 +598,7 @@ describe('webServer new routes integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       issueRepository,
       issueTitleStateCache: new IssueTitleStateCache(),
       port: 0,
@@ -571,6 +611,59 @@ describe('webServer new routes integration', () => {
       );
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.body)).toEqual({ body: 'body text' });
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('serves the pull request status read api when a status cache is injected', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const issueRepository = mock<IssueRepository>();
+    issueRepository.getOpenPullRequest.mockResolvedValue({
+      url: 'https://github.com/o/r/pull/1',
+      branchName: 'feature',
+      createdAt: new Date('2026-06-18T03:21:00.000Z'),
+      isDraft: false,
+      isConflicted: true,
+      mergeable: 'CONFLICTING',
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isResolvedAllReviewComments: false,
+      isBranchOutOfDate: true,
+      missingRequiredCheckNames: ['build'],
+    });
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      issueRepository,
+      issueTitleStateCache: new IssueTitleStateCache(),
+      pullRequestStatusCache: new PullRequestStatusCache(),
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'GET',
+        `/api/pullrequeststatus?k=${testToken}&url=https://github.com/o/r/pull/1`,
+      );
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toEqual({
+        found: true,
+        status: {
+          isConflicted: true,
+          mergeableStatus: 'CONFLICTING',
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+          isBranchOutOfDate: true,
+          missingRequiredCheckNames: ['build'],
+        },
+      });
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -594,10 +687,11 @@ describe('webServer new routes integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       issueRepository,
       resolveProject: async (pjcode) =>
         pjcode === 'umino' ? { pjcode, project: buildProject() } : null,
+      isPjcodeConfigured: (pjcode) => pjcode === 'umino',
       port: 0,
     });
     try {
@@ -645,10 +739,11 @@ describe('webServer new routes integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       issueRepository,
       resolveProject: async (pjcode) =>
         pjcode === 'umino' ? { pjcode, project: buildProject() } : null,
+      isPjcodeConfigured: (pjcode) => pjcode === 'umino',
       port: 0,
     });
     try {
@@ -693,10 +788,11 @@ describe('webServer new routes integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       issueRepository,
       resolveProject: async (pjcode) =>
         pjcode === 'umino' ? { pjcode, project: buildProject() } : null,
+      isPjcodeConfigured: (pjcode) => pjcode === 'umino',
       port: 0,
     });
     try {
@@ -731,10 +827,11 @@ describe('webServer new routes integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       issueRepository,
       resolveProject: async (pjcode) =>
         pjcode === 'umino' ? { pjcode, project: buildProject() } : null,
+      isPjcodeConfigured: (pjcode) => pjcode === 'umino',
       port: 0,
     });
     try {
@@ -784,7 +881,7 @@ describe('webServer new routes integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       port: 0,
     });
     try {
@@ -932,7 +1029,7 @@ describe('webServer flat in-tmux-by-human route integration', () => {
       inTmuxDataDir,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       port: 0,
     });
     return { server, tmpDir, inTmuxDataDir };
@@ -1048,7 +1145,7 @@ describe('webServer flat in-tmux-by-human route integration', () => {
       inTmuxDataDir: null,
       dashboardDir: null,
       dashboardDataDir: null,
-      dashboardProjectCodes: [],
+      dashboardProjectNames: [],
       port: 0,
     });
     try {
@@ -1121,9 +1218,9 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
   const writeDataFiles = (dataDir: string): void => {
     fs.mkdirSync(path.join(dataDir, 'projects'), { recursive: true });
     fs.writeFileSync(
-      path.join(dataDir, 'projects', 'um.json'),
+      path.join(dataDir, 'projects', 'umino.json'),
       JSON.stringify({
-        pjcode: 'um',
+        pjcode: 'umino',
         capturedAt: '2026-06-26T00:00:00.000Z',
         unread: 3,
         todo: 1,
@@ -1136,9 +1233,9 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
       }),
     );
     fs.writeFileSync(
-      path.join(dataDir, 'projects', 'xc.json'),
+      path.join(dataDir, 'projects', 'xcare.json'),
       JSON.stringify({
-        pjcode: 'xc',
+        pjcode: 'xcare',
         capturedAt: '2026-06-26T00:00:00.000Z',
         unread: 0,
         todo: 0,
@@ -1209,7 +1306,7 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
       inTmuxDataDir: null,
       dashboardDir: overrides.dashboardDir,
       dashboardDataDir: overrides.dashboardDataDir,
-      dashboardProjectCodes: ['um', 'xc'],
+      dashboardProjectNames: ['umino', 'xcare'],
       port: 0,
     });
     return { server, tmpDir };
@@ -1453,7 +1550,7 @@ describe('webServer image proxy', () => {
         inTmuxDataDir: null,
         dashboardDir: null,
         dashboardDataDir: null,
-        dashboardProjectCodes: [],
+        dashboardProjectNames: [],
         githubToken: token,
         imageFetcher: fetcher,
         port: 0,
@@ -1555,6 +1652,244 @@ describe('webServer image proxy', () => {
       );
       expect(response.statusCode).toBe(502);
       expect(response.body.toString('utf-8')).toContain('upstream 404');
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('webServer token cookie redirect', () => {
+  const testToken = 'integration-test-token-value';
+
+  const closeServer = (server: http.Server): Promise<void> =>
+    new Promise((resolve, reject) => {
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve();
+      });
+    });
+
+  const requestServer = (
+    server: http.Server,
+    requestPath: string,
+    headers: http.OutgoingHttpHeaders = {},
+  ): Promise<{
+    statusCode: number;
+    body: string;
+    location: string | undefined;
+    setCookie: string[] | undefined;
+    referrerPolicy: string | string[] | undefined;
+    cacheControl: string | undefined;
+  }> => {
+    const address = server.address();
+    if (address === null || typeof address === 'string') {
+      throw new Error('server is not listening on a TCP port');
+    }
+    const port = address.port;
+    return new Promise((resolve, reject) => {
+      const httpRequest = http.request(
+        { host: '127.0.0.1', port, path: requestPath, headers },
+        (response) => {
+          const chunks: Uint8Array[] = [];
+          response.on('data', (chunk: Uint8Array) => chunks.push(chunk));
+          response.on('end', () => {
+            resolve({
+              statusCode: response.statusCode ?? 0,
+              body: Buffer.concat(chunks).toString('utf-8'),
+              location: response.headers['location'],
+              setCookie: response.headers['set-cookie'],
+              referrerPolicy: response.headers['referrer-policy'],
+              cacheControl: response.headers['cache-control'],
+            });
+          });
+        },
+      );
+      httpRequest.on('error', reject);
+      httpRequest.end();
+    });
+  };
+
+  const startWithUiDist = async (): Promise<{
+    server: http.Server;
+    tmpDir: string;
+  }> => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const uiDistDir = path.join(tmpDir, 'ui-dist');
+    fs.mkdirSync(uiDistDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(uiDistDir, 'index.html'),
+      '<!DOCTYPE html><title>spa</title><div id="root"></div>',
+    );
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir,
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      port: 0,
+    });
+    return { server, tmpDir };
+  };
+
+  const firstSetCookie = (setCookie: string[] | undefined): string => {
+    expect(setCookie).toBeDefined();
+    expect(setCookie).toHaveLength(1);
+    return (setCookie ?? [''])[0];
+  };
+
+  it('redirects a per-project app route carrying ?k= to the keyless path and sets an HttpOnly SameSite=Strict cookie', async () => {
+    const { server, tmpDir } = await startWithUiDist();
+    try {
+      const response = await requestServer(
+        server,
+        `/projects/umino?k=${testToken}`,
+      );
+      expect(response.statusCode).toBe(302);
+      expect(response.location).toBe('/projects/umino');
+      expect(response.body).not.toContain(testToken);
+      const cookie = firstSetCookie(response.setCookie);
+      expect(cookie).toContain(`${CONSOLE_TOKEN_COOKIE}=${testToken}`);
+      expect(cookie).toContain('HttpOnly');
+      expect(cookie).toContain('SameSite=Strict');
+      expect(cookie).toContain('Path=/');
+      expect(response.referrerPolicy).toBe('no-referrer');
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('redirects a per-project tab route carrying ?k= and preserves other query parameters', async () => {
+    const { server, tmpDir } = await startWithUiDist();
+    try {
+      const response = await requestServer(
+        server,
+        `/projects/xmile/prs?k=${testToken}&foo=bar`,
+      );
+      expect(response.statusCode).toBe(302);
+      expect(response.location).toBe('/projects/xmile/prs?foo=bar');
+      const cookie = firstSetCookie(response.setCookie);
+      expect(cookie).toContain(`${CONSOLE_TOKEN_COOKIE}=${testToken}`);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('redirects the root and index.html routes carrying ?k= to a keyless path', async () => {
+    const { server, tmpDir } = await startWithUiDist();
+    try {
+      const root = await requestServer(server, `/?k=${testToken}`);
+      expect(root.statusCode).toBe(302);
+      expect(root.location).toBe('/');
+      expect(firstSetCookie(root.setCookie)).toContain(
+        `${CONSOLE_TOKEN_COOKIE}=${testToken}`,
+      );
+
+      const indexHtml = await requestServer(
+        server,
+        `/index.html?k=${testToken}`,
+      );
+      expect(indexHtml.statusCode).toBe(302);
+      expect(indexHtml.location).toBe('/index.html');
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('serves the app route without a token and never leaks a token in the URL', async () => {
+    const { server, tmpDir } = await startWithUiDist();
+    try {
+      const response = await requestServer(server, '/projects/umino');
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain('spa');
+      expect(response.setCookie).toBeUndefined();
+      expect(response.referrerPolicy).toBe('no-referrer');
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('sets Referrer-Policy: no-referrer on the console HTML responses', async () => {
+    const { server, tmpDir } = await startWithUiDist();
+    try {
+      const root = await requestServer(server, '/');
+      expect(root.statusCode).toBe(200);
+      expect(root.referrerPolicy).toBe('no-referrer');
+
+      const projectTab = await requestServer(server, '/projects/xmile/prs');
+      expect(projectTab.statusCode).toBe(200);
+      expect(projectTab.referrerPolicy).toBe('no-referrer');
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('authenticates a data list request through the cookie without a token in the URL', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const dataDir = path.join(tmpDir, 'data');
+    const listDir = path.join(dataDir, 'umino', 'prs');
+    fs.mkdirSync(listDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(listDir, 'list.json'),
+      JSON.stringify({ pjcode: 'umino', items: [] }),
+    );
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: dataDir,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      port: 0,
+    });
+    try {
+      const withCookie = await requestServer(
+        server,
+        '/projects/umino/prs/list.json',
+        { Cookie: `${CONSOLE_TOKEN_COOKIE}=${testToken}` },
+      );
+      expect(withCookie.statusCode).toBe(200);
+      expect(JSON.parse(withCookie.body)).toEqual({
+        pjcode: 'umino',
+        items: [],
+      });
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects a data or api request when no token and no cookie are present', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      port: 0,
+    });
+    try {
+      const noToken = await requestServer(server, '/data/situation.json');
+      expect(noToken.statusCode).toBe(401);
+
+      const wrongCookie = await requestServer(server, '/api/review', {
+        Cookie: `${CONSOLE_TOKEN_COOKIE}=wrong-token`,
+      });
+      expect(wrongCookie.statusCode).toBe(401);
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });

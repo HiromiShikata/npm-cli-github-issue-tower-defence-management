@@ -48,10 +48,7 @@ export class SetupTowerDefenceProjectUseCase {
     if (awaitingTaskBreakdownStatus) {
       const todoStatus = existing.find((s) => s.name === TODO_STATUS_NAME);
       if (todoStatus) {
-        const { issues } = await this.issueRepository.getAllIssues(
-          project.id,
-          0,
-        );
+        const { issues } = await this.issueRepository.getAllIssues(project.id);
         const awaitingTaskBreakdownIssues = issues.filter(
           (issue) =>
             issue.status === LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,

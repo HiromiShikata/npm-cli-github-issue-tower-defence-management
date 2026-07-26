@@ -36,6 +36,31 @@ const processSelectedItemViaStatus = async (page: Page): Promise<void> => {
   await statusButton.click();
 };
 
+test('shows CI and conflict badges in the directly opened PR detail header', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Awaiting Quality Check').click();
+  await itemRowByText(
+    page,
+    'Serve the committed console UI bundle from serveConsole',
+  ).click();
+
+  const title = page.locator('.console-detail-title');
+  await expect(title.getByText('CI failing')).toHaveCount(0);
+
+  const statusRow = page.locator('.console-detail-pr-status-row');
+  await expect(statusRow.getByText('CI failing')).toBeVisible();
+  await expect(statusRow.getByText(/missing: build, test/)).toBeVisible();
+  await expect(statusRow.getByText('Conflict')).toBeVisible();
+  await expect(statusRow.getByText('Out of date')).toBeVisible();
+
+  await page.locator('.console-detail').screenshot({
+    path: '/tmp/after-pr-detail-header.png',
+  });
+});
+
 test('processing tabs drives auto-advance and keeps emptied badges at zero', async ({
   page,
 }) => {
@@ -119,4 +144,93 @@ test('renders the Workflow Blocker tab leftmost and shows its detail operations'
   await expect(
     page.locator('.console-op-button', { hasText: '+1 day' }),
   ).toBeVisible();
+});
+
+test('shows CI, conflict and out-of-date badges in the related PR header', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Failed Preparation').click();
+  await itemRowByText(
+    page,
+    'Add inline review comments on the related pull request diff',
+  ).click();
+
+  const prHeader = page.locator('.console-pr-header').first();
+  await expect(prHeader.getByText('CI failing')).toBeVisible();
+  await expect(prHeader.getByText(/missing: build, test/)).toBeVisible();
+  await expect(prHeader.getByText('Conflict')).toBeVisible();
+  await expect(prHeader.getByText('Out of date')).toBeVisible();
+
+  await prHeader.screenshot({
+    path: '/tmp/after-related-pr-header.png',
+  });
+});
+
+test('collects an inline comment on a related pull request diff without hover on a touch viewport, enabling Reject and submitting it as request-changes', async ({
+  browser,
+}) => {
+  const touchContext = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+    isMobile: true,
+  });
+  const page = await touchContext.newPage();
+
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Failed Preparation').click();
+  await itemRowByText(
+    page,
+    'Add inline review comments on the related pull request diff',
+  ).click();
+
+  const changedFile = page
+    .locator('.console-file-row', {
+      hasText: 'index.css',
+    })
+    .first();
+  await expect(changedFile).toBeVisible();
+  await changedFile.click();
+
+  const commentButton = page.locator('.console-diff-comment-button').first();
+  await expect(commentButton).toBeVisible();
+  const opacity = await commentButton.evaluate(
+    (element) => window.getComputedStyle(element).opacity,
+  );
+  expect(Number(opacity)).toBeGreaterThan(0);
+
+  const rejectButton = page
+    .locator('.console-op-button', { hasText: 'Reject' })
+    .first();
+  await expect(rejectButton).toBeDisabled();
+
+  await commentButton.click();
+  await page
+    .locator('.console-diff-composer-input')
+    .fill('Please verify this opacity change on touch devices.');
+  await page.locator('.console-diff-composer-submit').click();
+
+  await expect(page.locator('.console-diff-composer-posted')).toHaveText(
+    'Comment saved.',
+  );
+
+  expect(harness.reviewCommentCalls).toHaveLength(0);
+
+  await expect(rejectButton).toBeEnabled();
+  await rejectButton.click();
+
+  await expect
+    .poll(() => harness.requestChangesCalls.length, { timeout: 10000 })
+    .toBe(1);
+  expect(harness.requestChangesCalls[0].url).toBe(
+    'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/912',
+  );
+  expect(harness.requestChangesCalls[0].body).toContain(
+    'Please verify this opacity change on touch devices.',
+  );
+  expect(harness.requestChangesCalls[0].body.length).toBeGreaterThan(0);
+
+  await touchContext.close();
 });

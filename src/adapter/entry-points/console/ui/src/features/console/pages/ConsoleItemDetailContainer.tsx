@@ -1,16 +1,18 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { ConsoleCommentComposer } from '../components/detail/ConsoleCommentComposer';
+import type { ConsoleAddInlineComment } from '../components/detail/ConsoleFileDiff';
 import { ConsoleItemDetail } from '../components/detail/ConsoleItemDetail';
 import { ConsoleOperationMenu } from '../components/operations/ConsoleOperationMenu';
 import type { ConsoleCaches } from '../hooks/useConsoleCaches';
 import { useConsoleItemDetailData } from '../hooks/useConsoleItemDetailData';
 import type { ConsoleOperationsApi } from '../hooks/useConsoleOperations';
-import { useConsoleToken } from '../hooks/useConsoleToken';
-import type { ConsoleReviewCommentSide } from '../lib/consoleApi';
 import { buildImageProxyUrl } from '../lib/imageProxy';
 import type { ConsoleActionKind } from '../logic/actionToast';
 import { resolveStoryColorEnum } from '../logic/grouping';
-import type { ConsoleOperationHandlers } from '../logic/operations';
+import type {
+  ConsoleOperationHandlers,
+  ConsolePendingReviewComment,
+} from '../logic/operations';
 import type {
   ConsoleColor,
   ConsoleFieldOption,
@@ -19,6 +21,7 @@ import type {
   ConsoleStoryColorSource,
   ConsoleTabName,
 } from '../logic/types';
+import { ConsoleReferenceLinkContainer } from './ConsoleReferenceLinkContainer';
 
 export type ConsoleQueueActionInput = {
   kind: ConsoleActionKind;
@@ -54,20 +57,32 @@ export const ConsoleItemDetailContainer = ({
   onQueueAction,
 }: ConsoleItemDetailContainerProps) => {
   const detail = useConsoleItemDetailData(caches, item);
-  const { token } = useConsoleToken();
   const resolveImageProxyUrl = useCallback(
-    (src: string): string => buildImageProxyUrl(src, token),
-    [token],
+    (src: string): string => buildImageProxyUrl(src),
+    [],
+  );
+  const renderReferenceLink = useCallback(
+    (href: string, fallbackText: string) => (
+      <ConsoleReferenceLinkContainer
+        cache={caches.state}
+        href={href}
+        fallbackText={fallbackText}
+      />
+    ),
+    [caches.state],
   );
   const hasPullRequest = item.isPr || detail.relatedPullRequests.length > 0;
-  const addInlineComment = useCallback(
-    (
-      path: string,
-      line: number,
-      side: ConsoleReviewCommentSide,
-      body: string,
-    ) => operations.addInlineReviewComment(item.url, path, line, side, body),
-    [operations, item.url],
+  const [pendingReviewComments, setPendingReviewComments] = useState<
+    ConsolePendingReviewComment[]
+  >([]);
+  const addInlineComment = useCallback<ConsoleAddInlineComment>(
+    async (path, line, side, body) => {
+      setPendingReviewComments((previous) => [
+        ...previous,
+        { path, line, side, body },
+      ]);
+    },
+    [],
   );
 
   const handlers: ConsoleOperationHandlers = {
@@ -75,10 +90,13 @@ export const ConsoleItemDetailContainer = ({
       const prUrl = item.isPr
         ? item.url
         : (detail.relatedPullRequests[0]?.pullRequest.url ?? item.url);
+      const reviewComments =
+        action === 'request_changes' ? pendingReviewComments : [];
       onQueueAction({
         kind: { type: 'review', action },
         item,
-        commit: () => operations.reviewPullRequest(item, prUrl, action),
+        commit: () =>
+          operations.reviewPullRequest(item, prUrl, action, reviewComments),
       });
     },
     onSetNextActionDate: (action) => {
@@ -144,10 +162,12 @@ export const ConsoleItemDetailContainer = ({
       commits={detail.commits}
       commitsAreLoading={detail.commitsAreLoading}
       commitsError={detail.commitsError}
+      pullRequestStatus={detail.pullRequestStatus}
       relatedPullRequests={detail.relatedPullRequests}
       now={now}
       buildImageProxyUrl={resolveImageProxyUrl}
-      onAddInlineComment={item.isPr ? addInlineComment : undefined}
+      renderReferenceLink={renderReferenceLink}
+      onAddInlineComment={addInlineComment}
       commentComposer={
         <ConsoleCommentComposer
           isPr={item.isPr}
@@ -160,6 +180,7 @@ export const ConsoleItemDetailContainer = ({
           tab={tab}
           item={item}
           hasPullRequest={hasPullRequest}
+          rejectEnabled={pendingReviewComments.length > 0}
           statusOptions={statusOptions}
           storyOptions={storyOptions}
           handlers={handlers}

@@ -1,4 +1,4 @@
-import { IssueRepository, RelatedPullRequest, IssueComment, PullRequestDetail, PullRequestCommit, PullRequestReviewCommentSide } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+import { IssueRepository, RelatedPullRequest, IssueComment, PullRequestDetail, PullRequestCommit, PullRequestReviewCommentSide, PullRequestReviewInlineLocation } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
 import { StoryObjectMap } from '../../../domain/entities/StoryObjectMap';
@@ -9,22 +9,43 @@ import { LocalStorageCacheRepository } from '../LocalStorageCacheRepository';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import { LocalStorageRepository } from '../LocalStorageRepository';
 import { Member } from '../../../domain/entities/Member';
+import { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
+import { DateRepository } from '../../../domain/usecases/adapter-interfaces/DateRepository';
+import { Sleep } from './githubRateLimitRetry';
+export declare const FULL_ISSUE_FETCH_INTERVAL_MS: number;
+export declare const INCREMENTAL_FETCH_SKEW_BUFFER_MS: number;
+export declare const REQUIRED_CHECKS_CACHE_TTL_MS: number;
+export type CachedProjectIssues = {
+    lastFetchedAt: string;
+    lastFullFetchAt: string;
+    project: Project;
+    issues: Issue[];
+};
 export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository implements IssueRepository {
     readonly apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>;
     readonly restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'createComment' | 'getIssue' | 'updateLabels' | 'removeLabel' | 'updateAssigneeList'>;
-    readonly graphqlProjectItemRepository: Pick<GraphqlProjectItemRepository, 'fetchProjectItems' | 'fetchProjectItemByUrl' | 'updateProjectField' | 'clearProjectField' | 'updateProjectTextField' | 'addIssueToProject'>;
-    readonly localStorageCacheRepository: Pick<LocalStorageCacheRepository, 'getLatest' | 'set'>;
+    readonly graphqlProjectItemRepository: Pick<GraphqlProjectItemRepository, 'fetchProjectItems' | 'fetchProjectItemsLight' | 'fetchProjectItemsByIds' | 'fetchProjectItemByUrl' | 'updateProjectField' | 'clearProjectField' | 'updateProjectTextField' | 'addIssueToProject'>;
+    readonly localStorageCacheRepository: Pick<LocalStorageCacheRepository, 'getSingle' | 'setSingle'>;
+    readonly projectRepository: Pick<ProjectRepository, 'getProject'>;
+    readonly dateRepository: DateRepository;
     readonly localStorageRepository: LocalStorageRepository;
     readonly ghToken: string;
-    constructor(apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>, restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'createComment' | 'getIssue' | 'updateLabels' | 'removeLabel' | 'updateAssigneeList'>, graphqlProjectItemRepository: Pick<GraphqlProjectItemRepository, 'fetchProjectItems' | 'fetchProjectItemByUrl' | 'updateProjectField' | 'clearProjectField' | 'updateProjectTextField' | 'addIssueToProject'>, localStorageCacheRepository: Pick<LocalStorageCacheRepository, 'getLatest' | 'set'>, localStorageRepository: LocalStorageRepository, ghToken?: string);
+    readonly sleep: Sleep;
+    constructor(apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>, restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'createComment' | 'getIssue' | 'updateLabels' | 'removeLabel' | 'updateAssigneeList'>, graphqlProjectItemRepository: Pick<GraphqlProjectItemRepository, 'fetchProjectItems' | 'fetchProjectItemsLight' | 'fetchProjectItemsByIds' | 'fetchProjectItemByUrl' | 'updateProjectField' | 'clearProjectField' | 'updateProjectTextField' | 'addIssueToProject'>, localStorageCacheRepository: Pick<LocalStorageCacheRepository, 'getSingle' | 'setSingle'>, projectRepository: Pick<ProjectRepository, 'getProject'>, dateRepository: DateRepository, localStorageRepository: LocalStorageRepository, ghToken?: string, sleep?: Sleep);
+    private readonly getAllIssuesRefreshMemo;
+    private fetchWithRateLimitRetry;
     updateStatus: (project: Project, issue: Issue, statusId: string) => Promise<void>;
     convertProjectItemToIssue: (item: ProjectItem) => Issue;
-    getAllIssuesFromCache: (cacheKey: string, allowCacheMinutes: number) => Promise<Issue[] | null>;
-    getAllIssues: (projectId: Project["id"], allowCacheMinutes: number) => Promise<{
+    private restoreIssuesFromCache;
+    private readCachedProjectIssues;
+    getCachedProject: (projectId: Project["id"]) => Promise<Project | null>;
+    private toDateString;
+    getAllIssues: (projectId: Project["id"]) => Promise<{
         issues: Issue[];
+        project: Project;
         cacheUsed: boolean;
     }>;
-    getAllIssuesFromGitHub: (projectId: Project["id"]) => Promise<Issue[]>;
+    private refreshAllIssues;
     createNewIssue: (org: string, repo: string, title: string, body: string, assignees: string[], labels: string[]) => Promise<number>;
     searchIssue: (query: {
         owner: string;
@@ -43,7 +64,7 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     getIssueByUrl: (url: string) => Promise<Issue | null>;
     addIssueToProject: (project: Project, issueUrl: string) => Promise<void>;
     setDependedIssueUrl: (prUrl: string, project: Project, issueUrl: string) => Promise<void>;
-    updateNextActionDate: (issueUrl: string, project: Project, date: Date) => Promise<void>;
+    updateNextActionDate: (issueUrl: string, project: Project, date: Date, projectItemId?: string) => Promise<void>;
     updateNextActionHour: (project: Project & {
         nextActionHour: NonNullable<Project["nextActionHour"]>;
     }, issue: Issue, hour: number) => Promise<void>;
@@ -60,18 +81,25 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     update: (issue: Issue, _project: Project) => Promise<void>;
     private parseIssueUrl;
     private computePrStatus;
+    private readonly requiredCheckNamesCache;
+    private getRequiredCheckNames;
+    private getCommitCiContexts;
+    private fetchSlimPullRequest;
+    private buildRelatedPullRequestFromSlim;
+    private resolveMergeabilityWithRetry;
     findRelatedOpenPRs: (issueUrl: string) => Promise<RelatedPullRequest[]>;
-    getAllOpened: (project: Project, allowCacheMinutes: number) => Promise<Issue[]>;
-    getStoryObjectMap: (project: Project, allowCacheMinutes: number) => Promise<StoryObjectMap>;
+    getAllOpened: (project: Project) => Promise<Issue[]>;
+    getStoryObjectMap: (project: Project) => Promise<StoryObjectMap>;
     getOpenPullRequest: (prUrl: string) => Promise<RelatedPullRequest | null>;
     closePullRequest: (prUrl: string) => Promise<void>;
     closeIssueByUrl: (issueUrl: string, stateReason: "completed" | "not_planned") => Promise<void>;
     getPullRequestChangedFilePaths: (prUrl: string) => Promise<string[]>;
     approvePullRequest: (prUrl: string) => Promise<void>;
-    requestChangesWithInlineComment: (prUrl: string, changedFilePath: string | null, commentBody: string) => Promise<void>;
+    requestChangesWithInlineComment: (prUrl: string, changedFilePath: string | null, commentBody: string, inlineCommentLocation?: PullRequestReviewInlineLocation | null) => Promise<void>;
     private fetchPullRequestHeadSha;
     createPullRequestReviewComment: (prUrl: string, path: string, line: number, side: PullRequestReviewCommentSide, commentBody: string) => Promise<void>;
-    private readGitHubErrorMessage;
+    private readGitHubErrorReason;
+    private formatGitHubErrorWithStatus;
     deletePullRequestBranch: (prUrl: string, branchName: string) => Promise<void>;
     createCommentByUrl: (issueOrPrUrl: string, commentBody: string) => Promise<void>;
     getIssueOrPullRequestBody: (url: string) => Promise<string>;

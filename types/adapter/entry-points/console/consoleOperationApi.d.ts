@@ -7,9 +7,11 @@ export type ConsoleProjectBinding = {
     project: Project;
 };
 export type ConsoleProjectResolver = (pjcode: string) => Promise<ConsoleProjectBinding | null>;
+export type ConsolePjcodeValidator = (pjcode: string) => boolean;
 export type ConsoleOperationContext = {
     issueRepository: IssueRepository;
     resolveProject: ConsoleProjectResolver;
+    isPjcodeConfigured: ConsolePjcodeValidator;
     consoleDataOutputDir: string | null;
 };
 export type ConsoleOperationResponse = {

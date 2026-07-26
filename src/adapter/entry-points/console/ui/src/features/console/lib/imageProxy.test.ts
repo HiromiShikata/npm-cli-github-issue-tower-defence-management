@@ -27,31 +27,28 @@ describe('isProxyableImageUrl', () => {
 });
 
 describe('buildImageProxyUrl', () => {
-  it('encodes the source url and appends the token', () => {
+  it('encodes the source url without appending a token', () => {
     const src = 'https://github.com/user-attachments/assets/abc?x=1';
-    expect(buildImageProxyUrl(src, 'tk')).toBe(
-      `/api/img?url=${encodeURIComponent(src)}&k=tk`,
+    expect(buildImageProxyUrl(src)).toBe(
+      `/api/img?url=${encodeURIComponent(src)}`,
     );
   });
 
-  it('omits the token when it is null', () => {
+  it('does not include a token query parameter', () => {
     const src = 'https://github.com/user-attachments/assets/abc';
-    expect(buildImageProxyUrl(src, null)).toBe(
-      `/api/img?url=${encodeURIComponent(src)}`,
-    );
+    expect(buildImageProxyUrl(src)).not.toContain('k=');
   });
 });
 
 describe('rewriteGitHubImageSources', () => {
-  const buildProxyUrl = (src: string): string =>
-    buildImageProxyUrl(src, 'console-token');
+  const buildProxyUrl = (src: string): string => buildImageProxyUrl(src);
 
   it('rewrites an allow-listed github image src to the proxy url', () => {
     const githubSrc = 'https://github.com/user-attachments/assets/abc';
     const html = `<p><img src="${githubSrc}" alt="shot" /></p>`;
     const result = rewriteGitHubImageSources(html, buildProxyUrl);
     expect(result).toContain(`/api/img?url=${encodeURIComponent(githubSrc)}`);
-    expect(result).toContain('k=console-token');
+    expect(result).not.toContain('k=');
     expect(result).not.toContain(`src="${githubSrc}"`);
   });
 

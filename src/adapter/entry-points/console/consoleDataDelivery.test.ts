@@ -22,6 +22,12 @@ describe('parseConsoleDataRoute', () => {
     ).toEqual({ kind: 'list', pjcode: 'umino', tab: 'todo-by-human' });
   });
 
+  it('parses a list route for todo-by-agent', () => {
+    expect(
+      parseConsoleDataRoute('/projects/umino/todo-by-agent/list.json'),
+    ).toEqual({ kind: 'list', pjcode: 'umino', tab: 'todo-by-agent' });
+  });
+
   it('parses a detail route', () => {
     expect(
       parseConsoleDataRoute('/projects/umino/triage/detail/123.json'),
@@ -120,6 +126,28 @@ describe('buildConsoleDataResponse', () => {
       kind: 'list',
       pjcode: 'umino',
       tab: 'prs',
+    });
+    expect(response.statusCode).toBe(200);
+    const parsed: unknown = JSON.parse(response.body);
+    expect(parsed).toEqual({
+      pjcode: 'umino',
+      items: [{ projectItemId: 'PVTI_1', title: 'keep' }],
+    });
+  });
+
+  it('applies the done exclusion to the workflow-blocker list', () => {
+    writeJson('umino/workflow-blocker/list.json', {
+      pjcode: 'umino',
+      items: [
+        { projectItemId: 'PVTI_1', title: 'keep' },
+        { projectItemId: 'PVTI_2', title: 'processed blocker' },
+      ],
+    });
+    recordDoneProjectItemId(baseDir, 'umino', 'workflow-blocker', 'PVTI_2');
+    const response = buildConsoleDataResponse(baseDir, {
+      kind: 'list',
+      pjcode: 'umino',
+      tab: 'workflow-blocker',
     });
     expect(response.statusCode).toBe(200);
     const parsed: unknown = JSON.parse(response.body);

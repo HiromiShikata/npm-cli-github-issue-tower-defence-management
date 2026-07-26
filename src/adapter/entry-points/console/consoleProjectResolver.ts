@@ -1,5 +1,6 @@
 import { Project } from '../../../domain/entities/Project';
 import {
+  ConsolePjcodeValidator,
   ConsoleProjectBinding,
   ConsoleProjectResolver,
 } from './consoleOperationApi';
@@ -23,6 +24,16 @@ export const buildPjcodeToProjectUrl = (
     mapping[defaultPjcode] = defaultProjectUrl;
   }
   return mapping;
+};
+
+// Builds a synchronous predicate that reports whether a pjcode is configured,
+// using only the local pjcode-to-project-url mapping. This lets close
+// operations validate the pjcode without loading the ProjectV2 via GraphQL.
+export const createPjcodeConfigChecker = (
+  pjcodeToProjectUrl: Record<string, string>,
+): ConsolePjcodeValidator => {
+  return (pjcode: string): boolean =>
+    Object.prototype.hasOwnProperty.call(pjcodeToProjectUrl, pjcode);
 };
 
 export const createConsoleProjectResolver = (

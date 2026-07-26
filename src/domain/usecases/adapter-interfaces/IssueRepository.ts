@@ -9,6 +9,7 @@ export type RelatedPullRequest = {
   createdAt: Date;
   isDraft: boolean;
   isConflicted: boolean;
+  mergeable: string | null;
   isPassedAllCiJob: boolean;
   isCiStateSuccess: boolean;
   isResolvedAllReviewComments: boolean;
@@ -53,11 +54,15 @@ export type PullRequestCommit = {
 
 export type PullRequestReviewCommentSide = 'LEFT' | 'RIGHT';
 
+export type PullRequestReviewInlineLocation = {
+  line: number;
+  side: PullRequestReviewCommentSide;
+};
+
 export interface IssueRepository {
   getAllIssues: (
     projectId: Project['id'],
-    allowCacheMinutes: number,
-  ) => Promise<{ issues: Issue[]; cacheUsed: boolean }>;
+  ) => Promise<{ issues: Issue[]; project: Project; cacheUsed: boolean }>;
   getIssueByUrl: (url: string) => Promise<Issue | null>;
   createNewIssue: (
     org: string,
@@ -87,6 +92,7 @@ export interface IssueRepository {
     issueUrl: string,
     project: Project,
     date: Date,
+    projectItemId?: string,
   ) => Promise<void>;
   updateNextActionHour: (
     project: Project & {
@@ -133,6 +139,7 @@ export interface IssueRepository {
     prUrl: string,
     changedFilePath: string | null,
     commentBody: string,
+    inlineCommentLocation?: PullRequestReviewInlineLocation | null,
   ) => Promise<void>;
   createPullRequestReviewComment: (
     prUrl: string,
@@ -151,14 +158,8 @@ export interface IssueRepository {
     issueOrPrUrl: string,
     commentBody: string,
   ) => Promise<void>;
-  getAllOpened: (
-    project: Project,
-    allowCacheMinutes: number,
-  ) => Promise<Issue[]>;
-  getStoryObjectMap: (
-    project: Project,
-    allowCacheMinutes: number,
-  ) => Promise<StoryObjectMap>;
+  getAllOpened: (project: Project) => Promise<Issue[]>;
+  getStoryObjectMap: (project: Project) => Promise<StoryObjectMap>;
   addIssueToProject: (project: Project, issueUrl: string) => Promise<void>;
   setDependedIssueUrl: (
     prUrl: string,

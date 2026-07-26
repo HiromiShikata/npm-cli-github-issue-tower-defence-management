@@ -44,6 +44,7 @@ exports.CONSOLE_LIST_TAB_NAMES = [
     'unread',
     'failed-preparation',
     'todo-by-human',
+    'todo-by-agent',
 ];
 const SAFE_SEGMENT = /^[A-Za-z0-9._-]+$/;
 const isSafeSegment = (segment) => SAFE_SEGMENT.test(segment) && !segment.startsWith('.');

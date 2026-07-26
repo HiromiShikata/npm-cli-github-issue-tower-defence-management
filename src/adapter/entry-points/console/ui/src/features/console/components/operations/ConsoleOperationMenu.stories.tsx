@@ -20,6 +20,7 @@ const meta: Meta<typeof ConsoleOperationMenu> = {
   title: 'Console/ConsoleOperationMenu',
   component: ConsoleOperationMenu,
   args: {
+    rejectEnabled: false,
     statusOptions: consoleStatusOptionsFixture,
     storyOptions: consoleStoryOptionsFixture,
     handlers,
@@ -38,6 +39,15 @@ export const PrsTabPullRequest: Story = {
   },
 };
 
+export const PrsTabPullRequestRejectEnabled: Story = {
+  args: {
+    tab: 'prs',
+    item: consoleListItemsFixture[0],
+    hasPullRequest: true,
+    rejectEnabled: true,
+  },
+};
+
 export const TriageTabIssueWithStoryGroup: Story = {
   args: {
     tab: 'triage',
@@ -49,6 +59,14 @@ export const TriageTabIssueWithStoryGroup: Story = {
 export const TodoByHumanTabIssue: Story = {
   args: {
     tab: 'todo-by-human',
+    item: consoleListItemsFixture[2],
+    hasPullRequest: false,
+  },
+};
+
+export const TodoByAgentTabIssue: Story = {
+  args: {
+    tab: 'todo-by-agent',
     item: consoleListItemsFixture[2],
     hasPullRequest: false,
   },

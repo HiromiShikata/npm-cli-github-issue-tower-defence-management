@@ -183,6 +183,17 @@ describe('writeInTmuxByHumanData', () => {
     });
   });
 
+  it('overrides the repo segment of the v4 new issue url when newIssueRepo is passed', () => {
+    writeInTmuxByHumanData({
+      ...baseParams(outDir),
+      newIssueRepo: 'other-repo',
+    });
+    expect(readJson(file('demo.v4.json'))).toMatchObject({
+      newIssueUrl:
+        'https://github.com/demo-org/other-repo/issues/new?assignees=owner-login',
+    });
+  });
+
   it('writes index files listing configured projects whose per-project file exists', () => {
     fs.writeFileSync(file('xmile.json'), '[]\n');
     writeInTmuxByHumanData({

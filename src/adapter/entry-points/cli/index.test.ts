@@ -1,6 +1,14 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import YAML from 'yaml';
+
+jest.mock('fs', () => {
+  const actualFs: typeof fs = jest.requireActual('fs');
+  return {
+    ...actualFs,
+    readFileSync: jest.fn(actualFs.readFileSync),
+  };
+});
 import {
   program,
   loadConfigFile,
@@ -49,10 +57,18 @@ jest.mock('../../repositories/issue/GraphqlProjectItemRepository', () => ({
   GraphqlProjectItemRepository: jest.fn().mockImplementation(() => ({})),
 }));
 jest.mock('../../repositories/issue/ApiV3CheerioRestIssueRepository', () => ({
-  ApiV3CheerioRestIssueRepository: jest.fn().mockImplementation(() => ({})),
+  ApiV3CheerioRestIssueRepository: jest.fn().mockImplementation(() => ({
+    getCachedProject: jest.fn().mockResolvedValue(null),
+  })),
 }));
+const mockRunCommand = jest.fn<
+  Promise<{ stdout: string; stderr: string; exitCode: number }>,
+  [string, string[]]
+>();
 jest.mock('../../repositories/NodeLocalCommandRunner', () => ({
-  NodeLocalCommandRunner: jest.fn().mockImplementation(() => ({})),
+  NodeLocalCommandRunner: jest.fn().mockImplementation(() => ({
+    runCommand: mockRunCommand,
+  })),
 }));
 jest.mock('../../repositories/OauthAPIClaudeRepository', () => ({
   OauthAPIClaudeRepository: jest.fn().mockImplementation(() => ({
@@ -68,18 +84,24 @@ jest.mock('../../repositories/FetchWebhookRepository', () => ({
     sendGetRequest: jest.fn(),
   })),
 }));
+const mockScheduleHandle = jest.fn().mockResolvedValue(null);
 jest.mock('../handlers/HandleScheduledEventUseCaseHandler', () => ({
   HandleScheduledEventUseCaseHandler: jest.fn().mockImplementation(() => ({
-    handle: jest.fn().mockResolvedValue(null),
+    handle: mockScheduleHandle,
   })),
 }));
+jest.mock('../console/ensureConsoleRunning', () => ({
+  ensureConsoleRunning: jest.fn().mockResolvedValue(null),
+}));
+import * as ensureConsoleRunningModule from '../console/ensureConsoleRunning';
+
 import type { StartWebServerOptions } from '../console/webServer';
 
 const mockStartWebServer = jest
   .fn<Promise<unknown>, [StartWebServerOptions]>()
   .mockResolvedValue({
     close: jest.fn(),
-    address: jest.fn().mockReturnValue({ port: 9981 }),
+    address: jest.fn().mockReturnValue({ port: 9980 }),
   });
 jest.mock('../console/webServer', () => {
   const actual: Record<string, unknown> = jest.requireActual(
@@ -101,6 +123,7 @@ describe('CLI', () => {
     projectUrl: 'https://github.com/orgs/test/projects/1',
     defaultAgentName: 'agent1',
     projectName: 'test-project',
+    manager: 'test-manager',
   };
 
   const writeConfig = (config: Record<string, unknown>): void => {
@@ -142,6 +165,7 @@ describe('CLI', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockFetchReturningReadme(null);
+    mockRunCommand.mockResolvedValue({ stdout: '', stderr: '', exitCode: 0 });
     process.env = { ...originalEnv, GH_TOKEN: 'test-token' };
     writeConfig(defaultConfig);
   });
@@ -154,6 +178,46 @@ describe('CLI', () => {
     expect(program).toBeDefined();
   });
 
+  describe('schedule --inTmuxProjectOrder', () => {
+    it('should pass the parsed, trimmed project order to the handler', async () => {
+      await program.parseAsync([
+        'node',
+        'test',
+        'schedule',
+        '-t',
+        'schedule',
+        '-c',
+        configFilePath,
+        '--inTmuxProjectOrder',
+        'alpha, beta ,gamma',
+      ]);
+
+      expect(mockScheduleHandle).toHaveBeenCalledWith(
+        configFilePath,
+        undefined,
+        ['alpha', 'beta', 'gamma'],
+      );
+    });
+
+    it('should pass null when --inTmuxProjectOrder is omitted', async () => {
+      await program.parseAsync([
+        'node',
+        'test',
+        'schedule',
+        '-t',
+        'schedule',
+        '-c',
+        configFilePath,
+      ]);
+
+      expect(mockScheduleHandle).toHaveBeenCalledWith(
+        configFilePath,
+        undefined,
+        null,
+      );
+    });
+  });
+
   describe('loadConfigFile', () => {
     it('should load config from YAML file', () => {
       const config = {
@@ -162,7 +226,6 @@ describe('CLI', () => {
         defaultLlmModelName: 'claude-opus-4-5',
         defaultLlmAgentName: 'aw',
         maximumPreparingIssuesCount: 10,
-        allowIssueCacheMinutes: 5,
         utilizationPercentageThreshold: 80,
         allowedIssueAuthors: 'user1,user2',
         thresholdForAutoReject: 5,
@@ -237,7 +300,6 @@ describe('CLI', () => {
     it('should ignore non-number values for number fields', () => {
       const config = {
         maximumPreparingIssuesCount: 'abc',
-        allowIssueCacheMinutes: 'def',
         utilizationPercentageThreshold: 'ghi',
         thresholdForAutoReject: 'jkl',
       };
@@ -246,7 +308,6 @@ describe('CLI', () => {
       const result = loadConfigFile(configFilePath);
 
       expect(result.maximumPreparingIssuesCount).toBeUndefined();
-      expect(result.allowIssueCacheMinutes).toBeUndefined();
       expect(result.utilizationPercentageThreshold).toBeUndefined();
       expect(result.thresholdForAutoReject).toBeUndefined();
     });
@@ -722,8 +783,8 @@ mysteryKey: 'value'
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
+        manager: 'test-manager',
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 10,
         labelsAsLlmAgentName: null,
       });
     });
@@ -764,8 +825,8 @@ mysteryKey: 'value'
         maximumPreparingIssuesCount: null,
         utilizationPercentageThreshold: 90,
         allowedIssueAuthors: null,
+        manager: 'test-manager',
         codexHomeCandidates: null,
-        allowIssueCacheMinutes: 10,
         labelsAsLlmAgentName: null,
       });
     });
@@ -1020,6 +1081,39 @@ mysteryKey: 'value'
       processExitSpy.mockRestore();
     });
 
+    it('should exit with error when manager is missing', async () => {
+      const configMissing = {
+        projectUrl: 'https://github.com/orgs/test/projects/1',
+        defaultAgentName: 'agent1',
+      };
+      writeConfig(configMissing);
+
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
+
+      await expect(
+        program.parseAsync([
+          'node',
+          'test',
+          'startDaemon',
+          '--configFilePath',
+          configFilePath,
+        ]),
+      ).rejects.toThrow('process.exit called');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'manager is required. Provide via the config file so that only issues assigned to the manager are picked up.',
+      );
+      expect(processExitSpy).toHaveBeenCalledWith(1);
+
+      consoleErrorSpy.mockRestore();
+      processExitSpy.mockRestore();
+    });
+
     it('should log maximumPreparingIssuesCount before calling useCase.run', async () => {
       const configWithValues = {
         ...defaultConfig,
@@ -1203,6 +1297,137 @@ mysteryKey: 'value'
           codexHomeCandidates: ['.codex-readme1', '.codex-readme2'],
         }),
       );
+    });
+
+    it('should start web console before preparation cycle when consoleAccessToken is provided', async () => {
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
+      MockedStartPreparationUseCase.mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      const mockKill = jest.fn();
+      const callOrder: string[] = [];
+      jest
+        .mocked(ensureConsoleRunningModule.ensureConsoleRunning)
+        .mockImplementationOnce(async () => {
+          callOrder.push('ensureWebConsoleRunning');
+          return { kill: mockKill };
+        });
+      mockRun.mockImplementationOnce(async () => {
+        callOrder.push('preparationRun');
+        return { rotationOrder: null };
+      });
+
+      writeConfig({ ...defaultConfig, consoleAccessToken: 'test-key-abc' });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'startDaemon',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(callOrder).toEqual(['ensureWebConsoleRunning', 'preparationRun']);
+      expect(
+        ensureConsoleRunningModule.ensureConsoleRunning,
+      ).toHaveBeenCalledWith(configFilePath, 9980);
+    });
+
+    it('should not start web console when consoleAccessToken is not provided', async () => {
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
+      MockedStartPreparationUseCase.mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      jest.mocked(ensureConsoleRunningModule.ensureConsoleRunning).mockClear();
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'startDaemon',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(
+        ensureConsoleRunningModule.ensureConsoleRunning,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('should register SIGTERM and SIGINT handlers when a new web console process is started', async () => {
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
+      MockedStartPreparationUseCase.mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      const mockKill = jest.fn();
+      jest
+        .mocked(ensureConsoleRunningModule.ensureConsoleRunning)
+        .mockResolvedValueOnce({ kill: mockKill });
+
+      const processOnceSpy = jest.spyOn(process, 'once');
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
+
+      writeConfig({ ...defaultConfig, consoleAccessToken: 'test-key-sigterm' });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'startDaemon',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      const sigtermCall = processOnceSpy.mock.calls.find(
+        ([event]) => event === 'SIGTERM',
+      );
+      const sigintCall = processOnceSpy.mock.calls.find(
+        ([event]) => event === 'SIGINT',
+      );
+      expect(sigtermCall).toBeDefined();
+      expect(sigintCall).toBeDefined();
+
+      processOnceSpy.mockRestore();
+
+      const rawSigtermHandler = sigtermCall?.[1];
+      const rawSigintHandler = sigintCall?.[1];
+      if (typeof rawSigtermHandler !== 'function') {
+        throw new Error('Expected SIGTERM handler to be a function');
+      }
+      if (typeof rawSigintHandler !== 'function') {
+        throw new Error('Expected SIGINT handler to be a function');
+      }
+      expect(() => rawSigtermHandler()).toThrow('process.exit called');
+      expect(mockKill).toHaveBeenCalledTimes(1);
+      expect(processExitSpy).toHaveBeenCalledWith(0);
+      expect(() => rawSigintHandler()).toThrow('process.exit called');
+      expect(mockKill).toHaveBeenCalledTimes(2);
+      expect(processExitSpy).toHaveBeenCalledTimes(2);
+
+      processExitSpy.mockRestore();
     });
   });
 
@@ -1682,7 +1907,7 @@ mysteryKey: 'value'
       expect(helpText).toContain('serveWeb');
     });
 
-    it('should start the server on the default port 9981 when --port is omitted', async () => {
+    it('should start the server on the default port 9980 when --port is omitted', async () => {
       writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
       const logSpy = jest.spyOn(console, 'log').mockImplementation();
 
@@ -1696,7 +1921,7 @@ mysteryKey: 'value'
 
       expect(mockStartWebServer).toHaveBeenCalledTimes(1);
       const callArg = mockStartWebServer.mock.calls[0][0];
-      expect(callArg.port).toBe(9981);
+      expect(callArg.port).toBe(9980);
       expect(callArg.accessToken).toBe('config-token');
       expect(callArg.consoleDataOutputDir).toBeNull();
       expect(callArg.uiDistDir).toBe(
@@ -1885,7 +2110,7 @@ mysteryKey: 'value'
       expect(helpText).toContain('serveConsole');
     });
 
-    it('should route to the same handler as serveWeb on the default port 9981', async () => {
+    it('should route to the same handler as serveWeb on the default port 9980', async () => {
       writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
       const logSpy = jest.spyOn(console, 'log').mockImplementation();
 
@@ -1899,7 +2124,7 @@ mysteryKey: 'value'
 
       expect(mockStartWebServer).toHaveBeenCalledTimes(1);
       const callArg = mockStartWebServer.mock.calls[0][0];
-      expect(callArg.port).toBe(9981);
+      expect(callArg.port).toBe(9980);
       expect(callArg.accessToken).toBe('config-token');
       expect(callArg.consoleDataOutputDir).toBeNull();
       expect(callArg.uiDistDir).toBe(
@@ -1930,6 +2155,108 @@ mysteryKey: 'value'
       expect(callArg.consoleDataOutputDir).toBe('/tmp/console-data');
 
       logSpy.mockRestore();
+    });
+  });
+
+  describe('killTmuxSession', () => {
+    it('reaches the real repository command sequence to kill a named session via --session', async () => {
+      await program.parseAsync([
+        'node',
+        'test',
+        'killTmuxSession',
+        '--session',
+        'https_//github_com/owner/repo/issues/9',
+      ]);
+
+      const expectedScopeUnitName =
+        'cl-https---github-com-owner-repo-issues-9.scope';
+      expect(mockRunCommand.mock.calls).toEqual([
+        ['systemctl', ['--user', 'reset-failed', expectedScopeUnitName]],
+        ['systemctl', ['--user', 'stop', expectedScopeUnitName]],
+        ['systemctl', ['--user', 'reset-failed', expectedScopeUnitName]],
+        [
+          'tmux',
+          ['kill-session', '-t', '=https_//github_com/owner/repo/issues/9'],
+        ],
+      ]);
+    });
+
+    it('reaches the real repository command sequence to stop its own scope via --self, without calling tmux', async () => {
+      const actualFs = jest.requireActual<typeof fs>('fs');
+      const readFileSyncMock = jest.mocked(fs.readFileSync);
+      readFileSyncMock.mockImplementation(
+        (
+          filePath: Parameters<typeof fs.readFileSync>[0],
+          options: Parameters<typeof fs.readFileSync>[1],
+        ): ReturnType<typeof fs.readFileSync> => {
+          if (filePath === '/proc/self/cgroup') {
+            return '0::/user.slice/user-1000.slice/user@1000.service/app.slice/cl-current-session.scope\n';
+          }
+          return actualFs.readFileSync(filePath, options);
+        },
+      );
+
+      await program.parseAsync(['node', 'test', 'killTmuxSession', '--self']);
+
+      expect(mockRunCommand.mock.calls).toEqual([
+        ['systemctl', ['--user', 'reset-failed', 'cl-current-session.scope']],
+        ['systemctl', ['--user', 'stop', 'cl-current-session.scope']],
+        ['systemctl', ['--user', 'reset-failed', 'cl-current-session.scope']],
+      ]);
+      expect(mockRunCommand.mock.calls.some((call) => call[0] === 'tmux')).toBe(
+        false,
+      );
+
+      readFileSyncMock.mockImplementation(actualFs.readFileSync);
+    });
+
+    it('exits with an error when neither --session nor --self is provided', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
+
+      await expect(
+        program.parseAsync(['node', 'test', 'killTmuxSession']),
+      ).rejects.toThrow('process.exit called');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Either --session <name> or --self is required',
+      );
+      expect(processExitSpy).toHaveBeenCalledWith(1);
+
+      consoleErrorSpy.mockRestore();
+      processExitSpy.mockRestore();
+    });
+
+    it('exits with an error when both --session and --self are provided', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
+
+      await expect(
+        program.parseAsync([
+          'node',
+          'test',
+          'killTmuxSession',
+          '--session',
+          'some_session',
+          '--self',
+        ]),
+      ).rejects.toThrow('process.exit called');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '--session and --self cannot be used together',
+      );
+      expect(processExitSpy).toHaveBeenCalledWith(1);
+
+      consoleErrorSpy.mockRestore();
+      processExitSpy.mockRestore();
     });
   });
 });

@@ -19,7 +19,7 @@ const baseProps = {
   storyName: 'TDPM Console port',
   storyColorEnum: 'BLUE' as const,
   overlayStatus: null,
-  state: { state: 'open', merged: false, isPullRequest: true },
+  state: { state: 'open', merged: false, isPullRequest: true, title: '' },
   body: '## Body heading',
   bodyIsLoading: false,
   bodyError: null,
@@ -32,6 +32,7 @@ const baseProps = {
   commits: consoleCommitsFixture,
   commitsAreLoading: false,
   commitsError: null,
+  pullRequestStatus: null,
   relatedPullRequests: [],
   now,
   commentComposer: <div>comment-composer</div>,
@@ -78,11 +79,23 @@ describe('ConsoleItemDetail', () => {
       <ConsoleItemDetail
         item={issueItem}
         {...baseProps}
-        state={{ state: 'open', merged: false, isPullRequest: false }}
+        state={{
+          state: 'open',
+          merged: false,
+          isPullRequest: false,
+          title: '',
+        }}
       />,
     );
     expect(queryByText('Changed files')).toBeNull();
     expect(queryByText('Commits')).toBeNull();
+  });
+
+  it('renders a copy URL button for the item url in the sub bar', () => {
+    const { getByRole } = render(
+      <ConsoleItemDetail item={prItem} {...baseProps} />,
+    );
+    expect(getByRole('button', { name: 'Copy URL' })).toBeInTheDocument();
   });
 
   it('renders the overlay status chip when set', () => {
@@ -94,5 +107,89 @@ describe('ConsoleItemDetail', () => {
       />,
     );
     expect(getByText('Awaiting Workspace')).toBeInTheDocument();
+  });
+
+  it('renders the overlay status chip inside the title header', () => {
+    const { getByText, container } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        overlayStatus={{ name: 'Awaiting Workspace', color: 'BLUE' }}
+      />,
+    );
+    const title = container.querySelector('.console-detail-title');
+    expect(title).not.toBeNull();
+    expect(title?.contains(getByText('Awaiting Workspace'))).toBe(true);
+  });
+
+  it('renders failing CI, missing checks, and conflict badges on their own row below the title', () => {
+    const { getByText, container } = render(
+      <ConsoleItemDetail
+        item={prItem}
+        {...baseProps}
+        pullRequestStatus={{
+          found: true,
+          isConflicted: true,
+          mergeableStatus: 'CONFLICTING',
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+          isBranchOutOfDate: true,
+          missingRequiredCheckNames: ['build', 'test'],
+        }}
+      />,
+    );
+    const title = container.querySelector('.console-detail-title');
+    const statusRow = container.querySelector('.console-detail-pr-status-row');
+    if (title === null || statusRow === null) {
+      throw new Error('title and status row must both render');
+    }
+    expect(title.contains(getByText('CI failing'))).toBe(false);
+    expect(statusRow.contains(getByText('CI failing'))).toBe(true);
+    expect(
+      title.compareDocumentPosition(statusRow) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(getByText(/missing: build, test/)).toBeInTheDocument();
+    expect(getByText('Conflict')).toBeInTheDocument();
+    expect(getByText('Out of date')).toBeInTheDocument();
+  });
+
+  it('renders a passing CI badge and no conflict badge when the PR is healthy', () => {
+    const { getByText, queryByText } = render(
+      <ConsoleItemDetail
+        item={prItem}
+        {...baseProps}
+        pullRequestStatus={{
+          found: true,
+          isConflicted: false,
+          mergeableStatus: 'MERGEABLE',
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        }}
+      />,
+    );
+    expect(getByText('CI passing')).toBeInTheDocument();
+    expect(getByText('No conflict')).toBeInTheDocument();
+    expect(queryByText('Out of date')).toBeNull();
+  });
+
+  it('does not render PR status badges for an issue item', () => {
+    const { queryByText } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        state={{
+          state: 'open',
+          merged: false,
+          isPullRequest: false,
+          title: '',
+        }}
+        pullRequestStatus={null}
+      />,
+    );
+    expect(queryByText('CI passing')).toBeNull();
+    expect(queryByText('CI failing')).toBeNull();
   });
 });

@@ -48,21 +48,18 @@ const RestIssueRepository_1 = require("../../repositories/issue/RestIssueReposit
 const GraphqlProjectItemRepository_1 = require("../../repositories/issue/GraphqlProjectItemRepository");
 const ApiV3CheerioRestIssueRepository_1 = require("../../repositories/issue/ApiV3CheerioRestIssueRepository");
 const LocalStorageCacheRepository_1 = require("../../repositories/LocalStorageCacheRepository");
+const SystemDateRepository_1 = require("../../repositories/SystemDateRepository");
 const GetStoryObjectMapUseCase_1 = require("../../../domain/usecases/GetStoryObjectMapUseCase");
 class GetStoryObjectMapUseCaseHandler {
     constructor() {
-        this.handle = async (configFilePath, _verbose, allowCacheMinutes) => {
+        this.handle = async (configFilePath, _verbose) => {
             const configFileContent = fs_1.default.readFileSync(configFilePath, 'utf8');
             const input = yaml_1.default.parse(configFileContent);
-            if (!(() => { const _io0 = input => "string" === typeof input.projectUrl && "number" === typeof input.allowIssueCacheMinutes && "string" === typeof input.projectName && ("object" === typeof input.credentials && null !== input.credentials && _io1(input.credentials)); const _io1 = input => "object" === typeof input.bot && null !== input.bot && _io2(input.bot); const _io2 = input => "object" === typeof input.github && null !== input.github && _io3(input.github); const _io3 = input => "string" === typeof input.token; return input => "object" === typeof input && null !== input && _io0(input); })()(input)) {
-                throw new Error(`Invalid input: ${JSON.stringify(input)}\n\n${JSON.stringify((() => { const _io0 = input => "string" === typeof input.projectUrl && "number" === typeof input.allowIssueCacheMinutes && "string" === typeof input.projectName && ("object" === typeof input.credentials && null !== input.credentials && _io1(input.credentials)); const _io1 = input => "object" === typeof input.bot && null !== input.bot && _io2(input.bot); const _io2 = input => "object" === typeof input.github && null !== input.github && _io3(input.github); const _io3 = input => "string" === typeof input.token; const _vo0 = (input, _path, _exceptionable = true) => ["string" === typeof input.projectUrl || _report(_exceptionable, {
+            if (!(() => { const _io0 = input => "string" === typeof input.projectUrl && "string" === typeof input.projectName && ("object" === typeof input.credentials && null !== input.credentials && _io1(input.credentials)); const _io1 = input => "object" === typeof input.bot && null !== input.bot && _io2(input.bot); const _io2 = input => "object" === typeof input.github && null !== input.github && _io3(input.github); const _io3 = input => "string" === typeof input.token; return input => "object" === typeof input && null !== input && _io0(input); })()(input)) {
+                throw new Error(`Invalid input: ${JSON.stringify(input)}\n\n${JSON.stringify((() => { const _io0 = input => "string" === typeof input.projectUrl && "string" === typeof input.projectName && ("object" === typeof input.credentials && null !== input.credentials && _io1(input.credentials)); const _io1 = input => "object" === typeof input.bot && null !== input.bot && _io2(input.bot); const _io2 = input => "object" === typeof input.github && null !== input.github && _io3(input.github); const _io3 = input => "string" === typeof input.token; const _vo0 = (input, _path, _exceptionable = true) => ["string" === typeof input.projectUrl || _report(_exceptionable, {
                         path: _path + ".projectUrl",
                         expected: "string",
                         value: input.projectUrl
-                    }), "number" === typeof input.allowIssueCacheMinutes || _report(_exceptionable, {
-                        path: _path + ".allowIssueCacheMinutes",
-                        expected: "number",
-                        value: input.allowIssueCacheMinutes
                     }), "string" === typeof input.projectName || _report(_exceptionable, {
                         path: _path + ".projectName",
                         expected: "string",
@@ -134,12 +131,9 @@ class GetStoryObjectMapUseCaseHandler {
             const apiV3IssueRepository = new ApiV3IssueRepository_1.ApiV3IssueRepository(...githubRepositoryParams);
             const restIssueRepository = new RestIssueRepository_1.RestIssueRepository(...githubRepositoryParams);
             const graphqlProjectItemRepository = new GraphqlProjectItemRepository_1.GraphqlProjectItemRepository(...githubRepositoryParams);
-            const issueRepository = new ApiV3CheerioRestIssueRepository_1.ApiV3CheerioRestIssueRepository(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, ...githubRepositoryParams);
+            const issueRepository = new ApiV3CheerioRestIssueRepository_1.ApiV3CheerioRestIssueRepository(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, projectRepository, new SystemDateRepository_1.SystemDateRepository(), ...githubRepositoryParams);
             const getStoryObjectMapUseCase = new GetStoryObjectMapUseCase_1.GetStoryObjectMapUseCase(projectRepository, issueRepository);
-            const useCaseInput = allowCacheMinutes !== undefined
-                ? { ...input, allowIssueCacheMinutes: allowCacheMinutes }
-                : input;
-            return await getStoryObjectMapUseCase.run(useCaseInput);
+            return await getStoryObjectMapUseCase.run(input);
         };
     }
 }

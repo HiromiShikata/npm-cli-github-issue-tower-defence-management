@@ -47,6 +47,8 @@ const expandHome = (filePath) => {
     return filePath;
 };
 const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
+const parseSelectionWeight = (value) => typeof value === 'number' && Number.isFinite(value) ? value : null;
+const buildTokenEntry = (name, token, selectionWeight) => selectionWeight === null ? { name, token } : { name, token, selectionWeight };
 const loadTokenEntries = (jsonPath) => {
     const resolved = expandHome(jsonPath);
     if (!fs.existsSync(resolved))
@@ -61,13 +63,10 @@ const loadTokenEntries = (jsonPath) => {
             if (isRecord(entry) &&
                 typeof entry.token === 'string' &&
                 typeof entry.name === 'string') {
-                entries.push({ name: entry.name, token: entry.token });
+                entries.push(buildTokenEntry(entry.name, entry.token, parseSelectionWeight(entry.selectionWeight)));
             }
             else if (isRecord(entry) && typeof entry.token === 'string') {
-                entries.push({
-                    name: `token-${entries.length + 1}`,
-                    token: entry.token,
-                });
+                entries.push(buildTokenEntry(`token-${entries.length + 1}`, entry.token, parseSelectionWeight(entry.selectionWeight)));
             }
         }
         return entries.length > 0 ? entries : null;

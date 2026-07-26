@@ -28,10 +28,12 @@ describe('convertToFieldOptionColor', () => {
   });
 });
 
-describe('GraphqlProjectRepository', () => {
+const token = process.env.GH_TOKEN;
+const describeWhenCredentials = token ? describe : describe.skip;
+
+describeWhenCredentials('GraphqlProjectRepository', () => {
   const localStorageRepository = new LocalStorageRepository();
   let repository: GraphqlProjectRepository;
-  const token = process.env.GH_TOKEN;
   const login = 'HiromiShikata';
   const projectUrl = `https://github.com/users/HiromiShikata/projects/49`;
   const projectNumber = 49;

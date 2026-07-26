@@ -6,7 +6,7 @@ import {
   ClaudeLiveSessionRepository,
 } from '../../../domain/usecases/adapter-interfaces/ClaudeLiveSessionRepository';
 import { LiveSessionOauthTokenSelectUseCase } from '../../../domain/usecases/LiveSessionOauthTokenSelectUseCase';
-import { hashToken } from '../../proxy/RateLimitCache';
+import { FABLE_LIMIT_TYPE, hashToken } from '../../proxy/RateLimitCache';
 import { LiveSessionOauthTokenSelectHandler } from './LiveSessionOauthTokenSelectHandler';
 
 const NOW = 2_000_000;
@@ -85,6 +85,28 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     );
   };
 
+  const writeSubscriptionDisabledCache = (
+    token: string,
+    epochSeconds: number = Date.now() / 1000,
+  ): void => {
+    const payload = { subscriptionDisabledEpoch: epochSeconds };
+    fs.writeFileSync(
+      path.join(cacheDirectory, `${hashToken(token)}.json`),
+      JSON.stringify(payload),
+    );
+  };
+
+  const writeCacheWithHeaders = (
+    token: string,
+    headers: Record<string, string>,
+  ): void => {
+    const payload = { ts: NOW, headers, modelWeeklyLimits: {} };
+    fs.writeFileSync(
+      path.join(cacheDirectory, `${hashToken(token)}.json`),
+      JSON.stringify(payload),
+    );
+  };
+
   const buildHandler = (
     sessions: ClaudeLiveSession[],
   ): LiveSessionOauthTokenSelectHandler =>
@@ -92,6 +114,54 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
       new LiveSessionOauthTokenSelectUseCase(),
       new FakeClaudeLiveSessionRepository(sessions),
     );
+
+  const writeFableRejectionCache = (token: string, resetsAt: number): void => {
+    const payload = {
+      ts: NOW,
+      headers: {
+        'anthropic-ratelimit-unified-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': String(NOW + HOUR),
+        'anthropic-ratelimit-unified-5h-utilization': '0.1',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': String(NOW + DAY),
+        'anthropic-ratelimit-unified-7d-utilization': '0.1',
+      },
+      modelWeeklyLimits: {
+        [FABLE_LIMIT_TYPE]: { rejected: true, resetsAt },
+      },
+    };
+    fs.writeFileSync(
+      path.join(cacheDirectory, `${hashToken(token)}.json`),
+      JSON.stringify(payload),
+    );
+  };
+
+  it('excludes a token whose fable marker is set even when it is unoccupied', () => {
+    writeTokenList([
+      { name: 'fable-out', token: 'fake-fable-out' },
+      { name: 'active', token: 'fake-active' },
+    ]);
+    writeFableRejectionCache('fake-fable-out', NOW + HOUR);
+    writeCache('fake-active', {
+      fiveHourUtilization: 0.1,
+      fiveHourReset: NOW + HOUR,
+      sevenDayUtilization: 0.1,
+      sevenDayReset: NOW + DAY,
+    });
+
+    const handler = buildHandler([]);
+    const output = handler.handle({
+      tokenListJsonPath: tokenListPath,
+      cacheDirectory,
+      nowEpochSeconds: NOW,
+    });
+
+    expect(output.selectedName).toBe('active');
+    expect(output.diagnostics.join('\n')).toContain(
+      'fable weekly limit exhausted',
+    );
+  });
 
   it('selects the eligible token with the fewest live sessions', () => {
     writeTokenList([
@@ -112,7 +182,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     });
 
     const handler = buildHandler([
-      { token: 'fake-busy', sessionId: 'session-a' },
+      { token: 'fake-busy', sessionKey: 'session-a' },
     ]);
     const output = handler.handle({
       tokenListJsonPath: tokenListPath,
@@ -143,8 +213,8 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     });
 
     const handler = buildHandler([
-      { token: 'fake-far', sessionId: 'session-a' },
-      { token: 'fake-soon', sessionId: 'session-b' },
+      { token: 'fake-far', sessionKey: 'session-a' },
+      { token: 'fake-soon', sessionKey: 'session-b' },
     ]);
     const output = handler.handle({
       tokenListJsonPath: tokenListPath,
@@ -174,10 +244,10 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     });
 
     const handler = buildHandler([
-      { token: 'fake-one', sessionId: 'session-a' },
-      { token: 'fake-one', sessionId: 'session-a' },
-      { token: 'fake-two', sessionId: 'session-b' },
-      { token: 'fake-two', sessionId: 'session-c' },
+      { token: 'fake-one', sessionKey: 'session-a' },
+      { token: 'fake-one', sessionKey: 'session-a' },
+      { token: 'fake-two', sessionKey: 'session-b' },
+      { token: 'fake-two', sessionKey: 'session-c' },
     ]);
     const output = handler.handle({
       tokenListJsonPath: tokenListPath,
@@ -207,7 +277,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     });
 
     const handler = buildHandler([
-      { token: 'fake-free', sessionId: 'session-a' },
+      { token: 'fake-free', sessionKey: 'session-a' },
     ]);
     const output = handler.handle({
       tokenListJsonPath: tokenListPath,
@@ -239,7 +309,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     const diagnostics = output.diagnostics.join('\n');
     expect(diagnostics).toContain('No eligible token');
     expect(diagnostics).toContain('5h >= 60% free');
-    expect(diagnostics).toContain('7d >= 30% free');
+    expect(diagnostics).toContain('7d >= 7% free');
     expect(diagnostics).not.toContain('fake-busy');
   });
 
@@ -288,5 +358,95 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
 
     expect(output.selectedToken).toBeNull();
     expect(output.diagnostics.join('\n')).toContain('No usable token entries');
+  });
+
+  it('excludes a subscription-disabled token even when it has zero live sessions', () => {
+    writeTokenList([
+      { name: 'disabled', token: 'fake-disabled' },
+      { name: 'active', token: 'fake-active' },
+    ]);
+    writeSubscriptionDisabledCache('fake-disabled');
+    writeCache('fake-active', {
+      fiveHourUtilization: 0.1,
+      fiveHourReset: NOW + HOUR,
+      sevenDayUtilization: 0.1,
+      sevenDayReset: NOW + DAY,
+    });
+
+    const handler = buildHandler([
+      { token: 'fake-active', sessionKey: 'session-a' },
+    ]);
+    const output = handler.handle({
+      tokenListJsonPath: tokenListPath,
+      cacheDirectory,
+      nowEpochSeconds: NOW,
+    });
+
+    expect(output.selectedName).toBe('active');
+    expect(output.diagnostics.join('\n')).toContain(
+      'organization has disabled Claude subscription access for Claude Code',
+    );
+  });
+
+  it('excludes a unified-rejected token even when it has zero live sessions', () => {
+    writeTokenList([
+      { name: 'rejected', token: 'fake-rejected' },
+      { name: 'active', token: 'fake-active' },
+    ]);
+    writeCacheWithHeaders('fake-rejected', {
+      'anthropic-ratelimit-unified-status': 'rejected',
+      'anthropic-ratelimit-unified-5h-status': 'allowed',
+      'anthropic-ratelimit-unified-5h-reset': String(NOW + HOUR),
+      'anthropic-ratelimit-unified-5h-utilization': '0.1',
+      'anthropic-ratelimit-unified-7d-status': 'allowed',
+      'anthropic-ratelimit-unified-7d-reset': String(NOW + DAY),
+      'anthropic-ratelimit-unified-7d-utilization': '0.1',
+    });
+    writeCache('fake-active', {
+      fiveHourUtilization: 0.1,
+      fiveHourReset: NOW + HOUR,
+      sevenDayUtilization: 0.1,
+      sevenDayReset: NOW + DAY,
+    });
+
+    const handler = buildHandler([
+      { token: 'fake-active', sessionKey: 'session-a' },
+    ]);
+    const output = handler.handle({
+      tokenListJsonPath: tokenListPath,
+      cacheDirectory,
+      nowEpochSeconds: NOW,
+    });
+
+    expect(output.selectedName).toBe('active');
+    expect(output.diagnostics.join('\n')).toContain('rejected');
+  });
+
+  it('returns null and a no-eligible-token diagnostic when every token is unusable', () => {
+    writeTokenList([
+      { name: 'disabled', token: 'fake-disabled' },
+      { name: 'rejected', token: 'fake-rejected' },
+    ]);
+    writeSubscriptionDisabledCache('fake-disabled');
+    writeCacheWithHeaders('fake-rejected', {
+      'anthropic-ratelimit-unified-status': 'rejected',
+      'anthropic-ratelimit-unified-5h-status': 'allowed',
+      'anthropic-ratelimit-unified-5h-reset': String(NOW + HOUR),
+      'anthropic-ratelimit-unified-5h-utilization': '0.1',
+      'anthropic-ratelimit-unified-7d-status': 'allowed',
+      'anthropic-ratelimit-unified-7d-reset': String(NOW + DAY),
+      'anthropic-ratelimit-unified-7d-utilization': '0.1',
+    });
+
+    const handler = buildHandler([]);
+    const output = handler.handle({
+      tokenListJsonPath: tokenListPath,
+      cacheDirectory,
+      nowEpochSeconds: NOW,
+    });
+
+    expect(output.selectedToken).toBeNull();
+    expect(output.selectedName).toBeNull();
+    expect(output.diagnostics.join('\n')).toContain('No eligible token');
   });
 });

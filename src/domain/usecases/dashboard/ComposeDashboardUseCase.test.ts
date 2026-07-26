@@ -120,6 +120,61 @@ describe('formatMachineStatusLines', () => {
     ).toEqual(['M55% C62% D?% cy13', 'LA 16 23 40']);
   });
 
+  it('renders each configured partition as title and percent on a disk line', () => {
+    expect(
+      formatMachineStatusLines({
+        memPct: 55,
+        cpuPct: 62,
+        diskPct: 89,
+        disks: [
+          { title: 'D', pct: 89 },
+          { title: 'S', pct: 41 },
+        ],
+        load: [16, 23, 40],
+        cycleMinutes: 13,
+      }),
+    ).toEqual(['M55% C62% cy13', 'D89% S41%', 'LA 16 23 40']);
+  });
+
+  it('wraps partitions onto a second disk line when they exceed the width budget', () => {
+    const lines = formatMachineStatusLines({
+      memPct: 55,
+      cpuPct: 62,
+      diskPct: 89,
+      disks: [
+        { title: 'D', pct: 100 },
+        { title: 'S', pct: 100 },
+        { title: 'A', pct: 100 },
+        { title: 'B', pct: 100 },
+        { title: 'C', pct: 100 },
+        { title: 'E', pct: 100 },
+        { title: 'F', pct: 100 },
+      ],
+      load: [16, 23, 40],
+      cycleMinutes: 13,
+    });
+    expect(lines[0]).toBe('M55% C62% cy13');
+    expect(lines[lines.length - 1]).toBe('LA 16 23 40');
+    expect(lines.length).toBeGreaterThan(3);
+    for (const line of lines) {
+      expect(codePointLength(line)).toBeLessThanOrEqual(
+        PROJECT_ROW_WIDTH_BUDGET,
+      );
+    }
+  });
+
+  it('renders the single disk percent when no disks list is present', () => {
+    expect(
+      formatMachineStatusLines({
+        memPct: 55,
+        cpuPct: 62,
+        diskPct: 89,
+        load: [16, 23, 40],
+        cycleMinutes: 13,
+      }),
+    ).toEqual(['M55% C62% D89% cy13', 'LA 16 23 40']);
+  });
+
   it('keeps both lines within the 32 character width budget at worst case', () => {
     const lines = formatMachineStatusLines({
       memPct: 100,

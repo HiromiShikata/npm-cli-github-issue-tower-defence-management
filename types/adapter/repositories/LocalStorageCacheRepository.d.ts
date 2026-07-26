@@ -8,5 +8,7 @@ export declare class LocalStorageCacheRepository {
         timestamp: Date;
     } | null>;
     set: <T>(key: string, value: T) => Promise<void>;
+    getSingle: (key: string) => Promise<unknown>;
+    setSingle: <T>(key: string, value: T) => Promise<void>;
 }
 //# sourceMappingURL=LocalStorageCacheRepository.d.ts.map

@@ -3,6 +3,8 @@ import type {
   ConsoleComment,
   ConsoleCommit,
   ConsoleIssueState,
+  ConsoleMergeableStatus,
+  ConsolePullRequestStatus,
   ConsoleRelatedPullRequest,
 } from '../logic/types';
 
@@ -13,6 +15,7 @@ export type ConsoleApiClient = {
   fetchPrCommits: (url: string) => Promise<ConsoleCommit[]>;
   fetchRelatedPrs: (url: string) => Promise<ConsoleRelatedPullRequest[]>;
   fetchIssueState: (url: string) => Promise<ConsoleIssueState>;
+  fetchPullRequestStatus: (url: string) => Promise<ConsolePullRequestStatus>;
 };
 
 export type ConsoleReviewRequest = {
@@ -22,6 +25,8 @@ export type ConsoleReviewRequest = {
   projectItemId: string;
   commentBody?: string;
   changedFilePath?: string;
+  line?: number;
+  side?: ConsoleReviewCommentSide;
 };
 
 export type ConsoleTriageRequest = {
@@ -52,8 +57,6 @@ export type ConsoleReviewCommentRequest = {
   body: string;
 };
 
-type AppendToken = (url: string) => string;
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 
@@ -66,14 +69,12 @@ const getNumber = (value: unknown): number =>
 const getBoolean = (value: unknown): boolean => value === true;
 
 const requestJson = async (
-  appendToken: AppendToken,
   apiPath: string,
   resourceUrl: string,
 ): Promise<unknown> => {
-  const target = appendToken(
+  const response = await fetch(
     `${apiPath}?url=${encodeURIComponent(resourceUrl)}`,
   );
-  const response = await fetch(target);
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}`);
   }
@@ -129,6 +130,21 @@ const parseSummary = (value: unknown): ConsoleRelatedPullRequest['summary'] => {
   };
 };
 
+const parseStringArray = (value: unknown): string[] =>
+  Array.isArray(value)
+    ? value.filter((name): name is string => typeof name === 'string')
+    : [];
+
+const parseMergeableStatus = (value: unknown): ConsoleMergeableStatus => {
+  if (value === 'MERGEABLE') {
+    return 'MERGEABLE';
+  }
+  if (value === 'CONFLICTING') {
+    return 'CONFLICTING';
+  }
+  return 'UNKNOWN';
+};
+
 const parseRelatedPrs = (payload: unknown): ConsoleRelatedPullRequest[] => {
   if (!isRecord(payload) || !Array.isArray(payload.relatedPullRequests)) {
     return [];
@@ -139,47 +155,71 @@ const parseRelatedPrs = (payload: unknown): ConsoleRelatedPullRequest[] => {
     createdAt: getString(pr.createdAt),
     isDraft: getBoolean(pr.isDraft),
     isConflicted: getBoolean(pr.isConflicted),
+    mergeableStatus: parseMergeableStatus(pr.mergeableStatus),
     isPassedAllCiJob: getBoolean(pr.isPassedAllCiJob),
     isCiStateSuccess: getBoolean(pr.isCiStateSuccess),
     isResolvedAllReviewComments: getBoolean(pr.isResolvedAllReviewComments),
     isBranchOutOfDate: getBoolean(pr.isBranchOutOfDate),
-    missingRequiredCheckNames: Array.isArray(pr.missingRequiredCheckNames)
-      ? pr.missingRequiredCheckNames.filter(
-          (name): name is string => typeof name === 'string',
-        )
-      : [],
+    missingRequiredCheckNames: parseStringArray(pr.missingRequiredCheckNames),
     summary: parseSummary(pr.summary),
   }));
 };
 
+const parsePullRequestStatus = (payload: unknown): ConsolePullRequestStatus => {
+  if (!isRecord(payload) || !isRecord(payload.status)) {
+    return {
+      found: false,
+      isConflicted: false,
+      mergeableStatus: 'UNKNOWN',
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+    };
+  }
+  const status = payload.status;
+  return {
+    found: true,
+    isConflicted: getBoolean(status.isConflicted),
+    mergeableStatus: parseMergeableStatus(status.mergeableStatus),
+    isPassedAllCiJob: getBoolean(status.isPassedAllCiJob),
+    isCiStateSuccess: getBoolean(status.isCiStateSuccess),
+    isBranchOutOfDate: getBoolean(status.isBranchOutOfDate),
+    missingRequiredCheckNames: parseStringArray(
+      status.missingRequiredCheckNames,
+    ),
+  };
+};
+
 const parseState = (payload: unknown): ConsoleIssueState => {
   if (!isRecord(payload)) {
-    return { state: 'open', merged: false, isPullRequest: false };
+    return { state: 'open', merged: false, isPullRequest: false, title: '' };
   }
   return {
     state: getString(payload.state) || 'open',
     merged: getBoolean(payload.merged),
     isPullRequest: getBoolean(payload.isPullRequest),
+    title: getString(payload.title),
   };
 };
 
-export const createConsoleApiClient = (
-  appendToken: AppendToken,
-): ConsoleApiClient => ({
+export const createConsoleApiClient = (): ConsoleApiClient => ({
   fetchItemBody: async (url) => {
-    const payload = await requestJson(appendToken, '/api/itembody', url);
+    const payload = await requestJson('/api/itembody', url);
     return isRecord(payload) ? getString(payload.body) : '';
   },
   fetchComments: async (url) =>
-    parseComments(await requestJson(appendToken, '/api/comments', url)),
+    parseComments(await requestJson('/api/comments', url)),
   fetchPrFiles: async (url) =>
-    parseFiles(await requestJson(appendToken, '/api/prfiles', url)),
+    parseFiles(await requestJson('/api/prfiles', url)),
   fetchPrCommits: async (url) =>
-    parseCommits(await requestJson(appendToken, '/api/prcommits', url)),
+    parseCommits(await requestJson('/api/prcommits', url)),
   fetchRelatedPrs: async (url) =>
-    parseRelatedPrs(await requestJson(appendToken, '/api/relatedprs', url)),
+    parseRelatedPrs(await requestJson('/api/relatedprs', url)),
   fetchIssueState: async (url) =>
-    parseState(await requestJson(appendToken, '/api/issuetitle', url)),
+    parseState(await requestJson('/api/issuetitle', url)),
+  fetchPullRequestStatus: async (url) =>
+    parsePullRequestStatus(await requestJson('/api/pullrequeststatus', url)),
 });
 
 const readOperationErrorReason = async (
@@ -201,11 +241,10 @@ const readOperationErrorReason = async (
 };
 
 export const postConsoleOperation = async (
-  appendToken: AppendToken,
   apiPath: string,
   body: ConsoleReviewRequest | ConsoleTriageRequest | ConsoleIntmuxRequest,
 ): Promise<void> => {
-  const response = await fetch(appendToken(apiPath), {
+  const response = await fetch(apiPath, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -235,10 +274,9 @@ const parsePostedComment = (payload: unknown): ConsoleComment => {
 };
 
 export const postConsoleComment = async (
-  appendToken: AppendToken,
   request: ConsoleCommentRequest,
 ): Promise<ConsoleComment> => {
-  const response = await fetch(appendToken(COMMENT_OPERATION_PATH), {
+  const response = await fetch(COMMENT_OPERATION_PATH, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
@@ -252,10 +290,9 @@ export const postConsoleComment = async (
 export const REVIEW_COMMENT_OPERATION_PATH = '/api/reviewcomment';
 
 export const postConsoleReviewComment = async (
-  appendToken: AppendToken,
   request: ConsoleReviewCommentRequest,
 ): Promise<void> => {
-  const response = await fetch(appendToken(REVIEW_COMMENT_OPERATION_PATH), {
+  const response = await fetch(REVIEW_COMMENT_OPERATION_PATH, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),

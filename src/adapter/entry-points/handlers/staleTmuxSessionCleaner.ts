@@ -10,7 +10,6 @@ import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRep
 
 export type CleanStaleTmuxSessionsParams = {
   project: Project;
-  allowCacheMinutes: number;
   issueRepository: Pick<IssueRepository, 'getAllOpened'>;
   localCommandRunner: LocalCommandRunner;
   now: Date;
@@ -19,20 +18,13 @@ export type CleanStaleTmuxSessionsParams = {
 export const cleanStaleTmuxSessions = async (
   params: CleanStaleTmuxSessionsParams,
 ): Promise<void> => {
-  const {
-    project,
-    allowCacheMinutes,
-    issueRepository,
-    localCommandRunner,
-    now,
-  } = params;
+  const { project, issueRepository, localCommandRunner, now } = params;
   const useCase = new StaleTmuxSessionKillUseCase(
     issueRepository,
     new NodeTmuxSessionRepository(localCommandRunner),
   );
   await useCase.run({
     project,
-    allowCacheMinutes,
     excludedStatus: DEFAULT_EXCLUDED_STATUS,
     idleThresholdSeconds: DEFAULT_IDLE_THRESHOLD_SECONDS,
     now,

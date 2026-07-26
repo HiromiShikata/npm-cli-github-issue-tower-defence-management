@@ -8,6 +8,7 @@ import { RestIssueRepository } from '../../repositories/issue/RestIssueRepositor
 import { GraphqlProjectItemRepository } from '../../repositories/issue/GraphqlProjectItemRepository';
 import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3CheerioRestIssueRepository';
 import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
+import { SystemDateRepository } from '../../repositories/SystemDateRepository';
 import { Issue } from '../../../domain/entities/Issue';
 import { Project } from '../../../domain/entities/Project';
 import { BaseGitHubRepository } from '../../repositories/BaseGitHubRepository';
@@ -18,7 +19,6 @@ export class GetStoryObjectMapUseCaseHandler {
   handle = async (
     configFilePath: string,
     _verbose: boolean,
-    allowCacheMinutes?: number,
   ): Promise<{
     project: Project;
     issues: Issue[];
@@ -72,6 +72,8 @@ export class GetStoryObjectMapUseCaseHandler {
       restIssueRepository,
       graphqlProjectItemRepository,
       localStorageCacheRepository,
+      projectRepository,
+      new SystemDateRepository(),
       ...githubRepositoryParams,
     );
 
@@ -80,11 +82,6 @@ export class GetStoryObjectMapUseCaseHandler {
       issueRepository,
     );
 
-    const useCaseInput =
-      allowCacheMinutes !== undefined
-        ? { ...input, allowIssueCacheMinutes: allowCacheMinutes }
-        : input;
-
-    return await getStoryObjectMapUseCase.run(useCaseInput);
+    return await getStoryObjectMapUseCase.run(input);
   };
 }

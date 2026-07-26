@@ -3,6 +3,7 @@ export type ResourceFetcher<T> = (url: string) => Promise<T>;
 export class ResourceCache<T> {
   private readonly cache = new Map<string, T>();
   private readonly inFlight = new Map<string, Promise<T>>();
+  private readonly prefetchInFlight = new Set<string>();
 
   constructor(private readonly fetcher: ResourceFetcher<T>) {}
 
@@ -29,6 +30,29 @@ export class ResourceCache<T> {
       });
     this.inFlight.set(key, promise);
     return promise;
+  };
+
+  prefetch = (key: string, url: string): void => {
+    if (
+      this.cache.has(key) ||
+      this.inFlight.has(key) ||
+      this.prefetchInFlight.has(key)
+    ) {
+      return;
+    }
+    this.prefetchInFlight.add(key);
+    this.fetcher(url)
+      .then((value) => {
+        this.cache.set(key, value);
+      })
+      .catch(() => {})
+      .finally(() => {
+        this.prefetchInFlight.delete(key);
+      });
+  };
+
+  invalidate = (key: string): void => {
+    this.cache.delete(key);
   };
 }
 

@@ -5,7 +5,7 @@ import { Issue } from '../../../domain/entities/Issue';
 import { DashboardRowFile, writeDashboardRow } from './dashboardRowWriter';
 
 const readJson = (filePath: string): unknown =>
-  JSON.parse(fs.readFileSync(filePath, 'utf8')) as unknown;
+  JSON.parse(fs.readFileSync(filePath, 'utf8'));
 
 const ASSIGNEE = 'HiromiShikata';
 

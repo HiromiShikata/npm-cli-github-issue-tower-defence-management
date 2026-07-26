@@ -18,7 +18,18 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 export type TokenEntry = {
   name: string;
   token: string;
+  selectionWeight?: number;
 };
+
+const parseSelectionWeight = (value: unknown): number | null =>
+  typeof value === 'number' && Number.isFinite(value) ? value : null;
+
+const buildTokenEntry = (
+  name: string,
+  token: string,
+  selectionWeight: number | null,
+): TokenEntry =>
+  selectionWeight === null ? { name, token } : { name, token, selectionWeight };
 
 export const loadTokenEntries = (jsonPath: string): TokenEntry[] | null => {
   const resolved = expandHome(jsonPath);
@@ -34,12 +45,21 @@ export const loadTokenEntries = (jsonPath: string): TokenEntry[] | null => {
         typeof entry.token === 'string' &&
         typeof entry.name === 'string'
       ) {
-        entries.push({ name: entry.name, token: entry.token });
+        entries.push(
+          buildTokenEntry(
+            entry.name,
+            entry.token,
+            parseSelectionWeight(entry.selectionWeight),
+          ),
+        );
       } else if (isRecord(entry) && typeof entry.token === 'string') {
-        entries.push({
-          name: `token-${entries.length + 1}`,
-          token: entry.token,
-        });
+        entries.push(
+          buildTokenEntry(
+            `token-${entries.length + 1}`,
+            entry.token,
+            parseSelectionWeight(entry.selectionWeight),
+          ),
+        );
       }
     }
     return entries.length > 0 ? entries : null;

@@ -22,15 +22,21 @@ const snapshot = (
 const candidate = (
   name: string,
   snapshotValue: OauthTokenWindowSnapshot | null,
+  subscriptionDisabled = false,
+  unifiedRejected = false,
+  fableRejected = false,
 ): OauthTokenCandidate => ({
   name,
   token: `fake-token-${name}`,
   snapshot: snapshotValue,
+  subscriptionDisabled,
+  unifiedRejected,
+  fableRejected,
 });
 
-const session = (name: string, sessionId: string): ClaudeLiveSession => ({
+const session = (name: string, sessionKey: string): ClaudeLiveSession => ({
   token: `fake-token-${name}`,
-  sessionId,
+  sessionKey,
 });
 
 describe('LiveSessionOauthTokenSelectUseCase', () => {
@@ -94,7 +100,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(blocked?.liveSessionCount).toBe(0);
   });
 
-  it('counts distinct session ids and dedupes child processes sharing one session', () => {
+  it('counts distinct session keys and dedupes child processes sharing one session key', () => {
     const result = useCase.run(
       [
         candidate('oneSession', snapshot({ sevenDayReset: NOW + 2 * DAY })),
@@ -115,6 +121,28 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     const twoSessions = result.metrics.find((m) => m.name === 'twoSessions');
     expect(oneSession?.liveSessionCount).toBe(1);
     expect(twoSessions?.liveSessionCount).toBe(2);
+  });
+
+  it('counts resumed sessions keyed by config dir so they are not under-counted', () => {
+    const result = useCase.run(
+      [
+        candidate('resumedHeavy', snapshot({ sevenDayReset: NOW + 2 * DAY })),
+        candidate('fresh', snapshot({ sevenDayReset: NOW + 6 * DAY })),
+      ],
+      [
+        session('resumedHeavy', '/home/user/.config/claude-1'),
+        session('resumedHeavy', '/home/user/.config/claude-1'),
+        session('resumedHeavy', '/home/user/.config/claude-2'),
+        session('fresh', 'session-fresh'),
+      ],
+      NOW,
+    );
+
+    expect(result.selected?.name).toBe('fresh');
+    const resumedHeavy = result.metrics.find((m) => m.name === 'resumedHeavy');
+    const fresh = result.metrics.find((m) => m.name === 'fresh');
+    expect(resumedHeavy?.liveSessionCount).toBe(2);
+    expect(fresh?.liveSessionCount).toBe(1);
   });
 
   it('returns null selection when no token passes the rate-limit filter', () => {
@@ -143,5 +171,115 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
 
     const lonely = result.metrics.find((m) => m.name === 'lonely');
     expect(lonely?.liveSessionCount).toBe(0);
+  });
+
+  it('excludes a subscription-disabled token even when it has zero live sessions', () => {
+    const result = useCase.run(
+      [
+        candidate('disabled', snapshot({}), true),
+        candidate('active', snapshot({}), false),
+      ],
+      [session('active', 'session-a')],
+      NOW,
+    );
+
+    expect(result.selected?.name).toBe('active');
+    const disabled = result.metrics.find((m) => m.name === 'disabled');
+    expect(disabled?.eligible).toBe(false);
+    expect(disabled?.liveSessionCount).toBe(0);
+    expect(disabled?.exclusionReason).toContain(
+      'organization has disabled Claude subscription access for Claude Code',
+    );
+  });
+
+  it('excludes a unified-rejected token even when it has zero live sessions', () => {
+    const result = useCase.run(
+      [
+        candidate('rejected', snapshot({}), false, true),
+        candidate('active', snapshot({}), false, false),
+      ],
+      [session('active', 'session-a')],
+      NOW,
+    );
+
+    expect(result.selected?.name).toBe('active');
+    const rejected = result.metrics.find((m) => m.name === 'rejected');
+    expect(rejected?.eligible).toBe(false);
+    expect(rejected?.liveSessionCount).toBe(0);
+    expect(rejected?.exclusionReason).toContain('rejected');
+  });
+});
+
+const sweepingRandom = (count: number): (() => number) => {
+  let index = 0;
+  return () => {
+    const value = (index + 0.5) / count;
+    index += 1;
+    return value;
+  };
+};
+
+const throwingRandom = (): number => {
+  throw new Error('random source must not be consulted');
+};
+
+const withSelectionWeight = (
+  base: OauthTokenCandidate,
+  selectionWeight: number,
+): OauthTokenCandidate => ({ ...base, selectionWeight });
+
+describe('LiveSessionOauthTokenSelectUseCase selectionWeight', () => {
+  const useCase = new LiveSessionOauthTokenSelectUseCase();
+
+  it('keeps the deterministic fewest-live-sessions selection and never consults random when weights are uniform', () => {
+    const result = useCase.run(
+      [candidate('busy', snapshot({})), candidate('idle', snapshot({}))],
+      [session('busy', 'session-a')],
+      NOW,
+      throwingRandom,
+    );
+
+    expect(result.selected?.name).toBe('idle');
+  });
+
+  it('selects a sole eligible low-weight token without consulting random (no starvation)', () => {
+    const result = useCase.run(
+      [
+        withSelectionWeight(candidate('lowWeightOnly', snapshot({})), 0.01),
+        candidate('blocked', snapshot({ fiveHourUtilization: 0.9 })),
+      ],
+      [],
+      NOW,
+      throwingRandom,
+    );
+
+    expect(result.selected?.name).toBe('lowWeightOnly');
+  });
+
+  it('chooses a lower-weight token proportionally less often among equally-idle eligible candidates', () => {
+    const count = 1000;
+    const random = sweepingRandom(count);
+    const selectionCounts = new Map<string, number>();
+
+    for (let i = 0; i < count; i += 1) {
+      const result = useCase.run(
+        [
+          withSelectionWeight(candidate('heavy', snapshot({})), 1),
+          withSelectionWeight(candidate('light', snapshot({})), 0.5),
+        ],
+        [],
+        NOW,
+        random,
+      );
+      const name = result.selected?.name ?? 'none';
+      selectionCounts.set(name, (selectionCounts.get(name) ?? 0) + 1);
+    }
+
+    const heavy = selectionCounts.get('heavy') ?? 0;
+    const light = selectionCounts.get('light') ?? 0;
+    expect(heavy + light).toBe(count);
+    expect(light).toBeGreaterThan(0);
+    expect(light).toBeLessThan(heavy);
+    expect(Math.abs(light / count - 1 / 3)).toBeLessThan(0.02);
   });
 });

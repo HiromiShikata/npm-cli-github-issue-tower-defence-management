@@ -9,8 +9,10 @@ import {
   postConsoleReviewComment,
 } from '../lib/consoleApi';
 import {
+  buildRequestChangesBody,
   type ConsoleCloseAction,
   type ConsoleNextActionDateAction,
+  type ConsolePendingReviewComment,
   type ConsoleReviewAction,
   TOTALLY_WRONG_COMMENT_BODY,
   UNNECESSARY_COMMENT_BODY,
@@ -22,8 +24,8 @@ import type {
   ConsoleListItem,
   ConsoleTabName,
 } from '../logic/types';
+import type { ConsoleCaches } from './useConsoleCaches';
 import type { ConsoleOverlayState } from './useConsoleOverlay';
-import { useConsoleToken } from './useConsoleToken';
 
 export const REVIEW_OPERATION_PATH = '/api/review';
 export const TRIAGE_OPERATION_PATH = '/api/triage';
@@ -34,6 +36,7 @@ export type ConsoleOperationsApi = {
     item: ConsoleListItem,
     prUrl: string,
     action: ConsoleReviewAction,
+    pendingReviewComments?: ConsolePendingReviewComment[],
   ) => Promise<void>;
   setNextActionDate: (
     item: ConsoleListItem,
@@ -70,6 +73,7 @@ const reviewRequest = (
   item: ConsoleListItem,
   prUrl: string,
   action: ConsoleReviewAction,
+  pendingReviewComments: ConsolePendingReviewComment[],
 ): ConsoleReviewRequest => {
   if (action === 'approve') {
     return {
@@ -80,12 +84,20 @@ const reviewRequest = (
     };
   }
   if (action === 'request_changes') {
+    const firstComment = pendingReviewComments[0];
     return {
       pjcode,
       action: 'request_changes',
       prUrl,
       projectItemId: item.projectItemId,
-      commentBody: '',
+      commentBody: buildRequestChangesBody(pendingReviewComments),
+      ...(firstComment === undefined
+        ? {}
+        : {
+            changedFilePath: firstComment.path,
+            line: firstComment.line,
+            side: firstComment.side,
+          }),
     };
   }
   if (action === 'totally_wrong') {
@@ -113,15 +125,28 @@ export const useConsoleOperations = (
   pjcode: string | null,
   mode: ConsoleTabName,
   overlayState: ConsoleOverlayState,
+  caches?: ConsoleCaches,
 ): ConsoleOperationsApi => {
-  const { appendToken } = useConsoleToken();
   const { patchOverlay } = overlayState;
+
+  const invalidateItemContent = useCallback(
+    (item: ConsoleListItem) => {
+      if (caches === undefined) {
+        return;
+      }
+      const key = `${item.repo}#${item.number}`;
+      caches.body.invalidate(key);
+      caches.comments.invalidate(key);
+    },
+    [caches],
+  );
 
   const markDone = useCallback(
     (item: ConsoleListItem) => {
+      invalidateItemContent(item);
       patchOverlay(overlayKeyForItem(item), { done: true }, mode);
     },
-    [patchOverlay, mode],
+    [invalidateItemContent, patchOverlay, mode],
   );
 
   const reviewPullRequest = useCallback(
@@ -129,18 +154,18 @@ export const useConsoleOperations = (
       item: ConsoleListItem,
       prUrl: string,
       action: ConsoleReviewAction,
+      pendingReviewComments: ConsolePendingReviewComment[] = [],
     ) => {
       if (pjcode === null) {
         throw missingPjcodeError();
       }
       await postConsoleOperation(
-        appendToken,
         REVIEW_OPERATION_PATH,
-        reviewRequest(pjcode, item, prUrl, action),
+        reviewRequest(pjcode, item, prUrl, action, pendingReviewComments),
       );
       markDone(item);
     },
-    [pjcode, appendToken, markDone],
+    [pjcode, markDone],
   );
 
   const setNextActionDate = useCallback(
@@ -154,10 +179,10 @@ export const useConsoleOperations = (
         issueUrl: item.url,
         projectItemId: item.projectItemId,
       };
-      await postConsoleOperation(appendToken, TRIAGE_OPERATION_PATH, request);
+      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       markDone(item);
     },
-    [pjcode, appendToken, markDone],
+    [pjcode, markDone],
   );
 
   const setStory = useCallback(
@@ -172,14 +197,15 @@ export const useConsoleOperations = (
         projectItemId: item.projectItemId,
         storyOptionId: option.id,
       };
-      await postConsoleOperation(appendToken, TRIAGE_OPERATION_PATH, request);
+      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
+      invalidateItemContent(item);
       patchOverlay(
         overlayKeyForItem(item),
         { done: true, story: { name: option.name, color: option.color } },
         mode,
       );
     },
-    [pjcode, appendToken, patchOverlay, mode],
+    [pjcode, invalidateItemContent, patchOverlay, mode],
   );
 
   const setStatus = useCallback(
@@ -194,14 +220,15 @@ export const useConsoleOperations = (
         projectItemId: item.projectItemId,
         statusName: option.name,
       };
-      await postConsoleOperation(appendToken, TRIAGE_OPERATION_PATH, request);
+      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
+      invalidateItemContent(item);
       patchOverlay(
         overlayKeyForItem(item),
         { done: true, status: { name: option.name, color: option.color } },
         mode,
       );
     },
-    [pjcode, appendToken, patchOverlay, mode],
+    [pjcode, invalidateItemContent, patchOverlay, mode],
   );
 
   const setInTmuxByHuman = useCallback(
@@ -215,14 +242,15 @@ export const useConsoleOperations = (
         issueUrl: item.url,
         projectItemId: item.projectItemId,
       };
-      await postConsoleOperation(appendToken, INTMUX_OPERATION_PATH, request);
+      await postConsoleOperation(INTMUX_OPERATION_PATH, request);
+      invalidateItemContent(item);
       patchOverlay(
         overlayKeyForItem(item),
         { done: true, status: { name: option.name, color: option.color } },
         mode,
       );
     },
-    [pjcode, appendToken, patchOverlay, mode],
+    [pjcode, invalidateItemContent, patchOverlay, mode],
   );
 
   const closeIssue = useCallback(
@@ -236,10 +264,10 @@ export const useConsoleOperations = (
         issueUrl: item.url,
         projectItemId: item.projectItemId,
       };
-      await postConsoleOperation(appendToken, TRIAGE_OPERATION_PATH, request);
+      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       markDone(item);
     },
-    [pjcode, appendToken, markDone],
+    [pjcode, markDone],
   );
 
   const addComment = useCallback(
@@ -247,13 +275,15 @@ export const useConsoleOperations = (
       if (pjcode === null) {
         throw missingPjcodeError();
       }
-      return postConsoleComment(appendToken, {
+      const comment = await postConsoleComment({
         pjcode,
         url: item.url,
         body,
       });
+      invalidateItemContent(item);
+      return comment;
     },
-    [pjcode, appendToken],
+    [pjcode, invalidateItemContent],
   );
 
   const addInlineReviewComment = useCallback(
@@ -267,7 +297,7 @@ export const useConsoleOperations = (
       if (pjcode === null) {
         throw missingPjcodeError();
       }
-      await postConsoleReviewComment(appendToken, {
+      await postConsoleReviewComment({
         pjcode,
         url: prUrl,
         path,
@@ -276,7 +306,7 @@ export const useConsoleOperations = (
         body,
       });
     },
-    [pjcode, appendToken],
+    [pjcode],
   );
 
   return {

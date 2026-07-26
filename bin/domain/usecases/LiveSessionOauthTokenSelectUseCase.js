@@ -5,8 +5,8 @@ const OauthTokenSelectUseCase_1 = require("./OauthTokenSelectUseCase");
 class LiveSessionOauthTokenSelectUseCase {
     constructor(rateLimitSelectUseCase = new OauthTokenSelectUseCase_1.OauthTokenSelectUseCase()) {
         this.rateLimitSelectUseCase = rateLimitSelectUseCase;
-        this.run = (candidates, liveSessions, nowEpochSeconds) => {
-            const rateLimitResult = this.rateLimitSelectUseCase.run(candidates, nowEpochSeconds);
+        this.run = (candidates, liveSessions, nowEpochSeconds, random = Math.random) => {
+            const rateLimitResult = this.rateLimitSelectUseCase.run(candidates, nowEpochSeconds, () => 0);
             const liveSessionCountByToken = this.liveSessionCountByToken(liveSessions);
             const evaluated = candidates.map((candidate, index) => {
                 const rateLimitMetric = rateLimitResult.metrics[index];
@@ -29,10 +29,11 @@ class LiveSessionOauthTokenSelectUseCase {
             if (eligible.length === 0) {
                 return { selected: null, metrics };
             }
-            const best = eligible.reduce((bestEntry, currentEntry) => this.preferred(currentEntry.metric, bestEntry.metric)
+            const deterministicBest = eligible.reduce((bestEntry, currentEntry) => this.preferred(currentEntry.metric, bestEntry.metric)
                 ? currentEntry
                 : bestEntry);
-            return { selected: best.candidate, metrics };
+            const selected = (0, OauthTokenSelectUseCase_1.selectWeightedCandidate)(eligible, (entry) => entry.candidate, deterministicBest, random);
+            return { selected: selected.candidate, metrics };
         };
         this.preferred = (candidateMetric, incumbentMetric) => {
             if (candidateMetric.liveSessionCount !== incumbentMetric.liveSessionCount) {
@@ -41,15 +42,15 @@ class LiveSessionOauthTokenSelectUseCase {
             return candidateMetric.sevenDayEndEpoch < incumbentMetric.sevenDayEndEpoch;
         };
         this.liveSessionCountByToken = (liveSessions) => {
-            const sessionIdsByToken = new Map();
+            const sessionKeysByToken = new Map();
             for (const liveSession of liveSessions) {
-                const sessionIds = sessionIdsByToken.get(liveSession.token) ?? new Set();
-                sessionIds.add(liveSession.sessionId);
-                sessionIdsByToken.set(liveSession.token, sessionIds);
+                const sessionKeys = sessionKeysByToken.get(liveSession.token) ?? new Set();
+                sessionKeys.add(liveSession.sessionKey);
+                sessionKeysByToken.set(liveSession.token, sessionKeys);
             }
             const countByToken = new Map();
-            for (const [token, sessionIds] of sessionIdsByToken.entries()) {
-                countByToken.set(token, sessionIds.size);
+            for (const [token, sessionKeys] of sessionKeysByToken.entries()) {
+                countByToken.set(token, sessionKeys.size);
             }
             return countByToken;
         };

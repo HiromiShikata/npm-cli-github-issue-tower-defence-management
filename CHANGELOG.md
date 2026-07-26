@@ -1,3 +1,713 @@
+# [1.137.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.136.0...v1.137.0) (2026-07-26)
+
+
+### Bug Fixes
+
+* **core:** run story-label conversion on incremental-fetch cycles ([#1229](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1229)) ([70bd67e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/70bd67e79fda10559302ff5d7e821bc730a976bb))
+
+
+### Features
+
+* **cli:** add killTmuxSession command to cleanly kill a session ([#1271](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1271)) ([52f5c15](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/52f5c15188be756090bc97bb31dd51b529139225)), closes [#1270](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1270)
+
+# [1.136.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.135.2...v1.136.0) (2026-07-26)
+
+
+### Features
+
+* **console:** hide 'In Tmux by agent' status tasks from every serveWeb console tab ([#1187](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1187)) ([366c626](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/366c626a7c23942029635d2cfabb3926a00c3856))
+
+## [1.135.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.135.1...v1.135.2) (2026-07-25)
+
+
+### Bug Fixes
+
+* **use-case:** clear past nextActionHour on every sweep without minute-45 dependency ([#1234](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1234)) ([54d6b8f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/54d6b8fecbd94c6068ae5c85f6d347ad38378725)), closes [HiromiShikata/secretary#2794](https://github.com/HiromiShikata/secretary/issues/2794)
+
+## [1.135.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.135.0...v1.135.1) (2026-07-25)
+
+
+### Bug Fixes
+
+* **silent-session:** exclude TaskStop-killed and crashed subagents from false-positive alerts ([#1107](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1107)) ([024e59c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/024e59ca765c248e991f8dea7d4a4806593785d1)), closes [#1105](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1105)
+
+# [1.135.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.134.0...v1.135.0) (2026-07-25)
+
+
+### Features
+
+* **cli:** add global --inTmuxProjectOrder option to schedule command with config fallback ([#1237](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1237)) ([9080ee5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9080ee540eb69472e0142786d18a371712e39f42)), closes [#1236](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1236)
+* **dashboard:** render multiple disk partitions from a configurable disks list ([#1118](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1118)) ([1dd5d15](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1dd5d153f4c5b025f3ab4ffd3a11d8cc57ef43ee))
+
+# [1.134.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.133.0...v1.134.0) (2026-07-25)
+
+
+### Features
+
+* **core:** gate revert auto-advance to Awaiting Workspace on manager assignee ([#1268](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1268)) ([ae8c221](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ae8c2217a5551b04385dcf37333edb9de9937b35)), closes [#1266](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1266)
+
+# [1.133.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.132.1...v1.133.0) (2026-07-25)
+
+
+### Features
+
+* **oauth-token-select:** add per-token selectionWeight to bias OAuth token selection ([#1269](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1269)) ([6355297](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6355297d57a869df353b5864e55b705d01d9a076)), closes [#1267](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1267)
+
+## [1.132.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.132.0...v1.132.1) (2026-07-25)
+
+
+### Bug Fixes
+
+* stop systemd cl scope when killing tmux session ([#1262](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1262)) ([dd062f7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/dd062f7082fa927525055b372be8c31f0f392cfd))
+
+# [1.132.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.131.1...v1.132.0) (2026-07-25)
+
+
+### Features
+
+* **cli:** auto-start web console server at daemon startup ([#967](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/967)) ([22795a5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/22795a539bed69f59d04174bab2517076d988ebf)), closes [#791](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/791)
+
+## [1.131.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.131.0...v1.131.1) (2026-07-25)
+
+
+### Bug Fixes
+
+* crash on startup with Node.js v22+ due to removed SlowBuffer in buffer-equal-constant-time ([#826](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/826)) ([626853b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/626853b32fe8ca0f8985983b9bbf161b1a2e616d))
+
+# [1.131.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.130.0...v1.131.0) (2026-07-24)
+
+
+### Features
+
+* gate preparation pickup on manager assignee ([#1258](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1258)) ([6a1630f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6a1630fb68cd51f503d7b93e8bea7c33f609ce1b)), closes [#1257](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1257)
+
+# [1.130.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.129.0...v1.130.0) (2026-07-24)
+
+
+### Features
+
+* **console:** add 'Todo by agent' console tab, routing, and snooze parity ([#1256](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1256)) ([b0c9dae](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b0c9daeed2d348effc18c0ca8ebba0cc608870f5)), closes [#1255](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1255)
+
+# [1.129.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.128.1...v1.129.0) (2026-07-24)
+
+
+### Features
+
+* **core:** add 'Todo by agent' workflow status (blue), mirroring 'Todo by human' ([#1254](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1254)) ([624bb49](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/624bb492f3f2da5ea601ae6ee39defe3946af3da))
+
+## [1.128.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.128.0...v1.128.1) (2026-07-24)
+
+
+### Bug Fixes
+
+* **console:** move access token from ?k= query into HttpOnly cookie and redirect to keyless URL ([#1251](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1251)) ([76851e3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/76851e3d7673b935e8ef59637796f8cfed19ced4)), closes [#1250](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1250)
+
+# [1.128.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.127.0...v1.128.0) (2026-07-24)
+
+
+### Features
+
+* **proxy:** reactively exclude fable-exhausted tokens from fable token selection ([#1239](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1239)) ([c9e0b56](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c9e0b56a4b961921b83e3d21f40ddebe1b57a5e1)), closes [#1238](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1238)
+
+# [1.127.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.126.3...v1.127.0) (2026-07-23)
+
+
+### Features
+
+* add autoAssignManagerAuthors config to restrict no-assignee auto-assign by author ([#1248](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1248)) ([6d7da46](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6d7da46bbee1f92718c5c3ba50fcba9764323f15))
+
+## [1.126.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.126.2...v1.126.3) (2026-07-22)
+
+
+### Bug Fixes
+
+* **silent-monitor:** compute main-session last activity from the last assistant line only ([#1242](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1242)) ([1f11221](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1f11221dc8ef8d8c3c2c137e1b728297ccb4ddf2)), closes [#1241](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1241) [#1241](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1241) [#1241](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1241)
+
+## [1.126.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.126.1...v1.126.2) (2026-07-20)
+
+
+### Bug Fixes
+
+* **repository:** retry once and fail open on fetchProjectItemsLight pagination inconsistency ([#1233](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1233)) ([f4f310d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f4f310d73411ab46f7ff8b90827619fec4bded8e))
+
+## [1.126.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.126.0...v1.126.1) (2026-07-20)
+
+
+### Bug Fixes
+
+* **ci:** replace autogen force push with rebase and normal push in publish workflow ([#1231](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1231)) ([2f129cf](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2f129cf02b24874f19521229ecf498ca0376707a))
+
+# [1.126.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.125.5...v1.126.0) (2026-07-20)
+
+
+### Bug Fixes
+
+* **githubGraphqlClient:** add bounded 120s request timeout to fetchGithubGraphql ([#1226](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1226)) ([647c328](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/647c328d71d4f22b7ce636362c92ef7df884ad2b))
+* **situation:** exclude closed items from immediately-actionable counts ([#1225](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1225)) ([a47b7d4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a47b7d45bb6feafe55ab5b66d2c828ee69679fb6))
+
+
+### Features
+
+* **preparation:** log spawn-candidate exclusion reasons and story-unset warning ([#1227](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1227)) ([38ccf35](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/38ccf35edbfd78ddac10f1ee2d2495d6ba8e830d))
+* **silent-monitor:** add self-diagnosis guidance to the main-stalled reminder ([#1221](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1221)) ([c619ff2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c619ff23c2d67e97ede008a131cabcc9f02884d5))
+
+## [1.125.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.125.4...v1.125.5) (2026-07-19)
+
+
+### Bug Fixes
+
+* **cross-repo-pr:** use PR's owner/repo instead of issue's when querying cross-repo PRs ([#1204](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1204)) ([2ac5e4b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2ac5e4b3ff2512d5f964a0d28f8bdad668bf76f9))
+
+## [1.125.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.125.3...v1.125.4) (2026-07-19)
+
+
+### Bug Fixes
+
+* **schedule-cycle:** contain deleted story issue in ConvertCheckboxToIssueInStoryIssueUseCase so a missing story issue does not abort the schedule cycle ([#1218](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1218)) ([c754341](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c754341393753f40193f5d96f6367ef3e7d10221))
+
+## [1.125.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.125.2...v1.125.3) (2026-07-19)
+
+
+### Bug Fixes
+
+* **schedule-cycle:** contain transient Google Sheets API errors so a gaxios 5xx does not abort the schedule cycle ([#1216](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1216)) ([31c2c69](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/31c2c691bd502478c4dd9bffad7f6c64d303d33f))
+
+## [1.125.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.125.1...v1.125.2) (2026-07-18)
+
+
+### Bug Fixes
+
+* **schedule-cycle:** contain ky TimeoutError from GitHub GraphQL POST so a request timeout does not abort the schedule cycle ([#1214](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1214)) ([0bb61b0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0bb61b019c8c4a158da05baa3e535e330e669c78))
+
+## [1.125.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.125.0...v1.125.1) (2026-07-18)
+
+
+### Bug Fixes
+
+* **pr-status:** treat HTTP 403 from branch rules and classic protection as no required checks ([#1212](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1212)) ([b264917](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b26491761589ce63636d721fb2b3166be9832a85))
+
+# [1.125.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.124.0...v1.125.0) (2026-07-17)
+
+
+### Features
+
+* **pr-status:** split findRelatedOpenPRs into two stages and resolve required checks and CI state via REST with a TTL cache ([#1198](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1198)) ([5361641](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5361641c91e2217927296e124e2c55328823d951))
+
+# [1.124.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.123.3...v1.124.0) (2026-07-17)
+
+
+### Features
+
+* **graphql:** add per-query rateLimit cost logging and reduce project item selection sizes ([#1197](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1197)) ([b5d29eb](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b5d29eb1854b7d56f4bab70fd4fb05ee6c74e9a0))
+
+## [1.123.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.123.2...v1.123.3) (2026-07-17)
+
+
+### Bug Fixes
+
+* **revert-review-queue:** contain archived project item update failures so an archived item does not abort the schedule cycle ([#1193](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1193)) ([6034127](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6034127c4aeff0cebfc8a4a914eff36781e878f4))
+
+## [1.123.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.123.1...v1.123.2) (2026-07-17)
+
+
+### Bug Fixes
+
+* **silent-monitor:** treat a pending nested Agent/Task tool_use tail as waiting on an external process ([#1190](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1190)) ([feaf6c0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/feaf6c0b63920f4d36cfa85e4c9a5c88cd131ec2))
+
+## [1.123.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.123.0...v1.123.1) (2026-07-17)
+
+
+### Bug Fixes
+
+* **deps:** update dependency commander to v15 ([#767](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/767)) ([a3af965](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a3af96592f255fa22bfbc22110c973025d586019))
+
+# [1.123.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.14...v1.123.0) (2026-07-16)
+
+
+### Features
+
+* gate story-body checkbox task creation behind createTaskFromStoryBodyCheckboxEnabled flag (default false) ([#1184](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1184)) ([bb8990d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bb8990d1ad309eb29702b3a040e44095739cf7f2))
+
+## [1.122.14](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.13...v1.122.14) (2026-07-16)
+
+
+### Bug Fixes
+
+* **issue-repository:** contain per-PR mergeability resolution failures in findRelatedOpenPRs so a vanished pull request does not abort the schedule cycle ([#1185](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1185)) ([1a67e18](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1a67e18101b1f4acea1b72f3ac6566651f98a26e))
+
+## [1.122.13](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.12...v1.122.13) (2026-07-16)
+
+
+### Bug Fixes
+
+* **silent-monitor:** log ISO-8601 UTC timestamp and section types with every notification send ([#1181](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1181)) ([598c97f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/598c97f5b1af1e9705ecbcd145edb168a5d76add))
+
+## [1.122.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.11...v1.122.12) (2026-07-16)
+
+
+### Bug Fixes
+
+* **silent-monitor:** gate long-running advisory on output recency and keep in-flight agents in the snapshot ([#1179](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1179)) ([e533043](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e533043e140d699ee1175c48eb186496d8cad7d0)), closes [#actions](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/actions)
+
+## [1.122.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.10...v1.122.11) (2026-07-15)
+
+
+### Bug Fixes
+
+* contain transient getOpenPullRequest errors in IssueRejectionEvaluator ([#1177](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1177)) ([8b0ddba](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8b0ddbaa303bf24bcbd55c67a56f08111b8239b1))
+
+## [1.122.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.9...v1.122.10) (2026-07-15)
+
+
+### Bug Fixes
+
+* **silent-monitor:** skip reminders for sessions whose last turn is a model refusal ([#1175](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1175)) ([8b72e1b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8b72e1b7a46ad6ef142cd7c1f46135240c3a31f4))
+
+## [1.122.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.8...v1.122.9) (2026-07-14)
+
+
+### Bug Fixes
+
+* suppress silent reminders unconditionally while the latest owner call is unanswered ([#1170](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1170)) ([1fe7432](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1fe743279896734ad9ed1c291bd697c488c22c64))
+
+## [1.122.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.7...v1.122.8) (2026-07-14)
+
+
+### Bug Fixes
+
+* instruct unconditional re-raise in stale-owner-call reminder ([#1168](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1168)) ([f246cd3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f246cd385befd0f29c51576593a1ecb2fd23bf40))
+
+## [1.122.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.6...v1.122.7) (2026-07-14)
+
+
+### Bug Fixes
+
+* **silent-monitor:** shorten silent-session reminder defaults to a calm neutral status notice ([#1166](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1166)) ([3f29b69](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3f29b69065c005b8d41db3e68ead624f9c26ef95))
+
+## [1.122.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.5...v1.122.6) (2026-07-13)
+
+
+### Bug Fixes
+
+* **silent-monitor:** neutralize imperative reminder wording that trips model safety classifiers ([#1164](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1164)) ([e82e704](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e82e70438b3e6be00d20d5a3e5037c6bb7ea0325))
+
+## [1.122.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.4...v1.122.5) (2026-07-12)
+
+
+### Bug Fixes
+
+* **silent-monitor:** bound unanswered-owner-call suppression with an agent-side grace period ([#1162](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1162)) ([d726a1f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d726a1fb76a10fa55866e0b6f046fd73352ba906))
+
+## [1.122.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.3...v1.122.4) (2026-07-12)
+
+
+### Bug Fixes
+
+* **console:** reset per-tab .done.json on list regeneration to bound optimistic-hide store ([#1157](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1157)) ([d632054](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d632054c3d8b38d30feb09eea62c235b1aaab280))
+* **silent-monitor:** judge sub-agent wait state instead of time-window suppression ([#1160](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1160)) ([14cbb6c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/14cbb6cbb31a2424a445f764ac0cee160f2d8ea4))
+
+## [1.122.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.2...v1.122.3) (2026-07-11)
+
+
+### Bug Fixes
+
+* **console:** remove avoidable GitHub GraphQL calls from console operation path ([#1154](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1154)) ([c9aa71c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c9aa71c2c2d31673d05f8b8d04af5fb591666911)), closes [#1153](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1153)
+
+## [1.122.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.1...v1.122.2) (2026-07-11)
+
+
+### Bug Fixes
+
+* **console:** filter processed items from the workflow-blocker view like other tabs ([#1152](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1152)) ([9745e66](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9745e666526b41e4bd0c318caf7107e50d30d734))
+
+## [1.122.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.122.0...v1.122.1) (2026-07-07)
+
+
+### Bug Fixes
+
+* publish two-phase time-precise incremental issue fetch ([#1150](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1150)) ([8fd254a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8fd254a4730046814922c60bd7a38c696403f18c))
+
+# [1.122.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.121.0...v1.122.0) (2026-07-07)
+
+
+### Features
+
+* **intmux:** add optional newIssueRepo to override the in-tmux newIssueUrl repo segment ([#1143](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1143)) ([50960e1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/50960e1dc063eee0124622fbb61e42978b9b6e1f))
+
+# [1.121.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.120.0...v1.121.0) (2026-07-07)
+
+
+### Features
+
+* maintain a single latest issue cache refreshed incrementally ([#1142](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1142)) ([09ebe33](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/09ebe3363c8a168bbba324a6423046eb75608a71)), closes [HiromiShikata/umino-corporait-operation#30006](https://github.com/HiromiShikata/umino-corporait-operation/issues/30006)
+
+# [1.120.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.119.4...v1.120.0) (2026-07-07)
+
+
+### Features
+
+* exclude In Tmux by agent items from console triage tab ([#1141](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1141)) ([bd0b5ee](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bd0b5ee252587815fb78626f217da37aba09efb1))
+
+## [1.119.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.119.3...v1.119.4) (2026-07-05)
+
+
+### Bug Fixes
+
+* **HandleScheduledEventUseCase:** deduplicate workflow incident issues in catch block ([#1136](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1136)) ([636563d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/636563d2ff4458e26ae8610c27ed6257b5c85fa4))
+
+## [1.119.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.119.2...v1.119.3) (2026-07-02)
+
+
+### Bug Fixes
+
+* **silent-monitor:** owner-call guidance requires a self-contained message and forbids scroll-back ([#1138](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1138)) ([782f958](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/782f958936a099deb828ed738f7d670a050c318a))
+
+## [1.119.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.119.1...v1.119.2) (2026-07-02)
+
+
+### Bug Fixes
+
+* **silent-monitor:** idle stall reminder mandates authoritative-signal cause-check and logged result ([#1134](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1134)) ([bf659a9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bf659a96256c4d80ea7aa2502c8dab9433e15f56))
+
+## [1.119.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.119.0...v1.119.1) (2026-07-01)
+
+
+### Bug Fixes
+
+* **console:** resolve related-PR mergeability directly when issue timeline reports UNKNOWN ([#1132](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1132)) ([6bf5509](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6bf550944a245abef7e72d40a232fa9a372b4baf))
+
+# [1.119.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.118.1...v1.119.0) (2026-07-01)
+
+
+### Features
+
+* **console:** clickable #N references in markdown and Changed files directory tree ([#1130](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1130)) ([d9f4836](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d9f483668af4b8b09f74468ee7e300ca30b3f6e4)), closes [#N](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/N) [#N](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/N) [#N](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/N) [#1129](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1129)
+
+## [1.118.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.118.0...v1.118.1) (2026-06-30)
+
+
+### Bug Fixes
+
+* **silent-monitor:** cache hub-task status and suppress resolved-closed fail-opens ([#1128](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1128)) ([c3aa66c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c3aa66ccdf677d3de59b215ff812ea61664c32fb))
+
+# [1.118.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.10...v1.118.0) (2026-06-30)
+
+
+### Features
+
+* split sub-agent stall reminder into distinct idle and long-running messages ([#1124](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1124)) ([78e0be1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/78e0be11e5482b91cbdac1eace1ee3e04749688f)), closes [#1123](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1123)
+
+## [1.117.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.9...v1.117.10) (2026-06-30)
+
+
+### Bug Fixes
+
+* **console:** make Reject gate consistent for inline comments on an issue's related PR diff ([#1126](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1126)) ([2177860](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2177860517cb9a34735afbd232dac49fbba01c45)), closes [#1125](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1125)
+
+## [1.117.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.8...v1.117.9) (2026-06-30)
+
+
+### Bug Fixes
+
+* debounce silent live-session notifications across two consecutive cycles ([#1121](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1121)) ([6be302a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6be302ac61b97b2e3758f3811d84674a96c557ee))
+
+## [1.117.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.7...v1.117.8) (2026-06-30)
+
+
+### Bug Fixes
+
+* **silent-monitor:** make hub-task-active gate null-safe and actually suppress ([#1117](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1117)) ([dacc841](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/dacc841f2e33bd82365f2ac825374493ea3a14b0)), closes [#1115](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1115)
+
+## [1.117.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.6...v1.117.7) (2026-06-30)
+
+
+### Bug Fixes
+
+* **console:** require an inline comment to enable Reject and send it as the request-changes review body ([#1116](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1116)) ([633bbfa](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/633bbfac4603cf8bb22e39bf6c1c93e7c910ebae)), closes [#1114](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1114)
+
+## [1.117.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.5...v1.117.6) (2026-06-30)
+
+
+### Bug Fixes
+
+* **console:** move comment submit button to the far right of the comment area ([#1113](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1113)) ([6f7bc8c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6f7bc8ce4bd3cc235658757cf7c286d223de23b1))
+
+## [1.117.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.4...v1.117.5) (2026-06-29)
+
+
+### Bug Fixes
+
+* **silent-monitor:** drop sub-agent recency ceiling and rely on strengthened completion-at-end detection ([#1110](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1110)) ([4de5d72](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4de5d726fa5bb3b15b5901eaebcb5487b7fe4a40)), closes [#1109](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1109)
+
+## [1.117.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.3...v1.117.4) (2026-06-29)
+
+
+### Bug Fixes
+
+* **silent-notification:** exclude completed sub-agents by inspecting the last transcript entry ([#1104](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1104)) ([2bd9e42](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2bd9e42cfab2ece45c273f987c5bffc2b620368d))
+
+## [1.117.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.2...v1.117.3) (2026-06-29)
+
+
+### Bug Fixes
+
+* disable console detail prefetch to stop GraphQL rate-limit exhaustion ([#1102](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1102)) ([b577193](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b5771933b5a344eec5ed057b03bcf70139e82557))
+
+## [1.117.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.1...v1.117.2) (2026-06-29)
+
+
+### Bug Fixes
+
+* exclude long-dead sub-agents from silent-monitor stall flagging ([#1100](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1100)) ([9cfe761](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9cfe761f77121a4eb5183d86dbc36ec6095fbcfa))
+
+## [1.117.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.117.0...v1.117.1) (2026-06-29)
+
+
+### Bug Fixes
+
+* **silent-notification:** match real session-name and on-disk sub-agent transcript forms ([#1096](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1096)) ([b705351](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b705351f4991f525ba52507b64edacdaddd7d3e6)), closes [#1095](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1095)
+
+# [1.117.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.116.9...v1.117.0) (2026-06-29)
+
+
+### Features
+
+* **console:** prefetch upcoming items, always-visible mergeable badge, taller action buttons ([#1097](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1097)) ([827464c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/827464cd8ad123375b793aa8c5d3f8d944130633)), closes [#1091](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1091)
+
+## [1.116.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.116.8...v1.116.9) (2026-06-29)
+
+
+### Bug Fixes
+
+* **silent-notification:** monitor only github.com issue or pull-request named sessions ([#1094](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1094)) ([e7f0fca](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e7f0fca786d93a3cb9dc1899ee0c40bd9f371a2a)), closes [#1093](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1093)
+
+## [1.116.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.116.7...v1.116.8) (2026-06-29)
+
+
+### Bug Fixes
+
+* **silent-notification:** resolve the parent transcript by candidate-id priority ([#1092](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1092)) ([d3fcefb](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d3fcefb2ba761e7ae4cf1c1688c970cda5de590d)), closes [#1090](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1090)
+
+## [1.116.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.116.6...v1.116.7) (2026-06-29)
+
+
+### Bug Fixes
+
+* **console:** render Close button for pull-request items and close PRs with a valid request ([#1087](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1087)) ([db05eae](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/db05eae1774ca7fb9431086841831edbfe06702b))
+
+## [1.116.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.116.5...v1.116.6) (2026-06-29)
+
+
+### Bug Fixes
+
+* **console:** keep action bar bottom-attached on short items and move PR status badges below title ([#1085](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1085)) ([637603b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/637603b0bf742cdfeb4f1077bfb390e0201fb23a)), closes [#1083](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1083)
+
+## [1.116.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.116.4...v1.116.5) (2026-06-29)
+
+
+### Bug Fixes
+
+* **test:** use sessionKey not sessionId on ClaudeLiveSession literals in LiveSessionOauthTokenSelectHandler test ([#1089](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1089)) ([b649c7f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b649c7f9243e09b6c973c3d9d545014c0eb1b7f2))
+
+## [1.116.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.116.3...v1.116.4) (2026-06-29)
+
+
+### Bug Fixes
+
+* **console:** retry transient GitHub rate-limit on item operations with bounded backoff and clear error classification ([#1082](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1082)) ([61657ed](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/61657edb588f7ba381009fb15d7a52960dda8ad6))
+
+## [1.116.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.116.1...v1.116.2) (2026-06-29)
+
+
+### Bug Fixes
+
+* **console:** include GitHub response reason in PR-review operation errors ([#1080](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1080)) ([00a2df7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/00a2df7aa0b699a4081f391a9f8e3ad6f36d622f)), closes [#1079](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1079)
+
+## [1.116.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.116.0...v1.116.1) (2026-06-29)
+
+
+### Bug Fixes
+
+* **console:** cap triage story-assignment button area at 33vh with internal scroll ([#1078](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1078)) ([cef441a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cef441ac28c1172e7567cae145ef584a5dacf9ee))
+
+# [1.116.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.115.3...v1.116.0) (2026-06-29)
+
+
+### Features
+
+* **silent-session:** add when-to-fire guidance to owner-call self-check point ([#1076](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1076)) ([2af11ff](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2af11ffde82ef767b3a4b5062bd7bf399ba43dd0))
+
+## [1.115.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.115.2...v1.115.3) (2026-06-29)
+
+
+### Bug Fixes
+
+* **schedule:** instruct silent agents on the required owner-call format ([#1074](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1074)) ([45baaaf](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/45baaaf7906509c6827c2c680ea447de678d74fc))
+
+## [1.115.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.115.1...v1.115.2) (2026-06-28)
+
+
+### Bug Fixes
+
+* **console:** make root font-size viewport-width-relative so PC view matches readable mobile target ([#1072](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1072)) ([d27ae65](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d27ae659e0592a5af3b3df72a514d95b18eb666e)), closes [#1071](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1071)
+
+## [1.115.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.115.0...v1.115.1) (2026-06-28)
+
+
+### Bug Fixes
+
+* **silent-notify:** assert no cooldown suppression on repeated cycles to publish removal ([#1070](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1070)) ([3c31987](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3c319873d7d09a4ca58ba89efaaaa7a14aed8e39))
+
+# [1.115.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.114.2...v1.115.0) (2026-06-28)
+
+
+### Features
+
+* **silent-notify:** skip notification when hub task is no longer active ([#1063](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1063)) ([0a45b7f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0a45b7fb8e13814422bc2a52f303bfebf10ab102))
+
+## [1.114.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.114.1...v1.114.2) (2026-06-28)
+
+
+### Bug Fixes
+
+* **silent-notification:** count any transcript entry and resolve non-resume transcripts ([#1061](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1061)) ([dbb8bb4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/dbb8bb4171eb4ccd61a9e702a685ce7f9642e43a))
+
+## [1.114.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.114.0...v1.114.1) (2026-06-28)
+
+
+### Bug Fixes
+
+* **silent-notification:** resolve live transcripts via rotated id and shared projects dir ([#1065](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1065)) ([95e491a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/95e491ab813e577c795c5a11d59fb1fab1b035e4)), closes [#1064](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1064)
+
+# [1.114.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.113.0...v1.114.0) (2026-06-28)
+
+
+### Features
+
+* **console:** decorate rendered markdown PR/issue links with state icon and title ([#1066](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1066)) ([9b57d16](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9b57d16923e766666e9714c1fe209fb842b14013)), closes [#1062](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1062)
+
+# [1.113.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.112.6...v1.113.0) (2026-06-28)
+
+
+### Features
+
+* **console:** show PR CI status and merge-conflict status in the detail header ([#1059](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1059)) ([4f825d9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4f825d98fe4be2477788b731cc7608c69f034c4d))
+
+## [1.112.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.112.5...v1.112.6) (2026-06-28)
+
+
+### Bug Fixes
+
+* **console:** show inline-comment button on touch and wire related-PR diff ([#1056](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1056)) ([de247f7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/de247f7464330a4f7e0bff49f8f43e51e345830d)), closes [#1054](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1054)
+
+## [1.112.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.112.4...v1.112.5) (2026-06-28)
+
+
+### Bug Fixes
+
+* **console:** preserve regular fenced code blocks in markdown splitter ([#1053](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1053)) ([c5cdd72](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c5cdd72c2599f73f8b989e71c51df70cd4f9fbcf))
+
+## [1.112.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.112.3...v1.112.4) (2026-06-28)
+
+
+### Bug Fixes
+
+* **console:** halve desktop font, full-box commit expand click, status in header ([#1052](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1052)) ([291d9ba](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/291d9baea2d61273eebebdcc5119f9c7110dcb76)), closes [#1050](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1050)
+
+## [1.112.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.112.2...v1.112.3) (2026-06-28)
+
+
+### Bug Fixes
+
+* **schedule:** remove owner re-notification path and count only genuine human owner replies ([#1049](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1049)) ([5809680](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/580968033320347badfe3a6f1237f9bbd0f876ad)), closes [#1047](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1047)
+
+## [1.112.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.112.1...v1.112.2) (2026-06-28)
+
+
+### Bug Fixes
+
+* **console:** make review screen full-width on desktop and mobile ([#1046](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1046)) ([2f7baec](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2f7baec707574df40530778e5c119528544cbc82))
+
+## [1.112.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.112.0...v1.112.1) (2026-06-28)
+
+
+### Bug Fixes
+
+* **console:** action-bar overlap, comment state leak, markdown styling, scroll reset ([#1041](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1041)) ([c91a050](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c91a050082e561983d0a4d6f77f0324f72dd85da))
+
+# [1.112.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.111.3...v1.112.0) (2026-06-28)
+
+
+### Features
+
+* **schedule:** re-notify owner instead of staying silent on unanswered owner call ([#1044](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1044)) ([05d83fe](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/05d83fee818548acfaa3fbcc878c8e14528b7e23)), closes [#1042](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1042)
+
+## [1.111.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.111.2...v1.111.3) (2026-06-28)
+
+
+### Bug Fixes
+
+* **console:** keep the workflow-blocker tab visible regardless of the localStorage done overlay ([#1040](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1040)) ([83213bc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/83213bc075a02fbcd3cfca894c7e6cbbe503bff1)), closes [#1038](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1038)
+
+## [1.111.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.111.1...v1.111.2) (2026-06-28)
+
+
+### Bug Fixes
+
+* **schedule:** do not count monitor-injected reminders as owner replies ([#1036](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1036)) ([b1e667c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b1e667c4e8c6a798f86bff3765dfba03246bce1c)), closes [#1035](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1035)
+
+## [1.111.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.111.0...v1.111.1) (2026-06-28)
+
+
+### Bug Fixes
+
+* **schedule:** treat stop_sequence as a completed sub-agent in stall detection ([#1034](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1034)) ([0318011](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0318011691871b1d8141eed735de911a15866e92)), closes [#1033](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1033)
+
+# [1.111.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.110.1...v1.111.0) (2026-06-27)
+
+
+### Features
+
+* **schedule:** monitor all live interactive sessions for silent self-check ([#1025](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1025)) ([4c4b540](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4c4b540c9e38eee1befd3e6d0060f99f997efa8a)), closes [#1024](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1024) [#actions](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/actions)
+
+## [1.110.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.110.0...v1.110.1) (2026-06-27)
+
+
+### Bug Fixes
+
+* **token-selection:** preserve subscriptionDisabledEpoch across rate-limit cache writes ([#1031](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1031)) ([44d5d0f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/44d5d0feee97305d361fbe6dfd7b733bd6e6c993))
+
+# [1.110.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.109.2...v1.110.0) (2026-06-27)
+
+
+### Bug Fixes
+
+* aggregate in-tmux-by-human sessions across all projects for token-status counts ([#1028](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1028)) ([e90671c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e90671c4f1c3dd68bc7c96bd1d3b2680766363b6))
+
+
+### Features
+
+* add one-click copy button for item URL in console detail header ([#1029](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1029)) ([b16d7bd](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b16d7bd999438d82a85587160a41d34d96c9c384))
+
+## [1.109.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.109.1...v1.109.2) (2026-06-27)
+
+
+### Bug Fixes
+
+* **dashboard:** use full project code as the per-project file key (display abbreviation is display-only) ([#1019](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1019)) ([65dcef6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/65dcef61fc1a227bad808c5d84856c7a848763b2)), closes [#1015](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1015)
+
+## [1.109.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.109.0...v1.109.1) (2026-06-27)
+
+
+### Bug Fixes
+
+* **project-repository:** remove project-metadata disk cache, keep immutable project ID cache ([#1018](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1018)) ([c272a5a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c272a5a4dfa831a8ea602bae55eeba60e69082fb))
+
+
+### Reverts
+
+* **schedule:** restore PAGINATION_DELAY_MS to 5000 to prevent loop overrun ([#1014](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1014)) ([be7de71](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/be7de719f07cb32703aac140178ec8aa8a7c87b9))
+
 # [1.109.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.108.0...v1.109.0) (2026-06-26)
 
 

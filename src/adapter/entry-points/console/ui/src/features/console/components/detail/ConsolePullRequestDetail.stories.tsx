@@ -29,3 +29,20 @@ export const WithDetail: Story = {
     commitsError: null,
   },
 };
+
+export const WithInlineComments: Story = {
+  args: {
+    pullRequest: consoleRelatedPullRequestsFixture[0],
+    body: consoleRelatedPullRequestsFixture[0].summary?.body ?? '',
+    bodyIsLoading: false,
+    files: consoleChangedFilesFixture,
+    filesAreLoading: false,
+    filesError: null,
+    commits: consoleCommitsFixture,
+    commitsAreLoading: false,
+    commitsError: null,
+    onAddInlineComment: async (path, line, side, body) => {
+      window.alert(`comment on ${path}:${line} (${side})\n${body}`);
+    },
+  },
+};

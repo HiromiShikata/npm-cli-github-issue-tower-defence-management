@@ -9,6 +9,7 @@ export type InTmuxByHumanDataWriterParams = {
     assigneeLogin: string | null | undefined;
     org: string;
     repo: string;
+    newIssueRepo?: string | null | undefined;
     project: Project;
     issues: Issue[];
     now: Date;

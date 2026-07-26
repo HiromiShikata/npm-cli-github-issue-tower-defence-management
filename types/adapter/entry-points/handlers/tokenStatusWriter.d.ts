@@ -7,6 +7,7 @@ export type TokenStatusWriterParams = {
     dashboardDataDir: string | null | undefined;
     tokenListJsonPath: string | null | undefined;
     issues: Issue[];
+    pjcode?: string | null | undefined;
     now?: Date;
     readSnapshot?: (token: string) => RateLimitSnapshot | null;
     interactiveSessionRepository?: ClaudeInteractiveSessionRepository;

@@ -11,7 +11,7 @@ class StaleTmuxSessionKillUseCase {
         this.tmuxSessionRepository = tmuxSessionRepository;
         this.run = async (params) => {
             const liveSessions = await this.tmuxSessionRepository.listLiveSessionsWithActivity();
-            const openIssues = await this.issueRepository.getAllOpened(params.project, params.allowCacheMinutes);
+            const openIssues = await this.issueRepository.getAllOpened(params.project);
             const issueBySessionName = new Map();
             for (const issue of openIssues) {
                 issueBySessionName.set((0, InTmuxByHumanSessionReconcileUseCase_1.toTmuxSessionName)(issue.url), issue);

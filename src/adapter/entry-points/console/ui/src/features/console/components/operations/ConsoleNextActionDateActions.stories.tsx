@@ -12,9 +12,9 @@ export default meta;
 type Story = StoryObj<typeof ConsoleNextActionDateActions>;
 
 export const StandardTab: Story = {
-  args: { isTodoByHuman: false },
+  args: { isManualTriage: false },
 };
 
 export const TodoByHumanTab: Story = {
-  args: { isTodoByHuman: true },
+  args: { isManualTriage: true },
 };

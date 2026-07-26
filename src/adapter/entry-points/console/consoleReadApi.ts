@@ -6,14 +6,50 @@ import {
 
 export const ISSUE_TITLE_CACHE_TTL_MS = 300 * 1000;
 
+export const PULL_REQUEST_STATUS_CACHE_TTL_MS = 30 * 1000;
+
 export type IssueOrPullRequestState = {
   state: string;
   merged: boolean;
   isPullRequest: boolean;
+  title: string;
+};
+
+export type MergeableStatus = 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN';
+
+export const deriveMergeableStatus = (
+  mergeable: string | null,
+): MergeableStatus => {
+  if (mergeable === 'MERGEABLE') {
+    return 'MERGEABLE';
+  }
+  if (mergeable === 'CONFLICTING') {
+    return 'CONFLICTING';
+  }
+  return 'UNKNOWN';
+};
+
+export type PullRequestStatus = {
+  isConflicted: boolean;
+  mergeableStatus: MergeableStatus;
+  isPassedAllCiJob: boolean;
+  isCiStateSuccess: boolean;
+  isBranchOutOfDate: boolean;
+  missingRequiredCheckNames: string[];
+};
+
+export type PullRequestStatusResponse = {
+  found: boolean;
+  status: PullRequestStatus | null;
 };
 
 type IssueTitleCacheEntry = {
   state: IssueOrPullRequestState;
+  fetchedAtMs: number;
+};
+
+type PullRequestStatusCacheEntry = {
+  status: PullRequestStatusResponse;
   fetchedAtMs: number;
 };
 
@@ -41,6 +77,27 @@ export class IssueTitleStateCache {
   };
 }
 
+export class PullRequestStatusCache {
+  private readonly entries = new Map<string, PullRequestStatusCacheEntry>();
+
+  constructor(private readonly nowMs: () => number = () => Date.now()) {}
+
+  get = (url: string): PullRequestStatusResponse | null => {
+    const entry = this.entries.get(url);
+    if (!entry) {
+      return null;
+    }
+    if (this.nowMs() - entry.fetchedAtMs >= PULL_REQUEST_STATUS_CACHE_TTL_MS) {
+      return null;
+    }
+    return entry.status;
+  };
+
+  set = (url: string, status: PullRequestStatusResponse): void => {
+    this.entries.set(url, { status, fetchedAtMs: this.nowMs() });
+  };
+}
+
 export type ConsoleReadApiResponse = {
   statusCode: number;
   body: unknown;
@@ -62,6 +119,7 @@ export type RelatedPullRequestWithSummary = {
   createdAt: string;
   isDraft: boolean;
   isConflicted: boolean;
+  mergeableStatus: MergeableStatus;
   isPassedAllCiJob: boolean;
   isCiStateSuccess: boolean;
   isResolvedAllReviewComments: boolean;
@@ -161,6 +219,7 @@ export const handleRelatedPrs = async (
         createdAt: relatedPullRequest.createdAt.toISOString(),
         isDraft: relatedPullRequest.isDraft,
         isConflicted: relatedPullRequest.isConflicted,
+        mergeableStatus: deriveMergeableStatus(relatedPullRequest.mergeable),
         isPassedAllCiJob: relatedPullRequest.isPassedAllCiJob,
         isCiStateSuccess: relatedPullRequest.isCiStateSuccess,
         isResolvedAllReviewComments:
@@ -172,6 +231,19 @@ export const handleRelatedPrs = async (
     }),
   );
   return ok({ relatedPullRequests: withSummaries });
+};
+
+const resolveIssueOrPullRequestTitle = async (
+  issueRepository: IssueRepository,
+  url: string,
+  isPullRequest: boolean,
+): Promise<string> => {
+  if (isPullRequest) {
+    const summary = await issueRepository.getPullRequestSummary(url);
+    return summary?.title ?? '';
+  }
+  const issue = await issueRepository.getIssueByUrl(url);
+  return issue?.title ?? '';
 };
 
 export const handleIssueTitle = async (
@@ -186,7 +258,44 @@ export const handleIssueTitle = async (
   if (cached !== null) {
     return ok(cached);
   }
-  const state = await issueRepository.getIssueOrPullRequestState(url);
+  const baseState = await issueRepository.getIssueOrPullRequestState(url);
+  const title = await resolveIssueOrPullRequestTitle(
+    issueRepository,
+    url,
+    baseState.isPullRequest,
+  );
+  const state: IssueOrPullRequestState = { ...baseState, title };
   cache.set(url, state);
   return ok(state);
+};
+
+export const handlePullRequestStatus = async (
+  issueRepository: IssueRepository,
+  cache: PullRequestStatusCache,
+  url: string | null,
+): Promise<ConsoleReadApiResponse> => {
+  if (!url) {
+    return badRequest('url query parameter is required');
+  }
+  const cached = cache.get(url);
+  if (cached !== null) {
+    return ok(cached);
+  }
+  const pullRequest = await issueRepository.getOpenPullRequest(url);
+  const response: PullRequestStatusResponse =
+    pullRequest === null
+      ? { found: false, status: null }
+      : {
+          found: true,
+          status: {
+            isConflicted: pullRequest.isConflicted,
+            mergeableStatus: deriveMergeableStatus(pullRequest.mergeable),
+            isPassedAllCiJob: pullRequest.isPassedAllCiJob,
+            isCiStateSuccess: pullRequest.isCiStateSuccess,
+            isBranchOutOfDate: pullRequest.isBranchOutOfDate,
+            missingRequiredCheckNames: pullRequest.missingRequiredCheckNames,
+          },
+        };
+  cache.set(url, response);
+  return ok(response);
 };

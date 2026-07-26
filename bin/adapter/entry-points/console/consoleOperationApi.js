@@ -17,6 +17,7 @@ const badGateway = (message) => ({
     body: { error: message },
 });
 const isNonEmptyString = (value) => typeof value === 'string' && value.length > 0;
+const isPullRequestUrl = (url) => /github\.com\/[^/]+\/[^/]+\/pull\/\d+/.test(url);
 const isReviewCommentSide = (value) => value === 'LEFT' || value === 'RIGHT';
 const isPositiveInteger = (value) => typeof value === 'number' && Number.isInteger(value) && value > 0;
 const resolveStatusId = (project, statusName) => {
@@ -24,13 +25,37 @@ const resolveStatusId = (project, statusName) => {
     const match = project.status.statuses.find((option) => option.name.toLowerCase() === lower);
     return match ? match.id : null;
 };
-const loadIssueWithProjectItemId = async (issueRepository, project, issueUrl, projectItemId) => {
-    const issue = await issueRepository.get(issueUrl, project);
-    if (issue === null) {
-        return null;
-    }
-    return { ...issue, itemId: projectItemId };
-};
+// Builds the minimal Issue reference the ProjectV2 mutations need. The dashboard
+// already supplies the project item id in the request body, and updateStatus,
+// updateStory and updateNextActionHour read only `issue.itemId` (plus `url` for
+// context). Constructing the reference locally avoids the GraphQL
+// fetchProjectItemByUrl call that issueRepository.get would otherwise perform.
+const projectItemReference = (issueUrl, projectItemId) => ({
+    nameWithOwner: '',
+    number: 0,
+    title: '',
+    state: 'OPEN',
+    status: null,
+    story: null,
+    nextActionDate: null,
+    nextActionHour: null,
+    estimationMinutes: null,
+    dependedIssueUrls: [],
+    completionDate50PercentConfidence: null,
+    url: issueUrl,
+    assignees: [],
+    labels: [],
+    org: '',
+    repo: '',
+    body: '',
+    itemId: projectItemId,
+    isPr: isPullRequestUrl(issueUrl),
+    isInProgress: false,
+    isClosed: false,
+    createdAt: new Date(0),
+    author: '',
+    closingIssueReferenceUrls: [],
+});
 const recordDone = (context, pjcode, projectItemId) => {
     if (context.consoleDataOutputDir === null) {
         return;
@@ -49,16 +74,27 @@ const resolveBinding = async (context, body) => {
     return binding;
 };
 const isOperationResponse = (value) => Object.prototype.hasOwnProperty.call(value, 'statusCode');
+// Validates that a pjcode is configured WITHOUT loading the ProjectV2 via
+// GraphQL. Close operations only need the pjcode (for recordDone namespacing)
+// and the issue/PR URL, both of which are handled through REST. Loading the
+// full project here would make close fail whenever the GraphQL quota is
+// exhausted, even though closing a GitHub issue or PR needs only REST.
+const resolveConfiguredPjcode = (context, body) => {
+    const pjcode = body.pjcode;
+    if (!isNonEmptyString(pjcode)) {
+        return badRequest('pjcode is required');
+    }
+    if (!context.isPjcodeConfigured(pjcode)) {
+        return badRequest(`no project configured for pjcode "${pjcode}"`);
+    }
+    return pjcode;
+};
 const updateStatusByName = async (issueRepository, project, issueUrl, projectItemId, statusName) => {
     const statusId = resolveStatusId(project, statusName);
     if (statusId === null) {
         return badRequest(`status option "${statusName}" not found in project`);
     }
-    const issue = await loadIssueWithProjectItemId(issueRepository, project, issueUrl, projectItemId);
-    if (issue === null) {
-        return badRequest('issue not found');
-    }
-    await issueRepository.updateStatus(project, issue, statusId);
+    await issueRepository.updateStatus(project, projectItemReference(issueUrl, projectItemId), statusId);
     return null;
 };
 const handleReview = async (context, body) => {
@@ -73,6 +109,18 @@ const handleReview = async (context, body) => {
     }
     if (!isNonEmptyString(projectItemId)) {
         return badRequest('projectItemId is required');
+    }
+    if (action === 'close') {
+        const pjcodeResult = resolveConfiguredPjcode(context, body);
+        if (typeof pjcodeResult !== 'string') {
+            return pjcodeResult;
+        }
+        await context.issueRepository.closePullRequest(prUrl);
+        if (isNonEmptyString(body.commentBody)) {
+            await context.issueRepository.createCommentByUrl(prUrl, body.commentBody);
+        }
+        recordDone(context, pjcodeResult, projectItemId);
+        return ok();
     }
     const binding = await resolveBinding(context, body);
     if (isOperationResponse(binding)) {
@@ -96,18 +144,15 @@ const handleReview = async (context, body) => {
         const changedFilePath = isNonEmptyString(body.changedFilePath)
             ? body.changedFilePath
             : null;
-        await context.issueRepository.requestChangesWithInlineComment(prUrl, changedFilePath, commentBody);
+        const inlineCommentLocation = changedFilePath !== null &&
+            isPositiveInteger(body.line) &&
+            isReviewCommentSide(body.side)
+            ? { line: body.line, side: body.side }
+            : null;
+        await context.issueRepository.requestChangesWithInlineComment(prUrl, changedFilePath, commentBody, inlineCommentLocation);
         const failure = await updateStatusByName(context.issueRepository, project, prUrl, projectItemId, exports.AWAITING_WORKSPACE_STATUS_NAME);
         if (failure !== null) {
             return failure;
-        }
-        recordDone(context, pjcode, projectItemId);
-        return ok();
-    }
-    if (action === 'close') {
-        await context.issueRepository.closePullRequest(prUrl);
-        if (isNonEmptyString(body.commentBody)) {
-            await context.issueRepository.createCommentByUrl(prUrl, body.commentBody);
         }
         recordDone(context, pjcode, projectItemId);
         return ok();
@@ -127,6 +172,23 @@ const handleTriage = async (context, body) => {
     }
     if (!isNonEmptyString(projectItemId)) {
         return badRequest('projectItemId is required');
+    }
+    if (action === 'close' || action === 'close_not_planned') {
+        const pjcodeResult = resolveConfiguredPjcode(context, body);
+        if (typeof pjcodeResult !== 'string') {
+            return pjcodeResult;
+        }
+        if (isNonEmptyString(body.commentBody)) {
+            await context.issueRepository.createCommentByUrl(issueUrl, body.commentBody);
+        }
+        if (isPullRequestUrl(issueUrl)) {
+            await context.issueRepository.closePullRequest(issueUrl);
+        }
+        else {
+            await context.issueRepository.closeIssueByUrl(issueUrl, action === 'close_not_planned' ? 'not_planned' : 'completed');
+        }
+        recordDone(context, pjcodeResult, projectItemId);
+        return ok();
     }
     const binding = await resolveBinding(context, body);
     if (isOperationResponse(binding)) {
@@ -153,26 +215,14 @@ const handleTriage = async (context, body) => {
         if (project.story === null) {
             return badRequest('project does not have a story field');
         }
-        const issue = await loadIssueWithProjectItemId(context.issueRepository, project, issueUrl, projectItemId);
-        if (issue === null) {
-            return badRequest('issue not found');
-        }
-        await context.issueRepository.updateStory({ ...project, story: project.story }, issue, storyOptionId);
-        recordDone(context, pjcode, projectItemId);
-        return ok();
-    }
-    if (action === 'close' || action === 'close_not_planned') {
-        if (isNonEmptyString(body.commentBody)) {
-            await context.issueRepository.createCommentByUrl(issueUrl, body.commentBody);
-        }
-        await context.issueRepository.closeIssueByUrl(issueUrl, action === 'close_not_planned' ? 'not_planned' : 'completed');
+        await context.issueRepository.updateStory({ ...project, story: project.story }, projectItemReference(issueUrl, projectItemId), storyOptionId);
         recordDone(context, pjcode, projectItemId);
         return ok();
     }
     if (action === 'snooze_1day' || action === 'snooze_1week') {
         const days = action === 'snooze_1day' ? 1 : 7;
         const target = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-        await context.issueRepository.updateNextActionDate(issueUrl, project, target);
+        await context.issueRepository.updateNextActionDate(issueUrl, project, target, projectItemId);
         recordDone(context, pjcode, projectItemId);
         return ok();
     }

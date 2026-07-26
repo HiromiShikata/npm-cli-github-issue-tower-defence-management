@@ -255,6 +255,84 @@ describe('ConsolePage', () => {
     expect(queryByText('project: umino')).toBeNull();
   });
 
+  it('removes a processed workflow-blocker item from the list and decrements its tab badge, like every other tab', async () => {
+    const blockerItems = [
+      {
+        number: 701,
+        title: 'Blocked deployment task',
+        url: 'https://github.com/o/r/issues/701',
+        repo: 'o/r',
+        nameWithOwner: 'o/r',
+        projectItemId: 'PVTI_B1',
+        itemId: 'PVTI_B1',
+        isPr: false,
+        story: 'TDPM Console port',
+        status: 'In Progress',
+        nextActionDate: null,
+        nextActionHour: null,
+        dependedIssueUrls: [],
+        labels: [],
+        createdAt: '2026-06-17T00:00:00.000Z',
+      },
+      {
+        number: 702,
+        title: 'Blocked rollout task',
+        url: 'https://github.com/o/r/issues/702',
+        repo: 'o/r',
+        nameWithOwner: 'o/r',
+        projectItemId: 'PVTI_B2',
+        itemId: 'PVTI_B2',
+        isPr: false,
+        story: 'TDPM Console port',
+        status: 'In Progress',
+        nextActionDate: null,
+        nextActionHour: null,
+        dependedIssueUrls: [],
+        labels: [],
+        createdAt: '2026-06-17T01:00:00.000Z',
+      },
+    ];
+    const fetchMock = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            listMatch[1] === 'workflow-blocker'
+              ? { ...listPayload('workflow-blocker'), items: blockerItems }
+              : listPayload(listMatch[1]),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    localStorage.setItem(
+      'pv_overlay_umino',
+      JSON.stringify({
+        PVTI_B1: { ts: 1, mode: 'workflow-blocker', done: true },
+      }),
+    );
+    window.history.replaceState(
+      {},
+      '',
+      '/projects/umino/workflow-blocker?k=token',
+    );
+
+    const { getByText, queryByText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Blocked rollout task')).toBeInTheDocument();
+    });
+    expect(queryByText('Blocked deployment task')).toBeNull();
+    const blockerTab = within(tabBar())
+      .getByText('Workflow Blocker')
+      .closest('a');
+    expect(blockerTab).not.toBeNull();
+    expect(blockerTab?.querySelector('.console-tab-badge')?.textContent).toBe(
+      '1',
+    );
+  });
+
   it('renders the failure toast in English without any Japanese characters', async () => {
     const fetchMock = jest.fn(
       async (url: string, init?: { method?: string }) => {
@@ -486,6 +564,146 @@ describe('ConsolePage auto-advance', () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+});
+
+describe('ConsolePage scroll reset', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/umino/prs?k=token');
+    const fetchMock = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            listMatch[1] === 'prs'
+              ? twoItemPrPayload()
+              : { ...twoItemPrPayload(), items: [] },
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+  });
+
+  it('resets the window scroll position to the top when an item is opened', async () => {
+    const scrollTo = jest.fn();
+    window.scrollTo = scrollTo as unknown as typeof window.scrollTo;
+    const { getByText, findByText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    expect(await findByText('Approve')).toBeInTheDocument();
+
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0 });
+  });
+
+  it('resets the window scroll position to the top on each item switch', async () => {
+    const scrollTo = jest.fn();
+    window.scrollTo = scrollTo as unknown as typeof window.scrollTo;
+    const { container, getByText, findByText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    expect(await findByText('Approve')).toBeInTheDocument();
+    scrollTo.mockClear();
+
+    const detailScreen = container.querySelector('.console-detail-screen');
+    expect(detailScreen).not.toBeNull();
+    swipeDetailScreen(
+      detailScreen as HTMLElement,
+      { clientX: 240, clientY: 100 },
+      { clientX: 40, clientY: 110 },
+    );
+
+    await waitFor(() => {
+      expect(window.location.hash).toBe('#item/PVTI_2');
+    });
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0 });
+  });
+});
+
+describe('ConsolePage comment composer isolation', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/umino/prs?k=token');
+    const fetchMock = jest.fn(async (url: string, init?: RequestInit) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            listMatch[1] === 'prs'
+              ? twoItemPrPayload()
+              : { ...twoItemPrPayload(), items: [] },
+        };
+      }
+      if (url.includes('/api/comment')) {
+        const requestBody =
+          typeof init?.body === 'string'
+            ? (JSON.parse(init.body) as { body: string })
+            : { body: '' };
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            comment: {
+              author: 'you',
+              body: requestBody.body,
+              createdAt: '2026-06-19T02:00:00.000Z',
+            },
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+  });
+
+  it('does not show a comment posted on one item under the next item', async () => {
+    const {
+      container,
+      getByText,
+      findByText,
+      getByPlaceholderText,
+      queryByText,
+    } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    expect(await findByText('Approve')).toBeInTheDocument();
+
+    fireEvent.click(getByText('💬 Add a comment'));
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'first item only comment' },
+    });
+    fireEvent.click(getByText('Comment'));
+
+    await waitFor(() => {
+      expect(getByText('first item only comment')).toBeInTheDocument();
+    });
+
+    const detailScreen = container.querySelector('.console-detail-screen');
+    expect(detailScreen).not.toBeNull();
+    swipeDetailScreen(
+      detailScreen as HTMLElement,
+      { clientX: 240, clientY: 100 },
+      { clientX: 40, clientY: 110 },
+    );
+
+    await waitFor(() => {
+      expect(window.location.hash).toBe('#item/PVTI_2');
+    });
+    expect(queryByText('first item only comment')).toBeNull();
   });
 });
 

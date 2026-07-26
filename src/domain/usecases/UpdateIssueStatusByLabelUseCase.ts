@@ -56,6 +56,7 @@ export class UpdateIssueStatusByLabelUseCase {
         }
         throw new Error(
           `Failed to remove label ${statusLabel} from issue ${issue.url}: ${e.message}`,
+          { cause: e },
         );
       }
     }

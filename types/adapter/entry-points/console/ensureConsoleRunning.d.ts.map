@@ -1,0 +1,1 @@
+{"version":3,"file":"ensureConsoleRunning.d.ts","sourceRoot":"","sources":["../../../../src/adapter/entry-points/console/ensureConsoleRunning.ts"],"names":[],"mappings":"AAIA,MAAM,WAAW,cAAc;IAC7B,IAAI,EAAE,MAAM,IAAI,CAAC;CAClB;AAyBD,eAAO,MAAM,oBAAoB,GAC/B,gBAAgB,MAAM,EACtB,MAAM,MAAM,KACX,OAAO,CAAC,cAAc,GAAG,IAAI,CAqB/B,CAAC"}

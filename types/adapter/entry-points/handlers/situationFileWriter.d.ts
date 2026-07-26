@@ -13,7 +13,6 @@ export type SituationFileParams = {
     config: {
         maximumPreparingIssuesCount: number | null;
         utilizationPercentageThreshold: number;
-        allowIssueCacheMinutes: number;
         thresholdForAutoReject: number;
     };
     preparationProcessCheckCommand?: string | null;
