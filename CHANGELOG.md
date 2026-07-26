@@ -1,3 +1,10 @@
+# [1.139.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.138.0...v1.139.0) (2026-07-26)
+
+
+### Features
+
+* **silent-session-monitor:** exclude completed sub-agents and add process-liveness gate ([#1276](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1276)) ([5b83456](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5b83456fdcfc0b21832e569554982f95d2385594)), closes [#1275](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1275)
+
 # [1.138.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.137.2...v1.138.0) (2026-07-26)
 
 

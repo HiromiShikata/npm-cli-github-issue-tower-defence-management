@@ -10,6 +10,7 @@ export type NotifySilentTmuxSessionsParams = {
     subAgentOutputRootDirectory: string | null;
     subAgentProcessMatchPattern: string | null;
     subAgentTranscriptRootDirectory: string | null;
+    subAgentRuntimeRootDirectory: string | null;
     mainSilentThresholdSeconds: number;
     unansweredOwnerCallGraceSeconds: number;
     subAgentSilentThresholdSeconds: number;

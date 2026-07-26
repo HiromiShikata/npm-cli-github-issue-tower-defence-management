@@ -36,6 +36,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.TranscriptSessionSubAgentActivityRepository = exports.normalizeCommandFragment = void 0;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
+const alwaysIndeterminateLivenessResolver = {
+    resolveLiveSubAgentIds: async () => null,
+};
 const isRecord = (value) => typeof value === 'object' && value !== null;
 const readString = (value, key) => {
     const candidate = value[key];
@@ -186,7 +189,13 @@ const parseTranscript = (content) => {
     };
 };
 const clampToZero = (value) => (value > 0 ? value : 0);
-const parseKilledOrFailedAgentIds = (content) => {
+const TERMINAL_TASK_NOTIFICATION_STATUSES = new Set([
+    'completed',
+    'killed',
+    'failed',
+    'stopped',
+]);
+const parseTerminalAgentIds = (content) => {
     const result = new Set();
     for (const line of content.split('\n')) {
         const trimmed = line.trim();
@@ -213,23 +222,25 @@ const parseKilledOrFailedAgentIds = (content) => {
         if (notifContent === null) {
             continue;
         }
-        const taskIdMatch = notifContent.match(/<task-id>(a[0-9a-f]+)<\/task-id>/);
         const statusMatch = notifContent.match(/<status>([^<]+)<\/status>/);
-        if (!taskIdMatch || !statusMatch) {
+        if (statusMatch === null) {
             continue;
         }
-        const status = statusMatch[1];
-        if (status === 'killed' || status === 'failed') {
+        if (!TERMINAL_TASK_NOTIFICATION_STATUSES.has(statusMatch[1])) {
+            continue;
+        }
+        for (const taskIdMatch of notifContent.matchAll(/<task-id>(a[0-9a-f]+)<\/task-id>/g)) {
             result.add(taskIdMatch[1]);
         }
     }
     return result;
 };
 class TranscriptSessionSubAgentActivityRepository {
-    constructor(directoryResolver, processLister, now) {
+    constructor(directoryResolver, processLister, now, livenessResolver = alwaysIndeterminateLivenessResolver) {
         this.directoryResolver = directoryResolver;
         this.processLister = processLister;
         this.now = now;
+        this.livenessResolver = livenessResolver;
         this.listSubAgentActivitiesBySessionName = async (sessionNames, transcriptPathBySessionName) => {
             const result = new Map();
             const nowEpochSeconds = Math.floor(this.now.getTime() / 1000);
@@ -247,15 +258,19 @@ class TranscriptSessionSubAgentActivityRepository {
                 if (directory === null) {
                     continue;
                 }
-                const killedOrFailedAgentIds = this.loadKilledOrFailedAgentIds(mainTranscriptPath);
-                const activities = await this.collectActivities(directory, nowEpochSeconds, killedOrFailedAgentIds, loadNormalizedProcessCommandLines);
+                const terminalAgentIds = this.loadTerminalAgentIds(mainTranscriptPath);
+                const liveSubAgentIds = await this.livenessResolver.resolveLiveSubAgentIds({
+                    sessionName,
+                    mainTranscriptPath,
+                });
+                const activities = await this.collectActivities(directory, nowEpochSeconds, terminalAgentIds, liveSubAgentIds, loadNormalizedProcessCommandLines);
                 if (activities.length > 0) {
                     result.set(sessionName, activities);
                 }
             }
             return result;
         };
-        this.loadKilledOrFailedAgentIds = (mainTranscriptPath) => {
+        this.loadTerminalAgentIds = (mainTranscriptPath) => {
             if (mainTranscriptPath === null) {
                 return new Set();
             }
@@ -266,9 +281,9 @@ class TranscriptSessionSubAgentActivityRepository {
             catch {
                 return new Set();
             }
-            return parseKilledOrFailedAgentIds(content);
+            return parseTerminalAgentIds(content);
         };
-        this.collectActivities = async (directory, nowEpochSeconds, killedOrFailedAgentIds, loadNormalizedProcessCommandLines) => {
+        this.collectActivities = async (directory, nowEpochSeconds, terminalAgentIds, liveSubAgentIds, loadNormalizedProcessCommandLines) => {
             let entries;
             try {
                 entries = fs.readdirSync(directory, { withFileTypes: true });
@@ -283,7 +298,10 @@ class TranscriptSessionSubAgentActivityRepository {
                     continue;
                 }
                 const agentId = fileName.slice('agent-'.length, -'.jsonl'.length);
-                if (killedOrFailedAgentIds.has(agentId)) {
+                if (terminalAgentIds.has(agentId)) {
+                    continue;
+                }
+                if (liveSubAgentIds !== null && !liveSubAgentIds.has(agentId)) {
                     continue;
                 }
                 const filePath = path.join(directory, fileName);
