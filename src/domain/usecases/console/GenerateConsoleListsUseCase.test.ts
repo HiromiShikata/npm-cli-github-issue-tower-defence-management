@@ -301,6 +301,60 @@ describe('GenerateConsoleListsUseCase', () => {
     });
   });
 
+  describe('In Tmux by agent shared exclusion', () => {
+    const allTabItems = (
+      result: ReturnType<GenerateConsoleListsUseCase['run']>,
+    ) => [
+      ...result['workflow-blocker'].items,
+      ...result.prs.items,
+      ...result.triage.items,
+      ...result.unread.items,
+      ...result['failed-preparation'].items,
+      ...result['todo-by-human'].items,
+    ];
+
+    it('hides a workflow-blocker-story In Tmux by agent issue from every tab', () => {
+      const result = run([
+        makeIssue({
+          story: 'regular / WORKFLOW BLOCKER',
+          status: 'In Tmux by agent',
+        }),
+      ]);
+      expect(allTabItems(result)).toHaveLength(0);
+    });
+
+    it('hides In Tmux by agent case-insensitively from every tab', () => {
+      const result = run([
+        makeIssue({
+          story: 'regular / WORKFLOW BLOCKER',
+          status: 'in tmux by agent',
+        }),
+      ]);
+      expect(allTabItems(result)).toHaveLength(0);
+    });
+
+    it('keeps sibling issues with other statuses displaying as before', () => {
+      const result = run([
+        makeIssue({
+          story: 'regular / WORKFLOW BLOCKER',
+          status: 'In Tmux by agent',
+        }),
+        makeIssue({
+          story: 'regular / WORKFLOW BLOCKER',
+          status: 'In Tmux by human',
+        }),
+        makeIssue({ status: 'Unread' }),
+      ]);
+      expect(
+        result['workflow-blocker'].items.map((item) => item.status),
+      ).toEqual(['In Tmux by human']);
+      expect(result.unread.items.map((item) => item.number)).toEqual([3]);
+      expect(
+        allTabItems(result).some((item) => item.status === 'In Tmux by agent'),
+      ).toBe(false);
+    });
+  });
+
   describe('common item projection', () => {
     it('projects the expected keys and never includes a body field', () => {
       const result = run([

@@ -96,7 +96,13 @@ export class GenerateConsoleListsUseCase {
     const storyOrder = storyOptions.map((option) => option.name);
     const statusOptions = project.status.statuses;
 
-    const actionableIssues = issues.filter((issue) =>
+    const visibleIssues = issues.filter(
+      (issue) =>
+        issue.status?.toLowerCase() !==
+        IN_TMUX_BY_AGENT_STATUS_NAME.toLowerCase(),
+    );
+
+    const actionableIssues = visibleIssues.filter((issue) =>
       this.isActionable(issue, assigneeLogin),
     );
 
@@ -124,7 +130,7 @@ export class GenerateConsoleListsUseCase {
 
     return {
       'workflow-blocker': buildStatusTabFromSource(
-        issues.filter((issue) => issue.isClosed === false),
+        visibleIssues.filter((issue) => issue.isClosed === false),
         this.workflowBlockerSelector(workflowBlockerStoryName),
         ['done'],
       ),
