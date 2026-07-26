@@ -3002,6 +3002,37 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         ),
       );
     });
+
+    it('reports isCiStateSuccess true when an older check-run record with the same name has failure but the newer record has success', async () => {
+      mockFetchRoutes({
+        timeline: () => buildSlimTimelineResponse(),
+        slimPullRequest: () =>
+          buildSlimPullRequestResponse({
+            url: 'https://github.com/HiromiShikata/test-repository/pull/11148',
+            reviewThreads: {
+              pageInfo: { endCursor: null, hasNextPage: false },
+              nodes: [],
+            },
+          }),
+        branchRules: () => [],
+        checkRuns: () => ({
+          total_count: 2,
+          check_runs: [
+            { id: 100, name: 'ci', conclusion: 'failure' },
+            { id: 200, name: 'ci', conclusion: 'success' },
+          ],
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/test-repository/issues/11194',
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].isCiStateSuccess).toBe(true);
+      expect(result[0].isPassedAllCiJob).toBe(true);
+    });
   });
 
   describe('findRelatedOpenPRs cross-repo PR', () => {
