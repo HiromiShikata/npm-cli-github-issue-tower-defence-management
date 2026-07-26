@@ -1,3 +1,10 @@
+# [1.141.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.140.2...v1.141.0) (2026-07-26)
+
+
+### Features
+
+* port output-degeneration detection into TDPM ([#1286](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1286)) ([2f2f7bb](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2f2f7bb17f094c3a063cff29ba2dcedb227a14e5)), closes [#1285](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1285)
+
 ## [1.140.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.140.1...v1.140.2) (2026-07-26)
 
 
