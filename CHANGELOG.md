@@ -1,3 +1,15 @@
+# [1.137.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.136.0...v1.137.0) (2026-07-26)
+
+
+### Bug Fixes
+
+* **core:** run story-label conversion on incremental-fetch cycles ([#1229](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1229)) ([70bd67e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/70bd67e79fda10559302ff5d7e821bc730a976bb))
+
+
+### Features
+
+* **cli:** add killTmuxSession command to cleanly kill a session ([#1271](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1271)) ([52f5c15](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/52f5c15188be756090bc97bb31dd51b529139225)), closes [#1270](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1270)
+
 # [1.136.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.135.2...v1.136.0) (2026-07-26)
 
 
