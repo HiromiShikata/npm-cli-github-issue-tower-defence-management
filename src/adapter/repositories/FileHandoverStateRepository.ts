@@ -9,7 +9,11 @@ import { TokenExhaustionHandoverStateRepository } from '../../domain/usecases/ad
 
 export const defaultHandoverStateFilePath = (): string => {
   const base = process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), '.cache');
-  return path.join(base, 'tdpm', 'token-exhaustion-handover-state.json');
+  return path.join(
+    base,
+    'tdpm',
+    'token-exhaustion-handover-state-tdpm-native.json',
+  );
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

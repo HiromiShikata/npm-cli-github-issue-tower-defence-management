@@ -97,81 +97,106 @@ export class TokenExhaustionHandoverUseCase {
     const leftAliveSessionNames: string[] = [];
 
     for (const session of sessions) {
-      const snapshot = snapshotByToken.get(session.token);
-      if (snapshot === undefined) {
-        continue;
-      }
-      const hasTmux = session.kind !== 'implSubagent';
-      const verdict = this.evaluateSnapshot(snapshot, nowEpochSeconds, hasTmux);
-      const stateKey = this.stateKeyFor(session);
-
-      if (verdict.stale) {
-        continue;
-      }
-      if (!verdict.exhausted) {
-        delete nextEntries[stateKey];
-        continue;
-      }
-      if (
-        !this.isFresherTokenAvailable(session.token, snapshots, nowEpochSeconds)
-      ) {
-        console.log(
-          `Token exhaustion handover: leaving ${this.displayName(session)} alive (token pool globally exhausted, no fresher token available)`,
-        );
-        leftAliveSessionNames.push(this.displayName(session));
-        continue;
-      }
-
-      const entry = nextEntries[stateKey];
-      if (entry === undefined) {
-        if (input.enabled) {
-          await this.sendHandover(session, input);
+      try {
+        const snapshot = snapshotByToken.get(session.token);
+        if (snapshot === undefined) {
+          continue;
         }
-        console.log(
-          `Token exhaustion handover: signaled ${this.displayName(session)} kind=${session.kind} reason=${verdict.reason} enabled=${input.enabled}`,
+        const hasTmux = session.kind !== 'implSubagent';
+        const verdict = this.evaluateSnapshot(
+          snapshot,
+          nowEpochSeconds,
+          hasTmux,
         );
-        nextEntries[stateKey] = {
-          signaledAtEpoch: nowEpochSeconds,
-          pid: session.pid,
-        };
-        newlyHandoverSentSessionNames.push(this.displayName(session));
-        continue;
-      }
+        const stateKey = this.stateKeyFor(session);
 
-      if (nowEpochSeconds - entry.signaledAtEpoch < input.gracePeriodSeconds) {
-        console.log(
-          `Token exhaustion handover: waiting for grace period for ${this.displayName(session)} remainingSeconds=${input.gracePeriodSeconds - (nowEpochSeconds - entry.signaledAtEpoch)}`,
-        );
-        continue;
-      }
-
-      const alive = hasTmux
-        ? session.sessionName !== null &&
-          liveSessionNames.has(session.sessionName)
-        : this.processSignalRepository.isProcessAlive(entry.pid);
-      if (!alive) {
-        if (input.enabled && this.needsRelaunch(session)) {
-          await this.relaunchBareNameLeader(session, relaunchedLeaderNames);
+        if (verdict.stale) {
+          continue;
         }
-        delete nextEntries[stateKey];
-        continue;
-      }
+        if (!verdict.exhausted) {
+          delete nextEntries[stateKey];
+          continue;
+        }
+        if (
+          !this.isFresherTokenAvailable(
+            session.token,
+            snapshots,
+            nowEpochSeconds,
+          )
+        ) {
+          console.log(
+            `Token exhaustion handover: leaving ${this.displayName(session)} alive (token pool globally exhausted, no fresher token available)`,
+          );
+          leftAliveSessionNames.push(this.displayName(session));
+          continue;
+        }
 
-      if (input.enabled) {
+        const entry = nextEntries[stateKey];
+        if (entry === undefined) {
+          if (input.enabled) {
+            await this.sendHandover(session, input);
+          }
+          console.log(
+            `Token exhaustion handover: signaled ${this.displayName(session)} kind=${session.kind} reason=${verdict.reason} enabled=${input.enabled}`,
+          );
+          nextEntries[stateKey] = {
+            signaledAtEpoch: nowEpochSeconds,
+            pid: session.pid,
+          };
+          newlyHandoverSentSessionNames.push(this.displayName(session));
+          continue;
+        }
+
+        if (
+          nowEpochSeconds - entry.signaledAtEpoch <
+          input.gracePeriodSeconds
+        ) {
+          console.log(
+            `Token exhaustion handover: waiting for grace period for ${this.displayName(session)} remainingSeconds=${input.gracePeriodSeconds - (nowEpochSeconds - entry.signaledAtEpoch)}`,
+          );
+          continue;
+        }
+
+        const alive = hasTmux
+          ? session.sessionName !== null &&
+            liveSessionNames.has(session.sessionName)
+          : this.processSignalRepository.isProcessAlive(entry.pid);
+        if (!alive) {
+          if (input.enabled && this.needsRelaunch(session)) {
+            await this.relaunchBareNameLeader(session, relaunchedLeaderNames);
+          }
+          delete nextEntries[stateKey];
+          continue;
+        }
+
+        if (!input.enabled) {
+          console.log(
+            `Token exhaustion handover: would force-kill ${this.displayName(session)} kind=${session.kind} (dry-run, enabled=false)`,
+          );
+          delete nextEntries[stateKey];
+          continue;
+        }
+
         await this.forceKill(session, entry);
         if (this.needsRelaunch(session)) {
           await this.relaunchBareNameLeader(session, relaunchedLeaderNames);
         }
+        console.log(
+          `Token exhaustion handover: force-killed ${this.displayName(session)} kind=${session.kind}`,
+        );
+        if (hasTmux) {
+          killedSessionNames.push(this.displayName(session));
+        } else {
+          terminatedPids.push(entry.pid);
+        }
+        delete nextEntries[stateKey];
+      } catch (error) {
+        console.error(
+          `Token exhaustion handover: error processing ${this.displayName(session)}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
       }
-      console.log(
-        `Token exhaustion handover: force-killed ${this.displayName(session)} kind=${session.kind} enabled=${input.enabled}`,
-      );
-      if (hasTmux) {
-        killedSessionNames.push(this.displayName(session));
-      } else {
-        terminatedPids.push(entry.pid);
-      }
-      delete nextEntries[stateKey];
     }
 
     return {

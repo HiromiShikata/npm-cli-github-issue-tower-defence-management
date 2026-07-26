@@ -569,6 +569,68 @@ describe('TokenExhaustionHandoverUseCase', () => {
     });
   });
 
+  it('does not kill or claim a kill in dry-run mode after the grace period elapses', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      issueUrlLeaderSession(),
+    ]);
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, { fiveHourUtilization: 0.95 }),
+      snapshot(TOKEN_FRESH),
+    ]);
+    tmuxSessionRepository.listLiveSessionNames.mockResolvedValue([
+      ISSUE_URL_SESSION,
+    ]);
+
+    const result = await useCase.run(
+      defaultInput({
+        enabled: false,
+        state: {
+          entries: {
+            [ISSUE_URL_SESSION]: {
+              signaledAtEpoch:
+                nowEpochSeconds -
+                DEFAULT_TOKEN_EXHAUSTION_GRACE_PERIOD_SECONDS -
+                1,
+              pid: LEADER_PID,
+            },
+          },
+        },
+      }),
+    );
+
+    expect(tmuxSessionRepository.killSession).not.toHaveBeenCalled();
+    expect(processSignalRepository.killProcess).not.toHaveBeenCalled();
+    expect(result.killedSessionNames).toEqual([]);
+    expect(result.terminatedPids).toEqual([]);
+  });
+
+  it('preserves other sessions grace state when one session throws', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      issueUrlLeaderSession(),
+      bareNameLeaderSession(),
+    ]);
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, { fiveHourUtilization: 0.95 }),
+      snapshot(TOKEN_FRESH),
+    ]);
+    tmuxSessionRepository.sendKeys.mockImplementation(
+      async (sessionName: string) => {
+        if (sessionName === ISSUE_URL_SESSION) {
+          throw new Error('send-keys failed');
+        }
+      },
+    );
+
+    const result = await useCase.run(defaultInput());
+
+    expect(result.state.entries[ISSUE_URL_SESSION]).toBeUndefined();
+    expect(result.state.entries[BARE_NAME]).toEqual({
+      signaledAtEpoch: nowEpochSeconds,
+      pid: LEADER_PID,
+    });
+    expect(result.newlyHandoverSentSessionNames).toEqual([BARE_NAME]);
+  });
+
   it('uses a custom issue-URL leader message when provided', async () => {
     handoverSessionRepository.listHandoverSessions.mockReturnValue([
       issueUrlLeaderSession(),

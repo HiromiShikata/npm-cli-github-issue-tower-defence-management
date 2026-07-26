@@ -1,7 +1,10 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { FileHandoverStateRepository } from './FileHandoverStateRepository';
+import {
+  FileHandoverStateRepository,
+  defaultHandoverStateFilePath,
+} from './FileHandoverStateRepository';
 
 describe('FileHandoverStateRepository', () => {
   let directory: string;
@@ -71,5 +74,41 @@ describe('FileHandoverStateRepository', () => {
     expect(repository.load()).toEqual({
       entries: { valid: { signaledAtEpoch: 5, pid: 6 } },
     });
+  });
+});
+
+describe('defaultHandoverStateFilePath', () => {
+  const originalXdgCacheHome = process.env.XDG_CACHE_HOME;
+
+  afterEach(() => {
+    if (originalXdgCacheHome === undefined) {
+      delete process.env.XDG_CACHE_HOME;
+    } else {
+      process.env.XDG_CACHE_HOME = originalXdgCacheHome;
+    }
+  });
+
+  it('uses a TDPM-native filename distinct from the standalone monitor state file', () => {
+    process.env.XDG_CACHE_HOME = '/custom/cache';
+
+    expect(defaultHandoverStateFilePath()).toBe(
+      '/custom/cache/tdpm/token-exhaustion-handover-state-tdpm-native.json',
+    );
+    expect(defaultHandoverStateFilePath()).not.toBe(
+      '/custom/cache/tdpm/token-exhaustion-handover-state.json',
+    );
+  });
+
+  it('falls back to ~/.cache when XDG_CACHE_HOME is unset', () => {
+    delete process.env.XDG_CACHE_HOME;
+
+    expect(defaultHandoverStateFilePath()).toBe(
+      path.join(
+        os.homedir(),
+        '.cache',
+        'tdpm',
+        'token-exhaustion-handover-state-tdpm-native.json',
+      ),
+    );
   });
 });
