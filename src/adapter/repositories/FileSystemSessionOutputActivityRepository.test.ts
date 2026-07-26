@@ -124,7 +124,6 @@ describe('FileSystemSessionOutputActivityRepository', () => {
         lastOutputEpochSeconds: Math.floor(
           Date.parse('2026-06-27T01:00:00.000Z') / 1000,
         ),
-        hasInProgressToolCall: false,
       },
     ]);
   });
@@ -146,7 +145,6 @@ describe('FileSystemSessionOutputActivityRepository', () => {
         lastOutputEpochSeconds: Math.floor(
           Date.parse('2026-06-27T09:55:00.000Z') / 1000,
         ),
-        hasInProgressToolCall: false,
       },
     ]);
   });
@@ -168,7 +166,6 @@ describe('FileSystemSessionOutputActivityRepository', () => {
         lastOutputEpochSeconds: Math.floor(
           Date.parse('2026-06-27T10:00:00.000Z') / 1000,
         ),
-        hasInProgressToolCall: false,
       },
     ]);
   });
@@ -190,7 +187,6 @@ describe('FileSystemSessionOutputActivityRepository', () => {
         lastOutputEpochSeconds: Math.floor(
           Date.parse('2026-06-27T10:00:00.000Z') / 1000,
         ),
-        hasInProgressToolCall: false,
       },
     ]);
   });
@@ -214,7 +210,6 @@ describe('FileSystemSessionOutputActivityRepository', () => {
         lastOutputEpochSeconds: Math.floor(
           Date.parse('2026-06-27T10:05:00.000Z') / 1000,
         ),
-        hasInProgressToolCall: false,
       },
     ]);
   });
@@ -236,7 +231,6 @@ describe('FileSystemSessionOutputActivityRepository', () => {
         lastOutputEpochSeconds: Math.floor(
           Date.parse('2026-06-27T10:00:00.000Z') / 1000,
         ),
-        hasInProgressToolCall: false,
       },
     ]);
   });
@@ -260,7 +254,6 @@ describe('FileSystemSessionOutputActivityRepository', () => {
         lastOutputEpochSeconds: Math.floor(
           Date.parse('2026-06-27T10:00:00.000Z') / 1000,
         ),
-        hasInProgressToolCall: false,
       },
     ]);
   });
@@ -293,7 +286,7 @@ describe('FileSystemSessionOutputActivityRepository', () => {
     expect(result).toEqual([]);
   });
 
-  it('flags a session as waiting on a running tool when the last assistant tool_use has no matching tool_result', async () => {
+  it('reports the assistant tool_use timestamp as the last output even when no tool_result has arrived, without any in-progress flagging', async () => {
     const transcriptPath = writeTranscript('busy.jsonl', [
       assistantEntry('2026-06-27T09:00:00.000Z'),
       assistantEntryWithToolUse('2026-06-27T09:01:00.000Z', 'toolu_running'),
@@ -310,12 +303,11 @@ describe('FileSystemSessionOutputActivityRepository', () => {
         lastOutputEpochSeconds: Math.floor(
           Date.parse('2026-06-27T09:01:00.000Z') / 1000,
         ),
-        hasInProgressToolCall: true,
       },
     ]);
   });
 
-  it('does not flag a session once the matching tool_result for its last tool_use is appended', async () => {
+  it('reports the assistant tool_use timestamp as the last output when a later tool_result user entry follows it', async () => {
     const transcriptPath = writeTranscript('completed.jsonl', [
       assistantEntryWithToolUse('2026-06-27T09:01:00.000Z', 'toolu_done'),
       toolResultUserEntry('2026-06-27T09:05:00.000Z', 'toolu_done'),
@@ -332,7 +324,28 @@ describe('FileSystemSessionOutputActivityRepository', () => {
         lastOutputEpochSeconds: Math.floor(
           Date.parse('2026-06-27T09:01:00.000Z') / 1000,
         ),
-        hasInProgressToolCall: false,
+      },
+    ]);
+  });
+
+  it('reports the later assistant text timestamp when an orphaned tool_use is followed by a resumed assistant turn, carrying no in-progress state', async () => {
+    const transcriptPath = writeTranscript('orphaned.jsonl', [
+      assistantEntryWithToolUse('2026-06-27T09:00:00.000Z', 'toolu_orphaned'),
+      assistantEntry('2026-06-27T09:46:53.000Z'),
+      userEntry('2026-06-27T09:47:00.000Z'),
+    ]);
+    const repository = new FileSystemSessionOutputActivityRepository();
+
+    const result = await repository.listSessionOutputActivities(
+      new Map([['orphaned', transcriptPath]]),
+    );
+
+    expect(result).toEqual([
+      {
+        sessionName: 'orphaned',
+        lastOutputEpochSeconds: Math.floor(
+          Date.parse('2026-06-27T09:46:53.000Z') / 1000,
+        ),
       },
     ]);
   });
