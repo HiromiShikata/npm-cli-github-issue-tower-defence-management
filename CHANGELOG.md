@@ -1,3 +1,10 @@
+## [1.137.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.137.0...v1.137.1) (2026-07-26)
+
+
+### Bug Fixes
+
+* **intmux:** verify live issue state before relaunching In Tmux by human sessions ([#1224](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1224)) ([1426310](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/142631098628611c183daacbb2eda863ab1ab9e4))
+
 # [1.137.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.136.0...v1.137.0) (2026-07-26)
 
 

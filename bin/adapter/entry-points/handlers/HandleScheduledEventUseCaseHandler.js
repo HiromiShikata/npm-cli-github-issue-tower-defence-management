@@ -805,6 +805,7 @@ class HandleScheduledEventUseCaseHandler {
                         assigneeLogin: input.manager,
                         issues: result.issues,
                         localCommandRunner: nodeLocalCommandRunner,
+                        issueStateRepository: issueRepository,
                         now: inTmuxNow,
                     });
                 }

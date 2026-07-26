@@ -1,4 +1,5 @@
 import { Issue } from '../../entities/Issue';
+import { IssueRepository } from '../adapter-interfaces/IssueRepository';
 import { TmuxSessionRepository } from '../adapter-interfaces/TmuxSessionRepository';
 export type InTmuxByHumanSessionReconcileInput = {
     issues: Issue[];
@@ -12,7 +13,8 @@ export type InTmuxByHumanSessionReconcileResult = {
 export declare const toTmuxSessionName: (issueUrl: string) => string;
 export declare class InTmuxByHumanSessionReconcileUseCase {
     private readonly tmuxSessionRepository;
-    constructor(tmuxSessionRepository: TmuxSessionRepository);
+    private readonly issueStateRepository;
+    constructor(tmuxSessionRepository: TmuxSessionRepository, issueStateRepository: Pick<IssueRepository, 'getIssueOrPullRequestState'>);
     run: (input: InTmuxByHumanSessionReconcileInput) => Promise<InTmuxByHumanSessionReconcileResult>;
     private isInTmuxByHuman;
     private hasLiveSession;

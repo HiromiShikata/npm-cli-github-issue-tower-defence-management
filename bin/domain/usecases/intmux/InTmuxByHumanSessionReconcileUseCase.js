@@ -13,8 +13,9 @@ const WorkflowStatus_1 = require("../../entities/WorkflowStatus");
 const toTmuxSessionName = (issueUrl) => issueUrl.replace(/[.:]/g, '_');
 exports.toTmuxSessionName = toTmuxSessionName;
 class InTmuxByHumanSessionReconcileUseCase {
-    constructor(tmuxSessionRepository) {
+    constructor(tmuxSessionRepository, issueStateRepository) {
         this.tmuxSessionRepository = tmuxSessionRepository;
+        this.issueStateRepository = issueStateRepository;
         this.run = async (input) => {
             const { issues, assigneeLogin, launcherCommand, now } = input;
             const targetIssues = issues.filter((issue) => this.isInTmuxByHuman(issue, assigneeLogin, now));
@@ -26,6 +27,10 @@ class InTmuxByHumanSessionReconcileUseCase {
             const launchedIssueUrls = [];
             for (const issue of targetIssues) {
                 if (this.hasLiveSession(issue.url, liveSessionNames, processCommandLines)) {
+                    continue;
+                }
+                const liveState = await this.issueStateRepository.getIssueOrPullRequestState(issue.url);
+                if (liveState.state.toLowerCase() !== 'open') {
                     continue;
                 }
                 await this.tmuxSessionRepository.launchDetachedSession((0, exports.toTmuxSessionName)(issue.url), launcherCommand, issue.url);
