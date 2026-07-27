@@ -137,6 +137,9 @@ describe('RateLimitSnapshotRepository', () => {
 
     repository.listSnapshots();
 
-    expect(mockReadRateLimit).toHaveBeenCalledWith('tok-aaa', '/custom/cache/dir');
+    expect(mockReadRateLimit).toHaveBeenCalledWith(
+      'tok-aaa',
+      '/custom/cache/dir',
+    );
   });
 });

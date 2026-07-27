@@ -28,11 +28,14 @@ jest.mock('../../../adapter/repositories/FileHandoverStateRepository', () => ({
   defaultHandoverStateFilePath: () => '/default/state.json',
 }));
 
-jest.mock('../../../adapter/repositories/ProcClaudeHandoverSessionRepository', () => ({
-  ProcClaudeHandoverSessionRepository: jest.fn().mockImplementation(() => ({
-    listHandoverSessions: mockListHandoverSessions,
-  })),
-}));
+jest.mock(
+  '../../../adapter/repositories/ProcClaudeHandoverSessionRepository',
+  () => ({
+    ProcClaudeHandoverSessionRepository: jest.fn().mockImplementation(() => ({
+      listHandoverSessions: mockListHandoverSessions,
+    })),
+  }),
+);
 
 jest.mock('../../../adapter/repositories/NodeTmuxSessionRepository', () => ({
   NodeTmuxSessionRepository: jest.fn().mockImplementation(() => ({})),
@@ -123,7 +126,9 @@ describe('handleTokenExhaustionHandover', () => {
   });
 
   it('saves the returned state after the use case runs', async () => {
-    const returnedState = { entries: { 'session-a': { signaledAtEpoch: 1, pid: 2 } } };
+    const returnedState = {
+      entries: { 'session-a': { signaledAtEpoch: 1, pid: 2 } },
+    };
     mockUseCaseRun.mockResolvedValue({
       newlyHandoverSentSessionNames: [],
       killedSessionNames: [],
