@@ -10,6 +10,9 @@ describe('ChangeStatusByStoryColorUseCase', () => {
   const mockDateRepository = mock<DateRepository>();
   const mockIssueRepository = mock<IssueRepository>();
 
+  const manager = 'manager-user';
+  const nonManagerAssignee = 'human-owner';
+
   const mockStatus = mock<FieldOption>();
   mockStatus.id = 'status1';
   mockStatus.name = 'ToDo';
@@ -64,12 +67,14 @@ describe('ChangeStatusByStoryColorUseCase', () => {
     title: 'Issue 1',
     number: 789,
     status: 'Unread',
+    assignees: [],
   };
   const basicIssue2 = {
     ...mock<Issue>(),
     title: 'Issue 2',
     number: 101,
     status: 'In Progres',
+    assignees: [],
   };
 
   const basicStoryObject1: StoryObject = {
@@ -119,6 +124,7 @@ describe('ChangeStatusByStoryColorUseCase', () => {
         org: 'testOrg',
         repo: 'testRepo',
         storyObjectMap: basicStoryObjectMap,
+        manager,
       },
       expectedCalls: {
         createComment: [],
@@ -133,6 +139,7 @@ describe('ChangeStatusByStoryColorUseCase', () => {
         org: 'testOrg',
         repo: 'testRepo',
         storyObjectMap: basicStoryObjectMap,
+        manager,
       },
       expectedCalls: {
         createComment: [],
@@ -159,6 +166,7 @@ describe('ChangeStatusByStoryColorUseCase', () => {
           ],
           ['Story 2', basicStoryObject2],
         ]),
+        manager,
       },
       expectedCalls: {
         createComment: [
@@ -192,6 +200,7 @@ describe('ChangeStatusByStoryColorUseCase', () => {
           ],
           ['Story 2', basicStoryObject2],
         ]),
+        manager,
       },
       expectedCalls: {
         createComment: [
@@ -242,8 +251,187 @@ describe('ChangeStatusByStoryColorUseCase', () => {
           org: 'testOrg',
           repo: 'testRepo',
           storyObjectMap: basicStoryObjectMap,
+          manager,
         }),
       ).rejects.toThrow('First status is not found');
+    });
+  });
+
+  describe('first status assignment for an issue with no status', () => {
+    const activeStory = {
+      ...mock<StoryOption>(),
+      id: 'story1',
+      name: 'Story 1',
+      color: 'RED' as const,
+    };
+
+    const buildStoryObjectMap = (issue: Issue): StoryObjectMap =>
+      new Map([
+        [
+          'Story 1',
+          {
+            ...basicStoryObject1,
+            story: activeStory,
+            issues: [issue],
+          },
+        ],
+      ]);
+
+    const runInput = (issue: Issue) => ({
+      project: basicProject,
+      cacheUsed: false,
+      org: 'testOrg',
+      repo: 'testRepo',
+      storyObjectMap: buildStoryObjectMap(issue),
+      manager,
+    });
+
+    it('should set the first status on an issue with no status whose only assignee is the manager', async () => {
+      const managerAssignedIssueWithoutStatus: Issue = {
+        ...basicIssue1,
+        status: null,
+        assignees: [manager],
+      };
+
+      await useCase.run(runInput(managerAssignedIssueWithoutStatus));
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        basicProject,
+        managerAssignedIssueWithoutStatus,
+        'status1',
+      );
+      expect(mockIssueRepository.createComment).toHaveBeenCalledWith(
+        managerAssignedIssueWithoutStatus,
+        'This issue status is changed because the story is enabled.',
+      );
+    });
+
+    it('should not set the first status on an issue with no status that is assigned to someone other than the manager', async () => {
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      const humanAssignedIssueWithoutStatus: Issue = {
+        ...basicIssue1,
+        url: 'https://github.com/org/repo/issues/789',
+        status: null,
+        assignees: [nonManagerAssignee],
+      };
+
+      await useCase.run(runInput(humanAssignedIssueWithoutStatus));
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueRepository.createComment).not.toHaveBeenCalled();
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        `ChangeStatusByStoryColorUseCase: skipping the first status write because the issue has no status and is assigned to someone other than the manager. issueUrl: https://github.com/org/repo/issues/789 assignees: ${nonManagerAssignee}`,
+      );
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('should not set the first status on an issue with no status assigned to both the manager and another person', async () => {
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      const coAssignedIssueWithoutStatus: Issue = {
+        ...basicIssue1,
+        status: null,
+        assignees: [manager, nonManagerAssignee],
+      };
+
+      await useCase.run(runInput(coAssignedIssueWithoutStatus));
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueRepository.createComment).not.toHaveBeenCalled();
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('should set the first status on an issue with no status that has no assignee', async () => {
+      const unassignedIssueWithoutStatus: Issue = {
+        ...basicIssue1,
+        status: null,
+        assignees: [],
+      };
+
+      await useCase.run(runInput(unassignedIssueWithoutStatus));
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        basicProject,
+        unassignedIssueWithoutStatus,
+        'status1',
+      );
+      expect(mockIssueRepository.createComment).toHaveBeenCalledWith(
+        unassignedIssueWithoutStatus,
+        'This issue status is changed because the story is enabled.',
+      );
+    });
+  });
+
+  describe('icebox exit when the story is enabled', () => {
+    const activeStory = {
+      ...mock<StoryOption>(),
+      id: 'story1',
+      name: 'Story 1',
+      color: 'RED' as const,
+    };
+
+    const buildStoryObjectMap = (issue: Issue): StoryObjectMap =>
+      new Map([
+        [
+          'Story 1',
+          {
+            ...basicStoryObject1,
+            story: activeStory,
+            issues: [issue],
+          },
+        ],
+      ]);
+
+    const runInput = (issue: Issue) => ({
+      project: basicProject,
+      cacheUsed: false,
+      org: 'testOrg',
+      repo: 'testRepo',
+      storyObjectMap: buildStoryObjectMap(issue),
+      manager,
+    });
+
+    it('should move an Icebox issue that is assigned to someone other than the manager to the first status', async () => {
+      const assignedIceboxIssue: Issue = {
+        ...basicIssue1,
+        status: 'Icebox',
+        assignees: [nonManagerAssignee],
+      };
+
+      await useCase.run(runInput(assignedIceboxIssue));
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        basicProject,
+        assignedIceboxIssue,
+        'status1',
+      );
+      expect(mockIssueRepository.createComment).toHaveBeenCalledWith(
+        assignedIceboxIssue,
+        'This issue status is changed because the story is enabled.',
+      );
+    });
+
+    it('should move an Icebox issue that has no assignee to the first status', async () => {
+      const unassignedIceboxIssue: Issue = {
+        ...basicIssue1,
+        status: 'Icebox',
+        assignees: [],
+      };
+
+      await useCase.run(runInput(unassignedIceboxIssue));
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        basicProject,
+        unassignedIceboxIssue,
+        'status1',
+      );
+      expect(mockIssueRepository.createComment).toHaveBeenCalledWith(
+        unassignedIceboxIssue,
+        'This issue status is changed because the story is enabled.',
+      );
     });
   });
 });
