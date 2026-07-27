@@ -539,6 +539,7 @@ ${JSON.stringify(e)}
       org: input.org,
       repo: input.workingReport.repo,
       storyObjectMap: storyObjectMap,
+      manager: input.manager,
     });
     await this.createNewStoryByLabelUseCase.run({
       project,
