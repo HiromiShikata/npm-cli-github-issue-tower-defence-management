@@ -488,14 +488,56 @@ describe('ComposeDashboardUseCase', () => {
 });
 
 describe('formatSevenDayWindowAggregateLine', () => {
-  it('renders used and left percentages without a count when every token is included', () => {
+  const columnEnd = (line: string, field: string): number =>
+    codePointLength(line.slice(0, line.indexOf(field) + field.length));
+
+  it('renders only the remaining percentage, without a count when every token is included', () => {
     expect(
       formatSevenDayWindowAggregateLine({
         usedPercent: 63,
         includedTokenCount: 10,
         totalTokenCount: 10,
       }),
-    ).toBe('7d 63% used / 37% left');
+    ).toBe('7d                  37%');
+  });
+
+  it('aligns the remaining percentage under the seven day column of the token rows', () => {
+    const tokenRow = formatTokenRowLine(
+      tokenStatus({
+        name: 'dev4',
+        color: 'K',
+        fiveHourUtilizationPercent: 0,
+        fiveHourResetSeconds: 60,
+        sevenDayUtilizationPercent: 100,
+        sevenDayResetSeconds: 96060,
+      }),
+    );
+    const aggregateLine = formatSevenDayWindowAggregateLine({
+      usedPercent: 63.36,
+      includedTokenCount: 11,
+      totalTokenCount: 11,
+    });
+    expect(tokenRow).toBe('⚪dev4   0% 0d00h01 100% 1d02h41 0 0');
+    expect(aggregateLine).toBe('7d                  37%');
+    expect(columnEnd(aggregateLine ?? '', '37%')).toBe(
+      columnEnd(tokenRow, '100%'),
+    );
+  });
+
+  it('keeps the alignment when the remaining percentage needs fewer digits', () => {
+    const wide = formatSevenDayWindowAggregateLine({
+      usedPercent: 0,
+      includedTokenCount: 1,
+      totalTokenCount: 1,
+    });
+    const narrow = formatSevenDayWindowAggregateLine({
+      usedPercent: 95,
+      includedTokenCount: 1,
+      totalTokenCount: 1,
+    });
+    expect(wide).toBe('7d                 100%');
+    expect(narrow).toBe('7d                   5%');
+    expect(codePointLength(wide ?? '')).toBe(codePointLength(narrow ?? ''));
   });
 
   it('appends the included token count when some tokens have no value', () => {
@@ -505,24 +547,24 @@ describe('formatSevenDayWindowAggregateLine', () => {
         includedTokenCount: 9,
         totalTokenCount: 10,
       }),
-    ).toBe('7d 63% used / 37% left (9)');
+    ).toBe('7d                  37% (9)');
   });
 
-  it('rounds the fractional mean with half-to-even before rendering', () => {
+  it('rounds the remaining percentage with half-to-even before rendering', () => {
     expect(
       formatSevenDayWindowAggregateLine({
         usedPercent: 62.5,
         includedTokenCount: 2,
         totalTokenCount: 2,
       }),
-    ).toBe('7d 62% used / 38% left');
+    ).toBe('7d                  38%');
     expect(
       formatSevenDayWindowAggregateLine({
         usedPercent: 63.5,
         includedTokenCount: 2,
         totalTokenCount: 2,
       }),
-    ).toBe('7d 64% used / 36% left');
+    ).toBe('7d                  36%');
   });
 
   it('renders nothing when the aggregate is absent', () => {
@@ -531,11 +573,11 @@ describe('formatSevenDayWindowAggregateLine', () => {
 
   it('fits the width budget at the widest rendering', () => {
     const line = formatSevenDayWindowAggregateLine({
-      usedPercent: 100,
+      usedPercent: 0,
       includedTokenCount: 999,
       totalTokenCount: 1000,
     });
-    expect(line).toBe('7d 100% used / 0% left (999)');
+    expect(line).toBe('7d                 100% (999)');
     expect(codePointLength(line ?? '')).toBeLessThanOrEqual(
       PROJECT_ROW_WIDTH_BUDGET,
     );
@@ -576,7 +618,7 @@ describe('ComposeDashboardUseCase seven day window aggregate line', () => {
         }),
       ),
     );
-    const aggregateIndex = lines.indexOf('7d 63% used / 37% left');
+    const aggregateIndex = lines.indexOf('7d                  37%');
     expect(aggregateIndex).toBeGreaterThan(-1);
     expect(lines[aggregateIndex - 1]).toBe(
       formatProjectRowLine({
