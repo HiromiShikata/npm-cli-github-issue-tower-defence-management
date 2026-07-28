@@ -2,6 +2,8 @@ import {
   GenerateTokenStatusUseCase,
   TokenRateLimitDecision,
   TokenRateLimitSnapshot,
+  TokenStatus,
+  computeSevenDayWindowAggregate,
   judgeTokenColor,
 } from './GenerateTokenStatusUseCase';
 
@@ -205,5 +207,76 @@ describe('GenerateTokenStatusUseCase', () => {
     expect(result[0].fiveHourUtilizationPercent).toBe(0);
     expect(result[0].fiveHourResetSeconds).toBe(0);
     expect(result[0].color).toBe('G');
+  });
+});
+
+describe('computeSevenDayWindowAggregate', () => {
+  const tokenStatus = (
+    sevenDayUtilizationPercent: number | null,
+    name: string,
+  ): TokenStatus => ({
+    name,
+    fiveHourUtilizationPercent: null,
+    fiveHourResetSeconds: null,
+    sevenDayUtilizationPercent,
+    sevenDayResetSeconds: null,
+    color: 'G',
+    prep: 0,
+    hum: 0,
+  });
+
+  it('averages the seven day utilization of every token when all values are present', () => {
+    expect(
+      computeSevenDayWindowAggregate([
+        tokenStatus(60, 'alice'),
+        tokenStatus(64, 'bob'),
+        tokenStatus(65, 'carol'),
+      ]),
+    ).toEqual({
+      usedPercent: 63,
+      includedTokenCount: 3,
+      totalTokenCount: 3,
+    });
+  });
+
+  it('excludes tokens without a value from both numerator and denominator', () => {
+    expect(
+      computeSevenDayWindowAggregate([
+        tokenStatus(80, 'alice'),
+        tokenStatus(null, 'bob'),
+        tokenStatus(40, 'carol'),
+        tokenStatus(null, 'dave'),
+      ]),
+    ).toEqual({
+      usedPercent: 60,
+      includedTokenCount: 2,
+      totalTokenCount: 4,
+    });
+  });
+
+  it('keeps the fractional mean so the presentation layer decides the rounding', () => {
+    expect(
+      computeSevenDayWindowAggregate([
+        tokenStatus(63, 'alice'),
+        tokenStatus(64, 'bob'),
+      ]),
+    ).toEqual({
+      usedPercent: 63.5,
+      includedTokenCount: 2,
+      totalTokenCount: 2,
+    });
+  });
+
+  it('returns null when no token has a seven day utilization value', () => {
+    expect(
+      computeSevenDayWindowAggregate([
+        tokenStatus(null, 'alice'),
+        tokenStatus(null, 'bob'),
+      ]),
+    ).toBeNull();
+  });
+
+  it('returns null when there is no token at all', () => {
+    expect(computeSevenDayWindowAggregate([])).toBeNull();
   });
 });

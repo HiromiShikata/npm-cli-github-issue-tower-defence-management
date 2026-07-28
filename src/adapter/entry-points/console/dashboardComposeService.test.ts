@@ -233,6 +233,88 @@ describe('buildComposeDashboardInput', () => {
     }
   });
 
+  it('reads the seven day window aggregate from token-status.json', () => {
+    const dataDir = makeDataDir();
+    try {
+      fs.writeFileSync(
+        path.join(dataDir, 'token-status.json'),
+        JSON.stringify({
+          tokens: [],
+          sevenDayWindowAggregate: {
+            usedPercent: 63.5,
+            includedTokenCount: 9,
+            totalTokenCount: 10,
+          },
+          capturedAt: 'x',
+        }),
+      );
+      const input = buildComposeDashboardInput({
+        dashboardDataDir: dataDir,
+        projectNames: [],
+      });
+      expect(input.sevenDayWindowAggregate).toEqual({
+        usedPercent: 63.5,
+        includedTokenCount: 9,
+        totalTokenCount: 10,
+      });
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  });
+
+  it('reads a token-status.json written without the seven day window aggregate', () => {
+    const dataDir = makeDataDir();
+    try {
+      fs.writeFileSync(
+        path.join(dataDir, 'token-status.json'),
+        JSON.stringify({
+          tokens: [
+            {
+              name: 'alice',
+              fiveHourUtilizationPercent: 10,
+              fiveHourResetSeconds: 3600,
+              sevenDayUtilizationPercent: 12,
+              sevenDayResetSeconds: 432000,
+              color: 'G',
+              prep: 2,
+              hum: 1,
+            },
+          ],
+          capturedAt: 'x',
+        }),
+      );
+      const input = buildComposeDashboardInput({
+        dashboardDataDir: dataDir,
+        projectNames: [],
+      });
+      expect(input.sevenDayWindowAggregate).toBeNull();
+      expect(input.tokens).toHaveLength(1);
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  });
+
+  it('ignores a seven day window aggregate with a missing field', () => {
+    const dataDir = makeDataDir();
+    try {
+      fs.writeFileSync(
+        path.join(dataDir, 'token-status.json'),
+        JSON.stringify({
+          tokens: [],
+          sevenDayWindowAggregate: { usedPercent: 63 },
+          capturedAt: 'x',
+        }),
+      );
+      const input = buildComposeDashboardInput({
+        dashboardDataDir: dataDir,
+        projectNames: [],
+      });
+      expect(input.sevenDayWindowAggregate).toBeNull();
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  });
+
   it('defaults an unknown token color to Y and null windows to null', () => {
     const dataDir = makeDataDir();
     try {

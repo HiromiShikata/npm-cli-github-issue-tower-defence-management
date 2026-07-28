@@ -4,9 +4,11 @@ import type { Issue } from '../../../domain/entities/Issue';
 import { IN_TMUX_STATUS_NAME } from '../../../domain/entities/WorkflowStatus';
 import {
   GenerateTokenStatusUseCase,
+  SevenDayWindowAggregate,
   TokenRateLimitSnapshot,
   TokenStatus,
   TokenStatusInput,
+  computeSevenDayWindowAggregate,
 } from '../../../domain/usecases/dashboard/GenerateTokenStatusUseCase';
 import { InTmuxByHumanSessionTokenCountUseCase } from '../../../domain/usecases/InTmuxByHumanSessionTokenCountUseCase';
 import { OauthTokenCandidate } from '../../../domain/usecases/OauthTokenSelectUseCase';
@@ -35,6 +37,7 @@ export type TokenStatusWriterParams = {
 
 export type TokenStatusFile = {
   tokens: TokenStatus[];
+  sevenDayWindowAggregate: SevenDayWindowAggregate | null;
   capturedAt: string;
 };
 
@@ -247,6 +250,7 @@ export const writeTokenStatus = (params: TokenStatusWriterParams): void => {
 
   const file: TokenStatusFile = {
     tokens,
+    sevenDayWindowAggregate: computeSevenDayWindowAggregate(tokens),
     capturedAt: now.toISOString(),
   };
 

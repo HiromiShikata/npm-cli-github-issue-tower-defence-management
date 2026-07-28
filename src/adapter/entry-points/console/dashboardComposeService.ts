@@ -10,6 +10,7 @@ import {
 import { toDashboardDisplayLabel } from '../../../domain/usecases/dashboard/DashboardProjectCode';
 import { DashboardRow } from '../../../domain/usecases/dashboard/GenerateDashboardRowUseCase';
 import {
+  SevenDayWindowAggregate,
   TokenStatus,
   TokenStatusColor,
 } from '../../../domain/usecases/dashboard/GenerateTokenStatusUseCase';
@@ -163,10 +164,36 @@ const parseTokenStatus = (value: unknown): TokenStatus | null => {
   };
 };
 
-const readTokenStatuses = (dashboardDataDir: string): TokenStatus[] => {
+const parseSevenDayWindowAggregate = (
+  value: unknown,
+): SevenDayWindowAggregate | null => {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const usedPercent = asFiniteNumber(value.usedPercent);
+  const includedTokenCount = asFiniteNumber(value.includedTokenCount);
+  const totalTokenCount = asFiniteNumber(value.totalTokenCount);
+  if (
+    usedPercent === null ||
+    includedTokenCount === null ||
+    totalTokenCount === null
+  ) {
+    return null;
+  }
+  return { usedPercent, includedTokenCount, totalTokenCount };
+};
+
+type TokenStatusFileContent = {
+  tokens: TokenStatus[];
+  sevenDayWindowAggregate: SevenDayWindowAggregate | null;
+};
+
+const readTokenStatusFile = (
+  dashboardDataDir: string,
+): TokenStatusFileContent => {
   const value = readJsonFile(path.join(dashboardDataDir, 'token-status.json'));
   if (!isRecord(value) || !Array.isArray(value.tokens)) {
-    return [];
+    return { tokens: [], sevenDayWindowAggregate: null };
   }
   const tokens: TokenStatus[] = [];
   for (const entry of value.tokens) {
@@ -175,7 +202,12 @@ const readTokenStatuses = (dashboardDataDir: string): TokenStatus[] => {
       tokens.push(token);
     }
   }
-  return tokens;
+  return {
+    tokens,
+    sevenDayWindowAggregate: parseSevenDayWindowAggregate(
+      value.sevenDayWindowAggregate,
+    ),
+  };
 };
 
 export const buildComposeDashboardInput = (
@@ -187,10 +219,12 @@ export const buildComposeDashboardInput = (
       row: readProjectRow(options.dashboardDataDir, projectName),
     }),
   );
+  const tokenStatusFile = readTokenStatusFile(options.dashboardDataDir);
   return {
     projects,
     machineStatus: readMachineStatus(options.dashboardDataDir),
-    tokens: readTokenStatuses(options.dashboardDataDir),
+    tokens: tokenStatusFile.tokens,
+    sevenDayWindowAggregate: tokenStatusFile.sevenDayWindowAggregate,
   };
 };
 

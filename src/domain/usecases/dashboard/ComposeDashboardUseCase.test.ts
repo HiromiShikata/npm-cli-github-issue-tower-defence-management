@@ -6,6 +6,7 @@ import {
   formatProjectHeaderLine,
   formatProjectRowLine,
   formatResetCountdown,
+  formatSevenDayWindowAggregateLine,
   formatTokenRowLine,
   roundHalfToEven,
 } from './ComposeDashboardUseCase';
@@ -483,5 +484,126 @@ describe('ComposeDashboardUseCase', () => {
         PROJECT_ROW_WIDTH_BUDGET,
       );
     }
+  });
+});
+
+describe('formatSevenDayWindowAggregateLine', () => {
+  it('renders used and left percentages without a count when every token is included', () => {
+    expect(
+      formatSevenDayWindowAggregateLine({
+        usedPercent: 63,
+        includedTokenCount: 10,
+        totalTokenCount: 10,
+      }),
+    ).toBe('7d 63% used / 37% left');
+  });
+
+  it('appends the included token count when some tokens have no value', () => {
+    expect(
+      formatSevenDayWindowAggregateLine({
+        usedPercent: 63,
+        includedTokenCount: 9,
+        totalTokenCount: 10,
+      }),
+    ).toBe('7d 63% used / 37% left (9)');
+  });
+
+  it('rounds the fractional mean with half-to-even before rendering', () => {
+    expect(
+      formatSevenDayWindowAggregateLine({
+        usedPercent: 62.5,
+        includedTokenCount: 2,
+        totalTokenCount: 2,
+      }),
+    ).toBe('7d 62% used / 38% left');
+    expect(
+      formatSevenDayWindowAggregateLine({
+        usedPercent: 63.5,
+        includedTokenCount: 2,
+        totalTokenCount: 2,
+      }),
+    ).toBe('7d 64% used / 36% left');
+  });
+
+  it('renders nothing when the aggregate is absent', () => {
+    expect(formatSevenDayWindowAggregateLine(null)).toBeNull();
+  });
+
+  it('fits the width budget at the widest rendering', () => {
+    const line = formatSevenDayWindowAggregateLine({
+      usedPercent: 100,
+      includedTokenCount: 999,
+      totalTokenCount: 1000,
+    });
+    expect(line).toBe('7d 100% used / 0% left (999)');
+    expect(codePointLength(line ?? '')).toBeLessThanOrEqual(
+      PROJECT_ROW_WIDTH_BUDGET,
+    );
+  });
+});
+
+describe('ComposeDashboardUseCase seven day window aggregate line', () => {
+  const aggregateInput = (
+    sevenDayWindowAggregate: ComposeDashboardInput['sevenDayWindowAggregate'],
+  ): ComposeDashboardInput => ({
+    machineStatus: null,
+    projects: [{ code: 'um', row: projectRow({ unread: 1 }) }],
+    tokens: [
+      tokenStatus({ name: 'alice', sevenDayUtilizationPercent: 60 }),
+      tokenStatus({ name: 'bob', sevenDayUtilizationPercent: 66 }),
+    ],
+    sevenDayWindowAggregate,
+  });
+
+  const unwrappedLines = (output: string): string[] =>
+    output
+      .split('\n')
+      .filter((line) => line.length > 0)
+      .map((line) =>
+        line
+          .replace(/^<tt>/, '')
+          .replace(/<\/tt><br>$/, '')
+          .replace(/&nbsp;/g, ' '),
+      );
+
+  it('places the aggregate line immediately above the token rows', () => {
+    const lines = unwrappedLines(
+      new ComposeDashboardUseCase().run(
+        aggregateInput({
+          usedPercent: 63,
+          includedTokenCount: 2,
+          totalTokenCount: 2,
+        }),
+      ),
+    );
+    const aggregateIndex = lines.indexOf('7d 63% used / 37% left');
+    expect(aggregateIndex).toBeGreaterThan(-1);
+    expect(lines[aggregateIndex - 1]).toBe(
+      formatProjectRowLine({
+        code: 'um',
+        row: projectRow({ unread: 1 }),
+      }),
+    );
+    expect(lines[aggregateIndex + 1]).toContain('alice');
+  });
+
+  it('keeps the blank separator line when the aggregate is absent', () => {
+    const lines = unwrappedLines(
+      new ComposeDashboardUseCase().run(aggregateInput(null)),
+    );
+    expect(lines.some((line) => line.startsWith('7d '))).toBe(false);
+    expect(lines).toContain('');
+  });
+
+  it('keeps the blank separator line when the aggregate field is missing entirely', () => {
+    const lines = unwrappedLines(
+      new ComposeDashboardUseCase().run({
+        machineStatus: null,
+        projects: [],
+        tokens: [tokenStatus({ name: 'alice' })],
+      }),
+    );
+    expect(lines.some((line) => line.startsWith('7d '))).toBe(false);
+    expect(lines).toContain('');
   });
 });
