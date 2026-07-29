@@ -210,7 +210,7 @@ export class NotifySilentLiveSessionsUseCase {
       candidates.flatMap(notifiedSectionKeysOf),
     );
     const previouslyNotifiedSectionKeys =
-      await this.notifiedStateRepository.loadRecentNotifiedSessionNames({
+      await this.notifiedStateRepository.loadRecentNotifiedSectionKeys({
         now: params.now,
         recencyWindowSeconds: params.candidateDebounceRecencyWindowSeconds,
       });
@@ -264,8 +264,8 @@ export class NotifySilentLiveSessionsUseCase {
         ...notifiedThisCycleSectionKeys,
       ]),
     );
-    await this.notifiedStateRepository.saveNotifiedSessionNames({
-      sessionNames: notifiedSectionKeysToPersist,
+    await this.notifiedStateRepository.saveNotifiedSectionKeys({
+      sectionKeys: notifiedSectionKeysToPersist,
       now: params.now,
     });
   };

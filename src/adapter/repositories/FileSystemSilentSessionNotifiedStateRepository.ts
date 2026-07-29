@@ -4,7 +4,7 @@ import * as path from 'path';
 import { SilentSessionNotifiedStateRepository } from '../../domain/usecases/adapter-interfaces/SilentSessionNotifiedStateRepository';
 
 type StoredNotifiedEntry = {
-  sessionName: string;
+  sectionKey: string;
   recordedEpochSeconds: number;
 };
 
@@ -16,48 +16,40 @@ const defaultStateFilePath = (): string => {
   return path.join(base, 'tdpm', 'silent-session-notified.json');
 };
 
-// Persists the fire-once latch: the set of session names that have already
-// received the current silent-episode reminder. The use case re-writes the
-// full latch each cycle with the current timestamp, keeping a session latched
-// for as long as it stays a reminder candidate (a continuous silent episode
-// produces exactly one reminder), and prunes a session the moment it stops
-// being a candidate so a later re-qualification fires again. The save
-// intentionally OVERWRITES rather than merges: the use case supplies the
-// complete latch to persist, so a pruned session must not linger.
 export class FileSystemSilentSessionNotifiedStateRepository implements SilentSessionNotifiedStateRepository {
   constructor(
     private readonly stateFilePath: string = defaultStateFilePath(),
   ) {}
 
-  loadRecentNotifiedSessionNames = async (params: {
+  loadRecentNotifiedSectionKeys = async (params: {
     now: Date;
     recencyWindowSeconds: number;
   }): Promise<Set<string>> => {
     const nowEpochSeconds = Math.floor(params.now.getTime() / 1000);
     const oldestAllowedEpochSeconds =
       nowEpochSeconds - params.recencyWindowSeconds;
-    const recentSessionNames = new Set<string>();
+    const recentSectionKeys = new Set<string>();
     for (const entry of this.readNotifiedEntries()) {
       if (entry.recordedEpochSeconds >= oldestAllowedEpochSeconds) {
-        recentSessionNames.add(entry.sessionName);
+        recentSectionKeys.add(entry.sectionKey);
       }
     }
-    return recentSessionNames;
+    return recentSectionKeys;
   };
 
-  saveNotifiedSessionNames = async (params: {
-    sessionNames: string[];
+  saveNotifiedSectionKeys = async (params: {
+    sectionKeys: string[];
     now: Date;
   }): Promise<void> => {
     const recordedEpochSeconds = Math.floor(params.now.getTime() / 1000);
-    const notifiedBySessionName = new Map<string, StoredNotifiedEntry>();
-    for (const sessionName of params.sessionNames) {
-      notifiedBySessionName.set(sessionName, {
-        sessionName,
+    const notifiedBySectionKey = new Map<string, StoredNotifiedEntry>();
+    for (const sectionKey of params.sectionKeys) {
+      notifiedBySectionKey.set(sectionKey, {
+        sectionKey,
         recordedEpochSeconds,
       });
     }
-    this.writeState(Array.from(notifiedBySessionName.values()));
+    this.writeState(Array.from(notifiedBySectionKey.values()));
   };
 
   private readNotifiedEntries = (): StoredNotifiedEntry[] => {
@@ -85,14 +77,14 @@ export class FileSystemSilentSessionNotifiedStateRepository implements SilentSes
       if (!isRecord(storedEntry)) {
         continue;
       }
-      const sessionName = storedEntry.sessionName;
+      const sectionKey = storedEntry.sectionKey;
       const recordedEpochSeconds = storedEntry.recordedEpochSeconds;
       if (
-        typeof sessionName === 'string' &&
+        typeof sectionKey === 'string' &&
         typeof recordedEpochSeconds === 'number' &&
         Number.isFinite(recordedEpochSeconds)
       ) {
-        entries.push({ sessionName, recordedEpochSeconds });
+        entries.push({ sectionKey, recordedEpochSeconds });
       }
     }
     return entries;

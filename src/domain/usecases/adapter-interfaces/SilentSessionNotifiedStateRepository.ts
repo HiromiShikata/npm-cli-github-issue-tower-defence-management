@@ -1,10 +1,10 @@
 export interface SilentSessionNotifiedStateRepository {
-  loadRecentNotifiedSessionNames: (params: {
+  loadRecentNotifiedSectionKeys: (params: {
     now: Date;
     recencyWindowSeconds: number;
   }) => Promise<Set<string>>;
-  saveNotifiedSessionNames: (params: {
-    sessionNames: string[];
+  saveNotifiedSectionKeys: (params: {
+    sectionKeys: string[];
     now: Date;
   }) => Promise<void>;
 }
