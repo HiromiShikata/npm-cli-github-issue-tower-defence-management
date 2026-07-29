@@ -59,6 +59,7 @@ describe('ProcessListSessionSubAgentActivityRepository', () => {
         silentSeconds: 180,
         runningSeconds: 1200,
         waitingOnExternalProcess: false,
+        finishedResultUnconsumed: false,
       },
     ]);
   });
@@ -88,6 +89,7 @@ describe('ProcessListSessionSubAgentActivityRepository', () => {
         silentSeconds: 0,
         runningSeconds: 30,
         waitingOnExternalProcess: false,
+        finishedResultUnconsumed: false,
       },
     ]);
   });

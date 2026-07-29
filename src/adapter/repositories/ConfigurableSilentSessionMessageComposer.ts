@@ -99,6 +99,13 @@ export class ConfigurableSilentSessionMessageComposer implements SilentSessionMe
     return withReminderSentinel(sections.join('\n\n'));
   };
 
+  composeSubAgentUnconsumedResultSection = (
+    unconsumedResultSubAgents: SubAgentActivity[],
+  ): string =>
+    this.fallback.composeSubAgentUnconsumedResultSection(
+      unconsumedResultSubAgents,
+    );
+
   private composeIdleSection = (
     idleSubAgents: SubAgentActivity[],
     header: string | null,

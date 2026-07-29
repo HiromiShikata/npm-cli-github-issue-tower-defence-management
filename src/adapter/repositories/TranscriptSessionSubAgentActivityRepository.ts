@@ -344,6 +344,7 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
         filePath,
         fileName,
         nowEpochSeconds,
+        liveSubAgentIds !== null,
         loadNormalizedProcessCommandLines,
       );
       if (activity !== null) {
@@ -357,6 +358,7 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
     filePath: string,
     fileName: string,
     nowEpochSeconds: number,
+    listedInRunningSubAgentsRecord: boolean,
     loadNormalizedProcessCommandLines: () => Promise<string[]>,
   ): Promise<SubAgentActivity | null> => {
     let content: string;
@@ -368,7 +370,15 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
       return null;
     }
     const transcript = parseTranscript(content);
-    if (transcript.lastEntryIndicatesCompletion) {
+    // A finished sub-agent whose id the leader has already removed from the
+    // running-subagents record — or whose record cannot be read at all — is a
+    // consumed result and stays out of the snapshot. A finished sub-agent the
+    // record still lists is the unconsumed case: the leader has not acted on
+    // its result, so it is reported with its completion state and its age.
+    if (
+      transcript.lastEntryIndicatesCompletion &&
+      !listedInRunningSubAgentsRecord
+    ) {
       return null;
     }
     const silentSeconds = clampToZero(
@@ -388,6 +398,7 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
           transcript.pendingToolCommands,
           loadNormalizedProcessCommandLines,
         )),
+      finishedResultUnconsumed: transcript.lastEntryIndicatesCompletion,
     };
   };
 

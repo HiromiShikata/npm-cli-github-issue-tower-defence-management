@@ -10,6 +10,9 @@ const createFallback = (): Mocked<SilentSessionMessageComposer> => ({
     .fn()
     .mockReturnValue('FALLBACK_STALE_OWNER_CALL'),
   composeSubAgentSection: jest.fn().mockReturnValue('FALLBACK_SUB'),
+  composeSubAgentUnconsumedResultSection: jest
+    .fn()
+    .mockReturnValue('FALLBACK_UNCONSUMED_RESULT'),
 });
 
 const noTemplates = {
@@ -142,6 +145,7 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
       silentSeconds: 360,
       runningSeconds: 1200,
       waitingOnExternalProcess: false,
+      finishedResultUnconsumed: false,
     };
     expect(
       composer.composeSubAgentSection({
@@ -172,6 +176,7 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
           silentSeconds: 360,
           runningSeconds: 60,
           waitingOnExternalProcess: false,
+          finishedResultUnconsumed: false,
         },
       ],
       longRunningSubAgents: [],
@@ -202,6 +207,7 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
           silentSeconds: 30,
           runningSeconds: 1200,
           waitingOnExternalProcess: false,
+          finishedResultUnconsumed: false,
         },
       ],
     });
@@ -228,6 +234,7 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
       silentSeconds: 360,
       runningSeconds: 1200,
       waitingOnExternalProcess: false,
+      finishedResultUnconsumed: false,
     };
     const section = composer.composeSubAgentSection({
       idleSubAgents: [subAgent],
@@ -257,6 +264,7 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
       silentSeconds: 360,
       runningSeconds: 60,
       waitingOnExternalProcess: false,
+      finishedResultUnconsumed: false,
     };
     const section = composer.composeSubAgentSection({
       idleSubAgents: [idleSubAgent],
@@ -267,6 +275,33 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
       idleSubAgents: [idleSubAgent],
       longRunningSubAgents: [],
     });
+  });
+
+  it('delegates the unconsumed-result section to the fallback composer because no template governs it', () => {
+    const fallback = createFallback();
+    const composer = new ConfigurableSilentSessionMessageComposer(
+      {
+        ...noTemplates,
+        subAgentIdleMessageHeader: 'CUSTOM_IDLE_HEADER',
+      },
+      fallback,
+    );
+    const unconsumedResultSubAgent = {
+      label: 'agent-aaabbbbcccc30001',
+      silentSeconds: 5220,
+      runningSeconds: 5400,
+      waitingOnExternalProcess: false,
+      finishedResultUnconsumed: true,
+    };
+
+    const section = composer.composeSubAgentUnconsumedResultSection([
+      unconsumedResultSubAgent,
+    ]);
+
+    expect(section).toBe('FALLBACK_UNCONSUMED_RESULT');
+    expect(
+      fallback.composeSubAgentUnconsumedResultSection,
+    ).toHaveBeenCalledWith([unconsumedResultSubAgent]);
   });
 
   it('does not double-prepend the sentinel when the template already carries it', () => {
