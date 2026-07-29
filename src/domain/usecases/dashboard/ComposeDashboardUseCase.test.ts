@@ -2,6 +2,9 @@ import {
   ComposeDashboardInput,
   ComposeDashboardUseCase,
   PROJECT_ROW_WIDTH_BUDGET,
+  SEVEN_DAY_UTILIZATION_COLUMN_START,
+  STATUS_DOT_DISPLAY_WIDTH,
+  TOKEN_UTILIZATION_WIDTH,
   formatMachineStatusLines,
   formatProjectHeaderLine,
   formatProjectRowLine,
@@ -11,7 +14,7 @@ import {
   roundHalfToEven,
 } from './ComposeDashboardUseCase';
 import { DashboardRow } from './GenerateDashboardRowUseCase';
-import { TokenStatus } from './GenerateTokenStatusUseCase';
+import { TokenStatus, TokenStatusColor } from './GenerateTokenStatusUseCase';
 
 const codePointLength = (value: string): number => [...value].length;
 
@@ -487,56 +490,63 @@ describe('ComposeDashboardUseCase', () => {
   });
 });
 
-describe('formatSevenDayWindowAggregateLine', () => {
-  const columnEnd = (line: string, field: string): number =>
-    codePointLength(line.slice(0, line.indexOf(field) + field.length));
+const inDisplayColumns = (tokenRowLine: string): string =>
+  ' '.repeat(STATUS_DOT_DISPLAY_WIDTH) + [...tokenRowLine].slice(1).join('');
 
-  it('renders only the remaining percentage, without a count when every token is included', () => {
+const sevenDayUtilizationColumn = (line: string): number =>
+  [...line].lastIndexOf('%') + 1 - TOKEN_UTILIZATION_WIDTH;
+
+describe('formatSevenDayWindowAggregateLine', () => {
+  it('renders only the used percentage, with no label and no count when every token is included', () => {
     expect(
       formatSevenDayWindowAggregateLine({
         usedPercent: 63,
         includedTokenCount: 10,
         totalTokenCount: 10,
       }),
-    ).toBe('7d                  37%');
+    ).toBe(' '.repeat(21) + '63%');
   });
 
-  it('aligns the remaining percentage under the seven day column of the token rows', () => {
-    const tokenRow = formatTokenRowLine(
-      tokenStatus({
-        name: 'dev4',
-        color: 'K',
-        fiveHourUtilizationPercent: 0,
-        fiveHourResetSeconds: 60,
-        sevenDayUtilizationPercent: 100,
-        sevenDayResetSeconds: 96060,
-      }),
-    );
+  it('places the used percentage in the same display column as the seven day utilization of every token row', () => {
     const aggregateLine = formatSevenDayWindowAggregateLine({
       usedPercent: 63.36,
       includedTokenCount: 11,
       totalTokenCount: 11,
     });
-    expect(tokenRow).toBe('⚪dev4   0% 0d00h01 100% 1d02h41 0 0');
-    expect(aggregateLine).toBe('7d                  37%');
-    expect(columnEnd(aggregateLine ?? '', '37%')).toBe(
-      columnEnd(tokenRow, '100%'),
+    expect(sevenDayUtilizationColumn(aggregateLine ?? '')).toBe(
+      SEVEN_DAY_UTILIZATION_COLUMN_START,
     );
+    const colors: TokenStatusColor[] = ['G', 'Y', 'K'];
+    for (const color of colors) {
+      const tokenRow = formatTokenRowLine(
+        tokenStatus({
+          name: 'dev4',
+          color,
+          fiveHourUtilizationPercent: 0,
+          fiveHourResetSeconds: 60,
+          sevenDayUtilizationPercent: 100,
+          sevenDayResetSeconds: 96060,
+        }),
+      );
+      expect(sevenDayUtilizationColumn(inDisplayColumns(tokenRow))).toBe(
+        SEVEN_DAY_UTILIZATION_COLUMN_START,
+      );
+    }
   });
 
-  it('keeps the alignment when the remaining percentage needs fewer digits', () => {
+  it('keeps the alignment when the used percentage needs fewer digits', () => {
     const wide = formatSevenDayWindowAggregateLine({
-      usedPercent: 0,
+      usedPercent: 100,
       includedTokenCount: 1,
       totalTokenCount: 1,
     });
     const narrow = formatSevenDayWindowAggregateLine({
-      usedPercent: 95,
+      usedPercent: 5,
       includedTokenCount: 1,
       totalTokenCount: 1,
     });
-    expect(wide).toBe('7d                 100%');
-    expect(narrow).toBe('7d                   5%');
+    expect(wide).toBe(' '.repeat(20) + '100%');
+    expect(narrow).toBe(' '.repeat(22) + '5%');
     expect(codePointLength(wide ?? '')).toBe(codePointLength(narrow ?? ''));
   });
 
@@ -547,24 +557,24 @@ describe('formatSevenDayWindowAggregateLine', () => {
         includedTokenCount: 9,
         totalTokenCount: 10,
       }),
-    ).toBe('7d                  37% (9)');
+    ).toBe(' '.repeat(21) + '63% (9)');
   });
 
-  it('rounds the remaining percentage with half-to-even before rendering', () => {
+  it('rounds the used percentage with half-to-even before rendering', () => {
     expect(
       formatSevenDayWindowAggregateLine({
         usedPercent: 62.5,
         includedTokenCount: 2,
         totalTokenCount: 2,
       }),
-    ).toBe('7d                  38%');
+    ).toBe(' '.repeat(21) + '62%');
     expect(
       formatSevenDayWindowAggregateLine({
         usedPercent: 63.5,
         includedTokenCount: 2,
         totalTokenCount: 2,
       }),
-    ).toBe('7d                  36%');
+    ).toBe(' '.repeat(21) + '64%');
   });
 
   it('renders nothing when the aggregate is absent', () => {
@@ -573,11 +583,11 @@ describe('formatSevenDayWindowAggregateLine', () => {
 
   it('fits the width budget at the widest rendering', () => {
     const line = formatSevenDayWindowAggregateLine({
-      usedPercent: 0,
+      usedPercent: 100,
       includedTokenCount: 999,
       totalTokenCount: 1000,
     });
-    expect(line).toBe('7d                 100% (999)');
+    expect(line).toBe(' '.repeat(20) + '100% (999)');
     expect(codePointLength(line ?? '')).toBeLessThanOrEqual(
       PROJECT_ROW_WIDTH_BUDGET,
     );
@@ -618,7 +628,7 @@ describe('ComposeDashboardUseCase seven day window aggregate line', () => {
         }),
       ),
     );
-    const aggregateIndex = lines.indexOf('7d                  37%');
+    const aggregateIndex = lines.indexOf(' '.repeat(21) + '63%');
     expect(aggregateIndex).toBeGreaterThan(-1);
     expect(lines[aggregateIndex - 1]).toBe(
       formatProjectRowLine({
@@ -629,11 +639,13 @@ describe('ComposeDashboardUseCase seven day window aggregate line', () => {
     expect(lines[aggregateIndex + 1]).toContain('alice');
   });
 
+  const AGGREGATE_LINE_SHAPE = /^ +\d+%( \(\d+\))?$/;
+
   it('keeps the blank separator line when the aggregate is absent', () => {
     const lines = unwrappedLines(
       new ComposeDashboardUseCase().run(aggregateInput(null)),
     );
-    expect(lines.some((line) => line.startsWith('7d '))).toBe(false);
+    expect(lines.some((line) => AGGREGATE_LINE_SHAPE.test(line))).toBe(false);
     expect(lines).toContain('');
   });
 
@@ -645,7 +657,7 @@ describe('ComposeDashboardUseCase seven day window aggregate line', () => {
         tokens: [tokenStatus({ name: 'alice' })],
       }),
     );
-    expect(lines.some((line) => line.startsWith('7d '))).toBe(false);
+    expect(lines.some((line) => AGGREGATE_LINE_SHAPE.test(line))).toBe(false);
     expect(lines).toContain('');
   });
 });

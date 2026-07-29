@@ -50,15 +50,17 @@ const PROJECT_COLUMNS: ProjectColumn[] = [
 
 const PROJECT_COLUMN_WIDTH = 3;
 
-const SEVERITY_BLANK = '  ';
+export const STATUS_DOT_DISPLAY_WIDTH = 2;
 
-const TOKEN_COLOR_DOT_WIDTH = 1;
+const SEVERITY_BLANK = ' '.repeat(STATUS_DOT_DISPLAY_WIDTH);
 
 const TOKEN_NAME_WIDTH = 4;
 
-const TOKEN_UTILIZATION_WIDTH = 4;
+export const TOKEN_UTILIZATION_WIDTH = 4;
 
 const TOKEN_RESET_WIDTH = 7;
+
+const TOKEN_SEGMENT_SEPARATOR = ' ';
 
 const TOKEN_COLOR_DOT: Record<TokenStatusColor, string> = {
   G: '🟢',
@@ -235,9 +237,17 @@ const sortTokens = (tokens: TokenStatus[]): TokenStatus[] =>
     })
     .map((entry) => entry.token);
 
-const joinTokenRowSegments = (segments: string[]): string => segments.join(' ');
+const joinTokenRowSegments = (segments: string[]): string =>
+  segments.join(TOKEN_SEGMENT_SEPARATOR);
 
-const SEVEN_DAY_WINDOW_AGGREGATE_LABEL = '7d';
+export const SEVEN_DAY_UTILIZATION_COLUMN_START =
+  STATUS_DOT_DISPLAY_WIDTH +
+  TOKEN_NAME_WIDTH +
+  TOKEN_SEGMENT_SEPARATOR.length +
+  TOKEN_UTILIZATION_WIDTH +
+  TOKEN_SEGMENT_SEPARATOR.length +
+  TOKEN_RESET_WIDTH +
+  TOKEN_SEGMENT_SEPARATOR.length;
 
 export const formatSevenDayWindowAggregateLine = (
   aggregate: SevenDayWindowAggregate | null,
@@ -245,22 +255,15 @@ export const formatSevenDayWindowAggregateLine = (
   if (aggregate === null) {
     return null;
   }
-  const leftPercent = roundHalfToEven(100 - aggregate.usedPercent);
+  const usedPercent = roundHalfToEven(aggregate.usedPercent);
   const includedCountSuffix =
     aggregate.includedTokenCount === aggregate.totalTokenCount
       ? ''
       : ` (${aggregate.includedTokenCount})`;
   return (
-    joinTokenRowSegments([
-      padEnd(
-        SEVEN_DAY_WINDOW_AGGREGATE_LABEL,
-        TOKEN_COLOR_DOT_WIDTH + TOKEN_NAME_WIDTH,
-        ' ',
-      ),
-      padEnd('', TOKEN_UTILIZATION_WIDTH, ' '),
-      padEnd('', TOKEN_RESET_WIDTH, ' '),
-      formatUtilization(leftPercent),
-    ]) + includedCountSuffix
+    padEnd('', SEVEN_DAY_UTILIZATION_COLUMN_START, ' ') +
+    formatUtilization(usedPercent) +
+    includedCountSuffix
   );
 };
 
