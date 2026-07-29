@@ -12,4 +12,7 @@ export interface SilentSessionMessageComposer {
     unansweredOwnerCallAgeSeconds: number,
   ) => string;
   composeSubAgentSection: (sections: SubAgentStallSections) => string;
+  composeSubAgentUnconsumedResultSection: (
+    unconsumedResultSubAgents: SubAgentActivity[],
+  ) => string;
 }

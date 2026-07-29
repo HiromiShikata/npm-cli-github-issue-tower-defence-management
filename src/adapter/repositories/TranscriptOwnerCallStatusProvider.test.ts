@@ -710,10 +710,10 @@ describe('TranscriptOwnerCallStatusProvider wired into NotifySilentLiveSessionsU
         saveCandidateSessionNames: jest.fn().mockResolvedValue(undefined),
       },
       {
-        loadRecentNotifiedSessionNames: jest
+        loadRecentNotifiedSectionKeys: jest
           .fn()
           .mockResolvedValue(new Set<string>()),
-        saveNotifiedSessionNames: jest.fn().mockResolvedValue(undefined),
+        saveNotifiedSectionKeys: jest.fn().mockResolvedValue(undefined),
       },
       {
         composeMainStalledSection: jest.fn().mockReturnValue('MAIN_STALLED'),
@@ -721,6 +721,9 @@ describe('TranscriptOwnerCallStatusProvider wired into NotifySilentLiveSessionsU
           .fn()
           .mockReturnValue('MAIN_STALLED_STALE'),
         composeSubAgentSection: jest.fn().mockReturnValue('SUBAGENT'),
+        composeSubAgentUnconsumedResultSection: jest
+          .fn()
+          .mockReturnValue('SUBAGENT_UNCONSUMED_RESULT'),
       },
       { sleep: jest.fn().mockResolvedValue(undefined) },
     );

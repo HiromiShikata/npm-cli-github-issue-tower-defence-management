@@ -344,6 +344,7 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
         filePath,
         fileName,
         nowEpochSeconds,
+        liveSubAgentIds !== null,
         loadNormalizedProcessCommandLines,
       );
       if (activity !== null) {
@@ -357,6 +358,7 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
     filePath: string,
     fileName: string,
     nowEpochSeconds: number,
+    listedInRunningSubAgentsRecord: boolean,
     loadNormalizedProcessCommandLines: () => Promise<string[]>,
   ): Promise<SubAgentActivity | null> => {
     let content: string;
@@ -368,7 +370,10 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
       return null;
     }
     const transcript = parseTranscript(content);
-    if (transcript.lastEntryIndicatesCompletion) {
+    if (
+      transcript.lastEntryIndicatesCompletion &&
+      !listedInRunningSubAgentsRecord
+    ) {
       return null;
     }
     const silentSeconds = clampToZero(
@@ -388,6 +393,7 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
           transcript.pendingToolCommands,
           loadNormalizedProcessCommandLines,
         )),
+      finishedResultUnconsumed: transcript.lastEntryIndicatesCompletion,
     };
   };
 
