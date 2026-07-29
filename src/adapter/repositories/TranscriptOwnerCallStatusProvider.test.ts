@@ -1,7 +1,10 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { TranscriptOwnerCallStatusProvider } from './TranscriptOwnerCallStatusProvider';
+import {
+  TranscriptOwnerCallStatusProvider,
+  ownerCallMarkerFamilyResolve,
+} from './TranscriptOwnerCallStatusProvider';
 import { SILENT_SESSION_REMINDER_SENTINEL } from '../../domain/usecases/silentSessionReminderSentinel';
 import {
   NotifySilentLiveSessionsUseCase,
@@ -131,6 +134,8 @@ describe('TranscriptOwnerCallStatusProvider', () => {
   });
 
   const sessionName = 'workbench';
+
+  const TERMINATORLESS_MARKER = 'OWNER-CALL';
 
   it('reports a session as waiting when the last owner call is newer than the last owner reply', async () => {
     const transcriptPath = writeTranscript('workbench.jsonl', [
@@ -543,18 +548,22 @@ describe('TranscriptOwnerCallStatusProvider', () => {
     expect(result.has(sessionName)).toBe(false);
   });
 
-  it('resolves a marker that does not end with the tag terminator to itself alone', async () => {
+  it('treats a marker that does not end with the tag terminator as an owner call marker in its own right', async () => {
     const transcriptPath = writeTranscript('workbench.jsonl', [
       {
         type: 'assistant',
         timestamp: '2026-06-27T10:05:00.000Z',
         message: {
           role: 'assistant',
-          content: [{ type: 'text', text: 'OWNER-CALL please decide' }],
+          content: [
+            { type: 'text', text: `${TERMINATORLESS_MARKER} please decide` },
+          ],
         },
       },
     ]);
-    const provider = new TranscriptOwnerCallStatusProvider('OWNER-CALL');
+    const provider = new TranscriptOwnerCallStatusProvider(
+      TERMINATORLESS_MARKER,
+    );
 
     const result =
       await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
@@ -564,27 +573,6 @@ describe('TranscriptOwnerCallStatusProvider', () => {
     expect(result.get(sessionName)).toBe(
       Math.floor(Date.parse('2026-06-27T10:05:00.000Z') / 1000),
     );
-  });
-
-  it('derives no candidate form for a marker that does not end with the tag terminator', async () => {
-    const transcriptPath = writeTranscript('workbench.jsonl', [
-      {
-        type: 'assistant',
-        timestamp: '2026-06-27T10:05:00.000Z',
-        message: {
-          role: 'assistant',
-          content: [{ type: 'text', text: 'OWNER-CAL-pending> please decide' }],
-        },
-      },
-    ]);
-    const provider = new TranscriptOwnerCallStatusProvider('OWNER-CALL');
-
-    const result =
-      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
-        new Map([[sessionName, transcriptPath]]),
-      );
-
-    expect(result.has(sessionName)).toBe(false);
   });
 
   it('uses the canonical call-to-user marker string', async () => {
@@ -606,6 +594,31 @@ describe('TranscriptOwnerCallStatusProvider', () => {
       );
 
     expect(result.has(sessionName)).toBe(true);
+  });
+});
+
+describe('ownerCallMarkerFamilyResolve', () => {
+  const TERMINATORLESS_MARKER = 'OWNER-CALL';
+  const CLOSED_TAG_MARKER = `<${TERMINATORLESS_MARKER}>`;
+
+  it('resolves a closed-tag marker to that tag and its candidate form', () => {
+    expect(ownerCallMarkerFamilyResolve(CLOSED_TAG_MARKER)).toEqual([
+      CLOSED_TAG_MARKER,
+      `<${TERMINATORLESS_MARKER}-pending>`,
+    ]);
+  });
+
+  it('resolves the deployed legacy owner-call tag to both tag families', () => {
+    expect(ownerCallMarkerFamilyResolve('<call-to-user>')).toEqual([
+      '<call-to-user>',
+      '<call-to-user-pending>',
+    ]);
+  });
+
+  it('resolves a marker that does not end with the tag terminator to that marker alone', () => {
+    expect(ownerCallMarkerFamilyResolve(TERMINATORLESS_MARKER)).toEqual([
+      TERMINATORLESS_MARKER,
+    ]);
   });
 });
 

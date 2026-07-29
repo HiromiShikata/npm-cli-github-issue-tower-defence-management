@@ -92,7 +92,7 @@ const OWNER_CALL_TAG_TERMINATOR = '>';
 const OWNER_CALL_CANDIDATE_TAG_INFIX = '-pending';
 const OWNER_CALL_CANDIDATE_TAG_SUFFIX = `${OWNER_CALL_CANDIDATE_TAG_INFIX}${OWNER_CALL_TAG_TERMINATOR}`;
 
-const ownerCallMarkerFamilyResolve = (marker: string): string[] =>
+export const ownerCallMarkerFamilyResolve = (marker: string): string[] =>
   marker.endsWith(OWNER_CALL_TAG_TERMINATOR)
     ? [
         marker,
