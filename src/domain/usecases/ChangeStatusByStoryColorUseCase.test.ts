@@ -246,4 +246,66 @@ describe('ChangeStatusByStoryColorUseCase', () => {
       ).rejects.toThrow('First status is not found');
     });
   });
+
+  describe('story-disabled assignee gating', () => {
+    const disabledStory = {
+      ...mock<StoryOption>(),
+      id: 'story1',
+      name: 'Story 1',
+      color: 'GRAY' as const,
+    };
+
+    const buildDisabledStoryObjectMap = (issue: Issue): StoryObjectMap =>
+      new Map([
+        [
+          'Story 1',
+          {
+            ...basicStoryObject1,
+            story: disabledStory,
+            issues: [issue],
+          },
+        ],
+      ]);
+
+    const runInput = (issue: Issue) => ({
+      project: basicProject,
+      cacheUsed: false,
+      org: 'testOrg',
+      repo: 'testRepo',
+      storyObjectMap: buildDisabledStoryObjectMap(issue),
+    });
+
+    it('should not force an assigned issue to Icebox when its story is disabled', async () => {
+      const assignedIssue: Issue = {
+        ...basicIssue1,
+        status: 'Unread',
+        assignees: ['assigned-user'],
+      };
+
+      await useCase.run(runInput(assignedIssue));
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('should still force an unassigned issue to Icebox when its story is disabled', async () => {
+      const unassignedIssue: Issue = {
+        ...basicIssue1,
+        status: 'Unread',
+        assignees: [],
+      };
+
+      await useCase.run(runInput(unassignedIssue));
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        basicProject,
+        unassignedIssue,
+        'status3',
+      );
+      expect(mockIssueRepository.createComment).toHaveBeenCalledWith(
+        unassignedIssue,
+        'This issue status is changed because the story is disabled.',
+      );
+    });
+  });
 });
