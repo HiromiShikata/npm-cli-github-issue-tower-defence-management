@@ -1,5 +1,9 @@
 import { DashboardRow } from './GenerateDashboardRowUseCase';
-import { TokenStatus, TokenStatusColor } from './GenerateTokenStatusUseCase';
+import {
+  SevenDayWindowAggregate,
+  TokenStatus,
+  TokenStatusColor,
+} from './GenerateTokenStatusUseCase';
 
 export const PROJECT_ROW_WIDTH_BUDGET = 32;
 
@@ -26,6 +30,7 @@ export type ComposeDashboardInput = {
   projects: ComposeDashboardProject[];
   machineStatus: ComposeDashboardMachineStatus | null;
   tokens: TokenStatus[];
+  sevenDayWindowAggregate?: SevenDayWindowAggregate | null;
 };
 
 type ProjectColumn = {
@@ -46,6 +51,14 @@ const PROJECT_COLUMNS: ProjectColumn[] = [
 const PROJECT_COLUMN_WIDTH = 3;
 
 const SEVERITY_BLANK = '  ';
+
+const TOKEN_COLOR_DOT_WIDTH = 1;
+
+const TOKEN_NAME_WIDTH = 4;
+
+const TOKEN_UTILIZATION_WIDTH = 4;
+
+const TOKEN_RESET_WIDTH = 7;
 
 const TOKEN_COLOR_DOT: Record<TokenStatusColor, string> = {
   G: '🟢',
@@ -196,7 +209,7 @@ export const formatProjectRowLine = (
 };
 
 const formatUtilization = (percent: number | null): string =>
-  padStart(percent === null ? '?' : `${percent}%`, 4);
+  padStart(percent === null ? '?' : `${percent}%`, TOKEN_UTILIZATION_WIDTH);
 
 const formatReset = (resetSeconds: number | null): string =>
   resetSeconds === null ? '?' : formatResetCountdown(resetSeconds);
@@ -222,9 +235,38 @@ const sortTokens = (tokens: TokenStatus[]): TokenStatus[] =>
     })
     .map((entry) => entry.token);
 
+const joinTokenRowSegments = (segments: string[]): string => segments.join(' ');
+
+const SEVEN_DAY_WINDOW_AGGREGATE_LABEL = '7d';
+
+export const formatSevenDayWindowAggregateLine = (
+  aggregate: SevenDayWindowAggregate | null,
+): string | null => {
+  if (aggregate === null) {
+    return null;
+  }
+  const leftPercent = roundHalfToEven(100 - aggregate.usedPercent);
+  const includedCountSuffix =
+    aggregate.includedTokenCount === aggregate.totalTokenCount
+      ? ''
+      : ` (${aggregate.includedTokenCount})`;
+  return (
+    joinTokenRowSegments([
+      padEnd(
+        SEVEN_DAY_WINDOW_AGGREGATE_LABEL,
+        TOKEN_COLOR_DOT_WIDTH + TOKEN_NAME_WIDTH,
+        ' ',
+      ),
+      padEnd('', TOKEN_UTILIZATION_WIDTH, ' '),
+      padEnd('', TOKEN_RESET_WIDTH, ' '),
+      formatUtilization(leftPercent),
+    ]) + includedCountSuffix
+  );
+};
+
 export const formatTokenRowLine = (token: TokenStatus): string => {
   const dot = TOKEN_COLOR_DOT[token.color];
-  const name = padEnd(token.name, 4, '_');
+  const name = padEnd(token.name, TOKEN_NAME_WIDTH, '_');
   const fiveHourUtilization = formatUtilization(
     token.fiveHourUtilizationPercent,
   );
@@ -235,7 +277,15 @@ export const formatTokenRowLine = (token: TokenStatus): string => {
   const sevenDayReset = formatReset(token.sevenDayResetSeconds);
   const prep = String(token.prep);
   const hum = String(token.hum);
-  return `${dot}${name} ${fiveHourUtilization} ${fiveHourReset} ${sevenDayUtilization} ${sevenDayReset} ${prep} ${hum}`;
+  return joinTokenRowSegments([
+    `${dot}${name}`,
+    fiveHourUtilization,
+    fiveHourReset,
+    sevenDayUtilization,
+    sevenDayReset,
+    prep,
+    hum,
+  ]);
 };
 
 const wrapLine = (line: string): string =>
@@ -251,7 +301,15 @@ export class ComposeDashboardUseCase {
     const tokenLines = sortTokens(input.tokens).map((token) =>
       formatTokenRowLine(token),
     );
-    const lines = [...statsLines, ...projectLines, '', ...tokenLines];
+    const aggregateLine = formatSevenDayWindowAggregateLine(
+      input.sevenDayWindowAggregate ?? null,
+    );
+    const lines = [
+      ...statsLines,
+      ...projectLines,
+      aggregateLine === null ? '' : aggregateLine,
+      ...tokenLines,
+    ];
     return lines.map((line) => wrapLine(line)).join('\n') + '\n';
   };
 }

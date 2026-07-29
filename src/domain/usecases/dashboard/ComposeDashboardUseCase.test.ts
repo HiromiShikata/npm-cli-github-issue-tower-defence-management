@@ -6,6 +6,7 @@ import {
   formatProjectHeaderLine,
   formatProjectRowLine,
   formatResetCountdown,
+  formatSevenDayWindowAggregateLine,
   formatTokenRowLine,
   roundHalfToEven,
 } from './ComposeDashboardUseCase';
@@ -483,5 +484,168 @@ describe('ComposeDashboardUseCase', () => {
         PROJECT_ROW_WIDTH_BUDGET,
       );
     }
+  });
+});
+
+describe('formatSevenDayWindowAggregateLine', () => {
+  const columnEnd = (line: string, field: string): number =>
+    codePointLength(line.slice(0, line.indexOf(field) + field.length));
+
+  it('renders only the remaining percentage, without a count when every token is included', () => {
+    expect(
+      formatSevenDayWindowAggregateLine({
+        usedPercent: 63,
+        includedTokenCount: 10,
+        totalTokenCount: 10,
+      }),
+    ).toBe('7d                  37%');
+  });
+
+  it('aligns the remaining percentage under the seven day column of the token rows', () => {
+    const tokenRow = formatTokenRowLine(
+      tokenStatus({
+        name: 'dev4',
+        color: 'K',
+        fiveHourUtilizationPercent: 0,
+        fiveHourResetSeconds: 60,
+        sevenDayUtilizationPercent: 100,
+        sevenDayResetSeconds: 96060,
+      }),
+    );
+    const aggregateLine = formatSevenDayWindowAggregateLine({
+      usedPercent: 63.36,
+      includedTokenCount: 11,
+      totalTokenCount: 11,
+    });
+    expect(tokenRow).toBe('⚪dev4   0% 0d00h01 100% 1d02h41 0 0');
+    expect(aggregateLine).toBe('7d                  37%');
+    expect(columnEnd(aggregateLine ?? '', '37%')).toBe(
+      columnEnd(tokenRow, '100%'),
+    );
+  });
+
+  it('keeps the alignment when the remaining percentage needs fewer digits', () => {
+    const wide = formatSevenDayWindowAggregateLine({
+      usedPercent: 0,
+      includedTokenCount: 1,
+      totalTokenCount: 1,
+    });
+    const narrow = formatSevenDayWindowAggregateLine({
+      usedPercent: 95,
+      includedTokenCount: 1,
+      totalTokenCount: 1,
+    });
+    expect(wide).toBe('7d                 100%');
+    expect(narrow).toBe('7d                   5%');
+    expect(codePointLength(wide ?? '')).toBe(codePointLength(narrow ?? ''));
+  });
+
+  it('appends the included token count when some tokens have no value', () => {
+    expect(
+      formatSevenDayWindowAggregateLine({
+        usedPercent: 63,
+        includedTokenCount: 9,
+        totalTokenCount: 10,
+      }),
+    ).toBe('7d                  37% (9)');
+  });
+
+  it('rounds the remaining percentage with half-to-even before rendering', () => {
+    expect(
+      formatSevenDayWindowAggregateLine({
+        usedPercent: 62.5,
+        includedTokenCount: 2,
+        totalTokenCount: 2,
+      }),
+    ).toBe('7d                  38%');
+    expect(
+      formatSevenDayWindowAggregateLine({
+        usedPercent: 63.5,
+        includedTokenCount: 2,
+        totalTokenCount: 2,
+      }),
+    ).toBe('7d                  36%');
+  });
+
+  it('renders nothing when the aggregate is absent', () => {
+    expect(formatSevenDayWindowAggregateLine(null)).toBeNull();
+  });
+
+  it('fits the width budget at the widest rendering', () => {
+    const line = formatSevenDayWindowAggregateLine({
+      usedPercent: 0,
+      includedTokenCount: 999,
+      totalTokenCount: 1000,
+    });
+    expect(line).toBe('7d                 100% (999)');
+    expect(codePointLength(line ?? '')).toBeLessThanOrEqual(
+      PROJECT_ROW_WIDTH_BUDGET,
+    );
+  });
+});
+
+describe('ComposeDashboardUseCase seven day window aggregate line', () => {
+  const aggregateInput = (
+    sevenDayWindowAggregate: ComposeDashboardInput['sevenDayWindowAggregate'],
+  ): ComposeDashboardInput => ({
+    machineStatus: null,
+    projects: [{ code: 'um', row: projectRow({ unread: 1 }) }],
+    tokens: [
+      tokenStatus({ name: 'alice', sevenDayUtilizationPercent: 60 }),
+      tokenStatus({ name: 'bob', sevenDayUtilizationPercent: 66 }),
+    ],
+    sevenDayWindowAggregate,
+  });
+
+  const unwrappedLines = (output: string): string[] =>
+    output
+      .split('\n')
+      .filter((line) => line.length > 0)
+      .map((line) =>
+        line
+          .replace(/^<tt>/, '')
+          .replace(/<\/tt><br>$/, '')
+          .replace(/&nbsp;/g, ' '),
+      );
+
+  it('places the aggregate line immediately above the token rows', () => {
+    const lines = unwrappedLines(
+      new ComposeDashboardUseCase().run(
+        aggregateInput({
+          usedPercent: 63,
+          includedTokenCount: 2,
+          totalTokenCount: 2,
+        }),
+      ),
+    );
+    const aggregateIndex = lines.indexOf('7d                  37%');
+    expect(aggregateIndex).toBeGreaterThan(-1);
+    expect(lines[aggregateIndex - 1]).toBe(
+      formatProjectRowLine({
+        code: 'um',
+        row: projectRow({ unread: 1 }),
+      }),
+    );
+    expect(lines[aggregateIndex + 1]).toContain('alice');
+  });
+
+  it('keeps the blank separator line when the aggregate is absent', () => {
+    const lines = unwrappedLines(
+      new ComposeDashboardUseCase().run(aggregateInput(null)),
+    );
+    expect(lines.some((line) => line.startsWith('7d '))).toBe(false);
+    expect(lines).toContain('');
+  });
+
+  it('keeps the blank separator line when the aggregate field is missing entirely', () => {
+    const lines = unwrappedLines(
+      new ComposeDashboardUseCase().run({
+        machineStatus: null,
+        projects: [],
+        tokens: [tokenStatus({ name: 'alice' })],
+      }),
+    );
+    expect(lines.some((line) => line.startsWith('7d '))).toBe(false);
+    expect(lines).toContain('');
   });
 });

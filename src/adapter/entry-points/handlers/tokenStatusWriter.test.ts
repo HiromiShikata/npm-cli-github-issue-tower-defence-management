@@ -128,6 +128,11 @@ describe('writeTokenStatus', () => {
     const written = readJson(path.join(dir, 'token-status.json'));
     const expected: TokenStatusFile = {
       capturedAt: '2026-06-26T12:00:00.000Z',
+      sevenDayWindowAggregate: {
+        usedPercent: 50,
+        includedTokenCount: 1,
+        totalTokenCount: 2,
+      },
       tokens: [
         {
           name: 'alice',
@@ -216,6 +221,7 @@ describe('writeTokenStatus', () => {
     };
     expect(written).toEqual({
       capturedAt: '2026-06-26T12:00:00.000Z',
+      sevenDayWindowAggregate: null,
       tokens: [
         expectedAlice,
         {

@@ -37,6 +37,12 @@ export type TokenStatus = {
   hum: number;
 };
 
+export type SevenDayWindowAggregate = {
+  usedPercent: number;
+  includedTokenCount: number;
+  totalTokenCount: number;
+};
+
 export type TokenStatusInput = {
   name: string;
   token: string;
@@ -84,6 +90,23 @@ export const judgeTokenColor = (
     return 'Y';
   }
   return 'G';
+};
+
+export const computeSevenDayWindowAggregate = (
+  tokens: TokenStatus[],
+): SevenDayWindowAggregate | null => {
+  const utilizations = tokens
+    .map((token) => token.sevenDayUtilizationPercent)
+    .filter((percent): percent is number => percent !== null);
+  if (utilizations.length === 0) {
+    return null;
+  }
+  const total = utilizations.reduce((sum, percent) => sum + percent, 0);
+  return {
+    usedPercent: total / utilizations.length,
+    includedTokenCount: utilizations.length,
+    totalTokenCount: tokens.length,
+  };
 };
 
 export class GenerateTokenStatusUseCase {
