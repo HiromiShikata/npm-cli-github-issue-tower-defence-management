@@ -543,6 +543,50 @@ describe('TranscriptOwnerCallStatusProvider', () => {
     expect(result.has(sessionName)).toBe(false);
   });
 
+  it('resolves a marker that does not end with the tag terminator to itself alone', async () => {
+    const transcriptPath = writeTranscript('workbench.jsonl', [
+      {
+        type: 'assistant',
+        timestamp: '2026-06-27T10:05:00.000Z',
+        message: {
+          role: 'assistant',
+          content: [{ type: 'text', text: 'OWNER-CALL please decide' }],
+        },
+      },
+    ]);
+    const provider = new TranscriptOwnerCallStatusProvider('OWNER-CALL');
+
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
+
+    expect(result.get(sessionName)).toBe(
+      Math.floor(Date.parse('2026-06-27T10:05:00.000Z') / 1000),
+    );
+  });
+
+  it('derives no candidate form for a marker that does not end with the tag terminator', async () => {
+    const transcriptPath = writeTranscript('workbench.jsonl', [
+      {
+        type: 'assistant',
+        timestamp: '2026-06-27T10:05:00.000Z',
+        message: {
+          role: 'assistant',
+          content: [{ type: 'text', text: 'OWNER-CAL-pending> please decide' }],
+        },
+      },
+    ]);
+    const provider = new TranscriptOwnerCallStatusProvider('OWNER-CALL');
+
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
+
+    expect(result.has(sessionName)).toBe(false);
+  });
+
   it('uses the canonical call-to-user marker string', async () => {
     const transcriptPath = writeTranscript('workbench.jsonl', [
       {
