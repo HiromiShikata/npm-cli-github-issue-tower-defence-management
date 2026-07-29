@@ -88,8 +88,26 @@ const hasOwnerTextReply = (content: unknown): boolean => {
   return !extractText(content).includes(SILENT_SESSION_REMINDER_SENTINEL);
 };
 
+const OWNER_CALL_TAG_TERMINATOR = '>';
+const OWNER_CALL_CANDIDATE_TAG_SUFFIX = '-pending>';
+
+const ownerCallMarkerFamilyResolve = (marker: string): string[] =>
+  marker.endsWith(OWNER_CALL_TAG_TERMINATOR)
+    ? [
+        marker,
+        `${marker.slice(0, -OWNER_CALL_TAG_TERMINATOR.length)}${OWNER_CALL_CANDIDATE_TAG_SUFFIX}`,
+      ]
+    : [marker];
+
 export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvider {
-  constructor(private readonly ownerCallMarker: string | null) {}
+  private readonly ownerCallMarkerFamily: string[];
+
+  constructor(ownerCallMarker: string | null) {
+    this.ownerCallMarkerFamily =
+      ownerCallMarker === null || ownerCallMarker.length === 0
+        ? []
+        : ownerCallMarkerFamilyResolve(ownerCallMarker);
+  }
 
   listUnansweredOwnerCallEpochSecondsBySessionName = async (
     transcriptPathBySessionName: Map<string, string>,
@@ -98,14 +116,13 @@ export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvide
       string,
       number
     >();
-    if (this.ownerCallMarker === null || this.ownerCallMarker.length === 0) {
+    if (this.ownerCallMarkerFamily.length === 0) {
       return unansweredOwnerCallEpochSecondsBySessionName;
     }
-    const marker = this.ownerCallMarker;
     for (const [sessionName, transcriptPath] of transcriptPathBySessionName) {
       const unansweredOwnerCallEpochMs = this.findUnansweredOwnerCallEpochMs(
         transcriptPath,
-        marker,
+        this.ownerCallMarkerFamily,
       );
       if (unansweredOwnerCallEpochMs !== null) {
         unansweredOwnerCallEpochSecondsBySessionName.set(
@@ -119,7 +136,7 @@ export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvide
 
   private findUnansweredOwnerCallEpochMs = (
     transcriptPath: string,
-    marker: string,
+    markerFamily: string[],
   ): number | null => {
     let content: string;
     try {
@@ -150,11 +167,11 @@ export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvide
       const type = readString(parsed, 'type');
       const message = parsed.message;
       const messageContent = isRecord(message) ? message.content : null;
-      if (
-        type === 'assistant' &&
-        extractText(messageContent).includes(marker)
-      ) {
-        lastOwnerCallEpochMs = epochMs;
+      if (type === 'assistant') {
+        const assistantText = extractText(messageContent);
+        if (markerFamily.some((marker) => assistantText.includes(marker))) {
+          lastOwnerCallEpochMs = epochMs;
+        }
       }
       if (
         type === 'user' &&
