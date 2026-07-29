@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.TranscriptOwnerCallStatusProvider = void 0;
+exports.TranscriptOwnerCallStatusProvider = exports.ownerCallMarkerFamilyResolve = void 0;
 const fs = __importStar(require("fs"));
 const silentSessionReminderSentinel_1 = require("../../domain/usecases/silentSessionReminderSentinel");
 const isRecord = (value) => typeof value === 'object' && value !== null;
@@ -110,24 +110,32 @@ const hasOwnerTextReply = (content) => {
     }
     return !extractText(content).includes(silentSessionReminderSentinel_1.SILENT_SESSION_REMINDER_SENTINEL);
 };
+const OWNER_CALL_TAG_TERMINATOR = '>';
+const OWNER_CALL_CANDIDATE_TAG_INFIX = '-pending';
+const OWNER_CALL_CANDIDATE_TAG_SUFFIX = `${OWNER_CALL_CANDIDATE_TAG_INFIX}${OWNER_CALL_TAG_TERMINATOR}`;
+const ownerCallMarkerFamilyResolve = (marker) => marker.endsWith(OWNER_CALL_TAG_TERMINATOR)
+    ? [
+        marker,
+        `${marker.slice(0, -OWNER_CALL_TAG_TERMINATOR.length)}${OWNER_CALL_CANDIDATE_TAG_SUFFIX}`,
+    ]
+    : [marker];
+exports.ownerCallMarkerFamilyResolve = ownerCallMarkerFamilyResolve;
 class TranscriptOwnerCallStatusProvider {
     constructor(ownerCallMarker) {
-        this.ownerCallMarker = ownerCallMarker;
         this.listUnansweredOwnerCallEpochSecondsBySessionName = async (transcriptPathBySessionName) => {
             const unansweredOwnerCallEpochSecondsBySessionName = new Map();
-            if (this.ownerCallMarker === null || this.ownerCallMarker.length === 0) {
+            if (this.ownerCallMarkerFamily.length === 0) {
                 return unansweredOwnerCallEpochSecondsBySessionName;
             }
-            const marker = this.ownerCallMarker;
             for (const [sessionName, transcriptPath] of transcriptPathBySessionName) {
-                const unansweredOwnerCallEpochMs = this.findUnansweredOwnerCallEpochMs(transcriptPath, marker);
+                const unansweredOwnerCallEpochMs = this.findUnansweredOwnerCallEpochMs(transcriptPath, this.ownerCallMarkerFamily);
                 if (unansweredOwnerCallEpochMs !== null) {
                     unansweredOwnerCallEpochSecondsBySessionName.set(sessionName, Math.floor(unansweredOwnerCallEpochMs / 1000));
                 }
             }
             return unansweredOwnerCallEpochSecondsBySessionName;
         };
-        this.findUnansweredOwnerCallEpochMs = (transcriptPath, marker) => {
+        this.findUnansweredOwnerCallEpochMs = (transcriptPath, markerFamily) => {
             let content;
             try {
                 content = fs.readFileSync(transcriptPath, 'utf8');
@@ -159,9 +167,11 @@ class TranscriptOwnerCallStatusProvider {
                 const type = readString(parsed, 'type');
                 const message = parsed.message;
                 const messageContent = isRecord(message) ? message.content : null;
-                if (type === 'assistant' &&
-                    extractText(messageContent).includes(marker)) {
-                    lastOwnerCallEpochMs = epochMs;
+                if (type === 'assistant') {
+                    const assistantText = extractText(messageContent);
+                    if (markerFamily.some((marker) => assistantText.includes(marker))) {
+                        lastOwnerCallEpochMs = epochMs;
+                    }
                 }
                 if (type === 'user' &&
                     isGenuineHumanEntry(parsed) &&
@@ -177,6 +187,10 @@ class TranscriptOwnerCallStatusProvider {
                 ? lastOwnerCallEpochMs
                 : null;
         };
+        this.ownerCallMarkerFamily =
+            ownerCallMarker === null || ownerCallMarker.length === 0
+                ? []
+                : (0, exports.ownerCallMarkerFamilyResolve)(ownerCallMarker);
     }
 }
 exports.TranscriptOwnerCallStatusProvider = TranscriptOwnerCallStatusProvider;
