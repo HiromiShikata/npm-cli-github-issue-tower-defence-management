@@ -268,6 +268,53 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('get', () => {
+    it('reads the single project item scoped to the given project without consulting the getAllIssues memo', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const project = buildTestProject('test-project-id');
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:00:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue(null);
+      projectRepository.getProject.mockResolvedValue(project);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+        buildProjectItem('https://github.com/o/r/issues/1', 'live title'),
+      );
+
+      await repository.getAllIssues('test-project-id');
+      const issue = await repository.get(
+        'https://github.com/o/r/issues/1',
+        project,
+      );
+
+      expect(issue?.title).toBe('live title');
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemByUrl.mock.calls,
+      ).toEqual([['https://github.com/o/r/issues/1', 'test-project-id']]);
+    });
+
+    it('returns null when the issue has no project item on the given project', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+        null,
+      );
+
+      const issue = await repository.get(
+        'https://github.com/o/r/issues/1',
+        buildTestProject('test-project-id'),
+      );
+
+      expect(issue).toBeNull();
+    });
+  });
+
   describe('getAllIssues incremental fetch', () => {
     it('light-scans the lastFetchedAt UTC day with no previous-day overlap, detail-fetches changed items by id, and upserts by url', async () => {
       const {
