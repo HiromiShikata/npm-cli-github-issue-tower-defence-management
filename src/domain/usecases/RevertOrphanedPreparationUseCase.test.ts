@@ -1568,5 +1568,72 @@ describe('RevertOrphanedPreparationUseCase', () => {
       );
       expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('5');
     });
+
+    it('logs the error, skips the candidate and keeps processing the next candidate when the live read rejects', async () => {
+      const failingIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/10',
+        status: 'Preparation',
+      });
+      const followingIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/11',
+        number: 11,
+        itemId: 'item-11',
+        status: 'Preparation',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [failingIssue, followingIssue],
+        cacheUsed: false,
+      });
+      const liveReadError = new Error(
+        'GitHub GraphQL API returned no data for a single project item read',
+      );
+      mockIssueRepository.get.mockImplementation(async (issueUrl: string) => {
+        if (issueUrl === failingIssue.url) {
+          throw liveReadError;
+        }
+        return createMockIssue({ url: issueUrl, status: 'Preparation' });
+      });
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+
+      try {
+        await useCase.run({
+          projectUrl: 'https://github.com/user/repo',
+          preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+          thresholdForAutoReject: 3,
+        });
+
+        expect(
+          consoleErrorSpy.mock.calls.filter(
+            (call) =>
+              typeof call[0] === 'string' &&
+              call[0].includes(failingIssue.url) &&
+              call[1] === liveReadError,
+          ),
+        ).toHaveLength(1);
+      } finally {
+        consoleErrorSpy.mockRestore();
+      }
+
+      expect(
+        mockIssueRepository.updateStatus.mock.calls.map((call) => [
+          call[1].url,
+          call[2],
+        ]),
+      ).toEqual([[followingIssue.url, '1']]);
+      expect(
+        mockIssueCommentRepository.createComment.mock.calls.map(
+          (call) => call[0].url,
+        ),
+      ).toEqual([followingIssue.url]);
+    });
   });
 });
