@@ -64,6 +64,18 @@ type NotifyCandidate = {
   sectionLabels: string[];
 };
 
+const NOTIFIED_SECTION_KEY_SEPARATOR = '\n';
+
+const composeNotifiedSectionKey = (
+  sessionName: string,
+  sectionLabel: string,
+): string => `${sessionName}${NOTIFIED_SECTION_KEY_SEPARATOR}${sectionLabel}`;
+
+const notifiedSectionKeysOf = (candidate: NotifyCandidate): string[] =>
+  candidate.sectionLabels.map((sectionLabel) =>
+    composeNotifiedSectionKey(candidate.sessionName, sectionLabel),
+  );
+
 export class NotifySilentLiveSessionsUseCase {
   private readonly resolveInteractiveLiveSessions =
     new ResolveInteractiveLiveSessionsUseCase();
@@ -194,27 +206,25 @@ export class NotifySilentLiveSessionsUseCase {
       `Silent live session notification: ${debouncedCandidates.length} debounced candidate(s) of ${candidates.length} current candidate(s) across ${interactiveSessions.length} interactive session(s); ${suppressedFirstCycleCount} first-cycle candidate(s) deferred until they persist into the next cycle.`,
     );
 
-    // Fire-once latch: the set of sessions already reminded during their
-    // current silent episode. A session that is still a candidate this cycle
-    // and was already reminded is NOT re-injected, so a continuous silent
-    // episode produces exactly one reminder instead of one every schedule
-    // cycle. The latch is keyed by the globally-unique session name and
-    // persisted across the per-cycle fresh monitor process on disk.
-    const currentCandidateSessionNames = new Set(
-      candidates.map((candidate) => candidate.sessionName),
+    const currentCandidateSectionKeys = new Set(
+      candidates.flatMap(notifiedSectionKeysOf),
     );
-    const previouslyNotifiedSessionNames =
+    const previouslyNotifiedSectionKeys =
       await this.notifiedStateRepository.loadRecentNotifiedSessionNames({
         now: params.now,
         recencyWindowSeconds: params.candidateDebounceRecencyWindowSeconds,
       });
 
     let sentCount = 0;
-    const notifiedThisCycleSessionNames: string[] = [];
+    const notifiedThisCycleSectionKeys: string[] = [];
     for (const candidate of debouncedCandidates) {
-      if (previouslyNotifiedSessionNames.has(candidate.sessionName)) {
+      const candidateSectionKeys = notifiedSectionKeysOf(candidate);
+      const undeliveredSectionKeys = candidateSectionKeys.filter(
+        (sectionKey) => !previouslyNotifiedSectionKeys.has(sectionKey),
+      );
+      if (undeliveredSectionKeys.length === 0) {
         console.log(
-          `Skipping ${candidate.sessionName}: the current silent-episode reminder was already delivered; not re-injecting until the condition resolves and re-arises.`,
+          `Skipping ${candidate.sessionName}: every reminder section of the current episode was already delivered; not re-injecting until a section resolves and re-arises.`,
         );
         continue;
       }
@@ -236,7 +246,7 @@ export class NotifySilentLiveSessionsUseCase {
         candidate.message,
       );
       sentCount += 1;
-      notifiedThisCycleSessionNames.push(candidate.sessionName);
+      notifiedThisCycleSectionKeys.push(...candidateSectionKeys);
       // One line per send, grep-stable on the `Notified ` prefix: the
       // ISO-8601 UTC timestamp disambiguates concurrent schedule runs and
       // the section list records what the message actually contained.
@@ -245,22 +255,17 @@ export class NotifySilentLiveSessionsUseCase {
       );
     }
 
-    // Persist the latch for the next cycle: keep every already-latched session
-    // that is STILL a candidate (refreshing its timestamp so a continuous
-    // episode stays latched) plus the sessions notified this cycle, and prune
-    // any latched session that is no longer a candidate so its episode ends and
-    // a later re-qualification fires a fresh reminder.
-    const retainedNotifiedSessionNames = [
-      ...previouslyNotifiedSessionNames,
-    ].filter((sessionName) => currentCandidateSessionNames.has(sessionName));
-    const notifiedSessionNamesToPersist = Array.from(
+    const retainedNotifiedSectionKeys = [
+      ...previouslyNotifiedSectionKeys,
+    ].filter((sectionKey) => currentCandidateSectionKeys.has(sectionKey));
+    const notifiedSectionKeysToPersist = Array.from(
       new Set([
-        ...retainedNotifiedSessionNames,
-        ...notifiedThisCycleSessionNames,
+        ...retainedNotifiedSectionKeys,
+        ...notifiedThisCycleSectionKeys,
       ]),
     );
     await this.notifiedStateRepository.saveNotifiedSessionNames({
-      sessionNames: notifiedSessionNamesToPersist,
+      sessionNames: notifiedSectionKeysToPersist,
       now: params.now,
     });
   };
@@ -514,14 +519,6 @@ export class NotifySilentLiveSessionsUseCase {
       }
     }
 
-    // A sub-agent whose transcript has finished while its id is still listed in
-    // the session's running-subagents record is a result the leader has not
-    // acted on: the leader removes the record line once it has consumed the
-    // result, so a finished transcript still listed there is exactly the
-    // unconsumed state. This selection is deliberately independent of the
-    // main-session silence condition — a leader that keeps producing output
-    // while a finished result sits unread is the case that goes unreminded by
-    // every other path.
     const unconsumedResultSubAgents = snapshot.subAgents.filter(
       (subAgent) =>
         subAgent.finishedResultUnconsumed &&

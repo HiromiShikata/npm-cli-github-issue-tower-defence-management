@@ -35,6 +35,7 @@ const MAIN_STALLED_STALE_OWNER_CALL_SECTION =
   'MAIN_STALLED_STALE_OWNER_CALL_SECTION';
 const SUBAGENT_SECTION = 'SUBAGENT_SECTION';
 const SUBAGENT_UNCONSUMED_RESULT_SECTION = 'SUBAGENT_UNCONSUMED_RESULT_SECTION';
+const MAIN_STALLED_SECTION_LABEL = 'main-stalled';
 
 class EveryNameRecentSet extends Set<string> {
   override has = (): boolean => true;
@@ -1011,13 +1012,16 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       ).toHaveBeenCalledWith(GITHUB_SESSION, MAIN_STALLED_SECTION);
       expect(
         mockNotifiedStateRepository.saveNotifiedSessionNames,
-      ).toHaveBeenCalledWith({ sessionNames: [GITHUB_SESSION], now });
+      ).toHaveBeenCalledWith({
+        sessionNames: [`${GITHUB_SESSION}\n${MAIN_STALLED_SECTION_LABEL}`],
+        now,
+      });
     });
 
     it('does not re-send but keeps the latch for a session already notified this episode', async () => {
       setupSilentGithubSession();
       mockNotifiedStateRepository.loadRecentNotifiedSessionNames.mockResolvedValue(
-        new Set([GITHUB_SESSION]),
+        new Set([`${GITHUB_SESSION}\n${MAIN_STALLED_SECTION_LABEL}`]),
       );
 
       await useCase.run(runParams());
@@ -1027,12 +1031,15 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       ).not.toHaveBeenCalled();
       expect(
         mockNotifiedStateRepository.saveNotifiedSessionNames,
-      ).toHaveBeenCalledWith({ sessionNames: [GITHUB_SESSION], now });
+      ).toHaveBeenCalledWith({
+        sessionNames: [`${GITHUB_SESSION}\n${MAIN_STALLED_SECTION_LABEL}`],
+        now,
+      });
     });
 
     it('prunes the fire-once latch for a previously notified session that is no longer a candidate', async () => {
       mockNotifiedStateRepository.loadRecentNotifiedSessionNames.mockResolvedValue(
-        new Set([GITHUB_SESSION]),
+        new Set([`${GITHUB_SESSION}\n${MAIN_STALLED_SECTION_LABEL}`]),
       );
 
       await useCase.run(runParams());
@@ -1052,7 +1059,10 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       ).toHaveBeenCalledWith(GITHUB_SESSION, MAIN_STALLED_SECTION);
       expect(
         mockNotifiedStateRepository.saveNotifiedSessionNames,
-      ).toHaveBeenCalledWith({ sessionNames: [GITHUB_SESSION], now });
+      ).toHaveBeenCalledWith({
+        sessionNames: [`${GITHUB_SESSION}\n${MAIN_STALLED_SECTION_LABEL}`],
+        now,
+      });
     });
   });
 
@@ -1223,6 +1233,73 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         GITHUB_SESSION,
         `${SUBAGENT_SECTION}\n\n${SUBAGENT_UNCONSUMED_RESULT_SECTION}`,
       );
+    });
+
+    it('still delivers a main-stall reminder on a later cycle while the same finished sub-agent result stays unconsumed', async () => {
+      wireStatefulNotifiedLatch();
+      setupSubAgents([unconsumedResultSubAgent('agent-aaabbbbcccc30005')]);
+      setupRecentlyProducingMainSession(GITHUB_SESSION);
+
+      await useCase.run(runParams());
+
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledTimes(1);
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenNthCalledWith(
+        1,
+        GITHUB_SESSION,
+        SUBAGENT_UNCONSUMED_RESULT_SECTION,
+      );
+
+      mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
+        [
+          {
+            sessionName: GITHUB_SESSION,
+            lastOutputEpochSeconds:
+              nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+          },
+        ],
+      );
+
+      await useCase.run(runParams());
+
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledTimes(2);
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenNthCalledWith(
+        2,
+        GITHUB_SESSION,
+        `${MAIN_STALLED_SECTION}\n\n${SUBAGENT_UNCONSUMED_RESULT_SECTION}`,
+      );
+    });
+
+    it('treats a latch entry stored as a bare session name as stale so the pending reminder is still delivered', async () => {
+      mockNotifiedStateRepository.loadRecentNotifiedSessionNames.mockResolvedValue(
+        new Set([GITHUB_SESSION]),
+      );
+      setupSubAgents([unconsumedResultSubAgent('agent-aaabbbbcccc30006')]);
+      setupRecentlyProducingMainSession(GITHUB_SESSION);
+
+      await useCase.run(runParams());
+
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledWith(
+        GITHUB_SESSION,
+        SUBAGENT_UNCONSUMED_RESULT_SECTION,
+      );
+      expect(
+        mockNotifiedStateRepository.saveNotifiedSessionNames,
+      ).toHaveBeenCalledWith({
+        sessionNames: [
+          `${GITHUB_SESSION}\nsub-agent-result-unconsumed:agent-aaabbbbcccc30006`,
+        ],
+        now,
+      });
     });
 
     it('never selects a waiting sub-agent for the long-running section even when quiet past both thresholds', async () => {
