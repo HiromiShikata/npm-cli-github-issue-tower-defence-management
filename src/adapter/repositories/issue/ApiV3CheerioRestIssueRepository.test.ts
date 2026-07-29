@@ -299,16 +299,77 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       ).toEqual([['https://github.com/o/r/issues/1', 'test-project-id']]);
     });
 
-    it('returns null when the issue has no project item on the given project', async () => {
+    const issueUrlOnTwoProjects = 'https://github.com/o/r/issues/1';
+
+    const buildProjectScopedItem = (
+      itemId: string,
+      status: string,
+      story: string,
+      nextActionHour: string,
+    ): ProjectItem => ({
+      ...buildProjectItem(issueUrlOnTwoProjects, itemId),
+      id: itemId,
+      customFields: [
+        { name: 'Status', value: status },
+        { name: 'story', value: story },
+        { name: 'nextActionHour', value: nextActionHour },
+      ],
+    });
+
+    const itemOnOtherProject = buildProjectScopedItem(
+      'item-on-other-project',
+      'Awaiting Workspace',
+      'other story',
+      '9',
+    );
+    const itemOnRequestedProject = buildProjectScopedItem(
+      'item-on-requested-project',
+      'Preparation',
+      'requested story',
+      '17',
+    );
+
+    const arrangeItemsOnTwoProjects = (
+      graphqlProjectItemRepository: ReturnType<
+        typeof createApiV3CheerioRestIssueRepository
+      >['graphqlProjectItemRepository'],
+    ): void => {
+      const itemsByProjectId = new Map<string, ProjectItem>([
+        ['other-project-id', itemOnOtherProject],
+        ['requested-project-id', itemOnRequestedProject],
+      ]);
+      graphqlProjectItemRepository.fetchProjectItemByUrl.mockImplementation(
+        async (_issueUrl: string, projectId?: string) =>
+          projectId === undefined
+            ? Array.from(itemsByProjectId.values())[0]
+            : (itemsByProjectId.get(projectId) ?? null),
+      );
+    };
+
+    it('returns the project item of the requested project when the issue is on two projects', async () => {
       const { repository, graphqlProjectItemRepository } =
         createApiV3CheerioRestIssueRepository();
-      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
-        null,
-      );
+      arrangeItemsOnTwoProjects(graphqlProjectItemRepository);
 
       const issue = await repository.get(
-        'https://github.com/o/r/issues/1',
-        buildTestProject('test-project-id'),
+        issueUrlOnTwoProjects,
+        buildTestProject('requested-project-id'),
+      );
+
+      expect(issue?.itemId).toBe('item-on-requested-project');
+      expect(issue?.status).toBe('Preparation');
+      expect(issue?.story).toBe('requested story');
+      expect(issue?.nextActionHour).toBe(17);
+    });
+
+    it('returns null when the issue has project items only on other projects', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      arrangeItemsOnTwoProjects(graphqlProjectItemRepository);
+
+      const issue = await repository.get(
+        issueUrlOnTwoProjects,
+        buildTestProject('project-without-any-item'),
       );
 
       expect(issue).toBeNull();

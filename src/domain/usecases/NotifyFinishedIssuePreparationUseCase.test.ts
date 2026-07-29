@@ -281,6 +281,34 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
   });
 
+  it('should read the issue scoped to the project it was given and throw IssueNotFoundError when the issue has no item on that project', async () => {
+    const issueUrlOnAnotherProjectOnly =
+      'https://github.com/user/repo/issues/7';
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockImplementation(
+      async (issueUrl: string, project: Project) =>
+        project.id === mockProject.id
+          ? null
+          : createMockIssue({ url: issueUrl, status: 'Preparation' }),
+    );
+
+    await expect(
+      useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: issueUrlOnAnotherProjectOnly,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      }),
+    ).rejects.toThrow(`Issue not found: ${issueUrlOnAnotherProjectOnly}`);
+    expect(mockIssueRepository.get.mock.calls).toEqual([
+      [issueUrlOnAnotherProjectOnly, mockProject],
+    ]);
+    expect(mockIssueRepository.update).not.toHaveBeenCalled();
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+  });
+
   it('should process a pull request URL the same as an issue URL when the project item resolves', async () => {
     const prIssue = createMockIssue({
       url: 'https://github.com/user/repo/pull/77',

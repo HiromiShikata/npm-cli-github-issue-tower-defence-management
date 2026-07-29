@@ -161,7 +161,16 @@ export class RevertOrphanedPreparationUseCase {
     issue: Issue,
     project: Project,
   ): Promise<boolean> => {
-    const liveIssue = await this.issueRepository.get(issue.url, project);
+    let liveIssue: Issue | null;
+    try {
+      liveIssue = await this.issueRepository.get(issue.url, project);
+    } catch (error) {
+      console.error(
+        `Failed to re-read the live status before reverting orphaned preparation. issueUrl: ${issue.url}`,
+        error,
+      );
+      return false;
+    }
     if (liveIssue === null) {
       console.error(
         `Issue not found while re-reading its live status before reverting orphaned preparation. issueUrl: ${issue.url}`,
