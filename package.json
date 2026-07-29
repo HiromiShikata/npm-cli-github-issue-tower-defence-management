@@ -105,7 +105,7 @@
     "dompurify": "3.4.12",
     "dotenv": "^17.4.2",
     "gemoji": "8.1.0",
-    "googleapis": "^171.4.0",
+    "googleapis": "^173.0.0",
     "ky": "^2.0.2",
     "marked": "18.0.7",
     "marked-emoji": "2.0.3",
