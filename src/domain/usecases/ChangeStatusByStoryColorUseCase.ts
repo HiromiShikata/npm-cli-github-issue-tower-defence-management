@@ -39,6 +39,9 @@ export class ChangeStatusByStoryColorUseCase {
           if (issue.status && issue.status === ICEBOX_STATUS_NAME) {
             continue;
           }
+          if (issue.assignees.length > 0) {
+            continue;
+          }
           await this.issueRepository.updateStatus(
             input.project,
             issue,

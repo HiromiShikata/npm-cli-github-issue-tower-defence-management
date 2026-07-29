@@ -64,12 +64,14 @@ describe('ChangeStatusByStoryColorUseCase', () => {
     title: 'Issue 1',
     number: 789,
     status: 'Unread',
+    assignees: [],
   };
   const basicIssue2 = {
     ...mock<Issue>(),
     title: 'Issue 2',
     number: 101,
     status: 'In Progres',
+    assignees: [],
   };
 
   const basicStoryObject1: StoryObject = {
