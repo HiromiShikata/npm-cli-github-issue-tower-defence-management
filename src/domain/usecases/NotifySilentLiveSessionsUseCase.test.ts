@@ -641,7 +641,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     });
   });
 
-  it('suppresses the long-running section for a sub-agent that produced output recently even past the running threshold', async () => {
+  it('reports a sub-agent past the running threshold that produced output moments ago', async () => {
     setupLiveInteractiveSession(GITHUB_SESSION);
     const subAgents: SubAgentActivity[] = [
       {
@@ -658,10 +658,13 @@ describe('NotifySilentLiveSessionsUseCase', () => {
 
     await useCase.run(runParams());
 
-    expect(mockMessageComposer.composeSubAgentSection).not.toHaveBeenCalled();
+    expect(mockMessageComposer.composeSubAgentSection).toHaveBeenCalledWith({
+      idleSubAgents: [],
+      longRunningSubAgents: subAgents,
+    });
     expect(
       mockNotificationRepository.sendSelfCheckNotification,
-    ).not.toHaveBeenCalled();
+    ).toHaveBeenCalledWith(GITHUB_SESSION, SUBAGENT_SECTION);
   });
 
   it('excludes an owner-handover spawn from selection so no notification is sent', async () => {
@@ -1104,6 +1107,26 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       );
     };
 
+    it('reports every long-running sub-agent on runtime alone, whether it keeps producing output or waits on an external process', async () => {
+      setupSubAgents([
+        producingLongRunningSubAgent('sub-process-producing-output'),
+        quietLongRunningSubAgent('sub-process-waiting-on-external', true),
+      ]);
+
+      await useCase.run(runParams());
+
+      expect(mockMessageComposer.composeSubAgentSection).toHaveBeenCalledWith({
+        idleSubAgents: [],
+        longRunningSubAgents: [
+          producingLongRunningSubAgent('sub-process-producing-output'),
+          quietLongRunningSubAgent('sub-process-waiting-on-external', true),
+        ],
+      });
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledWith(GITHUB_SESSION, SUBAGENT_SECTION);
+    });
+
     it('never selects a waiting sub-agent as a silent-reminder candidate', async () => {
       setupSubAgents([waitingSubAgent('sub-process-1')]);
 
@@ -1338,19 +1361,27 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       ]);
     });
 
-    it('never selects a waiting sub-agent for the long-running section even when quiet past both thresholds', async () => {
+    it('reports a waiting long-running sub-agent as long-running while keeping it out of the idle section', async () => {
       setupSubAgents([quietLongRunningSubAgent('sub-process-1', true)]);
 
       await useCase.run(runParams());
 
-      expect(mockMessageComposer.composeSubAgentSection).not.toHaveBeenCalled();
+      expect(mockMessageComposer.composeSubAgentSection).toHaveBeenCalledWith({
+        idleSubAgents: [],
+        longRunningSubAgents: [quietLongRunningSubAgent('sub-process-1', true)],
+      });
       expect(
         mockNotificationRepository.sendSelfCheckNotification,
-      ).not.toHaveBeenCalled();
+      ).toHaveBeenCalledWith(GITHUB_SESSION, SUBAGENT_SECTION);
     });
 
-    it('never selects a long-running sub-agent that produced output within the silent threshold', async () => {
-      setupSubAgents([producingLongRunningSubAgent('sub-process-1')]);
+    it('never selects a producing sub-agent that is one second short of the running threshold', async () => {
+      setupSubAgents([
+        {
+          ...producingLongRunningSubAgent('sub-process-1'),
+          runningSeconds: DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS - 1,
+        },
+      ]);
 
       await useCase.run(runParams());
 

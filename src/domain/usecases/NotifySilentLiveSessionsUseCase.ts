@@ -490,19 +490,19 @@ export class NotifySilentLiveSessionsUseCase {
         !subAgent.waitingOnExternalProcess &&
         subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds,
     );
-    // The long-running advisory is gated on output recency, mirroring the
-    // idle branch: a sub-agent that produced output recently is working, no
-    // matter how long it has been running, so it is never selected. Only a
-    // sub-agent that is BOTH long-running and quiet (and not waiting on a
-    // live external process) qualifies, and it is re-selected on EVERY cycle
-    // while the condition holds — there is intentionally no fire-once state
-    // and no time-window suppression, matching the idle-branch semantics.
+    // The long-running advisory is driven by elapsed runtime alone. Output
+    // recency and an in-flight external process are exactly the states a
+    // genuinely long-running sub-agent is normally in, so gating on either
+    // silenced the advisory precisely when a long runtime was real and left
+    // the leader unaware of sub-agents running far past the threshold. The
+    // leader is told about elapsed runtime independently of how busy the
+    // sub-agent looks and independently of whether the leader itself is
+    // silent. A finished sub-agent whose result is still unconsumed is
+    // reported by its own section instead.
     const longRunningSubAgents = snapshot.subAgents.filter(
       (subAgent) =>
         !subAgent.finishedResultUnconsumed &&
-        !subAgent.waitingOnExternalProcess &&
-        subAgent.runningSeconds >= thresholds.subAgentRunningThresholdSeconds &&
-        subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds,
+        subAgent.runningSeconds >= thresholds.subAgentRunningThresholdSeconds,
     );
     if (idleSubAgents.length > 0 || longRunningSubAgents.length > 0) {
       sections.push(
