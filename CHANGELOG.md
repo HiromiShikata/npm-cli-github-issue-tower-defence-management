@@ -1,3 +1,16 @@
+# [1.142.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.141.0...v1.142.0) (2026-07-29)
+
+
+### Bug Fixes
+
+* **owner-call:** detect the candidate tag family as an owner call ([#1299](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1299)) ([6a8c9f5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6a8c9f5055ed2573e0464d415b207464db4dd556))
+* **sub-agent-liveness:** use only the leading agent id from the running sub-agents record ([#1302](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1302)) ([4511629](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4511629ef72b3736815019b266d733c7709ce414))
+
+
+### Features
+
+* **dashboard:** show remaining 7-day capacity across all tokens on the dashboard ([#1297](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1297)) ([440348e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/440348eddc8e322aa04b0d1c14aa2b5a0f5d7cc5))
+
 # [1.141.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.140.2...v1.141.0) (2026-07-26)
 
 
