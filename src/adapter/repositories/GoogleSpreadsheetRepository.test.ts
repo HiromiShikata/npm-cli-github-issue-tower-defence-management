@@ -23,11 +23,43 @@ describe('GoogleSpreadsheetRepository', () => {
   const spreadsheetUrl =
     'https://docs.google.com/spreadsheets/d/1N_3y0y46v5tHbra5YSm6PldflcsF1bkfeWDdQ3MRuXM/edit?gid=0#gid=0';
 
-  const mockSpreadsheetsGet = jest.fn<() => Promise<SpreadsheetGetResponse>>();
-  const mockSpreadsheetsValuesGet = jest.fn<() => Promise<ValuesGetResponse>>();
-  const mockSpreadsheetsValuesUpdate = jest.fn<() => Promise<SimpleResponse>>();
-  const mockSpreadsheetsValuesAppend = jest.fn<() => Promise<SimpleResponse>>();
-  const mockSpreadsheetsBatchUpdate = jest.fn<() => Promise<SimpleResponse>>();
+  const mockSpreadsheetsGet =
+    jest.fn<
+      (params: { spreadsheetId: string }) => Promise<SpreadsheetGetResponse>
+    >();
+  const mockSpreadsheetsValuesGet =
+    jest.fn<
+      (params: {
+        spreadsheetId: string;
+        range: string;
+      }) => Promise<ValuesGetResponse>
+    >();
+  const mockSpreadsheetsValuesUpdate =
+    jest.fn<
+      (params: {
+        spreadsheetId: string;
+        range: string;
+        valueInputOption: string;
+        requestBody: { values: string[][] };
+      }) => Promise<SimpleResponse>
+    >();
+  const mockSpreadsheetsValuesAppend =
+    jest.fn<
+      (params: {
+        spreadsheetId: string;
+        range: string;
+        valueInputOption: string;
+        requestBody: { values: string[][] };
+      }) => Promise<SimpleResponse>
+    >();
+  const mockSpreadsheetsBatchUpdate = jest.fn<
+    (params: {
+      spreadsheetId: string;
+      requestBody: {
+        requests: Array<{ addSheet?: { properties?: { title?: string } } }>;
+      };
+    }) => Promise<SimpleResponse>
+  >();
 
   const mockSheetsClient = {
     spreadsheets: {
