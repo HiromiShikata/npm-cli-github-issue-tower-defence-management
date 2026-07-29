@@ -155,14 +155,29 @@ export class GoogleSpreadsheetRepository implements SpreadsheetRepository {
       );
     }
   };
+  private sheetExists = async (
+    spreadsheetUrl: string,
+    sheetName: string,
+  ): Promise<boolean> => {
+    const sheets = this.sheetsClient;
+    const spreadsheetId = this.getSpreadsheetId(spreadsheetUrl);
+    const response = await sheets.spreadsheets.get({ spreadsheetId });
+    if (response.status !== 200) {
+      throw new Error(
+        `Failed to get sheet: ${response.status}. ${JSON.stringify(response.data)}`,
+      );
+    }
+    return (response.data.sheets ?? []).some(
+      (sheet) => sheet.properties?.title === sheetName,
+    );
+  };
   createNewSheetIfNotExists = async (
     spreadsheetUrl: string,
     sheetName: string,
   ): Promise<void> => {
     const sheets = this.sheetsClient;
     const spreadsheetId = this.getSpreadsheetId(spreadsheetUrl);
-    const sheet = await this.getSheet(spreadsheetUrl, sheetName);
-    if (sheet !== null) {
+    if (await this.sheetExists(spreadsheetUrl, sheetName)) {
       return;
     }
     const response = await sheets.spreadsheets.batchUpdate({

@@ -321,6 +321,32 @@ describe('GoogleSpreadsheetRepository', () => {
       );
     });
 
+    test('does not recreate an existing sheet that holds no values', async () => {
+      mockSpreadsheetsGet.mockResolvedValue({
+        status: 200,
+        data: { sheets: [{ properties: { title: 'EmptyExistingSheet' } }] },
+      });
+      mockSpreadsheetsValuesGet.mockResolvedValue({
+        status: 200,
+        data: {},
+      });
+      mockSpreadsheetsValuesAppend.mockResolvedValue({
+        status: 200,
+        data: {},
+      });
+
+      await repository.appendSheetValues(spreadsheetUrl, 'EmptyExistingSheet', [
+        ['Row'],
+      ]);
+
+      expect(mockSpreadsheetsBatchUpdate).not.toHaveBeenCalled();
+      expect(mockSpreadsheetsValuesAppend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          range: 'EmptyExistingSheet!A1:A',
+        }),
+      );
+    });
+
     test('creates new sheet via batchUpdate when sheet does not exist', async () => {
       mockSpreadsheetsGet.mockResolvedValue({
         status: 200,
