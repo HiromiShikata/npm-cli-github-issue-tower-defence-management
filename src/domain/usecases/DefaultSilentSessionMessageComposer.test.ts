@@ -464,6 +464,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
         idleSubAgents: [subAgent],
         longRunningSubAgents: [subAgent],
       }),
+      composer.composeSubAgentUnconsumedResultSection([subAgent]),
     ];
     for (const text of composedDefaultTexts) {
       for (const pattern of flaggedPatterns) {
@@ -489,6 +490,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
         idleSubAgents: [subAgent],
         longRunningSubAgents: [subAgent],
       }),
+      composer.composeSubAgentUnconsumedResultSection([subAgent]),
     ];
     for (const text of composedDefaultTexts) {
       expect(text).not.toContain('<');
@@ -514,7 +516,10 @@ describe('DefaultSilentSessionMessageComposer', () => {
       idleSubAgents: [subAgent],
       longRunningSubAgents: [subAgent],
     });
-    const combined = `${mainSection}\n${subSection}`.toLowerCase();
+    const unconsumedResultSection =
+      composer.composeSubAgentUnconsumedResultSection([subAgent]);
+    const combined =
+      `${mainSection}\n${subSection}\n${unconsumedResultSection}`.toLowerCase();
     expect(combined).not.toContain('claude');
     expect(combined).not.toContain('take ownership');
     expect(combined).not.toContain('/home/');
