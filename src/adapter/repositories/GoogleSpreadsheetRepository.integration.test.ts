@@ -7,6 +7,24 @@ dotenv.config();
 
 const GOOGLE_SERVICE_ACCOUNT_KEY = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
 
+const integrationTestIsRequired =
+  process.env.GOOGLE_SHEETS_INTEGRATION_REQUIRED === 'true';
+
+const credentialIsMissingWhileRequired =
+  integrationTestIsRequired && !GOOGLE_SERVICE_ACCOUNT_KEY;
+
+describe('GoogleSpreadsheetRepository integration test credential', () => {
+  test('is available whenever these integration tests are required to run', () => {
+    expect(
+      credentialIsMissingWhileRequired
+        ? 'GOOGLE_SERVICE_ACCOUNT_KEY is absent while GOOGLE_SHEETS_INTEGRATION_REQUIRED is true, so the Google Sheets integration tests would silently skip and prove nothing'
+        : 'the Google Sheets integration tests either hold their credential or are not required in this context',
+    ).toBe(
+      'the Google Sheets integration tests either hold their credential or are not required in this context',
+    );
+  });
+});
+
 const describeWhenCredentials = GOOGLE_SERVICE_ACCOUNT_KEY
   ? describe
   : describe.skip;
