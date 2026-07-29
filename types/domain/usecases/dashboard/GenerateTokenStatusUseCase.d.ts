@@ -33,6 +33,11 @@ export type TokenStatus = {
     prep: number;
     hum: number;
 };
+export type SevenDayWindowAggregate = {
+    usedPercent: number;
+    includedTokenCount: number;
+    totalTokenCount: number;
+};
 export type TokenStatusInput = {
     name: string;
     token: string;
@@ -45,6 +50,7 @@ export type GenerateTokenStatusInput = {
     nowEpochSeconds: number;
 };
 export declare const judgeTokenColor: (decision: TokenRateLimitDecision | null) => TokenStatusColor;
+export declare const computeSevenDayWindowAggregate: (tokens: TokenStatus[]) => SevenDayWindowAggregate | null;
 export declare class GenerateTokenStatusUseCase {
     run: (input: GenerateTokenStatusInput) => TokenStatus[];
     private normalizeWindows;

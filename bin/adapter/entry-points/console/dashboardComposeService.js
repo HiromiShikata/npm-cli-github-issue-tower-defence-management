@@ -147,10 +147,24 @@ const parseTokenStatus = (value) => {
         hum: asCount(value.hum),
     };
 };
-const readTokenStatuses = (dashboardDataDir) => {
+const parseSevenDayWindowAggregate = (value) => {
+    if (!isRecord(value)) {
+        return null;
+    }
+    const usedPercent = asFiniteNumber(value.usedPercent);
+    const includedTokenCount = asFiniteNumber(value.includedTokenCount);
+    const totalTokenCount = asFiniteNumber(value.totalTokenCount);
+    if (usedPercent === null ||
+        includedTokenCount === null ||
+        totalTokenCount === null) {
+        return null;
+    }
+    return { usedPercent, includedTokenCount, totalTokenCount };
+};
+const readTokenStatusFile = (dashboardDataDir) => {
     const value = readJsonFile(path.join(dashboardDataDir, 'token-status.json'));
     if (!isRecord(value) || !Array.isArray(value.tokens)) {
-        return [];
+        return { tokens: [], sevenDayWindowAggregate: null };
     }
     const tokens = [];
     for (const entry of value.tokens) {
@@ -159,17 +173,22 @@ const readTokenStatuses = (dashboardDataDir) => {
             tokens.push(token);
         }
     }
-    return tokens;
+    return {
+        tokens,
+        sevenDayWindowAggregate: parseSevenDayWindowAggregate(value.sevenDayWindowAggregate),
+    };
 };
 const buildComposeDashboardInput = (options) => {
     const projects = options.projectNames.map((projectName) => ({
         code: (0, DashboardProjectCode_1.toDashboardDisplayLabel)(projectName),
         row: readProjectRow(options.dashboardDataDir, projectName),
     }));
+    const tokenStatusFile = readTokenStatusFile(options.dashboardDataDir);
     return {
         projects,
         machineStatus: readMachineStatus(options.dashboardDataDir),
-        tokens: readTokenStatuses(options.dashboardDataDir),
+        tokens: tokenStatusFile.tokens,
+        sevenDayWindowAggregate: tokenStatusFile.sevenDayWindowAggregate,
     };
 };
 exports.buildComposeDashboardInput = buildComposeDashboardInput;

@@ -176,6 +176,7 @@ const writeTokenStatus = (params) => {
     });
     const file = {
         tokens,
+        sevenDayWindowAggregate: (0, GenerateTokenStatusUseCase_1.computeSevenDayWindowAggregate)(tokens),
         capturedAt: now.toISOString(),
     };
     writeJsonAtomic(path_1.default.join(dashboardDataDir, 'token-status.json'), file);

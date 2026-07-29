@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.GenerateTokenStatusUseCase = exports.judgeTokenColor = void 0;
+exports.GenerateTokenStatusUseCase = exports.computeSevenDayWindowAggregate = exports.judgeTokenColor = void 0;
 const HIGH_UTILIZATION_THRESHOLD = 0.7;
 const ALLOWED_WARNING_STATUS = 'allowed_warning';
 const judgeTokenColor = (decision) => {
@@ -29,6 +29,21 @@ const judgeTokenColor = (decision) => {
     return 'G';
 };
 exports.judgeTokenColor = judgeTokenColor;
+const computeSevenDayWindowAggregate = (tokens) => {
+    const utilizations = tokens
+        .map((token) => token.sevenDayUtilizationPercent)
+        .filter((percent) => percent !== null);
+    if (utilizations.length === 0) {
+        return null;
+    }
+    const total = utilizations.reduce((sum, percent) => sum + percent, 0);
+    return {
+        usedPercent: total / utilizations.length,
+        includedTokenCount: utilizations.length,
+        totalTokenCount: tokens.length,
+    };
+};
+exports.computeSevenDayWindowAggregate = computeSevenDayWindowAggregate;
 class GenerateTokenStatusUseCase {
     constructor() {
         this.run = (input) => {

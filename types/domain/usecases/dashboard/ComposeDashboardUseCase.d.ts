@@ -1,5 +1,5 @@
 import { DashboardRow } from './GenerateDashboardRowUseCase';
-import { TokenStatus } from './GenerateTokenStatusUseCase';
+import { SevenDayWindowAggregate, TokenStatus } from './GenerateTokenStatusUseCase';
 export declare const PROJECT_ROW_WIDTH_BUDGET = 32;
 export type ComposeDashboardProject = {
     code: string;
@@ -21,12 +21,14 @@ export type ComposeDashboardInput = {
     projects: ComposeDashboardProject[];
     machineStatus: ComposeDashboardMachineStatus | null;
     tokens: TokenStatus[];
+    sevenDayWindowAggregate?: SevenDayWindowAggregate | null;
 };
 export declare const roundHalfToEven: (value: number) => number;
 export declare const formatResetCountdown: (totalSeconds: number) => string;
 export declare const formatMachineStatusLines: (machineStatus: ComposeDashboardMachineStatus | null) => string[];
 export declare const formatProjectHeaderLine: () => string;
 export declare const formatProjectRowLine: (project: ComposeDashboardProject) => string;
+export declare const formatSevenDayWindowAggregateLine: (aggregate: SevenDayWindowAggregate | null) => string | null;
 export declare const formatTokenRowLine: (token: TokenStatus) => string;
 export declare class ComposeDashboardUseCase {
     run: (input: ComposeDashboardInput) => string;

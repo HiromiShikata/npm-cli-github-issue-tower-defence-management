@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ComposeDashboardUseCase = exports.formatTokenRowLine = exports.formatProjectRowLine = exports.formatProjectHeaderLine = exports.formatMachineStatusLines = exports.formatResetCountdown = exports.roundHalfToEven = exports.PROJECT_ROW_WIDTH_BUDGET = void 0;
+exports.ComposeDashboardUseCase = exports.formatTokenRowLine = exports.formatSevenDayWindowAggregateLine = exports.formatProjectRowLine = exports.formatProjectHeaderLine = exports.formatMachineStatusLines = exports.formatResetCountdown = exports.roundHalfToEven = exports.PROJECT_ROW_WIDTH_BUDGET = void 0;
 exports.PROJECT_ROW_WIDTH_BUDGET = 32;
 const PROJECT_COLUMNS = [
     { header: 'unr', key: 'unread' },
@@ -13,6 +13,10 @@ const PROJECT_COLUMNS = [
 ];
 const PROJECT_COLUMN_WIDTH = 3;
 const SEVERITY_BLANK = '  ';
+const TOKEN_COLOR_DOT_WIDTH = 1;
+const TOKEN_NAME_WIDTH = 4;
+const TOKEN_UTILIZATION_WIDTH = 4;
+const TOKEN_RESET_WIDTH = 7;
 const TOKEN_COLOR_DOT = {
     G: '🟢',
     Y: '🟡',
@@ -139,7 +143,7 @@ const formatProjectRowLine = (project) => {
     return mark + padEnd(project.code, 2, ' ') + cells;
 };
 exports.formatProjectRowLine = formatProjectRowLine;
-const formatUtilization = (percent) => padStart(percent === null ? '?' : `${percent}%`, 4);
+const formatUtilization = (percent) => padStart(percent === null ? '?' : `${percent}%`, TOKEN_UTILIZATION_WIDTH);
 const formatReset = (resetSeconds) => resetSeconds === null ? '?' : (0, exports.formatResetCountdown)(resetSeconds);
 const tokenSortKey = (token) => token.sevenDayResetSeconds === null
     ? [1, 0]
@@ -158,16 +162,42 @@ const sortTokens = (tokens) => tokens
     return left.index - right.index;
 })
     .map((entry) => entry.token);
+const joinTokenRowSegments = (segments) => segments.join(' ');
+const SEVEN_DAY_WINDOW_AGGREGATE_LABEL = '7d';
+const formatSevenDayWindowAggregateLine = (aggregate) => {
+    if (aggregate === null) {
+        return null;
+    }
+    const leftPercent = (0, exports.roundHalfToEven)(100 - aggregate.usedPercent);
+    const includedCountSuffix = aggregate.includedTokenCount === aggregate.totalTokenCount
+        ? ''
+        : ` (${aggregate.includedTokenCount})`;
+    return (joinTokenRowSegments([
+        padEnd(SEVEN_DAY_WINDOW_AGGREGATE_LABEL, TOKEN_COLOR_DOT_WIDTH + TOKEN_NAME_WIDTH, ' '),
+        padEnd('', TOKEN_UTILIZATION_WIDTH, ' '),
+        padEnd('', TOKEN_RESET_WIDTH, ' '),
+        formatUtilization(leftPercent),
+    ]) + includedCountSuffix);
+};
+exports.formatSevenDayWindowAggregateLine = formatSevenDayWindowAggregateLine;
 const formatTokenRowLine = (token) => {
     const dot = TOKEN_COLOR_DOT[token.color];
-    const name = padEnd(token.name, 4, '_');
+    const name = padEnd(token.name, TOKEN_NAME_WIDTH, '_');
     const fiveHourUtilization = formatUtilization(token.fiveHourUtilizationPercent);
     const fiveHourReset = formatReset(token.fiveHourResetSeconds);
     const sevenDayUtilization = formatUtilization(token.sevenDayUtilizationPercent);
     const sevenDayReset = formatReset(token.sevenDayResetSeconds);
     const prep = String(token.prep);
     const hum = String(token.hum);
-    return `${dot}${name} ${fiveHourUtilization} ${fiveHourReset} ${sevenDayUtilization} ${sevenDayReset} ${prep} ${hum}`;
+    return joinTokenRowSegments([
+        `${dot}${name}`,
+        fiveHourUtilization,
+        fiveHourReset,
+        sevenDayUtilization,
+        sevenDayReset,
+        prep,
+        hum,
+    ]);
 };
 exports.formatTokenRowLine = formatTokenRowLine;
 const wrapLine = (line) => `<tt>${line.replace(/ /g, '&nbsp;')}</tt><br>`;
@@ -180,7 +210,13 @@ class ComposeDashboardUseCase {
                 ...input.projects.map((project) => (0, exports.formatProjectRowLine)(project)),
             ];
             const tokenLines = sortTokens(input.tokens).map((token) => (0, exports.formatTokenRowLine)(token));
-            const lines = [...statsLines, ...projectLines, '', ...tokenLines];
+            const aggregateLine = (0, exports.formatSevenDayWindowAggregateLine)(input.sevenDayWindowAggregate ?? null);
+            const lines = [
+                ...statsLines,
+                ...projectLines,
+                aggregateLine === null ? '' : aggregateLine,
+                ...tokenLines,
+            ];
             return lines.map((line) => wrapLine(line)).join('\n') + '\n';
         };
     }
