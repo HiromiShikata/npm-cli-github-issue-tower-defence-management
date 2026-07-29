@@ -1,6 +1,8 @@
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { HttpRepository } from './adapter-interfaces/HttpRepository';
+import { KevReportWatermarkRepository } from './adapter-interfaces/KevReportWatermarkRepository';
+import { KevReportWatermark } from '../entities/KevReportWatermark';
 import { Member } from '../entities/Member';
 
 export type DailySecurityScanConfig = {
@@ -122,6 +124,40 @@ const renderScannerFindings = (
 const KEV_CATALOG_URL =
   'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json';
 
+const dayBeforeUtcYmd = (date: Date): string => {
+  const dayBefore = new Date(date);
+  dayBefore.setUTCDate(dayBefore.getUTCDate() - 1);
+  return dayBefore.toISOString().slice(0, 10);
+};
+
+const advanceWatermark = (
+  storedWatermark: KevReportWatermark | null,
+  reportedVulnerabilities: KevVulnerability[],
+): KevReportWatermark => {
+  const lastReportedDateAdded = reportedVulnerabilities.reduce(
+    (latest, vulnerability) =>
+      vulnerability.dateAdded > latest ? vulnerability.dateAdded : latest,
+    storedWatermark === null ? '' : storedWatermark.lastReportedDateAdded,
+  );
+  const reportedCveIdsOnLastReportedDateAdded = new Set<string>(
+    storedWatermark !== null &&
+      storedWatermark.lastReportedDateAdded === lastReportedDateAdded
+      ? storedWatermark.reportedCveIdsOnLastReportedDateAdded
+      : [],
+  );
+  for (const vulnerability of reportedVulnerabilities) {
+    if (vulnerability.dateAdded === lastReportedDateAdded) {
+      reportedCveIdsOnLastReportedDateAdded.add(vulnerability.cveID);
+    }
+  }
+  return {
+    lastReportedDateAdded,
+    reportedCveIdsOnLastReportedDateAdded: Array.from(
+      reportedCveIdsOnLastReportedDateAdded,
+    ),
+  };
+};
+
 export class DailySecurityScanUseCase {
   constructor(
     readonly localCommandRunner: LocalCommandRunner,
@@ -130,6 +166,7 @@ export class DailySecurityScanUseCase {
       'createNewIssue' | 'searchIssue' | 'createCommentByUrl'
     >,
     readonly httpRepository: HttpRepository,
+    readonly kevReportWatermarkRepository: KevReportWatermarkRepository,
   ) {}
 
   run = async (input: {
@@ -344,9 +381,26 @@ export class DailySecurityScanUseCase {
       return;
     }
 
-    const yesterday = new Date(lastTargetDate);
-    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-    const yesterdayYmd = yesterday.toISOString().slice(0, 10);
+    const watermarkLoadResult = await this.kevReportWatermarkRepository.load();
+    if (watermarkLoadResult.type === 'unreadable') {
+      console.error(
+        `Skipping the CISA KEV report for this run because ${watermarkLoadResult.reason}. The stored watermark is left unchanged and no issue was created; reporting resumes once the stored watermark is readable again.`,
+      );
+      return;
+    }
+    const storedWatermark =
+      watermarkLoadResult.type === 'stored'
+        ? watermarkLoadResult.watermark
+        : null;
+    const reportBoundaryDateAdded =
+      storedWatermark === null
+        ? dayBeforeUtcYmd(lastTargetDate)
+        : storedWatermark.lastReportedDateAdded;
+    const alreadyReportedCveIdsOnBoundary = new Set<string>(
+      storedWatermark === null
+        ? []
+        : storedWatermark.reportedCveIdsOnLastReportedDateAdded,
+    );
 
     const kevJson = await this.httpRepository.get(KEV_CATALOG_URL);
     const parsedKev: unknown = JSON.parse(kevJson);
@@ -356,10 +410,30 @@ export class DailySecurityScanUseCase {
       );
     }
 
-    const newKevEntries = parsedKev.vulnerabilities.filter(
-      (vulnerability) => vulnerability.dateAdded >= yesterdayYmd,
+    const unreportedVulnerabilities = parsedKev.vulnerabilities.filter(
+      (vulnerability) =>
+        vulnerability.dateAdded > reportBoundaryDateAdded ||
+        (vulnerability.dateAdded === reportBoundaryDateAdded &&
+          !alreadyReportedCveIdsOnBoundary.has(vulnerability.cveID)),
     );
-    const affectingKevEntries = newKevEntries
+    if (unreportedVulnerabilities.length === 0) {
+      return;
+    }
+    const advancedWatermark = advanceWatermark(
+      storedWatermark,
+      unreportedVulnerabilities,
+    );
+    const saveAdvancedWatermark = async (): Promise<void> => {
+      try {
+        await this.kevReportWatermarkRepository.save(advancedWatermark);
+      } catch (error) {
+        console.error(
+          `The CISA KEV additions considered in this run were not recorded because the KEV report watermark file did not advance to ${advancedWatermark.lastReportedDateAdded}: ${String(error)}. Those additions will be considered again on the next run, and the rest of the scheduled work continues.`,
+        );
+      }
+    };
+
+    const affectingKevEntries = unreportedVulnerabilities
       .map((vulnerability) => ({
         vulnerability,
         affectedPackages: scannedVulnerablePackages.filter((scannedPackage) =>
@@ -368,13 +442,14 @@ export class DailySecurityScanUseCase {
       }))
       .filter((entry) => entry.affectedPackages.length > 0);
     if (affectingKevEntries.length === 0) {
+      await saveAdvancedWatermark();
       return;
     }
 
     await this.issueRepository.createNewIssue(
       org,
       config.kevReportRepo,
-      `CISA KEV new additions since ${yesterdayYmd}`,
+      `CISA KEV new additions since ${reportBoundaryDateAdded}`,
       affectingKevEntries
         .map((entry) =>
           [
@@ -389,5 +464,7 @@ export class DailySecurityScanUseCase {
       [manager],
       [],
     );
+
+    await saveAdvancedWatermark();
   };
 }
