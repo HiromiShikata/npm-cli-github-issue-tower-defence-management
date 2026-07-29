@@ -279,6 +279,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
         silentSeconds: 120,
         runningSeconds: 900,
         waitingOnExternalProcess: false,
+        finishedResultUnconsumed: false,
       },
     ]);
   });
@@ -400,6 +401,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
         silentSeconds: 60,
         runningSeconds: 600,
         waitingOnExternalProcess: false,
+        finishedResultUnconsumed: false,
       },
     ]);
   });
@@ -474,6 +476,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
         silentSeconds: 60,
         runningSeconds: 600,
         waitingOnExternalProcess: false,
+        finishedResultUnconsumed: false,
       },
     ]);
   });
@@ -525,6 +528,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
         silentSeconds: 600,
         runningSeconds: 900,
         waitingOnExternalProcess: false,
+        finishedResultUnconsumed: false,
       },
     ]);
   });
@@ -555,6 +559,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
         silentSeconds: fourDaysSeconds,
         runningSeconds: fourDaysSeconds,
         waitingOnExternalProcess: false,
+        finishedResultUnconsumed: false,
       },
     ]);
   });
@@ -592,6 +597,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
         silentSeconds: 60,
         runningSeconds: 600,
         waitingOnExternalProcess: false,
+        finishedResultUnconsumed: false,
       },
     ]);
     fs.rmSync(targetDir, { force: true, recursive: true });
@@ -680,6 +686,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
         silentSeconds: 0,
         runningSeconds: 0,
         waitingOnExternalProcess: false,
+        finishedResultUnconsumed: false,
       },
     ]);
   });
@@ -731,6 +738,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
         silentSeconds: 120,
         runningSeconds: 900,
         waitingOnExternalProcess: false,
+        finishedResultUnconsumed: false,
       },
     ]);
   });
@@ -767,6 +775,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
         silentSeconds: twoDaysSeconds,
         runningSeconds: twoDaysSeconds,
         waitingOnExternalProcess: false,
+        finishedResultUnconsumed: false,
       },
     ]);
   });
@@ -821,6 +830,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
             silentSeconds: 600,
             runningSeconds: 900,
             waitingOnExternalProcess: true,
+            finishedResultUnconsumed: false,
           },
         ]);
       },
@@ -956,6 +966,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
           silentSeconds: 600,
           runningSeconds: 900,
           waitingOnExternalProcess: true,
+          finishedResultUnconsumed: false,
         },
       ]);
     });
@@ -987,6 +998,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
           silentSeconds: 600,
           runningSeconds: 900,
           waitingOnExternalProcess: false,
+          finishedResultUnconsumed: false,
         },
       ]);
     });
@@ -1282,6 +1294,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
         silentSeconds: 120,
         runningSeconds: 900,
         waitingOnExternalProcess: false,
+        finishedResultUnconsumed: false,
       },
     ]);
   });
@@ -1337,6 +1350,7 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
         silentSeconds: 600,
         runningSeconds: 900,
         waitingOnExternalProcess: false,
+        finishedResultUnconsumed: false,
       },
     ]);
   });
@@ -1367,6 +1381,151 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
         silentSeconds: 120,
         runningSeconds: 900,
         waitingOnExternalProcess: false,
+        finishedResultUnconsumed: false,
+      },
+    ]);
+  });
+
+  it('reports a finished sub-agent still listed in the running-subagents record as an unconsumed result carrying its silence age', async () => {
+    const sessionName = 'https_//github_com/owner/repo/issues/9';
+    const unconsumedAgentId = 'aaabbbbcccc30001';
+    writeAgentTranscript(
+      sessionName,
+      unconsumedAgentId,
+      finishedEntries('2026-06-27T10:30:00.000Z'),
+      nowEpochSeconds - 5220,
+    );
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      emptyProcessLister(),
+      now,
+      livenessResolverWith([unconsumedAgentId]),
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.get(sessionName)).toEqual([
+      {
+        label: `agent-${unconsumedAgentId}`,
+        silentSeconds: 5220,
+        runningSeconds: 5400,
+        waitingOnExternalProcess: false,
+        finishedResultUnconsumed: true,
+      },
+    ]);
+  });
+
+  it('reports a finished sub-agent whose tail is a final text answer as an unconsumed result while it stays in the running-subagents record', async () => {
+    const sessionName = 'https_//github_com/owner/repo/issues/9';
+    const unconsumedAgentId = 'aaabbbbcccc30002';
+    writeAgentTranscript(
+      sessionName,
+      unconsumedAgentId,
+      finalTextAnswerEntries('2026-06-27T11:00:00.000Z'),
+      nowEpochSeconds - 360,
+    );
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      emptyProcessLister(),
+      now,
+      livenessResolverWith([unconsumedAgentId]),
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.get(sessionName)).toEqual([
+      {
+        label: `agent-${unconsumedAgentId}`,
+        silentSeconds: 360,
+        runningSeconds: 3600,
+        waitingOnExternalProcess: false,
+        finishedResultUnconsumed: true,
+      },
+    ]);
+  });
+
+  it('discards a finished sub-agent when the running-subagents record cannot be resolved', async () => {
+    const sessionName = 'https_//github_com/owner/repo/issues/9';
+    const finishedAgentId = 'aaabbbbcccc30003';
+    writeAgentTranscript(
+      sessionName,
+      finishedAgentId,
+      finishedEntries('2026-06-27T10:30:00.000Z'),
+      nowEpochSeconds - 5220,
+    );
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      emptyProcessLister(),
+      now,
+      livenessResolverWith(null),
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.size).toBe(0);
+  });
+
+  it('discards a finished sub-agent whose id has already been removed from the running-subagents record', async () => {
+    const sessionName = 'https_//github_com/owner/repo/issues/9';
+    const finishedAgentId = 'aaabbbbcccc30004';
+    writeAgentTranscript(
+      sessionName,
+      finishedAgentId,
+      finishedEntries('2026-06-27T10:30:00.000Z'),
+      nowEpochSeconds - 5220,
+    );
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      emptyProcessLister(),
+      now,
+      livenessResolverWith(['aaabbbbcccc30005']),
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.size).toBe(0);
+  });
+
+  it('reports a still-working sub-agent listed in the running-subagents record as having no unconsumed result', async () => {
+    const sessionName = 'https_//github_com/owner/repo/issues/9';
+    const workingAgentId = 'aaabbbbcccc30006';
+    writeAgentTranscript(
+      sessionName,
+      workingAgentId,
+      pendingToolUseEntries('2026-06-27T11:45:00.000Z'),
+      nowEpochSeconds - 600,
+    );
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      emptyProcessLister(),
+      now,
+      livenessResolverWith([workingAgentId]),
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.get(sessionName)).toEqual([
+      {
+        label: `agent-${workingAgentId}`,
+        silentSeconds: 600,
+        runningSeconds: 900,
+        waitingOnExternalProcess: false,
+        finishedResultUnconsumed: false,
       },
     ]);
   });

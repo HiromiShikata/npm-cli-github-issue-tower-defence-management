@@ -34,6 +34,7 @@ const MAIN_STALLED_SECTION = 'MAIN_STALLED_SECTION';
 const MAIN_STALLED_STALE_OWNER_CALL_SECTION =
   'MAIN_STALLED_STALE_OWNER_CALL_SECTION';
 const SUBAGENT_SECTION = 'SUBAGENT_SECTION';
+const SUBAGENT_UNCONSUMED_RESULT_SECTION = 'SUBAGENT_UNCONSUMED_RESULT_SECTION';
 
 class EveryNameRecentSet extends Set<string> {
   override has = (): boolean => true;
@@ -184,6 +185,9 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         .fn()
         .mockReturnValue(MAIN_STALLED_STALE_OWNER_CALL_SECTION),
       composeSubAgentSection: jest.fn().mockReturnValue(SUBAGENT_SECTION),
+      composeSubAgentUnconsumedResultSection: jest
+        .fn()
+        .mockReturnValue(SUBAGENT_UNCONSUMED_RESULT_SECTION),
     };
     mockSleeper = {
       sleep: jest.fn().mockResolvedValue(undefined),
@@ -594,6 +598,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         silentSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
         runningSeconds: 60,
         waitingOnExternalProcess: false,
+        finishedResultUnconsumed: false,
       },
     ];
     mockSubAgentActivityRepository.listSubAgentActivitiesBySessionName.mockResolvedValue(
@@ -619,6 +624,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         silentSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
         runningSeconds: 600,
         waitingOnExternalProcess: false,
+        finishedResultUnconsumed: false,
       },
     ];
     mockSubAgentActivityRepository.listSubAgentActivitiesBySessionName.mockResolvedValue(
@@ -644,6 +650,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         silentSeconds: 10,
         runningSeconds: DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
         waitingOnExternalProcess: false,
+        finishedResultUnconsumed: false,
       },
     ];
     mockSubAgentActivityRepository.listSubAgentActivitiesBySessionName.mockResolvedValue(
@@ -1055,12 +1062,14 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       silentSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
       runningSeconds: 60,
       waitingOnExternalProcess: false,
+      finishedResultUnconsumed: false,
     });
     const waitingSubAgent = (label: string): SubAgentActivity => ({
       label,
       silentSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
       runningSeconds: 60,
       waitingOnExternalProcess: true,
+      finishedResultUnconsumed: false,
     });
     const quietLongRunningSubAgent = (
       label: string,
@@ -1070,12 +1079,14 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       silentSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
       runningSeconds: DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
       waitingOnExternalProcess,
+      finishedResultUnconsumed: false,
     });
     const producingLongRunningSubAgent = (label: string): SubAgentActivity => ({
       label,
       silentSeconds: 30,
       runningSeconds: DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
       waitingOnExternalProcess: false,
+      finishedResultUnconsumed: false,
     });
 
     const setupSubAgents = (subAgents: SubAgentActivity[]): void => {
@@ -1120,6 +1131,98 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       expect(
         mockNotificationRepository.sendSelfCheckNotification,
       ).toHaveBeenCalledTimes(1);
+    });
+
+    const unconsumedResultSubAgent = (label: string): SubAgentActivity => ({
+      label,
+      silentSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
+      runningSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS + 60,
+      waitingOnExternalProcess: false,
+      finishedResultUnconsumed: true,
+    });
+    const justFinishedSubAgent = (label: string): SubAgentActivity => ({
+      label,
+      silentSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS - 1,
+      runningSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS + 60,
+      waitingOnExternalProcess: false,
+      finishedResultUnconsumed: true,
+    });
+
+    const setupRecentlyProducingMainSession = (sessionName: string): void => {
+      mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
+        [{ sessionName, lastOutputEpochSeconds: nowEpochSeconds - 60 }],
+      );
+    };
+
+    it('notifies a session whose finished sub-agent result stayed unconsumed past the threshold while the main session keeps producing output', async () => {
+      setupSubAgents([unconsumedResultSubAgent('agent-aaabbbbcccc30001')]);
+      setupRecentlyProducingMainSession(GITHUB_SESSION);
+
+      await useCase.run(runParams());
+
+      expect(
+        mockMessageComposer.composeSubAgentUnconsumedResultSection,
+      ).toHaveBeenCalledWith([
+        unconsumedResultSubAgent('agent-aaabbbbcccc30001'),
+      ]);
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledWith(
+        GITHUB_SESSION,
+        SUBAGENT_UNCONSUMED_RESULT_SECTION,
+      );
+    });
+
+    it('never selects a finished sub-agent whose result has been unconsumed for less than the threshold', async () => {
+      setupSubAgents([justFinishedSubAgent('agent-aaabbbbcccc30002')]);
+      setupRecentlyProducingMainSession(GITHUB_SESSION);
+
+      await useCase.run(runParams());
+
+      expect(
+        mockMessageComposer.composeSubAgentUnconsumedResultSection,
+      ).not.toHaveBeenCalled();
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('never selects a still-working idle sub-agent as an unconsumed result', async () => {
+      setupSubAgents([hungSubAgent('sub-process-1')]);
+
+      await useCase.run(runParams());
+
+      expect(
+        mockMessageComposer.composeSubAgentUnconsumedResultSection,
+      ).not.toHaveBeenCalled();
+      expect(mockMessageComposer.composeSubAgentSection).toHaveBeenCalledWith({
+        idleSubAgents: [hungSubAgent('sub-process-1')],
+        longRunningSubAgents: [],
+      });
+    });
+
+    it('keeps an unconsumed finished sub-agent out of the idle and long-running sections', async () => {
+      setupSubAgents([unconsumedResultSubAgent('agent-aaabbbbcccc30003')]);
+
+      await useCase.run(runParams());
+
+      expect(mockMessageComposer.composeSubAgentSection).not.toHaveBeenCalled();
+    });
+
+    it('delivers the idle section and the unconsumed-result section together when both conditions hold', async () => {
+      setupSubAgents([
+        hungSubAgent('sub-process-1'),
+        unconsumedResultSubAgent('agent-aaabbbbcccc30004'),
+      ]);
+
+      await useCase.run(runParams());
+
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledWith(
+        GITHUB_SESSION,
+        `${SUBAGENT_SECTION}\n\n${SUBAGENT_UNCONSUMED_RESULT_SECTION}`,
+      );
     });
 
     it('never selects a waiting sub-agent for the long-running section even when quiet past both thresholds', async () => {
@@ -1753,6 +1856,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
           silentSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
           runningSeconds: 60,
           waitingOnExternalProcess: false,
+          finishedResultUnconsumed: false,
         },
       ];
       mockSubAgentActivityRepository.listSubAgentActivitiesBySessionName.mockResolvedValue(
@@ -1883,12 +1987,14 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         silentSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
         runningSeconds: 60,
         waitingOnExternalProcess: false,
+        finishedResultUnconsumed: false,
       };
       const quietLongRunningSubAgent: SubAgentActivity = {
         label: 'agent-long-1',
         silentSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
         runningSeconds: DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
         waitingOnExternalProcess: false,
+        finishedResultUnconsumed: false,
       };
       mockSubAgentActivityRepository.listSubAgentActivitiesBySessionName.mockResolvedValue(
         new Map([
@@ -1915,6 +2021,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
                 silentSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
                 runningSeconds: 60,
                 waitingOnExternalProcess: false,
+                finishedResultUnconsumed: false,
               },
             ],
           ],
