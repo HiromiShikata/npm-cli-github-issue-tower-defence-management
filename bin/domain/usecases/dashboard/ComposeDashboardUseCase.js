@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ComposeDashboardUseCase = exports.formatTokenRowLine = exports.formatSevenDayWindowAggregateLine = exports.formatProjectRowLine = exports.formatProjectHeaderLine = exports.formatMachineStatusLines = exports.formatResetCountdown = exports.roundHalfToEven = exports.PROJECT_ROW_WIDTH_BUDGET = void 0;
+exports.ComposeDashboardUseCase = exports.formatTokenRowLine = exports.formatSevenDayWindowAggregateLine = exports.SEVEN_DAY_UTILIZATION_COLUMN_START = exports.formatProjectRowLine = exports.formatProjectHeaderLine = exports.formatMachineStatusLines = exports.formatResetCountdown = exports.roundHalfToEven = exports.TOKEN_UTILIZATION_WIDTH = exports.STATUS_DOT_DISPLAY_WIDTH = exports.PROJECT_ROW_WIDTH_BUDGET = void 0;
 exports.PROJECT_ROW_WIDTH_BUDGET = 32;
 const PROJECT_COLUMNS = [
     { header: 'unr', key: 'unread' },
@@ -12,11 +12,12 @@ const PROJECT_COLUMNS = [
     { header: 'dep', key: 'dep' },
 ];
 const PROJECT_COLUMN_WIDTH = 3;
-const SEVERITY_BLANK = '  ';
-const TOKEN_COLOR_DOT_WIDTH = 1;
+exports.STATUS_DOT_DISPLAY_WIDTH = 2;
+const SEVERITY_BLANK = ' '.repeat(exports.STATUS_DOT_DISPLAY_WIDTH);
 const TOKEN_NAME_WIDTH = 4;
-const TOKEN_UTILIZATION_WIDTH = 4;
+exports.TOKEN_UTILIZATION_WIDTH = 4;
 const TOKEN_RESET_WIDTH = 7;
+const TOKEN_SEGMENT_SEPARATOR = ' ';
 const TOKEN_COLOR_DOT = {
     G: '🟢',
     Y: '🟡',
@@ -143,7 +144,7 @@ const formatProjectRowLine = (project) => {
     return mark + padEnd(project.code, 2, ' ') + cells;
 };
 exports.formatProjectRowLine = formatProjectRowLine;
-const formatUtilization = (percent) => padStart(percent === null ? '?' : `${percent}%`, TOKEN_UTILIZATION_WIDTH);
+const formatUtilization = (percent) => padStart(percent === null ? '?' : `${percent}%`, exports.TOKEN_UTILIZATION_WIDTH);
 const formatReset = (resetSeconds) => resetSeconds === null ? '?' : (0, exports.formatResetCountdown)(resetSeconds);
 const tokenSortKey = (token) => token.sevenDayResetSeconds === null
     ? [1, 0]
@@ -162,22 +163,25 @@ const sortTokens = (tokens) => tokens
     return left.index - right.index;
 })
     .map((entry) => entry.token);
-const joinTokenRowSegments = (segments) => segments.join(' ');
-const SEVEN_DAY_WINDOW_AGGREGATE_LABEL = '7d';
+const joinTokenRowSegments = (segments) => segments.join(TOKEN_SEGMENT_SEPARATOR);
+exports.SEVEN_DAY_UTILIZATION_COLUMN_START = exports.STATUS_DOT_DISPLAY_WIDTH +
+    TOKEN_NAME_WIDTH +
+    TOKEN_SEGMENT_SEPARATOR.length +
+    exports.TOKEN_UTILIZATION_WIDTH +
+    TOKEN_SEGMENT_SEPARATOR.length +
+    TOKEN_RESET_WIDTH +
+    TOKEN_SEGMENT_SEPARATOR.length;
 const formatSevenDayWindowAggregateLine = (aggregate) => {
     if (aggregate === null) {
         return null;
     }
-    const leftPercent = (0, exports.roundHalfToEven)(100 - aggregate.usedPercent);
+    const usedPercent = (0, exports.roundHalfToEven)(aggregate.usedPercent);
     const includedCountSuffix = aggregate.includedTokenCount === aggregate.totalTokenCount
         ? ''
         : ` (${aggregate.includedTokenCount})`;
-    return (joinTokenRowSegments([
-        padEnd(SEVEN_DAY_WINDOW_AGGREGATE_LABEL, TOKEN_COLOR_DOT_WIDTH + TOKEN_NAME_WIDTH, ' '),
-        padEnd('', TOKEN_UTILIZATION_WIDTH, ' '),
-        padEnd('', TOKEN_RESET_WIDTH, ' '),
-        formatUtilization(leftPercent),
-    ]) + includedCountSuffix);
+    return (padEnd('', exports.SEVEN_DAY_UTILIZATION_COLUMN_START, ' ') +
+        formatUtilization(usedPercent) +
+        includedCountSuffix);
 };
 exports.formatSevenDayWindowAggregateLine = formatSevenDayWindowAggregateLine;
 const formatTokenRowLine = (token) => {

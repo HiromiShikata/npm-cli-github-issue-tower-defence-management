@@ -23,11 +23,14 @@ export type ComposeDashboardInput = {
     tokens: TokenStatus[];
     sevenDayWindowAggregate?: SevenDayWindowAggregate | null;
 };
+export declare const STATUS_DOT_DISPLAY_WIDTH = 2;
+export declare const TOKEN_UTILIZATION_WIDTH = 4;
 export declare const roundHalfToEven: (value: number) => number;
 export declare const formatResetCountdown: (totalSeconds: number) => string;
 export declare const formatMachineStatusLines: (machineStatus: ComposeDashboardMachineStatus | null) => string[];
 export declare const formatProjectHeaderLine: () => string;
 export declare const formatProjectRowLine: (project: ComposeDashboardProject) => string;
+export declare const SEVEN_DAY_UTILIZATION_COLUMN_START: number;
 export declare const formatSevenDayWindowAggregateLine: (aggregate: SevenDayWindowAggregate | null) => string | null;
 export declare const formatTokenRowLine: (token: TokenStatus) => string;
 export declare class ComposeDashboardUseCase {

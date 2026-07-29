@@ -1,3 +1,10 @@
+## [1.142.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.142.0...v1.142.1) (2026-07-29)
+
+
+### Bug Fixes
+
+* **dashboard:** drop the aggregate line label, align its column, and show used percentage ([#1307](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1307)) ([4f188f5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4f188f506ee020addfc91e60a9df22fb77c2225f))
+
 # [1.142.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.141.0...v1.142.0) (2026-07-29)
 
 
