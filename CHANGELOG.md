@@ -1,3 +1,10 @@
+## [1.142.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.142.1...v1.142.2) (2026-07-29)
+
+
+### Bug Fixes
+
+* **GoogleSpreadsheetRepository:** repair sheet-creation idempotency and upgrade googleapis to 173.0.0 ([#1310](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1310)) ([e3c9f52](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e3c9f52378fb5a8e98dcc8b4295578ad7ae218e8))
+
 ## [1.142.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.142.0...v1.142.1) (2026-07-29)
 
 

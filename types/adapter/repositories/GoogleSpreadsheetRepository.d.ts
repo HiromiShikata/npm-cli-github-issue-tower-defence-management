@@ -72,6 +72,7 @@ export declare class GoogleSpreadsheetRepository implements SpreadsheetRepositor
     getSpreadsheetId: (spreadsheetUrl: string) => string;
     getSheet: (spreadsheetUrl: string, sheetName: string) => Promise<string[][] | null>;
     updateCell: (spreadsheetUrl: string, sheetName: string, row: number, column: number, value: string) => Promise<void>;
+    private sheetExists;
     createNewSheetIfNotExists: (spreadsheetUrl: string, sheetName: string) => Promise<void>;
     appendSheetValues: (spreadsheetUrl: string, sheetName: string, values: string[][]) => Promise<void>;
 }

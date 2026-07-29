@@ -57,11 +57,19 @@ class GoogleSpreadsheetRepository {
                 throw new Error(`Failed to update cell: ${response.status}. ${JSON.stringify(response.data)}`);
             }
         };
+        this.sheetExists = async (spreadsheetUrl, sheetName) => {
+            const sheets = this.sheetsClient;
+            const spreadsheetId = this.getSpreadsheetId(spreadsheetUrl);
+            const response = await sheets.spreadsheets.get({ spreadsheetId });
+            if (response.status !== 200) {
+                throw new Error(`Failed to get sheet: ${response.status}. ${JSON.stringify(response.data)}`);
+            }
+            return (response.data.sheets ?? []).some((sheet) => sheet.properties?.title === sheetName);
+        };
         this.createNewSheetIfNotExists = async (spreadsheetUrl, sheetName) => {
             const sheets = this.sheetsClient;
             const spreadsheetId = this.getSpreadsheetId(spreadsheetUrl);
-            const sheet = await this.getSheet(spreadsheetUrl, sheetName);
-            if (sheet !== null) {
+            if (await this.sheetExists(spreadsheetUrl, sheetName)) {
                 return;
             }
             const response = await sheets.spreadsheets.batchUpdate({
