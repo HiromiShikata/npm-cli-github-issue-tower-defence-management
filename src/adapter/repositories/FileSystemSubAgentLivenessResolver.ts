@@ -25,9 +25,9 @@ export class FileSystemSubAgentLivenessResolver implements SubAgentLivenessResol
     }
     const liveIds = new Set<string>();
     for (const line of content.split('\n')) {
-      const trimmed = line.trim();
-      if (trimmed.length > 0) {
-        liveIds.add(trimmed);
+      const agentId = line.trim().split(/\s+/)[0];
+      if (agentId.length > 0) {
+        liveIds.add(agentId);
       }
     }
     return liveIds;
