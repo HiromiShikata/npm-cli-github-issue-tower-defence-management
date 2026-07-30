@@ -2703,10 +2703,13 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         ),
       ).toBe(2);
       const secondSlimCall = fetchSpy.mock.calls
-        .map(([input, init]: Parameters<typeof fetch>): GraphqlRequestBody | null =>
-          requestUrlOf(input) === 'https://api.github.com/graphql'
-            ? parseGraphqlRequestBody(init)
-            : null,
+        .map(
+          ([input, init]: Parameters<
+            typeof fetch
+          >): GraphqlRequestBody | null =>
+            requestUrlOf(input) === 'https://api.github.com/graphql'
+              ? parseGraphqlRequestBody(init)
+              : null,
         )
         .filter(
           (body: GraphqlRequestBody | null): body is GraphqlRequestBody =>
