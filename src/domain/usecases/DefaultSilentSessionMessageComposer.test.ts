@@ -143,7 +143,9 @@ describe('DefaultSilentSessionMessageComposer', () => {
 
   it('provides guidance in the main-stalled section to raise an owner-call if none has been raised in this session', () => {
     const section = composer.composeMainStalledSection(600);
-    expect(section).toContain('If you have not yet raised an owner-call in this session');
+    expect(section).toContain(
+      'If you have not yet raised an owner-call in this session',
+    );
   });
 
   it('omits the self-diagnosis guidance from the stale-owner-call section', () => {
