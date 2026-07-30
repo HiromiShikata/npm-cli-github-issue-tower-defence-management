@@ -41,8 +41,8 @@ export type OauthTokenSelectResult = {
 const SECONDS_PER_DAY = 86400;
 const SEVEN_DAYS_IN_SECONDS = 7 * SECONDS_PER_DAY;
 
-export const FIVE_HOUR_MIN_FREE_RATIO = 0.6;
-export const SEVEN_DAY_MIN_FREE_RATIO = 0.07;
+export const FIVE_HOUR_MIN_FREE_RATIO = 0.25;
+export const SEVEN_DAY_MIN_FREE_RATIO = 0.03;
 
 export const selectWeightedCandidate = <Entry>(
   eligible: Entry[],
