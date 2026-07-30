@@ -3,6 +3,10 @@ import {
   TokenExhaustionHandoverState,
   TokenExhaustionHandoverStateEntry,
 } from '../entities/TokenExhaustionHandoverState';
+import {
+  FIVE_HOUR_MIN_FREE_RATIO,
+  SEVEN_DAY_MIN_FREE_RATIO,
+} from './OauthTokenSelectUseCase';
 import { ClaudeHandoverSessionRepository } from './adapter-interfaces/ClaudeHandoverSessionRepository';
 import { ProcessSignalRepository } from './adapter-interfaces/ProcessSignalRepository';
 import { TmuxSessionRepository } from './adapter-interfaces/TmuxSessionRepository';
@@ -285,12 +289,19 @@ export class TokenExhaustionHandoverUseCase {
         continue;
       }
       const verdict = this.evaluateSnapshot(snapshot, nowEpochSeconds, true);
-      if (!verdict.stale && !verdict.exhausted) {
+      if (this.isSelectableReplacement(verdict)) {
         return true;
       }
     }
     return false;
   };
+
+  private isSelectableReplacement = (verdict: SnapshotVerdict): boolean =>
+    !verdict.stale &&
+    !verdict.blocked &&
+    !verdict.weeklyCapped &&
+    verdict.fiveHourFree >= FIVE_HOUR_MIN_FREE_RATIO &&
+    verdict.sevenDayFree >= SEVEN_DAY_MIN_FREE_RATIO;
 
   private evaluateSnapshot = (
     snapshot: TokenRateLimitSnapshot,

@@ -418,6 +418,53 @@ describe('TokenExhaustionHandoverUseCase', () => {
     );
   });
 
+  it('leaves an exhausted leader alive when every other token is below the seven-day selection floor', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      issueUrlLeaderSession(),
+    ]);
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, {
+        fiveHourUtilization: 0,
+        sevenDayUtilization: 0.998,
+      }),
+      snapshot(TOKEN_FRESH, {
+        fiveHourUtilization: 0,
+        sevenDayUtilization: 0.99,
+      }),
+    ]);
+
+    const result = await useCase.run(defaultInput());
+
+    expect(result.leftAliveSessionNames).toEqual([ISSUE_URL_SESSION]);
+    expect(result.newlyHandoverSentSessionNames).toEqual([]);
+    expect(tmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
+  });
+
+  it('signals an exhausted leader when another token is above the selection floors', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      issueUrlLeaderSession(),
+    ]);
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, {
+        fiveHourUtilization: 0,
+        sevenDayUtilization: 0.998,
+      }),
+      snapshot(TOKEN_FRESH, {
+        fiveHourUtilization: 0,
+        sevenDayUtilization: 0.96,
+      }),
+    ]);
+
+    const result = await useCase.run(defaultInput());
+
+    expect(result.newlyHandoverSentSessionNames).toEqual([ISSUE_URL_SESSION]);
+    expect(result.leftAliveSessionNames).toEqual([]);
+    expect(tmuxSessionRepository.sendKeys).toHaveBeenCalledWith(
+      ISSUE_URL_SESSION,
+      DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE,
+    );
+  });
+
   it('waits while the grace period has not elapsed', async () => {
     handoverSessionRepository.listHandoverSessions.mockReturnValue([
       issueUrlLeaderSession(),
