@@ -2062,14 +2062,14 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             if (body.query.includes('timelineItems') && routes.timeline) {
               return toResponse(routes.timeline());
             }
+            if (body.query.includes('headRefOid') && routes.slimPullRequest) {
+              return toResponse(routes.slimPullRequest(body.variables));
+            }
             if (
               body.query.includes('mergeStateStatus') &&
               routes.mergeability
             ) {
               return toResponse(routes.mergeability());
-            }
-            if (body.query.includes('headRefOid') && routes.slimPullRequest) {
-              return toResponse(routes.slimPullRequest(body.variables));
             }
             throw new Error(`Unexpected GraphQL query in test: ${body.query}`);
           }
@@ -2116,7 +2116,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       fetchSpy,
       (url, body) =>
         url === 'https://api.github.com/graphql' &&
-        body.includes('mergeStateStatus'),
+        body.includes('PullRequestMergeability'),
     );
 
   const buildSlimPullRequestResponse = (
@@ -2127,6 +2127,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       headRefName?: string;
       baseRefName?: string;
       mergeable?: string;
+      mergeStateStatus?: string | null;
       headRefOid?: string;
       reviewThreads?: {
         pageInfo: { endCursor: string | null; hasNextPage: boolean };
@@ -2145,6 +2146,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           headRefName: overrides.headRefName ?? 'feature-branch',
           baseRefName: overrides.baseRefName ?? 'main',
           mergeable: overrides.mergeable ?? 'MERGEABLE',
+          mergeStateStatus:
+            'mergeStateStatus' in overrides
+              ? overrides.mergeStateStatus
+              : 'CLEAN',
           headRefOid: overrides.headRefOid ?? 'headsha123',
           reviewThreads: overrides.reviewThreads ?? {
             pageInfo: { endCursor: null, hasNextPage: false },
@@ -2308,6 +2313,57 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result).not.toBeNull();
       expect(result?.isCiStateSuccess).toBe(true);
       expect(result?.isPassedAllCiJob).toBe(true);
+    });
+  });
+
+  describe('getOpenPullRequest isBranchOutOfDate derivation from mergeStateStatus', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('returns isBranchOutOfDate true when the slim query reports mergeStateStatus BEHIND', async () => {
+      mockFetchRoutes({
+        slimPullRequest: () =>
+          buildSlimPullRequestResponse({ mergeStateStatus: 'BEHIND' }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.isBranchOutOfDate).toBe(true);
+    });
+
+    it('returns isBranchOutOfDate false when the slim query reports mergeStateStatus CLEAN', async () => {
+      mockFetchRoutes({
+        slimPullRequest: () =>
+          buildSlimPullRequestResponse({ mergeStateStatus: 'CLEAN' }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.isBranchOutOfDate).toBe(false);
+    });
+
+    it('returns isBranchOutOfDate false when the slim query reports no mergeStateStatus', async () => {
+      mockFetchRoutes({
+        slimPullRequest: () =>
+          buildSlimPullRequestResponse({ mergeStateStatus: null }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.isBranchOutOfDate).toBe(false);
     });
   });
 
@@ -2647,13 +2703,13 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         ),
       ).toBe(2);
       const secondSlimCall = fetchSpy.mock.calls
-        .map(([input, init]): GraphqlRequestBody | null =>
+        .map(([input, init]: Parameters<typeof fetch>): GraphqlRequestBody | null =>
           requestUrlOf(input) === 'https://api.github.com/graphql'
             ? parseGraphqlRequestBody(init)
             : null,
         )
         .filter(
-          (body): body is GraphqlRequestBody =>
+          (body: GraphqlRequestBody | null): body is GraphqlRequestBody =>
             body !== null && body.query.includes('headRefOid'),
         )[1];
       expect(secondSlimCall?.variables.reviewThreadsAfter).toBe('cursor-1');
@@ -2783,6 +2839,44 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result).toHaveLength(1);
       expect(result[0].isConflicted).toBe(false);
       expect(result[0].mergeable).toBe('MERGEABLE');
+    });
+
+    it('returns isBranchOutOfDate true when the slim query reports mergeStateStatus BEHIND (mergeable is definitive)', async () => {
+      mockFetchRoutes({
+        timeline: () => buildTimelineResponse('MERGEABLE'),
+        slimPullRequest: (variables: { prNumber: number }) =>
+          buildSlimPullRequestResponse({
+            url: `https://github.com/HiromiShikata/test-repository/pull/${variables.prNumber}`,
+            mergeStateStatus: 'BEHIND',
+          }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/test-repository/issues/11194',
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].isBranchOutOfDate).toBe(true);
+    });
+
+    it('returns isBranchOutOfDate false when the slim query reports mergeStateStatus CLEAN (mergeable is definitive)', async () => {
+      mockFetchRoutes({
+        timeline: () => buildTimelineResponse('MERGEABLE'),
+        slimPullRequest: (variables: { prNumber: number }) =>
+          buildSlimPullRequestResponse({
+            url: `https://github.com/HiromiShikata/test-repository/pull/${variables.prNumber}`,
+            mergeStateStatus: 'CLEAN',
+          }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/test-repository/issues/11194',
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].isBranchOutOfDate).toBe(false);
     });
 
     const buildTwoPrTimelineResponse = () => ({

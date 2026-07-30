@@ -8,6 +8,7 @@ export type PrRejectedReasonType =
   | 'MULTIPLE_PULL_REQUESTS_FOUND'
   | 'PULL_REQUEST_IS_DRAFT'
   | 'PULL_REQUEST_CONFLICTED'
+  | 'PULL_REQUEST_BEHIND_BASE'
   | 'ANY_CI_JOB_FAILED_OR_IN_PROGRESS'
   | 'REQUIRED_CI_JOB_NEVER_STARTED'
   | 'ANY_REVIEW_COMMENT_NOT_RESOLVED'
@@ -116,6 +117,12 @@ export class IssueRejectionEvaluator {
             detail: `PULL_REQUEST_CONFLICTED: ${pr.url}`,
           });
         }
+        if (pr.isBranchOutOfDate) {
+          rejections.push({
+            type: 'PULL_REQUEST_BEHIND_BASE',
+            detail: `PULL_REQUEST_BEHIND_BASE: ${pr.url}`,
+          });
+        }
         if (!pr.isPassedAllCiJob) {
           const missingChecks = pr.missingRequiredCheckNames;
           const missingSuffix =
@@ -169,6 +176,7 @@ export class IssueRejectionEvaluator {
         if (
           !pr.isDraft &&
           !pr.isConflicted &&
+          !pr.isBranchOutOfDate &&
           pr.isPassedAllCiJob &&
           pr.isResolvedAllReviewComments &&
           rejections.filter(

@@ -98,6 +98,7 @@ type CiContextNode =
 type PrStatusComputationData = {
   isDraft?: boolean;
   mergeable?: string;
+  mergeStateStatus?: string | null;
   requiredCheckNames: string[];
   ciContexts: CiContextNode[];
   reviewThreads: Array<{
@@ -115,6 +116,7 @@ type SlimPullRequestResponse = {
         headRefName?: string;
         baseRefName?: string;
         mergeable?: string;
+        mergeStateStatus?: string | null;
         headRefOid?: string;
         reviewThreads?: {
           pageInfo: {
@@ -138,6 +140,7 @@ type SlimPullRequest = {
   headRefName?: string;
   baseRefName?: string;
   mergeable?: string;
+  mergeStateStatus?: string | null;
   headRefOid?: string;
   reviewThreads: Array<{
     isResolved: boolean;
@@ -1010,7 +1013,7 @@ export class ApiV3CheerioRestIssueRepository
       isPassedAllCiJob,
       isCiStateSuccess,
       isResolvedAllReviewComments,
-      isBranchOutOfDate: false,
+      isBranchOutOfDate: data.mergeStateStatus === 'BEHIND',
       missingRequiredCheckNames,
     };
   };
@@ -1248,6 +1251,7 @@ export class ApiV3CheerioRestIssueRepository
             headRefName
             baseRefName
             mergeable
+            mergeStateStatus
             headRefOid
             reviewThreads(first: 100, after: $reviewThreadsAfter) {
               pageInfo {
@@ -1306,6 +1310,7 @@ export class ApiV3CheerioRestIssueRepository
           headRefName: pr.headRefName,
           baseRefName: pr.baseRefName,
           mergeable: pr.mergeable,
+          mergeStateStatus: pr.mergeStateStatus ?? null,
           headRefOid: pr.headRefOid,
           reviewThreads: [],
         };
@@ -1342,6 +1347,7 @@ export class ApiV3CheerioRestIssueRepository
       {
         isDraft: slimPullRequest.isDraft,
         mergeable: slimPullRequest.mergeable,
+        mergeStateStatus: slimPullRequest.mergeStateStatus,
         requiredCheckNames,
         ciContexts,
         reviewThreads: slimPullRequest.reviewThreads,

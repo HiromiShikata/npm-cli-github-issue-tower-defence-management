@@ -111,6 +111,85 @@ describe('IssueRejectionEvaluator', () => {
       expect(result.approvedPrUrl).toBeNull();
     });
 
+    it('should reject with PULL_REQUEST_BEHIND_BASE when PR has isBranchOutOfDate true', async () => {
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        createReadyPr('https://github.com/user/repo/pull/1', {
+          isBranchOutOfDate: true,
+        }),
+      ]);
+
+      const result = await evaluator.evaluate({
+        url: 'https://github.com/user/repo/issues/1',
+        labels: [],
+        isPr: false,
+      });
+
+      expect(result.rejections).toHaveLength(1);
+      expect(result.rejections[0].type).toBe('PULL_REQUEST_BEHIND_BASE');
+      expect(result.rejections[0].detail).toContain('PULL_REQUEST_BEHIND_BASE');
+      expect(result.rejections[0].detail).toContain(
+        'https://github.com/user/repo/pull/1',
+      );
+      expect(result.approvedPrUrl).toBeNull();
+    });
+
+    it('should not approve a BEHIND PR even when all other checks pass', async () => {
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        createReadyPr('https://github.com/user/repo/pull/1', {
+          isBranchOutOfDate: true,
+        }),
+      ]);
+
+      const result = await evaluator.evaluate({
+        url: 'https://github.com/user/repo/issues/1',
+        labels: [],
+        isPr: false,
+      });
+
+      expect(result.approvedPrUrl).toBeNull();
+    });
+
+    it('should reject with PULL_REQUEST_BEHIND_BASE when PR item (isPr=true) is BEHIND base', async () => {
+      mockIssueRepository.getOpenPullRequest.mockResolvedValue(
+        createReadyPr('https://github.com/user/repo/pull/10', {
+          isBranchOutOfDate: true,
+        }),
+      );
+
+      const result = await evaluator.evaluate({
+        url: 'https://github.com/user/repo/pull/10',
+        labels: [],
+        isPr: true,
+      });
+
+      expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledWith(
+        'https://github.com/user/repo/pull/10',
+      );
+      expect(result.rejections).toHaveLength(1);
+      expect(result.rejections[0].type).toBe('PULL_REQUEST_BEHIND_BASE');
+      expect(result.approvedPrUrl).toBeNull();
+    });
+
+    it('should accumulate PULL_REQUEST_BEHIND_BASE alongside PULL_REQUEST_CONFLICTED when PR is both BEHIND and conflicted', async () => {
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        createReadyPr('https://github.com/user/repo/pull/1', {
+          isBranchOutOfDate: true,
+          isConflicted: true,
+        }),
+      ]);
+
+      const result = await evaluator.evaluate({
+        url: 'https://github.com/user/repo/issues/1',
+        labels: [],
+        isPr: false,
+      });
+
+      const rejectionTypes = result.rejections.map((r) => r.type);
+      expect(rejectionTypes).toContain('PULL_REQUEST_BEHIND_BASE');
+      expect(rejectionTypes).toContain('PULL_REQUEST_CONFLICTED');
+      expect(result.approvedPrUrl).toBeNull();
+    });
+
     it('should reject with PULL_REQUEST_IS_DRAFT when PR item (isPr=true) is in draft state', async () => {
       mockIssueRepository.getOpenPullRequest.mockResolvedValue(
         createReadyPr('https://github.com/user/repo/pull/10', {
