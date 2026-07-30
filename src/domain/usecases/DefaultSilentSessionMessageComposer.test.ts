@@ -49,7 +49,9 @@ describe('DefaultSilentSessionMessageComposer', () => {
       ),
     ).toBe(1);
     expect(
-      occurrences('work the owner asked for has been completed or answered'),
+      occurrences(
+        'Resume the assigned work now by taking its next concrete step with a tool call',
+      ),
     ).toBe(1);
   });
 
@@ -65,30 +67,41 @@ describe('DefaultSilentSessionMessageComposer', () => {
     expect(section).toContain('No output has been observed for 10 minutes.');
   });
 
-  it('states the owner-call format guidance exactly once, deferring to the session-documented format', () => {
+  it('solicits no owner-call anywhere in the main-stalled section', () => {
     const section = composer.composeMainStalledSection(600);
-    const formatOccurrences =
-      section.split('in the format documented for this session').length - 1;
-    expect(formatOccurrences).toBe(1);
-    expect(section).toContain('written to be self-contained');
-    expect(section).toContain(
-      'so the owner can understand the situation from that single message',
-    );
-  });
-
-  it('explains that the owner is notified only when an owner-call is raised', () => {
-    const section = composer.composeMainStalledSection(600);
-    expect(section).toContain(
+    const solicitingPhrases = [
+      'share it through a new owner-call',
       'The owner is notified only when an owner-call is raised.',
+      'in the format documented for this session',
+      're-raise',
+      'This reminder is delivered only to sessions that have no registered unanswered owner-call.',
+      'that call was not registered',
+      'the owner has not been notified',
+      "a completion still awaits the owner's acknowledgment",
+    ];
+    for (const phrase of solicitingPhrases) {
+      expect(section).not.toContain(phrase);
+    }
+  });
+
+  it('instructs the main-stalled session to resume the assigned work with a concrete next step', () => {
+    const section = composer.composeMainStalledSection(600);
+    expect(section).toContain(
+      'Resume the assigned work now by taking its next concrete step with a tool call',
+    );
+    expect(section).toContain(
+      'report the result of that step in your next output',
     );
   });
 
-  it('frames a completed owner request as awaiting acknowledgment rather than a no-action case', () => {
+  it('states in the main-stalled section that a period without output is not by itself a reason to contact the owner', () => {
     const section = composer.composeMainStalledSection(600);
     expect(section).toContain(
-      "a completion still awaits the owner's acknowledgment",
+      'A period without output means the assigned work is not progressing, so it is not by itself a reason to contact the owner',
     );
-    expect(section).toContain('so it is not a no-action case');
+    expect(section).toContain(
+      'please resume the work rather than sending a message about the absence of progress',
+    );
   });
 
   it('contains no marker-tag example, tag name, or angle bracket in the format guidance', () => {
@@ -97,34 +110,6 @@ describe('DefaultSilentSessionMessageComposer', () => {
     expect(section).not.toContain('opening and closing pair');
     expect(section).not.toContain('<');
     expect(section).not.toContain('>');
-  });
-
-  it('explains in the main-stalled section that the reminder reaches only sessions without a registered unanswered owner-call', () => {
-    const section = composer.composeMainStalledSection(600);
-    expect(section).toContain(
-      'This reminder is delivered only to sessions that have no registered unanswered owner-call.',
-    );
-  });
-
-  it('explains in the main-stalled section that receiving the reminder while believing an owner-call is pending means the call was not registered and the owner was not notified', () => {
-    const section = composer.composeMainStalledSection(600);
-    expect(section).toContain(
-      'If you believe you have already raised an owner-call and are waiting for the owner',
-    );
-    expect(section).toContain(
-      'receiving this reminder means that call was not registered',
-    );
-    expect(section).toContain('the owner has not been notified');
-  });
-
-  it('instructs in the main-stalled section to review the documented owner-call format and re-raise the pending request', () => {
-    const section = composer.composeMainStalledSection(600);
-    expect(section).toContain(
-      'please review the documented owner-call format for this session',
-    );
-    expect(section).toContain(
-      're-raise the pending request as a new owner-call in that format',
-    );
   });
 
   it('omits the self-diagnosis guidance from the stale-owner-call section', () => {

@@ -47,7 +47,7 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
     expect(fallback.composeMainStalledSection).not.toHaveBeenCalled();
   });
 
-  it('appends the owner-call format guidance, including the self-contained requirement, to the configured main template', () => {
+  it('appends no owner-call guidance and no self-diagnosis guidance to the configured main template', () => {
     const fallback = createFallback();
     const composer = new ConfigurableSilentSessionMessageComposer(
       {
@@ -58,35 +58,19 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
     );
     const section = composer.composeMainStalledSection(600);
     expect(section).toContain('CUSTOM_MAIN');
-    expect(section).toContain(
-      'share it through a new owner-call in the format documented for this session',
+    expect(section).not.toContain('share it through a new owner-call');
+    expect(section).not.toContain('in the format documented for this session');
+    expect(section).not.toContain('written to be self-contained');
+    expect(section).not.toContain(
+      'This reminder is delivered only to sessions that have no registered unanswered owner-call.',
     );
-    expect(section).toContain('written to be self-contained');
-    expect(section).not.toContain('marker tag');
+    expect(section).not.toContain('re-raise');
     expect(section).not.toContain('<');
     expect(section).not.toContain('>');
     expect(section).not.toMatch(
       /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}]/u,
     );
     expect(section).not.toContain('\u{FE0F}');
-  });
-
-  it('appends the self-diagnosis guidance to the configured main template', () => {
-    const fallback = createFallback();
-    const composer = new ConfigurableSilentSessionMessageComposer(
-      {
-        ...noTemplates,
-        mainStalledMessage: 'CUSTOM_MAIN',
-      },
-      fallback,
-    );
-    const section = composer.composeMainStalledSection(600);
-    expect(section).toContain(
-      'This reminder is delivered only to sessions that have no registered unanswered owner-call.',
-    );
-    expect(section).toContain(
-      're-raise the pending request as a new owner-call in that format',
-    );
   });
 
   it('omits the self-diagnosis guidance from the configured stale-owner-call template section', () => {

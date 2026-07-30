@@ -1,8 +1,5 @@
 import { SubAgentActivity } from '../../domain/entities/LiveSessionActivitySnapshot';
-import {
-  composeMainStalledSelfDiagnosisGuidance,
-  composeOwnerCallFormatGuidance,
-} from '../../domain/usecases/DefaultSilentSessionMessageComposer';
+import { composeOwnerCallFormatGuidance } from '../../domain/usecases/DefaultSilentSessionMessageComposer';
 import {
   SilentSessionMessageComposer,
   SubAgentStallSections,
@@ -38,9 +35,7 @@ export class ConfigurableSilentSessionMessageComposer implements SilentSessionMe
     if (this.templates.mainStalledMessage === null) {
       return this.fallback.composeMainStalledSection(mainSilentSeconds);
     }
-    return withReminderSentinel(
-      `${this.templates.mainStalledMessage} ${composeOwnerCallFormatGuidance()} ${composeMainStalledSelfDiagnosisGuidance()}`,
-    );
+    return withReminderSentinel(this.templates.mainStalledMessage);
   };
 
   composeMainStalledWithStaleOwnerCallSection = (
