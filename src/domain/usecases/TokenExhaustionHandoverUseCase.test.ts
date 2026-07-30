@@ -361,6 +361,63 @@ describe('TokenExhaustionHandoverUseCase', () => {
     expect(processSignalRepository.terminateProcess).not.toHaveBeenCalled();
   });
 
+  it('leaves a leader alive while the seven-day window has more than 0.5% free', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      issueUrlLeaderSession(),
+    ]);
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, {
+        fiveHourUtilization: 0,
+        sevenDayUtilization: 0.994,
+      }),
+      snapshot(TOKEN_FRESH),
+    ]);
+
+    const result = await useCase.run(defaultInput());
+
+    expect(result.newlyHandoverSentSessionNames).toEqual([]);
+    expect(tmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
+  });
+
+  it('leaves a leader alive when the seven-day window has exactly 0.5% free', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      issueUrlLeaderSession(),
+    ]);
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, {
+        fiveHourUtilization: 0,
+        sevenDayUtilization: 0.995,
+      }),
+      snapshot(TOKEN_FRESH),
+    ]);
+
+    const result = await useCase.run(defaultInput());
+
+    expect(result.newlyHandoverSentSessionNames).toEqual([]);
+    expect(tmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
+  });
+
+  it('signals a leader when the seven-day window has less than 0.5% free', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      issueUrlLeaderSession(),
+    ]);
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, {
+        fiveHourUtilization: 0,
+        sevenDayUtilization: 0.998,
+      }),
+      snapshot(TOKEN_FRESH),
+    ]);
+
+    const result = await useCase.run(defaultInput());
+
+    expect(result.newlyHandoverSentSessionNames).toEqual([ISSUE_URL_SESSION]);
+    expect(tmuxSessionRepository.sendKeys).toHaveBeenCalledWith(
+      ISSUE_URL_SESSION,
+      DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE,
+    );
+  });
+
   it('waits while the grace period has not elapsed', async () => {
     handoverSessionRepository.listHandoverSessions.mockReturnValue([
       issueUrlLeaderSession(),
