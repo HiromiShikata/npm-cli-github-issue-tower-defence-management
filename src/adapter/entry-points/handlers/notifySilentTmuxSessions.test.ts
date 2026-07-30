@@ -498,7 +498,9 @@ describe('notifySilentTmuxSessions', () => {
     const runner = urlSessionRunner();
     const getIssueByUrl = jest
       .fn()
-      .mockResolvedValue(makeIssue({ state: 'OPEN', status: IN_TMUX_STATUS_NAME }));
+      .mockResolvedValue(
+        makeIssue({ state: 'OPEN', status: IN_TMUX_STATUS_NAME }),
+      );
 
     await notifySilentTmuxSessions({
       ...baseParams(runner),
