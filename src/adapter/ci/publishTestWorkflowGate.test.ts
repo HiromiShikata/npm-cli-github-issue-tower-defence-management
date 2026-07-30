@@ -30,6 +30,7 @@ const pushedCommitExpression = '${{ github.sha }}';
 const pushedRefExpression = '${{ github.ref }}';
 const defaultBranchExpression = '${{ github.event.repository.default_branch }}';
 const writePermissionValue = 'write';
+const shellScriptGlob = '*.sh';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -161,6 +162,13 @@ const gateEnvironmentValue = (name: string): string => {
   }
   return value;
 };
+
+const prettierIgnorePatterns = (): string[] =>
+  fs
+    .readFileSync(path.join(repositoryRoot, '.prettierignore'), 'utf8')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
 
 const workflowFileNames = (): string[] =>
   fs
@@ -455,6 +463,10 @@ describe('publish workflow release gate wiring', () => {
     const concurrency = jobConcurrency(releaseJobId());
     expect(concurrency['group']).toBe(`publish-release-${pushedRefExpression}`);
     expect(concurrency['cancel-in-progress']).toBe(false);
+  });
+
+  it('excludes the gate shell scripts from the repository formatter, which cannot infer a parser for them', () => {
+    expect(prettierIgnorePatterns()).toContain(shellScriptGlob);
   });
 
   it('keeps the release credentials out of the gate job', () => {
