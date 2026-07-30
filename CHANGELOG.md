@@ -1,3 +1,10 @@
+## [1.142.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.142.2...v1.142.3) (2026-07-30)
+
+
+### Bug Fixes
+
+* **OauthTokenSelectUseCase:** relax eligibility thresholds to 5h>=25% free / 7d>=3% free ([#1334](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1334)) ([fd11dbb](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/fd11dbb06f7547f124cc61d46a219ac99ba48ef2)), closes [#1333](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1333)
+
 ## [1.142.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.142.1...v1.142.2) (2026-07-29)
 
 

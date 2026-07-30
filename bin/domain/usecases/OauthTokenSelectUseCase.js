@@ -9,8 +9,8 @@ const selectionWeightOf = (candidate) => {
 exports.selectionWeightOf = selectionWeightOf;
 const SECONDS_PER_DAY = 86400;
 const SEVEN_DAYS_IN_SECONDS = 7 * SECONDS_PER_DAY;
-exports.FIVE_HOUR_MIN_FREE_RATIO = 0.6;
-exports.SEVEN_DAY_MIN_FREE_RATIO = 0.07;
+exports.FIVE_HOUR_MIN_FREE_RATIO = 0.25;
+exports.SEVEN_DAY_MIN_FREE_RATIO = 0.03;
 const selectWeightedCandidate = (eligible, candidateOf, deterministicBest, random) => {
     if (eligible.length <= 1) {
         return deterministicBest;
