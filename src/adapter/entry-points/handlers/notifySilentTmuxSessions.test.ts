@@ -294,9 +294,10 @@ describe('notifySilentTmuxSessions', () => {
     expect(sendCall?.[1][4]).toContain(
       `${SILENT_SESSION_REMINDER_SENTINEL} CUSTOM_MAIN_TEMPLATE`,
     );
-    expect(sendCall?.[1][4]).toContain(
+    expect(sendCall?.[1][4]).not.toContain(
       'in the format documented for this session',
     );
+    expect(sendCall?.[1][4]).not.toContain('share it through a new owner-call');
   });
 
   it('suppresses the notification while the latest owner call is unanswered', async () => {
