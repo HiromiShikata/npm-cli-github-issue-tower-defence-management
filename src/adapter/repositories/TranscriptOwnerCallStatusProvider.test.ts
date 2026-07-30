@@ -735,7 +735,6 @@ describe('TranscriptOwnerCallStatusProvider wired into NotifySilentLiveSessionsU
       staggerSeconds: DEFAULT_NOTIFICATION_STAGGER_SECONDS,
       candidateDebounceRecencyWindowSeconds:
         DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS,
-      activeHubTaskStatus: null,
       hubTaskStatusCacheTtlSeconds: DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS,
       now,
     });

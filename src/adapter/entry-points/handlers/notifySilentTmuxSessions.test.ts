@@ -10,6 +10,7 @@ import {
   notifySilentTmuxSessions,
   DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS,
 } from './notifySilentTmuxSessions';
+import { IN_TMUX_STATUS_NAME } from '../../../domain/entities/WorkflowStatus';
 
 const NOW = new Date('2026-06-26T00:00:00.000Z');
 const NOW_EPOCH_SECONDS = Math.floor(NOW.getTime() / 1000);
@@ -147,7 +148,6 @@ describe('notifySilentTmuxSessions', () => {
     subAgentRuntimeRootDirectory: null,
     candidateDebounceStateFilePath: candidateStateFilePath,
     notifiedStateFilePath: notifiedStateFilePath,
-    activeHubTaskStatus: null,
     hubTaskStatusResolver: null,
     hubTaskStatusCacheStateFilePath: hubTaskStatusCacheStateFilePath,
     messageTemplates: EMPTY_TEMPLATES,
@@ -482,7 +482,6 @@ describe('notifySilentTmuxSessions', () => {
 
     await notifySilentTmuxSessions({
       ...baseParams(runner),
-      activeHubTaskStatus: 'In tmux',
       hubTaskStatusResolver: { getIssueByUrl },
     });
 
@@ -499,11 +498,10 @@ describe('notifySilentTmuxSessions', () => {
     const runner = urlSessionRunner();
     const getIssueByUrl = jest
       .fn()
-      .mockResolvedValue(makeIssue({ state: 'OPEN', status: 'In tmux' }));
+      .mockResolvedValue(makeIssue({ state: 'OPEN', status: IN_TMUX_STATUS_NAME }));
 
     await notifySilentTmuxSessions({
       ...baseParams(runner),
-      activeHubTaskStatus: 'In tmux',
       hubTaskStatusResolver: { getIssueByUrl },
     });
 

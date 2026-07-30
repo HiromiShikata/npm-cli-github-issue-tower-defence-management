@@ -11,6 +11,7 @@ import {
   DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS,
   DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS,
 } from './NotifySilentLiveSessionsUseCase';
+import { IN_TMUX_STATUS_NAME } from '../entities/WorkflowStatus';
 import { Issue } from '../entities/Issue';
 import { LiveSessionProcessSnapshotProvider } from './adapter-interfaces/LiveSessionProcessSnapshotProvider';
 import { InteractiveLiveSessionTranscriptResolver } from './adapter-interfaces/InteractiveLiveSessionTranscriptResolver';
@@ -66,7 +67,6 @@ describe('NotifySilentLiveSessionsUseCase', () => {
 
   const runParams = (
     overrides?: Partial<{
-      activeHubTaskStatus: string | null;
       candidateDebounceRecencyWindowSeconds: number;
       hubTaskStatusCacheTtlSeconds: number;
       now: Date;
@@ -78,7 +78,6 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     subAgentRunningThresholdSeconds: number;
     staggerSeconds: number;
     candidateDebounceRecencyWindowSeconds: number;
-    activeHubTaskStatus: string | null;
     hubTaskStatusCacheTtlSeconds: number;
     now: Date;
   } => ({
@@ -90,7 +89,6 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     staggerSeconds: DEFAULT_NOTIFICATION_STAGGER_SECONDS,
     candidateDebounceRecencyWindowSeconds:
       DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS,
-    activeHubTaskStatus: null,
     hubTaskStatusCacheTtlSeconds: DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS,
     now,
     ...overrides,
@@ -1280,7 +1278,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
 
   describe('hub-task active-status pre-send gate', () => {
     const HUB_TASK_SESSION = 'https://github.com/HiromiShikata/repo/issues/42';
-    const ACTIVE_STATUS = 'In tmux';
+    const ACTIVE_STATUS = IN_TMUX_STATUS_NAME;
 
     it('sends when the hub task is open and in the active status', async () => {
       setupSilentMainSession(HUB_TASK_SESSION);
@@ -1292,7 +1290,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         }),
       );
 
-      await useCase.run(runParams({ activeHubTaskStatus: ACTIVE_STATUS }));
+      await useCase.run(runParams());
 
       expect(mockHubTaskStatusResolver.getIssueByUrl).toHaveBeenCalledWith(
         HUB_TASK_SESSION,
@@ -1308,7 +1306,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         issueFor({ url: HUB_TASK_SESSION, state: 'OPEN', status: 'Todo' }),
       );
 
-      await useCase.run(runParams({ activeHubTaskStatus: ACTIVE_STATUS }));
+      await useCase.run(runParams());
 
       expect(
         mockNotificationRepository.sendSelfCheckNotification,
@@ -1326,7 +1324,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         }),
       );
 
-      await useCase.run(runParams({ activeHubTaskStatus: ACTIVE_STATUS }));
+      await useCase.run(runParams());
 
       expect(
         mockNotificationRepository.sendSelfCheckNotification,
@@ -1336,7 +1334,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     it('does not consult the hub-task resolver for a role-named leader session that has no hub task URL, and still reminds it', async () => {
       setupSilentMainSession('tdpm-cli');
 
-      await useCase.run(runParams({ activeHubTaskStatus: ACTIVE_STATUS }));
+      await useCase.run(runParams());
 
       expect(mockHubTaskStatusResolver.getIssueByUrl).not.toHaveBeenCalled();
       expect(
@@ -1344,12 +1342,21 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       ).toHaveBeenCalledWith('tdpm-cli', MAIN_STALLED_SECTION);
     });
 
-    it('does not call the resolver at all when the active status is unconfigured', async () => {
+    it('always calls the resolver for hub task sessions against IN_TMUX_STATUS_NAME', async () => {
       setupSilentMainSession(HUB_TASK_SESSION);
+      mockHubTaskStatusResolver.getIssueByUrl.mockResolvedValue(
+        issueFor({
+          url: HUB_TASK_SESSION,
+          state: 'OPEN',
+          status: IN_TMUX_STATUS_NAME,
+        }),
+      );
 
-      await useCase.run(runParams({ activeHubTaskStatus: null }));
+      await useCase.run(runParams());
 
-      expect(mockHubTaskStatusResolver.getIssueByUrl).not.toHaveBeenCalled();
+      expect(mockHubTaskStatusResolver.getIssueByUrl).toHaveBeenCalledWith(
+        HUB_TASK_SESSION,
+      );
       expect(
         mockNotificationRepository.sendSelfCheckNotification,
       ).toHaveBeenCalledWith(HUB_TASK_SESSION, MAIN_STALLED_SECTION);
@@ -1364,7 +1371,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         new Error('GitHub API timeout'),
       );
 
-      await useCase.run(runParams({ activeHubTaskStatus: ACTIVE_STATUS }));
+      await useCase.run(runParams());
 
       expect(
         mockNotificationRepository.sendSelfCheckNotification,
@@ -1382,7 +1389,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         .mockImplementation(() => undefined);
       mockHubTaskStatusResolver.getIssueByUrl.mockResolvedValue(null);
 
-      await useCase.run(runParams({ activeHubTaskStatus: ACTIVE_STATUS }));
+      await useCase.run(runParams());
 
       expect(
         mockNotificationRepository.sendSelfCheckNotification,
@@ -1410,7 +1417,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         }),
       );
 
-      await useCase.run(runParams({ activeHubTaskStatus: ACTIVE_STATUS }));
+      await useCase.run(runParams());
 
       expect(mockHubTaskStatusResolver.getIssueByUrl).toHaveBeenCalledWith(
         CANONICAL_ISSUE_URL,
@@ -1434,7 +1441,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         }),
       );
 
-      await useCase.run(runParams({ activeHubTaskStatus: ACTIVE_STATUS }));
+      await useCase.run(runParams());
 
       expect(mockHubTaskStatusResolver.getIssueByUrl).toHaveBeenCalledWith(
         CANONICAL_ISSUE_URL,
@@ -1455,9 +1462,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         .mockImplementation(() => undefined);
       mockHubTaskStatusResolver.getIssueByUrl.mockResolvedValue(null);
 
-      await expect(
-        useCase.run(runParams({ activeHubTaskStatus: ACTIVE_STATUS })),
-      ).resolves.toBeUndefined();
+      await expect(useCase.run(runParams())).resolves.toBeUndefined();
 
       expect(mockHubTaskStatusResolver.getIssueByUrl).toHaveBeenCalledWith(
         CANONICAL_ISSUE_URL,
@@ -1482,7 +1487,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         }),
       );
 
-      await useCase.run(runParams({ activeHubTaskStatus: ACTIVE_STATUS }));
+      await useCase.run(runParams());
 
       expect(
         mockNotificationRepository.sendSelfCheckNotification,
@@ -1503,7 +1508,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         issueFor({ url: HUB_TASK_SESSION, state: 'OPEN', status: 'Done' }),
       );
 
-      await useCase.run(runParams({ activeHubTaskStatus: ACTIVE_STATUS }));
+      await useCase.run(runParams());
 
       expect(
         mockNotificationRepository.sendSelfCheckNotification,
@@ -1520,7 +1525,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         }),
       );
 
-      await useCase.run(runParams({ activeHubTaskStatus: ACTIVE_STATUS }));
+      await useCase.run(runParams());
 
       expect(
         mockNotificationRepository.sendSelfCheckNotification,
@@ -1546,7 +1551,6 @@ describe('NotifySilentLiveSessionsUseCase', () => {
 
       await useCase.run(
         runParams({
-          activeHubTaskStatus: ACTIVE_STATUS,
           hubTaskStatusCacheTtlSeconds: 300,
         }),
       );
@@ -1571,7 +1575,6 @@ describe('NotifySilentLiveSessionsUseCase', () => {
 
       await useCase.run(
         runParams({
-          activeHubTaskStatus: ACTIVE_STATUS,
           hubTaskStatusCacheTtlSeconds: 300,
         }),
       );
@@ -1600,7 +1603,6 @@ describe('NotifySilentLiveSessionsUseCase', () => {
 
       await useCase.run(
         runParams({
-          activeHubTaskStatus: ACTIVE_STATUS,
           hubTaskStatusCacheTtlSeconds: 300,
         }),
       );
@@ -1625,7 +1627,6 @@ describe('NotifySilentLiveSessionsUseCase', () => {
 
       await useCase.run(
         runParams({
-          activeHubTaskStatus: ACTIVE_STATUS,
           hubTaskStatusCacheTtlSeconds: 300,
         }),
       );
@@ -1652,7 +1653,6 @@ describe('NotifySilentLiveSessionsUseCase', () => {
 
       await useCase.run(
         runParams({
-          activeHubTaskStatus: ACTIVE_STATUS,
           hubTaskStatusCacheTtlSeconds: 300,
         }),
       );

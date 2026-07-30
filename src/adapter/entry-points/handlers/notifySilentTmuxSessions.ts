@@ -54,7 +54,6 @@ export type NotifySilentTmuxSessionsParams = {
   candidateDebounceRecencyWindowSeconds: number;
   candidateDebounceStateFilePath: string | null;
   notifiedStateFilePath: string | null;
-  activeHubTaskStatus: string | null;
   hubTaskStatusResolver: HubTaskStatusResolver | null;
   hubTaskStatusCacheStateFilePath: string | null;
   hubTaskStatusCacheTtlSeconds: number;
@@ -119,7 +118,6 @@ export const notifySilentTmuxSessions = async (
     candidateDebounceRecencyWindowSeconds,
     candidateDebounceStateFilePath,
     notifiedStateFilePath,
-    activeHubTaskStatus,
     hubTaskStatusResolver,
     hubTaskStatusCacheStateFilePath,
     hubTaskStatusCacheTtlSeconds,
@@ -180,7 +178,6 @@ export const notifySilentTmuxSessions = async (
     subAgentRunningThresholdSeconds,
     staggerSeconds,
     candidateDebounceRecencyWindowSeconds,
-    activeHubTaskStatus,
     hubTaskStatusCacheTtlSeconds,
     now,
   });

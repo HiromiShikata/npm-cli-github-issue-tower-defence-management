@@ -1,5 +1,6 @@
 import { LiveSessionActivitySnapshot } from '../entities/LiveSessionActivitySnapshot';
 import { InteractiveLiveSession } from '../entities/InteractiveLiveSession';
+import { IN_TMUX_STATUS_NAME } from '../entities/WorkflowStatus';
 import { LiveSessionProcessSnapshotProvider } from './adapter-interfaces/LiveSessionProcessSnapshotProvider';
 import { InteractiveLiveSessionTranscriptResolver } from './adapter-interfaces/InteractiveLiveSessionTranscriptResolver';
 import { OwnerCallStatusProvider } from './adapter-interfaces/OwnerCallStatusProvider';
@@ -91,7 +92,6 @@ export class NotifySilentLiveSessionsUseCase {
     subAgentRunningThresholdSeconds: number;
     staggerSeconds: number;
     candidateDebounceRecencyWindowSeconds: number;
-    activeHubTaskStatus: string | null;
     hubTaskStatusCacheTtlSeconds: number;
     now: Date;
   }): Promise<void> => {
@@ -221,7 +221,6 @@ export class NotifySilentLiveSessionsUseCase {
       if (
         !(await this.isHubTaskActive(
           candidate.sessionName,
-          params.activeHubTaskStatus,
           params.hubTaskStatusCacheTtlSeconds,
           params.now,
         ))
@@ -267,11 +266,10 @@ export class NotifySilentLiveSessionsUseCase {
 
   private isHubTaskActive = async (
     sessionName: string,
-    activeHubTaskStatus: string | null,
     hubTaskStatusCacheTtlSeconds: number,
     now: Date,
   ): Promise<boolean> => {
-    if (activeHubTaskStatus === null || this.hubTaskStatusResolver === null) {
+    if (this.hubTaskStatusResolver === null) {
       return true;
     }
     const hubTaskIssueUrl = parseHubTaskIssueUrlFromSessionName(sessionName);
@@ -293,11 +291,10 @@ export class NotifySilentLiveSessionsUseCase {
         const active = this.isResolvedStatusActive(
           cachedEntry.state,
           cachedEntry.status,
-          activeHubTaskStatus,
         );
         if (!active) {
           console.log(
-            `Skipping ${sessionName}: hub task ${hubTaskIssueUrl} is no longer active per cached status (state "${cachedEntry.state}", status "${cachedEntry.status ?? 'null'}", active status "${activeHubTaskStatus}").`,
+            `Skipping ${sessionName}: hub task ${hubTaskIssueUrl} is no longer active per cached status (state "${cachedEntry.state}", status "${cachedEntry.status ?? 'null'}", active status "${IN_TMUX_STATUS_NAME}").`,
           );
         }
         return active;
@@ -306,7 +303,6 @@ export class NotifySilentLiveSessionsUseCase {
 
     const resolution = await this.tryResolveAndCacheHubTask(
       hubTaskIssueUrl,
-      activeHubTaskStatus,
       sessionName,
       now,
     );
@@ -318,7 +314,6 @@ export class NotifySilentLiveSessionsUseCase {
       const active = this.isResolvedStatusActive(
         cachedEntry.state,
         cachedEntry.status,
-        activeHubTaskStatus,
       );
       console.warn(
         `Hub task ${hubTaskIssueUrl} for session ${sessionName} could not be resolved (${resolution.reason}); falling back to expired cached status (state "${cachedEntry.state}", status "${cachedEntry.status ?? 'null'}"), so the notification is ${active ? 'sent' : 'suppressed'}.`,
@@ -334,7 +329,6 @@ export class NotifySilentLiveSessionsUseCase {
 
   private tryResolveAndCacheHubTask = async (
     hubTaskIssueUrl: string,
-    activeHubTaskStatus: string,
     sessionName: string,
     now: Date,
   ): Promise<
@@ -363,14 +357,10 @@ export class NotifySilentLiveSessionsUseCase {
         now,
       });
     }
-    const active = this.isResolvedStatusActive(
-      issue.state,
-      issue.status,
-      activeHubTaskStatus,
-    );
+    const active = this.isResolvedStatusActive(issue.state, issue.status);
     if (!active) {
       console.log(
-        `Skipping ${sessionName}: hub task ${hubTaskIssueUrl} is no longer active (state "${issue.state}", status "${issue.status ?? 'null'}", active status "${activeHubTaskStatus}").`,
+        `Skipping ${sessionName}: hub task ${hubTaskIssueUrl} is no longer active (state "${issue.state}", status "${issue.status ?? 'null'}", active status "${IN_TMUX_STATUS_NAME}").`,
       );
     }
     return { resolved: true, active };
@@ -379,8 +369,7 @@ export class NotifySilentLiveSessionsUseCase {
   private isResolvedStatusActive = (
     state: 'OPEN' | 'CLOSED' | 'MERGED',
     status: string | null,
-    activeHubTaskStatus: string,
-  ): boolean => state === 'OPEN' && status === activeHubTaskStatus;
+  ): boolean => state === 'OPEN' && status === IN_TMUX_STATUS_NAME;
 
   private collectSnapshots = async (
     interactiveSessions: InteractiveLiveSession[],

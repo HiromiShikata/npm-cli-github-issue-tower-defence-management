@@ -140,7 +140,6 @@ export class HandleScheduledEventUseCaseHandler {
       candidateDebounceRecencyWindowSeconds?: number;
       candidateDebounceStateFilePath?: string;
       notifiedStateFilePath?: string;
-      activeHubTaskStatus?: string;
       hubTaskStatusCacheStateFilePath?: string;
       hubTaskStatusCacheTtlSeconds?: number;
       silentMainStalledMessage?: string;
@@ -699,10 +698,6 @@ export class HandleScheduledEventUseCaseHandler {
           notifiedStateFilePath:
             mergedInput.notifiedStateFilePath ??
             process.env.TDPM_SILENT_NOTIFIED_STATE_FILE_PATH ??
-            null,
-          activeHubTaskStatus:
-            mergedInput.activeHubTaskStatus ??
-            process.env.TDPM_ACTIVE_HUB_TASK_STATUS ??
             null,
           hubTaskStatusResolver: issueRepository,
           hubTaskStatusCacheStateFilePath:
