@@ -1,4 +1,5 @@
 *.xml
+*.sh
 .gitignore
 .prettierignore
 .gitattributes
