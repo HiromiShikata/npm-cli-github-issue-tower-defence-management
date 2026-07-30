@@ -48,9 +48,9 @@ export const composeOwnerCallFormatGuidance = (): string => {
 
 export const composeMainStalledSelfDiagnosisGuidance = (): string => {
   return [
-    'This reminder is delivered only to sessions that have no registered unanswered owner-call.',
-    "If you believe you have already raised an owner-call and are waiting for the owner's reply, receiving this reminder means that call was not registered — its format or delivery method was incorrect — and the owner has not been notified.",
-    'In that case, please review the documented owner-call format for this session and re-raise the pending request as a new owner-call in that format.',
+    'This reminder is delivered only to sessions where no pending owner-call was detected in the session output.',
+    'If you have already raised an owner-call in this session and are waiting for a reply, please continue waiting — raising another owner-call now would replace the one in progress and restart the delivery wait.',
+    'If you have not yet raised an owner-call in this session and one is needed, please do so now using the documented format for this session.',
   ].join(' ');
 };
 

@@ -82,10 +82,10 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
     );
     const section = composer.composeMainStalledSection(600);
     expect(section).toContain(
-      'This reminder is delivered only to sessions that have no registered unanswered owner-call.',
+      'This reminder is delivered only to sessions where no pending owner-call was detected in the session output.',
     );
     expect(section).toContain(
-      're-raise the pending request as a new owner-call in that format',
+      'raising another owner-call now would replace the one in progress and restart the delivery wait',
     );
   });
 

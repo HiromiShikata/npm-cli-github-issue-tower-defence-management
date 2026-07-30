@@ -119,32 +119,31 @@ describe('DefaultSilentSessionMessageComposer', () => {
     expect(section).not.toContain('>');
   });
 
-  it('explains in the main-stalled section that the reminder reaches only sessions without a registered unanswered owner-call', () => {
+  it('explains in the main-stalled section that the reminder reaches only sessions where no pending owner-call was detected in the session output', () => {
     const section = composer.composeMainStalledSection(600);
     expect(section).toContain(
-      'This reminder is delivered only to sessions that have no registered unanswered owner-call.',
+      'This reminder is delivered only to sessions where no pending owner-call was detected in the session output.',
     );
   });
 
-  it('explains in the main-stalled section that receiving the reminder while believing an owner-call is pending means the call was not registered and the owner was not notified', () => {
+  it('does not claim in the main-stalled section that receiving the reminder definitively means the call was not registered', () => {
     const section = composer.composeMainStalledSection(600);
-    expect(section).toContain(
-      'If you believe you have already raised an owner-call and are waiting for the owner',
-    );
-    expect(section).toContain(
+    expect(section).not.toContain(
       'receiving this reminder means that call was not registered',
     );
-    expect(section).toContain('the owner has not been notified');
+    expect(section).not.toContain('the owner has not been notified');
   });
 
-  it('instructs in the main-stalled section to review the documented owner-call format and re-raise the pending request', () => {
+  it('cautions in the main-stalled section against raising a new owner-call when one is already in progress', () => {
     const section = composer.composeMainStalledSection(600);
-    expect(section).toContain(
-      'please review the documented owner-call format for this session',
-    );
-    expect(section).toContain(
-      're-raise the pending request as a new owner-call in that format',
-    );
+    expect(section).toContain('continue waiting');
+    expect(section).toContain('replace the one in progress');
+    expect(section).toContain('restart the delivery wait');
+  });
+
+  it('provides guidance in the main-stalled section to raise an owner-call if none has been raised in this session', () => {
+    const section = composer.composeMainStalledSection(600);
+    expect(section).toContain('If you have not yet raised an owner-call in this session');
   });
 
   it('omits the self-diagnosis guidance from the stale-owner-call section', () => {
