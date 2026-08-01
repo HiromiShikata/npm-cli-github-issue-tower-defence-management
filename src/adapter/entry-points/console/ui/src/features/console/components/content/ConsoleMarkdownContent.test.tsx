@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import { ConsoleMarkdownContent } from './ConsoleMarkdownContent';
 
 jest.mock('../../lib/mermaidLoader', () => ({
@@ -128,7 +128,9 @@ describe('ConsoleMarkdownContent', () => {
         <ConsoleMarkdownContent body={multiLineCodeBody} />,
       );
       const [button] = await findAllByRole('button', { name: 'Copy code' });
-      fireEvent.click(button);
+      await act(async () => {
+        fireEvent.click(button);
+      });
       expect(writeText).toHaveBeenCalledWith(multiLineCodeText);
     });
 
@@ -137,10 +139,12 @@ describe('ConsoleMarkdownContent', () => {
         <ConsoleMarkdownContent body={multiLineCodeBody} />,
       );
       const [button] = await findAllByRole('button', { name: 'Copy code' });
-      fireEvent.click(button);
+      expect(container.textContent).toContain('Copy code');
+      await act(async () => {
+        fireEvent.click(button);
+      });
       const codeElement = container.querySelector('pre > code');
       expect(codeElement?.textContent).toBe(multiLineCodeText);
-      expect(container.textContent).toContain('Copy code');
       expect(writeText).toHaveBeenCalledWith(multiLineCodeText);
       expect(writeText).not.toHaveBeenCalledWith(
         expect.stringContaining('Copy code'),
@@ -153,9 +157,13 @@ describe('ConsoleMarkdownContent', () => {
       );
       const buttons = await findAllByRole('button', { name: 'Copy code' });
       expect(buttons).toHaveLength(2);
-      fireEvent.click(buttons[0]);
+      await act(async () => {
+        fireEvent.click(buttons[0]);
+      });
       expect(writeText).toHaveBeenNthCalledWith(1, 'const first = 1;\n');
-      fireEvent.click(buttons[1]);
+      await act(async () => {
+        fireEvent.click(buttons[1]);
+      });
       expect(writeText).toHaveBeenNthCalledWith(2, 'npm run build\nnpm test\n');
     });
 

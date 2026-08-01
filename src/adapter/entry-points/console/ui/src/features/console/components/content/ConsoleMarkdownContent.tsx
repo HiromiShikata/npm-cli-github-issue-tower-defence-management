@@ -10,6 +10,7 @@ import {
   splitMarkdownSegments,
 } from '../../lib/markdown';
 import { parseGitHubReferenceUrl } from '../../logic/references';
+import { ConsoleCopyCodeButton } from './ConsoleCopyCodeButton';
 import { ConsoleMermaidDiagram } from './ConsoleMermaidDiagram';
 
 export type ConsoleReferenceLinkRenderer = (
@@ -55,6 +56,32 @@ const collectReferenceMounts = (container: HTMLElement): ReferenceMount[] => {
   return mounts;
 };
 
+type CodeBlockMount = {
+  key: string;
+  host: HTMLElement;
+  code: string;
+};
+
+const collectCodeBlockMounts = (container: HTMLElement): CodeBlockMount[] => {
+  const codeElements = container.querySelectorAll<HTMLElement>('pre > code');
+  const mounts: CodeBlockMount[] = [];
+  codeElements.forEach((codeElement, index) => {
+    const preElement = codeElement.parentElement;
+    if (preElement === null) {
+      return;
+    }
+    const code = codeElement.textContent ?? '';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'console-markdown-code-block';
+    const host = document.createElement('div');
+    host.className = 'console-markdown-code-copy-host';
+    preElement.replaceWith(wrapper);
+    wrapper.append(host, preElement);
+    mounts.push({ key: `code:${index}`, host, code });
+  });
+  return mounts;
+};
+
 const ConsoleMarkdownHtmlBlock = ({
   source,
   buildImageProxyUrl,
@@ -70,6 +97,7 @@ const ConsoleMarkdownHtmlBlock = ({
   }, [source, buildImageProxyUrl, repoContext]);
   const containerRef = useRef<HTMLDivElement>(null);
   const [referenceMounts, setReferenceMounts] = useState<ReferenceMount[]>([]);
+  const [codeBlockMounts, setCodeBlockMounts] = useState<CodeBlockMount[]>([]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -77,15 +105,23 @@ const ConsoleMarkdownHtmlBlock = ({
       return;
     }
     container.innerHTML = html;
-    if (renderReferenceLink === undefined) {
-      setReferenceMounts([]);
-      return;
-    }
-    setReferenceMounts(collectReferenceMounts(container));
+    setCodeBlockMounts(collectCodeBlockMounts(container));
+    setReferenceMounts(
+      renderReferenceLink === undefined
+        ? []
+        : collectReferenceMounts(container),
+    );
   }, [html, renderReferenceLink]);
 
   return (
     <div ref={containerRef} className="console-markdown">
+      {codeBlockMounts.map((mount) =>
+        createPortal(
+          <ConsoleCopyCodeButton code={mount.code} />,
+          mount.host,
+          mount.key,
+        ),
+      )}
       {renderReferenceLink !== undefined &&
         referenceMounts.map((mount) =>
           createPortal(
