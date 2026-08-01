@@ -56,7 +56,7 @@
   "homepage": "https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management#readme",
   "devDependencies": {
     "@biomejs/biome": "^2.5.5",
-    "@playwright/test": "1.61.1",
+    "@playwright/test": "1.62.0",
     "@radix-ui/react-slot": "^1.3.0",
     "@semantic-release/changelog": "^7.0.0",
     "@semantic-release/commit-analyzer": "^13.0.1",
