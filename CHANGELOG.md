@@ -1,3 +1,10 @@
+# [1.143.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.142.3...v1.143.0) (2026-08-03)
+
+
+### Features
+
+* **console:** add a copy-to-clipboard control to every rendered code block ([#1348](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1348)) ([ce5608f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ce5608f04908a3ec5f441d091a7bb0a1afb31105))
+
 ## [1.142.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.142.2...v1.142.3) (2026-07-30)
 
 
