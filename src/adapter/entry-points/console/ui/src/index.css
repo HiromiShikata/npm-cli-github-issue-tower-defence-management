@@ -511,6 +511,37 @@ body {
   font-size: inherit;
 }
 
+.console-markdown-code-block {
+  display: flex;
+  flex-direction: column;
+  margin: 0.5em 0;
+}
+
+.console-markdown-code-block pre {
+  margin: 0;
+}
+
+.console-markdown-code-copy-host {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+
+.console-copy-code-button {
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background-color: #161b22;
+  color: #c9d1d9;
+  font-size: 0.75rem;
+}
+
+.console-copy-code-button:hover {
+  background-color: #21262d;
+  color: #e6edf3;
+}
+
 .console-markdown blockquote {
   border-left: 3px solid #30363d;
   padding: 0 1em;
