@@ -17,6 +17,7 @@ const item = (
   projectItemId: `PVTI_${overrides.number}`,
   itemId: `PVTI_${overrides.number}`,
   isPr: false,
+  relatedOpenPullRequestUrls: [],
   status: null,
   nextActionDate: null,
   nextActionHour: null,

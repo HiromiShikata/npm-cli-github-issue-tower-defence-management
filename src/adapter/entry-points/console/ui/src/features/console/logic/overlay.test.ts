@@ -18,6 +18,7 @@ const item = (number: number): ConsoleListItem => ({
   projectItemId: `PVTI_${number}`,
   itemId: `PVTI_${number}`,
   isPr: false,
+  relatedOpenPullRequestUrls: [],
   story: 'Story',
   status: null,
   nextActionDate: null,

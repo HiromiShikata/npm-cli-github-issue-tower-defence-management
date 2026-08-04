@@ -32,6 +32,7 @@ export const PullRequestComposerCollapsed: Story = {
 export const IssueComposerWithFileUpload: Story = {
   args: {
     isPr: false,
+    relatedOpenPullRequestUrls: [],
     onUploadFile: async (file: File) =>
       `![${file.name}](https://github.com/user-attachments/assets/9f0b1c3d-4e5f-4a6b-8c7d-1e2f3a4b5c6d)`,
   },
@@ -40,6 +41,7 @@ export const IssueComposerWithFileUpload: Story = {
 export const IssueComposerUploadFailure: Story = {
   args: {
     isPr: false,
+    relatedOpenPullRequestUrls: [],
     onUploadFile: async () => {
       throw new Error('No GitHub web session is available');
     },

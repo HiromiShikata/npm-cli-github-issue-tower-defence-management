@@ -378,6 +378,7 @@ describe('GenerateConsoleListsUseCase', () => {
           'nextActionHour',
           'number',
           'projectItemId',
+          'relatedOpenPullRequestUrls',
           'repo',
           'status',
           'story',
@@ -579,6 +580,67 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(result.triage.pjcode).toBe('demo');
       expect(result.unread.pjcode).toBe('demo');
       expect(result['failed-preparation'].pjcode).toBe('demo');
+    });
+  });
+
+  describe('related open pull requests', () => {
+    const awaitingQualityCheckIssue = (): Issue =>
+      makeIssue({ status: 'Awaiting Quality Check' });
+
+    it('projects the open pull request that closes the issue', () => {
+      const issue = awaitingQualityCheckIssue();
+      const pullRequest = makeIssue({
+        status: 'Awaiting Quality Check',
+        isPr: true,
+        url: 'https://github.com/demo/repo/pull/501',
+        closingIssueReferenceUrls: [issue.url],
+      });
+      const result = run([issue, pullRequest]);
+      const projected = result.prs.items.find((item) => item.url === issue.url);
+      expect(projected?.relatedOpenPullRequestUrls).toEqual([
+        'https://github.com/demo/repo/pull/501',
+      ]);
+    });
+
+    it('ignores a closed pull request that closes the issue', () => {
+      const issue = awaitingQualityCheckIssue();
+      const pullRequest = makeIssue({
+        isPr: true,
+        isClosed: true,
+        url: 'https://github.com/demo/repo/pull/502',
+        closingIssueReferenceUrls: [issue.url],
+      });
+      const result = run([issue, pullRequest]);
+      const projected = result.prs.items.find((item) => item.url === issue.url);
+      expect(projected?.relatedOpenPullRequestUrls).toEqual([]);
+    });
+
+    it('collects the linkage from a pull request that no tab shows', () => {
+      const issue = awaitingQualityCheckIssue();
+      const pullRequest = makeIssue({
+        status: 'In Tmux by agent',
+        assignees: ['another-person'],
+        isPr: true,
+        url: 'https://github.com/demo/repo/pull/503',
+        closingIssueReferenceUrls: [issue.url],
+      });
+      const result = run([issue, pullRequest]);
+      const projected = result.prs.items.find((item) => item.url === issue.url);
+      expect(projected?.relatedOpenPullRequestUrls).toEqual([
+        'https://github.com/demo/repo/pull/503',
+      ]);
+    });
+
+    it('leaves the list empty when no open pull request closes the issue', () => {
+      const issue = awaitingQualityCheckIssue();
+      const unrelatedPullRequest = makeIssue({
+        isPr: true,
+        url: 'https://github.com/demo/repo/pull/504',
+        closingIssueReferenceUrls: ['https://github.com/demo/repo/issues/999'],
+      });
+      const result = run([issue, unrelatedPullRequest]);
+      const projected = result.prs.items.find((item) => item.url === issue.url);
+      expect(projected?.relatedOpenPullRequestUrls).toEqual([]);
     });
   });
 

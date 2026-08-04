@@ -21,6 +21,7 @@ const prItem: ConsoleListItem = {
   projectItemId: 'PVTI_1',
   itemId: 'PVTI_1',
   isPr: true,
+  relatedOpenPullRequestUrls: [],
   story: 'Story',
   status: null,
   nextActionDate: null,
@@ -33,6 +34,7 @@ const prItem: ConsoleListItem = {
 const issueItem: ConsoleListItem = {
   ...prItem,
   isPr: false,
+  relatedOpenPullRequestUrls: [],
   url: 'https://github.com/o/r/issues/2',
   number: 2,
 };

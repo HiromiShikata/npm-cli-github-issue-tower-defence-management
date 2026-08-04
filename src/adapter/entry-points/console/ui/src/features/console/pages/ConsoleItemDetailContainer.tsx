@@ -71,7 +71,10 @@ export const ConsoleItemDetailContainer = ({
     ),
     [caches.state],
   );
-  const hasPullRequest = item.isPr || detail.relatedPullRequests.length > 0;
+  const hasPullRequest =
+    item.isPr ||
+    item.relatedOpenPullRequestUrls.length > 0 ||
+    detail.relatedPullRequests.length > 0;
   const [pendingReviewComments, setPendingReviewComments] = useState<
     ConsolePendingReviewComment[]
   >([]);
@@ -89,7 +92,9 @@ export const ConsoleItemDetailContainer = ({
     onReview: (action) => {
       const prUrl = item.isPr
         ? item.url
-        : (detail.relatedPullRequests[0]?.pullRequest.url ?? item.url);
+        : (detail.relatedPullRequests[0]?.pullRequest.url ??
+          item.relatedOpenPullRequestUrls[0] ??
+          item.url);
       const reviewComments =
         action === 'request_changes' ? pendingReviewComments : [];
       onQueueAction({

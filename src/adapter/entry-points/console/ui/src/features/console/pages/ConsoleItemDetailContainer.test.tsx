@@ -26,6 +26,7 @@ const issueItem = consoleListItemsFixture[2];
 type CachesOverrides = {
   relatedPrs?: ConsoleRelatedPullRequest[];
   prFiles?: ConsoleChangedFile[];
+  relatedPrsNeverResolve?: boolean;
 };
 
 const buildCaches = (overrides: CachesOverrides = {}): ConsoleCaches => {
@@ -34,7 +35,10 @@ const buildCaches = (overrides: CachesOverrides = {}): ConsoleCaches => {
     fetchComments: async () => [],
     fetchPrFiles: async () => overrides.prFiles ?? [],
     fetchPrCommits: async () => [],
-    fetchRelatedPrs: async () => overrides.relatedPrs ?? [],
+    fetchRelatedPrs: async () =>
+      overrides.relatedPrsNeverResolve === true
+        ? new Promise<ConsoleRelatedPullRequest[]>(() => {})
+        : (overrides.relatedPrs ?? []),
     fetchIssueState: async () => ({
       state: 'open',
       merged: false,
@@ -111,6 +115,43 @@ describe('ConsoleItemDetailContainer', () => {
     expect(operations.reviewPullRequest).toHaveBeenCalledWith(
       prItem,
       prItem.url,
+      'approve',
+      [],
+    );
+  });
+
+  it('shows Approve for an issue item from the generated related open pull request urls before the related pull requests are fetched', () => {
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const bakedPullRequestUrl =
+      'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/1372';
+    const itemWithBakedPullRequest = {
+      ...issueItem,
+      relatedOpenPullRequestUrls: [bakedPullRequestUrl],
+    };
+    const { getByText } = render(
+      <ConsoleItemDetailContainer
+        tab="prs"
+        item={itemWithBakedPullRequest}
+        caches={buildCaches({ relatedPrsNeverResolve: true })}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+      />,
+    );
+
+    expect(getByText('Approve')).toBeInTheDocument();
+    fireEvent.click(getByText('Approve'));
+    const input = onQueueAction.mock.calls[0][0];
+    input.commit();
+    expect(operations.reviewPullRequest).toHaveBeenCalledWith(
+      itemWithBakedPullRequest,
+      bakedPullRequestUrl,
       'approve',
       [],
     );

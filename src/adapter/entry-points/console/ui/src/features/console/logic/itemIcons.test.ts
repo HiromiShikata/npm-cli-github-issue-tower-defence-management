@@ -5,6 +5,7 @@ describe('resolveConsoleItemIconKind', () => {
     expect(
       resolveConsoleItemIconKind({
         isPr: true,
+        relatedOpenPullRequestUrls: [],
         state: 'open',
         merged: false,
         isDraft: true,
@@ -17,6 +18,7 @@ describe('resolveConsoleItemIconKind', () => {
     expect(
       resolveConsoleItemIconKind({
         isPr: true,
+        relatedOpenPullRequestUrls: [],
         state: 'closed',
         merged: true,
         isDraft: false,
@@ -29,6 +31,7 @@ describe('resolveConsoleItemIconKind', () => {
     expect(
       resolveConsoleItemIconKind({
         isPr: true,
+        relatedOpenPullRequestUrls: [],
         state: 'closed',
         merged: false,
         isDraft: false,
@@ -41,6 +44,7 @@ describe('resolveConsoleItemIconKind', () => {
     expect(
       resolveConsoleItemIconKind({
         isPr: true,
+        relatedOpenPullRequestUrls: [],
         state: 'open',
         merged: false,
         isDraft: false,
@@ -53,6 +57,7 @@ describe('resolveConsoleItemIconKind', () => {
     expect(
       resolveConsoleItemIconKind({
         isPr: false,
+        relatedOpenPullRequestUrls: [],
         state: 'closed',
         merged: false,
         isDraft: false,
@@ -65,6 +70,7 @@ describe('resolveConsoleItemIconKind', () => {
     expect(
       resolveConsoleItemIconKind({
         isPr: false,
+        relatedOpenPullRequestUrls: [],
         state: 'closed',
         merged: false,
         isDraft: false,
@@ -77,6 +83,7 @@ describe('resolveConsoleItemIconKind', () => {
     expect(
       resolveConsoleItemIconKind({
         isPr: false,
+        relatedOpenPullRequestUrls: [],
         state: 'open',
         merged: false,
         isDraft: false,
