@@ -152,6 +152,34 @@ describe('GenerateConsoleListsUseCase', () => {
       const result = run([makeIssue({ status: 'Unread' })]);
       expect(result.unread.items).toHaveLength(1);
     });
+
+    it('accepts an unread issue that has no assignee', () => {
+      const result = run([makeIssue({ status: 'Unread', assignees: [] })]);
+      expect(result.unread.items).toHaveLength(1);
+    });
+
+    it('accepts an unread pull request that has no assignee', () => {
+      const result = run([
+        makeIssue({ status: 'Unread', assignees: [], isPr: true }),
+      ]);
+      expect(result.unread.items).toHaveLength(1);
+    });
+
+    it('accepts a todo-by-human issue that has no assignee', () => {
+      const result = run([makeIssue({ status: 'Todo by human', assignees: [] })]);
+      expect(result['todo-by-human'].items).toHaveLength(1);
+    });
+
+    it('keeps rejecting an unassigned issue that is blocked by a depended issue url', () => {
+      const result = run([
+        makeIssue({
+          status: 'Unread',
+          assignees: [],
+          dependedIssueUrls: ['https://github.com/demo/repo/issues/99'],
+        }),
+      ]);
+      expect(result.unread.items).toHaveLength(0);
+    });
   });
 
   describe('per-tab selectors', () => {
