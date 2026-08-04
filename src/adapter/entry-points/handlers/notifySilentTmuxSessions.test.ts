@@ -40,7 +40,6 @@ const createMockRunner = (): Mocked<LocalCommandRunner> => ({
 describe('notifySilentTmuxSessions', () => {
   let configDir: string;
   let candidateStateFilePath: string;
-  let notifiedStateFilePath: string;
   let hubTaskStatusCacheStateFilePath: string;
 
   beforeEach(() => {
@@ -49,10 +48,6 @@ describe('notifySilentTmuxSessions', () => {
     candidateStateFilePath = path.join(
       configDir,
       'silent-session-candidates.json',
-    );
-    notifiedStateFilePath = path.join(
-      configDir,
-      'silent-session-notified.json',
     );
     hubTaskStatusCacheStateFilePath = path.join(
       configDir,
@@ -146,7 +141,6 @@ describe('notifySilentTmuxSessions', () => {
     subAgentTranscriptRootDirectory: null,
     subAgentRuntimeRootDirectory: null,
     candidateDebounceStateFilePath: candidateStateFilePath,
-    notifiedStateFilePath: notifiedStateFilePath,
     activeHubTaskStatus: null,
     hubTaskStatusResolver: null,
     hubTaskStatusCacheStateFilePath: hubTaskStatusCacheStateFilePath,
@@ -171,7 +165,7 @@ describe('notifySilentTmuxSessions', () => {
     expect(sendCall?.[1][4].endsWith('\x1b[201~')).toBe(true);
   });
 
-  it('notifies a persistent stall only once across repeated cycles (fire-once)', async () => {
+  it('notifies a persistent stall again on the next cycle while the session stays silent', async () => {
     silentAssistantTranscript();
     seedPreviousCandidates([SESSION_NAME]);
 
@@ -190,7 +184,8 @@ describe('notifySilentTmuxSessions', () => {
     const secondSendCall = secondRunner.runCommand.mock.calls.find(
       (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
     );
-    expect(secondSendCall).toBeUndefined();
+    expect(secondSendCall?.[1][2]).toBe(SESSION_NAME);
+    expect(secondSendCall?.[1][4]).toContain('No output has been observed for');
   });
 
   it('does not notify a silent github-named live session on its first candidate cycle', async () => {
