@@ -854,6 +854,32 @@ body {
   resize: vertical;
 }
 
+.console-composer-attach {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+}
+
+.console-composer-file-input {
+  display: none;
+}
+
+.console-composer-attach-button {
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  background: #21262d;
+  color: #c9d1d9;
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.console-composer-attach-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .console-composer-row {
   display: flex;
   align-items: center;
@@ -1076,7 +1102,9 @@ body {
 
 .console-file-diff-image-content {
   max-width: 100%;
-  height: auto;
+  max-height: 420px;
+  object-fit: contain;
+  object-position: left top;
   border: 1px solid #30363d;
   border-radius: 4px;
 }
