@@ -59,11 +59,10 @@ class GenerateConsoleListsUseCase {
             };
         };
         this.isActionable = (issue, assigneeLogin) => issue.isClosed === false &&
-            this.isOwnedByNobodyElse(issue, assigneeLogin) &&
+            issue.assignees.includes(assigneeLogin) &&
             issue.dependedIssueUrls.length === 0 &&
             issue.nextActionDate === null &&
             issue.nextActionHour === null;
-        this.isOwnedByNobodyElse = (issue, assigneeLogin) => issue.assignees.length === 0 || issue.assignees.includes(assigneeLogin);
         this.workflowBlockerSelector = (workflowBlockerStoryName) => {
             const target = workflowBlockerStoryName?.toLowerCase() ?? '';
             if (target === '') {

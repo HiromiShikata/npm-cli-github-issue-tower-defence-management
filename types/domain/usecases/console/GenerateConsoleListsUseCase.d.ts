@@ -63,7 +63,6 @@ export type GenerateConsoleListsInput = {
 export declare class GenerateConsoleListsUseCase {
     run: (input: GenerateConsoleListsInput) => ConsoleLists;
     private isActionable;
-    private isOwnedByNobodyElse;
     private workflowBlockerSelector;
     private buildRelatedOpenPullRequestUrlsByIssueUrl;
     private projectItem;
