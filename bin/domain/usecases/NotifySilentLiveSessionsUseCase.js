@@ -32,7 +32,7 @@ const GITHUB_ISSUE_OR_PULL_REQUEST_SESSION_NAME_PATTERN = /^https(:\/\/|_\/\/)gi
 const isGitHubIssueOrPullRequestSessionName = (sessionName) => GITHUB_ISSUE_OR_PULL_REQUEST_SESSION_NAME_PATTERN.test(sessionName);
 exports.isGitHubIssueOrPullRequestSessionName = isGitHubIssueOrPullRequestSessionName;
 class NotifySilentLiveSessionsUseCase {
-    constructor(liveSessionProcessSnapshotProvider, interactiveLiveSessionTranscriptResolver, sessionOutputActivityRepository, subAgentActivityRepository, ownerCallStatusProvider, notificationRepository, candidateStateRepository, notifiedStateRepository, messageComposer, sleeper, hubTaskStatusResolver = null, hubTaskStatusCacheRepository = null, refusalTailStatusProvider = null) {
+    constructor(liveSessionProcessSnapshotProvider, interactiveLiveSessionTranscriptResolver, sessionOutputActivityRepository, subAgentActivityRepository, ownerCallStatusProvider, notificationRepository, candidateStateRepository, messageComposer, sleeper, hubTaskStatusResolver = null, hubTaskStatusCacheRepository = null, refusalTailStatusProvider = null) {
         this.liveSessionProcessSnapshotProvider = liveSessionProcessSnapshotProvider;
         this.interactiveLiveSessionTranscriptResolver = interactiveLiveSessionTranscriptResolver;
         this.sessionOutputActivityRepository = sessionOutputActivityRepository;
@@ -40,7 +40,6 @@ class NotifySilentLiveSessionsUseCase {
         this.ownerCallStatusProvider = ownerCallStatusProvider;
         this.notificationRepository = notificationRepository;
         this.candidateStateRepository = candidateStateRepository;
-        this.notifiedStateRepository = notifiedStateRepository;
         this.messageComposer = messageComposer;
         this.sleeper = sleeper;
         this.hubTaskStatusResolver = hubTaskStatusResolver;
@@ -112,24 +111,8 @@ class NotifySilentLiveSessionsUseCase {
             const debouncedCandidates = candidates.filter((candidate) => previousCandidateSessionNames.has(candidate.sessionName));
             const suppressedFirstCycleCount = candidates.length - debouncedCandidates.length;
             console.log(`Silent live session notification: ${debouncedCandidates.length} debounced candidate(s) of ${candidates.length} current candidate(s) across ${interactiveSessions.length} interactive session(s); ${suppressedFirstCycleCount} first-cycle candidate(s) deferred until they persist into the next cycle.`);
-            // Fire-once latch: the set of sessions already reminded during their
-            // current silent episode. A session that is still a candidate this cycle
-            // and was already reminded is NOT re-injected, so a continuous silent
-            // episode produces exactly one reminder instead of one every schedule
-            // cycle. The latch is keyed by the globally-unique session name and
-            // persisted across the per-cycle fresh monitor process on disk.
-            const currentCandidateSessionNames = new Set(candidates.map((candidate) => candidate.sessionName));
-            const previouslyNotifiedSessionNames = await this.notifiedStateRepository.loadRecentNotifiedSessionNames({
-                now: params.now,
-                recencyWindowSeconds: params.candidateDebounceRecencyWindowSeconds,
-            });
             let sentCount = 0;
-            const notifiedThisCycleSessionNames = [];
             for (const candidate of debouncedCandidates) {
-                if (previouslyNotifiedSessionNames.has(candidate.sessionName)) {
-                    console.log(`Skipping ${candidate.sessionName}: the current silent-episode reminder was already delivered; not re-injecting until the condition resolves and re-arises.`);
-                    continue;
-                }
                 if (!(await this.isHubTaskActive(candidate.sessionName, params.activeHubTaskStatus, params.hubTaskStatusCacheTtlSeconds, params.now))) {
                     continue;
                 }
@@ -138,28 +121,11 @@ class NotifySilentLiveSessionsUseCase {
                 }
                 await this.notificationRepository.sendSelfCheckNotification(candidate.sessionName, candidate.message);
                 sentCount += 1;
-                notifiedThisCycleSessionNames.push(candidate.sessionName);
                 // One line per send, grep-stable on the `Notified ` prefix: the
                 // ISO-8601 UTC timestamp disambiguates concurrent schedule runs and
                 // the section list records what the message actually contained.
                 console.log(`Notified ${candidate.sessionName} at=${params.now.toISOString()} sections=[${candidate.sectionLabels.join(',')}]`);
             }
-            // Persist the latch for the next cycle: keep every already-latched session
-            // that is STILL a candidate (refreshing its timestamp so a continuous
-            // episode stays latched) plus the sessions notified this cycle, and prune
-            // any latched session that is no longer a candidate so its episode ends and
-            // a later re-qualification fires a fresh reminder.
-            const retainedNotifiedSessionNames = [
-                ...previouslyNotifiedSessionNames,
-            ].filter((sessionName) => currentCandidateSessionNames.has(sessionName));
-            const notifiedSessionNamesToPersist = Array.from(new Set([
-                ...retainedNotifiedSessionNames,
-                ...notifiedThisCycleSessionNames,
-            ]));
-            await this.notifiedStateRepository.saveNotifiedSessionNames({
-                sessionNames: notifiedSessionNamesToPersist,
-                now: params.now,
-            });
         };
         this.isHubTaskActive = async (sessionName, activeHubTaskStatus, hubTaskStatusCacheTtlSeconds, now) => {
             if (activeHubTaskStatus === null || this.hubTaskStatusResolver === null) {

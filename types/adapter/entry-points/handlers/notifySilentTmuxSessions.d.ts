@@ -18,7 +18,6 @@ export type NotifySilentTmuxSessionsParams = {
     staggerSeconds: number;
     candidateDebounceRecencyWindowSeconds: number;
     candidateDebounceStateFilePath: string | null;
-    notifiedStateFilePath: string | null;
     activeHubTaskStatus: string | null;
     hubTaskStatusResolver: HubTaskStatusResolver | null;
     hubTaskStatusCacheStateFilePath: string | null;

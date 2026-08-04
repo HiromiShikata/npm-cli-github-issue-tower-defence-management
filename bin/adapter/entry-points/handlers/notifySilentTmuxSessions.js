@@ -20,7 +20,6 @@ const FileSystemSubAgentSilentSecondsResolver_1 = require("../../repositories/Fi
 const ConfigurableSilentSessionMessageComposer_1 = require("../../repositories/ConfigurableSilentSessionMessageComposer");
 const RealSleeper_1 = require("../../repositories/RealSleeper");
 const FileSystemSilentSessionCandidateStateRepository_1 = require("../../repositories/FileSystemSilentSessionCandidateStateRepository");
-const FileSystemSilentSessionNotifiedStateRepository_1 = require("../../repositories/FileSystemSilentSessionNotifiedStateRepository");
 const FileSystemSilentSessionHubTaskStatusCacheRepository_1 = require("../../repositories/FileSystemSilentSessionHubTaskStatusCacheRepository");
 const createOwnerCallStatusProvider = (ownerCallMarker) => {
     if (ownerCallMarker !== null && ownerCallMarker.length > 0) {
@@ -35,7 +34,7 @@ const createSubAgentActivityRepository = (subAgentTranscriptRootDirectory, subAg
     return new ProcessListSessionSubAgentActivityRepository_1.ProcessListSessionSubAgentActivityRepository(subAgentProcessMatchPattern, new NodeSubAgentProcessLister_1.NodeSubAgentProcessLister(localCommandRunner), new FileSystemSubAgentSilentSecondsResolver_1.FileSystemSubAgentSilentSecondsResolver(subAgentOutputRootDirectory, now));
 };
 const notifySilentTmuxSessions = async (params) => {
-    const { enabled, localCommandRunner, processEnvironReader, ownerCallMarker, subAgentOutputRootDirectory, subAgentProcessMatchPattern, subAgentTranscriptRootDirectory, subAgentRuntimeRootDirectory, mainSilentThresholdSeconds, unansweredOwnerCallGraceSeconds, subAgentSilentThresholdSeconds, subAgentRunningThresholdSeconds, staggerSeconds, candidateDebounceRecencyWindowSeconds, candidateDebounceStateFilePath, notifiedStateFilePath, activeHubTaskStatus, hubTaskStatusResolver, hubTaskStatusCacheStateFilePath, hubTaskStatusCacheTtlSeconds, messageTemplates, now, } = params;
+    const { enabled, localCommandRunner, processEnvironReader, ownerCallMarker, subAgentOutputRootDirectory, subAgentProcessMatchPattern, subAgentTranscriptRootDirectory, subAgentRuntimeRootDirectory, mainSilentThresholdSeconds, unansweredOwnerCallGraceSeconds, subAgentSilentThresholdSeconds, subAgentRunningThresholdSeconds, staggerSeconds, candidateDebounceRecencyWindowSeconds, candidateDebounceStateFilePath, activeHubTaskStatus, hubTaskStatusResolver, hubTaskStatusCacheStateFilePath, hubTaskStatusCacheTtlSeconds, messageTemplates, now, } = params;
     if (!enabled) {
         console.log('Silent live session notification skipped: not enabled (set silentNotificationEnabled or TDPM_SILENT_NOTIFICATION_ENABLED=true to enable).');
         return;
@@ -43,9 +42,7 @@ const notifySilentTmuxSessions = async (params) => {
     const messageComposer = new ConfigurableSilentSessionMessageComposer_1.ConfigurableSilentSessionMessageComposer(messageTemplates, new DefaultSilentSessionMessageComposer_1.DefaultSilentSessionMessageComposer());
     const useCase = new NotifySilentLiveSessionsUseCase_1.NotifySilentLiveSessionsUseCase(new LocalProcessLiveSessionProcessSnapshotProvider_1.LocalProcessLiveSessionProcessSnapshotProvider(localCommandRunner, processEnvironReader ?? new ProcFsProcessEnvironReader_1.ProcFsProcessEnvironReader()), new FileSystemInteractiveLiveSessionTranscriptResolver_1.FileSystemInteractiveLiveSessionTranscriptResolver(), new FileSystemSessionOutputActivityRepository_1.FileSystemSessionOutputActivityRepository(), createSubAgentActivityRepository(subAgentTranscriptRootDirectory, subAgentRuntimeRootDirectory, subAgentProcessMatchPattern, subAgentOutputRootDirectory, localCommandRunner, now), createOwnerCallStatusProvider(ownerCallMarker), new TmuxSilentSessionNotificationRepository_1.TmuxSilentSessionNotificationRepository(localCommandRunner), candidateDebounceStateFilePath !== null
         ? new FileSystemSilentSessionCandidateStateRepository_1.FileSystemSilentSessionCandidateStateRepository(candidateDebounceStateFilePath)
-        : new FileSystemSilentSessionCandidateStateRepository_1.FileSystemSilentSessionCandidateStateRepository(), notifiedStateFilePath !== null
-        ? new FileSystemSilentSessionNotifiedStateRepository_1.FileSystemSilentSessionNotifiedStateRepository(notifiedStateFilePath)
-        : new FileSystemSilentSessionNotifiedStateRepository_1.FileSystemSilentSessionNotifiedStateRepository(), messageComposer, new RealSleeper_1.RealSleeper(), hubTaskStatusResolver, hubTaskStatusCacheStateFilePath !== null
+        : new FileSystemSilentSessionCandidateStateRepository_1.FileSystemSilentSessionCandidateStateRepository(), messageComposer, new RealSleeper_1.RealSleeper(), hubTaskStatusResolver, hubTaskStatusCacheStateFilePath !== null
         ? new FileSystemSilentSessionHubTaskStatusCacheRepository_1.FileSystemSilentSessionHubTaskStatusCacheRepository(hubTaskStatusCacheStateFilePath)
         : new FileSystemSilentSessionHubTaskStatusCacheRepository_1.FileSystemSilentSessionHubTaskStatusCacheRepository(), new TranscriptRefusalTailStatusProvider_1.TranscriptRefusalTailStatusProvider());
     await useCase.run({
