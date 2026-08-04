@@ -255,6 +255,9 @@ test('lists a still-open item and keeps its tab visible when the browser overlay
     );
   });
   await page.reload();
+  await page.locator('.console-tabbar').screenshot({
+    path: '/tmp/console-tabbar-after-regeneration.png',
+  });
 
   await expect(tabByLabel(page, 'Todo by human')).toBeVisible();
   await expect(tabBadge(page, 'Todo by human')).toHaveText('1');
