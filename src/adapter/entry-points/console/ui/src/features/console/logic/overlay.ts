@@ -30,6 +30,23 @@ export const filterPendingItems = (
     (item) => !isOverlayEntryActed(overlay[overlayKeyForItem(item)]),
   );
 
+export const overlayEntriesActedSinceSnapshot = (
+  overlay: ConsoleOverlay,
+  snapshotGeneratedAt: string,
+): ConsoleOverlay => {
+  const snapshotGeneratedAtMs = Date.parse(snapshotGeneratedAt);
+  if (Number.isNaN(snapshotGeneratedAtMs)) {
+    return {};
+  }
+  const acted: ConsoleOverlay = {};
+  for (const [key, entry] of Object.entries(overlay)) {
+    if (entry.ts >= snapshotGeneratedAtMs) {
+      acted[key] = entry;
+    }
+  }
+  return acted;
+};
+
 export const writeOverlayEntry = (
   overlay: ConsoleOverlay,
   key: string,

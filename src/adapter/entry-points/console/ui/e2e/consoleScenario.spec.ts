@@ -234,3 +234,39 @@ test('collects an inline comment on a related pull request diff without hover on
 
   await touchContext.close();
 });
+
+test('lists a still-open item and keeps its tab visible when the browser overlay marked it done before the served snapshot was generated', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await expect(tabByLabel(page, 'Todo by human')).toBeVisible();
+
+  await page.evaluate(() => {
+    localStorage.setItem(
+      'pv_overlay_umino',
+      JSON.stringify({
+        PVTI_lADOABCD1234zgTODO00869: {
+          done: true,
+          ts: Date.parse('2026-06-18T00:30:00.000Z'),
+          mode: 'todo-by-human',
+        },
+      }),
+    );
+  });
+  await page.reload();
+  await page.locator('.console-tabbar').screenshot({
+    path: '/tmp/console-tabbar-after-regeneration.png',
+  });
+
+  await expect(tabByLabel(page, 'Todo by human')).toBeVisible();
+  await expect(tabBadge(page, 'Todo by human')).toHaveText('1');
+
+  await tabByLabel(page, 'Todo by human').click();
+  await expect(
+    itemRowByText(
+      page,
+      'Auto-advance to the next non-empty console tab when one empties',
+    ),
+  ).toBeVisible();
+});

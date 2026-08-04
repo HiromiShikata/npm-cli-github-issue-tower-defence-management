@@ -310,7 +310,11 @@ describe('ConsolePage', () => {
     localStorage.setItem(
       'pv_overlay_umino',
       JSON.stringify({
-        PVTI_B1: { ts: 1, mode: 'workflow-blocker', done: true },
+        PVTI_B1: {
+          ts: Date.parse('2026-06-19T00:05:00.000Z'),
+          mode: 'workflow-blocker',
+          done: true,
+        },
       }),
     );
     window.history.replaceState(
@@ -328,6 +332,69 @@ describe('ConsolePage', () => {
       .getByText('Workflow Blocker')
       .closest('a');
     expect(blockerTab).not.toBeNull();
+    expect(blockerTab?.querySelector('.console-tab-badge')?.textContent).toBe(
+      '1',
+    );
+  });
+
+  it('lists an item again when the overlay marked it done before the served snapshot was generated', async () => {
+    const blockerItems = [
+      {
+        number: 701,
+        title: 'Blocked deployment task',
+        url: 'https://github.com/o/r/issues/701',
+        repo: 'o/r',
+        nameWithOwner: 'o/r',
+        projectItemId: 'PVTI_B1',
+        itemId: 'PVTI_B1',
+        isPr: false,
+        story: 'TDPM Console port',
+        status: 'In Progress',
+        nextActionDate: null,
+        nextActionHour: null,
+        dependedIssueUrls: [],
+        labels: [],
+        createdAt: '2026-06-17T00:00:00.000Z',
+      },
+    ];
+    const fetchMock = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            listMatch[1] === 'workflow-blocker'
+              ? { ...listPayload('workflow-blocker'), items: blockerItems }
+              : listPayload(listMatch[1]),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    localStorage.setItem(
+      'pv_overlay_umino',
+      JSON.stringify({
+        PVTI_B1: {
+          ts: Date.parse('2026-06-18T23:00:00.000Z'),
+          mode: 'workflow-blocker',
+          done: true,
+        },
+      }),
+    );
+    window.history.replaceState(
+      {},
+      '',
+      '/projects/umino/workflow-blocker?k=token',
+    );
+
+    const { getByText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Blocked deployment task')).toBeInTheDocument();
+    });
+    const blockerTab = within(tabBar())
+      .getByText('Workflow Blocker')
+      .closest('a');
     expect(blockerTab?.querySelector('.console-tab-badge')?.textContent).toBe(
       '1',
     );
