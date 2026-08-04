@@ -4,6 +4,9 @@ import { CONSOLE_DONE_TAB_NAMES } from './consoleDoneStore';
 
 const CONSOLE_LIST_FILE_NAME = 'list.json';
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+
 const readListItemUrls = (
   consoleDataOutputDir: string,
   pjcode: string,
@@ -27,19 +30,19 @@ const readListItemUrls = (
   } catch {
     return [];
   }
-  if (parsed === null || typeof parsed !== 'object') {
+  if (!isRecord(parsed)) {
     return [];
   }
-  const items = (parsed as { items?: unknown }).items;
+  const items = parsed.items;
   if (!Array.isArray(items)) {
     return [];
   }
   const urls: string[] = [];
   for (const item of items) {
-    if (item === null || typeof item !== 'object') {
+    if (!isRecord(item)) {
       continue;
     }
-    const url = (item as { url?: unknown }).url;
+    const url = item.url;
     if (typeof url === 'string' && url.length > 0) {
       urls.push(url);
     }
