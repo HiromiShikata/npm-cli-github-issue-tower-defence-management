@@ -57,7 +57,7 @@ export const composeMainStalledSelfDiagnosisGuidance = (): string => {
 const composeMainStalledMessage = (mainSilentSeconds: number): string => {
   const minutes = Math.floor(mainSilentSeconds / 60);
   return [
-    `${SILENT_SESSION_REMINDER_SENTINEL} This is an automated status check. No output has been observed for ${minutes} minutes. If you are waiting on an external process, no action is needed — please log one line explaining the wait. Otherwise please continue with the next step, with these points in mind:`,
+    `${SILENT_SESSION_REMINDER_SENTINEL} This is an automated status check. No output has been observed for ${minutes} minutes. If you are waiting on an automated process that runs without the owner - a continuous-integration run, an external API, or another process - no action is needed beyond logging one line explaining the wait. If you are waiting on something only the owner can supply - a decision, an approval, a credential, or an answer - please raise an owner-call now, because that wait is resolved only after the owner has been notified. Otherwise please continue with the next step, with these points in mind:`,
     `1. Keep the session task list current, marking finished items as done.`,
     `2. Run independent pieces of work in parallel across sub-agents.`,
     `3. Keep a monitor in place that notices when a sub-agent has produced no output for about 5 minutes.`,

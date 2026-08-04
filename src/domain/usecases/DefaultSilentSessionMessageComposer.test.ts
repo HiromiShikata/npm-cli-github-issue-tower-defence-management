@@ -28,13 +28,33 @@ describe('DefaultSilentSessionMessageComposer', () => {
     expect(section).toContain('This is an automated status check.');
     expect(section).toContain('No output has been observed for 10 minutes.');
     expect(section).toContain(
-      'If you are waiting on an external process, no action is needed — please log one line explaining the wait.',
+      'If you are waiting on an automated process that runs without the owner',
     );
     expect(section).toContain('Otherwise please continue with the next step');
     expect(section).toContain('1.');
     expect(section).toContain('2.');
     expect(section).toContain('3.');
     expect(section).toContain('4.');
+  });
+
+  it('limits the no-action wait to an automated process that runs without the owner', () => {
+    const section = composer.composeMainStalledSection(600);
+    expect(section).toContain(
+      'If you are waiting on an automated process that runs without the owner - a continuous-integration run, an external API, or another process - no action is needed beyond logging one line explaining the wait.',
+    );
+    expect(section).not.toContain(
+      'If you are waiting on an external process, no action is needed',
+    );
+  });
+
+  it('asks for an owner-call when the session is waiting on something only the owner can supply', () => {
+    const section = composer.composeMainStalledSection(600);
+    expect(section).toContain(
+      'If you are waiting on something only the owner can supply - a decision, an approval, a credential, or an answer - please raise an owner-call now',
+    );
+    expect(section).toContain(
+      'that wait is resolved only after the owner has been notified',
+    );
   });
 
   it('states each of the four checkpoints exactly once', () => {
