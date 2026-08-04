@@ -17,6 +17,7 @@ export type ConsoleListItem = {
     dependedIssueUrls: string[];
     labels: string[];
     createdAt: string;
+    relatedOpenPullRequestUrls: string[];
 };
 export type ConsoleFieldOption = {
     id: string;
@@ -63,6 +64,7 @@ export declare class GenerateConsoleListsUseCase {
     run: (input: GenerateConsoleListsInput) => ConsoleLists;
     private isActionable;
     private workflowBlockerSelector;
+    private buildRelatedOpenPullRequestUrlsByIssueUrl;
     private projectItem;
     private buildFieldOptions;
     private buildStoryColorsObject;

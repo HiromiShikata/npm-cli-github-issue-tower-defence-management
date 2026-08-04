@@ -10,6 +10,7 @@ class GenerateConsoleListsUseCase {
             const storyOptions = project.story ? project.story.stories : [];
             const storyOrder = storyOptions.map((option) => option.name);
             const statusOptions = project.status.statuses;
+            const relatedOpenPullRequestUrlsByIssueUrl = this.buildRelatedOpenPullRequestUrlsByIssueUrl(issues);
             const visibleIssues = issues.filter((issue) => issue.status?.toLowerCase() !==
                 WorkflowStatus_1.IN_TMUX_BY_AGENT_STATUS_NAME.toLowerCase());
             const actionableIssues = visibleIssues.filter((issue) => this.isActionable(issue, assigneeLogin));
@@ -19,7 +20,9 @@ class GenerateConsoleListsUseCase {
                 statusOptions: this.buildFieldOptions(statusOptions, excludedStatusNames),
                 storyOrder,
                 storyColors: this.buildStoryColorsObject(storyOptions),
-                items: this.sortByStoryOrder(sourceIssues.filter(selector).map((issue) => this.projectItem(issue)), storyOrder),
+                items: this.sortByStoryOrder(sourceIssues
+                    .filter(selector)
+                    .map((issue) => this.projectItem(issue, relatedOpenPullRequestUrlsByIssueUrl.get(issue.url) ?? [])), storyOrder),
             });
             const buildStatusTab = (selector, excludedStatusNames) => buildStatusTabFromSource(actionableIssues, selector, excludedStatusNames);
             return {
@@ -51,7 +54,7 @@ class GenerateConsoleListsUseCase {
                         issue.story.toLowerCase().includes('no story') &&
                         issue.status?.toLowerCase() !==
                             WorkflowStatus_1.IN_TMUX_BY_AGENT_STATUS_NAME.toLowerCase())
-                        .map((issue) => this.projectItem(issue)), storyOrder),
+                        .map((issue) => this.projectItem(issue, relatedOpenPullRequestUrlsByIssueUrl.get(issue.url) ?? [])), storyOrder),
                 },
             };
         };
@@ -67,7 +70,26 @@ class GenerateConsoleListsUseCase {
             }
             return (issue) => issue.story !== null && issue.story.toLowerCase() === target;
         };
-        this.projectItem = (issue) => ({
+        this.buildRelatedOpenPullRequestUrlsByIssueUrl = (issues) => {
+            const urlsByIssueUrl = new Map();
+            for (const issue of issues) {
+                if (!issue.isPr || issue.isClosed) {
+                    continue;
+                }
+                for (const referencedIssueUrl of issue.closingIssueReferenceUrls) {
+                    const existing = urlsByIssueUrl.get(referencedIssueUrl);
+                    if (existing === undefined) {
+                        urlsByIssueUrl.set(referencedIssueUrl, [issue.url]);
+                        continue;
+                    }
+                    if (!existing.includes(issue.url)) {
+                        existing.push(issue.url);
+                    }
+                }
+            }
+            return urlsByIssueUrl;
+        };
+        this.projectItem = (issue, relatedOpenPullRequestUrls) => ({
             number: issue.number,
             title: issue.title,
             url: issue.url,
@@ -83,6 +105,7 @@ class GenerateConsoleListsUseCase {
             dependedIssueUrls: issue.dependedIssueUrls,
             labels: issue.labels,
             createdAt: issue.createdAt.toISOString(),
+            relatedOpenPullRequestUrls,
         });
         this.buildFieldOptions = (options, excludedLowerCaseNames) => options
             .filter((option) => !excludedLowerCaseNames.includes(option.name.toLowerCase()))

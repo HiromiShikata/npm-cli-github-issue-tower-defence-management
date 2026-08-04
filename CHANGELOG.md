@@ -1,3 +1,10 @@
+## [1.144.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.144.0...v1.144.1) (2026-08-04)
+
+
+### Bug Fixes
+
+* **console:** bake related open pull requests into the generated console lists ([#1373](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1373)) ([5c2c000](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5c2c0007ed629530e0b2b0a46eebd8bc97b22195)), closes [#1372](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1372)
+
 # [1.144.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.143.6...v1.144.0) (2026-08-04)
 
 
