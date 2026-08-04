@@ -11,7 +11,8 @@ export class TmuxSilentSessionNotificationRepository implements SilentSessionNot
     sessionName: string,
     message: string,
   ): Promise<void> => {
-    const framedMessage = `${BRACKETED_PASTE_START}${message}${BRACKETED_PASTE_END}`;
+    const singleLineMessage = message.replace(/\s*[\r\n]+\s*/g, ' ').trim();
+    const framedMessage = `${BRACKETED_PASTE_START}${singleLineMessage}${BRACKETED_PASTE_END}`;
     const literalResult = await this.localCommandRunner.runCommand('tmux', [
       'send-keys',
       '-t',
