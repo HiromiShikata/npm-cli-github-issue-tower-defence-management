@@ -25,6 +25,7 @@ export type ConsoleListItem = {
   dependedIssueUrls: string[];
   labels: string[];
   createdAt: string;
+  relatedOpenPullRequestUrls: string[];
 };
 
 export type ConsoleFieldOption = {
@@ -96,6 +97,9 @@ export class GenerateConsoleListsUseCase {
     const storyOrder = storyOptions.map((option) => option.name);
     const statusOptions = project.status.statuses;
 
+    const relatedOpenPullRequestUrlsByIssueUrl =
+      this.buildRelatedOpenPullRequestUrlsByIssueUrl(issues);
+
     const visibleIssues = issues.filter(
       (issue) =>
         issue.status?.toLowerCase() !==
@@ -117,7 +121,14 @@ export class GenerateConsoleListsUseCase {
       storyOrder,
       storyColors: this.buildStoryColorsObject(storyOptions),
       items: this.sortByStoryOrder(
-        sourceIssues.filter(selector).map((issue) => this.projectItem(issue)),
+        sourceIssues
+          .filter(selector)
+          .map((issue) =>
+            this.projectItem(
+              issue,
+              relatedOpenPullRequestUrlsByIssueUrl.get(issue.url) ?? [],
+            ),
+          ),
         storyOrder,
       ),
     });
@@ -183,7 +194,12 @@ export class GenerateConsoleListsUseCase {
                 issue.status?.toLowerCase() !==
                   IN_TMUX_BY_AGENT_STATUS_NAME.toLowerCase(),
             )
-            .map((issue) => this.projectItem(issue)),
+            .map((issue) =>
+              this.projectItem(
+                issue,
+                relatedOpenPullRequestUrlsByIssueUrl.get(issue.url) ?? [],
+              ),
+            ),
           storyOrder,
         ),
       },
@@ -208,7 +224,32 @@ export class GenerateConsoleListsUseCase {
       issue.story !== null && issue.story.toLowerCase() === target;
   };
 
-  private projectItem = (issue: Issue): ConsoleListItem => ({
+  private buildRelatedOpenPullRequestUrlsByIssueUrl = (
+    issues: Issue[],
+  ): Map<string, string[]> => {
+    const urlsByIssueUrl = new Map<string, string[]>();
+    for (const issue of issues) {
+      if (!issue.isPr || issue.isClosed) {
+        continue;
+      }
+      for (const referencedIssueUrl of issue.closingIssueReferenceUrls) {
+        const existing = urlsByIssueUrl.get(referencedIssueUrl);
+        if (existing === undefined) {
+          urlsByIssueUrl.set(referencedIssueUrl, [issue.url]);
+          continue;
+        }
+        if (!existing.includes(issue.url)) {
+          existing.push(issue.url);
+        }
+      }
+    }
+    return urlsByIssueUrl;
+  };
+
+  private projectItem = (
+    issue: Issue,
+    relatedOpenPullRequestUrls: string[],
+  ): ConsoleListItem => ({
     number: issue.number,
     title: issue.title,
     url: issue.url,
@@ -225,6 +266,7 @@ export class GenerateConsoleListsUseCase {
     dependedIssueUrls: issue.dependedIssueUrls,
     labels: issue.labels,
     createdAt: issue.createdAt.toISOString(),
+    relatedOpenPullRequestUrls,
   });
 
   private buildFieldOptions = (

@@ -53,6 +53,7 @@ type ConsoleFixtureListItem = {
   dependedIssueUrls: string[];
   labels: string[];
   createdAt: string;
+  relatedOpenPullRequestUrls: string[];
 };
 
 type ConsoleFixtureFieldOption = {
@@ -144,6 +145,7 @@ const issueItem = (
   projectItemId: `PVTI_lADOABCD1234zg${projectItemSuffix}`,
   itemId: `PVTI_lADOABCD1234zg${projectItemSuffix}`,
   isPr: false,
+  relatedOpenPullRequestUrls: [],
   story,
   status: null,
   nextActionDate: null,
@@ -168,6 +170,7 @@ const pullRequestItem = (
   projectItemId: `PVTI_lADOABCD1234zg${projectItemSuffix}`,
   itemId: `PVTI_lADOABCD1234zg${projectItemSuffix}`,
   isPr: true,
+  relatedOpenPullRequestUrls: [],
   story,
   status: null,
   nextActionDate: null,

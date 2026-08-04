@@ -24,11 +24,24 @@ export type ConsoleTabDataState = {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 
+const parseStringArray = (value: unknown): string[] =>
+  Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === 'string')
+    : [];
+
 const parseItems = (payload: unknown): ConsoleListItem[] => {
   if (!isRecord(payload) || !Array.isArray(payload.items)) {
     return [];
   }
-  return payload.items.filter(isRecord) as unknown as ConsoleListItem[];
+  return payload.items.filter(isRecord).map(
+    (item) =>
+      ({
+        ...item,
+        relatedOpenPullRequestUrls: parseStringArray(
+          item.relatedOpenPullRequestUrls,
+        ),
+      }) as unknown as ConsoleListItem,
+  );
 };
 
 const parseOptions = (value: unknown): ConsoleFieldOption[] => {

@@ -41,6 +41,45 @@ describe('useConsoleTabData', () => {
     );
   });
 
+  it('normalizes relatedOpenPullRequestUrls for a snapshot written before the field existed', async () => {
+    const fetchMock = jest.fn(async (url: string) => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        pjcode: 'umino',
+        generatedAt: '2026-06-19T00:00:00.000Z',
+        statusOptions: [],
+        storyColors: {},
+        items: url.includes('/prs/')
+          ? [
+              { number: 1, itemId: 'PVTI_1', projectItemId: 'PVTI_1' },
+              {
+                number: 2,
+                itemId: 'PVTI_2',
+                projectItemId: 'PVTI_2',
+                relatedOpenPullRequestUrls: [
+                  'https://github.com/demo/repo/pull/7',
+                  9,
+                ],
+              },
+            ]
+          : [],
+      }),
+    }));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useConsoleTabData('umino'));
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(
+      result.current.snapshots.prs?.items[0].relatedOpenPullRequestUrls,
+    ).toEqual([]);
+    expect(
+      result.current.snapshots.prs?.items[1].relatedOpenPullRequestUrls,
+    ).toEqual(['https://github.com/demo/repo/pull/7']);
+  });
+
   it('drops an item that disappeared from the snapshot after the refresh interval', async () => {
     jest.useFakeTimers();
     let closed = false;

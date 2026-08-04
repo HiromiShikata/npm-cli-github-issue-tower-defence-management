@@ -16,6 +16,7 @@ const makeItem = (
   projectItemId: `PVTI_${number}`,
   itemId: `PVTI_${number}`,
   isPr: false,
+  relatedOpenPullRequestUrls: [],
   story: 'Story',
   status: null,
   nextActionDate: null,

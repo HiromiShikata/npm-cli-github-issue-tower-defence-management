@@ -24,6 +24,7 @@ export type ConsoleListItem = {
   dependedIssueUrls: string[];
   labels: string[];
   createdAt: string;
+  relatedOpenPullRequestUrls: string[];
 };
 
 export type ConsoleFieldOption = {
