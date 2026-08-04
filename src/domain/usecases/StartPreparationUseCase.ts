@@ -370,6 +370,9 @@ export class StartPreparationUseCase {
       );
       return { rotationOrder };
     }
+    const awaitingWorkspaceStatusOption = project.status.statuses.find(
+      (s) => s.name === AWAITING_WORKSPACE_STATUS_NAME,
+    );
 
     const runningIssueUrls = new Set(
       this.takeOwnershipSpawnRepository.listRunningIssueUrls(),
@@ -571,8 +574,29 @@ export class StartPreparationUseCase {
       );
       issue.status = PREPARATION_STATUS_NAME;
 
+      const revertToAwaitingWorkspace = async (
+        reason: string,
+      ): Promise<void> => {
+        console.error(
+          `Reverting ${issue.url} to ${AWAITING_WORKSPACE_STATUS_NAME} because no worker was spawned: ${reason}`,
+        );
+        if (!awaitingWorkspaceStatusOption) {
+          console.error(
+            `Awaiting Workspace status option '${AWAITING_WORKSPACE_STATUS_NAME}' not found in project. ${issue.url} stays in ${PREPARATION_STATUS_NAME} without a worker.`,
+          );
+          return;
+        }
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          awaitingWorkspaceStatusOption.id,
+        );
+        issue.status = AWAITING_WORKSPACE_STATUS_NAME;
+      };
+
       let spawnEnv: Record<string, string> | undefined;
       let routedModelName: string | null = null;
+      let selectedTokenName: string | null = null;
       if (rotationTokens !== null && proxyBaseUrl !== null) {
         const tokenWithSoonestResetAmongAvailable = selectedTokensWithLimits
           .map((t) => ({
@@ -592,12 +616,14 @@ export class StartPreparationUseCase {
             return b.remaining - a.remaining;
           })[0];
         if (tokenWithSoonestResetAmongAvailable === undefined) {
+          await revertToAwaitingWorkspace(
+            'every Claude OAuth token reached its concurrent worker limit',
+          );
           break;
         }
         const selected = tokenWithSoonestResetAmongAvailable.token;
         routedModelName = tokenWithSoonestResetAmongAvailable.model;
-        spawnedInThisRunByToken[selected] =
-          (spawnedInThisRunByToken[selected] ?? 0) + 1;
+        selectedTokenName = selected;
         spawnEnv = {
           CLAUDE_CODE_OAUTH_TOKEN: selected,
           ANTHROPIC_BASE_URL: proxyBaseUrl,
@@ -609,6 +635,7 @@ export class StartPreparationUseCase {
         console.error(
           `No LLM model configured for issue ${issue.url}. Provide --defaultLlmModelName or add an llm-model: label.`,
         );
+        await revertToAwaitingWorkspace('no LLM model is configured');
         continue;
       }
       const awArgs: string[] = [
@@ -630,11 +657,21 @@ export class StartPreparationUseCase {
           ];
         awArgs.push('--codexHome', codexHome);
       }
-      await this.localCommandRunner.runCommand(
+      const spawnResult = await this.localCommandRunner.runCommand(
         'aw',
         awArgs,
         spawnEnv ? { env: spawnEnv } : undefined,
       );
+      if (spawnResult.exitCode !== 0) {
+        await revertToAwaitingWorkspace(
+          `aw exited with ${spawnResult.exitCode}. stdout: ${spawnResult.stdout} stderr: ${spawnResult.stderr}`,
+        );
+        continue;
+      }
+      if (selectedTokenName !== null) {
+        spawnedInThisRunByToken[selectedTokenName] =
+          (spawnedInThisRunByToken[selectedTokenName] ?? 0) + 1;
+      }
       startedInThisRunCount++;
       updatedCurrentPreparationIssueCount++;
     }
