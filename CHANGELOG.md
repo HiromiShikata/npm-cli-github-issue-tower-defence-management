@@ -1,3 +1,10 @@
+## [1.143.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.143.5...v1.143.6) (2026-08-04)
+
+
+### Bug Fixes
+
+* **console:** refresh the tab snapshots while the console page stays open ([#1371](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1371)) ([d3502c3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d3502c39a73576f8020fcf1e9391c62d912a09f3))
+
 ## [1.143.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.143.4...v1.143.5) (2026-08-04)
 
 

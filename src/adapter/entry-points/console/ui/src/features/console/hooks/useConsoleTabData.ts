@@ -66,6 +66,28 @@ const emptySnapshots = (): Record<
 const buildListUrl = (pjcode: string, tab: ConsoleTabName): string =>
   `/projects/${pjcode}/${tab}/list.json`;
 
+export const CONSOLE_TAB_REFRESH_INTERVAL_MS = 60000;
+
+const fetchSnapshots = async (
+  pjcode: string,
+): Promise<Record<ConsoleTabName, ConsoleTabSnapshot | null>> => {
+  const entries = await Promise.all(
+    CONSOLE_TABS.map(async (tab) => {
+      const response = await fetch(buildListUrl(pjcode, tab.name));
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const payload: unknown = await response.json();
+      return [tab.name, parseSnapshot(payload)] as const;
+    }),
+  );
+  const next = emptySnapshots();
+  for (const [name, snapshot] of entries) {
+    next[name] = snapshot;
+  }
+  return next;
+};
+
 export const useConsoleTabData = (
   pjcode: string | null,
 ): ConsoleTabDataState => {
@@ -88,37 +110,31 @@ export const useConsoleTabData = (
       };
     }
 
-    Promise.all(
-      CONSOLE_TABS.map(async (tab) => {
-        const response = await fetch(buildListUrl(pjcode, tab.name));
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        const payload: unknown = await response.json();
-        return [tab.name, parseSnapshot(payload)] as const;
-      }),
-    )
-      .then((entries) => {
-        if (cancelled) {
-          return;
-        }
-        const next = emptySnapshots();
-        for (const [name, snapshot] of entries) {
-          next[name] = snapshot;
-        }
-        setSnapshots(next);
-        setIsLoading(false);
-      })
-      .catch((cause: unknown) => {
-        if (cancelled) {
-          return;
-        }
-        setError(cause instanceof Error ? cause.message : String(cause));
-        setIsLoading(false);
-      });
+    const load = (): void => {
+      fetchSnapshots(pjcode)
+        .then((next) => {
+          if (cancelled) {
+            return;
+          }
+          setSnapshots(next);
+          setError(null);
+          setIsLoading(false);
+        })
+        .catch((cause: unknown) => {
+          if (cancelled) {
+            return;
+          }
+          setError(cause instanceof Error ? cause.message : String(cause));
+          setIsLoading(false);
+        });
+    };
+
+    load();
+    const timer = setInterval(load, CONSOLE_TAB_REFRESH_INTERVAL_MS);
 
     return () => {
       cancelled = true;
+      clearInterval(timer);
     };
   }, [pjcode]);
 

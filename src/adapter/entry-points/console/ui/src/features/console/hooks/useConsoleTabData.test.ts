@@ -1,6 +1,9 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { CONSOLE_TABS } from '../logic/types';
-import { useConsoleTabData } from './useConsoleTabData';
+import {
+  CONSOLE_TAB_REFRESH_INTERVAL_MS,
+  useConsoleTabData,
+} from './useConsoleTabData';
 
 describe('useConsoleTabData', () => {
   beforeEach(() => {
@@ -36,6 +39,42 @@ describe('useConsoleTabData', () => {
     expect(result.current.snapshots.prs?.generatedAt).toBe(
       '2026-06-19T00:00:00.000Z',
     );
+  });
+
+  it('drops an item that disappeared from the snapshot after the refresh interval', async () => {
+    jest.useFakeTimers();
+    let closed = false;
+    const fetchMock = jest.fn(async (url: string) => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        pjcode: 'umino',
+        generatedAt: '2026-06-19T00:00:00.000Z',
+        statusOptions: [],
+        storyColors: {},
+        items:
+          url.includes('/prs/') && !closed
+            ? [{ number: 1, itemId: 'PVTI_1', projectItemId: 'PVTI_1' }]
+            : [],
+      }),
+    }));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useConsoleTabData('umino'));
+    await waitFor(() => {
+      expect(result.current.snapshots.prs?.items.length).toBe(1);
+    });
+
+    closed = true;
+    await act(async () => {
+      jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+    });
+
+    await waitFor(() => {
+      expect(result.current.snapshots.prs?.items.length).toBe(0);
+    });
+    expect(fetchMock.mock.calls.length).toBe(CONSOLE_TABS.length * 2);
+    jest.useRealTimers();
   });
 
   it('surfaces an error when a tab fetch fails', async () => {
