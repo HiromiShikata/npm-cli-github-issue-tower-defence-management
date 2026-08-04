@@ -1,3 +1,10 @@
+## [1.143.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.143.0...v1.143.1) (2026-08-04)
+
+
+### Bug Fixes
+
+* **console:** expire the localStorage done overlay at each list regeneration ([#1352](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1352)) ([fd4b36a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/fd4b36a54ae2d826dcd35edcd3256a2a605d4153))
+
 # [1.143.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.142.3...v1.143.0) (2026-08-03)
 
 
