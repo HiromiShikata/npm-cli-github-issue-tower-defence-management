@@ -66,6 +66,16 @@ marked.use({
   ],
 });
 
+const withLinksOpeningInNewTab = (html: string): string => {
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  for (const anchor of Array.from(template.content.querySelectorAll('a'))) {
+    anchor.setAttribute('target', '_blank');
+    anchor.setAttribute('rel', 'noopener noreferrer');
+  }
+  return template.innerHTML;
+};
+
 export const renderMarkdownToSafeHtml = (
   source: string,
   repoContext?: ConsoleRepoContext,
@@ -79,7 +89,7 @@ export const renderMarkdownToSafeHtml = (
   try {
     const parsed = marked.parse(source, { async: false });
     const rawHtml = typeof parsed === 'string' ? parsed : '';
-    return DOMPurify.sanitize(rawHtml);
+    return withLinksOpeningInNewTab(DOMPurify.sanitize(rawHtml));
   } finally {
     activeRepoContext = null;
   }
