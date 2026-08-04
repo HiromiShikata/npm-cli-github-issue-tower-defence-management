@@ -1,10 +1,10 @@
 import { useState } from 'react';
+import type { ImageProxyUrlBuilder } from '../../lib/imageProxy';
 import { fileStatusBadge } from '../../logic/fileStatus';
 import {
   buildConsoleFileTree,
   type ConsoleFileTreeNode,
 } from '../../logic/fileTree';
-import type { ImageProxyUrlBuilder } from '../../lib/imageProxy';
 import type { ConsoleChangedFile } from '../../logic/types';
 import {
   type ConsoleAddInlineComment,
