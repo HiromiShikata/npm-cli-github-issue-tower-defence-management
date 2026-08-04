@@ -208,10 +208,16 @@ export class GenerateConsoleListsUseCase {
 
   private isActionable = (issue: Issue, assigneeLogin: string): boolean =>
     issue.isClosed === false &&
-    issue.assignees.includes(assigneeLogin) &&
+    this.isOwnedByNobodyElse(issue, assigneeLogin) &&
     issue.dependedIssueUrls.length === 0 &&
     issue.nextActionDate === null &&
     issue.nextActionHour === null;
+
+  private isOwnedByNobodyElse = (
+    issue: Issue,
+    assigneeLogin: string,
+  ): boolean =>
+    issue.assignees.length === 0 || issue.assignees.includes(assigneeLogin);
 
   private workflowBlockerSelector = (
     workflowBlockerStoryName: string | null,
