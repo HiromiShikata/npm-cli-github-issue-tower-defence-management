@@ -20,7 +20,6 @@ import { OwnerCallStatusProvider } from './adapter-interfaces/OwnerCallStatusPro
 import { RefusalTailStatusProvider } from './adapter-interfaces/RefusalTailStatusProvider';
 import { SilentSessionNotificationRepository } from './adapter-interfaces/SilentSessionNotificationRepository';
 import { SilentSessionCandidateStateRepository } from './adapter-interfaces/SilentSessionCandidateStateRepository';
-import { SilentSessionNotifiedStateRepository } from './adapter-interfaces/SilentSessionNotifiedStateRepository';
 import { SilentSessionHubTaskStatusCacheRepository } from './adapter-interfaces/SilentSessionHubTaskStatusCacheRepository';
 import { SilentSessionMessageComposer } from './adapter-interfaces/SilentSessionMessageComposer';
 import { Sleeper } from './adapter-interfaces/Sleeper';
@@ -50,7 +49,6 @@ describe('NotifySilentLiveSessionsUseCase', () => {
   let mockOwnerCallStatusProvider: Mocked<OwnerCallStatusProvider>;
   let mockNotificationRepository: Mocked<SilentSessionNotificationRepository>;
   let mockCandidateStateRepository: Mocked<SilentSessionCandidateStateRepository>;
-  let mockNotifiedStateRepository: Mocked<SilentSessionNotifiedStateRepository>;
   let mockMessageComposer: Mocked<SilentSessionMessageComposer>;
   let mockSleeper: Mocked<Sleeper>;
   let mockHubTaskStatusResolver: Mocked<HubTaskStatusResolver>;
@@ -170,12 +168,6 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         .mockResolvedValue(everyNameRecentSet()),
       saveCandidateSessionNames: jest.fn().mockResolvedValue(undefined),
     };
-    mockNotifiedStateRepository = {
-      loadRecentNotifiedSessionNames: jest
-        .fn()
-        .mockResolvedValue(new Set<string>()),
-      saveNotifiedSessionNames: jest.fn().mockResolvedValue(undefined),
-    };
     mockMessageComposer = {
       composeMainStalledSection: jest
         .fn()
@@ -208,7 +200,6 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       mockOwnerCallStatusProvider,
       mockNotificationRepository,
       mockCandidateStateRepository,
-      mockNotifiedStateRepository,
       mockMessageComposer,
       mockSleeper,
       mockHubTaskStatusResolver,
@@ -216,20 +207,6 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       mockRefusalTailStatusProvider,
     );
   });
-
-  // Simulates the on-disk fire-once latch across the per-cycle fresh monitor
-  // process: load returns the currently persisted set, save overwrites it.
-  const wireStatefulNotifiedLatch = (): void => {
-    let persistedNotifiedSessionNames = new Set<string>();
-    mockNotifiedStateRepository.loadRecentNotifiedSessionNames.mockImplementation(
-      async () => new Set(persistedNotifiedSessionNames),
-    );
-    mockNotifiedStateRepository.saveNotifiedSessionNames.mockImplementation(
-      async ({ sessionNames }) => {
-        persistedNotifiedSessionNames = new Set(sessionNames);
-      },
-    );
-  };
 
   const issueFor = (overrides: Partial<Issue>): Issue => ({
     nameWithOwner: 'HiromiShikata/repo',
@@ -803,33 +780,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     });
   });
 
-  it('notifies a persistent stall only once per silent episode instead of every cycle', async () => {
-    wireStatefulNotifiedLatch();
-    setupLiveInteractiveSession(GITHUB_SESSION);
-    mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
-      [
-        {
-          sessionName: GITHUB_SESSION,
-          lastOutputEpochSeconds:
-            nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
-        },
-      ],
-    );
-
-    await useCase.run(runParams());
-    await useCase.run(runParams());
-    await useCase.run(runParams());
-
-    expect(
-      mockNotificationRepository.sendSelfCheckNotification,
-    ).toHaveBeenCalledTimes(1);
-    expect(
-      mockNotificationRepository.sendSelfCheckNotification,
-    ).toHaveBeenCalledWith(GITHUB_SESSION, MAIN_STALLED_SECTION);
-  });
-
   it('re-notifies a session after its silent episode resolves and a new one begins', async () => {
-    wireStatefulNotifiedLatch();
     setupLiveInteractiveSession(GITHUB_SESSION);
     const stalled = [
       {
@@ -984,7 +935,6 @@ describe('NotifySilentLiveSessionsUseCase', () => {
 
     it('sends the reminder again on the next cycle to a session that is still silent', async () => {
       setupSilentGithubSession();
-      wireStatefulNotifiedLatch();
 
       await useCase.run(runParams());
       await useCase.run(runParams());
@@ -1000,9 +950,18 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       ).toHaveBeenNthCalledWith(2, GITHUB_SESSION, MAIN_STALLED_SECTION);
     });
 
+    it('sends the reminder for a silent session even when its main REPL is mid-turn, because apparent busyness no longer defers delivery', async () => {
+      setupSilentGithubSession();
+
+      await useCase.run(runParams());
+
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledWith(GITHUB_SESSION, MAIN_STALLED_SECTION);
+    });
+
     it('keeps sending the reminder on every consecutive cycle the session stays silent', async () => {
       setupSilentGithubSession();
-      wireStatefulNotifiedLatch();
 
       await useCase.run(runParams());
       await useCase.run(runParams());
@@ -1013,87 +972,6 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       expect(
         mockNotificationRepository.sendSelfCheckNotification,
       ).toHaveBeenCalledTimes(5);
-    });
-  });
-
-  describe('fire-once latch', () => {
-    const setupSilentGithubSession = (): void => {
-      setupLiveInteractiveSession(GITHUB_SESSION);
-      mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
-        [
-          {
-            sessionName: GITHUB_SESSION,
-            lastOutputEpochSeconds:
-              nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
-          },
-        ],
-      );
-    };
-
-    it('loads the fire-once latch using the configured recency window', async () => {
-      setupSilentGithubSession();
-
-      await useCase.run(
-        runParams({ candidateDebounceRecencyWindowSeconds: 900 }),
-      );
-
-      expect(
-        mockNotifiedStateRepository.loadRecentNotifiedSessionNames,
-      ).toHaveBeenCalledWith({ now, recencyWindowSeconds: 900 });
-    });
-
-    it('persists the sent session in the fire-once latch on a send cycle', async () => {
-      setupSilentGithubSession();
-
-      await useCase.run(runParams());
-
-      expect(
-        mockNotificationRepository.sendSelfCheckNotification,
-      ).toHaveBeenCalledWith(GITHUB_SESSION, MAIN_STALLED_SECTION);
-      expect(
-        mockNotifiedStateRepository.saveNotifiedSessionNames,
-      ).toHaveBeenCalledWith({ sessionNames: [GITHUB_SESSION], now });
-    });
-
-    it('does not re-send but keeps the latch for a session already notified this episode', async () => {
-      setupSilentGithubSession();
-      mockNotifiedStateRepository.loadRecentNotifiedSessionNames.mockResolvedValue(
-        new Set([GITHUB_SESSION]),
-      );
-
-      await useCase.run(runParams());
-
-      expect(
-        mockNotificationRepository.sendSelfCheckNotification,
-      ).not.toHaveBeenCalled();
-      expect(
-        mockNotifiedStateRepository.saveNotifiedSessionNames,
-      ).toHaveBeenCalledWith({ sessionNames: [GITHUB_SESSION], now });
-    });
-
-    it('prunes the fire-once latch for a previously notified session that is no longer a candidate', async () => {
-      mockNotifiedStateRepository.loadRecentNotifiedSessionNames.mockResolvedValue(
-        new Set([GITHUB_SESSION]),
-      );
-
-      await useCase.run(runParams());
-
-      expect(
-        mockNotifiedStateRepository.saveNotifiedSessionNames,
-      ).toHaveBeenCalledWith({ sessionNames: [], now });
-    });
-
-    it('sends the reminder for a silent session even when its main REPL is mid-turn, because apparent busyness no longer defers delivery', async () => {
-      setupSilentGithubSession();
-
-      await useCase.run(runParams());
-
-      expect(
-        mockNotificationRepository.sendSelfCheckNotification,
-      ).toHaveBeenCalledWith(GITHUB_SESSION, MAIN_STALLED_SECTION);
-      expect(
-        mockNotifiedStateRepository.saveNotifiedSessionNames,
-      ).toHaveBeenCalledWith({ sessionNames: [GITHUB_SESSION], now });
     });
   });
 
@@ -1158,8 +1036,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       ).toHaveBeenCalledWith(GITHUB_SESSION, SUBAGENT_SECTION);
     });
 
-    it('notifies a hung sub-agent only once per episode instead of every cycle', async () => {
-      wireStatefulNotifiedLatch();
+    it('notifies a hung sub-agent again on every cycle it stays hung', async () => {
       setupSubAgents([hungSubAgent('sub-process-1')]);
 
       await useCase.run(runParams());
@@ -1167,7 +1044,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
 
       expect(
         mockNotificationRepository.sendSelfCheckNotification,
-      ).toHaveBeenCalledTimes(1);
+      ).toHaveBeenCalledTimes(2);
     });
 
     it('never selects a waiting sub-agent for the long-running section even when quiet past both thresholds', async () => {
@@ -1208,8 +1085,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       ).toHaveBeenCalledWith(GITHUB_SESSION, SUBAGENT_SECTION);
     });
 
-    it('notifies a quiet long-running sub-agent only once per episode while still evaluating it every cycle', async () => {
-      wireStatefulNotifiedLatch();
+    it('notifies a quiet long-running sub-agent again on every cycle while still evaluating it every cycle', async () => {
       setupSubAgents([quietLongRunningSubAgent('sub-process-1', false)]);
 
       await useCase.run(runParams());
@@ -1217,7 +1093,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
 
       expect(
         mockNotificationRepository.sendSelfCheckNotification,
-      ).toHaveBeenCalledTimes(1);
+      ).toHaveBeenCalledTimes(2);
       expect(
         mockMessageComposer.composeSubAgentSection,
       ).toHaveBeenNthCalledWith(2, {
@@ -1888,7 +1764,6 @@ describe('NotifySilentLiveSessionsUseCase', () => {
         mockOwnerCallStatusProvider,
         mockNotificationRepository,
         mockCandidateStateRepository,
-        mockNotifiedStateRepository,
         mockMessageComposer,
         mockSleeper,
         mockHubTaskStatusResolver,

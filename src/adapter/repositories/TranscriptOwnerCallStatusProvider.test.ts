@@ -710,12 +710,6 @@ describe('TranscriptOwnerCallStatusProvider wired into NotifySilentLiveSessionsU
         saveCandidateSessionNames: jest.fn().mockResolvedValue(undefined),
       },
       {
-        loadRecentNotifiedSessionNames: jest
-          .fn()
-          .mockResolvedValue(new Set<string>()),
-        saveNotifiedSessionNames: jest.fn().mockResolvedValue(undefined),
-      },
-      {
         composeMainStalledSection: jest.fn().mockReturnValue('MAIN_STALLED'),
         composeMainStalledWithStaleOwnerCallSection: jest
           .fn()
