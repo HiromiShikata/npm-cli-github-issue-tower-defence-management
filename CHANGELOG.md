@@ -1,3 +1,10 @@
+## [1.144.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.144.1...v1.144.2) (2026-08-04)
+
+
+### Bug Fixes
+
+* **console:** include unassigned project items in the console tabs ([#1376](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1376)) ([21e073e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/21e073e028ef7580e0f885c45a2f435d936a6502)), closes [#1375](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1375)
+
 ## [1.144.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.144.0...v1.144.1) (2026-08-04)
 
 
