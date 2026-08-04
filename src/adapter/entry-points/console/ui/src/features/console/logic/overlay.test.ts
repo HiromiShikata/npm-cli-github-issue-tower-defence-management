@@ -2,6 +2,7 @@ import {
   countPendingItems,
   filterPendingItems,
   isOverlayEntryActed,
+  overlayEntriesActedSinceSnapshot,
   overlayKeyForItem,
   overlayStorageKey,
   writeOverlayEntry,
@@ -146,6 +147,60 @@ describe('workflow-blocker items are filtered by the done overlay like every oth
     };
     expect(countPendingItems([item(1), item(2)], overlay)).toBe(0);
     expect(filterPendingItems([item(1), item(2)], overlay)).toEqual([]);
+  });
+});
+
+describe('overlayEntriesActedSinceSnapshot', () => {
+  it('drops an entry written before the snapshot was generated so the item is pending again', () => {
+    const overlay: ConsoleOverlay = {
+      PVTI_1: {
+        ts: Date.parse('2026-08-04T00:20:00.000Z'),
+        mode: 'todo-by-human',
+        done: true,
+      },
+    };
+    const acted = overlayEntriesActedSinceSnapshot(
+      overlay,
+      '2026-08-04T00:26:06Z',
+    );
+    expect(acted).toEqual({});
+    expect(countPendingItems([item(1)], acted)).toBe(1);
+    expect(filterPendingItems([item(1)], acted)).toEqual([item(1)]);
+  });
+
+  it('keeps an entry written after the snapshot was generated so the item stays hidden', () => {
+    const overlay: ConsoleOverlay = {
+      PVTI_1: {
+        ts: Date.parse('2026-08-04T00:30:00.000Z'),
+        mode: 'todo-by-human',
+        done: true,
+      },
+    };
+    const acted = overlayEntriesActedSinceSnapshot(
+      overlay,
+      '2026-08-04T00:26:06Z',
+    );
+    expect(countPendingItems([item(1)], acted)).toBe(0);
+  });
+
+  it('keeps an entry written at the exact snapshot generation time', () => {
+    const overlay: ConsoleOverlay = {
+      PVTI_1: {
+        ts: Date.parse('2026-08-04T00:26:06Z'),
+        mode: 'todo-by-human',
+        done: true,
+      },
+    };
+    expect(
+      overlayEntriesActedSinceSnapshot(overlay, '2026-08-04T00:26:06Z'),
+    ).toEqual(overlay);
+  });
+
+  it('suppresses nothing when the snapshot carries no parsable generation time', () => {
+    const overlay: ConsoleOverlay = {
+      PVTI_1: { ts: 500, mode: 'todo-by-human', done: true },
+    };
+    expect(overlayEntriesActedSinceSnapshot(overlay, '')).toEqual({});
   });
 });
 

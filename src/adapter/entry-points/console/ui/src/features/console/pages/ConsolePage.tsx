@@ -28,6 +28,7 @@ import {
 import {
   countPendingItems,
   filterPendingItems,
+  overlayEntriesActedSinceSnapshot,
   overlayKeyForItem,
 } from '../logic/overlay';
 import type { ConsoleSwipeDirection } from '../logic/swipe';
@@ -67,7 +68,10 @@ export const ConsolePage = () => {
       }
       result[tab.name] = countPendingItems(
         snapshot.items,
-        overlayState.overlay,
+        overlayEntriesActedSinceSnapshot(
+          overlayState.overlay,
+          snapshot.generatedAt,
+        ),
       );
     }
     return result;
@@ -92,7 +96,13 @@ export const ConsolePage = () => {
     if (activeSnapshot === null) {
       return [];
     }
-    return filterPendingItems(activeSnapshot.items, overlayState.overlay);
+    return filterPendingItems(
+      activeSnapshot.items,
+      overlayEntriesActedSinceSnapshot(
+        overlayState.overlay,
+        activeSnapshot.generatedAt,
+      ),
+    );
   }, [activeSnapshot, overlayState.overlay]);
 
   const orderedPendingKeys = useMemo(
