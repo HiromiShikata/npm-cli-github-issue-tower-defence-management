@@ -119,6 +119,7 @@ describe('consoleReadApi', () => {
             additions: 1,
             deletions: 0,
             patch: '@@ -1 +1 @@',
+            rawUrl: null,
           },
         ],
       });
@@ -135,6 +136,7 @@ describe('consoleReadApi', () => {
             additions: 1,
             deletions: 0,
             patch: '@@ -1 +1 @@',
+            rawUrl: null,
           },
         ],
       });

@@ -102,6 +102,7 @@ export const ConsolePullRequestDetail = ({
           files={files}
           isLoading={filesAreLoading}
           error={filesError}
+          buildImageProxyUrl={buildImageProxyUrl}
           onAddInlineComment={onAddInlineComment}
         />
       </ConsolePanel>

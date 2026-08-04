@@ -18,6 +18,16 @@ export const NoPatch: Story = {
   args: { patch: null },
 };
 
+export const ImageFile: Story = {
+  args: {
+    patch: null,
+    path: 'content/posts/img/20260707/before.jpg',
+    rawUrl:
+      'https://raw.githubusercontent.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/main/docs/img/console.png',
+    buildImageProxyUrl: (src) => src,
+  },
+};
+
 export const WithInlineComments: Story = {
   args: {
     path: consoleChangedFilesFixture[0].path,

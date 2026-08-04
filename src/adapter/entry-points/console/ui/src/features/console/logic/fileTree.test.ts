@@ -7,6 +7,7 @@ const changedFile = (path: string): ConsoleChangedFile => ({
   deletions: 0,
   status: 'modified',
   patch: null,
+  rawUrl: null,
 });
 
 describe('buildConsoleFileTree', () => {

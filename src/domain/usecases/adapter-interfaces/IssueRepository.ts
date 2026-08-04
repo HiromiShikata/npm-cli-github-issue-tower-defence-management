@@ -29,6 +29,7 @@ export type PullRequestFile = {
   additions: number;
   deletions: number;
   patch: string | null;
+  rawUrl: string | null;
 };
 
 export type PullRequestDetail = {
