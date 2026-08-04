@@ -12,6 +12,7 @@ import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
 import { StoryObjectMap } from '../../../domain/entities/StoryObjectMap';
 import { ApiV3IssueRepository } from './ApiV3IssueRepository';
+import { normalizeGitHubRawUrl } from './gitHubRawUrl';
 import { RestIssueRepository } from './RestIssueRepository';
 import {
   GraphqlProjectItemRepository,
@@ -346,6 +347,7 @@ type PullRequestDetailFilesResponseItem = {
   additions: number;
   deletions: number;
   patch?: string;
+  raw_url?: string;
 };
 
 function isPullRequestDetailFilesResponseItem(
@@ -357,7 +359,8 @@ function isPullRequestDetailFilesResponseItem(
     typeof value.status === 'string' &&
     typeof value.additions === 'number' &&
     typeof value.deletions === 'number' &&
-    (value.patch === undefined || typeof value.patch === 'string')
+    (value.patch === undefined || typeof value.patch === 'string') &&
+    (value.raw_url === undefined || typeof value.raw_url === 'string')
   );
 }
 
@@ -2155,6 +2158,10 @@ export class ApiV3CheerioRestIssueRepository
           additions: file.additions,
           deletions: file.deletions,
           patch: file.patch ?? null,
+          rawUrl:
+            file.raw_url === undefined
+              ? null
+              : normalizeGitHubRawUrl(file.raw_url),
         });
       }
       if (body.length < perPage) {

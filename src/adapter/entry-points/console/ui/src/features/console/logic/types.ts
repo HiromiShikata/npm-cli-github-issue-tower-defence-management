@@ -88,6 +88,7 @@ export type ConsoleChangedFile = {
   deletions: number;
   status: string;
   patch: string | null;
+  rawUrl: string | null;
 };
 
 export type ConsoleCommit = {

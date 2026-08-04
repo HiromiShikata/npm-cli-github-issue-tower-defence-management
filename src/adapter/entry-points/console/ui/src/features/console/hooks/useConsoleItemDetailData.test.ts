@@ -48,6 +48,7 @@ const buildCaches = (related: ConsoleRelatedPullRequest[]): ConsoleCaches => {
         deletions: 0,
         status: 'added',
         patch: null,
+        rawUrl: null,
       },
     ],
     fetchPrCommits: async (): Promise<ConsoleCommit[]> => [

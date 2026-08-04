@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { ImageProxyUrlBuilder } from '../../lib/imageProxy';
 import { fileStatusBadge } from '../../logic/fileStatus';
 import {
   buildConsoleFileTree,
@@ -14,6 +15,7 @@ export type ConsoleChangedFileListProps = {
   files: ConsoleChangedFile[];
   isLoading: boolean;
   error: string | null;
+  buildImageProxyUrl?: ImageProxyUrlBuilder;
   onAddInlineComment?: ConsoleAddInlineComment;
 };
 
@@ -25,11 +27,13 @@ const ConsoleChangedFileRow = ({
   file,
   depth,
   name,
+  buildImageProxyUrl,
   onAddInlineComment,
 }: {
   file: ConsoleChangedFile;
   depth: number;
   name: string;
+  buildImageProxyUrl?: ImageProxyUrlBuilder;
   onAddInlineComment?: ConsoleAddInlineComment;
 }) => {
   const [expanded, setExpanded] = useState<boolean>(false);
@@ -62,6 +66,8 @@ const ConsoleChangedFileRow = ({
         <ConsoleFileDiff
           patch={file.patch}
           path={file.path}
+          rawUrl={file.rawUrl}
+          buildImageProxyUrl={buildImageProxyUrl}
           onAddInlineComment={onAddInlineComment}
         />
       )}
@@ -72,10 +78,12 @@ const ConsoleChangedFileRow = ({
 const ConsoleChangedFileTreeNode = ({
   node,
   depth,
+  buildImageProxyUrl,
   onAddInlineComment,
 }: {
   node: ConsoleFileTreeNode;
   depth: number;
+  buildImageProxyUrl?: ImageProxyUrlBuilder;
   onAddInlineComment?: ConsoleAddInlineComment;
 }) => {
   if (node.kind === 'file') {
@@ -84,6 +92,7 @@ const ConsoleChangedFileTreeNode = ({
         file={node.file}
         depth={depth}
         name={node.name}
+        buildImageProxyUrl={buildImageProxyUrl}
         onAddInlineComment={onAddInlineComment}
       />
     );
@@ -102,6 +111,7 @@ const ConsoleChangedFileTreeNode = ({
             key={child.path}
             node={child}
             depth={depth + 1}
+            buildImageProxyUrl={buildImageProxyUrl}
             onAddInlineComment={onAddInlineComment}
           />
         ))}
@@ -114,6 +124,7 @@ export const ConsoleChangedFileList = ({
   files,
   isLoading,
   error,
+  buildImageProxyUrl,
   onAddInlineComment,
 }: ConsoleChangedFileListProps) => {
   if (error !== null) {
@@ -141,6 +152,7 @@ export const ConsoleChangedFileList = ({
           key={node.path}
           node={node}
           depth={0}
+          buildImageProxyUrl={buildImageProxyUrl}
           onAddInlineComment={onAddInlineComment}
         />
       ))}

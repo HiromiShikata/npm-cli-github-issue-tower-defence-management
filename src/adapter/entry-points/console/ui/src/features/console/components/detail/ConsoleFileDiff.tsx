@@ -1,6 +1,8 @@
 import { Fragment, useState } from 'react';
 import type { ConsoleReviewCommentSide } from '../../lib/consoleApi';
+import type { ImageProxyUrlBuilder } from '../../lib/imageProxy';
 import { type ConsoleDiffLine, parseUnifiedDiff } from '../../logic/diff';
+import { isImageFilePath } from '../../logic/imageFile';
 
 export type ConsoleInlineCommentTarget = {
   path: string;
@@ -18,6 +20,8 @@ export type ConsoleAddInlineComment = (
 export type ConsoleFileDiffProps = {
   patch: string | null;
   path?: string;
+  rawUrl?: string | null;
+  buildImageProxyUrl?: ImageProxyUrlBuilder;
   onAddInlineComment?: ConsoleAddInlineComment;
 };
 
@@ -135,12 +139,31 @@ const ConsoleInlineCommentComposer = ({
 export const ConsoleFileDiff = ({
   patch,
   path,
+  rawUrl,
+  buildImageProxyUrl,
   onAddInlineComment,
 }: ConsoleFileDiffProps) => {
   const [activeTarget, setActiveTarget] =
     useState<ConsoleInlineCommentTarget | null>(null);
 
   if (patch === null || patch === '') {
+    if (
+      path !== undefined &&
+      isImageFilePath(path) &&
+      rawUrl !== undefined &&
+      rawUrl !== null &&
+      buildImageProxyUrl !== undefined
+    ) {
+      return (
+        <div className="console-file-diff-image">
+          <img
+            className="console-file-diff-image-content"
+            src={buildImageProxyUrl(rawUrl)}
+            alt={path}
+          />
+        </div>
+      );
+    }
     return (
       <p className="console-file-diff-empty">(no diff / binary or too large)</p>
     );

@@ -1548,6 +1548,8 @@ describe('ApiV3CheerioRestIssueRepository', () => {
                 additions: 7,
                 deletions: 2,
                 patch: '@@ -1 +1 @@',
+                raw_url:
+                  'https://github.com/HiromiShikata/test-repository/raw/abcdef1/src/Foo.ts',
               },
               {
                 filename: 'src/Bar.ts',
@@ -1583,6 +1585,8 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             additions: 7,
             deletions: 2,
             patch: '@@ -1 +1 @@',
+            rawUrl:
+              'https://raw.githubusercontent.com/HiromiShikata/test-repository/abcdef1/src/Foo.ts',
           },
           {
             filename: 'src/Bar.ts',
@@ -1590,6 +1594,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             additions: 3,
             deletions: 1,
             patch: null,
+            rawUrl: null,
           },
         ],
       });

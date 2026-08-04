@@ -102,6 +102,7 @@ const parseFiles = (payload: unknown): ConsoleChangedFile[] => {
     deletions: getNumber(file.deletions),
     status: getString(file.status),
     patch: typeof file.patch === 'string' ? file.patch : null,
+    rawUrl: typeof file.rawUrl === 'string' ? file.rawUrl : null,
   }));
 };
 

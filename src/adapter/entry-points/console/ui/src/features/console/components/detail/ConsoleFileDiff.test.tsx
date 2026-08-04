@@ -22,6 +22,36 @@ describe('ConsoleFileDiff', () => {
     expect(getByText('(no diff / binary or too large)')).toBeInTheDocument();
   });
 
+  it('renders an image file through the image proxy instead of the placeholder', () => {
+    const { getByAltText, queryByText } = render(
+      <ConsoleFileDiff
+        patch={null}
+        path="content/posts/img/20260707/before.jpg"
+        rawUrl="https://raw.githubusercontent.com/owner/repo/sha/content/posts/img/20260707/before.jpg"
+        buildImageProxyUrl={(src) => `/api/img?url=${encodeURIComponent(src)}`}
+      />,
+    );
+    expect(
+      getByAltText('content/posts/img/20260707/before.jpg'),
+    ).toHaveAttribute(
+      'src',
+      `/api/img?url=${encodeURIComponent('https://raw.githubusercontent.com/owner/repo/sha/content/posts/img/20260707/before.jpg')}`,
+    );
+    expect(queryByText('(no diff / binary or too large)')).toBeNull();
+  });
+
+  it('keeps the placeholder for a binary file that is not an image', () => {
+    const { getByText } = render(
+      <ConsoleFileDiff
+        patch={null}
+        path="assets/font.woff2"
+        rawUrl="https://raw.githubusercontent.com/owner/repo/sha/assets/font.woff2"
+        buildImageProxyUrl={(src) => `/api/img?url=${encodeURIComponent(src)}`}
+      />,
+    );
+    expect(getByText('(no diff / binary or too large)')).toBeInTheDocument();
+  });
+
   it('does not render any comment affordance without an onAddInlineComment handler', () => {
     const { container } = render(
       <ConsoleFileDiff

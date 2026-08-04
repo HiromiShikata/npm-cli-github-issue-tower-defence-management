@@ -297,6 +297,8 @@ export const consoleChangedFilesFixture: ConsoleChangedFile[] = [
 +          npm run build:console-ui
        - name: Start the token-protected console server
          run: node bin/serveConsole.js --port 9981`,
+    rawUrl:
+      'https://raw.githubusercontent.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/0123456789abcdef0123456789abcdef01234567/src/adapter/entry-points/console/consoleServer.ts',
   },
   {
     path: 'src/adapter/entry-points/console/consoleServer.test.ts',
@@ -308,6 +310,8 @@ export const consoleChangedFilesFixture: ConsoleChangedFile[] = [
 +  it('rejects a request without a valid token', async () => {
 +  });
 +});`,
+    rawUrl:
+      'https://raw.githubusercontent.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/0123456789abcdef0123456789abcdef01234567/src/adapter/entry-points/console/consoleServer.test.ts',
   },
   {
     path: 'package.json',
@@ -319,6 +323,8 @@ export const consoleChangedFilesFixture: ConsoleChangedFile[] = [
 -    "build": "tsc -p ./tsconfig.build.json"
 +    "build": "tsc -p ./tsconfig.build.json && npm run build:console-ui"
    },`,
+    rawUrl:
+      'https://raw.githubusercontent.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/0123456789abcdef0123456789abcdef01234567/package.json',
   },
 ];
 
