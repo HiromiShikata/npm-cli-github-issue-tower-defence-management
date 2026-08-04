@@ -1,3 +1,10 @@
+## [1.144.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.144.2...v1.144.3) (2026-08-04)
+
+
+### Bug Fixes
+
+* **console:** open markdown links in a new tab ([#1378](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1378)) ([c1b5d89](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c1b5d892c4f4052af44367e95b1dc6d22d044827)), closes [#1377](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1377)
+
 ## [1.144.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.144.1...v1.144.2) (2026-08-04)
 
 
