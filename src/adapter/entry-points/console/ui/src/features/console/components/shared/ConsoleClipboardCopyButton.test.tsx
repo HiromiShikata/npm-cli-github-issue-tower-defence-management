@@ -60,6 +60,40 @@ describe('ConsoleClipboardCopyButton', () => {
     }
   });
 
+  it('copies through the document selection command when the clipboard api is absent', async () => {
+    Reflect.deleteProperty(navigator, 'clipboard');
+    const execCommand = jest.fn().mockReturnValue(true);
+    Object.defineProperty(document, 'execCommand', {
+      configurable: true,
+      value: execCommand,
+    });
+    const { getByRole } = renderButton();
+
+    await act(async () => {
+      fireEvent.click(getByRole('button'));
+    });
+
+    expect(execCommand).toHaveBeenCalledWith('copy');
+    expect(
+      getByRole('button', { name: 'Code copied to clipboard' }),
+    ).toHaveTextContent('Copied');
+  });
+
+  it('shows a failed state when no copy mechanism succeeds', async () => {
+    Reflect.deleteProperty(navigator, 'clipboard');
+    Object.defineProperty(document, 'execCommand', {
+      configurable: true,
+      value: jest.fn().mockReturnValue(false),
+    });
+    const { getByRole } = renderButton();
+
+    await act(async () => {
+      fireEvent.click(getByRole('button'));
+    });
+
+    expect(getByRole('button')).toHaveTextContent('Copy failed');
+  });
+
   it('applies the given class name to the rendered button', () => {
     const { getByRole } = renderButton();
     expect(getByRole('button')).toHaveClass('console-copy-code-button');
