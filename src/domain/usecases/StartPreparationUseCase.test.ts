@@ -224,7 +224,13 @@ describe('StartPreparationUseCase', () => {
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('2');
+    expect(mockIssueRepository.updateStatus.mock.calls[1][2]).toBe('1');
+    expect(mockIssueRepository.updateStatus.mock.calls[1][1]).toMatchObject({
+      url: 'url1',
+    });
+    expect(awaitingIssues[0].status).toBe('Awaiting Workspace');
   });
 
   it('skips an issue whose URL is already in the running worker list', async () => {
