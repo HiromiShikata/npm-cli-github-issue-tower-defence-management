@@ -91,6 +91,7 @@ const INLINE_COMMENT_PR_FILE: PullRequestFile = {
 +  opacity: 0.6;
 +  border-color: #30363d;
  }`,
+  rawUrl: null,
 };
 
 const AWAITING_WORKSPACE_OPTION: ConsoleFixtureFieldOption = {
