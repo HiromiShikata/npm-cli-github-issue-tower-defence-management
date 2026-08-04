@@ -38,7 +38,7 @@ describe('TmuxSilentSessionNotificationRepository', () => {
       ]);
     });
 
-    it('preserves an unchanged multi-line message body inside the bracketed-paste frame', async () => {
+    it('flattens a multi-line message into a single line so no newline reaches the input box', async () => {
       const runner = createMockRunner();
       const repository = new TmuxSilentSessionNotificationRepository(runner);
       const multiLineMessage = 'first line\nsecond line\n\nthird line';
@@ -49,14 +49,45 @@ describe('TmuxSilentSessionNotificationRepository', () => {
       );
 
       const literalArgument = runner.runCommand.mock.calls[0][1][4];
-      expect(literalArgument.startsWith('\x1b[200~')).toBe(true);
-      expect(literalArgument.endsWith('\x1b[201~')).toBe(true);
+      expect(literalArgument).not.toContain('\n');
+      expect(literalArgument).not.toContain('\r');
       expect(
         literalArgument.slice('\x1b[200~'.length, -'\x1b[201~'.length),
-      ).toBe(multiLineMessage);
+      ).toBe('first line second line third line');
+    });
+
+    it('keeps the bracketed-paste framing around the flattened message', async () => {
+      const runner = createMockRunner();
+      const repository = new TmuxSilentSessionNotificationRepository(runner);
+
+      await repository.sendSelfCheckNotification(
+        'https_//github_com/owner/repo/issues/9',
+        'first line\nsecond line',
+      );
+
+      const literalArgument = runner.runCommand.mock.calls[0][1][4];
       const literalBytes = Buffer.from(literalArgument, 'utf8').toString('hex');
       expect(literalBytes.startsWith('1b5b3230307e')).toBe(true);
       expect(literalBytes.endsWith('1b5b3230317e')).toBe(true);
+      expect(runner.runCommand.mock.calls[1]).toEqual([
+        'tmux',
+        ['send-keys', '-t', 'https_//github_com/owner/repo/issues/9', 'Enter'],
+      ]);
+    });
+
+    it('collapses the run of spaces left by consecutive line breaks', async () => {
+      const runner = createMockRunner();
+      const repository = new TmuxSilentSessionNotificationRepository(runner);
+
+      await repository.sendSelfCheckNotification(
+        'https_//github_com/owner/repo/issues/9',
+        'section one\n\n\nsection two',
+      );
+
+      const literalArgument = runner.runCommand.mock.calls[0][1][4];
+      expect(
+        literalArgument.slice('\x1b[200~'.length, -'\x1b[201~'.length),
+      ).toBe('section one section two');
     });
 
     it('throws when sending the message literally fails', async () => {
