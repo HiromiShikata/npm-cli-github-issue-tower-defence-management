@@ -1,3 +1,10 @@
+## [1.143.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.143.2...v1.143.3) (2026-08-04)
+
+
+### Bug Fixes
+
+* **console:** copy through a document selection fallback when the clipboard api is unavailable ([#1360](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1360)) ([7347d8d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7347d8d2d5eb8e190377bf9d37cde50df94c6a4c))
+
 ## [1.143.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.143.1...v1.143.2) (2026-08-04)
 
 
