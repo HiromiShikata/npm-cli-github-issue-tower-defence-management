@@ -1070,6 +1070,17 @@ body {
   font-size: 0.75rem;
 }
 
+.console-file-diff-image {
+  padding: 8px 14px;
+}
+
+.console-file-diff-image-content {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+}
+
 .console-diff-comment-cell {
   width: 1%;
   padding: 0 2px;
