@@ -1,3 +1,10 @@
+## [1.143.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.143.3...v1.143.4) (2026-08-04)
+
+
+### Bug Fixes
+
+* revert an issue to Awaiting Workspace when no preparation worker is spawned ([#1362](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1362)) ([21cf829](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/21cf829851981da79cf425bb0f5edc2013bf2884)), closes [#1361](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1361)
+
 ## [1.143.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.143.2...v1.143.3) (2026-08-04)
 
 
