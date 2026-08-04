@@ -1,3 +1,10 @@
+# [1.144.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.143.6...v1.144.0) (2026-08-04)
+
+
+### Features
+
+* **console:** attach files to a comment from the console composer ([#1369](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1369)) ([2b3d8d5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2b3d8d592b14d953cc58b8e33594b52f1ff24bd8))
+
 ## [1.143.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.143.5...v1.143.6) (2026-08-04)
 
 

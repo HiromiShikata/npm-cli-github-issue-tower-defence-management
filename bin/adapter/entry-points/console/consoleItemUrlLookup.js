@@ -38,6 +38,7 @@ const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const consoleDoneStore_1 = require("./consoleDoneStore");
 const CONSOLE_LIST_FILE_NAME = 'list.json';
+const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const readListItemUrls = (consoleDataOutputDir, pjcode, tab) => {
     const filePath = path.join(consoleDataOutputDir, pjcode, tab, CONSOLE_LIST_FILE_NAME);
     let raw;
@@ -54,7 +55,7 @@ const readListItemUrls = (consoleDataOutputDir, pjcode, tab) => {
     catch {
         return [];
     }
-    if (parsed === null || typeof parsed !== 'object') {
+    if (!isRecord(parsed)) {
         return [];
     }
     const items = parsed.items;
@@ -63,7 +64,7 @@ const readListItemUrls = (consoleDataOutputDir, pjcode, tab) => {
     }
     const urls = [];
     for (const item of items) {
-        if (item === null || typeof item !== 'object') {
+        if (!isRecord(item)) {
             continue;
         }
         const url = item.url;

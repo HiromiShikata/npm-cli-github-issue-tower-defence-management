@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleIntmux = exports.handleReviewComment = exports.handleAttachmentUpload = exports.handleComment = exports.handleTriage = exports.handleReview = exports.IN_TMUX_BY_HUMAN_STATUS_NAME = exports.AWAITING_WORKSPACE_STATUS_NAME = void 0;
 const consoleDoneStore_1 = require("./consoleDoneStore");
+const consoleItemUrlLookup_1 = require("./consoleItemUrlLookup");
 exports.AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
 exports.IN_TMUX_BY_HUMAN_STATUS_NAME = 'in tmux by human';
 const ok = () => ({
@@ -18,6 +19,7 @@ const badGateway = (message) => ({
 });
 const isNonEmptyString = (value) => typeof value === 'string' && value.length > 0;
 const isPullRequestUrl = (url) => /github\.com\/[^/]+\/[^/]+\/pull\/\d+/.test(url);
+const isValidIssueOrPullRequestUrl = (url) => /^https:\/\/github\.com\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\/(issues|pull)\/\d+$/.test(url);
 const isReviewCommentSide = (value) => value === 'LEFT' || value === 'RIGHT';
 const isPositiveInteger = (value) => typeof value === 'number' && Number.isInteger(value) && value > 0;
 const resolveStatusId = (project, statusName) => {
@@ -263,17 +265,31 @@ const handleAttachmentUpload = async (context, body) => {
     if (!isNonEmptyString(url)) {
         return badRequest('url is required');
     }
+    if (!isValidIssueOrPullRequestUrl(url)) {
+        return badRequest('url must be a github issue or pull request url');
+    }
     if (!isNonEmptyString(fileName)) {
         return badRequest('fileName is required');
     }
     if (!isNonEmptyString(contentBase64)) {
         return badRequest('contentBase64 is required');
     }
+    const pjcodeResult = resolveConfiguredPjcode(context, body);
+    if (typeof pjcodeResult !== 'string') {
+        return pjcodeResult;
+    }
+    if (context.consoleDataOutputDir === null) {
+        return badGateway('console data output dir is not configured');
+    }
+    const knownUrl = (0, consoleItemUrlLookup_1.findConsoleItemUrl)(context.consoleDataOutputDir, pjcodeResult, url);
+    if (knownUrl === null) {
+        return badRequest('url is not a console item of this project');
+    }
     if (context.issueAttachmentRepository === null) {
         return badGateway('attachment upload is not configured');
     }
     const markdown = await context.issueAttachmentRepository.uploadAttachment({
-        issueOrPullRequestUrl: url,
+        issueOrPullRequestUrl: knownUrl,
         fileName,
         content: Buffer.from(contentBase64, 'base64'),
     });
