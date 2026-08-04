@@ -1,3 +1,10 @@
+## [1.143.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.143.4...v1.143.5) (2026-08-04)
+
+
+### Bug Fixes
+
+* **console:** render image files in the pull request diff ([#1365](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1365)) ([f224f7f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f224f7f4f15ef77b8d603e70d1e1af70f1eecb8a)), closes [#1364](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1364)
+
 ## [1.143.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.143.3...v1.143.4) (2026-08-04)
 
 
