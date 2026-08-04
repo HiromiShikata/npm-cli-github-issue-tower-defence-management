@@ -1,3 +1,15 @@
+## [1.144.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.144.3...v1.144.4) (2026-08-04)
+
+
+### Bug Fixes
+
+* **release:** publish a patch release when a revert commit lands on main ([#1382](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1382)) ([1d588c6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1d588c602bb7ae5e978158cef9f309a3f6910dce)), closes [#1381](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1381)
+
+
+### Reverts
+
+* **console:** keep excluding project items that have no assignee ([#1380](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1380)) ([bf6de96](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bf6de9629b2bfe0e7ffb32a5b958824afa4683cf)), closes [#1379](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1379)
+
 ## [1.144.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.144.2...v1.144.3) (2026-08-04)
 
 
