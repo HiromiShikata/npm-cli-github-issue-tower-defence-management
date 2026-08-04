@@ -2,9 +2,11 @@ import {
   IssueRepository,
   PullRequestReviewCommentSide,
 } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
 import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
 import { recordDoneProjectItemIdAcrossTabs } from './consoleDoneStore';
+import { findConsoleItemUrl } from './consoleItemUrlLookup';
 
 export const AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
 export const IN_TMUX_BY_HUMAN_STATUS_NAME = 'in tmux by human';
@@ -25,6 +27,7 @@ export type ConsoleOperationContext = {
   resolveProject: ConsoleProjectResolver;
   isPjcodeConfigured: ConsolePjcodeValidator;
   consoleDataOutputDir: string | null;
+  issueAttachmentRepository: IssueAttachmentRepository | null;
 };
 
 export type ConsoleOperationResponse = {
@@ -52,6 +55,11 @@ const isNonEmptyString = (value: unknown): value is string =>
 
 const isPullRequestUrl = (url: string): boolean =>
   /github\.com\/[^/]+\/[^/]+\/pull\/\d+/.test(url);
+
+const isValidIssueOrPullRequestUrl = (url: string): boolean =>
+  /^https:\/\/github\.com\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\/(issues|pull)\/\d+$/.test(
+    url,
+  );
 
 const isReviewCommentSide = (
   value: unknown,
@@ -396,6 +404,54 @@ export const handleComment = async (
               createdAt: posted.createdAt.toISOString(),
             },
     },
+  };
+};
+
+export const handleAttachmentUpload = async (
+  context: ConsoleOperationContext,
+  body: Record<string, unknown>,
+): Promise<ConsoleOperationResponse> => {
+  const url = body.url;
+  const fileName = body.fileName;
+  const contentBase64 = body.contentBase64;
+  if (!isNonEmptyString(url)) {
+    return badRequest('url is required');
+  }
+  if (!isValidIssueOrPullRequestUrl(url)) {
+    return badRequest('url must be a github issue or pull request url');
+  }
+  if (!isNonEmptyString(fileName)) {
+    return badRequest('fileName is required');
+  }
+  if (!isNonEmptyString(contentBase64)) {
+    return badRequest('contentBase64 is required');
+  }
+  const pjcodeResult = resolveConfiguredPjcode(context, body);
+  if (typeof pjcodeResult !== 'string') {
+    return pjcodeResult;
+  }
+  if (context.consoleDataOutputDir === null) {
+    return badGateway('console data output dir is not configured');
+  }
+  const knownUrl = findConsoleItemUrl(
+    context.consoleDataOutputDir,
+    pjcodeResult,
+    url,
+  );
+  if (knownUrl === null) {
+    return badRequest('url is not a console item of this project');
+  }
+  if (context.issueAttachmentRepository === null) {
+    return badGateway('attachment upload is not configured');
+  }
+  const markdown = await context.issueAttachmentRepository.uploadAttachment({
+    issueOrPullRequestUrl: knownUrl,
+    fileName,
+    content: Buffer.from(contentBase64, 'base64'),
+  });
+  return {
+    statusCode: 200,
+    body: { ok: true, markdown },
   };
 };
 

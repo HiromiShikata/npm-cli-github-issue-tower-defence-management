@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleIntmux = exports.handleReviewComment = exports.handleComment = exports.handleTriage = exports.handleReview = exports.IN_TMUX_BY_HUMAN_STATUS_NAME = exports.AWAITING_WORKSPACE_STATUS_NAME = void 0;
+exports.handleIntmux = exports.handleReviewComment = exports.handleAttachmentUpload = exports.handleComment = exports.handleTriage = exports.handleReview = exports.IN_TMUX_BY_HUMAN_STATUS_NAME = exports.AWAITING_WORKSPACE_STATUS_NAME = void 0;
 const consoleDoneStore_1 = require("./consoleDoneStore");
 exports.AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
 exports.IN_TMUX_BY_HUMAN_STATUS_NAME = 'in tmux by human';
@@ -256,6 +256,33 @@ const handleComment = async (context, body) => {
     };
 };
 exports.handleComment = handleComment;
+const handleAttachmentUpload = async (context, body) => {
+    const url = body.url;
+    const fileName = body.fileName;
+    const contentBase64 = body.contentBase64;
+    if (!isNonEmptyString(url)) {
+        return badRequest('url is required');
+    }
+    if (!isNonEmptyString(fileName)) {
+        return badRequest('fileName is required');
+    }
+    if (!isNonEmptyString(contentBase64)) {
+        return badRequest('contentBase64 is required');
+    }
+    if (context.issueAttachmentRepository === null) {
+        return badGateway('attachment upload is not configured');
+    }
+    const markdown = await context.issueAttachmentRepository.uploadAttachment({
+        issueOrPullRequestUrl: url,
+        fileName,
+        content: Buffer.from(contentBase64, 'base64'),
+    });
+    return {
+        statusCode: 200,
+        body: { ok: true, markdown },
+    };
+};
+exports.handleAttachmentUpload = handleAttachmentUpload;
 const handleReviewComment = async (context, body) => {
     const url = body.url;
     const path = body.path;

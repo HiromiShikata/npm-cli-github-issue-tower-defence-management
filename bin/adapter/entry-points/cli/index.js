@@ -55,6 +55,7 @@ const GraphqlProjectItemRepository_1 = require("../../repositories/issue/Graphql
 const ApiV3CheerioRestIssueRepository_1 = require("../../repositories/issue/ApiV3CheerioRestIssueRepository");
 const LocalStorageCacheRepository_1 = require("../../repositories/LocalStorageCacheRepository");
 const SystemDateRepository_1 = require("../../repositories/SystemDateRepository");
+const LocalCommandIssueAttachmentRepository_1 = require("../../repositories/LocalCommandIssueAttachmentRepository");
 const NodeLocalCommandRunner_1 = require("../../repositories/NodeLocalCommandRunner");
 const NodeTmuxSessionRepository_1 = require("../../repositories/NodeTmuxSessionRepository");
 const ProcTakeOwnershipSpawnRepository_1 = require("../../repositories/ProcTakeOwnershipSpawnRepository");
@@ -468,6 +469,7 @@ const runServeWeb = async (options) => {
         issueRepository,
         resolveProject,
         isPjcodeConfigured,
+        issueAttachmentRepository: new LocalCommandIssueAttachmentRepository_1.LocalCommandIssueAttachmentRepository(new NodeLocalCommandRunner_1.NodeLocalCommandRunner()),
         issueTitleStateCache: new consoleReadApi_1.IssueTitleStateCache(),
         pullRequestStatusCache: new consoleReadApi_1.PullRequestStatusCache(),
         port,

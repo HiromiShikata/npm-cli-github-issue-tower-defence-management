@@ -8,6 +8,7 @@ import { Issue } from '../../../domain/entities/Issue';
 import {
   ConsoleOperationContext,
   ConsoleProjectBinding,
+  handleAttachmentUpload,
   handleComment,
   handleIntmux,
   handleReview,
@@ -76,6 +77,7 @@ describe('consoleOperationApi', () => {
         pjcode === 'umino' ? { pjcode, project } : null,
       isPjcodeConfigured: (pjcode: string) => pjcode === 'umino',
       consoleDataOutputDir: baseDir,
+      issueAttachmentRepository: null,
     };
   });
 
@@ -87,6 +89,7 @@ describe('consoleOperationApi', () => {
       pjcode === 'umino' ? { pjcode, project: nextProject } : null,
     isPjcodeConfigured: (pjcode: string) => pjcode === 'umino',
     consoleDataOutputDir: baseDir,
+    issueAttachmentRepository: null,
   });
 
   afterEach(() => {
@@ -509,6 +512,7 @@ describe('consoleOperationApi', () => {
         resolveProject: resolveProjectSpy,
         isPjcodeConfigured: (pjcode: string) => pjcode === 'umino',
         consoleDataOutputDir: baseDir,
+        issueAttachmentRepository: null,
       };
     });
 
@@ -753,6 +757,7 @@ describe('consoleOperationApi', () => {
         isPjcodeConfigured: (pjcode: string) =>
           pjcode === 'umino' || pjcode === 'xmile',
         consoleDataOutputDir: baseDir,
+        issueAttachmentRepository: null,
       };
       const response = await handleTriage(multiContext, {
         pjcode: 'xmile',
@@ -956,6 +961,156 @@ describe('consoleOperationApi', () => {
       expect(response.body).toEqual({
         error:
           'Failed to create review comment on PR https://github.com/o/r/pull/1: Validation Failed: line must be part of the diff',
+      });
+    });
+  });
+
+  describe('handleAttachmentUpload', () => {
+    const listItemUrl = 'https://github.com/o/r/issues/1';
+
+    const writeListWithItem = (url: string): void => {
+      const dir = path.join(baseDir, 'umino', 'prs');
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(
+        path.join(dir, 'list.json'),
+        JSON.stringify({ items: [{ url }] }),
+      );
+    };
+
+    beforeEach(() => {
+      writeListWithItem(listItemUrl);
+    });
+
+    const uploadContext = (
+      uploadAttachment: (request: {
+        issueOrPullRequestUrl: string;
+        fileName: string;
+        content: Uint8Array;
+      }) => Promise<string>,
+    ): ConsoleOperationContext => ({
+      ...context,
+      issueAttachmentRepository: { uploadAttachment },
+    });
+
+    it('uploads the decoded file and returns the markdown', async () => {
+      const received: {
+        issueOrPullRequestUrl: string;
+        fileName: string;
+        content: Uint8Array;
+      }[] = [];
+      const response = await handleAttachmentUpload(
+        uploadContext(async (request) => {
+          received.push(request);
+          return '![shot](https://github.com/user-attachments/assets/abc)';
+        }),
+        {
+          pjcode: 'umino',
+          url: 'https://github.com/o/r/issues/1',
+          fileName: 'shot.png',
+          contentBase64: Buffer.from([1, 2, 3]).toString('base64'),
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 200,
+        body: {
+          ok: true,
+          markdown: '![shot](https://github.com/user-attachments/assets/abc)',
+        },
+      });
+      expect(received).toHaveLength(1);
+      expect(received[0].issueOrPullRequestUrl).toBe(
+        'https://github.com/o/r/issues/1',
+      );
+      expect(received[0].fileName).toBe('shot.png');
+      expect(Array.from(received[0].content)).toEqual([1, 2, 3]);
+    });
+
+    it('rejects a request without a url', async () => {
+      const response = await handleAttachmentUpload(
+        uploadContext(async () => 'unused'),
+        { pjcode: 'umino', fileName: 'shot.png', contentBase64: 'AAEC' },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'url is required' },
+      });
+    });
+
+    it('rejects a url that is not a github issue or pull request url', async () => {
+      const response = await handleAttachmentUpload(
+        uploadContext(async () => 'unused'),
+        {
+          pjcode: 'umino',
+          url: 'https://example.com/o/r/issues/1; rm -rf /',
+          fileName: 'shot.png',
+          contentBase64: 'AAEC',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'url must be a github issue or pull request url' },
+      });
+    });
+
+    it('rejects a request without a fileName', async () => {
+      const response = await handleAttachmentUpload(
+        uploadContext(async () => 'unused'),
+        {
+          pjcode: 'umino',
+          url: 'https://github.com/o/r/issues/1',
+          contentBase64: 'AAEC',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'fileName is required' },
+      });
+    });
+
+    it('rejects a request without contentBase64', async () => {
+      const response = await handleAttachmentUpload(
+        uploadContext(async () => 'unused'),
+        {
+          pjcode: 'umino',
+          url: 'https://github.com/o/r/issues/1',
+          fileName: 'shot.png',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'contentBase64 is required' },
+      });
+    });
+
+    it('reports that upload is not configured when no repository is wired', async () => {
+      const response = await handleAttachmentUpload(
+        { ...context, issueAttachmentRepository: null },
+        {
+          pjcode: 'umino',
+          url: 'https://github.com/o/r/issues/1',
+          fileName: 'shot.png',
+          contentBase64: 'AAEC',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 502,
+        body: { error: 'attachment upload is not configured' },
+      });
+    });
+
+    it('rejects a url that is not listed as a console item of the project', async () => {
+      const response = await handleAttachmentUpload(
+        uploadContext(async () => 'unused'),
+        {
+          pjcode: 'umino',
+          url: 'https://github.com/o/r/issues/9999',
+          fileName: 'shot.png',
+          contentBase64: 'AAEC',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'url is not a console item of this project' },
       });
     });
   });

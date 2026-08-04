@@ -4,6 +4,8 @@ import {
   type ConsoleReviewCommentSide,
   type ConsoleReviewRequest,
   type ConsoleTriageRequest,
+  encodeAttachmentContent,
+  postConsoleAttachment,
   postConsoleComment,
   postConsoleOperation,
   postConsoleReviewComment,
@@ -59,6 +61,7 @@ export type ConsoleOperationsApi = {
     action: ConsoleCloseAction,
   ) => Promise<void>;
   addComment: (item: ConsoleListItem, body: string) => Promise<ConsoleComment>;
+  uploadAttachment: (item: ConsoleListItem, file: File) => Promise<string>;
   addInlineReviewComment: (
     prUrl: string,
     path: string,
@@ -286,6 +289,24 @@ export const useConsoleOperations = (
     [pjcode, invalidateItemContent],
   );
 
+  const uploadAttachment = useCallback(
+    async (item: ConsoleListItem, file: File) => {
+      if (pjcode === null) {
+        throw new Error('no project in the URL path');
+      }
+      const contentBase64 = encodeAttachmentContent(
+        new Uint8Array(await file.arrayBuffer()),
+      );
+      return postConsoleAttachment({
+        pjcode,
+        url: item.url,
+        fileName: file.name,
+        contentBase64,
+      });
+    },
+    [pjcode],
+  );
+
   const addInlineReviewComment = useCallback(
     async (
       prUrl: string,
@@ -317,6 +338,7 @@ export const useConsoleOperations = (
     setInTmuxByHuman,
     closeIssue,
     addComment,
+    uploadAttachment,
     addInlineReviewComment,
   };
 };

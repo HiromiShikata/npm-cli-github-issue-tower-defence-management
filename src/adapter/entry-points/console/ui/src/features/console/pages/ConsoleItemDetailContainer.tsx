@@ -173,6 +173,7 @@ export const ConsoleItemDetailContainer = ({
           isPr={item.isPr}
           now={now}
           onSubmit={(body) => operations.addComment(item, body)}
+          onUploadFile={(file) => operations.uploadAttachment(item, file)}
         />
       }
       operationBar={

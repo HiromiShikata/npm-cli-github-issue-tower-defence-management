@@ -75,6 +75,7 @@ const buildOperations = (): ConsoleOperationsApi => ({
     body: 'comment body',
     createdAt: '2026-06-19T11:58:00.000Z',
   })),
+  uploadAttachment: jest.fn(async () => ''),
   addInlineReviewComment: jest.fn(async () => {}),
 });
 

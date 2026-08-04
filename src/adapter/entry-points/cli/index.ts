@@ -28,6 +28,7 @@ import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3C
 import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
 import { SystemDateRepository } from '../../repositories/SystemDateRepository';
 import { BaseGitHubRepository } from '../../repositories/BaseGitHubRepository';
+import { LocalCommandIssueAttachmentRepository } from '../../repositories/LocalCommandIssueAttachmentRepository';
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
 import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRepository';
 import { ProcTakeOwnershipSpawnRepository } from '../../repositories/ProcTakeOwnershipSpawnRepository';
@@ -808,6 +809,9 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     issueRepository,
     resolveProject,
     isPjcodeConfigured,
+    issueAttachmentRepository: new LocalCommandIssueAttachmentRepository(
+      new NodeLocalCommandRunner(),
+    ),
     issueTitleStateCache: new IssueTitleStateCache(),
     pullRequestStatusCache: new PullRequestStatusCache(),
     port,
