@@ -61,7 +61,7 @@ describe('renderMarkdownToSafeHtml', () => {
       repo: 'npm-cli-github-issue-tower-defence-management',
     });
     expect(html).toContain(
-      '<a href="https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/127">#127</a>',
+      '<a href="https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/127" target="_blank" rel="noopener noreferrer">#127</a>',
     );
   });
 
@@ -177,5 +177,28 @@ describe('hasMermaidFence', () => {
 
   it('returns false without a mermaid fence', () => {
     expect(hasMermaidFence('```ts\nconst a = 1;\n```')).toBe(false);
+  });
+});
+
+describe('renderMarkdownToSafeHtml link targets', () => {
+  it('opens an autolinked url in a new tab', () => {
+    const html = renderMarkdownToSafeHtml('https://example.com/doc');
+    expect(html).toContain('target="_blank"');
+    expect(html).toContain('rel="noopener noreferrer"');
+  });
+
+  it('opens an inline markdown link in a new tab', () => {
+    const html = renderMarkdownToSafeHtml('[doc](https://example.com/doc)');
+    expect(html).toContain('target="_blank"');
+    expect(html).toContain('rel="noopener noreferrer"');
+  });
+
+  it('opens an issue reference link in a new tab', () => {
+    const html = renderMarkdownToSafeHtml('see #12', {
+      owner: 'demo',
+      repo: 'repo',
+    });
+    expect(html).toContain('https://github.com/demo/repo/issues/12');
+    expect(html).toContain('target="_blank"');
   });
 });
