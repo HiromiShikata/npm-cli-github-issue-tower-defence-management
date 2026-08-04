@@ -1,4 +1,5 @@
 import * as http from 'http';
+import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { IssueTitleStateCache, PullRequestStatusCache } from './consoleReadApi';
 import { ConsolePjcodeValidator, ConsoleProjectResolver } from './consoleOperationApi';
@@ -28,6 +29,7 @@ export type WebServerOptions = {
     issueRepository?: IssueRepository | null;
     resolveProject?: ConsoleProjectResolver | null;
     isPjcodeConfigured?: ConsolePjcodeValidator | null;
+    issueAttachmentRepository?: IssueAttachmentRepository | null;
     issueTitleStateCache?: IssueTitleStateCache | null;
     pullRequestStatusCache?: PullRequestStatusCache | null;
 };

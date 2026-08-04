@@ -376,6 +376,8 @@ const dispatchOperation = (context, requestPath, body) => {
             return (0, consoleOperationApi_1.handleComment)(context, body);
         case '/api/reviewcomment':
             return (0, consoleOperationApi_1.handleReviewComment)(context, body);
+        case '/api/upload':
+            return (0, consoleOperationApi_1.handleAttachmentUpload)(context, body);
         default:
             return null;
     }
@@ -394,6 +396,7 @@ const handleOperationApi = async (options, requestPath, body) => {
         resolveProject,
         isPjcodeConfigured,
         consoleDataOutputDir: options.consoleDataOutputDir,
+        issueAttachmentRepository: options.issueAttachmentRepository ?? null,
     };
     const dispatched = dispatchOperation(context, requestPath, body);
     if (dispatched === null) {

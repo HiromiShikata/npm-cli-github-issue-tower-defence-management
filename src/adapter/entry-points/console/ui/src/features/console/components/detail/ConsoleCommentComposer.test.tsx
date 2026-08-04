@@ -1,6 +1,9 @@
 import { fireEvent, render, waitFor } from '@testing-library/react';
 import type { ConsoleComment } from '../../logic/types';
-import { ConsoleCommentComposer } from './ConsoleCommentComposer';
+import {
+  appendAttachmentMarkdown,
+  ConsoleCommentComposer,
+} from './ConsoleCommentComposer';
 
 jest.mock('../../lib/mermaidLoader', () => ({
   renderMermaidToSvg: jest.fn(async () => '<svg></svg>'),
@@ -77,5 +80,150 @@ describe('ConsoleCommentComposer', () => {
     fireEvent.click(getByText('Comment'));
     const alert = await findByRole('alert');
     expect(alert.textContent).toContain('HTTP 500');
+  });
+
+  it('does not render the attach control when no upload handler is given', () => {
+    const { queryByText } = render(
+      <ConsoleCommentComposer
+        isPr={false}
+        now={now}
+        onSubmit={async (body) => ({
+          author: 'HiromiShikata',
+          body,
+          createdAt: '2026-06-19T11:58:00.000Z',
+        })}
+      />,
+    );
+    expect(queryByText('📎 Attach files')).toBeNull();
+  });
+
+  it('uploads a selected file and inserts the returned markdown into the draft', async () => {
+    const onUploadFile = jest.fn(
+      async () => '![shot](https://github.com/user-attachments/assets/abc)',
+    );
+    const { getByPlaceholderText, getByLabelText } = render(
+      <ConsoleCommentComposer
+        isPr={false}
+        now={now}
+        onSubmit={async (body) => ({
+          author: 'HiromiShikata',
+          body,
+          createdAt: '2026-06-19T11:58:00.000Z',
+        })}
+        onUploadFile={onUploadFile}
+      />,
+    );
+    const textarea = getByPlaceholderText(
+      'Leave a comment…',
+    ) as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: 'See the screen:' } });
+    const file = new File(['binary'], 'shot.png', { type: 'image/png' });
+    fireEvent.change(getByLabelText('Attach files'), {
+      target: { files: [file] },
+    });
+    await waitFor(() => {
+      expect(textarea.value).toBe(
+        'See the screen:\n![shot](https://github.com/user-attachments/assets/abc)\n',
+      );
+    });
+    expect(onUploadFile).toHaveBeenCalledWith(file);
+  });
+
+  it('uploads a pasted file', async () => {
+    const onUploadFile = jest.fn(
+      async () => '![pasted](https://github.com/user-attachments/assets/def)',
+    );
+    const { getByPlaceholderText } = render(
+      <ConsoleCommentComposer
+        isPr={false}
+        now={now}
+        onSubmit={async (body) => ({
+          author: 'HiromiShikata',
+          body,
+          createdAt: '2026-06-19T11:58:00.000Z',
+        })}
+        onUploadFile={onUploadFile}
+      />,
+    );
+    const textarea = getByPlaceholderText(
+      'Leave a comment…',
+    ) as HTMLTextAreaElement;
+    const file = new File(['binary'], 'pasted.png', { type: 'image/png' });
+    fireEvent.paste(textarea, { clipboardData: { files: [file] } });
+    await waitFor(() => {
+      expect(textarea.value).toBe(
+        '![pasted](https://github.com/user-attachments/assets/def)\n',
+      );
+    });
+    expect(onUploadFile).toHaveBeenCalledWith(file);
+  });
+
+  it('uploads a dropped file', async () => {
+    const onUploadFile = jest.fn(
+      async () => '![dropped](https://github.com/user-attachments/assets/ghi)',
+    );
+    const { getByPlaceholderText } = render(
+      <ConsoleCommentComposer
+        isPr={false}
+        now={now}
+        onSubmit={async (body) => ({
+          author: 'HiromiShikata',
+          body,
+          createdAt: '2026-06-19T11:58:00.000Z',
+        })}
+        onUploadFile={onUploadFile}
+      />,
+    );
+    const textarea = getByPlaceholderText(
+      'Leave a comment…',
+    ) as HTMLTextAreaElement;
+    const file = new File(['binary'], 'dropped.png', { type: 'image/png' });
+    fireEvent.drop(textarea, { dataTransfer: { files: [file] } });
+    await waitFor(() => {
+      expect(textarea.value).toBe(
+        '![dropped](https://github.com/user-attachments/assets/ghi)\n',
+      );
+    });
+    expect(onUploadFile).toHaveBeenCalledWith(file);
+  });
+
+  it('shows the upload failure reason when the upload rejects', async () => {
+    const { getByLabelText, findByRole } = render(
+      <ConsoleCommentComposer
+        isPr={false}
+        now={now}
+        onSubmit={async (body) => ({
+          author: 'HiromiShikata',
+          body,
+          createdAt: '2026-06-19T11:58:00.000Z',
+        })}
+        onUploadFile={async () => {
+          throw new Error('No GitHub web session is available');
+        }}
+      />,
+    );
+    fireEvent.change(getByLabelText('Attach files'), {
+      target: { files: [new File(['x'], 'shot.png', { type: 'image/png' })] },
+    });
+    const alert = await findByRole('alert');
+    expect(alert.textContent).toContain('No GitHub web session is available');
+  });
+});
+
+describe('appendAttachmentMarkdown', () => {
+  it('returns the markdown alone when the draft is empty', () => {
+    expect(appendAttachmentMarkdown('', '![a](b)')).toBe('![a](b)\n');
+  });
+
+  it('adds a separating newline when the draft does not end with one', () => {
+    expect(appendAttachmentMarkdown('hello', '![a](b)')).toBe(
+      'hello\n![a](b)\n',
+    );
+  });
+
+  it('does not add a second newline when the draft already ends with one', () => {
+    expect(appendAttachmentMarkdown('hello\n', '![a](b)')).toBe(
+      'hello\n![a](b)\n',
+    );
   });
 });

@@ -1,6 +1,7 @@
 import * as http from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
+import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import {
   CONSOLE_LIST_TAB_NAMES,
@@ -22,6 +23,7 @@ import {
   ConsoleOperationContext,
   ConsolePjcodeValidator,
   ConsoleProjectResolver,
+  handleAttachmentUpload,
   handleComment,
   handleIntmux,
   handleReview,
@@ -217,6 +219,7 @@ export type WebServerOptions = {
   issueRepository?: IssueRepository | null;
   resolveProject?: ConsoleProjectResolver | null;
   isPjcodeConfigured?: ConsolePjcodeValidator | null;
+  issueAttachmentRepository?: IssueAttachmentRepository | null;
   issueTitleStateCache?: IssueTitleStateCache | null;
   pullRequestStatusCache?: PullRequestStatusCache | null;
 };
@@ -478,6 +481,8 @@ const dispatchOperation = (
       return handleComment(context, body);
     case '/api/reviewcomment':
       return handleReviewComment(context, body);
+    case '/api/upload':
+      return handleAttachmentUpload(context, body);
     default:
       return null;
   }
@@ -503,6 +508,7 @@ const handleOperationApi = async (
     resolveProject,
     isPjcodeConfigured,
     consoleDataOutputDir: options.consoleDataOutputDir,
+    issueAttachmentRepository: options.issueAttachmentRepository ?? null,
   };
   const dispatched = dispatchOperation(context, requestPath, body);
   if (dispatched === null) {

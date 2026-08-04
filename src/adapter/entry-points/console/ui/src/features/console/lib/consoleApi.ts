@@ -288,6 +288,40 @@ export const postConsoleComment = async (
   return parsePostedComment(await response.json());
 };
 
+export const ATTACHMENT_UPLOAD_OPERATION_PATH = '/api/upload';
+
+export type ConsoleAttachmentUploadRequest = {
+  url: string;
+  fileName: string;
+  contentBase64: string;
+};
+
+export const encodeAttachmentContent = (bytes: Uint8Array): string => {
+  let binary = '';
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
+};
+
+export const postConsoleAttachment = async (
+  request: ConsoleAttachmentUploadRequest,
+): Promise<string> => {
+  const response = await fetch(ATTACHMENT_UPLOAD_OPERATION_PATH, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    throw new Error(await readOperationErrorReason(response));
+  }
+  const payload: unknown = await response.json();
+  if (!isRecord(payload) || typeof payload.markdown !== 'string') {
+    throw new Error('markdown was not returned');
+  }
+  return payload.markdown;
+};
+
 export const REVIEW_COMMENT_OPERATION_PATH = '/api/reviewcomment';
 
 export const postConsoleReviewComment = async (
