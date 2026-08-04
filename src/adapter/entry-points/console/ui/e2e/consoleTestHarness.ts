@@ -53,6 +53,7 @@ type ConsoleFixtureListItem = {
   dependedIssueUrls: string[];
   labels: string[];
   createdAt: string;
+  relatedOpenPullRequestUrls: string[];
 };
 
 type ConsoleFixtureFieldOption = {

@@ -14,7 +14,6 @@ type Story = StoryObj<typeof ConsoleItemIcon>;
 export const PullRequestOpen: Story = {
   args: {
     isPr: true,
-    relatedOpenPullRequestUrls: [],
     state: 'open',
     merged: false,
     isDraft: false,
@@ -25,7 +24,6 @@ export const PullRequestOpen: Story = {
 export const PullRequestMerged: Story = {
   args: {
     isPr: true,
-    relatedOpenPullRequestUrls: [],
     state: 'closed',
     merged: true,
     isDraft: false,
@@ -36,7 +34,6 @@ export const PullRequestMerged: Story = {
 export const PullRequestClosed: Story = {
   args: {
     isPr: true,
-    relatedOpenPullRequestUrls: [],
     state: 'closed',
     merged: false,
     isDraft: false,
@@ -47,7 +44,6 @@ export const PullRequestClosed: Story = {
 export const PullRequestDraft: Story = {
   args: {
     isPr: true,
-    relatedOpenPullRequestUrls: [],
     state: 'open',
     merged: false,
     isDraft: true,
@@ -58,7 +54,6 @@ export const PullRequestDraft: Story = {
 export const IssueOpen: Story = {
   args: {
     isPr: false,
-    relatedOpenPullRequestUrls: [],
     state: 'open',
     merged: false,
     isDraft: false,
@@ -69,7 +64,6 @@ export const IssueOpen: Story = {
 export const IssueClosedCompleted: Story = {
   args: {
     isPr: false,
-    relatedOpenPullRequestUrls: [],
     state: 'closed',
     merged: false,
     isDraft: false,
@@ -80,7 +74,6 @@ export const IssueClosedCompleted: Story = {
 export const IssueClosedNotPlanned: Story = {
   args: {
     isPr: false,
-    relatedOpenPullRequestUrls: [],
     state: 'closed',
     merged: false,
     isDraft: false,

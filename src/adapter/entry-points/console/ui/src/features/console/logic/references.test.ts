@@ -77,7 +77,6 @@ describe('referenceStateToIconInput', () => {
       }),
     ).toEqual({
       isPr: true,
-      relatedOpenPullRequestUrls: [],
       state: 'closed',
       merged: true,
       isDraft: false,
@@ -95,7 +94,6 @@ describe('referenceStateToIconInput', () => {
       }),
     ).toEqual({
       isPr: false,
-      relatedOpenPullRequestUrls: [],
       state: 'open',
       merged: false,
       isDraft: false,
