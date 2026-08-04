@@ -1,3 +1,10 @@
+## [1.143.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.143.1...v1.143.2) (2026-08-04)
+
+
+### Bug Fixes
+
+* **silent-monitor:** deliver the self-check reminder as a single line so no blank lines remain in the input box ([#1358](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1358)) ([08f4894](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/08f489429da0136cb527efe3df2acb2b886f9a4e)), closes [#1357](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1357)
+
 ## [1.143.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.143.0...v1.143.1) (2026-08-04)
 
 
