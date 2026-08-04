@@ -968,6 +968,54 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     });
   });
 
+  describe('repeated delivery while a session stays silent', () => {
+    const setupSilentGithubSession = (): void => {
+      setupLiveInteractiveSession(GITHUB_SESSION);
+      mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
+        [
+          {
+            sessionName: GITHUB_SESSION,
+            lastOutputEpochSeconds:
+              nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
+          },
+        ],
+      );
+    };
+
+    it('sends the reminder again on the next cycle to a session that is still silent', async () => {
+      setupSilentGithubSession();
+      wireStatefulNotifiedLatch();
+
+      await useCase.run(runParams());
+      await useCase.run(runParams());
+
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledTimes(2);
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenNthCalledWith(1, GITHUB_SESSION, MAIN_STALLED_SECTION);
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenNthCalledWith(2, GITHUB_SESSION, MAIN_STALLED_SECTION);
+    });
+
+    it('keeps sending the reminder on every consecutive cycle the session stays silent', async () => {
+      setupSilentGithubSession();
+      wireStatefulNotifiedLatch();
+
+      await useCase.run(runParams());
+      await useCase.run(runParams());
+      await useCase.run(runParams());
+      await useCase.run(runParams());
+      await useCase.run(runParams());
+
+      expect(
+        mockNotificationRepository.sendSelfCheckNotification,
+      ).toHaveBeenCalledTimes(5);
+    });
+  });
+
   describe('fire-once latch', () => {
     const setupSilentGithubSession = (): void => {
       setupLiveInteractiveSession(GITHUB_SESSION);
