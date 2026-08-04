@@ -4,6 +4,8 @@ import { join } from 'path';
 import { LocalCommandRunner } from '../../domain/usecases/adapter-interfaces/LocalCommandRunner';
 import {
   LocalCommandIssueAttachmentRepository,
+  relabelAttachmentMarkdown,
+  resolveAttachmentExtension,
   sanitizeAttachmentFileName,
   UPLOAD_COMMAND,
 } from './LocalCommandIssueAttachmentRepository';
@@ -21,6 +23,42 @@ describe('sanitizeAttachmentFileName', () => {
 
   it('should fall back to a default name when nothing safe remains', () => {
     expect(sanitizeAttachmentFileName('')).toBe('attachment');
+  });
+});
+
+describe('resolveAttachmentExtension', () => {
+  it('should return the matching allowed extension', () => {
+    expect(resolveAttachmentExtension('Screenshot 2026.PNG')).toBe('.png');
+  });
+
+  it('should return an empty extension for an unlisted one', () => {
+    expect(resolveAttachmentExtension('payload.sh')).toBe('');
+  });
+});
+
+describe('relabelAttachmentMarkdown', () => {
+  it('should replace the label of an image markdown', () => {
+    expect(
+      relabelAttachmentMarkdown(
+        '![attachment](https://example.com/a)',
+        'shot.png',
+      ),
+    ).toBe('![shot.png](https://example.com/a)');
+  });
+
+  it('should replace the label of a link markdown', () => {
+    expect(
+      relabelAttachmentMarkdown(
+        '[attachment](https://example.com/a)',
+        'note.md',
+      ),
+    ).toBe('[note.md](https://example.com/a)');
+  });
+
+  it('should keep unexpected output unchanged', () => {
+    expect(relabelAttachmentMarkdown('unexpected output', 'shot.png')).toBe(
+      'unexpected output',
+    );
   });
 });
 
@@ -48,11 +86,11 @@ describe('LocalCommandIssueAttachmentRepository', () => {
     });
 
     expect(markdown).toBe(
-      '![screenshot](https://github.com/user-attachments/assets/11111111-2222-3333-4444-555555555555)',
+      '![screenshot.png](https://github.com/user-attachments/assets/11111111-2222-3333-4444-555555555555)',
     );
     expect(received).toHaveLength(1);
     expect(received[0].program).toBe(UPLOAD_COMMAND);
-    expect(received[0].args[0].endsWith('/screenshot.png')).toBe(true);
+    expect(received[0].args[0].endsWith('/attachment.png')).toBe(true);
     expect(received[0].args[1]).toBe('https://github.com/owner/repo/issues/1');
     expect(await readdir(root)).toEqual([]);
   });

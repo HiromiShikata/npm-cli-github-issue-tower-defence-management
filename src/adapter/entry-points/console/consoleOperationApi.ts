@@ -6,6 +6,7 @@ import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-inte
 import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
 import { recordDoneProjectItemIdAcrossTabs } from './consoleDoneStore';
+import { findConsoleItemUrl } from './consoleItemUrlLookup';
 
 export const AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
 export const IN_TMUX_BY_HUMAN_STATUS_NAME = 'in tmux by human';
@@ -425,11 +426,26 @@ export const handleAttachmentUpload = async (
   if (!isNonEmptyString(contentBase64)) {
     return badRequest('contentBase64 is required');
   }
+  const pjcodeResult = resolveConfiguredPjcode(context, body);
+  if (typeof pjcodeResult !== 'string') {
+    return pjcodeResult;
+  }
+  if (context.consoleDataOutputDir === null) {
+    return badGateway('console data output dir is not configured');
+  }
+  const knownUrl = findConsoleItemUrl(
+    context.consoleDataOutputDir,
+    pjcodeResult,
+    url,
+  );
+  if (knownUrl === null) {
+    return badRequest('url is not a console item of this project');
+  }
   if (context.issueAttachmentRepository === null) {
     return badGateway('attachment upload is not configured');
   }
   const markdown = await context.issueAttachmentRepository.uploadAttachment({
-    issueOrPullRequestUrl: url,
+    issueOrPullRequestUrl: knownUrl,
     fileName,
     content: Buffer.from(contentBase64, 'base64'),
   });

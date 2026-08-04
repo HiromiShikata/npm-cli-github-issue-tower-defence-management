@@ -9,10 +9,49 @@ import { LocalCommandRunner } from '../../domain/usecases/adapter-interfaces/Loc
 
 export const UPLOAD_COMMAND = 'upload-file-to-gh-issue';
 
+export const ALLOWED_ATTACHMENT_EXTENSIONS = [
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.webp',
+  '.svg',
+  '.pdf',
+  '.txt',
+  '.md',
+  '.log',
+  '.csv',
+  '.json',
+  '.zip',
+  '.mov',
+  '.mp4',
+] as const;
+
+export const UPLOAD_FILE_BASE_NAME = 'attachment';
+
 export const sanitizeAttachmentFileName = (fileName: string): string => {
   const base = fileName.split('/').pop() ?? '';
   const sanitized = base.replace(/[^A-Za-z0-9._-]/g, '_');
-  return sanitized.length === 0 ? 'attachment' : sanitized;
+  return sanitized.length === 0 ? UPLOAD_FILE_BASE_NAME : sanitized;
+};
+
+export const resolveAttachmentExtension = (fileName: string): string => {
+  const lower = sanitizeAttachmentFileName(fileName).toLowerCase();
+  const matched = ALLOWED_ATTACHMENT_EXTENSIONS.find((extension) =>
+    lower.endsWith(extension),
+  );
+  return matched === undefined ? '' : matched;
+};
+
+export const relabelAttachmentMarkdown = (
+  markdown: string,
+  label: string,
+): string => {
+  const match = /^(!?)\[[^\]]*\]\((.*)\)$/.exec(markdown);
+  if (match === null) {
+    return markdown;
+  }
+  return `${match[1]}[${label}](${match[2]})`;
 };
 
 export class LocalCommandIssueAttachmentRepository implements IssueAttachmentRepository {
@@ -29,7 +68,7 @@ export class LocalCommandIssueAttachmentRepository implements IssueAttachmentRep
     );
     const filePath = join(
       directory,
-      sanitizeAttachmentFileName(request.fileName),
+      `${UPLOAD_FILE_BASE_NAME}${resolveAttachmentExtension(request.fileName)}`,
     );
     try {
       await writeFile(filePath, request.content);
@@ -46,7 +85,10 @@ export class LocalCommandIssueAttachmentRepository implements IssueAttachmentRep
       if (markdown.length === 0) {
         throw new Error(`${UPLOAD_COMMAND} returned no markdown`);
       }
-      return markdown;
+      return relabelAttachmentMarkdown(
+        markdown,
+        sanitizeAttachmentFileName(request.fileName),
+      );
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

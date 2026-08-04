@@ -291,6 +291,7 @@ export const postConsoleComment = async (
 export const ATTACHMENT_UPLOAD_OPERATION_PATH = '/api/upload';
 
 export type ConsoleAttachmentUploadRequest = {
+  pjcode: string;
   url: string;
   fileName: string;
   contentBase64: string;
