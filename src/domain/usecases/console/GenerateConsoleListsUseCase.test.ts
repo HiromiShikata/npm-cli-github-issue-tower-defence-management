@@ -166,7 +166,9 @@ describe('GenerateConsoleListsUseCase', () => {
     });
 
     it('accepts a todo-by-human issue that has no assignee', () => {
-      const result = run([makeIssue({ status: 'Todo by human', assignees: [] })]);
+      const result = run([
+        makeIssue({ status: 'Todo by human', assignees: [] }),
+      ]);
       expect(result['todo-by-human'].items).toHaveLength(1);
     });
 
