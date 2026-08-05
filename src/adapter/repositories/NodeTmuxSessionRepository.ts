@@ -7,8 +7,8 @@ import { clSessionScopeUnitName } from './clSessionScopeUnitName';
 import { clSessionScopeUnitNameFromCgroupContent } from './clSessionScopeUnitNameFromCgroupContent';
 
 const DEFAULT_SEND_KEYS_SUBMIT_DELAY_MS = 1000;
-const SEND_KEYS_COMPOSER_PROBE_LENGTH = 40;
-const SEND_KEYS_COMPOSER_TAIL_LINES = 8;
+const BRACKETED_PASTE_START = '\x1b[200~';
+const BRACKETED_PASTE_END = '\x1b[201~';
 
 const shellSingleQuote = (value: string): string =>
   `'${value.replace(/'/g, `'\\''`)}'`;
@@ -152,7 +152,7 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
       '-t',
       sessionName,
       '-l',
-      literalText,
+      `${BRACKETED_PASTE_START}${literalText}${BRACKETED_PASTE_END}`,
     ]);
     if (literalResult.exitCode !== 0) {
       throw new Error(
@@ -163,10 +163,6 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
     }
     await this.delaySubmit();
     await this.sendEnter(sessionName);
-    if (await this.messageStillInComposer(sessionName, literalText)) {
-      await this.delaySubmit();
-      await this.sendEnter(sessionName);
-    }
   };
 
   launchBareNameLeaderSession = async (name: string): Promise<void> => {
@@ -199,31 +195,6 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
         }`,
       );
     }
-  };
-
-  private messageStillInComposer = async (
-    sessionName: string,
-    literalText: string,
-  ): Promise<boolean> => {
-    const probe = literalText
-      .trim()
-      .split('\n', 1)[0]
-      .slice(0, SEND_KEYS_COMPOSER_PROBE_LENGTH);
-    if (probe.length === 0) {
-      return false;
-    }
-    const { stdout, exitCode } = await this.localCommandRunner.runCommand(
-      'tmux',
-      ['capture-pane', '-p', '-t', sessionName],
-    );
-    if (exitCode !== 0) {
-      return false;
-    }
-    const tail = stdout
-      .split('\n')
-      .slice(-SEND_KEYS_COMPOSER_TAIL_LINES)
-      .join('\n');
-    return tail.includes(probe);
   };
 
   private delaySubmit = async (): Promise<void> => {

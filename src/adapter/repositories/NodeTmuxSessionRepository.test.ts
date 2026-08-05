@@ -296,16 +296,13 @@ describe('NodeTmuxSessionRepository', () => {
   });
 
   describe('sendKeys', () => {
-    it('sends the literal text then Enter and stops when the composer is empty', async () => {
+    it('wraps the message in bracketed paste markers and submits it with exactly one Enter', async () => {
       const runner = createMockRunner();
-      runner.runCommand
-        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 })
-        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 })
-        .mockResolvedValueOnce({
-          stdout: 'idle pane content\n> ',
-          stderr: '',
-          exitCode: 0,
-        });
+      runner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
       const repository = new NodeTmuxSessionRepository(runner, '/proc', 0);
 
       await repository.sendKeys('session-a', 'checkpoint now');
@@ -315,7 +312,7 @@ describe('NodeTmuxSessionRepository', () => {
         '-t',
         'session-a',
         '-l',
-        'checkpoint now',
+        '\x1b[200~checkpoint now\x1b[201~',
       ]);
       expect(runner.runCommand.mock.calls[1][1]).toEqual([
         'send-keys',
@@ -323,37 +320,25 @@ describe('NodeTmuxSessionRepository', () => {
         'session-a',
         'Enter',
       ]);
-      expect(runner.runCommand.mock.calls[2][1]).toEqual([
-        'capture-pane',
-        '-p',
-        '-t',
-        'session-a',
-      ]);
-      expect(runner.runCommand.mock.calls).toHaveLength(3);
+      expect(runner.runCommand.mock.calls).toHaveLength(2);
     });
 
-    it('re-sends Enter when the message is still visible in the composer', async () => {
+    it('never inspects the composer and never sends a second Enter', async () => {
       const runner = createMockRunner();
-      runner.runCommand
-        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 })
-        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 })
-        .mockResolvedValueOnce({
-          stdout: '> checkpoint now',
-          stderr: '',
-          exitCode: 0,
-        })
-        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 });
+      runner.runCommand.mockResolvedValue({
+        stdout: '> checkpoint now',
+        stderr: '',
+        exitCode: 0,
+      });
       const repository = new NodeTmuxSessionRepository(runner, '/proc', 0);
 
       await repository.sendKeys('session-a', 'checkpoint now');
 
-      expect(runner.runCommand.mock.calls).toHaveLength(4);
-      expect(runner.runCommand.mock.calls[3][1]).toEqual([
-        'send-keys',
-        '-t',
-        'session-a',
-        'Enter',
-      ]);
+      const commands = runner.runCommand.mock.calls.map((call) => call[1]);
+      expect(
+        commands.filter((args) => args.includes('capture-pane')),
+      ).toHaveLength(0);
+      expect(commands.filter((args) => args.includes('Enter'))).toHaveLength(1);
     });
 
     it('throws when sending the literal text fails', async () => {
