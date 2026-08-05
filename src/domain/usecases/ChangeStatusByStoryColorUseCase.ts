@@ -3,6 +3,7 @@ import { Project } from '../entities/Project';
 import { DateRepository } from './adapter-interfaces/DateRepository';
 import { StoryObjectMap } from '../entities/StoryObjectMap';
 import { ICEBOX_STATUS_NAME } from '../entities/WorkflowStatus';
+import { Member } from '../entities/Member';
 
 export class ChangeStatusByStoryColorUseCase {
   constructor(
@@ -19,6 +20,7 @@ export class ChangeStatusByStoryColorUseCase {
     org: string;
     repo: string;
     storyObjectMap: StoryObjectMap;
+    manager: Member['name'];
   }): Promise<void> => {
     const firstStatus = input.project.status.statuses[0];
     if (!firstStatus) {
@@ -50,6 +52,16 @@ export class ChangeStatusByStoryColorUseCase {
           );
         } else if (!isStoryDisabled) {
           if (issue.status && issue.status !== ICEBOX_STATUS_NAME) {
+            continue;
+          }
+          const hasNoStatus = !issue.status;
+          const isOwnedByNonManagerAssignee = issue.assignees.some(
+            (assignee) => assignee !== input.manager,
+          );
+          if (hasNoStatus && isOwnedByNonManagerAssignee) {
+            console.warn(
+              `ChangeStatusByStoryColorUseCase: skipping the first status write because the issue has no status and is assigned to someone other than the manager. issueUrl: ${issue.url} assignees: ${issue.assignees.join(', ')}`,
+            );
             continue;
           }
           await this.issueRepository.updateStatus(
