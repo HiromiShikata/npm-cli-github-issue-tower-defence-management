@@ -7,6 +7,7 @@ import { AnalyzeProblemByIssueUseCase } from './AnalyzeProblemByIssueUseCase';
 import { AnalyzeStoriesUseCase } from './AnalyzeStoriesUseCase';
 import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
 import { SetDependedIssueUrlForOpenTaskPRsUseCase } from './SetDependedIssueUrlForOpenTaskPRsUseCase';
+import { StaleTaskPullRequestCloseUseCase } from './StaleTaskPullRequestCloseUseCase';
 import { CreateEstimationIssueUseCase } from './CreateEstimationIssueUseCase';
 import { ConvertCheckboxToIssueInStoryIssueUseCase } from './ConvertCheckboxToIssueInStoryIssueUseCase';
 import { DateRepository } from './adapter-interfaces/DateRepository';
@@ -98,6 +99,8 @@ describe('HandleScheduledEventUseCase', () => {
       mock<ClearDependedIssueURLUseCase>();
     const mockSetDependedIssueUrlForOpenTaskPRsUseCase =
       mock<SetDependedIssueUrlForOpenTaskPRsUseCase>();
+    const mockStaleTaskPullRequestCloseUseCase =
+      mock<StaleTaskPullRequestCloseUseCase>();
     const mockCreateEstimationIssueUseCase =
       mock<CreateEstimationIssueUseCase>();
     const mockConvertCheckboxToIssueInStoryIssueUseCase =
@@ -133,6 +136,7 @@ describe('HandleScheduledEventUseCase', () => {
       mockAnalyzeStoriesUseCase,
       mockClearDependedIssueURLUseCase,
       mockSetDependedIssueUrlForOpenTaskPRsUseCase,
+      mockStaleTaskPullRequestCloseUseCase,
       mockCreateEstimationIssueUseCase,
       mockConvertCheckboxToIssueInStoryIssueUseCase,
       mockChangeStatusByStoryColorUseCase,
