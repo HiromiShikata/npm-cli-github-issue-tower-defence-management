@@ -45,6 +45,7 @@ import { BaseGitHubRepository } from '../../repositories/BaseGitHubRepository';
 import { AnalyzeStoriesUseCase } from '../../../domain/usecases/AnalyzeStoriesUseCase';
 import { ClearDependedIssueURLUseCase } from '../../../domain/usecases/ClearDependedIssueURLUseCase';
 import { SetDependedIssueUrlForOpenTaskPRsUseCase } from '../../../domain/usecases/SetDependedIssueUrlForOpenTaskPRsUseCase';
+import { StaleTaskPullRequestCloseUseCase } from '../../../domain/usecases/StaleTaskPullRequestCloseUseCase';
 import { CreateEstimationIssueUseCase } from '../../../domain/usecases/CreateEstimationIssueUseCase';
 import { ConvertCheckboxToIssueInStoryIssueUseCase } from '../../../domain/usecases/ConvertCheckboxToIssueInStoryIssueUseCase';
 import { ChangeStatusByStoryColorUseCase } from '../../../domain/usecases/ChangeStatusByStoryColorUseCase';
@@ -356,6 +357,8 @@ export class HandleScheduledEventUseCaseHandler {
     );
     const setDependedIssueUrlForOpenTaskPRsUseCase =
       new SetDependedIssueUrlForOpenTaskPRsUseCase(issueRepository);
+    const staleTaskPullRequestCloseUseCase =
+      new StaleTaskPullRequestCloseUseCase(issueRepository);
     const createEstimationIssueUseCase = new CreateEstimationIssueUseCase(
       issueRepository,
       systemDateRepository,
@@ -430,6 +433,7 @@ export class HandleScheduledEventUseCaseHandler {
       analyzeStoriesUseCase,
       clearDependedIssueURLUseCase,
       setDependedIssueUrlForOpenTaskPRsUseCase,
+      staleTaskPullRequestCloseUseCase,
       createEstimationIssueUseCase,
       convertCheckboxToIssueInStoryIssueUseCase,
       changeStatusByStoryColorUseCase,

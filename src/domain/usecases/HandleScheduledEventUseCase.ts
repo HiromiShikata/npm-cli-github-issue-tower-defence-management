@@ -13,6 +13,7 @@ import { AnalyzeProblemByIssueUseCase } from './AnalyzeProblemByIssueUseCase';
 import { AnalyzeStoriesUseCase } from './AnalyzeStoriesUseCase';
 import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
 import { SetDependedIssueUrlForOpenTaskPRsUseCase } from './SetDependedIssueUrlForOpenTaskPRsUseCase';
+import { StaleTaskPullRequestCloseUseCase } from './StaleTaskPullRequestCloseUseCase';
 import { CreateEstimationIssueUseCase } from './CreateEstimationIssueUseCase';
 import { ConvertCheckboxToIssueInStoryIssueUseCase } from './ConvertCheckboxToIssueInStoryIssueUseCase';
 import { ChangeStatusByStoryColorUseCase } from './ChangeStatusByStoryColorUseCase';
@@ -121,6 +122,7 @@ export class HandleScheduledEventUseCase {
     readonly analyzeStoriesUseCase: AnalyzeStoriesUseCase,
     readonly clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase,
     readonly setDependedIssueUrlForOpenTaskPRsUseCase: SetDependedIssueUrlForOpenTaskPRsUseCase,
+    readonly staleTaskPullRequestCloseUseCase: StaleTaskPullRequestCloseUseCase,
     readonly createEstimationIssueUseCase: CreateEstimationIssueUseCase,
     readonly convertCheckboxToIssueInStoryIssueUseCase: ConvertCheckboxToIssueInStoryIssueUseCase,
     readonly changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase,
@@ -510,6 +512,9 @@ ${JSON.stringify(e)}
     });
     await this.setDependedIssueUrlForOpenTaskPRsUseCase.run({
       project,
+      issues,
+    });
+    await this.staleTaskPullRequestCloseUseCase.run({
       issues,
     });
     await this.createEstimationIssueUseCase.run({
