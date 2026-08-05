@@ -1,3 +1,10 @@
+# [1.145.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.144.5...v1.145.0) (2026-08-05)
+
+
+### Features
+
+* **usecase:** close open pull requests whose linked task issues are closed ([#1387](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1387)) ([f5c2397](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f5c239757db4a525f34b059f3b0b3358ec821deb)), closes [#actions](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/actions)
+
 ## [1.144.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.144.4...v1.144.5) (2026-08-05)
 
 
