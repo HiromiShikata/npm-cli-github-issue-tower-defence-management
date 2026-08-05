@@ -1,3 +1,10 @@
+## [1.144.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.144.4...v1.144.5) (2026-08-05)
+
+
+### Bug Fixes
+
+* **tmux:** stop leaving blank lines in a session composer when sending keys ([#1384](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1384)) ([0bfa16e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0bfa16efa2ab4c9c52c21c01dd29549a5551d802)), closes [#1383](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1383)
+
 ## [1.144.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.144.3...v1.144.4) (2026-08-04)
 
 

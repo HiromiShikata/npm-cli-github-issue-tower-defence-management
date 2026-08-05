@@ -16,7 +16,6 @@ export declare class NodeTmuxSessionRepository implements TmuxSessionRepository 
     sendKeys: (sessionName: string, literalText: string) => Promise<void>;
     launchBareNameLeaderSession: (name: string) => Promise<void>;
     private sendEnter;
-    private messageStillInComposer;
     private delaySubmit;
 }
 //# sourceMappingURL=NodeTmuxSessionRepository.d.ts.map

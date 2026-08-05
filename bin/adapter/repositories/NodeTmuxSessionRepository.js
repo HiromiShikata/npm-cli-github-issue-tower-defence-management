@@ -39,8 +39,8 @@ const path = __importStar(require("path"));
 const clSessionScopeUnitName_1 = require("./clSessionScopeUnitName");
 const clSessionScopeUnitNameFromCgroupContent_1 = require("./clSessionScopeUnitNameFromCgroupContent");
 const DEFAULT_SEND_KEYS_SUBMIT_DELAY_MS = 1000;
-const SEND_KEYS_COMPOSER_PROBE_LENGTH = 40;
-const SEND_KEYS_COMPOSER_TAIL_LINES = 8;
+const BRACKETED_PASTE_START = '\x1b[200~';
+const BRACKETED_PASTE_END = '\x1b[201~';
 const shellSingleQuote = (value) => `'${value.replace(/'/g, `'\\''`)}'`;
 class NodeTmuxSessionRepository {
     constructor(localCommandRunner, procDirectory = '/proc', submitDelayMilliseconds = DEFAULT_SEND_KEYS_SUBMIT_DELAY_MS) {
@@ -136,17 +136,13 @@ class NodeTmuxSessionRepository {
                 '-t',
                 sessionName,
                 '-l',
-                literalText,
+                `${BRACKETED_PASTE_START}${literalText}${BRACKETED_PASTE_END}`,
             ]);
             if (literalResult.exitCode !== 0) {
                 throw new Error(`Failed to send keys to tmux session "${sessionName}": exit code ${literalResult.exitCode}${literalResult.stderr ? `: ${literalResult.stderr}` : ''}`);
             }
             await this.delaySubmit();
             await this.sendEnter(sessionName);
-            if (await this.messageStillInComposer(sessionName, literalText)) {
-                await this.delaySubmit();
-                await this.sendEnter(sessionName);
-            }
         };
         this.launchBareNameLeaderSession = async (name) => {
             const sessionName = name.replace(/[.:]/g, '_');
@@ -166,24 +162,6 @@ class NodeTmuxSessionRepository {
             if (enterResult.exitCode !== 0) {
                 throw new Error(`Failed to send Enter to tmux session "${sessionName}": exit code ${enterResult.exitCode}${enterResult.stderr ? `: ${enterResult.stderr}` : ''}`);
             }
-        };
-        this.messageStillInComposer = async (sessionName, literalText) => {
-            const probe = literalText
-                .trim()
-                .split('\n', 1)[0]
-                .slice(0, SEND_KEYS_COMPOSER_PROBE_LENGTH);
-            if (probe.length === 0) {
-                return false;
-            }
-            const { stdout, exitCode } = await this.localCommandRunner.runCommand('tmux', ['capture-pane', '-p', '-t', sessionName]);
-            if (exitCode !== 0) {
-                return false;
-            }
-            const tail = stdout
-                .split('\n')
-                .slice(-SEND_KEYS_COMPOSER_TAIL_LINES)
-                .join('\n');
-            return tail.includes(probe);
         };
         this.delaySubmit = async () => {
             if (this.submitDelayMilliseconds <= 0) {
