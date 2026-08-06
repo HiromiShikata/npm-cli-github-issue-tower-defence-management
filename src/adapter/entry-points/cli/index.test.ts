@@ -94,6 +94,7 @@ jest.mock('../console/ensureConsoleRunning', () => ({
   ensureConsoleRunning: jest.fn().mockResolvedValue(null),
 }));
 import * as ensureConsoleRunningModule from '../console/ensureConsoleRunning';
+import { GraphqlProjectRepository } from '../../repositories/GraphqlProjectRepository';
 
 import type { StartWebServerOptions } from '../console/webServer';
 
@@ -1946,7 +1947,12 @@ mysteryKey: 'value'
 
     it('should exit with error when --dashboardProjectNames is omitted', async () => {
       writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
-      const logSpy = jest.spyOn(console, 'log').mockImplementation();
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
 
       await expect(
         program.parseAsync([
@@ -1956,17 +1962,26 @@ mysteryKey: 'value'
           '--configFilePath',
           configFilePath,
         ]),
-      ).rejects.toThrow(
+      ).rejects.toThrow('process.exit called');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
         '--dashboardProjectNames must list at least one project name',
       );
+      expect(processExitSpy).toHaveBeenCalledWith(1);
       expect(mockStartWebServer).not.toHaveBeenCalled();
 
-      logSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
+      processExitSpy.mockRestore();
     });
 
     it('should exit with error when two --dashboardProjectNames share a display label', async () => {
       writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
-      const logSpy = jest.spyOn(console, 'log').mockImplementation();
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
 
       await expect(
         program.parseAsync([
@@ -1978,12 +1993,42 @@ mysteryKey: 'value'
           '--dashboardProjectNames',
           'acme,acmelabs',
         ]),
-      ).rejects.toThrow(
+      ).rejects.toThrow('process.exit called');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Dashboard project names acme and acmelabs share the display label ac',
       );
+      expect(processExitSpy).toHaveBeenCalledWith(1);
       expect(mockStartWebServer).not.toHaveBeenCalled();
 
-      logSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
+      processExitSpy.mockRestore();
+    });
+
+    it('should validate --dashboardProjectNames before constructing the GitHub repositories', async () => {
+      writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
+      jest.mocked(GraphqlProjectRepository).mockClear();
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
+
+      await expect(
+        program.parseAsync([
+          'node',
+          'test',
+          'serveWeb',
+          '--configFilePath',
+          configFilePath,
+        ]),
+      ).rejects.toThrow('process.exit called');
+
+      expect(jest.mocked(GraphqlProjectRepository)).not.toHaveBeenCalled();
+
+      consoleErrorSpy.mockRestore();
+      processExitSpy.mockRestore();
     });
 
     it('should use the provided --port and --consoleDataOutputDir', async () => {

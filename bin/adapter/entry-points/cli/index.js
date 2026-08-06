@@ -80,9 +80,16 @@ const parseDashboardProjectNames = (raw) => {
         .map((name) => name.trim())
         .filter((name) => name.length > 0);
     if (names.length === 0) {
-        throw new Error('--dashboardProjectNames must list at least one project name');
+        console.error('--dashboardProjectNames must list at least one project name');
+        return process.exit(1);
     }
-    (0, DashboardProjectCode_1.assertDashboardDisplayLabelsUnique)(names);
+    try {
+        (0, DashboardProjectCode_1.assertDashboardDisplayLabelsUnique)(names);
+    }
+    catch (error) {
+        console.error(error instanceof Error ? error.message : String(error));
+        return process.exit(1);
+    }
     return names;
 };
 const buildGithubRepositoryParams = (localStorageRepository, token) => [
@@ -421,6 +428,7 @@ const runServeWeb = async (options) => {
         console.error('projectUrl is required. Provide it via the config file or project README.');
         process.exit(1);
     }
+    const dashboardProjectNames = parseDashboardProjectNames(options.dashboardProjectNames);
     const projectName = config.projectName ?? 'default';
     const localStorageRepository = new LocalStorageRepository_1.LocalStorageRepository();
     const cachePath = `./tmp/cache/${projectName}`;
@@ -458,7 +466,6 @@ const runServeWeb = async (options) => {
     const inTmuxDataDir = options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR;
     const dashboardDir = options.dashboardDir ?? DEFAULT_DASHBOARD_DIR;
     const dashboardDataDir = options.dashboardDataDir ?? DEFAULT_DASHBOARD_DATA_DIR;
-    const dashboardProjectNames = parseDashboardProjectNames(options.dashboardProjectNames);
     await (0, webServer_1.startWebServer)({
         accessToken,
         uiDistDir,
