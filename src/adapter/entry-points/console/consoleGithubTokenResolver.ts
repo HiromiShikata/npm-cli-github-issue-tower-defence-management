@@ -26,6 +26,30 @@ export const createConsoleIssueRepositoryResolver = <IssueRepositoryType>(
   };
 };
 
+export const extractProjectOwner = (projectUrl: string): string | null => {
+  const match = projectUrl.match(
+    /^https:\/\/github\.com\/(?:orgs|users)\/([A-Za-z0-9._-]+)\/projects\/\d+/,
+  );
+  return match ? match[1] : null;
+};
+
+export const createConsoleProjectRepositoryResolver = <ProjectRepositoryType>(
+  resolveGithubToken: ConsoleGithubTokenResolver,
+  buildProjectRepositoryForToken: (
+    githubToken: string,
+  ) => ProjectRepositoryType,
+): ((projectUrl: string) => ProjectRepositoryType) => {
+  return (projectUrl: string): ProjectRepositoryType => {
+    const projectOwner = extractProjectOwner(projectUrl);
+    if (projectOwner === null) {
+      throw new Error(
+        `The project owner cannot be read from the project url: ${projectUrl}`,
+      );
+    }
+    return buildProjectRepositoryForToken(resolveGithubToken(projectOwner));
+  };
+};
+
 export const createConsoleGithubTokenResolver = (
   defaultToken: string,
   githubTokenFilePathByRepositoryOwner: Record<string, string> | null,

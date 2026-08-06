@@ -46,12 +46,14 @@ import {
 } from '../console/consoleReadApi';
 import {
   buildPjcodeToProjectUrl,
+  createConsoleProjectLoader,
   createConsoleProjectResolver,
   createPjcodeConfigChecker,
 } from '../console/consoleProjectResolver';
 import {
   createConsoleGithubTokenResolver,
   createConsoleIssueRepositoryResolver,
+  createConsoleProjectRepositoryResolver,
 } from '../console/consoleGithubTokenResolver';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { OauthTokenSelectHandler } from '../handlers/OauthTokenSelectHandler';
@@ -798,6 +800,27 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
       resolveGithubToken,
       buildIssueRepositoryForToken,
     );
+  const projectRepositoryByToken = new Map<string, GraphqlProjectRepository>();
+  projectRepositoryByToken.set(token, projectRepository);
+  const buildProjectRepositoryForToken = (
+    repositoryToken: string,
+  ): GraphqlProjectRepository => {
+    const alreadyBuilt = projectRepositoryByToken.get(repositoryToken);
+    if (alreadyBuilt !== undefined) {
+      return alreadyBuilt;
+    }
+    const built = new GraphqlProjectRepository(
+      ...buildGithubRepositoryParams(localStorageRepository, repositoryToken),
+      localStorageCacheRepository,
+    );
+    projectRepositoryByToken.set(repositoryToken, built);
+    return built;
+  };
+  const resolveProjectRepository =
+    createConsoleProjectRepositoryResolver<GraphqlProjectRepository>(
+      resolveGithubToken,
+      buildProjectRepositoryForToken,
+    );
 
   const pjcodeToProjectUrl = buildPjcodeToProjectUrl(
     projectName,
@@ -807,30 +830,12 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
   const isPjcodeConfigured = createPjcodeConfigChecker(pjcodeToProjectUrl);
   const resolveProject = createConsoleProjectResolver(
     pjcodeToProjectUrl,
-    async (targetProjectUrl: string) => {
-      const targetProjectId =
-        await projectRepository.findProjectIdByUrl(targetProjectUrl);
-      if (!targetProjectId) {
-        console.error(`No project found for projectUrl ${targetProjectUrl}`);
-        return null;
-      }
-      // Prefer the Project the TDPM daemon already cached locally (status/story
-      // option ids and field ids), which needs no GraphQL. Fall back to a
-      // GraphQL project load only when the cache has not been populated yet.
-      const cachedProject =
-        await issueRepository.getCachedProject(targetProjectId);
-      if (cachedProject) {
-        return cachedProject;
-      }
-      const loadedProject = await projectRepository.getProject(targetProjectId);
-      if (!loadedProject) {
-        console.error(
-          `Failed to load project for projectUrl ${targetProjectUrl}`,
-        );
-        return null;
-      }
-      return loadedProject;
-    },
+    createConsoleProjectLoader(
+      resolveProjectRepository,
+      (targetProjectId: string) =>
+        issueRepository.getCachedProject(targetProjectId),
+      (message: string) => console.error(message),
+    ),
   );
 
   const uiDistDir = path.join(__dirname, '..', 'console', 'ui-dist');

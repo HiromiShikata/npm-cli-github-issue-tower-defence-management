@@ -2,6 +2,7 @@ import { mock } from 'jest-mock-extended';
 import { Project } from '../../../domain/entities/Project';
 import {
   buildPjcodeToProjectUrl,
+  createConsoleProjectLoader,
   createConsoleProjectResolver,
   createPjcodeConfigChecker,
 } from './consoleProjectResolver';
@@ -105,5 +106,95 @@ describe('createConsoleProjectResolver', () => {
     await resolver('acme');
     await resolver('acme');
     expect(loadProject).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('createConsoleProjectLoader', () => {
+  const globexProjectOfLoader: Project = {
+    ...mock<Project>(),
+    id: 'PVT_globex',
+  };
+
+  const buildProjectRepositoryResolver = (
+    findProjectIdByUrl: (projectUrl: string) => Promise<string | null>,
+    getProject: (projectId: string) => Promise<Project | null>,
+  ) =>
+    jest.fn((projectUrl: string) => {
+      if (projectUrl !== 'https://github.com/orgs/globex/projects/18') {
+        throw new Error(`unexpected project url: ${projectUrl}`);
+      }
+      return { findProjectIdByUrl, getProject };
+    });
+
+  it('resolves the project id through the repository chosen for the project url', async () => {
+    const resolveProjectRepository = buildProjectRepositoryResolver(
+      async () => 'PVT_globex',
+      async () => globexProjectOfLoader,
+    );
+    const loadProject = createConsoleProjectLoader(
+      resolveProjectRepository,
+      async () => null,
+      () => undefined,
+    );
+
+    await expect(
+      loadProject('https://github.com/orgs/globex/projects/18'),
+    ).resolves.toBe(globexProjectOfLoader);
+    expect(resolveProjectRepository).toHaveBeenCalledWith(
+      'https://github.com/orgs/globex/projects/18',
+    );
+  });
+
+  it('prefers the locally cached project over a GraphQL project load', async () => {
+    const getProject = jest.fn(async () => globexProjectOfLoader);
+    const loadProject = createConsoleProjectLoader(
+      buildProjectRepositoryResolver(async () => 'PVT_globex', getProject),
+      async (projectId: string) =>
+        projectId === 'PVT_globex' ? globexProjectOfLoader : null,
+      () => undefined,
+    );
+
+    await expect(
+      loadProject('https://github.com/orgs/globex/projects/18'),
+    ).resolves.toBe(globexProjectOfLoader);
+    expect(getProject).not.toHaveBeenCalled();
+  });
+
+  it('reports and returns null when the project id cannot be resolved', async () => {
+    const reportedMessages: string[] = [];
+    const loadProject = createConsoleProjectLoader(
+      buildProjectRepositoryResolver(
+        async () => null,
+        async () => globexProjectOfLoader,
+      ),
+      async () => null,
+      (message: string) => reportedMessages.push(message),
+    );
+
+    await expect(
+      loadProject('https://github.com/orgs/globex/projects/18'),
+    ).resolves.toBeNull();
+    expect(reportedMessages).toEqual([
+      'No project found for projectUrl https://github.com/orgs/globex/projects/18',
+    ]);
+  });
+
+  it('reports and returns null when the project cannot be loaded', async () => {
+    const reportedMessages: string[] = [];
+    const loadProject = createConsoleProjectLoader(
+      buildProjectRepositoryResolver(
+        async () => 'PVT_globex',
+        async () => null,
+      ),
+      async () => null,
+      (message: string) => reportedMessages.push(message),
+    );
+
+    await expect(
+      loadProject('https://github.com/orgs/globex/projects/18'),
+    ).resolves.toBeNull();
+    expect(reportedMessages).toEqual([
+      'Failed to load project for projectUrl https://github.com/orgs/globex/projects/18',
+    ]);
   });
 });
