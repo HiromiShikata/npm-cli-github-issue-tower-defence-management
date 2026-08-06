@@ -4,6 +4,7 @@ import { LocalStorageCacheRepository } from './LocalStorageCacheRepository';
 import { LocalStorageRepository } from './LocalStorageRepository';
 import { ProjectRepository } from '../../domain/usecases/adapter-interfaces/ProjectRepository';
 import { FieldOption, Project } from '../../domain/entities/Project';
+import { RequiredProjectFieldDefinition } from '../../domain/entities/RequiredProjectField';
 import { normalizeFieldName } from './utils';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
@@ -38,6 +39,8 @@ export class GraphqlProjectRepository
       | 'getByUrl'
       | 'updateStoryList'
       | 'updateStatusList'
+      | 'listFieldNames'
+      | 'createField'
     >
 {
   private readonly projectIdCache = new Map<string, string>();
@@ -441,6 +444,98 @@ export class GraphqlProjectRepository
       throw new Error(`Project not found for ID: ${projectId}`);
     }
     return project;
+  };
+  listFieldNames = async (project: Project): Promise<string[]> => {
+    const query = `query ListProjectV2FieldNames($projectId: ID!) {
+  node(id: $projectId) {
+    ... on ProjectV2 {
+      fields(first: 100) {
+        nodes {
+          ... on ProjectV2FieldCommon {
+            name
+          }
+        }
+      }
+    }
+  }
+}`;
+    const response = await postGithubGraphqlJson<{
+      data?: {
+        node: {
+          fields: {
+            nodes: { name?: string }[];
+          };
+        } | null;
+      };
+      errors?: { message: string }[];
+    }>({
+      ghToken: this.ghToken,
+      query,
+      variables: { projectId: project.id },
+    });
+    if (!response.data || !response.data.node) {
+      const errorMessages = response.errors
+        ? response.errors.map((e) => e.message).join('; ')
+        : 'no data field in response';
+      throw new Error(
+        `GitHub GraphQL API returned no data for listFieldNames: ${errorMessages}`,
+      );
+    }
+    return response.data.node.fields.nodes
+      .map((field) => field.name)
+      .filter((name): name is string => typeof name === 'string');
+  };
+  createField = async (
+    project: Project,
+    field: RequiredProjectFieldDefinition,
+  ): Promise<void> => {
+    const mutation = `mutation CreateProjectV2Field($projectId: ID!, $dataType: ProjectV2CustomFieldType!, $name: String!, $singleSelectOptions: [ProjectV2SingleSelectFieldOptionInput!]) {
+  createProjectV2Field(input: {
+    projectId: $projectId
+    dataType: $dataType
+    name: $name
+    singleSelectOptions: $singleSelectOptions
+  }) {
+    projectV2Field {
+      ... on ProjectV2FieldCommon {
+        id
+        name
+      }
+    }
+  }
+}`;
+    const response = await postGithubGraphqlJson<{
+      data?: {
+        createProjectV2Field: {
+          projectV2Field: { id: string; name: string };
+        };
+      };
+      errors?: { message: string }[];
+    }>({
+      ghToken: this.ghToken,
+      query: mutation,
+      variables: {
+        projectId: project.id,
+        dataType: field.dataType,
+        name: field.name,
+        singleSelectOptions:
+          field.dataType === 'SINGLE_SELECT'
+            ? field.options.map(({ name, color, description }) => ({
+                name,
+                color,
+                description,
+              }))
+            : null,
+      },
+    });
+    if (!response.data) {
+      const errorMessages = response.errors
+        ? response.errors.map((e) => e.message).join('; ')
+        : 'no data field in response';
+      throw new Error(
+        `GitHub GraphQL API returned no data for createField ${field.name}: ${errorMessages}`,
+      );
+    }
   };
   updateStoryList = async (
     project: Project,

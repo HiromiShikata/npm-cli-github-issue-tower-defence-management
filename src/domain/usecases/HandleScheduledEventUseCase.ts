@@ -29,6 +29,7 @@ import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUse
 import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
 import { resolveLabelsAsLlmAgentName } from './resolveLabelsAsLlmAgentName';
 import { resolveAllowedIssueAuthors } from './resolveAllowedIssueAuthors';
+import { ProjectRequiredFieldCreateUseCase } from './ProjectRequiredFieldCreateUseCase';
 import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
 import { UpdateRateLimitCacheUseCase } from './UpdateRateLimitCacheUseCase';
 import {
@@ -114,6 +115,7 @@ const isTransientSpreadsheetApiError = (error: Error): boolean => {
 
 export class HandleScheduledEventUseCase {
   constructor(
+    readonly projectRequiredFieldCreateUseCase: ProjectRequiredFieldCreateUseCase,
     readonly setupTowerDefenceProjectUseCase: SetupTowerDefenceProjectUseCase,
     readonly actionAnnouncementUseCase: ActionAnnouncementUseCase,
     readonly setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase,
@@ -187,6 +189,9 @@ export class HandleScheduledEventUseCase {
     if (input.disabled) {
       return null;
     }
+    await this.projectRequiredFieldCreateUseCase.run({
+      projectUrl: input.projectUrl,
+    });
     await this.setupTowerDefenceProjectUseCase.run({
       projectUrl: input.projectUrl,
     });

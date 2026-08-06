@@ -24,6 +24,7 @@ import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCa
 import { StartPreparationUseCase } from './StartPreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
 import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
+import { ProjectRequiredFieldCreateUseCase } from './ProjectRequiredFieldCreateUseCase';
 import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
 import { UpdateRateLimitCacheUseCase } from './UpdateRateLimitCacheUseCase';
 import { DailySecurityScanUseCase } from './DailySecurityScanUseCase';
@@ -85,6 +86,8 @@ describe('HandleScheduledEventUseCase', () => {
   });
 
   describe('run', () => {
+    const mockProjectRequiredFieldCreateUseCase =
+      mock<ProjectRequiredFieldCreateUseCase>();
     const mockSetupTowerDefenceProjectUseCase =
       mock<SetupTowerDefenceProjectUseCase>();
     const mockActionAnnouncementUseCase = mock<ActionAnnouncementUseCase>();
@@ -128,6 +131,7 @@ describe('HandleScheduledEventUseCase', () => {
     const mockIssueRepository = mock<IssueRepository>();
 
     const useCase = new HandleScheduledEventUseCase(
+      mockProjectRequiredFieldCreateUseCase,
       mockSetupTowerDefenceProjectUseCase,
       mockActionAnnouncementUseCase,
       mockSetWorkflowManagementIssueToStoryUseCase,
