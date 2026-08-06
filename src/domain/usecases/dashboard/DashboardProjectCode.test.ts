@@ -10,6 +10,7 @@ describe('DashboardProjectCode', () => {
     expect(toDashboardDisplayLabel('xmile')).toBe('xm');
     expect(toDashboardDisplayLabel('xcare')).toBe('xc');
     expect(toDashboardDisplayLabel('utage3')).toBe('ut');
+    expect(toDashboardDisplayLabel('cmg')).toBe('cm');
   });
 
   it('exposes the project names in the same order as the label mapping', () => {
@@ -18,6 +19,7 @@ describe('DashboardProjectCode', () => {
       'xmile',
       'xcare',
       'utage3',
+      'cmg',
     ]);
     expect(DASHBOARD_PROJECT_NAMES).toEqual(
       Object.keys(DASHBOARD_DISPLAY_LABEL_BY_PROJECT_NAME),

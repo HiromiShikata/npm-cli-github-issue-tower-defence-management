@@ -118,6 +118,7 @@ describe('dashboard emitter filename matches composer lookup key', () => {
       xmile: [makeIssue({ status: 'Awaiting Quality Check' })],
       xcare: [makeIssue({ status: 'Awaiting Workspace' })],
       utage3: [makeIssue({ status: 'Todo by human' })],
+      cmg: [makeIssue({ status: 'Preparation' })],
     };
     for (const projectName of DASHBOARD_PROJECT_NAMES) {
       writeDashboardRow({
@@ -167,6 +168,7 @@ describe('dashboard emitter filename matches composer lookup key', () => {
         wrap(
           `🟢${toDashboardDisplayLabel('utage3')}   0   1   0   0   0   0   0`,
         ),
+        wrap(`🟢${toDashboardDisplayLabel('cmg')}   0   0   0   0   1   0   0`),
         wrap(''),
       ].join('\n') + '\n';
     expect(composed).toBe(expected);

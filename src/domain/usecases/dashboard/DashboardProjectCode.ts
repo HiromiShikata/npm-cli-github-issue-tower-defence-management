@@ -3,6 +3,7 @@ export const DASHBOARD_DISPLAY_LABEL_BY_PROJECT_NAME: Record<string, string> = {
   xmile: 'xm',
   xcare: 'xc',
   utage3: 'ut',
+  cmg: 'cm',
 };
 
 export const DASHBOARD_PROJECT_NAMES: string[] = Object.keys(
