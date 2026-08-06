@@ -4,7 +4,13 @@ import { LocalStorageCacheRepository } from './LocalStorageCacheRepository';
 import { LocalStorageRepository } from './LocalStorageRepository';
 import { ProjectRepository } from '../../domain/usecases/adapter-interfaces/ProjectRepository';
 import { FieldOption, Project } from '../../domain/entities/Project';
-import { RequiredProjectFieldDefinition } from '../../domain/entities/RequiredProjectField';
+import {
+  DEPENDED_ISSUE_URL_FIELD_NAME,
+  NEXT_ACTION_DATE_FIELD_NAME,
+  NEXT_ACTION_HOUR_FIELD_NAME,
+  RequiredProjectFieldDefinition,
+  STORY_FIELD_NAME,
+} from '../../domain/entities/RequiredProjectField';
 import { normalizeFieldName } from './utils';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
@@ -342,10 +348,14 @@ export class GraphqlProjectRepository
       return null;
     }
     const nextActionDate = project.fields.nodes.find(
-      (field) => normalizeFieldName(field.name) === 'nextactiondate',
+      (field) =>
+        normalizeFieldName(field.name) ===
+        normalizeFieldName(NEXT_ACTION_DATE_FIELD_NAME),
     );
     const nextActionHour = project.fields.nodes.find(
-      (field) => normalizeFieldName(field.name) === 'nextactionhour',
+      (field) =>
+        normalizeFieldName(field.name) ===
+        normalizeFieldName(NEXT_ACTION_HOUR_FIELD_NAME),
     );
     const status = project.fields.nodes.find(
       (field) => normalizeFieldName(field.name) === 'status',
@@ -354,7 +364,8 @@ export class GraphqlProjectRepository
       throw new Error('status field is not found');
     }
     const story = project.fields.nodes.find(
-      (field) => normalizeFieldName(field.name) === 'story',
+      (field) =>
+        normalizeFieldName(field.name) === normalizeFieldName(STORY_FIELD_NAME),
     );
     const workflowManagementStory = story?.options.find((option) =>
       normalizeFieldName(option.name).includes('workflowmanagement'),
@@ -366,7 +377,7 @@ export class GraphqlProjectRepository
     const dependedIssueUrlSeparatedByComma = project.fields.nodes.find(
       (field) =>
         normalizeFieldName(field.name).startsWith(
-          'dependedissueurlseparatedbycomma',
+          normalizeFieldName(DEPENDED_ISSUE_URL_FIELD_NAME),
         ),
     );
     const completionDate50PercentConfidence = project.fields.nodes.find(

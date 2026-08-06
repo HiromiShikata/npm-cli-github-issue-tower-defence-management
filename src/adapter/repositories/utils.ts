@@ -1,3 +1,5 @@
+import { normalizeProjectFieldName } from '../../domain/entities/ProjectFieldName';
+
 // 0:50 , 1:10 = 0:20
 // 23:50 , 0:00 = 0:10
 // 0:20, 0:10 = 23:50
@@ -40,6 +42,4 @@ export const totalDuration = (
   return `${String(totalHour).padStart(2, '0')}:${String(totalMinute).padStart(2, '0')}`;
 };
 
-export const normalizeFieldName = (fieldName: string) => {
-  return fieldName.toLowerCase().replace(/[\s-()]/g, '');
-};
+export const normalizeFieldName = normalizeProjectFieldName;

@@ -8,9 +8,6 @@ export type RequiredProjectFieldDefinition = {
   options: Omit<FieldOption, 'id'>[];
 };
 
-export const normalizeProjectFieldName = (name: string): string =>
-  name.toLowerCase().replace(/[^a-z0-9]/g, '');
-
 const storyOption = (
   name: string,
   color: FieldOption['color'],

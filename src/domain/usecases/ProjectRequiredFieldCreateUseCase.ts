@@ -1,8 +1,6 @@
 import { Project } from '../entities/Project';
-import {
-  normalizeProjectFieldName,
-  REQUIRED_PROJECT_FIELDS,
-} from '../entities/RequiredProjectField';
+import { normalizeProjectFieldName } from '../entities/ProjectFieldName';
+import { REQUIRED_PROJECT_FIELDS } from '../entities/RequiredProjectField';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 
 export class ProjectRequiredFieldCreateUseCase {
