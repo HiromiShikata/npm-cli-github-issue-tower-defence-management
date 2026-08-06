@@ -20,7 +20,7 @@ jest.mock('../lib/mermaidLoader', () => ({
 }));
 
 const listPayload = (tab: string) => ({
-  pjcode: 'umino',
+  pjcode: 'acme',
   generatedAt: '2026-06-19T00:00:00.000Z',
   statusOptions: [{ id: 's1', name: 'Awaiting Workspace', color: 'BLUE' }],
   storyOptions: [{ id: 'st1', name: 'TDPM Console port', color: 'BLUE' }],
@@ -89,7 +89,7 @@ const installFetch = (): void => {
 describe('ConsolePage', () => {
   beforeEach(() => {
     localStorage.clear();
-    window.history.replaceState({}, '', '/projects/umino/prs?k=token');
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
     installFetch();
   });
 
@@ -254,7 +254,7 @@ describe('ConsolePage', () => {
       expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
     });
     expect(queryByText('TDPM Console')).toBeNull();
-    expect(queryByText('project: umino')).toBeNull();
+    expect(queryByText('project: acme')).toBeNull();
   });
 
   it('removes a processed workflow-blocker item from the list and decrements its tab badge, like every other tab', async () => {
@@ -312,7 +312,7 @@ describe('ConsolePage', () => {
     });
     global.fetch = fetchMock as unknown as typeof fetch;
     localStorage.setItem(
-      'pv_overlay_umino',
+      'pv_overlay_acme',
       JSON.stringify({
         PVTI_B1: {
           ts: Date.parse('2026-06-19T00:05:00.000Z'),
@@ -324,7 +324,7 @@ describe('ConsolePage', () => {
     window.history.replaceState(
       {},
       '',
-      '/projects/umino/workflow-blocker?k=token',
+      '/projects/acme/workflow-blocker?k=token',
     );
 
     const { getByText, queryByText } = render(<ConsolePage />);
@@ -378,7 +378,7 @@ describe('ConsolePage', () => {
     });
     global.fetch = fetchMock as unknown as typeof fetch;
     localStorage.setItem(
-      'pv_overlay_umino',
+      'pv_overlay_acme',
       JSON.stringify({
         PVTI_B1: {
           ts: Date.parse('2026-06-18T23:00:00.000Z'),
@@ -390,7 +390,7 @@ describe('ConsolePage', () => {
     window.history.replaceState(
       {},
       '',
-      '/projects/umino/workflow-blocker?k=token',
+      '/projects/acme/workflow-blocker?k=token',
     );
 
     const { getByText } = render(<ConsolePage />);
@@ -462,7 +462,7 @@ describe('ConsolePage', () => {
 });
 
 const twoItemPrPayload = () => ({
-  pjcode: 'umino',
+  pjcode: 'acme',
   generatedAt: '2026-06-19T00:00:00.000Z',
   statusOptions: [{ id: 's1', name: 'Awaiting Workspace', color: 'BLUE' }],
   storyOptions: [{ id: 'st1', name: 'TDPM Console port', color: 'BLUE' }],
@@ -533,7 +533,7 @@ const swipeDetailScreen = (
 describe('ConsolePage swipe navigation', () => {
   beforeEach(() => {
     localStorage.clear();
-    window.history.replaceState({}, '', '/projects/umino/prs?k=token');
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
     const fetchMock = jest.fn(async (url: string) => {
       const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
       if (listMatch !== null) {
@@ -601,7 +601,7 @@ describe('ConsolePage swipe navigation', () => {
 describe('ConsolePage auto-advance', () => {
   beforeEach(() => {
     localStorage.clear();
-    window.history.replaceState({}, '', '/projects/umino/prs?k=token');
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
     const fetchMock = jest.fn(async (url: string) => {
       const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
       if (listMatch !== null) {
@@ -644,7 +644,7 @@ describe('ConsolePage auto-advance', () => {
 describe('ConsolePage scroll reset', () => {
   beforeEach(() => {
     localStorage.clear();
-    window.history.replaceState({}, '', '/projects/umino/prs?k=token');
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
     const fetchMock = jest.fn(async (url: string) => {
       const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
       if (listMatch !== null) {
@@ -706,7 +706,7 @@ describe('ConsolePage scroll reset', () => {
 describe('ConsolePage comment composer isolation', () => {
   beforeEach(() => {
     localStorage.clear();
-    window.history.replaceState({}, '', '/projects/umino/prs?k=token');
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
     const fetchMock = jest.fn(async (url: string, init?: RequestInit) => {
       const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
       if (listMatch !== null) {
@@ -784,7 +784,7 @@ describe('ConsolePage comment composer isolation', () => {
 describe('ConsolePage auto-advance tab', () => {
   beforeEach(() => {
     localStorage.clear();
-    window.history.replaceState({}, '', '/projects/umino/prs?k=token');
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
     installFetch();
   });
 

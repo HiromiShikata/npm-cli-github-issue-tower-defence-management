@@ -21,15 +21,15 @@ const counts = (
 
 describe('parseTabFromPath', () => {
   it('reads a known tab from the project path', () => {
-    expect(parseTabFromPath('/projects/umino/triage')).toBe('triage');
+    expect(parseTabFromPath('/projects/acme/triage')).toBe('triage');
   });
 
   it('returns null for an unknown tab segment', () => {
-    expect(parseTabFromPath('/projects/umino/unknown')).toBeNull();
+    expect(parseTabFromPath('/projects/acme/unknown')).toBeNull();
   });
 
   it('returns null when there is no tab segment', () => {
-    expect(parseTabFromPath('/projects/umino')).toBeNull();
+    expect(parseTabFromPath('/projects/acme')).toBeNull();
   });
 });
 
@@ -45,39 +45,31 @@ describe('parseItemKeyFromHash', () => {
 
 describe('useConsoleNavigation', () => {
   beforeEach(() => {
-    window.history.replaceState({}, '', '/projects/umino/prs?k=token');
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
   });
 
   it('reads the active tab from the path and no selected item', () => {
-    const { result } = renderHook(() =>
-      useConsoleNavigation('umino', counts()),
-    );
+    const { result } = renderHook(() => useConsoleNavigation('acme', counts()));
     expect(result.current.activeTab).toBe('prs');
     expect(result.current.selectedItemKey).toBeNull();
   });
 
   it('builds a project tab href', () => {
-    const { result } = renderHook(() =>
-      useConsoleNavigation('umino', counts()),
-    );
-    expect(result.current.tabHref('triage')).toBe('/projects/umino/triage');
+    const { result } = renderHook(() => useConsoleNavigation('acme', counts()));
+    expect(result.current.tabHref('triage')).toBe('/projects/acme/triage');
   });
 
   it('selects a tab and updates the path', () => {
-    const { result } = renderHook(() =>
-      useConsoleNavigation('umino', counts()),
-    );
+    const { result } = renderHook(() => useConsoleNavigation('acme', counts()));
     act(() => {
       result.current.selectTab('unread');
     });
     expect(result.current.activeTab).toBe('unread');
-    expect(window.location.pathname).toBe('/projects/umino/unread');
+    expect(window.location.pathname).toBe('/projects/acme/unread');
   });
 
   it('opens an item and reflects it in the hash', () => {
-    const { result } = renderHook(() =>
-      useConsoleNavigation('umino', counts()),
-    );
+    const { result } = renderHook(() => useConsoleNavigation('acme', counts()));
     act(() => {
       result.current.openItem('PVTI_open');
     });
@@ -86,10 +78,8 @@ describe('useConsoleNavigation', () => {
   });
 
   it('closes an item and clears the hash', () => {
-    window.history.replaceState({}, '', '/projects/umino/prs#item/PVTI_open');
-    const { result } = renderHook(() =>
-      useConsoleNavigation('umino', counts()),
-    );
+    window.history.replaceState({}, '', '/projects/acme/prs#item/PVTI_open');
+    const { result } = renderHook(() => useConsoleNavigation('acme', counts()));
     expect(result.current.selectedItemKey).toBe('PVTI_open');
     act(() => {
       result.current.closeItem();
@@ -101,13 +91,13 @@ describe('useConsoleNavigation', () => {
 
 describe('useConsoleNavigation default tab without a tab segment', () => {
   beforeEach(() => {
-    window.history.replaceState({}, '', '/projects/umino?k=token');
+    window.history.replaceState({}, '', '/projects/acme?k=token');
   });
 
   it('lands on the left-most tab when all tabs are non-empty', () => {
     const { result } = renderHook(() =>
       useConsoleNavigation(
-        'umino',
+        'acme',
         counts({
           'workflow-blocker': 3,
           prs: 5,
@@ -124,7 +114,7 @@ describe('useConsoleNavigation default tab without a tab segment', () => {
   it('skips the empty left-most tab and lands on the next non-empty tab', () => {
     const { result } = renderHook(() =>
       useConsoleNavigation(
-        'umino',
+        'acme',
         counts({ 'workflow-blocker': 0, prs: 0, triage: 8 }),
       ),
     );
@@ -132,16 +122,14 @@ describe('useConsoleNavigation default tab without a tab segment', () => {
   });
 
   it('falls back to the first tab when every tab is empty', () => {
-    const { result } = renderHook(() =>
-      useConsoleNavigation('umino', counts()),
-    );
+    const { result } = renderHook(() => useConsoleNavigation('acme', counts()));
     expect(result.current.activeTab).toBe('workflow-blocker');
   });
 
   it('updates the default tab when counts arrive after the initial render', () => {
     const { result, rerender } = renderHook(
       ({ tabCounts }: { tabCounts: Record<ConsoleTabName, number> }) =>
-        useConsoleNavigation('umino', tabCounts),
+        useConsoleNavigation('acme', tabCounts),
       { initialProps: { tabCounts: counts() } },
     );
     expect(result.current.activeTab).toBe('workflow-blocker');
@@ -150,9 +138,9 @@ describe('useConsoleNavigation default tab without a tab segment', () => {
   });
 
   it('keeps the tab from the path even when counts are present', () => {
-    window.history.replaceState({}, '', '/projects/umino/triage?k=token');
+    window.history.replaceState({}, '', '/projects/acme/triage?k=token');
     const { result } = renderHook(() =>
-      useConsoleNavigation('umino', counts({ unread: 6 })),
+      useConsoleNavigation('acme', counts({ unread: 6 })),
     );
     expect(result.current.activeTab).toBe('triage');
   });

@@ -195,21 +195,21 @@ describe('writeInTmuxByHumanData', () => {
   });
 
   it('writes index files listing configured projects whose per-project file exists', () => {
-    fs.writeFileSync(file('xmile.json'), '[]\n');
+    fs.writeFileSync(file('globex.json'), '[]\n');
     writeInTmuxByHumanData({
       ...baseParams(outDir),
-      inTmuxProjectOrder: ['demo', 'xmile', 'xcare'],
+      inTmuxProjectOrder: ['demo', 'globex', 'initech'],
     });
     expect(readJson(file('index.json'))).toEqual({
-      projects: ['demo', 'xmile'],
+      projects: ['demo', 'globex'],
     });
     expect(readJson(file('index.v2.json'))).toEqual({
       version: 2,
-      projects: ['demo', 'xmile'],
+      projects: ['demo', 'globex'],
     });
     expect(readJson(file('index.v3.json'))).toEqual({
       version: 3,
-      projects: ['demo', 'xmile'],
+      projects: ['demo', 'globex'],
     });
   });
 

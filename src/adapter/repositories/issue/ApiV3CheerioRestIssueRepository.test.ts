@@ -3092,7 +3092,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = await repository.findRelatedOpenPRs(
-        'https://github.com/HiromiShikata/umino-corporait-operation/issues/30106',
+        'https://github.com/HiromiShikata/acme-corporait-operation/issues/30106',
       );
 
       expect(result).toHaveLength(1);

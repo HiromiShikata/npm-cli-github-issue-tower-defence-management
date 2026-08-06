@@ -54,14 +54,20 @@ describe('ensureConsoleRunning', () => {
 
   it('should short-circuit and return null when the port already responds', async () => {
     const port = await startProbeServer();
-    const result = await ensureConsoleRunning('/path/to/config.yaml', port);
+    const result = await ensureConsoleRunning('/path/to/config.yaml', port, [
+      'acme',
+      'globex',
+    ]);
     expect(spawnCalls).toHaveLength(0);
     expect(result).toBeNull();
   });
 
   it('should spawn serveWeb when the port is unresponsive', async () => {
     const unusedPort = await findFreePort();
-    await ensureConsoleRunning('/path/to/config.yaml', unusedPort);
+    await ensureConsoleRunning('/path/to/config.yaml', unusedPort, [
+      'acme',
+      'globex',
+    ]);
 
     expect(spawnCalls).toHaveLength(1);
     const [program, args, options] = spawnCalls[0];
@@ -80,9 +86,19 @@ describe('ensureConsoleRunning', () => {
     if (!isObject(options)) {
       throw new Error('Expected spawn options to be an object');
     }
+    expect(args[6]).toBe('--dashboardProjectNames');
+    expect(args[7]).toBe('acme,globex');
     expect(options.detached).toBe(true);
     expect(options.stdio).toBe('ignore');
     expect(unrefMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('should refuse to start the console when no project name is configured', async () => {
+    const unusedPort = await findFreePort();
+    await expect(
+      ensureConsoleRunning('/path/to/config.yaml', unusedPort, []),
+    ).rejects.toThrow('consoleProjects is empty');
+    expect(spawnCalls).toHaveLength(0);
   });
 
   it('should return an object with a kill method that delegates to the child process', async () => {
@@ -90,6 +106,7 @@ describe('ensureConsoleRunning', () => {
     const result = await ensureConsoleRunning(
       '/path/to/config.yaml',
       unusedPort,
+      ['acme', 'globex'],
     );
     expect(result).not.toBeNull();
     result?.kill();

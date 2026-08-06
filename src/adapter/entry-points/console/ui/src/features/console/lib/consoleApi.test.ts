@@ -256,7 +256,7 @@ describe('postConsoleOperation', () => {
   it('posts a JSON body to the operation endpoint', async () => {
     const fetchMock = mockFetchOnce({ ok: true });
     await postConsoleOperation('/api/review', {
-      pjcode: 'umino',
+      pjcode: 'acme',
       action: 'approve',
       prUrl: 'https://github.com/o/r/pull/1',
       projectItemId: 'PVTI_1',
@@ -268,7 +268,7 @@ describe('postConsoleOperation', () => {
 
   const failingReview = (): Promise<void> =>
     postConsoleOperation('/api/review', {
-      pjcode: 'umino',
+      pjcode: 'acme',
       action: 'approve',
       prUrl: 'https://github.com/o/r/pull/1',
       projectItemId: 'PVTI_1',
@@ -299,7 +299,7 @@ describe('postConsoleReviewComment', () => {
   it('posts the inline review comment body to the reviewcomment endpoint', async () => {
     const fetchMock = mockFetchOnce({ ok: true });
     await postConsoleReviewComment({
-      pjcode: 'umino',
+      pjcode: 'acme',
       url: 'https://github.com/o/r/pull/1',
       path: 'src/index.ts',
       line: 42,
@@ -310,7 +310,7 @@ describe('postConsoleReviewComment', () => {
     expect(url).toBe('/api/reviewcomment');
     expect(init).toMatchObject({ method: 'POST' });
     expect(JSON.parse((init as { body: string }).body)).toEqual({
-      pjcode: 'umino',
+      pjcode: 'acme',
       url: 'https://github.com/o/r/pull/1',
       path: 'src/index.ts',
       line: 42,
@@ -329,7 +329,7 @@ describe('postConsoleReviewComment', () => {
     );
     await expect(
       postConsoleReviewComment({
-        pjcode: 'umino',
+        pjcode: 'acme',
         url: 'https://github.com/o/r/pull/1',
         path: 'src/index.ts',
         line: 42,

@@ -15,7 +15,7 @@ describe('findConsoleItemUrl', () => {
   });
 
   const writeList = (tab: string, items: unknown): void => {
-    const dir = path.join(baseDir, 'umino', tab);
+    const dir = path.join(baseDir, 'acme', tab);
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'list.json'), JSON.stringify({ items }));
   };
@@ -23,14 +23,14 @@ describe('findConsoleItemUrl', () => {
   it('returns the stored url when the requested url is listed in a tab', () => {
     writeList('prs', [{ url: 'https://github.com/o/r/issues/1' }]);
     expect(
-      findConsoleItemUrl(baseDir, 'umino', 'https://github.com/o/r/issues/1'),
+      findConsoleItemUrl(baseDir, 'acme', 'https://github.com/o/r/issues/1'),
     ).toBe('https://github.com/o/r/issues/1');
   });
 
   it('returns null when no tab lists the requested url', () => {
     writeList('prs', [{ url: 'https://github.com/o/r/issues/1' }]);
     expect(
-      findConsoleItemUrl(baseDir, 'umino', 'https://github.com/o/r/issues/2'),
+      findConsoleItemUrl(baseDir, 'acme', 'https://github.com/o/r/issues/2'),
     ).toBeNull();
   });
 
@@ -41,12 +41,12 @@ describe('findConsoleItemUrl', () => {
   });
 
   it('ignores a tab file that is not valid json', () => {
-    const dir = path.join(baseDir, 'umino', 'triage');
+    const dir = path.join(baseDir, 'acme', 'triage');
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'list.json'), 'not json');
     writeList('prs', [{ url: 'https://github.com/o/r/issues/1' }]);
     expect(
-      findConsoleItemUrl(baseDir, 'umino', 'https://github.com/o/r/issues/1'),
+      findConsoleItemUrl(baseDir, 'acme', 'https://github.com/o/r/issues/1'),
     ).toBe('https://github.com/o/r/issues/1');
   });
 
@@ -57,7 +57,7 @@ describe('findConsoleItemUrl', () => {
       { url: 'https://github.com/o/r/pull/9' },
     ]);
     expect(
-      findConsoleItemUrl(baseDir, 'umino', 'https://github.com/o/r/pull/9'),
+      findConsoleItemUrl(baseDir, 'acme', 'https://github.com/o/r/pull/9'),
     ).toBe('https://github.com/o/r/pull/9');
   });
 });

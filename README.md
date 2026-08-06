@@ -67,7 +67,7 @@ Options for serveWeb (and its deprecated alias serveConsole):
   --inTmuxDataDir <path>                           Directory containing the flat in-tmux-by-human static JSON files served at /in-tmux-by-human/*.json
   --dashboardDir <path>                            Directory containing the static dashboard HTML fragment tdpm.txt served at /tdpm.txt when compose mode is not active (default: the jsonpub directory)
   --dashboardDataDir <path>                        Directory containing the dashboard data files (projects/<projectName>.json, machine-status.json, token-status.json); when set and every required file is present the server composes the /tdpm.txt fragment from them, otherwise it falls back to serving the static tdpm.txt from --dashboardDir (unset when not configured)
-  --dashboardProjectNames <names>                  Comma-separated project names, in display order, for the dashboard project grid (default: umino,xmile,xcare,utage3)
+  --dashboardProjectNames <names>                  Comma-separated project names, in display order, for the dashboard project grid; the display label of each project is its first 2 characters, which must be unique across the listed names
 
 Options for selectOauthToken:
   --tokenListJsonPath <path>                       Path to the JSON array of { name, token, selectionWeight? } records; selectionWeight is an optional positive number (default 1) that biases how often a token is chosen among eligible candidates (falls back to the CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH environment variable)

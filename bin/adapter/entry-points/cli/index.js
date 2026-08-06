@@ -64,6 +64,7 @@ const FetchWebhookRepository_1 = require("../../repositories/FetchWebhookReposit
 const RevertOrphanedPreparationUseCase_1 = require("../../../domain/usecases/RevertOrphanedPreparationUseCase");
 const path = __importStar(require("path"));
 const webServer_1 = require("../console/webServer");
+const DashboardProjectCode_1 = require("../../../domain/usecases/dashboard/DashboardProjectCode");
 const ensureConsoleRunning_1 = require("../console/ensureConsoleRunning");
 const consoleReadApi_1 = require("../console/consoleReadApi");
 const consoleProjectResolver_1 = require("../console/consoleProjectResolver");
@@ -74,14 +75,15 @@ const DEFAULT_IN_TMUX_DATA_DIR = '/home/hiromi/0_workspaces/workspace1/jsonpub/i
 const DEFAULT_DASHBOARD_DIR = '/home/hiromi/0_workspaces/workspace1/jsonpub';
 const DEFAULT_DASHBOARD_DATA_DIR = null;
 const parseDashboardProjectNames = (raw) => {
-    if (raw === undefined) {
-        return webServer_1.DEFAULT_DASHBOARD_PROJECT_NAMES;
-    }
-    const names = raw
+    const names = (raw ?? '')
         .split(',')
         .map((name) => name.trim())
         .filter((name) => name.length > 0);
-    return names.length > 0 ? names : webServer_1.DEFAULT_DASHBOARD_PROJECT_NAMES;
+    if (names.length === 0) {
+        throw new Error('--dashboardProjectNames must list at least one project name');
+    }
+    (0, DashboardProjectCode_1.assertDashboardDisplayLabelsUnique)(names);
+    return names;
 };
 const buildGithubRepositoryParams = (localStorageRepository, token) => [
     localStorageRepository,
@@ -230,7 +232,7 @@ exports.program
         ? config.codexHomeCandidates
         : null;
     if (config.consoleAccessToken) {
-        const consoleProcess = await (0, ensureConsoleRunning_1.ensureConsoleRunning)(options.configFilePath, webServer_1.DEFAULT_WEB_PORT);
+        const consoleProcess = await (0, ensureConsoleRunning_1.ensureConsoleRunning)(options.configFilePath, webServer_1.DEFAULT_WEB_PORT, Object.keys(config.consoleProjects ?? {}));
         if (consoleProcess !== null) {
             process.once('SIGTERM', () => {
                 consoleProcess.kill();
@@ -483,7 +485,7 @@ const addServeWebOptions = (command) => command
     .option('--inTmuxDataDir <path>', `Directory containing the flat in-tmux-by-human static JSON files served at /in-tmux-by-human/*.json (default: ${DEFAULT_IN_TMUX_DATA_DIR})`)
     .option('--dashboardDir <path>', `Directory containing the static dashboard HTML fragment tdpm.txt served at /tdpm.txt when compose mode is not active (default: ${DEFAULT_DASHBOARD_DIR})`)
     .option('--dashboardDataDir <path>', 'Directory containing the dashboard data files (projects/<projectName>.json, machine-status.json, token-status.json); when set and every required file is present the server composes the /tdpm.txt fragment from them at request time, otherwise it falls back to serving the static tdpm.txt from --dashboardDir (unset when not configured)')
-    .option('--dashboardProjectNames <names>', `Comma-separated project names, in display order, for the dashboard project grid (default: ${webServer_1.DEFAULT_DASHBOARD_PROJECT_NAMES.join(',')})`);
+    .option('--dashboardProjectNames <names>', 'Comma-separated project names, in display order, for the dashboard project grid; the display label of each project is its first 2 characters, which must be unique across the listed names');
 addServeWebOptions(exports.program.command('serveWeb'))
     .description('Start the local TDPM web server (console tabs, dashboard, and in-tmux session list)')
     .action(async (options) => {

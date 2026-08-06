@@ -13,9 +13,9 @@ const counts: Record<ConsoleTabName, number> = {
 };
 
 const baseProps = {
-  pjcode: 'umino',
+  pjcode: 'acme',
   generatedAt: '2026-06-19T08:42:11.000Z',
-  tabHref: (tab: ConsoleTabName) => `/projects/umino/${tab}`,
+  tabHref: (tab: ConsoleTabName) => `/projects/acme/${tab}`,
   onSelectTab: () => {},
 };
 
@@ -87,7 +87,7 @@ describe('ConsoleTabList', () => {
     const { getByText } = render(
       <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
     );
-    expect(getByText('umino')).toBeInTheDocument();
+    expect(getByText('acme')).toBeInTheDocument();
     expect(getByText('snapshot: 2026-06-19T08:42:11.000Z')).toBeInTheDocument();
   });
 

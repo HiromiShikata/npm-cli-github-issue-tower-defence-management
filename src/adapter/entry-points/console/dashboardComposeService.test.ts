@@ -22,8 +22,8 @@ describe('buildComposeDashboardInput', () => {
   it('reads every requested project code in order and yields null for absent files', () => {
     const dataDir = makeDataDir();
     try {
-      writeProject(dataDir, 'umino', {
-        pjcode: 'umino',
+      writeProject(dataDir, 'acme', {
+        pjcode: 'acme',
         capturedAt: 'x',
         unread: 3,
         todo: 1,
@@ -36,11 +36,11 @@ describe('buildComposeDashboardInput', () => {
       });
       const input = buildComposeDashboardInput({
         dashboardDataDir: dataDir,
-        projectNames: ['umino', 'xcare'],
+        projectNames: ['acme', 'initech'],
       });
       expect(input.projects).toEqual([
         {
-          code: 'um',
+          code: 'ac',
           row: {
             unread: 3,
             todo: 1,
@@ -52,7 +52,7 @@ describe('buildComposeDashboardInput', () => {
             blocker: 0,
           },
         },
-        { code: 'xc', row: null },
+        { code: 'in', row: null },
       ]);
     } finally {
       fs.rmSync(dataDir, { recursive: true, force: true });
@@ -62,10 +62,10 @@ describe('buildComposeDashboardInput', () => {
   it('treats a project file with a missing field as an absent row', () => {
     const dataDir = makeDataDir();
     try {
-      writeProject(dataDir, 'umino', { unread: 1, todo: 1 });
+      writeProject(dataDir, 'acme', { unread: 1, todo: 1 });
       const input = buildComposeDashboardInput({
         dashboardDataDir: dataDir,
-        projectNames: ['umino'],
+        projectNames: ['acme'],
       });
       expect(input.projects[0].row).toBeNull();
     } finally {
@@ -77,13 +77,10 @@ describe('buildComposeDashboardInput', () => {
     const dataDir = makeDataDir();
     try {
       fs.mkdirSync(path.join(dataDir, 'projects'), { recursive: true });
-      fs.writeFileSync(
-        path.join(dataDir, 'projects', 'umino.json'),
-        'not json',
-      );
+      fs.writeFileSync(path.join(dataDir, 'projects', 'acme.json'), 'not json');
       const input = buildComposeDashboardInput({
         dashboardDataDir: dataDir,
-        projectNames: ['umino'],
+        projectNames: ['acme'],
       });
       expect(input.projects[0].row).toBeNull();
     } finally {
@@ -365,8 +362,8 @@ describe('composeDashboardText', () => {
   it('composes the full byte-identical dashboard text from the data files', () => {
     const dataDir = makeDataDir();
     try {
-      writeProject(dataDir, 'umino', {
-        pjcode: 'umino',
+      writeProject(dataDir, 'acme', {
+        pjcode: 'acme',
         capturedAt: 'x',
         unread: 3,
         todo: 1,
@@ -409,14 +406,14 @@ describe('composeDashboardText', () => {
       expect(
         composeDashboardText({
           dashboardDataDir: dataDir,
-          projectNames: ['umino', 'xcare'],
+          projectNames: ['acme', 'initech'],
         }),
       ).toBe(
         '<tt>M55%&nbsp;C62%&nbsp;D89%&nbsp;cy14</tt><br>\n' +
           '<tt>LA&nbsp;16&nbsp;23&nbsp;40</tt><br>\n' +
           '<tt>pj&nbsp;&nbsp;&nbsp;unr&nbsp;tdo&nbsp;aqc&nbsp;fal&nbsp;prp&nbsp;aws&nbsp;dep</tt><br>\n' +
-          '<tt>🟢um&nbsp;&nbsp;&nbsp;3&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;4&nbsp;&nbsp;&nbsp;1</tt><br>\n' +
-          '<tt>&nbsp;&nbsp;xc&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--</tt><br>\n' +
+          '<tt>🟢ac&nbsp;&nbsp;&nbsp;3&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;4&nbsp;&nbsp;&nbsp;1</tt><br>\n' +
+          '<tt>&nbsp;&nbsp;in&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--</tt><br>\n' +
           '<tt></tt><br>\n' +
           '<tt>🟢alice&nbsp;&nbsp;10%&nbsp;0d01h00&nbsp;&nbsp;12%&nbsp;5d00h00&nbsp;2&nbsp;1</tt><br>\n',
       );
@@ -446,7 +443,7 @@ describe('dashboardComposeFilesPresent', () => {
   };
 
   const minimalProject = {
-    pjcode: 'umino',
+    pjcode: 'acme',
     capturedAt: 'x',
     unread: 0,
     todo: 0,
@@ -462,12 +459,15 @@ describe('dashboardComposeFilesPresent', () => {
     const dataDir = makeDataDir();
     try {
       writeMachineAndToken(dataDir);
-      writeProject(dataDir, 'umino', minimalProject);
-      writeProject(dataDir, 'xcare', { ...minimalProject, pjcode: 'xcare' });
+      writeProject(dataDir, 'acme', minimalProject);
+      writeProject(dataDir, 'initech', {
+        ...minimalProject,
+        pjcode: 'initech',
+      });
       expect(
         dashboardComposeFilesPresent({
           dashboardDataDir: dataDir,
-          projectNames: ['umino', 'xcare'],
+          projectNames: ['acme', 'initech'],
         }),
       ).toBe(true);
     } finally {
@@ -481,7 +481,7 @@ describe('dashboardComposeFilesPresent', () => {
       expect(
         dashboardComposeFilesPresent({
           dashboardDataDir: dataDir,
-          projectNames: ['umino'],
+          projectNames: ['acme'],
         }),
       ).toBe(false);
     } finally {
@@ -493,11 +493,11 @@ describe('dashboardComposeFilesPresent', () => {
     const dataDir = makeDataDir();
     try {
       writeMachineAndToken(dataDir);
-      writeProject(dataDir, 'umino', minimalProject);
+      writeProject(dataDir, 'acme', minimalProject);
       expect(
         dashboardComposeFilesPresent({
           dashboardDataDir: dataDir,
-          projectNames: ['umino', 'xcare'],
+          projectNames: ['acme', 'initech'],
         }),
       ).toBe(false);
     } finally {
@@ -512,11 +512,11 @@ describe('dashboardComposeFilesPresent', () => {
         path.join(dataDir, 'token-status.json'),
         JSON.stringify({ tokens: [], capturedAt: 'x' }),
       );
-      writeProject(dataDir, 'umino', minimalProject);
+      writeProject(dataDir, 'acme', minimalProject);
       expect(
         dashboardComposeFilesPresent({
           dashboardDataDir: dataDir,
-          projectNames: ['umino'],
+          projectNames: ['acme'],
         }),
       ).toBe(false);
     } finally {
@@ -538,11 +538,11 @@ describe('dashboardComposeFilesPresent', () => {
           capturedAt: 'x',
         }),
       );
-      writeProject(dataDir, 'umino', minimalProject);
+      writeProject(dataDir, 'acme', minimalProject);
       expect(
         dashboardComposeFilesPresent({
           dashboardDataDir: dataDir,
-          projectNames: ['umino'],
+          projectNames: ['acme'],
         }),
       ).toBe(false);
     } finally {

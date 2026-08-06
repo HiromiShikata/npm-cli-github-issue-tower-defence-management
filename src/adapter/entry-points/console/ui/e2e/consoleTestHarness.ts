@@ -19,7 +19,7 @@ import {
 } from '../../consoleReadApi';
 import { startWebServer } from '../../webServer';
 
-export const CONSOLE_E2E_PJCODE = 'umino';
+export const CONSOLE_E2E_PJCODE = 'acme';
 export const CONSOLE_E2E_TOKEN = 'console-e2e-fixture-token-3f9c1a';
 
 export type ConsoleE2eReviewCommentCall = {

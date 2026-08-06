@@ -7,9 +7,9 @@ const meta: Meta<typeof ConsoleTabList> = {
   title: 'Console/ConsoleTabList',
   component: ConsoleTabList,
   args: {
-    pjcode: 'umino',
+    pjcode: 'acme',
     generatedAt: '2026-06-19T08:42:11.000Z',
-    tabHref: (tab: ConsoleTabName) => `/projects/umino/${tab}`,
+    tabHref: (tab: ConsoleTabName) => `/projects/acme/${tab}`,
     onSelectTab: () => {},
   },
 };

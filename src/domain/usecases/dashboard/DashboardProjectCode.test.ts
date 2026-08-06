@@ -1,34 +1,34 @@
 import {
-  DASHBOARD_DISPLAY_LABEL_BY_PROJECT_NAME,
-  DASHBOARD_PROJECT_NAMES,
+  DASHBOARD_DISPLAY_LABEL_LENGTH,
+  assertDashboardDisplayLabelsUnique,
   toDashboardDisplayLabel,
 } from './DashboardProjectCode';
 
 describe('DashboardProjectCode', () => {
-  it('maps each full project name to its 2-char display label', () => {
-    expect(toDashboardDisplayLabel('umino')).toBe('um');
-    expect(toDashboardDisplayLabel('xmile')).toBe('xm');
-    expect(toDashboardDisplayLabel('xcare')).toBe('xc');
-    expect(toDashboardDisplayLabel('utage3')).toBe('ut');
-    expect(toDashboardDisplayLabel('cmg')).toBe('cm');
+  it('derives the display label from the leading characters of the project name', () => {
+    expect(DASHBOARD_DISPLAY_LABEL_LENGTH).toBe(2);
+    expect(toDashboardDisplayLabel('acme')).toBe('ac');
+    expect(toDashboardDisplayLabel('globex')).toBe('gl');
+    expect(toDashboardDisplayLabel('initech')).toBe('in');
   });
 
-  it('exposes the project names in the same order as the label mapping', () => {
-    expect(DASHBOARD_PROJECT_NAMES).toEqual([
-      'umino',
-      'xmile',
-      'xcare',
-      'utage3',
-      'cmg',
-    ]);
-    expect(DASHBOARD_PROJECT_NAMES).toEqual(
-      Object.keys(DASHBOARD_DISPLAY_LABEL_BY_PROJECT_NAME),
+  it('throws for a project name shorter than the display label rather than padding it', () => {
+    expect(() => toDashboardDisplayLabel('a')).toThrow(
+      'Dashboard project name is shorter than the 2-character display label: a',
     );
   });
 
-  it('throws for an unknown project name rather than guessing a label', () => {
-    expect(() => toDashboardDisplayLabel('unknown')).toThrow(
-      'Unknown dashboard project name: unknown',
+  it('accepts project names whose derived display labels are all distinct', () => {
+    expect(() =>
+      assertDashboardDisplayLabelsUnique(['acme', 'globex', 'initech']),
+    ).not.toThrow();
+  });
+
+  it('throws when two project names derive the same display label', () => {
+    expect(() =>
+      assertDashboardDisplayLabelsUnique(['acme', 'acmelabs']),
+    ).toThrow(
+      'Dashboard project names acme and acmelabs share the display label ac',
     );
   });
 });

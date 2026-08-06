@@ -44,10 +44,10 @@ const lastBody = (fetchMock: jest.Mock): Record<string, unknown> => {
 
 const setup = () => {
   localStorage.clear();
-  window.history.replaceState({}, '', '/projects/umino/prs?k=token');
+  window.history.replaceState({}, '', '/projects/acme/prs?k=token');
   return renderHook(() => {
-    const overlay = useConsoleOverlay('umino');
-    const operations = useConsoleOperations('umino', 'prs', overlay);
+    const overlay = useConsoleOverlay('acme');
+    const operations = useConsoleOperations('acme', 'prs', overlay);
     return { overlay, operations };
   });
 };
@@ -65,7 +65,7 @@ describe('useConsoleOperations', () => {
     });
     expect(fetchMock.mock.calls[0][0]).toBe('/api/review');
     expect(lastBody(fetchMock)).toMatchObject({
-      pjcode: 'umino',
+      pjcode: 'acme',
       action: 'close',
       prUrl: prItem.url,
       commentBody: 'totally wrong',
@@ -99,7 +99,7 @@ describe('useConsoleOperations', () => {
       );
     });
     const stored = JSON.parse(
-      localStorage.getItem(overlayStorageKey('umino')) ?? '{}',
+      localStorage.getItem(overlayStorageKey('acme')) ?? '{}',
     );
     expect(stored[prItem.projectItemId].done).toBe(true);
   });
@@ -115,7 +115,7 @@ describe('useConsoleOperations', () => {
     });
     expect(fetchMock.mock.calls[0][0]).toBe('/api/triage');
     expect(lastBody(fetchMock)).toMatchObject({
-      pjcode: 'umino',
+      pjcode: 'acme',
       action: 'close_not_planned',
       issueUrl: issueItem.url,
     });
@@ -129,13 +129,13 @@ describe('useConsoleOperations', () => {
     });
     expect(fetchMock.mock.calls[0][0]).toBe('/api/triage');
     expect(lastBody(fetchMock)).toMatchObject({
-      pjcode: 'umino',
+      pjcode: 'acme',
       action: 'close',
       issueUrl: prItem.url,
     });
     expect(prItem.url).toContain('/pull/');
     const stored = JSON.parse(
-      localStorage.getItem(overlayStorageKey('umino')) ?? '{}',
+      localStorage.getItem(overlayStorageKey('acme')) ?? '{}',
     );
     expect(stored[prItem.projectItemId].done).toBe(true);
   });
@@ -152,7 +152,7 @@ describe('useConsoleOperations', () => {
       statusName: option.name,
     });
     const stored = JSON.parse(
-      localStorage.getItem(overlayStorageKey('umino')) ?? '{}',
+      localStorage.getItem(overlayStorageKey('acme')) ?? '{}',
     );
     expect(stored[issueItem.projectItemId].status.name).toBe(option.name);
   });
@@ -166,7 +166,7 @@ describe('useConsoleOperations', () => {
     });
     expect(fetchMock.mock.calls[0][0]).toBe('/api/intmux');
     expect(lastBody(fetchMock)).toMatchObject({
-      pjcode: 'umino',
+      pjcode: 'acme',
       action: 'set_intmux',
     });
   });
@@ -181,7 +181,7 @@ describe('useConsoleOperations', () => {
       );
     });
     const stored = JSON.parse(
-      localStorage.getItem(overlayStorageKey('umino')) ?? '{}',
+      localStorage.getItem(overlayStorageKey('acme')) ?? '{}',
     );
     expect(stored[issueItem.projectItemId].done).toBe(true);
   });
@@ -189,18 +189,10 @@ describe('useConsoleOperations', () => {
   it('marks done on snooze in the todo-by-human tab so the item is skipped', async () => {
     captureFetch();
     localStorage.clear();
-    window.history.replaceState(
-      {},
-      '',
-      '/projects/umino/todo-by-human?k=token',
-    );
+    window.history.replaceState({}, '', '/projects/acme/todo-by-human?k=token');
     const { result } = renderHook(() => {
-      const overlay = useConsoleOverlay('umino');
-      const operations = useConsoleOperations(
-        'umino',
-        'todo-by-human',
-        overlay,
-      );
+      const overlay = useConsoleOverlay('acme');
+      const operations = useConsoleOperations('acme', 'todo-by-human', overlay);
       return { overlay, operations };
     });
     await act(async () => {
@@ -210,7 +202,7 @@ describe('useConsoleOperations', () => {
       );
     });
     const stored = JSON.parse(
-      localStorage.getItem(overlayStorageKey('umino')) ?? '{}',
+      localStorage.getItem(overlayStorageKey('acme')) ?? '{}',
     );
     expect(stored[issueItem.projectItemId].done).toBe(true);
   });
@@ -241,7 +233,7 @@ describe('useConsoleOperations', () => {
     });
     expect(fetchMock.mock.calls[0][0]).toBe('/api/comment');
     expect(lastBody(fetchMock)).toMatchObject({
-      pjcode: 'umino',
+      pjcode: 'acme',
       url: issueItem.url,
       body: 'Thanks for the parity fix.',
     });
@@ -266,7 +258,7 @@ describe('useConsoleOperations', () => {
     });
     expect(fetchMock.mock.calls[0][0]).toBe('/api/reviewcomment');
     expect(lastBody(fetchMock)).toEqual({
-      pjcode: 'umino',
+      pjcode: 'acme',
       url: prItem.url,
       path: 'src/index.ts',
       line: 42,
@@ -295,7 +287,7 @@ describe('useConsoleOperations', () => {
     });
     expect(fetchMock.mock.calls[0][0]).toBe('/api/review');
     expect(lastBody(fetchMock)).toMatchObject({
-      pjcode: 'umino',
+      pjcode: 'acme',
       action: 'request_changes',
       prUrl: prItem.url,
       commentBody: 'src/index.ts:17 Please rename this variable.',
@@ -341,13 +333,13 @@ describe('useConsoleOperations', () => {
   it('invalidates the operated item body and comments cache on a review', async () => {
     captureFetch();
     localStorage.clear();
-    window.history.replaceState({}, '', '/projects/umino/prs?k=token');
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
     const caches = buildOperationCaches();
     const bodyInvalidate = jest.spyOn(caches.body, 'invalidate');
     const commentsInvalidate = jest.spyOn(caches.comments, 'invalidate');
     const { result } = renderHook(() => {
-      const overlay = useConsoleOverlay('umino');
-      const operations = useConsoleOperations('umino', 'prs', overlay, caches);
+      const overlay = useConsoleOverlay('acme');
+      const operations = useConsoleOperations('acme', 'prs', overlay, caches);
       return { overlay, operations };
     });
     await act(async () => {
@@ -373,12 +365,12 @@ describe('useConsoleOperations', () => {
     }));
     global.fetch = fetchMock as unknown as typeof fetch;
     localStorage.clear();
-    window.history.replaceState({}, '', '/projects/umino/prs?k=token');
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
     const caches = buildOperationCaches();
     const commentsInvalidate = jest.spyOn(caches.comments, 'invalidate');
     const { result } = renderHook(() => {
-      const overlay = useConsoleOverlay('umino');
-      const operations = useConsoleOperations('umino', 'prs', overlay, caches);
+      const overlay = useConsoleOverlay('acme');
+      const operations = useConsoleOperations('acme', 'prs', overlay, caches);
       return { overlay, operations };
     });
     await act(async () => {

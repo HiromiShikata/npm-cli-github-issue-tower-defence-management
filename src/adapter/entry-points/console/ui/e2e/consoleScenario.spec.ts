@@ -244,7 +244,7 @@ test('lists a still-open item and keeps its tab visible when the browser overlay
 
   await page.evaluate(() => {
     localStorage.setItem(
-      'pv_overlay_umino',
+      'pv_overlay_acme',
       JSON.stringify({
         PVTI_lADOABCD1234zgTODO00869: {
           done: true,

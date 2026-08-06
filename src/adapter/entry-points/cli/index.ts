@@ -36,11 +36,8 @@ import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueComm
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import * as path from 'path';
-import {
-  DEFAULT_DASHBOARD_PROJECT_NAMES,
-  DEFAULT_WEB_PORT,
-  startWebServer,
-} from '../console/webServer';
+import { DEFAULT_WEB_PORT, startWebServer } from '../console/webServer';
+import { assertDashboardDisplayLabelsUnique } from '../../../domain/usecases/dashboard/DashboardProjectCode';
 import { ensureConsoleRunning } from '../console/ensureConsoleRunning';
 import {
   IssueTitleStateCache,
@@ -101,14 +98,17 @@ const DEFAULT_DASHBOARD_DIR = '/home/hiromi/0_workspaces/workspace1/jsonpub';
 const DEFAULT_DASHBOARD_DATA_DIR: string | null = null;
 
 const parseDashboardProjectNames = (raw: string | undefined): string[] => {
-  if (raw === undefined) {
-    return DEFAULT_DASHBOARD_PROJECT_NAMES;
-  }
-  const names = raw
+  const names = (raw ?? '')
     .split(',')
     .map((name) => name.trim())
     .filter((name) => name.length > 0);
-  return names.length > 0 ? names : DEFAULT_DASHBOARD_PROJECT_NAMES;
+  if (names.length === 0) {
+    throw new Error(
+      '--dashboardProjectNames must list at least one project name',
+    );
+  }
+  assertDashboardDisplayLabelsUnique(names);
+  return names;
 };
 
 type SelectOauthTokenOptions = {
@@ -403,6 +403,7 @@ program
       const consoleProcess = await ensureConsoleRunning(
         options.configFilePath,
         DEFAULT_WEB_PORT,
+        Object.keys(config.consoleProjects ?? {}),
       );
       if (consoleProcess !== null) {
         process.once('SIGTERM', () => {
@@ -847,7 +848,7 @@ const addServeWebOptions = (command: Command): Command =>
     )
     .option(
       '--dashboardProjectNames <names>',
-      `Comma-separated project names, in display order, for the dashboard project grid (default: ${DEFAULT_DASHBOARD_PROJECT_NAMES.join(',')})`,
+      'Comma-separated project names, in display order, for the dashboard project grid; the display label of each project is its first 2 characters, which must be unique across the listed names',
     );
 
 addServeWebOptions(program.command('serveWeb'))
