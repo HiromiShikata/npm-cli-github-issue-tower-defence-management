@@ -1324,7 +1324,14 @@ mysteryKey: 'value'
         return { rotationOrder: null };
       });
 
-      writeConfig({ ...defaultConfig, consoleAccessToken: 'test-key-abc' });
+      writeConfig({
+        ...defaultConfig,
+        consoleAccessToken: 'test-key-abc',
+        consoleProjects: {
+          acme: 'https://github.com/orgs/acme/projects/1',
+          globex: 'https://github.com/orgs/globex/projects/1',
+        },
+      });
 
       await program.parseAsync([
         'node',
@@ -1337,7 +1344,7 @@ mysteryKey: 'value'
       expect(callOrder).toEqual(['ensureWebConsoleRunning', 'preparationRun']);
       expect(
         ensureConsoleRunningModule.ensureConsoleRunning,
-      ).toHaveBeenCalledWith(configFilePath, 9980);
+      ).toHaveBeenCalledWith(configFilePath, 9980, ['acme', 'globex']);
     });
 
     it('should not start web console when consoleAccessToken is not provided', async () => {
@@ -1917,6 +1924,8 @@ mysteryKey: 'value'
         'serveWeb',
         '--configFilePath',
         configFilePath,
+        '--dashboardProjectNames',
+        'acme,globex',
       ]);
 
       expect(mockStartWebServer).toHaveBeenCalledTimes(1);
@@ -1924,12 +1933,55 @@ mysteryKey: 'value'
       expect(callArg.port).toBe(9980);
       expect(callArg.accessToken).toBe('config-token');
       expect(callArg.consoleDataOutputDir).toBeNull();
+      expect(callArg.dashboardProjectNames).toEqual(['acme', 'globex']);
       expect(callArg.uiDistDir).toBe(
         path.join(__dirname, '..', 'console', 'ui-dist'),
       );
       expect(fs.existsSync(path.join(callArg.uiDistDir, 'index.html'))).toBe(
         true,
       );
+
+      logSpy.mockRestore();
+    });
+
+    it('should exit with error when --dashboardProjectNames is omitted', async () => {
+      writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
+      const logSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      await expect(
+        program.parseAsync([
+          'node',
+          'test',
+          'serveWeb',
+          '--configFilePath',
+          configFilePath,
+        ]),
+      ).rejects.toThrow(
+        '--dashboardProjectNames must list at least one project name',
+      );
+      expect(mockStartWebServer).not.toHaveBeenCalled();
+
+      logSpy.mockRestore();
+    });
+
+    it('should exit with error when two --dashboardProjectNames share a display label', async () => {
+      writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
+      const logSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      await expect(
+        program.parseAsync([
+          'node',
+          'test',
+          'serveWeb',
+          '--configFilePath',
+          configFilePath,
+          '--dashboardProjectNames',
+          'acme,acmelabs',
+        ]),
+      ).rejects.toThrow(
+        'Dashboard project names acme and acmelabs share the display label ac',
+      );
+      expect(mockStartWebServer).not.toHaveBeenCalled();
 
       logSpy.mockRestore();
     });
@@ -1948,6 +2000,8 @@ mysteryKey: 'value'
         '12345',
         '--consoleDataOutputDir',
         '/tmp/console-data',
+        '--dashboardProjectNames',
+        'acme,globex',
       ]);
 
       const callArg = mockStartWebServer.mock.calls[0][0];
@@ -2022,6 +2076,8 @@ mysteryKey: 'value'
         'serveWeb',
         '--configFilePath',
         configFilePath,
+        '--dashboardProjectNames',
+        'acme,globex',
       ]);
 
       const callArg = mockStartWebServer.mock.calls[0][0];
@@ -2120,6 +2176,8 @@ mysteryKey: 'value'
         'serveConsole',
         '--configFilePath',
         configFilePath,
+        '--dashboardProjectNames',
+        'acme,globex',
       ]);
 
       expect(mockStartWebServer).toHaveBeenCalledTimes(1);
@@ -2148,6 +2206,8 @@ mysteryKey: 'value'
         '12345',
         '--consoleDataOutputDir',
         '/tmp/console-data',
+        '--dashboardProjectNames',
+        'acme,globex',
       ]);
 
       const callArg = mockStartWebServer.mock.calls[0][0];

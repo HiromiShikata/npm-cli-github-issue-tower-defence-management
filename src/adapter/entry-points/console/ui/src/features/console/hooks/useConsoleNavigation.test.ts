@@ -49,24 +49,18 @@ describe('useConsoleNavigation', () => {
   });
 
   it('reads the active tab from the path and no selected item', () => {
-    const { result } = renderHook(() =>
-      useConsoleNavigation('acme', counts()),
-    );
+    const { result } = renderHook(() => useConsoleNavigation('acme', counts()));
     expect(result.current.activeTab).toBe('prs');
     expect(result.current.selectedItemKey).toBeNull();
   });
 
   it('builds a project tab href', () => {
-    const { result } = renderHook(() =>
-      useConsoleNavigation('acme', counts()),
-    );
+    const { result } = renderHook(() => useConsoleNavigation('acme', counts()));
     expect(result.current.tabHref('triage')).toBe('/projects/acme/triage');
   });
 
   it('selects a tab and updates the path', () => {
-    const { result } = renderHook(() =>
-      useConsoleNavigation('acme', counts()),
-    );
+    const { result } = renderHook(() => useConsoleNavigation('acme', counts()));
     act(() => {
       result.current.selectTab('unread');
     });
@@ -75,9 +69,7 @@ describe('useConsoleNavigation', () => {
   });
 
   it('opens an item and reflects it in the hash', () => {
-    const { result } = renderHook(() =>
-      useConsoleNavigation('acme', counts()),
-    );
+    const { result } = renderHook(() => useConsoleNavigation('acme', counts()));
     act(() => {
       result.current.openItem('PVTI_open');
     });
@@ -87,9 +79,7 @@ describe('useConsoleNavigation', () => {
 
   it('closes an item and clears the hash', () => {
     window.history.replaceState({}, '', '/projects/acme/prs#item/PVTI_open');
-    const { result } = renderHook(() =>
-      useConsoleNavigation('acme', counts()),
-    );
+    const { result } = renderHook(() => useConsoleNavigation('acme', counts()));
     expect(result.current.selectedItemKey).toBe('PVTI_open');
     act(() => {
       result.current.closeItem();
@@ -132,9 +122,7 @@ describe('useConsoleNavigation default tab without a tab segment', () => {
   });
 
   it('falls back to the first tab when every tab is empty', () => {
-    const { result } = renderHook(() =>
-      useConsoleNavigation('acme', counts()),
-    );
+    const { result } = renderHook(() => useConsoleNavigation('acme', counts()));
     expect(result.current.activeTab).toBe('workflow-blocker');
   });
 

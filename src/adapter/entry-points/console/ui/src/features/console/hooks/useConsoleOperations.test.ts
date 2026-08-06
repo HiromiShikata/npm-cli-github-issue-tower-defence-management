@@ -189,18 +189,10 @@ describe('useConsoleOperations', () => {
   it('marks done on snooze in the todo-by-human tab so the item is skipped', async () => {
     captureFetch();
     localStorage.clear();
-    window.history.replaceState(
-      {},
-      '',
-      '/projects/acme/todo-by-human?k=token',
-    );
+    window.history.replaceState({}, '', '/projects/acme/todo-by-human?k=token');
     const { result } = renderHook(() => {
       const overlay = useConsoleOverlay('acme');
-      const operations = useConsoleOperations(
-        'acme',
-        'todo-by-human',
-        overlay,
-      );
+      const operations = useConsoleOperations('acme', 'todo-by-human', overlay);
       return { overlay, operations };
     });
     await act(async () => {
