@@ -634,6 +634,9 @@ ${JSON.stringify(e)}
     repo: string,
     manager: Member['name'],
   ): Promise<Date[]> => {
+    if (!spreadsheetUrl) {
+      return [now];
+    }
     const sheetValues = await this.runSpreadsheetOperation(
       'read',
       spreadsheetUrl,
@@ -701,6 +704,9 @@ ${JSON.stringify(e)}
     repo: string,
     manager: Member['name'],
   ): Promise<boolean> => {
+    if (!spreadsheetUrl) {
+      return true;
+    }
     const sheetValues = await this.runSpreadsheetOperation(
       'read',
       spreadsheetUrl,

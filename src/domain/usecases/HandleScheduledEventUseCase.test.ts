@@ -1178,6 +1178,39 @@ describe('HandleScheduledEventUseCase', () => {
       });
     });
 
+    describe('project without a working report spreadsheet', () => {
+      const now = new Date('2024-05-06T07:08:09Z');
+
+      it('treats the current time as the only target date time without touching the spreadsheet', async () => {
+        const targetDateTimes =
+          await useCase.findTargetDateAndUpdateLastExecutionDateTime(
+            '',
+            now,
+            'test-org',
+            'test-repo',
+            'test-manager',
+          );
+
+        expect(targetDateTimes).toEqual([now]);
+        expect(mockSpreadsheetRepository.getSheet).not.toHaveBeenCalled();
+        expect(mockSpreadsheetRepository.updateCell).not.toHaveBeenCalled();
+      });
+
+      it('runs the slow sweep without touching the spreadsheet', async () => {
+        const runSlowSweep = await useCase.shouldRunSlowSweep(
+          '',
+          now,
+          'test-org',
+          'test-repo',
+          'test-manager',
+        );
+
+        expect(runSlowSweep).toBe(true);
+        expect(mockSpreadsheetRepository.getSheet).not.toHaveBeenCalled();
+        expect(mockSpreadsheetRepository.updateCell).not.toHaveBeenCalled();
+      });
+    });
+
     describe('transient spreadsheet API error containment', () => {
       const transientInput = {
         projectName: 'test-project',
