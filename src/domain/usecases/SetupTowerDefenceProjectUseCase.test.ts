@@ -367,22 +367,31 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     expect(payload[1].color).toBe(REQUIRED_WORKFLOW_STATUSES[1].color);
   });
 
-  it('should rename legacy "Todo" to "Todo by human" by reusing the existing option ID', async () => {
+  it('should reuse the default template "Todo" option ID for Unread so a newly added item lands in Unread', async () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
       mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
-    const statuses: FieldOption[] = REQUIRED_WORKFLOW_STATUSES.map(
-      (required, index) => ({
-        id: `id-${index}`,
-        name:
-          required.name === TODO_STATUS_NAME
-            ? LEGACY_TODO_STATUS_NAME
-            : required.name,
-        color: required.color,
+    const statuses: FieldOption[] = [
+      {
+        id: 'template-todo',
+        name: LEGACY_TODO_STATUS_NAME,
+        color: 'PINK',
         description: '',
-      }),
-    );
+      },
+      {
+        id: 'template-in-progress',
+        name: 'In progress',
+        color: 'YELLOW',
+        description: 'This is actively being worked on',
+      },
+      {
+        id: 'template-done',
+        name: DONE_STATUS_NAME,
+        color: 'PURPLE',
+        description: '',
+      },
+    ];
     const project = buildProject(statuses);
     mockProjectRepository.getByUrl.mockResolvedValue(project);
     mockProjectRepository.updateStatusList.mockResolvedValue([]);
@@ -400,9 +409,10 @@ describe('SetupTowerDefenceProjectUseCase', () => {
 
     expect(mockProjectRepository.updateStatusList).toHaveBeenCalledTimes(1);
     const [, payload] = mockProjectRepository.updateStatusList.mock.calls[0];
-    const todoEntry = payload.find((s) => s.name === TODO_STATUS_NAME);
-    expect(todoEntry).toBeDefined();
-    expect(todoEntry?.id).toBe('id-5');
+    const unreadEntry = payload.find((s) => s.name === DEFAULT_STATUS_NAME);
+    expect(unreadEntry?.id).toBe('template-todo');
+    const todoByHumanEntry = payload.find((s) => s.name === TODO_STATUS_NAME);
+    expect(todoByHumanEntry?.id).toBeNull();
     expect(payload.some((s) => s.name === LEGACY_TODO_STATUS_NAME)).toBe(false);
   });
 
