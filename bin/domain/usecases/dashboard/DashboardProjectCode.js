@@ -6,6 +6,7 @@ exports.DASHBOARD_DISPLAY_LABEL_BY_PROJECT_NAME = {
     xmile: 'xm',
     xcare: 'xc',
     utage3: 'ut',
+    cmg: 'cm',
 };
 exports.DASHBOARD_PROJECT_NAMES = Object.keys(exports.DASHBOARD_DISPLAY_LABEL_BY_PROJECT_NAME);
 const toDashboardDisplayLabel = (projectName) => {

@@ -1,3 +1,10 @@
+# [1.146.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.145.0...v1.146.0) (2026-08-06)
+
+
+### Features
+
+* **dashboard:** add cmg to dashboard display label map ([#1390](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1390)) ([2a65486](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2a65486cb1b777324d9bd83c9668424f64b6d783))
+
 # [1.145.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.144.5...v1.145.0) (2026-08-05)
 
 
