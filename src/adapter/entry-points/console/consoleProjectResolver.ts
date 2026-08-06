@@ -9,6 +9,38 @@ export type ConsoleProjectLoader = (
   projectUrl: string,
 ) => Promise<Project | null>;
 
+export type ConsoleProjectIdAndProjectReader = {
+  findProjectIdByUrl: (projectUrl: string) => Promise<string | null>;
+  getProject: (projectId: string) => Promise<Project | null>;
+};
+
+export const createConsoleProjectLoader = (
+  resolveProjectRepository: (
+    projectUrl: string,
+  ) => ConsoleProjectIdAndProjectReader,
+  getCachedProject: (projectId: string) => Promise<Project | null>,
+  reportLoadFailure: (message: string) => void,
+): ConsoleProjectLoader => {
+  return async (projectUrl: string): Promise<Project | null> => {
+    const projectRepository = resolveProjectRepository(projectUrl);
+    const projectId = await projectRepository.findProjectIdByUrl(projectUrl);
+    if (!projectId) {
+      reportLoadFailure(`No project found for projectUrl ${projectUrl}`);
+      return null;
+    }
+    const cachedProject = await getCachedProject(projectId);
+    if (cachedProject) {
+      return cachedProject;
+    }
+    const loadedProject = await projectRepository.getProject(projectId);
+    if (!loadedProject) {
+      reportLoadFailure(`Failed to load project for projectUrl ${projectUrl}`);
+      return null;
+    }
+    return loadedProject;
+  };
+};
+
 export const buildPjcodeToProjectUrl = (
   defaultPjcode: string,
   defaultProjectUrl: string,

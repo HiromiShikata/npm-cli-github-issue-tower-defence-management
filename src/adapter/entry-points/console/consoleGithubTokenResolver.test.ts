@@ -1,8 +1,54 @@
 import {
   createConsoleGithubTokenResolver,
   createConsoleIssueRepositoryResolver,
+  createConsoleProjectRepositoryResolver,
+  extractProjectOwner,
   extractRepositoryOwner,
 } from './consoleGithubTokenResolver';
+
+describe('extractProjectOwner', () => {
+  it('should return the organization login of an organization project url', () => {
+    expect(
+      extractProjectOwner('https://github.com/orgs/acme/projects/18'),
+    ).toBe('acme');
+  });
+
+  it('should return the user login of a user project url', () => {
+    expect(
+      extractProjectOwner('https://github.com/users/acme-owner/projects/48'),
+    ).toBe('acme-owner');
+  });
+
+  it('should return null for a url that is not a project url', () => {
+    expect(
+      extractProjectOwner('https://github.com/acme/acme-repository/issues/178'),
+    ).toBeNull();
+  });
+});
+
+describe('createConsoleProjectRepositoryResolver', () => {
+  it('builds the project repository from the token of the owner in the project url', () => {
+    const resolve = createConsoleProjectRepositoryResolver<string>(
+      (repositoryOwner) => `token-of-${repositoryOwner}`,
+      (githubToken) => `repository-with-${githubToken}`,
+    );
+
+    expect(resolve('https://github.com/orgs/acme/projects/18')).toBe(
+      'repository-with-token-of-acme',
+    );
+  });
+
+  it('throws when the project owner cannot be read from the project url', () => {
+    const resolve = createConsoleProjectRepositoryResolver<string>(
+      (repositoryOwner) => `token-of-${repositoryOwner}`,
+      (githubToken) => `repository-with-${githubToken}`,
+    );
+
+    expect(() => resolve('https://github.com/orgs/acme')).toThrow(
+      'The project owner cannot be read from the project url: https://github.com/orgs/acme',
+    );
+  });
+});
 
 describe('createConsoleIssueRepositoryResolver', () => {
   it('builds the issue repository from the token of the owner in the url', () => {
