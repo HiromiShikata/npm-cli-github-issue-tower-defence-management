@@ -20,6 +20,7 @@ import {
   handleRelatedPrs,
 } from './consoleReadApi';
 import {
+  ConsoleIssueRepositoryResolver,
   ConsoleOperationContext,
   ConsolePjcodeValidator,
   ConsoleProjectResolver,
@@ -214,6 +215,7 @@ export type WebServerOptions = {
   githubToken?: string | null;
   imageFetcher?: ImageFetcher | null;
   issueRepository?: IssueRepository | null;
+  resolveIssueRepository?: ConsoleIssueRepositoryResolver | null;
   resolveProject?: ConsoleProjectResolver | null;
   isPjcodeConfigured?: ConsolePjcodeValidator | null;
   issueAttachmentRepository?: IssueAttachmentRepository | null;
@@ -500,8 +502,10 @@ const handleOperationApi = async (
   ) {
     return null;
   }
+  const resolveIssueRepository =
+    options.resolveIssueRepository ?? ((): IssueRepository => issueRepository);
   const context: ConsoleOperationContext = {
-    issueRepository,
+    resolveIssueRepository,
     resolveProject,
     isPjcodeConfigured,
     consoleDataOutputDir: options.consoleDataOutputDir,

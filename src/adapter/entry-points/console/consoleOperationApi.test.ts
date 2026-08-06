@@ -72,7 +72,7 @@ describe('consoleOperationApi', () => {
       },
     };
     context = {
-      issueRepository,
+      resolveIssueRepository: () => issueRepository,
       resolveProject: async (pjcode: string) =>
         pjcode === 'acme' ? { pjcode, project } : null,
       isPjcodeConfigured: (pjcode: string) => pjcode === 'acme',
@@ -84,7 +84,7 @@ describe('consoleOperationApi', () => {
   const contextForProject = (
     nextProject: Project,
   ): ConsoleOperationContext => ({
-    issueRepository,
+    resolveIssueRepository: () => issueRepository,
     resolveProject: async (pjcode: string) =>
       pjcode === 'acme' ? { pjcode, project: nextProject } : null,
     isPjcodeConfigured: (pjcode: string) => pjcode === 'acme',
@@ -126,6 +126,28 @@ describe('consoleOperationApi', () => {
       );
       expect(issueRepository.get).not.toHaveBeenCalled();
       expectRecordedAcrossTabs('PVTI_a');
+    });
+
+    it('resolves the issue repository from the url of the operated pull request', async () => {
+      const resolvedUrls: string[] = [];
+      const contextRecordingResolvedUrls: ConsoleOperationContext = {
+        ...context,
+        resolveIssueRepository: (issueOrPullRequestUrl: string) => {
+          resolvedUrls.push(issueOrPullRequestUrl);
+          return issueRepository;
+        },
+      };
+
+      await handleReview(contextRecordingResolvedUrls, {
+        pjcode: 'acme',
+        action: 'approve',
+        prUrl: 'https://github.com/meta-site/hr-audit-mock/pull/178',
+        projectItemId: 'PVTI_resolver',
+      });
+
+      expect(resolvedUrls).toContain(
+        'https://github.com/meta-site/hr-audit-mock/pull/178',
+      );
     });
 
     it('requests changes with the inline comment anchored to a line and side', async () => {
@@ -508,7 +530,7 @@ describe('consoleOperationApi', () => {
         pjcode === 'acme' ? { pjcode, project } : null,
       );
       spiedContext = {
-        issueRepository,
+        resolveIssueRepository: () => issueRepository,
         resolveProject: resolveProjectSpy,
         isPjcodeConfigured: (pjcode: string) => pjcode === 'acme',
         consoleDataOutputDir: baseDir,
@@ -744,7 +766,7 @@ describe('consoleOperationApi', () => {
     it('records the .done exclusion under the resolved pjcode', async () => {
       const otherProject: Project = { ...project, id: 'PVT_other' };
       const multiContext: ConsoleOperationContext = {
-        issueRepository,
+        resolveIssueRepository: () => issueRepository,
         resolveProject: async (pjcode: string) => {
           if (pjcode === 'acme') {
             return { pjcode, project };

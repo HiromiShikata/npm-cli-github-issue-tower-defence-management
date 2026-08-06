@@ -22,8 +22,12 @@ export type ConsoleProjectResolver = (
 
 export type ConsolePjcodeValidator = (pjcode: string) => boolean;
 
+export type ConsoleIssueRepositoryResolver = (
+  issueOrPullRequestUrl: string,
+) => IssueRepository;
+
 export type ConsoleOperationContext = {
-  issueRepository: IssueRepository;
+  resolveIssueRepository: ConsoleIssueRepositoryResolver;
   resolveProject: ConsoleProjectResolver;
   isPjcodeConfigured: ConsolePjcodeValidator;
   consoleDataOutputDir: string | null;
@@ -210,9 +214,11 @@ export const handleReview = async (
     if (typeof pjcodeResult !== 'string') {
       return pjcodeResult;
     }
-    await context.issueRepository.closePullRequest(prUrl);
+    await context.resolveIssueRepository(prUrl).closePullRequest(prUrl);
     if (isNonEmptyString(body.commentBody)) {
-      await context.issueRepository.createCommentByUrl(prUrl, body.commentBody);
+      await context
+        .resolveIssueRepository(prUrl)
+        .createCommentByUrl(prUrl, body.commentBody);
     }
     recordDone(context, pjcodeResult, projectItemId);
     return ok();
@@ -225,9 +231,9 @@ export const handleReview = async (
   const { project, pjcode } = binding;
 
   if (action === 'approve') {
-    await context.issueRepository.approvePullRequest(prUrl);
+    await context.resolveIssueRepository(prUrl).approvePullRequest(prUrl);
     const failure = await updateStatusByName(
-      context.issueRepository,
+      context.resolveIssueRepository(prUrl),
       project,
       prUrl,
       projectItemId,
@@ -254,14 +260,16 @@ export const handleReview = async (
       isReviewCommentSide(body.side)
         ? { line: body.line, side: body.side }
         : null;
-    await context.issueRepository.requestChangesWithInlineComment(
-      prUrl,
-      changedFilePath,
-      commentBody,
-      inlineCommentLocation,
-    );
+    await context
+      .resolveIssueRepository(prUrl)
+      .requestChangesWithInlineComment(
+        prUrl,
+        changedFilePath,
+        commentBody,
+        inlineCommentLocation,
+      );
     const failure = await updateStatusByName(
-      context.issueRepository,
+      context.resolveIssueRepository(prUrl),
       project,
       prUrl,
       projectItemId,
@@ -300,18 +308,19 @@ export const handleTriage = async (
       return pjcodeResult;
     }
     if (isNonEmptyString(body.commentBody)) {
-      await context.issueRepository.createCommentByUrl(
-        issueUrl,
-        body.commentBody,
-      );
+      await context
+        .resolveIssueRepository(issueUrl)
+        .createCommentByUrl(issueUrl, body.commentBody);
     }
     if (isPullRequestUrl(issueUrl)) {
-      await context.issueRepository.closePullRequest(issueUrl);
+      await context.resolveIssueRepository(issueUrl).closePullRequest(issueUrl);
     } else {
-      await context.issueRepository.closeIssueByUrl(
-        issueUrl,
-        action === 'close_not_planned' ? 'not_planned' : 'completed',
-      );
+      await context
+        .resolveIssueRepository(issueUrl)
+        .closeIssueByUrl(
+          issueUrl,
+          action === 'close_not_planned' ? 'not_planned' : 'completed',
+        );
     }
     recordDone(context, pjcodeResult, projectItemId);
     return ok();
@@ -329,7 +338,7 @@ export const handleTriage = async (
       return badRequest('statusName is required for set_status');
     }
     const failure = await updateStatusByName(
-      context.issueRepository,
+      context.resolveIssueRepository(issueUrl),
       project,
       issueUrl,
       projectItemId,
@@ -350,11 +359,13 @@ export const handleTriage = async (
     if (project.story === null) {
       return badRequest('project does not have a story field');
     }
-    await context.issueRepository.updateStory(
-      { ...project, story: project.story },
-      projectItemReference(issueUrl, projectItemId),
-      storyOptionId,
-    );
+    await context
+      .resolveIssueRepository(issueUrl)
+      .updateStory(
+        { ...project, story: project.story },
+        projectItemReference(issueUrl, projectItemId),
+        storyOptionId,
+      );
     recordDone(context, pjcode, projectItemId);
     return ok();
   }
@@ -362,12 +373,9 @@ export const handleTriage = async (
   if (action === 'snooze_1day' || action === 'snooze_1week') {
     const days = action === 'snooze_1day' ? 1 : 7;
     const target = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-    await context.issueRepository.updateNextActionDate(
-      issueUrl,
-      project,
-      target,
-      projectItemId,
-    );
+    await context
+      .resolveIssueRepository(issueUrl)
+      .updateNextActionDate(issueUrl, project, target, projectItemId);
     recordDone(context, pjcode, projectItemId);
     return ok();
   }
@@ -387,9 +395,12 @@ export const handleComment = async (
   if (!isNonEmptyString(commentBody)) {
     return badRequest('body is required');
   }
-  await context.issueRepository.createCommentByUrl(url, commentBody);
-  const comments =
-    await context.issueRepository.getIssueOrPullRequestComments(url);
+  await context
+    .resolveIssueRepository(url)
+    .createCommentByUrl(url, commentBody);
+  const comments = await context
+    .resolveIssueRepository(url)
+    .getIssueOrPullRequestComments(url);
   const posted = comments[comments.length - 1] ?? null;
   return {
     statusCode: 200,
@@ -480,13 +491,9 @@ export const handleReviewComment = async (
     return badRequest('body is required');
   }
   try {
-    await context.issueRepository.createPullRequestReviewComment(
-      url,
-      path,
-      line,
-      side,
-      commentBody,
-    );
+    await context
+      .resolveIssueRepository(url)
+      .createPullRequestReviewComment(url, path, line, side, commentBody);
   } catch (error) {
     return badGateway(error instanceof Error ? error.message : 'unknown error');
   }
@@ -518,7 +525,7 @@ export const handleIntmux = async (
   }
   const { project, pjcode } = binding;
   const failure = await updateStatusByName(
-    context.issueRepository,
+    context.resolveIssueRepository(issueUrl),
     project,
     issueUrl,
     projectItemId,
