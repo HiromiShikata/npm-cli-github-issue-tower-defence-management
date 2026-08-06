@@ -4,6 +4,13 @@ import { LocalStorageCacheRepository } from './LocalStorageCacheRepository';
 import { LocalStorageRepository } from './LocalStorageRepository';
 import { ProjectRepository } from '../../domain/usecases/adapter-interfaces/ProjectRepository';
 import { FieldOption, Project } from '../../domain/entities/Project';
+import {
+  DEPENDED_ISSUE_URL_FIELD_NAME,
+  NEXT_ACTION_DATE_FIELD_NAME,
+  NEXT_ACTION_HOUR_FIELD_NAME,
+  RequiredProjectFieldDefinition,
+  STORY_FIELD_NAME,
+} from '../../domain/entities/RequiredProjectField';
 import { normalizeFieldName } from './utils';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
@@ -38,6 +45,8 @@ export class GraphqlProjectRepository
       | 'getByUrl'
       | 'updateStoryList'
       | 'updateStatusList'
+      | 'listFieldNames'
+      | 'createField'
     >
 {
   private readonly projectIdCache = new Map<string, string>();
@@ -339,10 +348,14 @@ export class GraphqlProjectRepository
       return null;
     }
     const nextActionDate = project.fields.nodes.find(
-      (field) => normalizeFieldName(field.name) === 'nextactiondate',
+      (field) =>
+        normalizeFieldName(field.name) ===
+        normalizeFieldName(NEXT_ACTION_DATE_FIELD_NAME),
     );
     const nextActionHour = project.fields.nodes.find(
-      (field) => normalizeFieldName(field.name) === 'nextactionhour',
+      (field) =>
+        normalizeFieldName(field.name) ===
+        normalizeFieldName(NEXT_ACTION_HOUR_FIELD_NAME),
     );
     const status = project.fields.nodes.find(
       (field) => normalizeFieldName(field.name) === 'status',
@@ -351,7 +364,8 @@ export class GraphqlProjectRepository
       throw new Error('status field is not found');
     }
     const story = project.fields.nodes.find(
-      (field) => normalizeFieldName(field.name) === 'story',
+      (field) =>
+        normalizeFieldName(field.name) === normalizeFieldName(STORY_FIELD_NAME),
     );
     const workflowManagementStory = story?.options.find((option) =>
       normalizeFieldName(option.name).includes('workflowmanagement'),
@@ -363,7 +377,7 @@ export class GraphqlProjectRepository
     const dependedIssueUrlSeparatedByComma = project.fields.nodes.find(
       (field) =>
         normalizeFieldName(field.name).startsWith(
-          'dependedissueurlseparatedbycomma',
+          normalizeFieldName(DEPENDED_ISSUE_URL_FIELD_NAME),
         ),
     );
     const completionDate50PercentConfidence = project.fields.nodes.find(
@@ -441,6 +455,98 @@ export class GraphqlProjectRepository
       throw new Error(`Project not found for ID: ${projectId}`);
     }
     return project;
+  };
+  listFieldNames = async (project: Project): Promise<string[]> => {
+    const query = `query ListProjectV2FieldNames($projectId: ID!) {
+  node(id: $projectId) {
+    ... on ProjectV2 {
+      fields(first: 100) {
+        nodes {
+          ... on ProjectV2FieldCommon {
+            name
+          }
+        }
+      }
+    }
+  }
+}`;
+    const response = await postGithubGraphqlJson<{
+      data?: {
+        node: {
+          fields: {
+            nodes: { name?: string }[];
+          };
+        } | null;
+      };
+      errors?: { message: string }[];
+    }>({
+      ghToken: this.ghToken,
+      query,
+      variables: { projectId: project.id },
+    });
+    if (!response.data || !response.data.node) {
+      const errorMessages = response.errors
+        ? response.errors.map((e) => e.message).join('; ')
+        : 'no data field in response';
+      throw new Error(
+        `GitHub GraphQL API returned no data for listFieldNames: ${errorMessages}`,
+      );
+    }
+    return response.data.node.fields.nodes
+      .map((field) => field.name)
+      .filter((name): name is string => typeof name === 'string');
+  };
+  createField = async (
+    project: Project,
+    field: RequiredProjectFieldDefinition,
+  ): Promise<void> => {
+    const mutation = `mutation CreateProjectV2Field($projectId: ID!, $dataType: ProjectV2CustomFieldType!, $name: String!, $singleSelectOptions: [ProjectV2SingleSelectFieldOptionInput!]) {
+  createProjectV2Field(input: {
+    projectId: $projectId
+    dataType: $dataType
+    name: $name
+    singleSelectOptions: $singleSelectOptions
+  }) {
+    projectV2Field {
+      ... on ProjectV2FieldCommon {
+        id
+        name
+      }
+    }
+  }
+}`;
+    const response = await postGithubGraphqlJson<{
+      data?: {
+        createProjectV2Field: {
+          projectV2Field: { id: string; name: string };
+        };
+      };
+      errors?: { message: string }[];
+    }>({
+      ghToken: this.ghToken,
+      query: mutation,
+      variables: {
+        projectId: project.id,
+        dataType: field.dataType,
+        name: field.name,
+        singleSelectOptions:
+          field.dataType === 'SINGLE_SELECT'
+            ? field.options.map(({ name, color, description }) => ({
+                name,
+                color,
+                description,
+              }))
+            : null,
+      },
+    });
+    if (!response.data) {
+      const errorMessages = response.errors
+        ? response.errors.map((e) => e.message).join('; ')
+        : 'no data field in response';
+      throw new Error(
+        `GitHub GraphQL API returned no data for createField ${field.name}: ${errorMessages}`,
+      );
+    }
   };
   updateStoryList = async (
     project: Project,

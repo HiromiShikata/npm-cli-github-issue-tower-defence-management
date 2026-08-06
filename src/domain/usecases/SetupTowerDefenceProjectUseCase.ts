@@ -2,6 +2,7 @@ import { FieldOption } from '../entities/Project';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import {
+  DEFAULT_STATUS_NAME,
   IN_TMUX_STATUS_NAME,
   LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
   LEGACY_IN_TMUX_STATUS_NAME,
@@ -27,6 +28,7 @@ export class SetupTowerDefenceProjectUseCase {
   private static readonly LEGACY_STATUS_NAMES: Readonly<
     Record<string, string>
   > = {
+    [DEFAULT_STATUS_NAME]: LEGACY_TODO_STATUS_NAME,
     [TODO_STATUS_NAME]: LEGACY_TODO_STATUS_NAME,
     [IN_TMUX_STATUS_NAME]: LEGACY_IN_TMUX_STATUS_NAME,
   };
@@ -84,6 +86,7 @@ export class SetupTowerDefenceProjectUseCase {
         !SetupTowerDefenceProjectUseCase.MIGRATED_FROM_NAMES.has(status.name),
     );
 
+    const reusedOptionIds = new Set<FieldOption['id']>();
     const newStatusList: (Omit<FieldOption, 'id'> & {
       id: FieldOption['id'] | null;
     })[] = [
@@ -93,8 +96,14 @@ export class SetupTowerDefenceProjectUseCase {
         const found =
           existing.find((status) => status.name === required.name) ??
           (legacyName !== undefined
-            ? existing.find((status) => status.name === legacyName)
+            ? existing.find(
+                (status) =>
+                  status.name === legacyName && !reusedOptionIds.has(status.id),
+              )
             : undefined);
+        if (found) {
+          reusedOptionIds.add(found.id);
+        }
         return {
           id: found ? found.id : null,
           name: required.name,

@@ -62,6 +62,7 @@ import { UpdateRateLimitCacheUseCase } from '../../../domain/usecases/UpdateRate
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import { RevertNotReadyReviewQueueIssueUseCase } from '../../../domain/usecases/RevertNotReadyReviewQueueIssueUseCase';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
+import { ProjectRequiredFieldCreateUseCase } from '../../../domain/usecases/ProjectRequiredFieldCreateUseCase';
 import { SetupTowerDefenceProjectUseCase } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
 import { DailySecurityScanUseCase } from '../../../domain/usecases/DailySecurityScanUseCase';
 import { KyHttpRepository } from '../../repositories/KyHttpRepository';
@@ -334,6 +335,8 @@ export class HandleScheduledEventUseCaseHandler {
       systemDateRepository,
       ...githubRepositoryParams,
     );
+    const projectRequiredFieldCreateUseCase =
+      new ProjectRequiredFieldCreateUseCase(projectRepository);
     const setupTowerDefenceProjectUseCase = new SetupTowerDefenceProjectUseCase(
       projectRepository,
       issueRepository,
@@ -425,6 +428,7 @@ export class HandleScheduledEventUseCaseHandler {
       : null;
 
     const handleScheduledEventUseCase = new HandleScheduledEventUseCase(
+      projectRequiredFieldCreateUseCase,
       setupTowerDefenceProjectUseCase,
       actionAnnouncement,
       setWorkflowManagementIssueToStoryUseCase,
