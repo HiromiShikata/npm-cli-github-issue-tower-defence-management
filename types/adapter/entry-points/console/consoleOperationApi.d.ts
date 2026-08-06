@@ -9,8 +9,9 @@ export type ConsoleProjectBinding = {
 };
 export type ConsoleProjectResolver = (pjcode: string) => Promise<ConsoleProjectBinding | null>;
 export type ConsolePjcodeValidator = (pjcode: string) => boolean;
+export type ConsoleIssueRepositoryResolver = (issueOrPullRequestUrl: string) => IssueRepository;
 export type ConsoleOperationContext = {
-    issueRepository: IssueRepository;
+    resolveIssueRepository: ConsoleIssueRepositoryResolver;
     resolveProject: ConsoleProjectResolver;
     isPjcodeConfigured: ConsolePjcodeValidator;
     consoleDataOutputDir: string | null;

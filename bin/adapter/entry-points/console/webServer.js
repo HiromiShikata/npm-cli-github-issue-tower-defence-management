@@ -389,8 +389,9 @@ const handleOperationApi = async (options, requestPath, body) => {
         isPjcodeConfigured === null) {
         return null;
     }
+    const resolveIssueRepository = options.resolveIssueRepository ?? (() => issueRepository);
     const context = {
-        issueRepository,
+        resolveIssueRepository,
         resolveProject,
         isPjcodeConfigured,
         consoleDataOutputDir: options.consoleDataOutputDir,

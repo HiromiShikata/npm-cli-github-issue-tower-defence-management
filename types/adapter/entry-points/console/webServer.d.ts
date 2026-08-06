@@ -2,7 +2,7 @@ import * as http from 'http';
 import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { IssueTitleStateCache, PullRequestStatusCache } from './consoleReadApi';
-import { ConsolePjcodeValidator, ConsoleProjectResolver } from './consoleOperationApi';
+import { ConsoleIssueRepositoryResolver, ConsolePjcodeValidator, ConsoleProjectResolver } from './consoleOperationApi';
 import { ImageFetcher } from './consoleImageProxy';
 export declare const DEFAULT_WEB_PORT = 9980;
 export declare const CONSOLE_TOKEN_HEADER = "x-pv-token";
@@ -26,6 +26,7 @@ export type WebServerOptions = {
     githubToken?: string | null;
     imageFetcher?: ImageFetcher | null;
     issueRepository?: IssueRepository | null;
+    resolveIssueRepository?: ConsoleIssueRepositoryResolver | null;
     resolveProject?: ConsoleProjectResolver | null;
     isPjcodeConfigured?: ConsolePjcodeValidator | null;
     issueAttachmentRepository?: IssueAttachmentRepository | null;

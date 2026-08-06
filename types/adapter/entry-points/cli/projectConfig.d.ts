@@ -21,6 +21,7 @@ export type ConfigFile = {
     changeTargetPathAliases?: Record<string, string>;
     consoleAccessToken?: string;
     consoleProjects?: Record<string, string>;
+    consoleGithubTokenFilesByRepositoryOwner?: Record<string, string>;
     disks?: DiskConfig[];
 };
 export type DiskConfig = {

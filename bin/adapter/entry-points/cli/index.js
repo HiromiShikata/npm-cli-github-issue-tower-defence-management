@@ -33,8 +33,12 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.program = exports.fetchProjectReadme = exports.mergeConfigs = exports.parseProjectReadmeConfig = exports.loadConfigFile = void 0;
+const fs_1 = __importDefault(require("fs"));
 const commander_1 = require("commander");
 var projectConfig_1 = require("./projectConfig");
 Object.defineProperty(exports, "loadConfigFile", { enumerable: true, get: function () { return projectConfig_1.loadConfigFile; } });
@@ -68,6 +72,7 @@ const DashboardProjectCode_1 = require("../../../domain/usecases/dashboard/Dashb
 const ensureConsoleRunning_1 = require("../console/ensureConsoleRunning");
 const consoleReadApi_1 = require("../console/consoleReadApi");
 const consoleProjectResolver_1 = require("../console/consoleProjectResolver");
+const consoleGithubTokenResolver_1 = require("../console/consoleGithubTokenResolver");
 const OauthTokenSelectHandler_1 = require("../handlers/OauthTokenSelectHandler");
 const LiveSessionOauthTokenSelectHandler_1 = require("../handlers/LiveSessionOauthTokenSelectHandler");
 const InTmuxByHumanSessionTokenCountHandler_1 = require("../handlers/InTmuxByHumanSessionTokenCountHandler");
@@ -431,6 +436,20 @@ const runServeWeb = async (options) => {
     const restIssueRepository = new RestIssueRepository_1.RestIssueRepository(...githubRepositoryParams);
     const graphqlProjectItemRepository = new GraphqlProjectItemRepository_1.GraphqlProjectItemRepository(...githubRepositoryParams);
     const issueRepository = new ApiV3CheerioRestIssueRepository_1.ApiV3CheerioRestIssueRepository(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, projectRepository, new SystemDateRepository_1.SystemDateRepository(), ...githubRepositoryParams);
+    const resolveGithubToken = (0, consoleGithubTokenResolver_1.createConsoleGithubTokenResolver)(token, config.consoleGithubTokenFilesByRepositoryOwner ?? null, (filePath) => fs_1.default.readFileSync(filePath, 'utf8'));
+    const issueRepositoryByToken = new Map();
+    issueRepositoryByToken.set(token, issueRepository);
+    const buildIssueRepositoryForToken = (repositoryToken) => {
+        const alreadyBuilt = issueRepositoryByToken.get(repositoryToken);
+        if (alreadyBuilt !== undefined) {
+            return alreadyBuilt;
+        }
+        const repositoryParams = buildGithubRepositoryParams(localStorageRepository, repositoryToken);
+        const built = new ApiV3CheerioRestIssueRepository_1.ApiV3CheerioRestIssueRepository(new ApiV3IssueRepository_1.ApiV3IssueRepository(...repositoryParams), new RestIssueRepository_1.RestIssueRepository(...repositoryParams), new GraphqlProjectItemRepository_1.GraphqlProjectItemRepository(...repositoryParams), localStorageCacheRepository, new GraphqlProjectRepository_1.GraphqlProjectRepository(...repositoryParams, localStorageCacheRepository), new SystemDateRepository_1.SystemDateRepository(), ...repositoryParams);
+        issueRepositoryByToken.set(repositoryToken, built);
+        return built;
+    };
+    const resolveIssueRepository = (0, consoleGithubTokenResolver_1.createConsoleIssueRepositoryResolver)(resolveGithubToken, buildIssueRepositoryForToken);
     const pjcodeToProjectUrl = (0, consoleProjectResolver_1.buildPjcodeToProjectUrl)(projectName, projectUrl, config.consoleProjects ?? null);
     const isPjcodeConfigured = (0, consoleProjectResolver_1.createPjcodeConfigChecker)(pjcodeToProjectUrl);
     const resolveProject = (0, consoleProjectResolver_1.createConsoleProjectResolver)(pjcodeToProjectUrl, async (targetProjectUrl) => {
@@ -469,6 +488,7 @@ const runServeWeb = async (options) => {
         dashboardProjectNames,
         githubToken: token,
         issueRepository,
+        resolveIssueRepository,
         resolveProject,
         isPjcodeConfigured,
         issueAttachmentRepository: new LocalCommandIssueAttachmentRepository_1.LocalCommandIssueAttachmentRepository(new NodeLocalCommandRunner_1.NodeLocalCommandRunner()),

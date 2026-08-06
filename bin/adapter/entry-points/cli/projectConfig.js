@@ -145,6 +145,7 @@ const loadConfigFile = (configFilePath) => {
             changeTargetPathAliases: getStringRecordValue(parsed, 'changeTargetPathAliases'),
             consoleAccessToken: getStringValue(parsed, 'consoleAccessToken'),
             consoleProjects: getStringRecordValue(parsed, 'consoleProjects'),
+            consoleGithubTokenFilesByRepositoryOwner: getStringRecordValue(parsed, 'consoleGithubTokenFilesByRepositoryOwner'),
             disks: getDisksValue(parsed, 'disks'),
         };
     }
@@ -259,6 +260,8 @@ const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
         configFile.changeTargetPathAliases,
     consoleAccessToken: cliOverrides.consoleAccessToken ?? configFile.consoleAccessToken,
     consoleProjects: cliOverrides.consoleProjects ?? configFile.consoleProjects,
+    consoleGithubTokenFilesByRepositoryOwner: cliOverrides.consoleGithubTokenFilesByRepositoryOwner ??
+        configFile.consoleGithubTokenFilesByRepositoryOwner,
     disks: cliOverrides.disks ?? configFile.disks,
 });
 exports.mergeConfigs = mergeConfigs;
