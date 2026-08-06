@@ -620,6 +620,52 @@ describe('webServer new routes integration', () => {
     }
   });
 
+  it('reads through the issue repository resolved from the requested url', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const defaultIssueRepository = mock<IssueRepository>();
+    defaultIssueRepository.getIssueOrPullRequestBody.mockResolvedValue(
+      'default token body',
+    );
+    const ownerIssueRepository = mock<IssueRepository>();
+    ownerIssueRepository.getIssueOrPullRequestBody.mockResolvedValue(
+      'owner token body',
+    );
+    const resolvedUrls: string[] = [];
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      issueRepository: defaultIssueRepository,
+      resolveIssueRepository: (issueOrPullRequestUrl: string) => {
+        resolvedUrls.push(issueOrPullRequestUrl);
+        return ownerIssueRepository;
+      },
+      issueTitleStateCache: new IssueTitleStateCache(),
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'GET',
+        `/api/itembody?k=${testToken}&url=https://github.com/meta-site/hr-audit-mock/issues/178`,
+      );
+      expect(JSON.parse(response.body)).toEqual({ body: 'owner token body' });
+      expect(resolvedUrls).toEqual([
+        'https://github.com/meta-site/hr-audit-mock/issues/178',
+      ]);
+      expect(
+        defaultIssueRepository.getIssueOrPullRequestBody,
+      ).not.toHaveBeenCalled();
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   it('serves the pull request status read api when a status cache is injected', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
     const issueRepository = mock<IssueRepository>();
