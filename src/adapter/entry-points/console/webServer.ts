@@ -420,13 +420,17 @@ const handleReadApi = async (
   requestPath: string,
   searchParams: URLSearchParams,
 ): Promise<{ statusCode: number; body: unknown } | null> => {
-  const issueRepository = options.issueRepository ?? null;
-  if (issueRepository === null) {
+  const defaultIssueRepository = options.issueRepository ?? null;
+  if (defaultIssueRepository === null) {
     return null;
   }
   const cache = options.issueTitleStateCache ?? null;
   const pullRequestStatusCache = options.pullRequestStatusCache ?? null;
   const url = searchParams.get('url');
+  const issueRepository =
+    url === null
+      ? defaultIssueRepository
+      : (options.resolveIssueRepository ?? (() => defaultIssueRepository))(url);
   switch (requestPath) {
     case '/api/itembody':
       return handleItemBody(issueRepository, url);
