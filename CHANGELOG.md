@@ -1,3 +1,10 @@
+## [1.146.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.0...v1.146.1) (2026-08-06)
+
+
+### Bug Fixes
+
+* **project-setup:** provision a newly created project with Unread default status and the required fields ([#1399](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1399)) ([a9298bc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a9298bc2c00f817e6be345405f2ca510dfefcd5e))
+
 # [1.146.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.145.0...v1.146.0) (2026-08-06)
 
 

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.normalizeFieldName = exports.totalDuration = exports.calcrateDuration = void 0;
+const ProjectFieldName_1 = require("../../domain/entities/ProjectFieldName");
 // 0:50 , 1:10 = 0:20
 // 23:50 , 0:00 = 0:10
 // 0:20, 0:10 = 23:50
@@ -33,8 +34,5 @@ const totalDuration = (durations) => {
     return `${String(totalHour).padStart(2, '0')}:${String(totalMinute).padStart(2, '0')}`;
 };
 exports.totalDuration = totalDuration;
-const normalizeFieldName = (fieldName) => {
-    return fieldName.toLowerCase().replace(/[\s-()]/g, '');
-};
-exports.normalizeFieldName = normalizeFieldName;
+exports.normalizeFieldName = ProjectFieldName_1.normalizeProjectFieldName;
 //# sourceMappingURL=utils.js.map

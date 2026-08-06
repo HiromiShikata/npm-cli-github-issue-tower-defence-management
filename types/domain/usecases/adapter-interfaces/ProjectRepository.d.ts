@@ -1,5 +1,8 @@
 import { FieldOption, Project } from '../../entities/Project';
+import { RequiredProjectFieldDefinition } from '../../entities/RequiredProjectField';
 export interface ProjectRepository {
+    listFieldNames: (project: Project) => Promise<string[]>;
+    createField: (project: Project, field: RequiredProjectFieldDefinition) => Promise<void>;
     findProjectIdByUrl: (projectUrl: string) => Promise<Project['id'] | null>;
     getProject: (projectId: Project['id']) => Promise<Project | null>;
     updateStoryList: (projectId: Project, storyOption: (Omit<FieldOption, 'id'> & {
