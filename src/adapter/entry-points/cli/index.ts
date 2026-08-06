@@ -51,7 +51,7 @@ import {
 } from '../console/consoleProjectResolver';
 import {
   createConsoleGithubTokenResolver,
-  extractRepositoryOwner,
+  createConsoleIssueRepositoryResolver,
 } from '../console/consoleGithubTokenResolver';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { OauthTokenSelectHandler } from '../handlers/OauthTokenSelectHandler';
@@ -793,15 +793,11 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     issueRepositoryByToken.set(repositoryToken, built);
     return built;
   };
-  const resolveIssueRepository = (
-    issueOrPullRequestUrl: string,
-  ): IssueRepository => {
-    const repositoryOwner = extractRepositoryOwner(issueOrPullRequestUrl);
-    if (repositoryOwner === null) {
-      return issueRepository;
-    }
-    return buildIssueRepositoryForToken(resolveGithubToken(repositoryOwner));
-  };
+  const resolveIssueRepository =
+    createConsoleIssueRepositoryResolver<IssueRepository>(
+      resolveGithubToken,
+      buildIssueRepositoryForToken,
+    );
 
   const pjcodeToProjectUrl = buildPjcodeToProjectUrl(
     projectName,

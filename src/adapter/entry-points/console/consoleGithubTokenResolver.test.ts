@@ -1,7 +1,32 @@
 import {
   createConsoleGithubTokenResolver,
+  createConsoleIssueRepositoryResolver,
   extractRepositoryOwner,
 } from './consoleGithubTokenResolver';
+
+describe('createConsoleIssueRepositoryResolver', () => {
+  it('builds the issue repository from the token of the owner in the url', () => {
+    const resolve = createConsoleIssueRepositoryResolver<string>(
+      (repositoryOwner) => `token-of-${repositoryOwner}`,
+      (githubToken) => `repository-with-${githubToken}`,
+    );
+
+    expect(
+      resolve('https://github.com/meta-site/hr-audit-mock/issues/178'),
+    ).toBe('repository-with-token-of-meta-site');
+  });
+
+  it('throws when the repository owner cannot be read from the url', () => {
+    const resolve = createConsoleIssueRepositoryResolver<string>(
+      (repositoryOwner) => `token-of-${repositoryOwner}`,
+      (githubToken) => `repository-with-${githubToken}`,
+    );
+
+    expect(() => resolve('https://github.com/meta-site/hr-audit-mock')).toThrow(
+      'The repository owner cannot be read from the operated url: https://github.com/meta-site/hr-audit-mock',
+    );
+  });
+});
 
 describe('extractRepositoryOwner', () => {
   it('should return the owner of an issue url', () => {

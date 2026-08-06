@@ -11,6 +11,21 @@ export const extractRepositoryOwner = (
   return match ? match[1] : null;
 };
 
+export const createConsoleIssueRepositoryResolver = <IssueRepositoryType>(
+  resolveGithubToken: ConsoleGithubTokenResolver,
+  buildIssueRepositoryForToken: (githubToken: string) => IssueRepositoryType,
+): ((issueOrPullRequestUrl: string) => IssueRepositoryType) => {
+  return (issueOrPullRequestUrl: string): IssueRepositoryType => {
+    const repositoryOwner = extractRepositoryOwner(issueOrPullRequestUrl);
+    if (repositoryOwner === null) {
+      throw new Error(
+        `The repository owner cannot be read from the operated url: ${issueOrPullRequestUrl}`,
+      );
+    }
+    return buildIssueRepositoryForToken(resolveGithubToken(repositoryOwner));
+  };
+};
+
 export const createConsoleGithubTokenResolver = (
   defaultToken: string,
   githubTokenFilePathByRepositoryOwner: Record<string, string> | null,
