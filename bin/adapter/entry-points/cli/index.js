@@ -450,28 +450,21 @@ const runServeWeb = async (options) => {
         return built;
     };
     const resolveIssueRepository = (0, consoleGithubTokenResolver_1.createConsoleIssueRepositoryResolver)(resolveGithubToken, buildIssueRepositoryForToken);
+    const projectRepositoryByToken = new Map();
+    projectRepositoryByToken.set(token, projectRepository);
+    const buildProjectRepositoryForToken = (repositoryToken) => {
+        const alreadyBuilt = projectRepositoryByToken.get(repositoryToken);
+        if (alreadyBuilt !== undefined) {
+            return alreadyBuilt;
+        }
+        const built = new GraphqlProjectRepository_1.GraphqlProjectRepository(...buildGithubRepositoryParams(localStorageRepository, repositoryToken), localStorageCacheRepository);
+        projectRepositoryByToken.set(repositoryToken, built);
+        return built;
+    };
+    const resolveProjectRepository = (0, consoleGithubTokenResolver_1.createConsoleProjectRepositoryResolver)(resolveGithubToken, buildProjectRepositoryForToken);
     const pjcodeToProjectUrl = (0, consoleProjectResolver_1.buildPjcodeToProjectUrl)(projectName, projectUrl, config.consoleProjects ?? null);
     const isPjcodeConfigured = (0, consoleProjectResolver_1.createPjcodeConfigChecker)(pjcodeToProjectUrl);
-    const resolveProject = (0, consoleProjectResolver_1.createConsoleProjectResolver)(pjcodeToProjectUrl, async (targetProjectUrl) => {
-        const targetProjectId = await projectRepository.findProjectIdByUrl(targetProjectUrl);
-        if (!targetProjectId) {
-            console.error(`No project found for projectUrl ${targetProjectUrl}`);
-            return null;
-        }
-        // Prefer the Project the TDPM daemon already cached locally (status/story
-        // option ids and field ids), which needs no GraphQL. Fall back to a
-        // GraphQL project load only when the cache has not been populated yet.
-        const cachedProject = await issueRepository.getCachedProject(targetProjectId);
-        if (cachedProject) {
-            return cachedProject;
-        }
-        const loadedProject = await projectRepository.getProject(targetProjectId);
-        if (!loadedProject) {
-            console.error(`Failed to load project for projectUrl ${targetProjectUrl}`);
-            return null;
-        }
-        return loadedProject;
-    });
+    const resolveProject = (0, consoleProjectResolver_1.createConsoleProjectResolver)(pjcodeToProjectUrl, (0, consoleProjectResolver_1.createConsoleProjectLoader)(resolveProjectRepository, (targetProjectId) => issueRepository.getCachedProject(targetProjectId), (message) => console.error(message)));
     const uiDistDir = path.join(__dirname, '..', 'console', 'ui-dist');
     const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
     const inTmuxDataDir = options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR;

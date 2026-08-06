@@ -1,6 +1,27 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createConsoleProjectResolver = exports.createPjcodeConfigChecker = exports.buildPjcodeToProjectUrl = void 0;
+exports.createConsoleProjectResolver = exports.createPjcodeConfigChecker = exports.buildPjcodeToProjectUrl = exports.createConsoleProjectLoader = void 0;
+const createConsoleProjectLoader = (resolveProjectRepository, getCachedProject, reportLoadFailure) => {
+    return async (projectUrl) => {
+        const projectRepository = resolveProjectRepository(projectUrl);
+        const projectId = await projectRepository.findProjectIdByUrl(projectUrl);
+        if (!projectId) {
+            reportLoadFailure(`No project found for projectUrl ${projectUrl}`);
+            return null;
+        }
+        const cachedProject = await getCachedProject(projectId);
+        if (cachedProject) {
+            return cachedProject;
+        }
+        const loadedProject = await projectRepository.getProject(projectId);
+        if (!loadedProject) {
+            reportLoadFailure(`Failed to load project for projectUrl ${projectUrl}`);
+            return null;
+        }
+        return loadedProject;
+    };
+};
+exports.createConsoleProjectLoader = createConsoleProjectLoader;
 const buildPjcodeToProjectUrl = (defaultPjcode, defaultProjectUrl, consoleProjects) => {
     const mapping = {};
     if (consoleProjects !== null) {

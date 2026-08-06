@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createConsoleGithubTokenResolver = exports.createConsoleIssueRepositoryResolver = exports.extractRepositoryOwner = void 0;
+exports.createConsoleGithubTokenResolver = exports.createConsoleProjectRepositoryResolver = exports.extractProjectOwner = exports.createConsoleIssueRepositoryResolver = exports.extractRepositoryOwner = void 0;
 const extractRepositoryOwner = (issueOrPullRequestUrl) => {
     const match = issueOrPullRequestUrl.match(/^https:\/\/github\.com\/([A-Za-z0-9._-]+)\/[A-Za-z0-9._-]+\/(?:issues|pull)\/\d+/);
     return match ? match[1] : null;
@@ -16,6 +16,21 @@ const createConsoleIssueRepositoryResolver = (resolveGithubToken, buildIssueRepo
     };
 };
 exports.createConsoleIssueRepositoryResolver = createConsoleIssueRepositoryResolver;
+const extractProjectOwner = (projectUrl) => {
+    const match = projectUrl.match(/^https:\/\/github\.com\/(?:orgs|users)\/([A-Za-z0-9._-]+)\/projects\/\d+/);
+    return match ? match[1] : null;
+};
+exports.extractProjectOwner = extractProjectOwner;
+const createConsoleProjectRepositoryResolver = (resolveGithubToken, buildProjectRepositoryForToken) => {
+    return (projectUrl) => {
+        const projectOwner = (0, exports.extractProjectOwner)(projectUrl);
+        if (projectOwner === null) {
+            throw new Error(`The project owner cannot be read from the project url: ${projectUrl}`);
+        }
+        return buildProjectRepositoryForToken(resolveGithubToken(projectOwner));
+    };
+};
+exports.createConsoleProjectRepositoryResolver = createConsoleProjectRepositoryResolver;
 const createConsoleGithubTokenResolver = (defaultToken, githubTokenFilePathByRepositoryOwner, readTokenFile) => {
     const resolvedTokenByRepositoryOwner = new Map();
     return (repositoryOwner) => {

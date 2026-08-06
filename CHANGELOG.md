@@ -1,3 +1,10 @@
+## [1.146.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.3...v1.146.4) (2026-08-06)
+
+
+### Bug Fixes
+
+* **console:** resolve the GitHub Project with the per repository owner token ([#1410](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1410)) ([94de9d9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/94de9d931fd4eb80d20b82e7491a495be0c954b1))
+
 ## [1.146.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.2...v1.146.3) (2026-08-06)
 
 
