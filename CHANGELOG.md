@@ -3,7 +3,7 @@
 
 ### Features
 
-* **dashboard:** add cmg to dashboard display label map ([#1390](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1390)) ([2a65486](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2a65486cb1b777324d9bd83c9668424f64b6d783))
+* **dashboard:** add a project entry to the dashboard display label map ([#1390](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1390)) ([2a65486](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2a65486cb1b777324d9bd83c9668424f64b6d783))
 
 # [1.145.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.144.5...v1.145.0) (2026-08-05)
 
@@ -189,7 +189,7 @@
 
 ### Features
 
-* **start-preparation-use-case:** Add duplicate aw-worker prevention in TDPM StartPreparationUseCase via running-process URL check ([#1032](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1032)) ([62d322e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/62d322ed25477080f5f6fa9907d5faea90f9f7ea)), closes [HiromiShikata/umino-corporait-operation#29838](https://github.com/HiromiShikata/umino-corporait-operation/issues/29838)
+* **start-preparation-use-case:** Add duplicate aw-worker prevention in TDPM StartPreparationUseCase via running-process URL check ([#1032](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1032)) ([62d322e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/62d322ed25477080f5f6fa9907d5faea90f9f7ea))
 
 ## [1.137.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.137.1...v1.137.2) (2026-07-26)
 
@@ -229,7 +229,7 @@
 
 ### Bug Fixes
 
-* **use-case:** clear past nextActionHour on every sweep without minute-45 dependency ([#1234](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1234)) ([54d6b8f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/54d6b8fecbd94c6068ae5c85f6d347ad38378725)), closes [HiromiShikata/secretary#2794](https://github.com/HiromiShikata/secretary/issues/2794)
+* **use-case:** clear past nextActionHour on every sweep without minute-45 dependency ([#1234](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1234)) ([54d6b8f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/54d6b8fecbd94c6068ae5c85f6d347ad38378725))
 
 ## [1.135.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.135.0...v1.135.1) (2026-07-25)
 
@@ -546,7 +546,7 @@
 
 ### Features
 
-* maintain a single latest issue cache refreshed incrementally ([#1142](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1142)) ([09ebe33](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/09ebe3363c8a168bbba324a6423046eb75608a71)), closes [HiromiShikata/umino-corporait-operation#30006](https://github.com/HiromiShikata/umino-corporait-operation/issues/30006)
+* maintain a single latest issue cache refreshed incrementally ([#1142](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1142)) ([09ebe33](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/09ebe3363c8a168bbba324a6423046eb75608a71))
 
 # [1.120.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.119.4...v1.120.0) (2026-07-07)
 
@@ -1087,7 +1087,7 @@
 
 ### Bug Fixes
 
-* **ci:** skip umino-project jobs for renovate[bot] actor ([#920](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/920)) ([17c4162](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/17c416223b5ef782291ea822bf1936a33111b470)), closes [#900](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/900)
+* **ci:** skip project-automation jobs for renovate[bot] actor ([#920](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/920)) ([17c4162](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/17c416223b5ef782291ea822bf1936a33111b470)), closes [#900](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/900)
 
 # [1.99.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.98.3...v1.99.0) (2026-06-25)
 
@@ -1398,7 +1398,7 @@
 
 ### Features
 
-* **cli:** enhance checkIssueReviewReadiness with comment checks and optional projectUrl ([41c0b6f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/41c0b6f01c24068925638e35a108d33ea5fa202d)), closes [HiromiShikata/secretary#1781](https://github.com/HiromiShikata/secretary/issues/1781)
+* **cli:** enhance checkIssueReviewReadiness with comment checks and optional projectUrl ([41c0b6f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/41c0b6f01c24068925638e35a108d33ea5fa202d))
 
 
 ### Reverts
@@ -2168,7 +2168,7 @@
 
 ### Bug Fixes
 
-* **core:** make removeLabel idempotent and add error context in UpdateIssueStatusByLabelUseCase ([cee85d1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cee85d165d59de44d1a7d2f7f36338a1b9b2ca1d)), closes [#403](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/403) [HiromiShikata/secretary#566](https://github.com/HiromiShikata/secretary/issues/566)
+* **core:** make removeLabel idempotent and add error context in UpdateIssueStatusByLabelUseCase ([cee85d1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cee85d165d59de44d1a7d2f7f36338a1b9b2ca1d)), closes [#403](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/403)
 
 ## [1.36.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.36.1...v1.36.2) (2026-04-17)
 
@@ -2529,7 +2529,7 @@
 
 ### Features
 
-* create an issue when failed to complete usecases / close / https://github.com/HiromiShikata/umino-corporait-operation/issues/13641 ([a81cf0d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a81cf0db6cb112feea8a3274d17094b58f4d6550))
+* create an issue when failed to complete usecases / close ([a81cf0d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a81cf0db6cb112feea8a3274d17094b58f4d6550))
 
 # [1.12.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.11.0...v1.12.0) (2025-01-27)
 
@@ -2564,7 +2564,7 @@
 
 ### Features
 
-* check once in a week if completion date is 1 week after / close https://github.com/HiromiShikata/7sea.world/issues/1864 ([d8e1630](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d8e1630c0f89883c92e6a6e44dc4a8ad21a55605))
+* check once in a week if completion date is 1 week after ([d8e1630](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d8e1630c0f89883c92e6a6e44dc4a8ad21a55605))
 
 ## [1.7.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.7.0...v1.7.1) (2025-01-19)
 

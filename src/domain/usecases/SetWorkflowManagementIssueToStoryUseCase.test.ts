@@ -381,9 +381,9 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionDate: null,
         nextActionHour: null,
         isPr: false,
-        org: 'xcare-medical',
-        repo: 'xcare-platform',
-        url: 'https://github.com/xcare-medical/xcare-platform/issues/1445',
+        org: 'initech-medical',
+        repo: 'initech-platform',
+        url: 'https://github.com/initech-medical/initech-platform/issues/1445',
       };
       mockIssueRepository.searchIssue.mockResolvedValue([]);
 
@@ -401,8 +401,8 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
       expect(mockIssueRepository.searchIssue.mock.calls).toEqual([
         [
           {
-            owner: 'xcare-medical',
-            repositoryName: 'xcare-platform',
+            owner: 'initech-medical',
+            repositoryName: 'initech-platform',
             type: 'issue',
             state: 'open',
             title:
@@ -412,16 +412,16 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
       ]);
       expect(mockIssueRepository.createNewIssue).toHaveBeenCalledTimes(1);
       const createCall = mockIssueRepository.createNewIssue.mock.calls[0];
-      expect(createCall[0]).toEqual('xcare-medical');
-      expect(createCall[1]).toEqual('xcare-platform');
+      expect(createCall[0]).toEqual('initech-medical');
+      expect(createCall[1]).toEqual('initech-platform');
       expect(createCall[2]).toEqual(
         'TDPM: story label "story:routine-management" has no matching "regular / routine-management" Story option',
       );
       expect(createCall[3]).toContain(
-        'https://github.com/xcare-medical/xcare-platform/issues/1445',
+        'https://github.com/initech-medical/initech-platform/issues/1445',
       );
       expect(createCall[3]).toContain('story:routine-management');
-      expect(createCall[4]).toEqual(['xcare-medical']);
+      expect(createCall[4]).toEqual(['initech-medical']);
       expect(createCall[5]).toEqual([]);
     });
 
@@ -434,13 +434,13 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionDate: null,
         nextActionHour: null,
         isPr: false,
-        org: 'xcare-medical',
-        repo: 'xcare-platform',
-        url: 'https://github.com/xcare-medical/xcare-platform/issues/1445',
+        org: 'initech-medical',
+        repo: 'initech-platform',
+        url: 'https://github.com/initech-medical/initech-platform/issues/1445',
       };
       mockIssueRepository.searchIssue.mockResolvedValue([
         {
-          url: 'https://github.com/xcare-medical/xcare-platform/issues/9999',
+          url: 'https://github.com/initech-medical/initech-platform/issues/9999',
           title:
             'TDPM: story label "story:routine-management" has no matching "regular / routine-management" Story option',
           number: '9999',
@@ -471,9 +471,9 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionDate: null,
         nextActionHour: null,
         isPr: false,
-        org: 'xcare-medical',
-        repo: 'xcare-platform',
-        url: 'https://github.com/xcare-medical/xcare-platform/issues/1500',
+        org: 'initech-medical',
+        repo: 'initech-platform',
+        url: 'https://github.com/initech-medical/initech-platform/issues/1500',
       };
       mockIssueRepository.searchIssue.mockResolvedValue([]);
 
@@ -503,9 +503,9 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionDate: null,
         nextActionHour: null,
         isPr: false,
-        org: 'xcare-medical',
-        repo: 'xcare-platform',
-        url: 'https://github.com/xcare-medical/xcare-platform/issues/1445',
+        org: 'initech-medical',
+        repo: 'initech-platform',
+        url: 'https://github.com/initech-medical/initech-platform/issues/1445',
       };
       const matchedIssue: Issue = {
         ...mock<Issue>(),

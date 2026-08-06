@@ -56,7 +56,7 @@ describe('writeDashboardRow', () => {
   it('writes a per-project row file with counts, pjcode and capturedAt', () => {
     writeDashboardRow({
       dashboardDataDir: dir,
-      pjcode: 'um',
+      pjcode: 'ac',
       assigneeLogin: ASSIGNEE,
       issues: [
         makeIssue({ status: 'Unread' }),
@@ -65,9 +65,9 @@ describe('writeDashboardRow', () => {
       generatedAt: '2026-06-26T12:00:00.000Z',
     });
 
-    const written = readJson(path.join(dir, 'projects', 'um.json'));
+    const written = readJson(path.join(dir, 'projects', 'ac.json'));
     const expected: DashboardRowFile = {
-      pjcode: 'um',
+      pjcode: 'ac',
       capturedAt: '2026-06-26T12:00:00.000Z',
       unread: 1,
       todo: 0,
@@ -84,7 +84,7 @@ describe('writeDashboardRow', () => {
   it('is a no-op when dashboardDataDir is unset', () => {
     writeDashboardRow({
       dashboardDataDir: null,
-      pjcode: 'um',
+      pjcode: 'ac',
       assigneeLogin: ASSIGNEE,
       issues: [makeIssue({ status: 'Unread' })],
     });
@@ -101,7 +101,7 @@ describe('writeDashboardRow', () => {
     });
     writeDashboardRow({
       dashboardDataDir: dir,
-      pjcode: 'um',
+      pjcode: 'ac',
       assigneeLogin: null,
       issues: [makeIssue({ status: 'Unread' })],
     });

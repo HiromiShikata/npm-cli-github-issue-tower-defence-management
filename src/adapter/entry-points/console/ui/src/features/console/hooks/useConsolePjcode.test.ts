@@ -2,13 +2,13 @@ import { parsePjcodeFromPath } from './useConsolePjcode';
 
 describe('parsePjcodeFromPath', () => {
   it('extracts the pjcode from a projects path', () => {
-    expect(parsePjcodeFromPath('/projects/umino')).toBe('umino');
-    expect(parsePjcodeFromPath('/projects/umino/prs')).toBe('umino');
-    expect(parsePjcodeFromPath('/projects/xmile/triage')).toBe('xmile');
+    expect(parsePjcodeFromPath('/projects/acme')).toBe('acme');
+    expect(parsePjcodeFromPath('/projects/acme/prs')).toBe('acme');
+    expect(parsePjcodeFromPath('/projects/globex/triage')).toBe('globex');
   });
 
   it('tolerates a trailing slash', () => {
-    expect(parsePjcodeFromPath('/projects/utage3/')).toBe('utage3');
+    expect(parsePjcodeFromPath('/projects/umbrella/')).toBe('umbrella');
   });
 
   it('returns null when the path is not under projects', () => {

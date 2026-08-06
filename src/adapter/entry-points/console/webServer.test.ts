@@ -69,25 +69,25 @@ describe('webServer pure helpers', () => {
 
   describe('isConsoleAppRoute', () => {
     it('matches a per-project root route', () => {
-      expect(isConsoleAppRoute('/projects/umino')).toBe(true);
-      expect(isConsoleAppRoute('/projects/umino/')).toBe(true);
+      expect(isConsoleAppRoute('/projects/acme')).toBe(true);
+      expect(isConsoleAppRoute('/projects/acme/')).toBe(true);
     });
 
     it('matches a per-project tab route for every list tab', () => {
-      expect(isConsoleAppRoute('/projects/umino/workflow-blocker')).toBe(true);
-      expect(isConsoleAppRoute('/projects/umino/prs')).toBe(true);
-      expect(isConsoleAppRoute('/projects/xmile/triage')).toBe(true);
-      expect(isConsoleAppRoute('/projects/xcare/unread')).toBe(true);
-      expect(isConsoleAppRoute('/projects/utage3/failed-preparation')).toBe(
+      expect(isConsoleAppRoute('/projects/acme/workflow-blocker')).toBe(true);
+      expect(isConsoleAppRoute('/projects/acme/prs')).toBe(true);
+      expect(isConsoleAppRoute('/projects/globex/triage')).toBe(true);
+      expect(isConsoleAppRoute('/projects/initech/unread')).toBe(true);
+      expect(isConsoleAppRoute('/projects/umbrella/failed-preparation')).toBe(
         true,
       );
-      expect(isConsoleAppRoute('/projects/utage3/todo-by-human')).toBe(true);
-      expect(isConsoleAppRoute('/projects/utage3/todo-by-agent')).toBe(true);
+      expect(isConsoleAppRoute('/projects/umbrella/todo-by-human')).toBe(true);
+      expect(isConsoleAppRoute('/projects/umbrella/todo-by-agent')).toBe(true);
     });
 
     it('does not match data, api, or unknown tab routes', () => {
-      expect(isConsoleAppRoute('/projects/umino/prs/list.json')).toBe(false);
-      expect(isConsoleAppRoute('/projects/umino/unknown')).toBe(false);
+      expect(isConsoleAppRoute('/projects/acme/prs/list.json')).toBe(false);
+      expect(isConsoleAppRoute('/projects/acme/unknown')).toBe(false);
       expect(isConsoleAppRoute('/projects')).toBe(false);
       expect(isConsoleAppRoute('/api/review')).toBe(false);
       expect(isConsoleAppRoute('/')).toBe(false);
@@ -339,17 +339,20 @@ describe('webServer integration', () => {
       port: 0,
     });
     try {
-      const projectRoot = await requestServer(server, '/projects/umino');
+      const projectRoot = await requestServer(server, '/projects/acme');
       expect(projectRoot.statusCode).toBe(200);
       expect(projectRoot.body).toContain('spa');
       expect(projectRoot.contentType).toContain('text/html');
       expect(projectRoot.cacheControl).toBe('no-store');
 
-      const projectTab = await requestServer(server, '/projects/xmile/prs');
+      const projectTab = await requestServer(server, '/projects/globex/prs');
       expect(projectTab.statusCode).toBe(200);
       expect(projectTab.body).toContain('spa');
 
-      const unknownTab = await requestServer(server, '/projects/xmile/unknown');
+      const unknownTab = await requestServer(
+        server,
+        '/projects/globex/unknown',
+      );
       expect(unknownTab.statusCode).toBe(404);
     } finally {
       await closeServer(server);
@@ -370,7 +373,7 @@ describe('webServer integration', () => {
       port: 0,
     });
     try {
-      const projectRoot = await requestServer(server, '/projects/umino/triage');
+      const projectRoot = await requestServer(server, '/projects/acme/triage');
       expect(projectRoot.statusCode).toBe(200);
       expect(projectRoot.body).toContain('TDPM Console');
     } finally {
@@ -539,12 +542,12 @@ describe('webServer new routes integration', () => {
   it('serves a data list file with the done exclusion through the token gate', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
     const dataDir = path.join(tmpDir, 'data');
-    const listDir = path.join(dataDir, 'umino', 'prs');
+    const listDir = path.join(dataDir, 'acme', 'prs');
     fs.mkdirSync(listDir, { recursive: true });
     fs.writeFileSync(
       path.join(listDir, 'list.json'),
       JSON.stringify({
-        pjcode: 'umino',
+        pjcode: 'acme',
         items: [{ projectItemId: 'PVTI_keep' }, { projectItemId: 'PVTI_drop' }],
       }),
     );
@@ -566,19 +569,19 @@ describe('webServer new routes integration', () => {
       const unauthorized = await request(
         server,
         'GET',
-        '/projects/umino/prs/list.json',
+        '/projects/acme/prs/list.json',
       );
       expect(unauthorized.statusCode).toBe(401);
 
       const authorized = await request(
         server,
         'GET',
-        `/projects/umino/prs/list.json?k=${testToken}`,
+        `/projects/acme/prs/list.json?k=${testToken}`,
       );
       expect(authorized.statusCode).toBe(200);
       const parsed: unknown = JSON.parse(authorized.body);
       expect(parsed).toEqual({
-        pjcode: 'umino',
+        pjcode: 'acme',
         items: [{ projectItemId: 'PVTI_keep' }],
       });
     } finally {
@@ -690,8 +693,8 @@ describe('webServer new routes integration', () => {
       dashboardProjectNames: [],
       issueRepository,
       resolveProject: async (pjcode) =>
-        pjcode === 'umino' ? { pjcode, project: buildProject() } : null,
-      isPjcodeConfigured: (pjcode) => pjcode === 'umino',
+        pjcode === 'acme' ? { pjcode, project: buildProject() } : null,
+      isPjcodeConfigured: (pjcode) => pjcode === 'acme',
       port: 0,
     });
     try {
@@ -700,7 +703,7 @@ describe('webServer new routes integration', () => {
         'POST',
         `/api/comment?k=${testToken}`,
         {
-          pjcode: 'umino',
+          pjcode: 'acme',
           url: 'https://github.com/o/r/issues/1',
           body: 'Thanks, this resolves the parity gap.',
         },
@@ -742,8 +745,8 @@ describe('webServer new routes integration', () => {
       dashboardProjectNames: [],
       issueRepository,
       resolveProject: async (pjcode) =>
-        pjcode === 'umino' ? { pjcode, project: buildProject() } : null,
-      isPjcodeConfigured: (pjcode) => pjcode === 'umino',
+        pjcode === 'acme' ? { pjcode, project: buildProject() } : null,
+      isPjcodeConfigured: (pjcode) => pjcode === 'acme',
       port: 0,
     });
     try {
@@ -752,7 +755,7 @@ describe('webServer new routes integration', () => {
         'POST',
         `/api/review?k=${testToken}`,
         {
-          pjcode: 'umino',
+          pjcode: 'acme',
           action: 'approve',
           prUrl: 'https://github.com/o/r/pull/1',
           projectItemId: 'PVTI_op',
@@ -762,7 +765,7 @@ describe('webServer new routes integration', () => {
       expect(issueRepository.approvePullRequest).toHaveBeenCalledWith(
         'https://github.com/o/r/pull/1',
       );
-      expect(readDoneProjectItemIds(dataDir, 'umino', 'prs')).toContain(
+      expect(readDoneProjectItemIds(dataDir, 'acme', 'prs')).toContain(
         'PVTI_op',
       );
     } finally {
@@ -791,8 +794,8 @@ describe('webServer new routes integration', () => {
       dashboardProjectNames: [],
       issueRepository,
       resolveProject: async (pjcode) =>
-        pjcode === 'umino' ? { pjcode, project: buildProject() } : null,
-      isPjcodeConfigured: (pjcode) => pjcode === 'umino',
+        pjcode === 'acme' ? { pjcode, project: buildProject() } : null,
+      isPjcodeConfigured: (pjcode) => pjcode === 'acme',
       port: 0,
     });
     try {
@@ -801,7 +804,7 @@ describe('webServer new routes integration', () => {
         'POST',
         `/api/review?k=${testToken}`,
         {
-          pjcode: 'umino',
+          pjcode: 'acme',
           action: 'approve',
           prUrl: 'https://github.com/o/r/pull/1',
           projectItemId: 'PVTI_op',
@@ -830,8 +833,8 @@ describe('webServer new routes integration', () => {
       dashboardProjectNames: [],
       issueRepository,
       resolveProject: async (pjcode) =>
-        pjcode === 'umino' ? { pjcode, project: buildProject() } : null,
-      isPjcodeConfigured: (pjcode) => pjcode === 'umino',
+        pjcode === 'acme' ? { pjcode, project: buildProject() } : null,
+      isPjcodeConfigured: (pjcode) => pjcode === 'acme',
       port: 0,
     });
     try {
@@ -912,7 +915,7 @@ describe('resolveFlatInTmuxFilePath', () => {
   it('returns null for paths outside the flat in-tmux prefix', () => {
     expect(resolveFlatInTmuxFilePath(baseDir, '/index.v4.json')).toBeNull();
     expect(
-      resolveFlatInTmuxFilePath(baseDir, '/projects/umino/in-tmux-by-human/x'),
+      resolveFlatInTmuxFilePath(baseDir, '/projects/acme/in-tmux-by-human/x'),
     ).toBeNull();
   });
 
@@ -1008,8 +1011,8 @@ describe('webServer flat in-tmux-by-human route integration', () => {
     });
 
   const indexV4Raw =
-    '{"version":4,"projects":[{"name":"umino","path":"/in-tmux-by-human/umino.v4.json?k=secret"}]}\n';
-  const indexV3Raw = '{"version":3,"projects":["umino"]}\n';
+    '{"version":4,"projects":[{"name":"acme","path":"/in-tmux-by-human/acme.v4.json?k=secret"}]}\n';
+  const indexV3Raw = '{"version":3,"projects":["acme"]}\n';
 
   const startWithFixture = async (): Promise<{
     server: http.Server;
@@ -1218,9 +1221,9 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
   const writeDataFiles = (dataDir: string): void => {
     fs.mkdirSync(path.join(dataDir, 'projects'), { recursive: true });
     fs.writeFileSync(
-      path.join(dataDir, 'projects', 'umino.json'),
+      path.join(dataDir, 'projects', 'acme.json'),
       JSON.stringify({
-        pjcode: 'umino',
+        pjcode: 'acme',
         capturedAt: '2026-06-26T00:00:00.000Z',
         unread: 3,
         todo: 1,
@@ -1233,9 +1236,9 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
       }),
     );
     fs.writeFileSync(
-      path.join(dataDir, 'projects', 'xcare.json'),
+      path.join(dataDir, 'projects', 'initech.json'),
       JSON.stringify({
-        pjcode: 'xcare',
+        pjcode: 'initech',
         capturedAt: '2026-06-26T00:00:00.000Z',
         unread: 0,
         todo: 0,
@@ -1282,8 +1285,8 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
     '<tt>M55%&nbsp;C62%&nbsp;D89%&nbsp;cy14</tt><br>\n' +
     '<tt>LA&nbsp;16&nbsp;23&nbsp;40</tt><br>\n' +
     '<tt>pj&nbsp;&nbsp;&nbsp;unr&nbsp;tdo&nbsp;aqc&nbsp;fal&nbsp;prp&nbsp;aws&nbsp;dep</tt><br>\n' +
-    '<tt>🟢um&nbsp;&nbsp;&nbsp;3&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;4&nbsp;&nbsp;&nbsp;1</tt><br>\n' +
-    '<tt>🟢xc&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>🟢ac&nbsp;&nbsp;&nbsp;3&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;4&nbsp;&nbsp;&nbsp;1</tt><br>\n' +
+    '<tt>🟢in&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;0</tt><br>\n' +
     '<tt></tt><br>\n' +
     '<tt>🟢alice&nbsp;&nbsp;10%&nbsp;0d01h00&nbsp;&nbsp;12%&nbsp;5d00h00&nbsp;2&nbsp;1</tt><br>\n';
 
@@ -1306,7 +1309,7 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
       inTmuxDataDir: null,
       dashboardDir: overrides.dashboardDir,
       dashboardDataDir: overrides.dashboardDataDir,
-      dashboardProjectNames: ['umino', 'xcare'],
+      dashboardProjectNames: ['acme', 'initech'],
       port: 0,
     });
     return { server, tmpDir };
@@ -1748,10 +1751,10 @@ describe('webServer token cookie redirect', () => {
     try {
       const response = await requestServer(
         server,
-        `/projects/umino?k=${testToken}`,
+        `/projects/acme?k=${testToken}`,
       );
       expect(response.statusCode).toBe(302);
-      expect(response.location).toBe('/projects/umino');
+      expect(response.location).toBe('/projects/acme');
       expect(response.body).not.toContain(testToken);
       const cookie = firstSetCookie(response.setCookie);
       expect(cookie).toContain(`${CONSOLE_TOKEN_COOKIE}=${testToken}`);
@@ -1770,10 +1773,10 @@ describe('webServer token cookie redirect', () => {
     try {
       const response = await requestServer(
         server,
-        `/projects/xmile/prs?k=${testToken}&foo=bar`,
+        `/projects/globex/prs?k=${testToken}&foo=bar`,
       );
       expect(response.statusCode).toBe(302);
-      expect(response.location).toBe('/projects/xmile/prs?foo=bar');
+      expect(response.location).toBe('/projects/globex/prs?foo=bar');
       const cookie = firstSetCookie(response.setCookie);
       expect(cookie).toContain(`${CONSOLE_TOKEN_COOKIE}=${testToken}`);
     } finally {
@@ -1807,7 +1810,7 @@ describe('webServer token cookie redirect', () => {
   it('serves the app route without a token and never leaks a token in the URL', async () => {
     const { server, tmpDir } = await startWithUiDist();
     try {
-      const response = await requestServer(server, '/projects/umino');
+      const response = await requestServer(server, '/projects/acme');
       expect(response.statusCode).toBe(200);
       expect(response.body).toContain('spa');
       expect(response.setCookie).toBeUndefined();
@@ -1825,7 +1828,7 @@ describe('webServer token cookie redirect', () => {
       expect(root.statusCode).toBe(200);
       expect(root.referrerPolicy).toBe('no-referrer');
 
-      const projectTab = await requestServer(server, '/projects/xmile/prs');
+      const projectTab = await requestServer(server, '/projects/globex/prs');
       expect(projectTab.statusCode).toBe(200);
       expect(projectTab.referrerPolicy).toBe('no-referrer');
     } finally {
@@ -1837,11 +1840,11 @@ describe('webServer token cookie redirect', () => {
   it('authenticates a data list request through the cookie without a token in the URL', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
     const dataDir = path.join(tmpDir, 'data');
-    const listDir = path.join(dataDir, 'umino', 'prs');
+    const listDir = path.join(dataDir, 'acme', 'prs');
     fs.mkdirSync(listDir, { recursive: true });
     fs.writeFileSync(
       path.join(listDir, 'list.json'),
-      JSON.stringify({ pjcode: 'umino', items: [] }),
+      JSON.stringify({ pjcode: 'acme', items: [] }),
     );
     const server = await startWebServer({
       accessToken: testToken,
@@ -1856,12 +1859,12 @@ describe('webServer token cookie redirect', () => {
     try {
       const withCookie = await requestServer(
         server,
-        '/projects/umino/prs/list.json',
+        '/projects/acme/prs/list.json',
         { Cookie: `${CONSOLE_TOKEN_COOKIE}=${testToken}` },
       );
       expect(withCookie.statusCode).toBe(200);
       expect(JSON.parse(withCookie.body)).toEqual({
-        pjcode: 'umino',
+        pjcode: 'acme',
         items: [],
       });
     } finally {

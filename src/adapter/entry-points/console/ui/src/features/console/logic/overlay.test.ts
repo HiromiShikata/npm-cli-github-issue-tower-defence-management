@@ -30,7 +30,7 @@ const item = (number: number): ConsoleListItem => ({
 
 describe('overlay helpers', () => {
   it('builds the per-project storage key', () => {
-    expect(overlayStorageKey('umino')).toBe('pv_overlay_umino');
+    expect(overlayStorageKey('acme')).toBe('pv_overlay_acme');
   });
 
   it('uses the projectItemId as the overlay key when present', () => {

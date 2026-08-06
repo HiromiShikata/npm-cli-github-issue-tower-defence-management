@@ -16,7 +16,7 @@ describe('useConsoleTabData', () => {
       ok: true,
       status: 200,
       json: async () => ({
-        pjcode: 'umino',
+        pjcode: 'acme',
         generatedAt: '2026-06-19T00:00:00.000Z',
         statusOptions: [{ id: 's1', name: 'Unread', color: 'ORANGE' }],
         storyColors: {},
@@ -27,13 +27,13 @@ describe('useConsoleTabData', () => {
     }));
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    const { result } = renderHook(() => useConsoleTabData('umino'));
+    const { result } = renderHook(() => useConsoleTabData('acme'));
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
     });
     expect(fetchMock).toHaveBeenCalledTimes(CONSOLE_TABS.length);
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/projects/umino/prs/list.json'),
+      expect.stringContaining('/projects/acme/prs/list.json'),
     );
     expect(result.current.snapshots.prs?.items.length).toBe(1);
     expect(result.current.snapshots.prs?.generatedAt).toBe(
@@ -46,7 +46,7 @@ describe('useConsoleTabData', () => {
       ok: true,
       status: 200,
       json: async () => ({
-        pjcode: 'umino',
+        pjcode: 'acme',
         generatedAt: '2026-06-19T00:00:00.000Z',
         statusOptions: [],
         storyColors: {},
@@ -68,7 +68,7 @@ describe('useConsoleTabData', () => {
     }));
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    const { result } = renderHook(() => useConsoleTabData('umino'));
+    const { result } = renderHook(() => useConsoleTabData('acme'));
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
     });
@@ -87,7 +87,7 @@ describe('useConsoleTabData', () => {
       ok: true,
       status: 200,
       json: async () => ({
-        pjcode: 'umino',
+        pjcode: 'acme',
         generatedAt: '2026-06-19T00:00:00.000Z',
         statusOptions: [],
         storyColors: {},
@@ -99,7 +99,7 @@ describe('useConsoleTabData', () => {
     }));
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    const { result } = renderHook(() => useConsoleTabData('umino'));
+    const { result } = renderHook(() => useConsoleTabData('acme'));
     await waitFor(() => {
       expect(result.current.snapshots.prs?.items.length).toBe(1);
     });
@@ -123,7 +123,7 @@ describe('useConsoleTabData', () => {
       json: async () => ({}),
     }));
     global.fetch = fetchMock as unknown as typeof fetch;
-    const { result } = renderHook(() => useConsoleTabData('umino'));
+    const { result } = renderHook(() => useConsoleTabData('acme'));
     await waitFor(() => {
       expect(result.current.error).toBe('HTTP 500');
     });

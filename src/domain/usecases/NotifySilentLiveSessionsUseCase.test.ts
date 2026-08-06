@@ -755,18 +755,18 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     });
 
     it('parks a role-named leader session while its latest owner call is unanswered', async () => {
-      setupLiveInteractiveSession('uminopm');
+      setupLiveInteractiveSession('acmepm');
       mockSessionOutputActivityRepository.listSessionOutputActivities.mockResolvedValue(
         [
           {
-            sessionName: 'uminopm',
+            sessionName: 'acmepm',
             lastOutputEpochSeconds:
               nowEpochSeconds - DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
           },
         ],
       );
       mockOwnerCallStatusProvider.listUnansweredOwnerCallEpochSecondsBySessionName.mockResolvedValue(
-        new Map([['uminopm', nowEpochSeconds - 60]]),
+        new Map([['acmepm', nowEpochSeconds - 60]]),
       );
 
       await useCase.run(runParams());

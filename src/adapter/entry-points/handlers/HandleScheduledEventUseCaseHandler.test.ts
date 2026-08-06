@@ -394,7 +394,7 @@ allowedIssueAuthors: 'user1, user2, user3'
       mockFetchReturningReadme(null);
       const configWithCommaSeparatedAuthors = {
         ...validConfig,
-        allowedIssueAuthors: 'owner, umino-bot ,dependabot[bot]',
+        allowedIssueAuthors: 'owner, acme-bot ,dependabot[bot]',
       };
       jest
         .mocked(fs.readFileSync)
@@ -404,7 +404,7 @@ allowedIssueAuthors: 'user1, user2, user3'
       await handler.handle('config.yml', false);
 
       expect(capturedRunInputs[0][0]).toMatchObject({
-        allowedIssueAuthors: ['owner', 'umino-bot', 'dependabot[bot]'],
+        allowedIssueAuthors: ['owner', 'acme-bot', 'dependabot[bot]'],
       });
     });
 

@@ -212,52 +212,52 @@ describe('formatProjectRowLine', () => {
   it('renders a present row with its severity dot and counts', () => {
     expect(
       formatProjectRowLine({
-        code: 'um',
+        code: 'ac',
         row: projectRow({ unread: 3, todo: 1, qc: 2, ws: 4, dep: 1 }),
       }),
-    ).toBe('🟢um   3   1   2   0   0   4   1');
+    ).toBe('🟢ac   3   1   2   0   0   4   1');
   });
 
   it('renders placeholder cells with a blank dot for an absent project file', () => {
-    expect(formatProjectRowLine({ code: 'xc', row: null })).toBe(
-      '  xc  --  --  --  --  --  --  --',
+    expect(formatProjectRowLine({ code: 'in', row: null })).toBe(
+      '  in  --  --  --  --  --  --  --',
     );
   });
 
   it('caps a count above 999 at 999', () => {
     expect(
-      formatProjectRowLine({ code: 'um', row: projectRow({ unread: 1500 }) }),
-    ).toBe('🟠um 999   0   0   0   0   0   0');
+      formatProjectRowLine({ code: 'ac', row: projectRow({ unread: 1500 }) }),
+    ).toBe('🟠ac 999   0   0   0   0   0   0');
   });
 
   it('applies the five level severity dot rules in descending order', () => {
     expect(
-      formatProjectRowLine({ code: 'um', row: projectRow({ blocker: 2 }) }),
+      formatProjectRowLine({ code: 'ac', row: projectRow({ blocker: 2 }) }),
     ).toContain('🔴');
     expect(
-      formatProjectRowLine({ code: 'um', row: projectRow({ blocker: 1 }) }),
+      formatProjectRowLine({ code: 'ac', row: projectRow({ blocker: 1 }) }),
     ).toContain('🟣');
     expect(
-      formatProjectRowLine({ code: 'um', row: projectRow({ unread: 10 }) }),
+      formatProjectRowLine({ code: 'ac', row: projectRow({ unread: 10 }) }),
     ).toContain('🟠');
     expect(
-      formatProjectRowLine({ code: 'um', row: projectRow({ qc: 15 }) }),
+      formatProjectRowLine({ code: 'ac', row: projectRow({ qc: 15 }) }),
     ).toContain('🟠');
     expect(
-      formatProjectRowLine({ code: 'um', row: projectRow({ fail: 5 }) }),
+      formatProjectRowLine({ code: 'ac', row: projectRow({ fail: 5 }) }),
     ).toContain('🟠');
     expect(
-      formatProjectRowLine({ code: 'um', row: projectRow({ unread: 5 }) }),
+      formatProjectRowLine({ code: 'ac', row: projectRow({ unread: 5 }) }),
     ).toContain('🟡');
     expect(
-      formatProjectRowLine({ code: 'um', row: projectRow({ qc: 10 }) }),
+      formatProjectRowLine({ code: 'ac', row: projectRow({ qc: 10 }) }),
     ).toContain('🟡');
     expect(
-      formatProjectRowLine({ code: 'um', row: projectRow({ fail: 3 }) }),
+      formatProjectRowLine({ code: 'ac', row: projectRow({ fail: 3 }) }),
     ).toContain('🟡');
     expect(
       formatProjectRowLine({
-        code: 'um',
+        code: 'ac',
         row: projectRow({ unread: 4, qc: 9, fail: 2 }),
       }),
     ).toContain('🟢');
@@ -265,7 +265,7 @@ describe('formatProjectRowLine', () => {
 
   it('keeps present and absent rows within the 32 code point width budget', () => {
     const present = formatProjectRowLine({
-      code: 'xm',
+      code: 'gl',
       row: projectRow({
         unread: 999,
         todo: 999,
@@ -276,7 +276,7 @@ describe('formatProjectRowLine', () => {
         dep: 999,
       }),
     });
-    const absent = formatProjectRowLine({ code: 'xc', row: null });
+    const absent = formatProjectRowLine({ code: 'in', row: null });
     expect(codePointLength(present)).toBeLessThanOrEqual(
       PROJECT_ROW_WIDTH_BUDGET,
     );
@@ -348,15 +348,15 @@ describe('ComposeDashboardUseCase', () => {
     },
     projects: [
       {
-        code: 'um',
+        code: 'ac',
         row: projectRow({ unread: 3, todo: 1, qc: 2, ws: 4, dep: 1 }),
       },
       {
-        code: 'xm',
+        code: 'gl',
         row: projectRow({ unread: 12, qc: 16, fail: 6, pr: 1 }),
       },
-      { code: 'xc', row: null },
-      { code: 'ut', row: projectRow({ blocker: 1 }) },
+      { code: 'in', row: null },
+      { code: 'um', row: projectRow({ blocker: 1 }) },
     ],
     tokens: [
       tokenStatus({
@@ -396,10 +396,10 @@ describe('ComposeDashboardUseCase', () => {
     '<tt>M55%&nbsp;C62%&nbsp;D89%&nbsp;cy14</tt><br>\n' +
     '<tt>LA&nbsp;16&nbsp;23&nbsp;40</tt><br>\n' +
     '<tt>pj&nbsp;&nbsp;&nbsp;unr&nbsp;tdo&nbsp;aqc&nbsp;fal&nbsp;prp&nbsp;aws&nbsp;dep</tt><br>\n' +
-    '<tt>🟢um&nbsp;&nbsp;&nbsp;3&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;4&nbsp;&nbsp;&nbsp;1</tt><br>\n' +
-    '<tt>🟠xm&nbsp;&nbsp;12&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;16&nbsp;&nbsp;&nbsp;6&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0</tt><br>\n' +
-    '<tt>&nbsp;&nbsp;xc&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--</tt><br>\n' +
-    '<tt>🟣ut&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>🟢ac&nbsp;&nbsp;&nbsp;3&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;4&nbsp;&nbsp;&nbsp;1</tt><br>\n' +
+    '<tt>🟠gl&nbsp;&nbsp;12&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;16&nbsp;&nbsp;&nbsp;6&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>&nbsp;&nbsp;in&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--</tt><br>\n' +
+    '<tt>🟣um&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0</tt><br>\n' +
     '<tt></tt><br>\n' +
     '<tt>⚪bob_&nbsp;100%&nbsp;0d00h00&nbsp;&nbsp;95%&nbsp;0d02h00&nbsp;0&nbsp;0</tt><br>\n' +
     '<tt>🟢alice&nbsp;&nbsp;10%&nbsp;0d01h00&nbsp;&nbsp;12%&nbsp;5d00h00&nbsp;2&nbsp;1</tt><br>\n' +
@@ -458,7 +458,7 @@ describe('ComposeDashboardUseCase', () => {
       },
       projects: [
         {
-          code: 'um',
+          code: 'ac',
           row: projectRow({
             unread: 999,
             todo: 999,
@@ -599,7 +599,7 @@ describe('ComposeDashboardUseCase seven day window aggregate line', () => {
     sevenDayWindowAggregate: ComposeDashboardInput['sevenDayWindowAggregate'],
   ): ComposeDashboardInput => ({
     machineStatus: null,
-    projects: [{ code: 'um', row: projectRow({ unread: 1 }) }],
+    projects: [{ code: 'ac', row: projectRow({ unread: 1 }) }],
     tokens: [
       tokenStatus({ name: 'alice', sevenDayUtilizationPercent: 60 }),
       tokenStatus({ name: 'bob', sevenDayUtilizationPercent: 66 }),
@@ -632,7 +632,7 @@ describe('ComposeDashboardUseCase seven day window aggregate line', () => {
     expect(aggregateIndex).toBeGreaterThan(-1);
     expect(lines[aggregateIndex - 1]).toBe(
       formatProjectRowLine({
-        code: 'um',
+        code: 'ac',
         row: projectRow({ unread: 1 }),
       }),
     );

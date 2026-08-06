@@ -9,31 +9,31 @@ import { recordDoneProjectItemId } from './consoleDoneStore';
 
 describe('parseConsoleDataRoute', () => {
   it('parses a list route', () => {
-    expect(parseConsoleDataRoute('/projects/umino/prs/list.json')).toEqual({
+    expect(parseConsoleDataRoute('/projects/acme/prs/list.json')).toEqual({
       kind: 'list',
-      pjcode: 'umino',
+      pjcode: 'acme',
       tab: 'prs',
     });
   });
 
   it('parses a list route for todo-by-human', () => {
     expect(
-      parseConsoleDataRoute('/projects/umino/todo-by-human/list.json'),
-    ).toEqual({ kind: 'list', pjcode: 'umino', tab: 'todo-by-human' });
+      parseConsoleDataRoute('/projects/acme/todo-by-human/list.json'),
+    ).toEqual({ kind: 'list', pjcode: 'acme', tab: 'todo-by-human' });
   });
 
   it('parses a list route for todo-by-agent', () => {
     expect(
-      parseConsoleDataRoute('/projects/umino/todo-by-agent/list.json'),
-    ).toEqual({ kind: 'list', pjcode: 'umino', tab: 'todo-by-agent' });
+      parseConsoleDataRoute('/projects/acme/todo-by-agent/list.json'),
+    ).toEqual({ kind: 'list', pjcode: 'acme', tab: 'todo-by-agent' });
   });
 
   it('parses a detail route', () => {
     expect(
-      parseConsoleDataRoute('/projects/umino/triage/detail/123.json'),
+      parseConsoleDataRoute('/projects/acme/triage/detail/123.json'),
     ).toEqual({
       kind: 'detail',
-      pjcode: 'umino',
+      pjcode: 'acme',
       tab: 'triage',
       key: '123.json',
     });
@@ -41,49 +41,47 @@ describe('parseConsoleDataRoute', () => {
 
   it('parses an in-tmux route', () => {
     expect(
-      parseConsoleDataRoute('/projects/umino/in-tmux-by-human/list.json'),
+      parseConsoleDataRoute('/projects/acme/in-tmux-by-human/list.json'),
     ).toEqual({
       kind: 'in-tmux',
-      pjcode: 'umino',
+      pjcode: 'acme',
       relativePath: 'list.json',
     });
   });
 
   it('parses a nested in-tmux route', () => {
     expect(
-      parseConsoleDataRoute('/projects/umino/in-tmux-by-human/sub/data.json'),
+      parseConsoleDataRoute('/projects/acme/in-tmux-by-human/sub/data.json'),
     ).toEqual({
       kind: 'in-tmux',
-      pjcode: 'umino',
+      pjcode: 'acme',
       relativePath: 'sub/data.json',
     });
   });
 
   it('rejects unknown tabs', () => {
     expect(
-      parseConsoleDataRoute('/projects/umino/unknown/list.json'),
+      parseConsoleDataRoute('/projects/acme/unknown/list.json'),
     ).toBeNull();
   });
 
   it('rejects a non-projects prefix', () => {
-    expect(parseConsoleDataRoute('/other/umino/prs/list.json')).toBeNull();
+    expect(parseConsoleDataRoute('/other/acme/prs/list.json')).toBeNull();
   });
 
   it('rejects dot segments in pjcode or tab', () => {
     expect(parseConsoleDataRoute('/projects/../prs/list.json')).toBeNull();
-    expect(parseConsoleDataRoute('/projects/umino/../list.json')).toBeNull();
+    expect(parseConsoleDataRoute('/projects/acme/../list.json')).toBeNull();
   });
 
   it('rejects a non-json detail key', () => {
     expect(
-      parseConsoleDataRoute('/projects/umino/prs/detail/123.txt'),
+      parseConsoleDataRoute('/projects/acme/prs/detail/123.txt'),
     ).toBeNull();
   });
 
   it('rejects an empty in-tmux relative path', () => {
-    expect(
-      parseConsoleDataRoute('/projects/umino/in-tmux-by-human'),
-    ).toBeNull();
+    expect(parseConsoleDataRoute('/projects/acme/in-tmux-by-human')).toBeNull();
   });
 });
 
@@ -107,72 +105,72 @@ describe('buildConsoleDataResponse', () => {
   it('returns 404 when the list file is absent', () => {
     const response = buildConsoleDataResponse(baseDir, {
       kind: 'list',
-      pjcode: 'umino',
+      pjcode: 'acme',
       tab: 'prs',
     });
     expect(response.statusCode).toBe(404);
   });
 
   it('serves a list file and applies the done exclusion', () => {
-    writeJson('umino/prs/list.json', {
-      pjcode: 'umino',
+    writeJson('acme/prs/list.json', {
+      pjcode: 'acme',
       items: [
         { projectItemId: 'PVTI_1', title: 'keep' },
         { projectItemId: 'PVTI_2', title: 'drop' },
       ],
     });
-    recordDoneProjectItemId(baseDir, 'umino', 'prs', 'PVTI_2');
+    recordDoneProjectItemId(baseDir, 'acme', 'prs', 'PVTI_2');
     const response = buildConsoleDataResponse(baseDir, {
       kind: 'list',
-      pjcode: 'umino',
+      pjcode: 'acme',
       tab: 'prs',
     });
     expect(response.statusCode).toBe(200);
     const parsed: unknown = JSON.parse(response.body);
     expect(parsed).toEqual({
-      pjcode: 'umino',
+      pjcode: 'acme',
       items: [{ projectItemId: 'PVTI_1', title: 'keep' }],
     });
   });
 
   it('applies the done exclusion to the workflow-blocker list', () => {
-    writeJson('umino/workflow-blocker/list.json', {
-      pjcode: 'umino',
+    writeJson('acme/workflow-blocker/list.json', {
+      pjcode: 'acme',
       items: [
         { projectItemId: 'PVTI_1', title: 'keep' },
         { projectItemId: 'PVTI_2', title: 'processed blocker' },
       ],
     });
-    recordDoneProjectItemId(baseDir, 'umino', 'workflow-blocker', 'PVTI_2');
+    recordDoneProjectItemId(baseDir, 'acme', 'workflow-blocker', 'PVTI_2');
     const response = buildConsoleDataResponse(baseDir, {
       kind: 'list',
-      pjcode: 'umino',
+      pjcode: 'acme',
       tab: 'workflow-blocker',
     });
     expect(response.statusCode).toBe(200);
     const parsed: unknown = JSON.parse(response.body);
     expect(parsed).toEqual({
-      pjcode: 'umino',
+      pjcode: 'acme',
       items: [{ projectItemId: 'PVTI_1', title: 'keep' }],
     });
   });
 
   it('serves a list file without an items array unchanged', () => {
-    writeJson('umino/prs/list.json', { pjcode: 'umino' });
+    writeJson('acme/prs/list.json', { pjcode: 'acme' });
     const response = buildConsoleDataResponse(baseDir, {
       kind: 'list',
-      pjcode: 'umino',
+      pjcode: 'acme',
       tab: 'prs',
     });
     expect(response.statusCode).toBe(200);
-    expect(JSON.parse(response.body)).toEqual({ pjcode: 'umino' });
+    expect(JSON.parse(response.body)).toEqual({ pjcode: 'acme' });
   });
 
   it('serves a detail file without exclusion', () => {
-    writeJson('umino/triage/detail/123.json', { number: 123 });
+    writeJson('acme/triage/detail/123.json', { number: 123 });
     const response = buildConsoleDataResponse(baseDir, {
       kind: 'detail',
-      pjcode: 'umino',
+      pjcode: 'acme',
       tab: 'triage',
       key: '123.json',
     });
@@ -183,7 +181,7 @@ describe('buildConsoleDataResponse', () => {
   it('returns 404 when the detail file is absent', () => {
     const response = buildConsoleDataResponse(baseDir, {
       kind: 'detail',
-      pjcode: 'umino',
+      pjcode: 'acme',
       tab: 'triage',
       key: '404.json',
     });
@@ -191,10 +189,10 @@ describe('buildConsoleDataResponse', () => {
   });
 
   it('serves an in-tmux file', () => {
-    writeJson('umino/in-tmux-by-human/list.json', { items: [] });
+    writeJson('acme/in-tmux-by-human/list.json', { items: [] });
     const response = buildConsoleDataResponse(baseDir, {
       kind: 'in-tmux',
-      pjcode: 'umino',
+      pjcode: 'acme',
       relativePath: 'list.json',
     });
     expect(response.statusCode).toBe(200);
@@ -204,7 +202,7 @@ describe('buildConsoleDataResponse', () => {
   it('returns 404 when the in-tmux file is absent', () => {
     const response = buildConsoleDataResponse(baseDir, {
       kind: 'in-tmux',
-      pjcode: 'umino',
+      pjcode: 'acme',
       relativePath: 'missing.json',
     });
     expect(response.statusCode).toBe(404);

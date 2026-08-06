@@ -35,11 +35,7 @@ import {
   composeDashboardText,
   dashboardComposeFilesPresent,
 } from './dashboardComposeService';
-import { DASHBOARD_PROJECT_NAMES } from '../../../domain/usecases/dashboard/DashboardProjectCode';
-
 export const DEFAULT_WEB_PORT = 9980;
-
-export const DEFAULT_DASHBOARD_PROJECT_NAMES = DASHBOARD_PROJECT_NAMES;
 
 export const CONSOLE_TOKEN_HEADER = 'x-pv-token';
 
