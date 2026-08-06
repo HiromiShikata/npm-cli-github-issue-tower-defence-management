@@ -35,6 +35,7 @@ import {
   composeDashboardText,
   dashboardComposeFilesPresent,
 } from './dashboardComposeService';
+
 export const DEFAULT_WEB_PORT = 9980;
 
 export const CONSOLE_TOKEN_HEADER = 'x-pv-token';

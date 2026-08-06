@@ -32,7 +32,13 @@ const sleep = (ms: number): Promise<void> =>
 export const ensureConsoleRunning = async (
   configFilePath: string,
   port: number,
+  dashboardProjectNames: string[],
 ): Promise<ConsoleProcess | null> => {
+  if (dashboardProjectNames.length === 0) {
+    throw new Error(
+      `Cannot start the console from ${configFilePath}: consoleProjects is empty, so the dashboard has no project to render`,
+    );
+  }
   if (await isPortResponding(port)) return null;
   const cliEntry = path.resolve(__dirname, '../cli/index.js');
   const child = spawn(
@@ -44,6 +50,8 @@ export const ensureConsoleRunning = async (
       configFilePath,
       '--port',
       String(port),
+      '--dashboardProjectNames',
+      dashboardProjectNames.join(','),
     ],
     {
       detached: true,

@@ -403,6 +403,7 @@ program
       const consoleProcess = await ensureConsoleRunning(
         options.configFilePath,
         DEFAULT_WEB_PORT,
+        Object.keys(config.consoleProjects ?? {}),
       );
       if (consoleProcess !== null) {
         process.once('SIGTERM', () => {

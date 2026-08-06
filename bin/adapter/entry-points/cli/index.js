@@ -232,7 +232,7 @@ exports.program
         ? config.codexHomeCandidates
         : null;
     if (config.consoleAccessToken) {
-        const consoleProcess = await (0, ensureConsoleRunning_1.ensureConsoleRunning)(options.configFilePath, webServer_1.DEFAULT_WEB_PORT);
+        const consoleProcess = await (0, ensureConsoleRunning_1.ensureConsoleRunning)(options.configFilePath, webServer_1.DEFAULT_WEB_PORT, Object.keys(config.consoleProjects ?? {}));
         if (consoleProcess !== null) {
             process.once('SIGTERM', () => {
                 consoleProcess.kill();

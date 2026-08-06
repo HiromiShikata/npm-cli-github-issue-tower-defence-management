@@ -56,7 +56,10 @@ const isPortResponding = (port) => new Promise((resolve) => {
     socket.connect(port, '127.0.0.1');
 });
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const ensureConsoleRunning = async (configFilePath, port) => {
+const ensureConsoleRunning = async (configFilePath, port, dashboardProjectNames) => {
+    if (dashboardProjectNames.length === 0) {
+        throw new Error(`Cannot start the console from ${configFilePath}: consoleProjects is empty, so the dashboard has no project to render`);
+    }
     if (await isPortResponding(port))
         return null;
     const cliEntry = path.resolve(__dirname, '../cli/index.js');
@@ -67,6 +70,8 @@ const ensureConsoleRunning = async (configFilePath, port) => {
         configFilePath,
         '--port',
         String(port),
+        '--dashboardProjectNames',
+        dashboardProjectNames.join(','),
     ], {
         detached: true,
         stdio: 'ignore',
