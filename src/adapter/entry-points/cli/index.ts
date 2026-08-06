@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import fs from 'fs';
 import { Command } from 'commander';
 export {
   ConfigFile,
@@ -48,6 +49,11 @@ import {
   createConsoleProjectResolver,
   createPjcodeConfigChecker,
 } from '../console/consoleProjectResolver';
+import {
+  createConsoleGithubTokenResolver,
+  extractRepositoryOwner,
+} from '../console/consoleGithubTokenResolver';
+import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { OauthTokenSelectHandler } from '../handlers/OauthTokenSelectHandler';
 import { LiveSessionOauthTokenSelectHandler } from '../handlers/LiveSessionOauthTokenSelectHandler';
 import { InTmuxByHumanSessionTokenCountHandler } from '../handlers/InTmuxByHumanSessionTokenCountHandler';
@@ -754,6 +760,49 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     ...githubRepositoryParams,
   );
 
+  const resolveGithubToken = createConsoleGithubTokenResolver(
+    token,
+    config.consoleGithubTokenFilesByRepositoryOwner ?? null,
+    (filePath: string) => fs.readFileSync(filePath, 'utf8'),
+  );
+  const issueRepositoryByToken = new Map<string, IssueRepository>();
+  issueRepositoryByToken.set(token, issueRepository);
+  const buildIssueRepositoryForToken = (
+    repositoryToken: string,
+  ): IssueRepository => {
+    const alreadyBuilt = issueRepositoryByToken.get(repositoryToken);
+    if (alreadyBuilt !== undefined) {
+      return alreadyBuilt;
+    }
+    const repositoryParams = buildGithubRepositoryParams(
+      localStorageRepository,
+      repositoryToken,
+    );
+    const built = new ApiV3CheerioRestIssueRepository(
+      new ApiV3IssueRepository(...repositoryParams),
+      new RestIssueRepository(...repositoryParams),
+      new GraphqlProjectItemRepository(...repositoryParams),
+      localStorageCacheRepository,
+      new GraphqlProjectRepository(
+        ...repositoryParams,
+        localStorageCacheRepository,
+      ),
+      new SystemDateRepository(),
+      ...repositoryParams,
+    );
+    issueRepositoryByToken.set(repositoryToken, built);
+    return built;
+  };
+  const resolveIssueRepository = (
+    issueOrPullRequestUrl: string,
+  ): IssueRepository => {
+    const repositoryOwner = extractRepositoryOwner(issueOrPullRequestUrl);
+    if (repositoryOwner === null) {
+      return issueRepository;
+    }
+    return buildIssueRepositoryForToken(resolveGithubToken(repositoryOwner));
+  };
+
   const pjcodeToProjectUrl = buildPjcodeToProjectUrl(
     projectName,
     projectUrl,
@@ -808,6 +857,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     dashboardProjectNames,
     githubToken: token,
     issueRepository,
+    resolveIssueRepository,
     resolveProject,
     isPjcodeConfigured,
     issueAttachmentRepository: new LocalCommandIssueAttachmentRepository(
