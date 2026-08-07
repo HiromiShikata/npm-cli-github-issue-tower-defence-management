@@ -135,7 +135,7 @@ describe('createConsoleGithubTokenResolver', () => {
       () => 'fine-grained-token',
     );
 
-    expect(resolve('X-Mile')).toBe('default-token');
+    expect(resolve('globex-inc')).toBe('default-token');
   });
 
   it('should read the token file only once per owner', () => {
