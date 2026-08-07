@@ -1,5 +1,4 @@
 import YAML from 'yaml';
-import TYPIA from 'typia';
 import fs from 'fs';
 import { LocalStorageRepository } from '../../repositories/LocalStorageRepository';
 import { GraphqlProjectRepository } from '../../repositories/GraphqlProjectRepository';
@@ -38,20 +37,28 @@ export class GetStoryObjectMapUseCaseHandler {
       };
     };
 
-    if (!TYPIA.is<inputType>(input)) {
+    const inputRecord = input as Record<string, unknown>;
+    const credentialsRecord = inputRecord?.['credentials'] as Record<string, unknown> | undefined;
+    const botRecord = credentialsRecord?.['bot'] as Record<string, unknown> | undefined;
+    const githubRecord = botRecord?.['github'] as Record<string, unknown> | undefined;
+    if (
+      typeof inputRecord?.['projectName'] !== 'string' ||
+      typeof githubRecord?.['token'] !== 'string'
+    ) {
       throw new Error(
-        `Invalid input: ${JSON.stringify(input)}\n\n${JSON.stringify(TYPIA.validate<inputType>(input))}`,
+        `Invalid input: required fields projectName and credentials.bot.github.token must be strings. Got: ${JSON.stringify(input)}`,
       );
     }
+    const typedInput = input as inputType;
     const localStorageRepository = new LocalStorageRepository();
-    const cachePath = `./tmp/cache/${input.projectName}`;
+    const cachePath = `./tmp/cache/${typedInput.projectName}`;
     const localStorageCacheRepository = new LocalStorageCacheRepository(
       localStorageRepository,
       cachePath,
     );
     const githubRepositoryParams: ConstructorParameters<
       typeof BaseGitHubRepository
-    > = [localStorageRepository, input.credentials.bot.github.token];
+    > = [localStorageRepository, typedInput.credentials.bot.github.token];
     const projectRepository = {
       ...new GraphqlProjectRepository(
         ...githubRepositoryParams,
@@ -82,6 +89,6 @@ export class GetStoryObjectMapUseCaseHandler {
       issueRepository,
     );
 
-    return await getStoryObjectMapUseCase.run(input);
+    return await getStoryObjectMapUseCase.run(typedInput);
   };
 }

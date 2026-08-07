@@ -1,5 +1,4 @@
 import YAML from 'yaml';
-import TYPIA from 'typia';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -175,19 +174,33 @@ export class HandleScheduledEventUseCaseHandler {
       };
     };
 
-    if (!TYPIA.is<inputType>(input)) {
+    const inputRecord = input as Record<string, unknown>;
+    const credentialsRecord = inputRecord?.['credentials'] as Record<string, unknown> | undefined;
+    const managerRecord = credentialsRecord?.['manager'] as Record<string, unknown> | undefined;
+    const managerGithubRecord = managerRecord?.['github'] as Record<string, unknown> | undefined;
+    const managerSlackRecord = managerRecord?.['slack'] as Record<string, unknown> | undefined;
+    const managerGoogleRecord = managerRecord?.['googleServiceAccount'] as Record<string, unknown> | undefined;
+    const botRecord = credentialsRecord?.['bot'] as Record<string, unknown> | undefined;
+    const botGithubRecord = botRecord?.['github'] as Record<string, unknown> | undefined;
+    if (
+      typeof managerGithubRecord?.['token'] !== 'string' ||
+      typeof managerSlackRecord?.['userToken'] !== 'string' ||
+      typeof managerGoogleRecord?.['serviceAccountKey'] !== 'string' ||
+      typeof botGithubRecord?.['token'] !== 'string'
+    ) {
       throw new Error(
-        `Invalid input: ${JSON.stringify(input)}\n\n${JSON.stringify(TYPIA.validate<inputType>(input))}`,
+        `Invalid input: required credential fields are missing. Got: ${JSON.stringify(input)}`,
       );
     }
-    if (input.disabled) {
+    const typedInput = input as inputType;
+    if (typedInput.disabled) {
       return null;
     }
 
-    const managerToken = input.credentials.manager.github.token;
-    const readme = await fetchProjectReadme(input.projectUrl, managerToken);
+    const managerToken = typedInput.credentials.manager.github.token;
+    const readme = await fetchProjectReadme(typedInput.projectUrl, managerToken);
     const readmeConfig = readme
-      ? parseProjectReadmeConfig(readme, input.projectUrl)
+      ? parseProjectReadmeConfig(readme, typedInput.projectUrl)
       : {};
 
     const normalizeAllowedIssueAuthors = (
@@ -206,53 +219,53 @@ export class HandleScheduledEventUseCaseHandler {
     };
 
     const mergedInput = {
-      ...input,
+      ...typedInput,
       allowedIssueAuthors: normalizeAllowedIssueAuthors(
-        input.allowedIssueAuthors,
+        typedInput.allowedIssueAuthors,
       ),
       autoAssignManagerAuthors: normalizeAllowedIssueAuthors(
-        readmeConfig.autoAssignManagerAuthors ?? input.autoAssignManagerAuthors,
+        readmeConfig.autoAssignManagerAuthors ?? typedInput.autoAssignManagerAuthors,
       ),
       claudeCodeOauthTokenListJsonPath:
         readmeConfig.claudeCodeOauthTokenListJsonPath ??
-        input.claudeCodeOauthTokenListJsonPath,
+        typedInput.claudeCodeOauthTokenListJsonPath,
       thresholdForAutoReject:
-        readmeConfig.thresholdForAutoReject ?? input.thresholdForAutoReject,
-      startPreparation: input.startPreparation
+        readmeConfig.thresholdForAutoReject ?? typedInput.thresholdForAutoReject,
+      startPreparation: typedInput.startPreparation
         ? {
-            ...input.startPreparation,
+            ...typedInput.startPreparation,
             defaultAgentName:
               readmeConfig.defaultAgentName ??
-              input.startPreparation.defaultAgentName,
+              typedInput.startPreparation.defaultAgentName,
             defaultLlmModelName:
               readmeConfig.defaultLlmModelName ??
-              input.startPreparation.defaultLlmModelName,
+              typedInput.startPreparation.defaultLlmModelName,
             fallbackLlmModelName:
               readmeConfig.fallbackLlmModelName ??
-              input.startPreparation.fallbackLlmModelName,
+              typedInput.startPreparation.fallbackLlmModelName,
             defaultLlmAgentName:
               readmeConfig.defaultLlmAgentName ??
-              input.startPreparation.defaultLlmAgentName,
+              typedInput.startPreparation.defaultLlmAgentName,
             maximumPreparingIssuesCount:
               readmeConfig.maximumPreparingIssuesCount ??
-              input.startPreparation.maximumPreparingIssuesCount,
+              typedInput.startPreparation.maximumPreparingIssuesCount,
             utilizationPercentageThreshold:
               readmeConfig.utilizationPercentageThreshold ??
-              input.startPreparation.utilizationPercentageThreshold,
+              typedInput.startPreparation.utilizationPercentageThreshold,
             allowedIssueAuthors: readmeConfig.allowedIssueAuthors
               ? readmeConfig.allowedIssueAuthors
                   .split(',')
                   .map((s) => s.trim())
                   .filter(Boolean)
-              : input.startPreparation.allowedIssueAuthors,
+              : typedInput.startPreparation.allowedIssueAuthors,
             preparationProcessCheckCommand:
               readmeConfig.preparationProcessCheckCommand ??
-              input.startPreparation.preparationProcessCheckCommand,
+              typedInput.startPreparation.preparationProcessCheckCommand,
             codexHomeCandidates:
               readmeConfig.codexHomeCandidates ??
-              input.startPreparation.codexHomeCandidates,
+              typedInput.startPreparation.codexHomeCandidates,
           }
-        : input.startPreparation,
+        : typedInput.startPreparation,
     };
 
     type EffectiveConfigValue = string | number | null | undefined;
@@ -281,21 +294,21 @@ export class HandleScheduledEventUseCaseHandler {
       `Effective maximumPreparingIssuesCount: ${formatEffectiveConfig(
         mergedInput.startPreparation?.maximumPreparingIssuesCount,
         readmeConfig.maximumPreparingIssuesCount,
-        input.startPreparation?.maximumPreparingIssuesCount,
+        typedInput.startPreparation?.maximumPreparingIssuesCount,
       )}`,
     );
     console.log(
       `Effective defaultLlmModelName: ${formatEffectiveConfig(
         mergedInput.startPreparation?.defaultLlmModelName,
         readmeConfig.defaultLlmModelName,
-        input.startPreparation?.defaultLlmModelName,
+        typedInput.startPreparation?.defaultLlmModelName,
       )}`,
     );
     console.log(
       `Effective defaultAgentName: ${formatEffectiveConfig(
         mergedInput.startPreparation?.defaultAgentName,
         readmeConfig.defaultAgentName,
-        input.startPreparation?.defaultAgentName,
+        typedInput.startPreparation?.defaultAgentName,
       )}`,
     );
 
@@ -303,16 +316,16 @@ export class HandleScheduledEventUseCaseHandler {
     const localStorageRepository = new LocalStorageRepository();
     const googleSpreadsheetRepository = new GoogleSpreadsheetRepository(
       localStorageRepository,
-      input.credentials.manager.googleServiceAccount.serviceAccountKey,
+      typedInput.credentials.manager.googleServiceAccount.serviceAccountKey,
     );
-    const cachePath = `./tmp/cache/${input.projectName}`;
+    const cachePath = `./tmp/cache/${typedInput.projectName}`;
     const localStorageCacheRepository = new LocalStorageCacheRepository(
       localStorageRepository,
       cachePath,
     );
     const githubRepositoryParams: ConstructorParameters<
       typeof BaseGitHubRepository
-    > = [localStorageRepository, input.credentials.bot.github.token];
+    > = [localStorageRepository, typedInput.credentials.bot.github.token];
     const projectRepository = new GraphqlProjectRepository(
       ...githubRepositoryParams,
       localStorageCacheRepository,
@@ -403,7 +416,7 @@ export class HandleScheduledEventUseCaseHandler {
       ? new UpdateRateLimitCacheUseCase(proxyRateLimitCacheRepository)
       : null;
     const issueCommentRepository = new GitHubIssueCommentRepository(
-      input.credentials.bot.github.token,
+      typedInput.credentials.bot.github.token,
     );
     const revertOrphanedPreparationUseCase =
       new RevertOrphanedPreparationUseCase(
@@ -486,8 +499,8 @@ export class HandleScheduledEventUseCaseHandler {
       try {
         writeConsoleLists({
           consoleDataOutputDir: mergedInput.consoleDataOutputDir ?? null,
-          pjcode: input.projectName,
-          assigneeLogin: input.manager,
+          pjcode: typedInput.projectName,
+          assigneeLogin: typedInput.manager,
           project: result.project,
           issues: result.issues,
           workflowBlockerStoryName:
@@ -507,8 +520,8 @@ export class HandleScheduledEventUseCaseHandler {
       try {
         writeDashboardRow({
           dashboardDataDir,
-          pjcode: input.projectName,
-          assigneeLogin: input.manager,
+          pjcode: typedInput.projectName,
+          assigneeLogin: typedInput.manager,
           issues: result.issues,
         });
       } catch (error) {
@@ -539,7 +552,7 @@ export class HandleScheduledEventUseCaseHandler {
           tokenListJsonPath:
             mergedInput.claudeCodeOauthTokenListJsonPath ?? null,
           issues: result.issues,
-          pjcode: input.projectName,
+          pjcode: typedInput.projectName,
         });
       } catch (error) {
         console.error(
@@ -560,10 +573,10 @@ export class HandleScheduledEventUseCaseHandler {
             inTmuxProjectOrderOverride ??
             mergedInput.inTmuxProjectOrder ??
             null,
-          pjcode: input.projectName,
-          assigneeLogin: input.manager,
-          org: input.org,
-          repo: input.workingReport.repo,
+          pjcode: typedInput.projectName,
+          assigneeLogin: typedInput.manager,
+          org: typedInput.org,
+          repo: typedInput.workingReport.repo,
           newIssueRepo: mergedInput.newIssueRepo ?? undefined,
           project: result.project,
           issues: result.issues,
@@ -605,7 +618,7 @@ export class HandleScheduledEventUseCaseHandler {
       try {
         await reconcileInTmuxByHumanSessions({
           inTmuxLauncherCommand: mergedInput.inTmuxLauncherCommand ?? null,
-          assigneeLogin: input.manager,
+          assigneeLogin: typedInput.manager,
           issues: result.issues,
           localCommandRunner: nodeLocalCommandRunner,
           issueStateRepository: issueRepository,

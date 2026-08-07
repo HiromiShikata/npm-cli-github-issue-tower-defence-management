@@ -19,7 +19,6 @@ import {
   ProjectItem,
 } from './GraphqlProjectItemRepository';
 import { LocalStorageCacheRepository } from '../LocalStorageCacheRepository';
-import typia from 'typia';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import { fetchGithubGraphql } from '../githubGraphqlClient';
 import { normalizeFieldName } from '../utils';
@@ -38,6 +37,28 @@ import {
 export const FULL_ISSUE_FETCH_INTERVAL_MS = 60 * 60 * 1000;
 export const INCREMENTAL_FETCH_SKEW_BUFFER_MS = 5 * 60 * 1000;
 export const REQUIRED_CHECKS_CACHE_TTL_MS = 10 * 60 * 1000;
+
+const isIssueArray = (value: unknown): value is Issue[] =>
+  Array.isArray(value) &&
+  value.every(
+    (item) =>
+      typeof item === 'object' &&
+      item !== null &&
+      typeof (item as Record<string, unknown>)['nameWithOwner'] === 'string' &&
+      typeof (item as Record<string, unknown>)['number'] === 'number' &&
+      typeof (item as Record<string, unknown>)['title'] === 'string' &&
+      typeof (item as Record<string, unknown>)['url'] === 'string',
+  );
+
+const isProject = (value: unknown): value is Project =>
+  typeof value === 'object' &&
+  value !== null &&
+  typeof (value as Record<string, unknown>)['id'] === 'string' &&
+  typeof (value as Record<string, unknown>)['url'] === 'string' &&
+  typeof (value as Record<string, unknown>)['databaseId'] === 'number' &&
+  typeof (value as Record<string, unknown>)['name'] === 'string' &&
+  typeof (value as Record<string, unknown>)['status'] === 'object' &&
+  (value as Record<string, unknown>)['status'] !== null;
 
 export type CachedProjectIssues = {
   lastFetchedAt: string;
@@ -569,7 +590,7 @@ export class ApiV3CheerioRestIssueRepository
         };
       });
 
-    if (typia.is<Issue[]>(issues)) {
+    if (isIssueArray(issues)) {
       return issues;
     }
     return null;
@@ -592,7 +613,7 @@ export class ApiV3CheerioRestIssueRepository
     ) {
       return null;
     }
-    if (!typia.is<Project>(raw.project)) {
+    if (!isProject(raw.project)) {
       return null;
     }
     const issues = this.restoreIssuesFromCache(raw.issues);
@@ -620,7 +641,7 @@ export class ApiV3CheerioRestIssueRepository
     if (typeof raw !== 'object' || raw === null || !('project' in raw)) {
       return null;
     }
-    if (!typia.is<Project>(raw.project)) {
+    if (!isProject(raw.project)) {
       return null;
     }
     return raw.project;
