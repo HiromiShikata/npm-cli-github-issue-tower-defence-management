@@ -4,6 +4,7 @@ import {
   LIVE_SESSION_THROTTLE_START_FREE_RATIO,
   LiveSessionOauthTokenSelectUseCase,
   liveSessionConcurrentLimitOf,
+  sevenDayFreeRatioForLimit,
 } from './LiveSessionOauthTokenSelectUseCase';
 import {
   OauthTokenCandidate,
@@ -142,7 +143,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
         candidate(
           'soonResetNarrowSevenDay',
           snapshot({
-            sevenDayReset: NOW + 2 * HOUR,
+            sevenDayReset: NOW + 3 * DAY,
             sevenDayUtilization: 0.7,
           }),
         ),
@@ -160,6 +161,34 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     );
     expect(narrow?.concurrentSessionLimit).toBe(2);
     expect(result.selected?.name).toBe('distantResetIdle');
+  });
+
+  it('stops throttling on the seven day window once it resets within the horizon of a new session', () => {
+    const result = useCase.run(
+      [
+        candidate(
+          'aboutToResetNearlyUsed',
+          snapshot({
+            sevenDayReset: NOW + HOUR,
+            sevenDayUtilization: 0.9,
+          }),
+        ),
+        candidate(
+          'distantResetIdle',
+          snapshot({ sevenDayReset: NOW + 6 * DAY }),
+        ),
+      ],
+      sessionsFor('aboutToResetNearlyUsed', 2),
+      NOW,
+    );
+
+    const aboutToReset = result.metrics.find(
+      (m) => m.name === 'aboutToResetNearlyUsed',
+    );
+    expect(aboutToReset?.concurrentSessionLimit).toBe(
+      LIVE_SESSION_MAX_CONCURRENT_LIMIT,
+    );
+    expect(result.selected?.name).toBe('aboutToResetNearlyUsed');
   });
 
   it('scales the concurrent session limit down by the configured selection weight', () => {
@@ -396,5 +425,25 @@ describe('liveSessionConcurrentLimitOf', () => {
 
   it('raises the limit for a weight above one', () => {
     expect(liveSessionConcurrentLimitOf(1, 1, 1.5)).toBe(6);
+  });
+
+  it('ignores a nearly used seven day window that resets within the horizon of a new session', () => {
+    expect(
+      liveSessionConcurrentLimitOf(
+        1,
+        sevenDayFreeRatioForLimit(0.1, NOW + HOUR, NOW),
+        1,
+      ),
+    ).toBe(LIVE_SESSION_MAX_CONCURRENT_LIMIT);
+  });
+
+  it('keeps honouring a nearly used seven day window that resets beyond the horizon', () => {
+    expect(
+      liveSessionConcurrentLimitOf(
+        1,
+        sevenDayFreeRatioForLimit(0.1, NOW + 3 * DAY, NOW),
+        1,
+      ),
+    ).toBe(1);
   });
 });
