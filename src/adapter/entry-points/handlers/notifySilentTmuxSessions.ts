@@ -159,7 +159,8 @@ export const notifySilentTmuxSessions = async (
       localCommandRunner,
       new RealSleeper(),
       DEFAULT_SUBMIT_PUSH_OUT_ATTEMPT_LIMIT,
-      submitPushOutWaitMilliseconds ?? DEFAULT_SUBMIT_PUSH_OUT_WAIT_MILLISECONDS,
+      submitPushOutWaitMilliseconds ??
+        DEFAULT_SUBMIT_PUSH_OUT_WAIT_MILLISECONDS,
     ),
     candidateDebounceStateFilePath !== null
       ? new FileSystemSilentSessionCandidateStateRepository(
