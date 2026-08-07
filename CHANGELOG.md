@@ -1,3 +1,10 @@
+## [1.146.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.6...v1.146.7) (2026-08-07)
+
+
+### Bug Fixes
+
+* **silent-monitor:** treat a missing running-subagents record under an existing runtime root as no live sub-agents ([#1421](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1421)) ([759ef91](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/759ef91e4afe5cdbdb4e5c6e125c84b35f5489a0))
+
 ## [1.146.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.5...v1.146.6) (2026-08-07)
 
 

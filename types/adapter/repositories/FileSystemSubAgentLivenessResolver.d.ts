@@ -6,6 +6,7 @@ export declare class FileSystemSubAgentLivenessResolver implements SubAgentLiven
         sessionName: string;
         mainTranscriptPath: string | null;
     }) => Promise<Set<string> | null>;
+    private hasReadableRuntimeRootDirectory;
     private resolveRunningSubAgentsFilePath;
 }
 //# sourceMappingURL=FileSystemSubAgentLivenessResolver.d.ts.map
