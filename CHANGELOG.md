@@ -1,3 +1,10 @@
+## [1.146.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.4...v1.146.5) (2026-08-07)
+
+
+### Bug Fixes
+
+* **test:** replace real customer identifiers in test fixtures with fictional names ([#1413](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1413)) ([f73d6e2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f73d6e282caa9dca3c1329103bcde884a7c31b63))
+
 ## [1.146.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.3...v1.146.4) (2026-08-06)
 
 
