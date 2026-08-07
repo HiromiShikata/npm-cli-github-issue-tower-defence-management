@@ -174,43 +174,85 @@ export class HandleScheduledEventUseCaseHandler {
       };
     };
 
-    const inputRecord = input as Record<string, unknown>;
-    const credentialsRecord = inputRecord?.['credentials'] as
-      Record<string, unknown> | undefined;
-    const managerRecord = credentialsRecord?.['manager'] as
-      Record<string, unknown> | undefined;
-    const managerGithubRecord = managerRecord?.['github'] as
-      Record<string, unknown> | undefined;
-    const managerSlackRecord = managerRecord?.['slack'] as
-      Record<string, unknown> | undefined;
-    const managerGoogleRecord = managerRecord?.['googleServiceAccount'] as
-      Record<string, unknown> | undefined;
-    const botRecord = credentialsRecord?.['bot'] as
-      Record<string, unknown> | undefined;
-    const botGithubRecord = botRecord?.['github'] as
-      Record<string, unknown> | undefined;
-    if (
-      typeof managerGithubRecord?.['token'] !== 'string' ||
-      typeof managerSlackRecord?.['userToken'] !== 'string' ||
-      typeof managerGoogleRecord?.['serviceAccountKey'] !== 'string' ||
-      typeof botGithubRecord?.['token'] !== 'string'
-    ) {
+    const isInputType = (v: unknown): v is inputType => {
+      if (typeof v !== 'object' || v === null) return false;
+      if (
+        !('credentials' in v) ||
+        typeof v.credentials !== 'object' ||
+        v.credentials === null
+      )
+        return false;
+      const credentials = v.credentials;
+      if (
+        !('manager' in credentials) ||
+        typeof credentials.manager !== 'object' ||
+        credentials.manager === null
+      )
+        return false;
+      const manager = credentials.manager;
+      if (
+        !('github' in manager) ||
+        typeof manager.github !== 'object' ||
+        manager.github === null
+      )
+        return false;
+      if (
+        !('token' in manager.github) ||
+        typeof manager.github.token !== 'string'
+      )
+        return false;
+      if (
+        !('slack' in manager) ||
+        typeof manager.slack !== 'object' ||
+        manager.slack === null
+      )
+        return false;
+      if (
+        !('userToken' in manager.slack) ||
+        typeof manager.slack.userToken !== 'string'
+      )
+        return false;
+      if (
+        !('googleServiceAccount' in manager) ||
+        typeof manager.googleServiceAccount !== 'object' ||
+        manager.googleServiceAccount === null
+      )
+        return false;
+      if (
+        !('serviceAccountKey' in manager.googleServiceAccount) ||
+        typeof manager.googleServiceAccount.serviceAccountKey !== 'string'
+      )
+        return false;
+      if (
+        !('bot' in credentials) ||
+        typeof credentials.bot !== 'object' ||
+        credentials.bot === null
+      )
+        return false;
+      const bot = credentials.bot;
+      if (
+        !('github' in bot) ||
+        typeof bot.github !== 'object' ||
+        bot.github === null
+      )
+        return false;
+      if (!('token' in bot.github) || typeof bot.github.token !== 'string')
+        return false;
+      return true;
+    };
+    if (!isInputType(input)) {
       throw new Error(
         `Invalid input: required credential fields are missing. Got: ${JSON.stringify(input)}`,
       );
     }
-    const typedInput = input as inputType;
-    if (typedInput.disabled) {
+    if (input.disabled) {
       return null;
     }
 
-    const managerToken = typedInput.credentials.manager.github.token;
-    const readme = await fetchProjectReadme(
-      typedInput.projectUrl,
-      managerToken,
-    );
+    const managerToken = input.credentials.manager.github.token;
+    const readme = await fetchProjectReadme(input.projectUrl, managerToken);
     const readmeConfig = readme
-      ? parseProjectReadmeConfig(readme, typedInput.projectUrl)
+      ? parseProjectReadmeConfig(readme, input.projectUrl)
       : {};
 
     const normalizeAllowedIssueAuthors = (
@@ -229,55 +271,53 @@ export class HandleScheduledEventUseCaseHandler {
     };
 
     const mergedInput = {
-      ...typedInput,
+      ...input,
       allowedIssueAuthors: normalizeAllowedIssueAuthors(
-        typedInput.allowedIssueAuthors,
+        input.allowedIssueAuthors,
       ),
       autoAssignManagerAuthors: normalizeAllowedIssueAuthors(
-        readmeConfig.autoAssignManagerAuthors ??
-          typedInput.autoAssignManagerAuthors,
+        readmeConfig.autoAssignManagerAuthors ?? input.autoAssignManagerAuthors,
       ),
       claudeCodeOauthTokenListJsonPath:
         readmeConfig.claudeCodeOauthTokenListJsonPath ??
-        typedInput.claudeCodeOauthTokenListJsonPath,
+        input.claudeCodeOauthTokenListJsonPath,
       thresholdForAutoReject:
-        readmeConfig.thresholdForAutoReject ??
-        typedInput.thresholdForAutoReject,
-      startPreparation: typedInput.startPreparation
+        readmeConfig.thresholdForAutoReject ?? input.thresholdForAutoReject,
+      startPreparation: input.startPreparation
         ? {
-            ...typedInput.startPreparation,
+            ...input.startPreparation,
             defaultAgentName:
               readmeConfig.defaultAgentName ??
-              typedInput.startPreparation.defaultAgentName,
+              input.startPreparation.defaultAgentName,
             defaultLlmModelName:
               readmeConfig.defaultLlmModelName ??
-              typedInput.startPreparation.defaultLlmModelName,
+              input.startPreparation.defaultLlmModelName,
             fallbackLlmModelName:
               readmeConfig.fallbackLlmModelName ??
-              typedInput.startPreparation.fallbackLlmModelName,
+              input.startPreparation.fallbackLlmModelName,
             defaultLlmAgentName:
               readmeConfig.defaultLlmAgentName ??
-              typedInput.startPreparation.defaultLlmAgentName,
+              input.startPreparation.defaultLlmAgentName,
             maximumPreparingIssuesCount:
               readmeConfig.maximumPreparingIssuesCount ??
-              typedInput.startPreparation.maximumPreparingIssuesCount,
+              input.startPreparation.maximumPreparingIssuesCount,
             utilizationPercentageThreshold:
               readmeConfig.utilizationPercentageThreshold ??
-              typedInput.startPreparation.utilizationPercentageThreshold,
+              input.startPreparation.utilizationPercentageThreshold,
             allowedIssueAuthors: readmeConfig.allowedIssueAuthors
               ? readmeConfig.allowedIssueAuthors
                   .split(',')
                   .map((s) => s.trim())
                   .filter(Boolean)
-              : typedInput.startPreparation.allowedIssueAuthors,
+              : input.startPreparation.allowedIssueAuthors,
             preparationProcessCheckCommand:
               readmeConfig.preparationProcessCheckCommand ??
-              typedInput.startPreparation.preparationProcessCheckCommand,
+              input.startPreparation.preparationProcessCheckCommand,
             codexHomeCandidates:
               readmeConfig.codexHomeCandidates ??
-              typedInput.startPreparation.codexHomeCandidates,
+              input.startPreparation.codexHomeCandidates,
           }
-        : typedInput.startPreparation,
+        : input.startPreparation,
     };
 
     type EffectiveConfigValue = string | number | null | undefined;
@@ -306,21 +346,21 @@ export class HandleScheduledEventUseCaseHandler {
       `Effective maximumPreparingIssuesCount: ${formatEffectiveConfig(
         mergedInput.startPreparation?.maximumPreparingIssuesCount,
         readmeConfig.maximumPreparingIssuesCount,
-        typedInput.startPreparation?.maximumPreparingIssuesCount,
+        input.startPreparation?.maximumPreparingIssuesCount,
       )}`,
     );
     console.log(
       `Effective defaultLlmModelName: ${formatEffectiveConfig(
         mergedInput.startPreparation?.defaultLlmModelName,
         readmeConfig.defaultLlmModelName,
-        typedInput.startPreparation?.defaultLlmModelName,
+        input.startPreparation?.defaultLlmModelName,
       )}`,
     );
     console.log(
       `Effective defaultAgentName: ${formatEffectiveConfig(
         mergedInput.startPreparation?.defaultAgentName,
         readmeConfig.defaultAgentName,
-        typedInput.startPreparation?.defaultAgentName,
+        input.startPreparation?.defaultAgentName,
       )}`,
     );
 
@@ -328,16 +368,16 @@ export class HandleScheduledEventUseCaseHandler {
     const localStorageRepository = new LocalStorageRepository();
     const googleSpreadsheetRepository = new GoogleSpreadsheetRepository(
       localStorageRepository,
-      typedInput.credentials.manager.googleServiceAccount.serviceAccountKey,
+      input.credentials.manager.googleServiceAccount.serviceAccountKey,
     );
-    const cachePath = `./tmp/cache/${typedInput.projectName}`;
+    const cachePath = `./tmp/cache/${input.projectName}`;
     const localStorageCacheRepository = new LocalStorageCacheRepository(
       localStorageRepository,
       cachePath,
     );
     const githubRepositoryParams: ConstructorParameters<
       typeof BaseGitHubRepository
-    > = [localStorageRepository, typedInput.credentials.bot.github.token];
+    > = [localStorageRepository, input.credentials.bot.github.token];
     const projectRepository = new GraphqlProjectRepository(
       ...githubRepositoryParams,
       localStorageCacheRepository,
@@ -428,7 +468,7 @@ export class HandleScheduledEventUseCaseHandler {
       ? new UpdateRateLimitCacheUseCase(proxyRateLimitCacheRepository)
       : null;
     const issueCommentRepository = new GitHubIssueCommentRepository(
-      typedInput.credentials.bot.github.token,
+      input.credentials.bot.github.token,
     );
     const revertOrphanedPreparationUseCase =
       new RevertOrphanedPreparationUseCase(
@@ -511,8 +551,8 @@ export class HandleScheduledEventUseCaseHandler {
       try {
         writeConsoleLists({
           consoleDataOutputDir: mergedInput.consoleDataOutputDir ?? null,
-          pjcode: typedInput.projectName,
-          assigneeLogin: typedInput.manager,
+          pjcode: input.projectName,
+          assigneeLogin: input.manager,
           project: result.project,
           issues: result.issues,
           workflowBlockerStoryName:
@@ -532,8 +572,8 @@ export class HandleScheduledEventUseCaseHandler {
       try {
         writeDashboardRow({
           dashboardDataDir,
-          pjcode: typedInput.projectName,
-          assigneeLogin: typedInput.manager,
+          pjcode: input.projectName,
+          assigneeLogin: input.manager,
           issues: result.issues,
         });
       } catch (error) {
@@ -564,7 +604,7 @@ export class HandleScheduledEventUseCaseHandler {
           tokenListJsonPath:
             mergedInput.claudeCodeOauthTokenListJsonPath ?? null,
           issues: result.issues,
-          pjcode: typedInput.projectName,
+          pjcode: input.projectName,
         });
       } catch (error) {
         console.error(
@@ -585,10 +625,10 @@ export class HandleScheduledEventUseCaseHandler {
             inTmuxProjectOrderOverride ??
             mergedInput.inTmuxProjectOrder ??
             null,
-          pjcode: typedInput.projectName,
-          assigneeLogin: typedInput.manager,
-          org: typedInput.org,
-          repo: typedInput.workingReport.repo,
+          pjcode: input.projectName,
+          assigneeLogin: input.manager,
+          org: input.org,
+          repo: input.workingReport.repo,
           newIssueRepo: mergedInput.newIssueRepo ?? undefined,
           project: result.project,
           issues: result.issues,
@@ -630,7 +670,7 @@ export class HandleScheduledEventUseCaseHandler {
       try {
         await reconcileInTmuxByHumanSessions({
           inTmuxLauncherCommand: mergedInput.inTmuxLauncherCommand ?? null,
-          assigneeLogin: typedInput.manager,
+          assigneeLogin: input.manager,
           issues: result.issues,
           localCommandRunner: nodeLocalCommandRunner,
           issueStateRepository: issueRepository,

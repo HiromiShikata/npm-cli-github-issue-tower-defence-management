@@ -37,31 +37,49 @@ export class GetStoryObjectMapUseCaseHandler {
       };
     };
 
-    const inputRecord = input as Record<string, unknown>;
-    const credentialsRecord = inputRecord?.['credentials'] as
-      Record<string, unknown> | undefined;
-    const botRecord = credentialsRecord?.['bot'] as
-      Record<string, unknown> | undefined;
-    const githubRecord = botRecord?.['github'] as
-      Record<string, unknown> | undefined;
-    if (
-      typeof inputRecord?.['projectName'] !== 'string' ||
-      typeof githubRecord?.['token'] !== 'string'
-    ) {
+    const isInputType = (v: unknown): v is inputType => {
+      if (typeof v !== 'object' || v === null) return false;
+      if (!('projectName' in v) || typeof v.projectName !== 'string')
+        return false;
+      if (
+        !('credentials' in v) ||
+        typeof v.credentials !== 'object' ||
+        v.credentials === null
+      )
+        return false;
+      const credentials = v.credentials;
+      if (
+        !('bot' in credentials) ||
+        typeof credentials.bot !== 'object' ||
+        credentials.bot === null
+      )
+        return false;
+      const bot = credentials.bot;
+      if (
+        !('github' in bot) ||
+        typeof bot.github !== 'object' ||
+        bot.github === null
+      )
+        return false;
+      const github = bot.github;
+      if (!('token' in github) || typeof github.token !== 'string')
+        return false;
+      return true;
+    };
+    if (!isInputType(input)) {
       throw new Error(
         `Invalid input: required fields projectName and credentials.bot.github.token must be strings. Got: ${JSON.stringify(input)}`,
       );
     }
-    const typedInput = input as inputType;
     const localStorageRepository = new LocalStorageRepository();
-    const cachePath = `./tmp/cache/${typedInput.projectName}`;
+    const cachePath = `./tmp/cache/${input.projectName}`;
     const localStorageCacheRepository = new LocalStorageCacheRepository(
       localStorageRepository,
       cachePath,
     );
     const githubRepositoryParams: ConstructorParameters<
       typeof BaseGitHubRepository
-    > = [localStorageRepository, typedInput.credentials.bot.github.token];
+    > = [localStorageRepository, input.credentials.bot.github.token];
     const projectRepository = {
       ...new GraphqlProjectRepository(
         ...githubRepositoryParams,
@@ -92,6 +110,6 @@ export class GetStoryObjectMapUseCaseHandler {
       issueRepository,
     );
 
-    return await getStoryObjectMapUseCase.run(typedInput);
+    return await getStoryObjectMapUseCase.run(input);
   };
 }

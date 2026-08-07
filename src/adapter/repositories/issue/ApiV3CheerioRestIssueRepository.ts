@@ -41,24 +41,34 @@ export const REQUIRED_CHECKS_CACHE_TTL_MS = 10 * 60 * 1000;
 const isIssueArray = (value: unknown): value is Issue[] =>
   Array.isArray(value) &&
   value.every(
-    (item) =>
+    (item: unknown) =>
       typeof item === 'object' &&
       item !== null &&
-      typeof (item as Record<string, unknown>)['nameWithOwner'] === 'string' &&
-      typeof (item as Record<string, unknown>)['number'] === 'number' &&
-      typeof (item as Record<string, unknown>)['title'] === 'string' &&
-      typeof (item as Record<string, unknown>)['url'] === 'string',
+      'nameWithOwner' in item &&
+      typeof item.nameWithOwner === 'string' &&
+      'number' in item &&
+      typeof item.number === 'number' &&
+      'title' in item &&
+      typeof item.title === 'string' &&
+      'url' in item &&
+      typeof item.url === 'string',
   );
 
-const isProject = (value: unknown): value is Project =>
-  typeof value === 'object' &&
-  value !== null &&
-  typeof (value as Record<string, unknown>)['id'] === 'string' &&
-  typeof (value as Record<string, unknown>)['url'] === 'string' &&
-  typeof (value as Record<string, unknown>)['databaseId'] === 'number' &&
-  typeof (value as Record<string, unknown>)['name'] === 'string' &&
-  typeof (value as Record<string, unknown>)['status'] === 'object' &&
-  (value as Record<string, unknown>)['status'] !== null;
+const isProject = (value: unknown): value is Project => {
+  if (typeof value !== 'object' || value === null) return false;
+  if (!('id' in value) || typeof value.id !== 'string') return false;
+  if (!('url' in value) || typeof value.url !== 'string') return false;
+  if (!('databaseId' in value) || typeof value.databaseId !== 'number')
+    return false;
+  if (!('name' in value) || typeof value.name !== 'string') return false;
+  if (
+    !('status' in value) ||
+    typeof value.status !== 'object' ||
+    value.status === null
+  )
+    return false;
+  return true;
+};
 
 export type CachedProjectIssues = {
   lastFetchedAt: string;
