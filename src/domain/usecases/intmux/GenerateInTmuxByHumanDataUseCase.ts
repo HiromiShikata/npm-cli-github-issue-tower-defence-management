@@ -146,7 +146,6 @@ export class GenerateInTmuxByHumanDataUseCase {
     issue.status === IN_TMUX_BY_HUMAN_STATUS_NAME &&
     issue.isClosed === false &&
     issue.assignees.includes(assigneeLogin) &&
-    issue.dependedIssueUrls.length === 0 &&
     issue.nextActionDate === null &&
     issue.nextActionHour === null;
 
