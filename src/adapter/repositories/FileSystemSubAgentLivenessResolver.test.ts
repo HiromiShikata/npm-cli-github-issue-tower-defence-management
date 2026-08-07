@@ -69,8 +69,21 @@ describe('FileSystemSubAgentLivenessResolver', () => {
     expect(result).toEqual(new Set());
   });
 
-  it('returns null when the running file does not exist', async () => {
+  it('returns an empty set when the runtime root exists and the session has no running file', async () => {
     const resolver = new FileSystemSubAgentLivenessResolver(runtimeRoot);
+
+    const result = await resolver.resolveLiveSubAgentIds({
+      sessionName,
+      mainTranscriptPath,
+    });
+
+    expect(result).toEqual(new Set());
+  });
+
+  it('returns null when the configured runtime root directory does not exist', async () => {
+    const resolver = new FileSystemSubAgentLivenessResolver(
+      path.join(runtimeRoot, 'absent-runtime-root'),
+    );
 
     const result = await resolver.resolveLiveSubAgentIds({
       sessionName,
@@ -177,5 +190,40 @@ describe('running-subagents record agent id contract with TranscriptSessionSubAg
     expect(result.get(sessionName)?.map((activity) => activity.label)).toEqual([
       `agent-${liveAgentId}`,
     ]);
+  });
+
+  it('reports no sub-agent when the runtime root exists and the session has no running-subagents record', async () => {
+    const subAgentsDirectory = path.join(
+      transcriptRoot,
+      cwdSlug,
+      sessionUuid,
+      'subagents',
+    );
+    fs.mkdirSync(subAgentsDirectory, { recursive: true });
+    fs.writeFileSync(
+      path.join(subAgentsDirectory, `agent-${liveAgentId}.jsonl`),
+      JSON.stringify({
+        type: 'assistant',
+        timestamp: '2026-07-20T11:00:00.000Z',
+        message: {
+          stop_reason: 'tool_use',
+          content: [{ type: 'tool_use', name: 'Read', input: {} }],
+        },
+      }),
+      'utf8',
+    );
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      new FileSystemSubAgentTranscriptDirectoryResolver(transcriptRoot),
+      emptyProcessLister,
+      now,
+      new FileSystemSubAgentLivenessResolver(runtimeRoot),
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      new Map([[sessionName, mainTranscriptPath]]),
+    );
+
+    expect(result.get(sessionName)).toBeUndefined();
   });
 });
