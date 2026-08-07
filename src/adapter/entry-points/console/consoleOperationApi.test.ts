@@ -141,12 +141,12 @@ describe('consoleOperationApi', () => {
       await handleReview(contextRecordingResolvedUrls, {
         pjcode: 'acme',
         action: 'approve',
-        prUrl: 'https://github.com/meta-site/hr-audit-mock/pull/178',
+        prUrl: 'https://github.com/acme-labs/acme-portal-mock/pull/178',
         projectItemId: 'PVTI_resolver',
       });
 
       expect(resolvedUrls).toContain(
-        'https://github.com/meta-site/hr-audit-mock/pull/178',
+        'https://github.com/acme-labs/acme-portal-mock/pull/178',
       );
     });
 
