@@ -2,6 +2,8 @@ import { ClaudeLiveSession } from './adapter-interfaces/ClaudeLiveSessionReposit
 import { OauthTokenCandidate, OauthTokenSelectUseCase } from './OauthTokenSelectUseCase';
 export declare const LIVE_SESSION_MAX_CONCURRENT_LIMIT = 4;
 export declare const LIVE_SESSION_THROTTLE_START_FREE_RATIO = 0.6;
+export declare const LIVE_SESSION_HORIZON_SECONDS: number;
+export declare const sevenDayFreeRatioForLimit: (sevenDayFreeRatio: number, sevenDayEndEpoch: number, nowEpochSeconds: number) => number;
 export declare const liveSessionConcurrentLimitOf: (fiveHourFreeRatio: number, sevenDayFreeRatio: number, selectionWeight: number) => number;
 export type LiveSessionOauthTokenCandidateMetrics = {
     name: string;

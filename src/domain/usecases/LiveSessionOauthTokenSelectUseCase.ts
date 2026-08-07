@@ -7,6 +7,16 @@ import {
 
 export const LIVE_SESSION_MAX_CONCURRENT_LIMIT = 4;
 export const LIVE_SESSION_THROTTLE_START_FREE_RATIO = 0.6;
+export const LIVE_SESSION_HORIZON_SECONDS = 5 * 3600;
+
+export const sevenDayFreeRatioForLimit = (
+  sevenDayFreeRatio: number,
+  sevenDayEndEpoch: number,
+  nowEpochSeconds: number,
+): number =>
+  sevenDayEndEpoch - nowEpochSeconds <= LIVE_SESSION_HORIZON_SECONDS
+    ? 1
+    : sevenDayFreeRatio;
 
 export const liveSessionConcurrentLimitOf = (
   fiveHourFreeRatio: number,
@@ -65,7 +75,11 @@ export class LiveSessionOauthTokenSelectUseCase {
         liveSessionCountByToken.get(candidate.token) ?? 0;
       const concurrentSessionLimit = liveSessionConcurrentLimitOf(
         rateLimitMetric.fiveHourFreeRatio,
-        rateLimitMetric.sevenDayFreeRatio,
+        sevenDayFreeRatioForLimit(
+          rateLimitMetric.sevenDayFreeRatio,
+          rateLimitMetric.sevenDayEndEpoch,
+          nowEpochSeconds,
+        ),
         selectionWeightOf(candidate),
       );
       return {
