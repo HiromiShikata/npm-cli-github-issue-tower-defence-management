@@ -18,7 +18,11 @@ import { LocalProcessLiveSessionProcessSnapshotProvider } from '../../repositori
 import { ProcFsProcessEnvironReader } from '../../repositories/ProcFsProcessEnvironReader';
 import { FileSystemInteractiveLiveSessionTranscriptResolver } from '../../repositories/FileSystemInteractiveLiveSessionTranscriptResolver';
 import { FileSystemSessionOutputActivityRepository } from '../../repositories/FileSystemSessionOutputActivityRepository';
-import { TmuxSilentSessionNotificationRepository } from '../../repositories/TmuxSilentSessionNotificationRepository';
+import {
+  DEFAULT_SUBMIT_PUSH_OUT_ATTEMPT_LIMIT,
+  DEFAULT_SUBMIT_PUSH_OUT_WAIT_MILLISECONDS,
+  TmuxSilentSessionNotificationRepository,
+} from '../../repositories/TmuxSilentSessionNotificationRepository';
 import { NoUnansweredOwnerCallStatusProvider } from '../../repositories/NoUnansweredOwnerCallStatusProvider';
 import { TranscriptOwnerCallStatusProvider } from '../../repositories/TranscriptOwnerCallStatusProvider';
 import { TranscriptRefusalTailStatusProvider } from '../../repositories/TranscriptRefusalTailStatusProvider';
@@ -57,6 +61,7 @@ export type NotifySilentTmuxSessionsParams = {
   hubTaskStatusCacheStateFilePath: string | null;
   hubTaskStatusCacheTtlSeconds: number;
   messageTemplates: SilentSessionMessageTemplates;
+  submitPushOutWaitMilliseconds?: number;
   now: Date;
 };
 
@@ -121,6 +126,7 @@ export const notifySilentTmuxSessions = async (
     hubTaskStatusCacheStateFilePath,
     hubTaskStatusCacheTtlSeconds,
     messageTemplates,
+    submitPushOutWaitMilliseconds,
     now,
   } = params;
   if (!enabled) {
@@ -149,7 +155,13 @@ export const notifySilentTmuxSessions = async (
       now,
     ),
     createOwnerCallStatusProvider(ownerCallMarker),
-    new TmuxSilentSessionNotificationRepository(localCommandRunner),
+    new TmuxSilentSessionNotificationRepository(
+      localCommandRunner,
+      new RealSleeper(),
+      DEFAULT_SUBMIT_PUSH_OUT_ATTEMPT_LIMIT,
+      submitPushOutWaitMilliseconds ??
+        DEFAULT_SUBMIT_PUSH_OUT_WAIT_MILLISECONDS,
+    ),
     candidateDebounceStateFilePath !== null
       ? new FileSystemSilentSessionCandidateStateRepository(
           candidateDebounceStateFilePath,

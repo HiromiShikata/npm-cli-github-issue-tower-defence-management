@@ -46,7 +46,10 @@ export const resetDegeneratedTmuxSessions = async (
     ),
     new FileSystemInteractiveLiveSessionTranscriptResolver(),
     new FileSystemSessionAssistantTurnsRepository(),
-    new TmuxSilentSessionNotificationRepository(localCommandRunner),
+    new TmuxSilentSessionNotificationRepository(
+      localCommandRunner,
+      new RealSleeper(),
+    ),
     new NodeTmuxSessionRepository(localCommandRunner),
     cooldownStateFilePath !== null
       ? new FileSystemSessionDegenerationCooldownStateRepository(
