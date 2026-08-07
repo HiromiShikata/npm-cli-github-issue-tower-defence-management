@@ -20,7 +20,12 @@ export class FileSystemSubAgentLivenessResolver implements SubAgentLivenessResol
     let content: string;
     try {
       content = fs.readFileSync(runningFilePath, 'utf8');
-    } catch {
+    } catch (error) {
+      const isMissingRecord =
+        (error as NodeJS.ErrnoException).code === 'ENOENT';
+      if (isMissingRecord && this.hasReadableRuntimeRootDirectory()) {
+        return new Set();
+      }
       return null;
     }
     const liveIds = new Set<string>();
@@ -31,6 +36,17 @@ export class FileSystemSubAgentLivenessResolver implements SubAgentLivenessResol
       }
     }
     return liveIds;
+  };
+
+  private hasReadableRuntimeRootDirectory = (): boolean => {
+    if (this.runtimeRootDirectory === null) {
+      return false;
+    }
+    try {
+      return fs.statSync(this.runtimeRootDirectory).isDirectory();
+    } catch {
+      return false;
+    }
   };
 
   private resolveRunningSubAgentsFilePath = (
