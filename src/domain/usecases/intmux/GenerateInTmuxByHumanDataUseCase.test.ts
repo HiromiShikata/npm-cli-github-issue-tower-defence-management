@@ -172,14 +172,19 @@ describe('GenerateInTmuxByHumanDataUseCase', () => {
       expect(result.v1).toEqual([]);
     });
 
-    it('rejects issues whose depended issue urls are non-empty', () => {
+    it('keeps issues whose depended issue urls are non-empty', () => {
       const result = run([
         makeIssue({
           story: 'Story Alpha',
           dependedIssueUrls: ['https://github.com/demo/repo/issues/42'],
         }),
       ]);
-      expect(result.v1).toEqual([]);
+      expect(result.v1).toEqual([
+        {
+          story: 'Story Alpha',
+          urls: ['https://github.com/demo/repo/issues/1'],
+        },
+      ]);
     });
   });
 
