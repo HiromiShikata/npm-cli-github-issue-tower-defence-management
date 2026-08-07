@@ -111,6 +111,7 @@ export class TmuxSilentSessionNotificationRepository implements SilentSessionNot
       attempt < this.submitPushOutAttemptLimit;
       attempt += 1
     ) {
+      await this.sleeper.sleep(this.submitPushOutWaitMilliseconds);
       const inputBoxState = await this.readInputBoxState(
         sessionName,
         singleLineMessage,
@@ -124,7 +125,6 @@ export class TmuxSilentSessionNotificationRepository implements SilentSessionNot
         );
         return;
       }
-      await this.sleeper.sleep(this.submitPushOutWaitMilliseconds);
       await this.submitInputBox(sessionName);
     }
     console.log(

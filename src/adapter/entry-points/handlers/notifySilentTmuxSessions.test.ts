@@ -147,6 +147,7 @@ describe('notifySilentTmuxSessions', () => {
     messageTemplates: EMPTY_TEMPLATES,
     now: NOW,
     ...DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS,
+    submitPushOutWaitMilliseconds: 0,
   });
 
   it('sends a main stalled notification to a silent github-named live session that was already a candidate in the previous cycle', async () => {

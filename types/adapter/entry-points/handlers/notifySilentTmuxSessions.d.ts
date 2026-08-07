@@ -23,6 +23,7 @@ export type NotifySilentTmuxSessionsParams = {
     hubTaskStatusCacheStateFilePath: string | null;
     hubTaskStatusCacheTtlSeconds: number;
     messageTemplates: SilentSessionMessageTemplates;
+    submitPushOutWaitMilliseconds?: number;
     now: Date;
 };
 export declare const notifySilentTmuxSessions: (params: NotifySilentTmuxSessionsParams) => Promise<void>;
