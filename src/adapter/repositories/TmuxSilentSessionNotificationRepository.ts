@@ -16,9 +16,7 @@ type InputBoxState = 'holdsMessage' | 'clearedMessage' | 'unreadable';
 
 const withoutWhitespace = (value: string): string => value.replace(/\s+/gu, '');
 
-export const extractTmuxInputBoxContent = (
-  paneText: string,
-): string | null => {
+export const extractTmuxInputBoxContent = (paneText: string): string | null => {
   const lines = paneText.split('\n');
   const borderLineIndexes = lines.flatMap((line, index) =>
     line.trim().length > 0 && INPUT_BOX_BORDER_LINE_PATTERN.test(line)
@@ -56,9 +54,7 @@ export const resolveInputBoxStateFromPane = (
     : 'clearedMessage';
 };
 
-export class TmuxSilentSessionNotificationRepository
-  implements SilentSessionNotificationRepository
-{
+export class TmuxSilentSessionNotificationRepository implements SilentSessionNotificationRepository {
   constructor(
     private readonly localCommandRunner: LocalCommandRunner,
     private readonly sleeper: Sleeper,
@@ -154,6 +150,9 @@ export class TmuxSilentSessionNotificationRepository
       );
       return 'unreadable';
     }
-    return resolveInputBoxStateFromPane(captureResult.stdout, singleLineMessage);
+    return resolveInputBoxStateFromPane(
+      captureResult.stdout,
+      singleLineMessage,
+    );
   };
 }
