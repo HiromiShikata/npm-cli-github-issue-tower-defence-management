@@ -1,3 +1,10 @@
+## [1.146.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.5...v1.146.6) (2026-08-07)
+
+
+### Bug Fixes
+
+* push out a self-check reminder left unsubmitted in the tmux input box ([#1419](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1419)) ([605c500](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/605c500cc71e2ff1c458c741c8f3231dfc161c46))
+
 ## [1.146.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.4...v1.146.5) (2026-08-07)
 
 
