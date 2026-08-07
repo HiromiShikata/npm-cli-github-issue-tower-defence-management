@@ -8,10 +8,9 @@ const RateLimitCache_1 = require("../../proxy/RateLimitCache");
 const TokenListLoader_1 = require("../../proxy/TokenListLoader");
 const OauthTokenSelectHandler_1 = require("./OauthTokenSelectHandler");
 class LiveSessionOauthTokenSelectHandler {
-    constructor(useCase = new LiveSessionOauthTokenSelectUseCase_1.LiveSessionOauthTokenSelectUseCase(), liveSessionRepository = new ProcClaudeLiveSessionRepository_1.ProcClaudeLiveSessionRepository(), random = Math.random) {
+    constructor(useCase = new LiveSessionOauthTokenSelectUseCase_1.LiveSessionOauthTokenSelectUseCase(), liveSessionRepository = new ProcClaudeLiveSessionRepository_1.ProcClaudeLiveSessionRepository()) {
         this.useCase = useCase;
         this.liveSessionRepository = liveSessionRepository;
-        this.random = random;
         this.handle = (input) => {
             const tokenListJsonPath = (0, OauthTokenSelectHandler_1.resolveTokenListJsonPath)(input.tokenListJsonPath);
             if (tokenListJsonPath === null) {
@@ -58,7 +57,7 @@ class LiveSessionOauthTokenSelectHandler {
                 };
             });
             const liveSessions = this.liveSessionRepository.listLiveSessions();
-            const result = this.useCase.run(candidates, liveSessions, input.nowEpochSeconds, this.random);
+            const result = this.useCase.run(candidates, liveSessions, input.nowEpochSeconds);
             return {
                 selectedToken: result.selected?.token ?? null,
                 selectedName: result.selected?.name ?? null,
@@ -71,13 +70,13 @@ class LiveSessionOauthTokenSelectHandler {
                 const status = metric.eligible
                     ? 'eligible'
                     : `excluded (${metric.exclusionReason})`;
-                return `${metric.name}: ${metric.liveSessionCount} live session(s), 5h ${Math.round(metric.fiveHourFreeRatio * 100)}% free, 7d ${Math.round(metric.sevenDayFreeRatio * 100)}% free, 7d-end in ${secondsUntilSevenDayEnd}s -> ${status}`;
+                return `${metric.name}: ${metric.liveSessionCount}/${metric.concurrentSessionLimit} live session(s), 5h ${Math.round(metric.fiveHourFreeRatio * 100)}% free, 7d ${Math.round(metric.sevenDayFreeRatio * 100)}% free, 7d-end in ${secondsUntilSevenDayEnd}s -> ${status}`;
             });
             if (result.selected === null) {
                 lines.push(`No eligible token: every token is below the 5h >= ${Math.round(OauthTokenSelectUseCase_1.FIVE_HOUR_MIN_FREE_RATIO * 100)}% free and 7d >= ${Math.round(OauthTokenSelectUseCase_1.SEVEN_DAY_MIN_FREE_RATIO * 100)}% free thresholds required to start a live session.`);
             }
             else {
-                lines.push(`Selected ${result.selected.name} (weighted by how soon the 7d window resets, how much of it is free, and how few live sessions the token carries).`);
+                lines.push(`Selected ${result.selected.name} (the soonest-resetting 7d window among tokens still under their concurrent session limit).`);
             }
             return lines;
         };

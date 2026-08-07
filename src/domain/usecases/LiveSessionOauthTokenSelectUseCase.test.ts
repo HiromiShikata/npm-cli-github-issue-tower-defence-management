@@ -58,7 +58,10 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
   it('selects the token whose seven day window resets soonest even when an idle token has a distant reset', () => {
     const result = useCase.run(
       [
-        candidate('distantResetIdle', snapshot({ sevenDayReset: NOW + 6 * DAY })),
+        candidate(
+          'distantResetIdle',
+          snapshot({ sevenDayReset: NOW + 6 * DAY }),
+        ),
         candidate('soonResetBusy', snapshot({ sevenDayReset: NOW + 2 * HOUR })),
       ],
       sessionsFor('soonResetBusy', 2),
@@ -71,7 +74,10 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
   it('keeps filling the soonest resetting token until it reaches its concurrent session limit', () => {
     const belowLimit = useCase.run(
       [
-        candidate('distantResetIdle', snapshot({ sevenDayReset: NOW + 6 * DAY })),
+        candidate(
+          'distantResetIdle',
+          snapshot({ sevenDayReset: NOW + 6 * DAY }),
+        ),
         candidate('soonReset', snapshot({ sevenDayReset: NOW + 2 * HOUR })),
       ],
       sessionsFor('soonReset', LIVE_SESSION_MAX_CONCURRENT_LIMIT - 1),
@@ -84,7 +90,10 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
   it('moves to the next soonest resetting token once the soonest one is at its concurrent session limit', () => {
     const result = useCase.run(
       [
-        candidate('distantResetIdle', snapshot({ sevenDayReset: NOW + 6 * DAY })),
+        candidate(
+          'distantResetIdle',
+          snapshot({ sevenDayReset: NOW + 6 * DAY }),
+        ),
         candidate('soonResetFull', snapshot({ sevenDayReset: NOW + 2 * HOUR })),
       ],
       sessionsFor('soonResetFull', LIVE_SESSION_MAX_CONCURRENT_LIMIT),
@@ -94,7 +103,9 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(result.selected?.name).toBe('distantResetIdle');
     const full = result.metrics.find((m) => m.name === 'soonResetFull');
     expect(full?.hasConcurrencyHeadroom).toBe(false);
-    expect(full?.concurrentSessionLimit).toBe(LIVE_SESSION_MAX_CONCURRENT_LIMIT);
+    expect(full?.concurrentSessionLimit).toBe(
+      LIVE_SESSION_MAX_CONCURRENT_LIMIT,
+    );
   });
 
   it('lowers the concurrent session limit as the five hour window fills', () => {
@@ -107,7 +118,10 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
             fiveHourUtilization: 0.7,
           }),
         ),
-        candidate('distantResetIdle', snapshot({ sevenDayReset: NOW + 6 * DAY })),
+        candidate(
+          'distantResetIdle',
+          snapshot({ sevenDayReset: NOW + 6 * DAY }),
+        ),
       ],
       sessionsFor('soonResetNarrowFiveHour', 2),
       NOW,
@@ -130,7 +144,10 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
             sevenDayUtilization: 0.7,
           }),
         ),
-        candidate('distantResetIdle', snapshot({ sevenDayReset: NOW + 6 * DAY })),
+        candidate(
+          'distantResetIdle',
+          snapshot({ sevenDayReset: NOW + 6 * DAY }),
+        ),
       ],
       sessionsFor('soonResetNarrowSevenDay', 2),
       NOW,
@@ -147,10 +164,16 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     const result = useCase.run(
       [
         withSelectionWeight(
-          candidate('downWeighted', snapshot({ sevenDayReset: NOW + 2 * HOUR })),
+          candidate(
+            'downWeighted',
+            snapshot({ sevenDayReset: NOW + 2 * HOUR }),
+          ),
           0.5,
         ),
-        candidate('distantResetIdle', snapshot({ sevenDayReset: NOW + 6 * DAY })),
+        candidate(
+          'distantResetIdle',
+          snapshot({ sevenDayReset: NOW + 6 * DAY }),
+        ),
       ],
       sessionsFor('downWeighted', 2),
       NOW,
@@ -179,7 +202,10 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
   it('still selects the soonest resetting token when every eligible token is at its limit', () => {
     const result = useCase.run(
       [
-        candidate('distantResetFull', snapshot({ sevenDayReset: NOW + 6 * DAY })),
+        candidate(
+          'distantResetFull',
+          snapshot({ sevenDayReset: NOW + 6 * DAY }),
+        ),
         candidate('soonResetFull', snapshot({ sevenDayReset: NOW + 2 * HOUR })),
       ],
       [

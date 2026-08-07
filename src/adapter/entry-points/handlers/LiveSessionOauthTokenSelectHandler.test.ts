@@ -109,12 +109,10 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
 
   const buildHandler = (
     sessions: ClaudeLiveSession[],
-    random: () => number = () => 0.5,
   ): LiveSessionOauthTokenSelectHandler =>
     new LiveSessionOauthTokenSelectHandler(
       new LiveSessionOauthTokenSelectUseCase(),
       new FakeClaudeLiveSessionRepository(sessions),
-      random,
     );
 
   const writeFableRejectionCache = (token: string, resetsAt: number): void => {
@@ -165,7 +163,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     );
   });
 
-  it('selects the eligible token with fewer live sessions for a draw inside its weight slice', () => {
+  it('selects the soonest resetting eligible token even when it already carries a live session', () => {
     writeTokenList([
       { name: 'busy', token: 'fake-busy' },
       { name: 'idle', token: 'fake-idle' },
@@ -183,18 +181,20 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
       sevenDayReset: NOW + 6 * DAY,
     });
 
-    const handler = buildHandler(
-      [{ token: 'fake-busy', sessionKey: 'session-a' }],
-      () => 0.9,
-    );
+    const handler = buildHandler([
+      { token: 'fake-busy', sessionKey: 'session-a' },
+    ]);
     const output = handler.handle({
       tokenListJsonPath: tokenListPath,
       cacheDirectory,
       nowEpochSeconds: NOW,
     });
 
-    expect(output.selectedName).toBe('idle');
-    expect(output.selectedToken).toBe('fake-idle');
+    expect(output.selectedName).toBe('busy');
+    expect(output.selectedToken).toBe('fake-busy');
+    expect(output.diagnostics.join('\n')).toContain(
+      'busy: 1/4 live session(s)',
+    );
   });
 
   it('breaks an occupancy tie by the soonest 7d reset', () => {

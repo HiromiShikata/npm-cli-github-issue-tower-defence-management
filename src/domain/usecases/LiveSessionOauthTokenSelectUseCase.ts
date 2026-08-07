@@ -2,11 +2,28 @@ import { ClaudeLiveSession } from './adapter-interfaces/ClaudeLiveSessionReposit
 import {
   OauthTokenCandidate,
   OauthTokenSelectUseCase,
-  SelectionRandom,
-  selectWeightedCandidate,
   selectionWeightOf,
-  sevenDayUrgencyFactor,
 } from './OauthTokenSelectUseCase';
+
+export const LIVE_SESSION_MAX_CONCURRENT_LIMIT = 4;
+export const LIVE_SESSION_THROTTLE_START_FREE_RATIO = 0.6;
+
+export const liveSessionConcurrentLimitOf = (
+  fiveHourFreeRatio: number,
+  sevenDayFreeRatio: number,
+  selectionWeight: number,
+): number => {
+  const taperOf = (freeRatio: number): number =>
+    Math.min(freeRatio / LIVE_SESSION_THROTTLE_START_FREE_RATIO, 1);
+  const taper = Math.min(
+    taperOf(fiveHourFreeRatio),
+    taperOf(sevenDayFreeRatio),
+  );
+  return Math.max(
+    Math.floor(LIVE_SESSION_MAX_CONCURRENT_LIMIT * selectionWeight * taper),
+    1,
+  );
+};
 
 export type LiveSessionOauthTokenCandidateMetrics = {
   name: string;
@@ -14,6 +31,8 @@ export type LiveSessionOauthTokenCandidateMetrics = {
   sevenDayFreeRatio: number;
   sevenDayEndEpoch: number;
   liveSessionCount: number;
+  concurrentSessionLimit: number;
+  hasConcurrencyHeadroom: boolean;
   eligible: boolean;
   exclusionReason: string | null;
 };
@@ -32,7 +51,6 @@ export class LiveSessionOauthTokenSelectUseCase {
     candidates: OauthTokenCandidate[],
     liveSessions: ClaudeLiveSession[],
     nowEpochSeconds: number,
-    random: SelectionRandom = Math.random,
   ): LiveSessionOauthTokenSelectResult => {
     const rateLimitResult = this.rateLimitSelectUseCase.run(
       candidates,
@@ -45,6 +63,11 @@ export class LiveSessionOauthTokenSelectUseCase {
       const rateLimitMetric = rateLimitResult.metrics[index];
       const liveSessionCount =
         liveSessionCountByToken.get(candidate.token) ?? 0;
+      const concurrentSessionLimit = liveSessionConcurrentLimitOf(
+        rateLimitMetric.fiveHourFreeRatio,
+        rateLimitMetric.sevenDayFreeRatio,
+        selectionWeightOf(candidate),
+      );
       return {
         candidate,
         metric: {
@@ -53,6 +76,8 @@ export class LiveSessionOauthTokenSelectUseCase {
           sevenDayFreeRatio: rateLimitMetric.sevenDayFreeRatio,
           sevenDayEndEpoch: rateLimitMetric.sevenDayEndEpoch,
           liveSessionCount,
+          concurrentSessionLimit,
+          hasConcurrencyHeadroom: liveSessionCount < concurrentSessionLimit,
           eligible: rateLimitMetric.eligible,
           exclusionReason: rateLimitMetric.exclusionReason,
         },
@@ -66,24 +91,10 @@ export class LiveSessionOauthTokenSelectUseCase {
       return { selected: null, metrics };
     }
 
-    const deterministicBest = eligible.reduce((bestEntry, currentEntry) =>
+    const selected = eligible.reduce((bestEntry, currentEntry) =>
       this.preferred(currentEntry.metric, bestEntry.metric)
         ? currentEntry
         : bestEntry,
-    );
-
-    const selected = selectWeightedCandidate(
-      eligible,
-      (entry) =>
-        (selectionWeightOf(entry.candidate) *
-          sevenDayUrgencyFactor(
-            entry.metric.sevenDayFreeRatio,
-            entry.metric.sevenDayEndEpoch,
-            nowEpochSeconds,
-          )) /
-        (1 + entry.metric.liveSessionCount),
-      deterministicBest,
-      random,
     );
 
     return { selected: selected.candidate, metrics };
@@ -93,12 +104,18 @@ export class LiveSessionOauthTokenSelectUseCase {
     candidateMetric: LiveSessionOauthTokenCandidateMetrics,
     incumbentMetric: LiveSessionOauthTokenCandidateMetrics,
   ): boolean => {
-    if (candidateMetric.liveSessionCount !== incumbentMetric.liveSessionCount) {
+    if (
+      candidateMetric.hasConcurrencyHeadroom !==
+      incumbentMetric.hasConcurrencyHeadroom
+    ) {
+      return candidateMetric.hasConcurrencyHeadroom;
+    }
+    if (candidateMetric.sevenDayEndEpoch !== incumbentMetric.sevenDayEndEpoch) {
       return (
-        candidateMetric.liveSessionCount < incumbentMetric.liveSessionCount
+        candidateMetric.sevenDayEndEpoch < incumbentMetric.sevenDayEndEpoch
       );
     }
-    return candidateMetric.sevenDayEndEpoch < incumbentMetric.sevenDayEndEpoch;
+    return candidateMetric.liveSessionCount < incumbentMetric.liveSessionCount;
   };
 
   private liveSessionCountByToken = (
