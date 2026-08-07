@@ -58,8 +58,8 @@ describe('createConsoleIssueRepositoryResolver', () => {
     );
 
     expect(
-      resolve('https://github.com/meta-site/hr-audit-mock/issues/178'),
-    ).toBe('repository-with-token-of-meta-site');
+      resolve('https://github.com/acme-labs/acme-portal-mock/issues/178'),
+    ).toBe('repository-with-token-of-acme-labs');
   });
 
   it('throws when the repository owner cannot be read from the url', () => {
@@ -68,8 +68,10 @@ describe('createConsoleIssueRepositoryResolver', () => {
       (githubToken) => `repository-with-${githubToken}`,
     );
 
-    expect(() => resolve('https://github.com/meta-site/hr-audit-mock')).toThrow(
-      'The repository owner cannot be read from the operated url: https://github.com/meta-site/hr-audit-mock',
+    expect(() =>
+      resolve('https://github.com/acme-labs/acme-portal-mock'),
+    ).toThrow(
+      'The repository owner cannot be read from the operated url: https://github.com/acme-labs/acme-portal-mock',
     );
   });
 });
@@ -78,9 +80,9 @@ describe('extractRepositoryOwner', () => {
   it('should return the owner of an issue url', () => {
     expect(
       extractRepositoryOwner(
-        'https://github.com/meta-site/hr-audit-mock/issues/178',
+        'https://github.com/acme-labs/acme-portal-mock/issues/178',
       ),
-    ).toBe('meta-site');
+    ).toBe('acme-labs');
   });
 
   it('should return the owner of a pull request url', () => {
@@ -93,7 +95,7 @@ describe('extractRepositoryOwner', () => {
 
   it('should return null for a url that is not an issue or a pull request', () => {
     expect(
-      extractRepositoryOwner('https://github.com/meta-site/hr-audit-mock'),
+      extractRepositoryOwner('https://github.com/acme-labs/acme-portal-mock'),
     ).toBeNull();
   });
 });
@@ -114,41 +116,41 @@ describe('createConsoleGithubTokenResolver', () => {
   it('should return the token read from the file configured for that owner', () => {
     const resolve = createConsoleGithubTokenResolver(
       'default-token',
-      { 'meta-site': '/creds/meta-site-token.txt' },
+      { 'acme-labs': '/creds/acme-labs-token.txt' },
       (filePath) =>
-        filePath === '/creds/meta-site-token.txt'
+        filePath === '/creds/acme-labs-token.txt'
           ? 'fine-grained-token\n'
           : (() => {
               throw new Error(`unexpected file path: ${filePath}`);
             })(),
     );
 
-    expect(resolve('meta-site')).toBe('fine-grained-token');
+    expect(resolve('acme-labs')).toBe('fine-grained-token');
   });
 
   it('should keep using the default token for the other owners when one owner has a token file', () => {
     const resolve = createConsoleGithubTokenResolver(
       'default-token',
-      { 'meta-site': '/creds/meta-site-token.txt' },
+      { 'acme-labs': '/creds/acme-labs-token.txt' },
       () => 'fine-grained-token',
     );
 
-    expect(resolve('X-Mile')).toBe('default-token');
+    expect(resolve('globex-inc')).toBe('default-token');
   });
 
   it('should read the token file only once per owner', () => {
     let readCount = 0;
     const resolve = createConsoleGithubTokenResolver(
       'default-token',
-      { 'meta-site': '/creds/meta-site-token.txt' },
+      { 'acme-labs': '/creds/acme-labs-token.txt' },
       () => {
         readCount += 1;
         return 'fine-grained-token';
       },
     );
 
-    resolve('meta-site');
-    resolve('meta-site');
+    resolve('acme-labs');
+    resolve('acme-labs');
 
     expect(readCount).toBe(1);
   });
@@ -156,25 +158,25 @@ describe('createConsoleGithubTokenResolver', () => {
   it('should throw when the configured token file contains no token', () => {
     const resolve = createConsoleGithubTokenResolver(
       'default-token',
-      { 'meta-site': '/creds/meta-site-token.txt' },
+      { 'acme-labs': '/creds/acme-labs-token.txt' },
       () => '  \n',
     );
 
-    expect(() => resolve('meta-site')).toThrow(
-      'The GitHub token file configured for repository owner "meta-site" contains no token: /creds/meta-site-token.txt',
+    expect(() => resolve('acme-labs')).toThrow(
+      'The GitHub token file configured for repository owner "acme-labs" contains no token: /creds/acme-labs-token.txt',
     );
   });
 
   it('should surface the read failure when the configured token file cannot be read', () => {
     const resolve = createConsoleGithubTokenResolver(
       'default-token',
-      { 'meta-site': '/creds/meta-site-token.txt' },
+      { 'acme-labs': '/creds/acme-labs-token.txt' },
       () => {
         throw new Error('ENOENT: no such file or directory');
       },
     );
 
-    expect(() => resolve('meta-site')).toThrow(
+    expect(() => resolve('acme-labs')).toThrow(
       'ENOENT: no such file or directory',
     );
   });

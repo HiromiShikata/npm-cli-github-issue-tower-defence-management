@@ -651,11 +651,11 @@ describe('webServer new routes integration', () => {
       const response = await request(
         server,
         'GET',
-        `/api/itembody?k=${testToken}&url=https://github.com/meta-site/hr-audit-mock/issues/178`,
+        `/api/itembody?k=${testToken}&url=https://github.com/acme-labs/acme-portal-mock/issues/178`,
       );
       expect(JSON.parse(response.body)).toEqual({ body: 'owner token body' });
       expect(resolvedUrls).toEqual([
-        'https://github.com/meta-site/hr-audit-mock/issues/178',
+        'https://github.com/acme-labs/acme-portal-mock/issues/178',
       ]);
       expect(
         defaultIssueRepository.getIssueOrPullRequestBody,

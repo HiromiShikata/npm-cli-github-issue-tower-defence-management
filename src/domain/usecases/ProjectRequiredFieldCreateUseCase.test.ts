@@ -10,12 +10,12 @@ import { ProjectRequiredFieldCreateUseCase } from './ProjectRequiredFieldCreateU
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 
 describe('ProjectRequiredFieldCreateUseCase', () => {
-  const projectUrl = 'https://github.com/orgs/meta-site/projects/18';
+  const projectUrl = 'https://github.com/orgs/acme-labs/projects/18';
   const project: Project = {
-    id: 'PVT_kwDOBjp5zs4BfQGn',
+    id: 'PVT_kwDOAcmeLabs4AbCdEf',
     url: projectUrl,
     databaseId: 18,
-    name: 'cmg',
+    name: 'acme',
     status: {
       name: 'Status',
       fieldId: 'PVTSSF_status',
