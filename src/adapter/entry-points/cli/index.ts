@@ -919,7 +919,7 @@ addServeWebOptions(program.command('serveConsole'))
 program
   .command('selectOauthToken')
   .description(
-    'Print exactly one Claude Code OAuth token chosen by a rate-limit-aware filter. When tokens carry differing per-token selectionWeight values, the choice among rate-limit-eligible tokens is weighted-random by that weight (default 1), so a lower-weight token is chosen proportionally less often; uniform weights preserve the deterministic soonest-7d-reset choice. The token string is written to stdout (pipeable); the per-candidate decision trace is written to stderr. Exits non-zero when no token passes the filter.',
+    'Print exactly one Claude Code OAuth token chosen by a rate-limit-aware filter. Among rate-limit-eligible tokens the choice is weighted-random, with each token weighted by its per-token selectionWeight (default 1) multiplied by how urgent its 7d window is (the free share of that window times 168 divided by the hours left before it resets, with those hours floored at 1), so a token holding unused allowance that resets soon is chosen more often. When every eligible weight is identical, the choice stays deterministic and no random draw is made. The token string is written to stdout (pipeable); the per-candidate decision trace is written to stderr. Exits non-zero when no token passes the filter.',
   )
   .option(
     '--tokenListJsonPath <path>',
@@ -951,7 +951,7 @@ program
 program
   .command('selectLiveSessionOauthToken')
   .description(
-    'Print exactly one Claude Code OAuth token chosen for a new live interactive session. Among rate-limit-eligible tokens it prefers the one with the fewest current live sessions (by distinct CLAUDE_CODE_SESSION_ID found in running Claude Code processes), tiebreaking on the soonest 7d reset. When tokens carry differing per-token selectionWeight values, the choice among eligible tokens is weighted-random by that weight (default 1), so a lower-weight token is chosen proportionally less often; uniform weights preserve the fewest-live-sessions-then-soonest-7d-reset choice. The token string is written to stdout (pipeable); the per-candidate decision trace is written to stderr. Exits non-zero when no token passes the filter.',
+    'Print exactly one Claude Code OAuth token chosen for a new live interactive session. Among rate-limit-eligible tokens the choice is weighted-random, with each token weighted by its per-token selectionWeight (default 1), multiplied by how urgent its 7d window is (the free share of that window times 168 divided by the hours left before it resets, with those hours floored at 1), and divided by one plus its current live session count (by distinct CLAUDE_CODE_SESSION_ID found in running Claude Code processes). A token whose 7d window still holds unused allowance and resets soon is therefore chosen more often, while occupancy keeps sessions spread across tokens. When every eligible weight is identical, the choice stays deterministic and no random draw is made. The token string is written to stdout (pipeable); the per-candidate decision trace is written to stderr. Exits non-zero when no token passes the filter.',
   )
   .option(
     '--tokenListJsonPath <path>',

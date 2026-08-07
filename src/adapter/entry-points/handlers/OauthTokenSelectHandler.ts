@@ -3,6 +3,7 @@ import {
   OauthTokenCandidate,
   OauthTokenSelectResult,
   OauthTokenSelectUseCase,
+  SelectionRandom,
 } from '../../../domain/usecases/OauthTokenSelectUseCase';
 import {
   FABLE_LIMIT_TYPE,
@@ -55,6 +56,7 @@ export const resolveCacheDirectory = (
 export class OauthTokenSelectHandler {
   constructor(
     private readonly useCase: OauthTokenSelectUseCase = new OauthTokenSelectUseCase(),
+    private readonly random: SelectionRandom = Math.random,
   ) {}
 
   handle = (
@@ -112,7 +114,11 @@ export class OauthTokenSelectHandler {
       },
     );
 
-    const result = this.useCase.run(candidates, input.nowEpochSeconds);
+    const result = this.useCase.run(
+      candidates,
+      input.nowEpochSeconds,
+      this.random,
+    );
 
     return {
       selectedToken: result.selected?.token ?? null,
@@ -139,7 +145,7 @@ export class OauthTokenSelectHandler {
       lines.push('No eligible token passed the rate-limit filter.');
     } else {
       lines.push(
-        `Selected ${result.selected.name} (soonest 7d reset among eligible tokens).`,
+        `Selected ${result.selected.name} (weighted by how soon the 7d window resets and how much of it is free among eligible tokens).`,
       );
     }
 

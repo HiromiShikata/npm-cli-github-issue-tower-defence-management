@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { OauthTokenSelectUseCase } from '../../../domain/usecases/OauthTokenSelectUseCase';
 import { FABLE_LIMIT_TYPE, hashToken } from '../../proxy/RateLimitCache';
 import {
   OauthTokenSelectHandler,
@@ -122,7 +123,7 @@ describe('OauthTokenSelectHandler', () => {
     );
   };
 
-  it('selects the eligible token with the soonest 7d reset', () => {
+  it('selects the token whose 7d window resets soonest for a draw inside its weight slice', () => {
     writeTokenList([
       { name: 'far', token: 'fake-far' },
       { name: 'soon', token: 'fake-soon' },
@@ -140,7 +141,10 @@ describe('OauthTokenSelectHandler', () => {
       sevenDayReset: NOW + 2 * DAY,
     });
 
-    const handler = new OauthTokenSelectHandler();
+    const handler = new OauthTokenSelectHandler(
+      new OauthTokenSelectUseCase(),
+      () => 0.5,
+    );
     const output = handler.handle({
       tokenListJsonPath: tokenListPath,
       cacheDirectory,

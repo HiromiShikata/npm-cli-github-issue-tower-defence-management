@@ -44,18 +44,32 @@ const SEVEN_DAYS_IN_SECONDS = 7 * SECONDS_PER_DAY;
 export const FIVE_HOUR_MIN_FREE_RATIO = 0.25;
 export const SEVEN_DAY_MIN_FREE_RATIO = 0.03;
 
+export const SEVEN_DAY_WINDOW_HOURS = 168;
+export const MIN_HOURS_TO_RESET = 1;
+const SECONDS_PER_HOUR = 3600;
+
+export const sevenDayUrgencyFactor = (
+  sevenDayFreeRatio: number,
+  sevenDayEndEpoch: number,
+  nowEpochSeconds: number,
+): number => {
+  const hoursToReset = Math.max(
+    (sevenDayEndEpoch - nowEpochSeconds) / SECONDS_PER_HOUR,
+    MIN_HOURS_TO_RESET,
+  );
+  return sevenDayFreeRatio * (SEVEN_DAY_WINDOW_HOURS / hoursToReset);
+};
+
 export const selectWeightedCandidate = <Entry>(
   eligible: Entry[],
-  candidateOf: (entry: Entry) => OauthTokenCandidate,
+  weightOf: (entry: Entry) => number,
   deterministicBest: Entry,
   random: SelectionRandom,
 ): Entry => {
   if (eligible.length <= 1) {
     return deterministicBest;
   }
-  const weights = eligible.map((entry) =>
-    selectionWeightOf(candidateOf(entry)),
-  );
+  const weights = eligible.map((entry) => Math.max(weightOf(entry), 0));
   const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
   const uniform = weights.every((weight) => weight === weights[0]);
   if (uniform || totalWeight <= 0) {
@@ -97,7 +111,13 @@ export class OauthTokenSelectUseCase {
 
     const selected = selectWeightedCandidate(
       eligible,
-      (entry) => entry.candidate,
+      (entry) =>
+        selectionWeightOf(entry.candidate) *
+        sevenDayUrgencyFactor(
+          entry.metric.sevenDayFreeRatio,
+          entry.metric.sevenDayEndEpoch,
+          nowEpochSeconds,
+        ),
       deterministicBest,
       random,
     );

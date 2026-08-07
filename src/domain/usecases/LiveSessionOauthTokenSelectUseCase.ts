@@ -4,6 +4,8 @@ import {
   OauthTokenSelectUseCase,
   SelectionRandom,
   selectWeightedCandidate,
+  selectionWeightOf,
+  sevenDayUrgencyFactor,
 } from './OauthTokenSelectUseCase';
 
 export type LiveSessionOauthTokenCandidateMetrics = {
@@ -72,7 +74,14 @@ export class LiveSessionOauthTokenSelectUseCase {
 
     const selected = selectWeightedCandidate(
       eligible,
-      (entry) => entry.candidate,
+      (entry) =>
+        (selectionWeightOf(entry.candidate) *
+          sevenDayUrgencyFactor(
+            entry.metric.sevenDayFreeRatio,
+            entry.metric.sevenDayEndEpoch,
+            nowEpochSeconds,
+          )) /
+        (1 + entry.metric.liveSessionCount),
       deterministicBest,
       random,
     );

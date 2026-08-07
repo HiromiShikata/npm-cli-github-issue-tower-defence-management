@@ -8,6 +8,7 @@ import {
   FIVE_HOUR_MIN_FREE_RATIO,
   OauthTokenCandidate,
   SEVEN_DAY_MIN_FREE_RATIO,
+  SelectionRandom,
 } from '../../../domain/usecases/OauthTokenSelectUseCase';
 import { ProcClaudeLiveSessionRepository } from '../../repositories/ProcClaudeLiveSessionRepository';
 import { FABLE_LIMIT_TYPE, readRateLimit } from '../../proxy/RateLimitCache';
@@ -33,6 +34,7 @@ export class LiveSessionOauthTokenSelectHandler {
   constructor(
     private readonly useCase: LiveSessionOauthTokenSelectUseCase = new LiveSessionOauthTokenSelectUseCase(),
     private readonly liveSessionRepository: ClaudeLiveSessionRepository = new ProcClaudeLiveSessionRepository(),
+    private readonly random: SelectionRandom = Math.random,
   ) {}
 
   handle = (
@@ -96,6 +98,7 @@ export class LiveSessionOauthTokenSelectHandler {
       candidates,
       liveSessions,
       input.nowEpochSeconds,
+      this.random,
     );
 
     return {
@@ -125,7 +128,7 @@ export class LiveSessionOauthTokenSelectHandler {
       );
     } else {
       lines.push(
-        `Selected ${result.selected.name} (fewest live sessions, then soonest 7d reset among eligible tokens).`,
+        `Selected ${result.selected.name} (weighted by how soon the 7d window resets, how much of it is free, and how few live sessions the token carries).`,
       );
     }
 

@@ -47,6 +47,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       [candidate('busy', snapshot({})), candidate('idle', snapshot({}))],
       [session('busy', 'session-a')],
       NOW,
+      () => 0.5,
     );
 
     expect(result.selected?.name).toBe('idle');
@@ -63,12 +64,13 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       ],
       [session('far', 'session-a'), session('soon', 'session-b')],
       NOW,
+      () => 0.5,
     );
 
     expect(result.selected?.name).toBe('soon');
   });
 
-  it('prefers fewer live sessions over a sooner 7d reset', () => {
+  it('falls back to fewer live sessions when occupancy exactly cancels the urgency gap', () => {
     const result = useCase.run(
       [
         candidate('soonButBusy', snapshot({ sevenDayReset: NOW + 2 * DAY })),
@@ -79,6 +81,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
         session('soonButBusy', 'session-b'),
       ],
       NOW,
+      throwingRandom,
     );
 
     expect(result.selected?.name).toBe('farButIdle');
@@ -114,6 +117,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
         session('twoSessions', 'session-c'),
       ],
       NOW,
+      () => 0.5,
     );
 
     expect(result.selected?.name).toBe('oneSession');
@@ -136,6 +140,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
         session('fresh', 'session-fresh'),
       ],
       NOW,
+      () => 0.99,
     );
 
     expect(result.selected?.name).toBe('fresh');
@@ -231,15 +236,18 @@ const withSelectionWeight = (
 describe('LiveSessionOauthTokenSelectUseCase selectionWeight', () => {
   const useCase = new LiveSessionOauthTokenSelectUseCase();
 
-  it('keeps the deterministic fewest-live-sessions selection and never consults random when weights are uniform', () => {
+  it('keeps the deterministic selection and never consults random when the urgency weights are identical', () => {
     const result = useCase.run(
-      [candidate('busy', snapshot({})), candidate('idle', snapshot({}))],
-      [session('busy', 'session-a')],
+      [
+        candidate('firstOfEqualPair', snapshot({})),
+        candidate('secondOfEqualPair', snapshot({})),
+      ],
+      [],
       NOW,
       throwingRandom,
     );
 
-    expect(result.selected?.name).toBe('idle');
+    expect(result.selected?.name).toBe('firstOfEqualPair');
   });
 
   it('selects a sole eligible low-weight token without consulting random (no starvation)', () => {
@@ -281,5 +289,69 @@ describe('LiveSessionOauthTokenSelectUseCase selectionWeight', () => {
     expect(light).toBeGreaterThan(0);
     expect(light).toBeLessThan(heavy);
     expect(Math.abs(light / count - 1 / 3)).toBeLessThan(0.02);
+  });
+});
+
+describe('LiveSessionOauthTokenSelectUseCase seven day urgency weighting', () => {
+  const useCase = new LiveSessionOauthTokenSelectUseCase();
+
+  it('prefers the token whose seven day window resets soonest with capacity left over an idle token with a distant reset', () => {
+    const soonResetting = candidate(
+      'soon-resetting',
+      snapshot({
+        sevenDayUtilization: 0.5,
+        sevenDayReset: NOW + 8 * HOUR,
+      }),
+    );
+    const distantReset = candidate(
+      'distant-reset',
+      snapshot({
+        sevenDayUtilization: 0,
+        sevenDayReset: NOW + 160 * HOUR,
+      }),
+    );
+
+    const result = useCase.run(
+      [soonResetting, distantReset],
+      [
+        session('soon-resetting', 'session-a'),
+        session('soon-resetting', 'session-b'),
+        session('soon-resetting', 'session-c'),
+      ],
+      NOW,
+      () => 0.5,
+    );
+
+    expect(result.selected?.name).toBe('soon-resetting');
+  });
+
+  it('leaves the token with a distant reset selectable when the random draw falls in its share', () => {
+    const soonResetting = candidate(
+      'soon-resetting',
+      snapshot({
+        sevenDayUtilization: 0.5,
+        sevenDayReset: NOW + 8 * HOUR,
+      }),
+    );
+    const distantReset = candidate(
+      'distant-reset',
+      snapshot({
+        sevenDayUtilization: 0,
+        sevenDayReset: NOW + 160 * HOUR,
+      }),
+    );
+
+    const result = useCase.run(
+      [soonResetting, distantReset],
+      [
+        session('soon-resetting', 'session-a'),
+        session('soon-resetting', 'session-b'),
+        session('soon-resetting', 'session-c'),
+      ],
+      NOW,
+      () => 0.9,
+    );
+
+    expect(result.selected?.name).toBe('distant-reset');
   });
 });

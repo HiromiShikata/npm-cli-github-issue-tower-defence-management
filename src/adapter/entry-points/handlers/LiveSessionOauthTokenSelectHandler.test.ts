@@ -109,10 +109,12 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
 
   const buildHandler = (
     sessions: ClaudeLiveSession[],
+    random: () => number = () => 0.5,
   ): LiveSessionOauthTokenSelectHandler =>
     new LiveSessionOauthTokenSelectHandler(
       new LiveSessionOauthTokenSelectUseCase(),
       new FakeClaudeLiveSessionRepository(sessions),
+      random,
     );
 
   const writeFableRejectionCache = (token: string, resetsAt: number): void => {
@@ -163,7 +165,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     );
   });
 
-  it('selects the eligible token with the fewest live sessions', () => {
+  it('selects the eligible token with fewer live sessions for a draw inside its weight slice', () => {
     writeTokenList([
       { name: 'busy', token: 'fake-busy' },
       { name: 'idle', token: 'fake-idle' },
@@ -181,9 +183,10 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
       sevenDayReset: NOW + 6 * DAY,
     });
 
-    const handler = buildHandler([
-      { token: 'fake-busy', sessionKey: 'session-a' },
-    ]);
+    const handler = buildHandler(
+      [{ token: 'fake-busy', sessionKey: 'session-a' }],
+      () => 0.9,
+    );
     const output = handler.handle({
       tokenListJsonPath: tokenListPath,
       cacheDirectory,
