@@ -65,6 +65,7 @@ import { ProjectRequiredFieldCreateUseCase } from '../../../domain/usecases/Proj
 import { SetupTowerDefenceProjectUseCase } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
 import { DailySecurityScanUseCase } from '../../../domain/usecases/DailySecurityScanUseCase';
 import { KyHttpRepository } from '../../repositories/KyHttpRepository';
+import { FileSystemKevReportWatermarkRepository } from '../../repositories/FileSystemKevReportWatermarkRepository';
 import {
   AWAITING_QUALITY_CHECK_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
@@ -489,6 +490,7 @@ export class HandleScheduledEventUseCaseHandler {
           nodeLocalCommandRunner,
           issueRepository,
           new KyHttpRepository(),
+          new FileSystemKevReportWatermarkRepository(),
         )
       : null;
 
