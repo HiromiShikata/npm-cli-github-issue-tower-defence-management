@@ -38,9 +38,12 @@ export class GetStoryObjectMapUseCaseHandler {
     };
 
     const inputRecord = input as Record<string, unknown>;
-    const credentialsRecord = inputRecord?.['credentials'] as Record<string, unknown> | undefined;
-    const botRecord = credentialsRecord?.['bot'] as Record<string, unknown> | undefined;
-    const githubRecord = botRecord?.['github'] as Record<string, unknown> | undefined;
+    const credentialsRecord = inputRecord?.['credentials'] as
+      Record<string, unknown> | undefined;
+    const botRecord = credentialsRecord?.['bot'] as
+      Record<string, unknown> | undefined;
+    const githubRecord = botRecord?.['github'] as
+      Record<string, unknown> | undefined;
     if (
       typeof inputRecord?.['projectName'] !== 'string' ||
       typeof githubRecord?.['token'] !== 'string'

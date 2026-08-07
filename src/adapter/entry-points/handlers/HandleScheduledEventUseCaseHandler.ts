@@ -175,13 +175,20 @@ export class HandleScheduledEventUseCaseHandler {
     };
 
     const inputRecord = input as Record<string, unknown>;
-    const credentialsRecord = inputRecord?.['credentials'] as Record<string, unknown> | undefined;
-    const managerRecord = credentialsRecord?.['manager'] as Record<string, unknown> | undefined;
-    const managerGithubRecord = managerRecord?.['github'] as Record<string, unknown> | undefined;
-    const managerSlackRecord = managerRecord?.['slack'] as Record<string, unknown> | undefined;
-    const managerGoogleRecord = managerRecord?.['googleServiceAccount'] as Record<string, unknown> | undefined;
-    const botRecord = credentialsRecord?.['bot'] as Record<string, unknown> | undefined;
-    const botGithubRecord = botRecord?.['github'] as Record<string, unknown> | undefined;
+    const credentialsRecord = inputRecord?.['credentials'] as
+      Record<string, unknown> | undefined;
+    const managerRecord = credentialsRecord?.['manager'] as
+      Record<string, unknown> | undefined;
+    const managerGithubRecord = managerRecord?.['github'] as
+      Record<string, unknown> | undefined;
+    const managerSlackRecord = managerRecord?.['slack'] as
+      Record<string, unknown> | undefined;
+    const managerGoogleRecord = managerRecord?.['googleServiceAccount'] as
+      Record<string, unknown> | undefined;
+    const botRecord = credentialsRecord?.['bot'] as
+      Record<string, unknown> | undefined;
+    const botGithubRecord = botRecord?.['github'] as
+      Record<string, unknown> | undefined;
     if (
       typeof managerGithubRecord?.['token'] !== 'string' ||
       typeof managerSlackRecord?.['userToken'] !== 'string' ||
@@ -198,7 +205,10 @@ export class HandleScheduledEventUseCaseHandler {
     }
 
     const managerToken = typedInput.credentials.manager.github.token;
-    const readme = await fetchProjectReadme(typedInput.projectUrl, managerToken);
+    const readme = await fetchProjectReadme(
+      typedInput.projectUrl,
+      managerToken,
+    );
     const readmeConfig = readme
       ? parseProjectReadmeConfig(readme, typedInput.projectUrl)
       : {};
@@ -224,13 +234,15 @@ export class HandleScheduledEventUseCaseHandler {
         typedInput.allowedIssueAuthors,
       ),
       autoAssignManagerAuthors: normalizeAllowedIssueAuthors(
-        readmeConfig.autoAssignManagerAuthors ?? typedInput.autoAssignManagerAuthors,
+        readmeConfig.autoAssignManagerAuthors ??
+          typedInput.autoAssignManagerAuthors,
       ),
       claudeCodeOauthTokenListJsonPath:
         readmeConfig.claudeCodeOauthTokenListJsonPath ??
         typedInput.claudeCodeOauthTokenListJsonPath,
       thresholdForAutoReject:
-        readmeConfig.thresholdForAutoReject ?? typedInput.thresholdForAutoReject,
+        readmeConfig.thresholdForAutoReject ??
+        typedInput.thresholdForAutoReject,
       startPreparation: typedInput.startPreparation
         ? {
             ...typedInput.startPreparation,
