@@ -1,7 +1,9 @@
 import { ClaudeLiveSession } from './adapter-interfaces/ClaudeLiveSessionRepository';
 import {
   LIVE_SESSION_MAX_CONCURRENT_LIMIT,
+  LIVE_SESSION_THROTTLE_START_FREE_RATIO,
   LiveSessionOauthTokenSelectUseCase,
+  liveSessionConcurrentLimitOf,
 } from './LiveSessionOauthTokenSelectUseCase';
 import {
   OauthTokenCandidate,
@@ -302,6 +304,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     const fresh = result.metrics.find((m) => m.name === 'fresh');
     expect(resumedHeavy?.liveSessionCount).toBe(2);
     expect(fresh?.liveSessionCount).toBe(1);
+    expect(result.selected?.name).toBe('resumedHeavy');
   });
 
   it('returns null selection when no token passes the rate-limit filter', () => {
@@ -364,5 +367,34 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     const rejected = result.metrics.find((m) => m.name === 'rejected');
     expect(rejected?.eligible).toBe(false);
     expect(rejected?.exclusionReason).toContain('rejected');
+  });
+});
+
+describe('liveSessionConcurrentLimitOf', () => {
+  it('gives the full limit while both windows are above the taper threshold', () => {
+    expect(liveSessionConcurrentLimitOf(1, 1, 1)).toBe(
+      LIVE_SESSION_MAX_CONCURRENT_LIMIT,
+    );
+    expect(
+      liveSessionConcurrentLimitOf(
+        LIVE_SESSION_THROTTLE_START_FREE_RATIO,
+        LIVE_SESSION_THROTTLE_START_FREE_RATIO,
+        1,
+      ),
+    ).toBe(LIVE_SESSION_MAX_CONCURRENT_LIMIT);
+  });
+
+  it('takes the lower limit of the two windows', () => {
+    expect(liveSessionConcurrentLimitOf(1, 0.3, 1)).toBe(2);
+    expect(liveSessionConcurrentLimitOf(0.3, 1, 1)).toBe(2);
+  });
+
+  it('never returns less than one even when a window is fully used', () => {
+    expect(liveSessionConcurrentLimitOf(0, 0, 1)).toBe(1);
+    expect(liveSessionConcurrentLimitOf(1, 1, 0)).toBe(1);
+  });
+
+  it('raises the limit for a weight above one', () => {
+    expect(liveSessionConcurrentLimitOf(1, 1, 1.5)).toBe(6);
   });
 });
