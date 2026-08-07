@@ -233,8 +233,11 @@ describe('TmuxSilentSessionNotificationRepository', () => {
       expect(submitKeyCallCount(runner)).toBe(3);
     });
 
-    it('waits for the bracketed-paste parsing window before reading the input box back', async () => {
-      const runner = createPaneAwareRunner([paneWithInputBoxContent('❯ ')]);
+    it('waits for the bracketed-paste parsing window before pushing the message out again', async () => {
+      const runner = createPaneAwareRunner([
+        paneWithInputBoxContent('❯ self check'),
+        paneWithInputBoxContent('❯ '),
+      ]);
       const sleeper = createMockSleeper();
       const repository = new TmuxSilentSessionNotificationRepository(
         runner,

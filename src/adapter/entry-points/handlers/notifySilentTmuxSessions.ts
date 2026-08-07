@@ -149,7 +149,10 @@ export const notifySilentTmuxSessions = async (
       now,
     ),
     createOwnerCallStatusProvider(ownerCallMarker),
-    new TmuxSilentSessionNotificationRepository(localCommandRunner),
+    new TmuxSilentSessionNotificationRepository(
+      localCommandRunner,
+      new RealSleeper(),
+    ),
     candidateDebounceStateFilePath !== null
       ? new FileSystemSilentSessionCandidateStateRepository(
           candidateDebounceStateFilePath,
