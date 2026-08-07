@@ -2,6 +2,8 @@ import {
   OauthTokenCandidate,
   OauthTokenSelectUseCase,
   OauthTokenWindowSnapshot,
+  SEVEN_DAY_WINDOW_HOURS,
+  sevenDayUrgencyFactor,
 } from './OauthTokenSelectUseCase';
 
 const NOW = 1_000_000;
@@ -53,6 +55,7 @@ describe('OauthTokenSelectUseCase', () => {
         ),
       ],
       NOW,
+      () => 0.5,
     );
 
     expect(result.selected?.name).toBe('soon');
@@ -176,6 +179,7 @@ describe('OauthTokenSelectUseCase', () => {
         ),
       ],
       NOW,
+      () => 0.5,
     );
 
     expect(result.selected?.name).toBe('activeSoon');
@@ -291,15 +295,15 @@ const withSelectionWeight = (
 describe('OauthTokenSelectUseCase selectionWeight', () => {
   const useCase = new OauthTokenSelectUseCase();
 
-  it('keeps the deterministic soonest-7d selection and never consults random when weights are uniform', () => {
+  it('keeps the deterministic selection and never consults random when the urgency weights are identical', () => {
     const result = useCase.run(
       [
         candidate(
-          'far',
-          snapshot({ sevenDayUtilization: 0.1, sevenDayReset: NOW + 6 * DAY }),
+          'firstOfEqualPair',
+          snapshot({ sevenDayUtilization: 0.1, sevenDayReset: NOW + 2 * DAY }),
         ),
         candidate(
-          'soon',
+          'secondOfEqualPair',
           snapshot({ sevenDayUtilization: 0.1, sevenDayReset: NOW + 2 * DAY }),
         ),
       ],
@@ -307,23 +311,26 @@ describe('OauthTokenSelectUseCase selectionWeight', () => {
       throwingRandom,
     );
 
-    expect(result.selected?.name).toBe('soon');
+    expect(result.selected?.name).toBe('firstOfEqualPair');
   });
 
   it('treats an absent selectionWeight the same as weight 1 (uniform, deterministic)', () => {
     const result = useCase.run(
       [
         withSelectionWeight(
-          candidate('far', snapshot({ sevenDayReset: NOW + 6 * DAY })),
+          candidate(
+            'explicitWeightOne',
+            snapshot({ sevenDayReset: NOW + 2 * DAY }),
+          ),
           1,
         ),
-        candidate('soon', snapshot({ sevenDayReset: NOW + 2 * DAY })),
+        candidate('absentWeight', snapshot({ sevenDayReset: NOW + 2 * DAY })),
       ],
       NOW,
       throwingRandom,
     );
 
-    expect(result.selected?.name).toBe('soon');
+    expect(result.selected?.name).toBe('explicitWeightOne');
   });
 
   it('selects a sole eligible low-weight token without consulting random (no starvation)', () => {
@@ -429,5 +436,29 @@ describe('OauthTokenSelectUseCase selectionWeight', () => {
     );
 
     expect(result.selected?.name).toBe('soon');
+  });
+});
+
+describe('sevenDayUrgencyFactor', () => {
+  const now = 1_000_000;
+
+  it('grows as the seven day window gets closer to its reset', () => {
+    const nearReset = sevenDayUrgencyFactor(0.5, now + 8 * 3600, now);
+    const farReset = sevenDayUrgencyFactor(0.5, now + 160 * 3600, now);
+
+    expect(nearReset).toBeGreaterThan(farReset);
+  });
+
+  it('scales with the free ratio of the seven day window', () => {
+    const halfFree = sevenDayUrgencyFactor(0.5, now + 24 * 3600, now);
+    const fullyFree = sevenDayUrgencyFactor(1, now + 24 * 3600, now);
+
+    expect(fullyFree).toBeCloseTo(halfFree * 2);
+  });
+
+  it('clips the remaining hours at one hour so an imminent reset does not produce an unbounded factor', () => {
+    const almostReset = sevenDayUrgencyFactor(1, now + 60, now);
+
+    expect(almostReset).toBe(SEVEN_DAY_WINDOW_HOURS);
   });
 });
