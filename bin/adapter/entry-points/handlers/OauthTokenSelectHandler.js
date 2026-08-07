@@ -29,8 +29,9 @@ const resolveCacheDirectory = (explicitDirectory) => {
 };
 exports.resolveCacheDirectory = resolveCacheDirectory;
 class OauthTokenSelectHandler {
-    constructor(useCase = new OauthTokenSelectUseCase_1.OauthTokenSelectUseCase()) {
+    constructor(useCase = new OauthTokenSelectUseCase_1.OauthTokenSelectUseCase(), random = Math.random) {
         this.useCase = useCase;
+        this.random = random;
         this.handle = (input) => {
             const tokenListJsonPath = (0, exports.resolveTokenListJsonPath)(input.tokenListJsonPath);
             if (tokenListJsonPath === null) {
@@ -76,7 +77,7 @@ class OauthTokenSelectHandler {
                     selectionWeight: selectionWeight ?? OauthTokenSelectUseCase_1.DEFAULT_SELECTION_WEIGHT,
                 };
             });
-            const result = this.useCase.run(candidates, input.nowEpochSeconds);
+            const result = this.useCase.run(candidates, input.nowEpochSeconds, this.random);
             return {
                 selectedToken: result.selected?.token ?? null,
                 selectedName: result.selected?.name ?? null,
@@ -95,7 +96,7 @@ class OauthTokenSelectHandler {
                 lines.push('No eligible token passed the rate-limit filter.');
             }
             else {
-                lines.push(`Selected ${result.selected.name} (soonest 7d reset among eligible tokens).`);
+                lines.push(`Selected ${result.selected.name} (weighted by how soon the 7d window resets and how much of it is free among eligible tokens).`);
             }
             return lines;
         };

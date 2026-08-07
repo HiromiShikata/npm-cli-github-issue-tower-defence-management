@@ -1,4 +1,4 @@
-import { OauthTokenSelectUseCase } from '../../../domain/usecases/OauthTokenSelectUseCase';
+import { OauthTokenSelectUseCase, SelectionRandom } from '../../../domain/usecases/OauthTokenSelectUseCase';
 export type OauthTokenSelectHandlerInput = {
     tokenListJsonPath: string | null;
     cacheDirectory: string | null;
@@ -13,7 +13,8 @@ export declare const resolveTokenListJsonPath: (explicitPath: string | null) => 
 export declare const resolveCacheDirectory: (explicitDirectory: string | null) => string;
 export declare class OauthTokenSelectHandler {
     private readonly useCase;
-    constructor(useCase?: OauthTokenSelectUseCase);
+    private readonly random;
+    constructor(useCase?: OauthTokenSelectUseCase, random?: SelectionRandom);
     handle: (input: OauthTokenSelectHandlerInput) => OauthTokenSelectHandlerOutput;
     private formatDiagnostics;
 }

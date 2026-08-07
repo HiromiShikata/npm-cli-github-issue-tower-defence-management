@@ -30,7 +30,10 @@ export type OauthTokenSelectResult = {
 };
 export declare const FIVE_HOUR_MIN_FREE_RATIO = 0.25;
 export declare const SEVEN_DAY_MIN_FREE_RATIO = 0.03;
-export declare const selectWeightedCandidate: <Entry>(eligible: Entry[], candidateOf: (entry: Entry) => OauthTokenCandidate, deterministicBest: Entry, random: SelectionRandom) => Entry;
+export declare const SEVEN_DAY_WINDOW_HOURS = 168;
+export declare const MIN_HOURS_TO_RESET = 1;
+export declare const sevenDayUrgencyFactor: (sevenDayFreeRatio: number, sevenDayEndEpoch: number, nowEpochSeconds: number) => number;
+export declare const selectWeightedCandidate: <Entry>(eligible: Entry[], weightOf: (entry: Entry) => number, deterministicBest: Entry, random: SelectionRandom) => Entry;
 export declare class OauthTokenSelectUseCase {
     run: (candidates: OauthTokenCandidate[], nowEpochSeconds: number, random?: SelectionRandom) => OauthTokenSelectResult;
     private evaluate;

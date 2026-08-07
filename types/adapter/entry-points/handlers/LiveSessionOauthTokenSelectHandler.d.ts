@@ -1,5 +1,6 @@
 import { ClaudeLiveSessionRepository } from '../../../domain/usecases/adapter-interfaces/ClaudeLiveSessionRepository';
 import { LiveSessionOauthTokenSelectUseCase } from '../../../domain/usecases/LiveSessionOauthTokenSelectUseCase';
+import { SelectionRandom } from '../../../domain/usecases/OauthTokenSelectUseCase';
 export type LiveSessionOauthTokenSelectHandlerInput = {
     tokenListJsonPath: string | null;
     cacheDirectory: string | null;
@@ -13,7 +14,8 @@ export type LiveSessionOauthTokenSelectHandlerOutput = {
 export declare class LiveSessionOauthTokenSelectHandler {
     private readonly useCase;
     private readonly liveSessionRepository;
-    constructor(useCase?: LiveSessionOauthTokenSelectUseCase, liveSessionRepository?: ClaudeLiveSessionRepository);
+    private readonly random;
+    constructor(useCase?: LiveSessionOauthTokenSelectUseCase, liveSessionRepository?: ClaudeLiveSessionRepository, random?: SelectionRandom);
     handle: (input: LiveSessionOauthTokenSelectHandlerInput) => LiveSessionOauthTokenSelectHandlerOutput;
     private formatDiagnostics;
 }

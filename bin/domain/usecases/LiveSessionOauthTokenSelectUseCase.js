@@ -32,7 +32,9 @@ class LiveSessionOauthTokenSelectUseCase {
             const deterministicBest = eligible.reduce((bestEntry, currentEntry) => this.preferred(currentEntry.metric, bestEntry.metric)
                 ? currentEntry
                 : bestEntry);
-            const selected = (0, OauthTokenSelectUseCase_1.selectWeightedCandidate)(eligible, (entry) => entry.candidate, deterministicBest, random);
+            const selected = (0, OauthTokenSelectUseCase_1.selectWeightedCandidate)(eligible, (entry) => ((0, OauthTokenSelectUseCase_1.selectionWeightOf)(entry.candidate) *
+                (0, OauthTokenSelectUseCase_1.sevenDayUrgencyFactor)(entry.metric.sevenDayFreeRatio, entry.metric.sevenDayEndEpoch, nowEpochSeconds)) /
+                (1 + entry.metric.liveSessionCount), deterministicBest, random);
             return { selected: selected.candidate, metrics };
         };
         this.preferred = (candidateMetric, incumbentMetric) => {

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.OauthTokenSelectUseCase = exports.selectWeightedCandidate = exports.SEVEN_DAY_MIN_FREE_RATIO = exports.FIVE_HOUR_MIN_FREE_RATIO = exports.selectionWeightOf = exports.DEFAULT_SELECTION_WEIGHT = void 0;
+exports.OauthTokenSelectUseCase = exports.selectWeightedCandidate = exports.sevenDayUrgencyFactor = exports.MIN_HOURS_TO_RESET = exports.SEVEN_DAY_WINDOW_HOURS = exports.SEVEN_DAY_MIN_FREE_RATIO = exports.FIVE_HOUR_MIN_FREE_RATIO = exports.selectionWeightOf = exports.DEFAULT_SELECTION_WEIGHT = void 0;
 exports.DEFAULT_SELECTION_WEIGHT = 1;
 const selectionWeightOf = (candidate) => {
     const weight = candidate.selectionWeight ?? exports.DEFAULT_SELECTION_WEIGHT;
@@ -11,11 +11,19 @@ const SECONDS_PER_DAY = 86400;
 const SEVEN_DAYS_IN_SECONDS = 7 * SECONDS_PER_DAY;
 exports.FIVE_HOUR_MIN_FREE_RATIO = 0.25;
 exports.SEVEN_DAY_MIN_FREE_RATIO = 0.03;
-const selectWeightedCandidate = (eligible, candidateOf, deterministicBest, random) => {
+exports.SEVEN_DAY_WINDOW_HOURS = 168;
+exports.MIN_HOURS_TO_RESET = 1;
+const SECONDS_PER_HOUR = 3600;
+const sevenDayUrgencyFactor = (sevenDayFreeRatio, sevenDayEndEpoch, nowEpochSeconds) => {
+    const hoursToReset = Math.max((sevenDayEndEpoch - nowEpochSeconds) / SECONDS_PER_HOUR, exports.MIN_HOURS_TO_RESET);
+    return sevenDayFreeRatio * (exports.SEVEN_DAY_WINDOW_HOURS / hoursToReset);
+};
+exports.sevenDayUrgencyFactor = sevenDayUrgencyFactor;
+const selectWeightedCandidate = (eligible, weightOf, deterministicBest, random) => {
     if (eligible.length <= 1) {
         return deterministicBest;
     }
-    const weights = eligible.map((entry) => (0, exports.selectionWeightOf)(candidateOf(entry)));
+    const weights = eligible.map((entry) => Math.max(weightOf(entry), 0));
     const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
     const uniform = weights.every((weight) => weight === weights[0]);
     if (uniform || totalWeight <= 0) {
@@ -46,7 +54,8 @@ class OauthTokenSelectUseCase {
             const deterministicBest = eligible.reduce((bestEntry, currentEntry) => currentEntry.metric.sevenDayEndEpoch < bestEntry.metric.sevenDayEndEpoch
                 ? currentEntry
                 : bestEntry);
-            const selected = (0, exports.selectWeightedCandidate)(eligible, (entry) => entry.candidate, deterministicBest, random);
+            const selected = (0, exports.selectWeightedCandidate)(eligible, (entry) => (0, exports.selectionWeightOf)(entry.candidate) *
+                (0, exports.sevenDayUrgencyFactor)(entry.metric.sevenDayFreeRatio, entry.metric.sevenDayEndEpoch, nowEpochSeconds), deterministicBest, random);
             return { selected: selected.candidate, metrics };
         };
         this.evaluate = (candidate, nowEpochSeconds) => {
