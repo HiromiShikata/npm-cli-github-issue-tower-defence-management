@@ -1,5 +1,4 @@
 import YAML from 'yaml';
-import TYPIA from 'typia';
 import fs from 'fs';
 import { LocalStorageRepository } from '../../repositories/LocalStorageRepository';
 import { GraphqlProjectRepository } from '../../repositories/GraphqlProjectRepository';
@@ -38,9 +37,38 @@ export class GetStoryObjectMapUseCaseHandler {
       };
     };
 
-    if (!TYPIA.is<inputType>(input)) {
+    const isInputType = (v: unknown): v is inputType => {
+      if (typeof v !== 'object' || v === null) return false;
+      if (!('projectName' in v) || typeof v.projectName !== 'string')
+        return false;
+      if (
+        !('credentials' in v) ||
+        typeof v.credentials !== 'object' ||
+        v.credentials === null
+      )
+        return false;
+      const credentials = v.credentials;
+      if (
+        !('bot' in credentials) ||
+        typeof credentials.bot !== 'object' ||
+        credentials.bot === null
+      )
+        return false;
+      const bot = credentials.bot;
+      if (
+        !('github' in bot) ||
+        typeof bot.github !== 'object' ||
+        bot.github === null
+      )
+        return false;
+      const github = bot.github;
+      if (!('token' in github) || typeof github.token !== 'string')
+        return false;
+      return true;
+    };
+    if (!isInputType(input)) {
       throw new Error(
-        `Invalid input: ${JSON.stringify(input)}\n\n${JSON.stringify(TYPIA.validate<inputType>(input))}`,
+        `Invalid input: required fields projectName and credentials.bot.github.token must be strings. Got: ${JSON.stringify(input)}`,
       );
     }
     const localStorageRepository = new LocalStorageRepository();

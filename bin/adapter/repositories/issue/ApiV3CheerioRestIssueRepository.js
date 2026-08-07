@@ -1,11 +1,7 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ApiV3CheerioRestIssueRepository = exports.REQUIRED_CHECKS_CACHE_TTL_MS = exports.INCREMENTAL_FETCH_SKEW_BUFFER_MS = exports.FULL_ISSUE_FETCH_INTERVAL_MS = void 0;
 const gitHubRawUrl_1 = require("./gitHubRawUrl");
-const typia_1 = __importDefault(require("typia"));
 const BaseGitHubRepository_1 = require("../BaseGitHubRepository");
 const githubGraphqlClient_1 = require("../githubGraphqlClient");
 const utils_1 = require("../utils");
@@ -13,6 +9,21 @@ const githubRateLimitRetry_1 = require("./githubRateLimitRetry");
 exports.FULL_ISSUE_FETCH_INTERVAL_MS = 60 * 60 * 1000;
 exports.INCREMENTAL_FETCH_SKEW_BUFFER_MS = 5 * 60 * 1000;
 exports.REQUIRED_CHECKS_CACHE_TTL_MS = 10 * 60 * 1000;
+const isIssueArray = (value) => Array.isArray(value) &&
+    value.every((item) => typeof item === 'object' &&
+        item !== null &&
+        typeof item['nameWithOwner'] === 'string' &&
+        typeof item['number'] === 'number' &&
+        typeof item['title'] === 'string' &&
+        typeof item['url'] === 'string');
+const isProject = (value) => typeof value === 'object' &&
+    value !== null &&
+    typeof value['id'] === 'string' &&
+    typeof value['url'] === 'string' &&
+    typeof value['databaseId'] === 'number' &&
+    typeof value['name'] === 'string' &&
+    typeof value['status'] === 'object' &&
+    value['status'] !== null;
 function isIssueTimelineResponse(value) {
     if (typeof value !== 'object' || value === null)
         return false;
@@ -219,7 +230,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                     closingIssueReferenceUrls: closingIssueReferenceUrls,
                 };
             });
-            if ((() => { const _io0 = input => "string" === typeof input.nameWithOwner && "number" === typeof input.number && "string" === typeof input.title && ("OPEN" === input.state || "CLOSED" === input.state || "MERGED" === input.state) && (null === input.status || "string" === typeof input.status) && (null === input.story || "string" === typeof input.story) && (null === input.nextActionDate || input.nextActionDate instanceof Date) && (null === input.nextActionHour || "number" === typeof input.nextActionHour) && (null === input.estimationMinutes || "number" === typeof input.estimationMinutes) && (Array.isArray(input.dependedIssueUrls) && input.dependedIssueUrls.every(elem => "string" === typeof elem)) && (null === input.completionDate50PercentConfidence || input.completionDate50PercentConfidence instanceof Date) && "string" === typeof input.url && (Array.isArray(input.assignees) && input.assignees.every(elem => "string" === typeof elem)) && (Array.isArray(input.labels) && input.labels.every(elem => "string" === typeof elem)) && "string" === typeof input.org && "string" === typeof input.repo && "string" === typeof input.body && "string" === typeof input.itemId && "boolean" === typeof input.isPr && "boolean" === typeof input.isInProgress && "boolean" === typeof input.isClosed && input.createdAt instanceof Date && "string" === typeof input.author && (Array.isArray(input.closingIssueReferenceUrls) && input.closingIssueReferenceUrls.every(elem => "string" === typeof elem)); return input => Array.isArray(input) && input.every(elem => "object" === typeof elem && null !== elem && _io0(elem)); })()(issues)) {
+            if (isIssueArray(issues)) {
                 return issues;
             }
             return null;
@@ -237,7 +248,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 !('issues' in raw)) {
                 return null;
             }
-            if (!(() => { const _io0 = input => "string" === typeof input.id && "string" === typeof input.url && "number" === typeof input.databaseId && "string" === typeof input.name && ("object" === typeof input.status && null !== input.status && _io1(input.status)) && (null === input.nextActionDate || "object" === typeof input.nextActionDate && null !== input.nextActionDate && _io3(input.nextActionDate)) && (null === input.nextActionHour || "object" === typeof input.nextActionHour && null !== input.nextActionHour && _io4(input.nextActionHour)) && (null === input.story || "object" === typeof input.story && null !== input.story && _io5(input.story)) && (null === input.remainingEstimationMinutes || "object" === typeof input.remainingEstimationMinutes && null !== input.remainingEstimationMinutes && _io7(input.remainingEstimationMinutes)) && (null === input.dependedIssueUrlSeparatedByComma || "object" === typeof input.dependedIssueUrlSeparatedByComma && null !== input.dependedIssueUrlSeparatedByComma && _io8(input.dependedIssueUrlSeparatedByComma)) && (null === input.completionDate50PercentConfidence || "object" === typeof input.completionDate50PercentConfidence && null !== input.completionDate50PercentConfidence && _io9(input.completionDate50PercentConfidence)); const _io1 = input => "string" === typeof input.name && "string" === typeof input.fieldId && (Array.isArray(input.statuses) && input.statuses.every(elem => "object" === typeof elem && null !== elem && _io2(elem))); const _io2 = input => "string" === typeof input.id && "string" === typeof input.name && ("GRAY" === input.color || "BLUE" === input.color || "GREEN" === input.color || "YELLOW" === input.color || "ORANGE" === input.color || "RED" === input.color || "PINK" === input.color || "PURPLE" === input.color) && "string" === typeof input.description; const _io3 = input => "string" === typeof input.name && "string" === typeof input.fieldId; const _io4 = input => "string" === typeof input.name && "string" === typeof input.fieldId; const _io5 = input => "string" === typeof input.name && "string" === typeof input.fieldId && "number" === typeof input.databaseId && (Array.isArray(input.stories) && input.stories.every(elem => "object" === typeof elem && null !== elem && _io2(elem))) && ("object" === typeof input.workflowManagementStory && null !== input.workflowManagementStory && _io6(input.workflowManagementStory)); const _io6 = input => "string" === typeof input.id && "string" === typeof input.name; const _io7 = input => "string" === typeof input.name && "string" === typeof input.fieldId; const _io8 = input => "string" === typeof input.name && "string" === typeof input.fieldId; const _io9 = input => "string" === typeof input.name && "string" === typeof input.fieldId; return input => "object" === typeof input && null !== input && _io0(input); })()(raw.project)) {
+            if (!isProject(raw.project)) {
                 return null;
             }
             const issues = this.restoreIssuesFromCache(raw.issues);
@@ -260,7 +271,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             if (typeof raw !== 'object' || raw === null || !('project' in raw)) {
                 return null;
             }
-            if (!(() => { const _io0 = input => "string" === typeof input.id && "string" === typeof input.url && "number" === typeof input.databaseId && "string" === typeof input.name && ("object" === typeof input.status && null !== input.status && _io1(input.status)) && (null === input.nextActionDate || "object" === typeof input.nextActionDate && null !== input.nextActionDate && _io3(input.nextActionDate)) && (null === input.nextActionHour || "object" === typeof input.nextActionHour && null !== input.nextActionHour && _io4(input.nextActionHour)) && (null === input.story || "object" === typeof input.story && null !== input.story && _io5(input.story)) && (null === input.remainingEstimationMinutes || "object" === typeof input.remainingEstimationMinutes && null !== input.remainingEstimationMinutes && _io7(input.remainingEstimationMinutes)) && (null === input.dependedIssueUrlSeparatedByComma || "object" === typeof input.dependedIssueUrlSeparatedByComma && null !== input.dependedIssueUrlSeparatedByComma && _io8(input.dependedIssueUrlSeparatedByComma)) && (null === input.completionDate50PercentConfidence || "object" === typeof input.completionDate50PercentConfidence && null !== input.completionDate50PercentConfidence && _io9(input.completionDate50PercentConfidence)); const _io1 = input => "string" === typeof input.name && "string" === typeof input.fieldId && (Array.isArray(input.statuses) && input.statuses.every(elem => "object" === typeof elem && null !== elem && _io2(elem))); const _io2 = input => "string" === typeof input.id && "string" === typeof input.name && ("GRAY" === input.color || "BLUE" === input.color || "GREEN" === input.color || "YELLOW" === input.color || "ORANGE" === input.color || "RED" === input.color || "PINK" === input.color || "PURPLE" === input.color) && "string" === typeof input.description; const _io3 = input => "string" === typeof input.name && "string" === typeof input.fieldId; const _io4 = input => "string" === typeof input.name && "string" === typeof input.fieldId; const _io5 = input => "string" === typeof input.name && "string" === typeof input.fieldId && "number" === typeof input.databaseId && (Array.isArray(input.stories) && input.stories.every(elem => "object" === typeof elem && null !== elem && _io2(elem))) && ("object" === typeof input.workflowManagementStory && null !== input.workflowManagementStory && _io6(input.workflowManagementStory)); const _io6 = input => "string" === typeof input.id && "string" === typeof input.name; const _io7 = input => "string" === typeof input.name && "string" === typeof input.fieldId; const _io8 = input => "string" === typeof input.name && "string" === typeof input.fieldId; const _io9 = input => "string" === typeof input.name && "string" === typeof input.fieldId; return input => "object" === typeof input && null !== input && _io0(input); })()(raw.project)) {
+            if (!isProject(raw.project)) {
                 return null;
             }
             return raw.project;

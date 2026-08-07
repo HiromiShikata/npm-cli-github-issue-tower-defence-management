@@ -1,5 +1,4 @@
 import YAML from 'yaml';
-import TYPIA from 'typia';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -175,9 +174,75 @@ export class HandleScheduledEventUseCaseHandler {
       };
     };
 
-    if (!TYPIA.is<inputType>(input)) {
+    const isInputType = (v: unknown): v is inputType => {
+      if (typeof v !== 'object' || v === null) return false;
+      if (
+        !('credentials' in v) ||
+        typeof v.credentials !== 'object' ||
+        v.credentials === null
+      )
+        return false;
+      const credentials = v.credentials;
+      if (
+        !('manager' in credentials) ||
+        typeof credentials.manager !== 'object' ||
+        credentials.manager === null
+      )
+        return false;
+      const manager = credentials.manager;
+      if (
+        !('github' in manager) ||
+        typeof manager.github !== 'object' ||
+        manager.github === null
+      )
+        return false;
+      if (
+        !('token' in manager.github) ||
+        typeof manager.github.token !== 'string'
+      )
+        return false;
+      if (
+        !('slack' in manager) ||
+        typeof manager.slack !== 'object' ||
+        manager.slack === null
+      )
+        return false;
+      if (
+        !('userToken' in manager.slack) ||
+        typeof manager.slack.userToken !== 'string'
+      )
+        return false;
+      if (
+        !('googleServiceAccount' in manager) ||
+        typeof manager.googleServiceAccount !== 'object' ||
+        manager.googleServiceAccount === null
+      )
+        return false;
+      if (
+        !('serviceAccountKey' in manager.googleServiceAccount) ||
+        typeof manager.googleServiceAccount.serviceAccountKey !== 'string'
+      )
+        return false;
+      if (
+        !('bot' in credentials) ||
+        typeof credentials.bot !== 'object' ||
+        credentials.bot === null
+      )
+        return false;
+      const bot = credentials.bot;
+      if (
+        !('github' in bot) ||
+        typeof bot.github !== 'object' ||
+        bot.github === null
+      )
+        return false;
+      if (!('token' in bot.github) || typeof bot.github.token !== 'string')
+        return false;
+      return true;
+    };
+    if (!isInputType(input)) {
       throw new Error(
-        `Invalid input: ${JSON.stringify(input)}\n\n${JSON.stringify(TYPIA.validate<inputType>(input))}`,
+        `Invalid input: required credential fields are missing. Got: ${JSON.stringify(input)}`,
       );
     }
     if (input.disabled) {
