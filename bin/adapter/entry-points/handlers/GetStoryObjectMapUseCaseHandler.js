@@ -20,19 +20,37 @@ class GetStoryObjectMapUseCaseHandler {
         this.handle = async (configFilePath, _verbose) => {
             const configFileContent = fs_1.default.readFileSync(configFilePath, 'utf8');
             const input = yaml_1.default.parse(configFileContent);
-            const inputRecord = input;
-            const credentialsRecord = inputRecord?.['credentials'];
-            const botRecord = credentialsRecord?.['bot'];
-            const githubRecord = botRecord?.['github'];
-            if (typeof inputRecord?.['projectName'] !== 'string' ||
-                typeof githubRecord?.['token'] !== 'string') {
+            const isInputType = (v) => {
+                if (typeof v !== 'object' || v === null)
+                    return false;
+                if (!('projectName' in v) || typeof v.projectName !== 'string')
+                    return false;
+                if (!('credentials' in v) ||
+                    typeof v.credentials !== 'object' ||
+                    v.credentials === null)
+                    return false;
+                const credentials = v.credentials;
+                if (!('bot' in credentials) ||
+                    typeof credentials.bot !== 'object' ||
+                    credentials.bot === null)
+                    return false;
+                const bot = credentials.bot;
+                if (!('github' in bot) ||
+                    typeof bot.github !== 'object' ||
+                    bot.github === null)
+                    return false;
+                const github = bot.github;
+                if (!('token' in github) || typeof github.token !== 'string')
+                    return false;
+                return true;
+            };
+            if (!isInputType(input)) {
                 throw new Error(`Invalid input: required fields projectName and credentials.bot.github.token must be strings. Got: ${JSON.stringify(input)}`);
             }
-            const typedInput = input;
             const localStorageRepository = new LocalStorageRepository_1.LocalStorageRepository();
-            const cachePath = `./tmp/cache/${typedInput.projectName}`;
+            const cachePath = `./tmp/cache/${input.projectName}`;
             const localStorageCacheRepository = new LocalStorageCacheRepository_1.LocalStorageCacheRepository(localStorageRepository, cachePath);
-            const githubRepositoryParams = [localStorageRepository, typedInput.credentials.bot.github.token];
+            const githubRepositoryParams = [localStorageRepository, input.credentials.bot.github.token];
             const projectRepository = {
                 ...new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams, localStorageCacheRepository),
             };
@@ -41,7 +59,7 @@ class GetStoryObjectMapUseCaseHandler {
             const graphqlProjectItemRepository = new GraphqlProjectItemRepository_1.GraphqlProjectItemRepository(...githubRepositoryParams);
             const issueRepository = new ApiV3CheerioRestIssueRepository_1.ApiV3CheerioRestIssueRepository(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, projectRepository, new SystemDateRepository_1.SystemDateRepository(), ...githubRepositoryParams);
             const getStoryObjectMapUseCase = new GetStoryObjectMapUseCase_1.GetStoryObjectMapUseCase(projectRepository, issueRepository);
-            return await getStoryObjectMapUseCase.run(typedInput);
+            return await getStoryObjectMapUseCase.run(input);
         };
     }
 }

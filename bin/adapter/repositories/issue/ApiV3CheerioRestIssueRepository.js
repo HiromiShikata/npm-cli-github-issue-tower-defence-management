@@ -12,18 +12,31 @@ exports.REQUIRED_CHECKS_CACHE_TTL_MS = 10 * 60 * 1000;
 const isIssueArray = (value) => Array.isArray(value) &&
     value.every((item) => typeof item === 'object' &&
         item !== null &&
-        typeof item['nameWithOwner'] === 'string' &&
-        typeof item['number'] === 'number' &&
-        typeof item['title'] === 'string' &&
-        typeof item['url'] === 'string');
-const isProject = (value) => typeof value === 'object' &&
-    value !== null &&
-    typeof value['id'] === 'string' &&
-    typeof value['url'] === 'string' &&
-    typeof value['databaseId'] === 'number' &&
-    typeof value['name'] === 'string' &&
-    typeof value['status'] === 'object' &&
-    value['status'] !== null;
+        'nameWithOwner' in item &&
+        typeof item.nameWithOwner === 'string' &&
+        'number' in item &&
+        typeof item.number === 'number' &&
+        'title' in item &&
+        typeof item.title === 'string' &&
+        'url' in item &&
+        typeof item.url === 'string');
+const isProject = (value) => {
+    if (typeof value !== 'object' || value === null)
+        return false;
+    if (!('id' in value) || typeof value.id !== 'string')
+        return false;
+    if (!('url' in value) || typeof value.url !== 'string')
+        return false;
+    if (!('databaseId' in value) || typeof value.databaseId !== 'number')
+        return false;
+    if (!('name' in value) || typeof value.name !== 'string')
+        return false;
+    if (!('status' in value) ||
+        typeof value.status !== 'object' ||
+        value.status === null)
+        return false;
+    return true;
+};
 function isIssueTimelineResponse(value) {
     if (typeof value !== 'object' || value === null)
         return false;
