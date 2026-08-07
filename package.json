@@ -19,7 +19,8 @@
     "console-ui:e2e": "npm run build:console-ui && playwright test --config src/adapter/entry-points/console/ui/e2e/playwright.config.ts",
     "console-ui:storybook": "storybook dev -p 6006 -c src/adapter/entry-points/console/ui/.storybook",
     "console-ui:build-storybook": "storybook build -c src/adapter/entry-points/console/ui/.storybook -o src/adapter/entry-points/console/ui/storybook-static",
-    "test": "jest"
+    "test": "jest",
+    "prepare": "true"
   },
   "bin": {
     "github-issue-tower-defence-management": "bin/adapter/entry-points/cli/index.js"
