@@ -201,6 +201,14 @@ describe('HandleScheduledEventUseCaseHandler', () => {
     mockFetchReturningReadme(null);
   });
 
+  it('should throw when required credential fields are missing from config', async () => {
+    jest.mocked(fs.readFileSync).mockReturnValue(YAML.stringify({}));
+    const handler = new HandleScheduledEventUseCaseHandler();
+    await expect(handler.handle('config.yml', false)).rejects.toThrow(
+      'Invalid input',
+    );
+  });
+
   it('should pass bot token to repository constructors', async () => {
     const handler = new HandleScheduledEventUseCaseHandler();
     await handler.handle('config.yml', false);

@@ -59,6 +59,14 @@ describe('GetStoryObjectMapUseCaseHandler', () => {
     jest.mocked(fs.readFileSync).mockReturnValue(YAML.stringify(validConfig));
   });
 
+  it('should throw when required credential fields are missing from config', async () => {
+    jest.mocked(fs.readFileSync).mockReturnValue(YAML.stringify({}));
+    const handler = new GetStoryObjectMapUseCaseHandler();
+    await expect(handler.handle('config.yml', false)).rejects.toThrow(
+      'Invalid input',
+    );
+  });
+
   it('should pass the parsed config to the use case', async () => {
     const handler = new GetStoryObjectMapUseCaseHandler();
     await handler.handle('config.yml', false);

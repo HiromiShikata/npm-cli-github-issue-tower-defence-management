@@ -627,6 +627,18 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result).toBeNull();
       expect(projectRepository.getProject).not.toHaveBeenCalled();
     });
+
+    it('returns null when cached project data does not match the expected Project shape', async () => {
+      const { repository, localStorageCacheRepository } =
+        createApiV3CheerioRestIssueRepository();
+      localStorageCacheRepository.getSingle.mockResolvedValue({
+        project: { invalid: 'data' },
+      });
+
+      const result = await repository.getCachedProject('some-project');
+
+      expect(result).toBeNull();
+    });
   });
 
   describe('updateNextActionDate', () => {
