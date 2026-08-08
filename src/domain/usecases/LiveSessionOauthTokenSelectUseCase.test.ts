@@ -1,10 +1,9 @@
 import { ClaudeLiveSession } from './adapter-interfaces/ClaudeLiveSessionRepository';
 import {
-  LIVE_SESSION_MAX_CONCURRENT_LIMIT,
-  LIVE_SESSION_THROTTLE_START_FREE_RATIO,
+  DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
   LiveSessionOauthTokenSelectUseCase,
+  LiveSessionOauthTokenSelectionSettings,
   liveSessionConcurrentLimitOf,
-  sevenDayFreeRatioForLimit,
 } from './LiveSessionOauthTokenSelectUseCase';
 import {
   OauthTokenCandidate,
@@ -14,6 +13,13 @@ import {
 const NOW = 1_000_000;
 const HOUR = 3600;
 const DAY = 86400;
+
+const SETTINGS = DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS;
+const MAX_CONCURRENT_SESSION_COUNT = SETTINGS.maxConcurrentSessionCount;
+
+const settingsWith = (
+  overrides: Partial<LiveSessionOauthTokenSelectionSettings>,
+): LiveSessionOauthTokenSelectionSettings => ({ ...SETTINGS, ...overrides });
 
 const snapshot = (
   overrides: Partial<OauthTokenWindowSnapshot>,
@@ -67,8 +73,9 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
         ),
         candidate('soonResetBusy', snapshot({ sevenDayReset: NOW + 2 * HOUR })),
       ],
-      sessionsFor('soonResetBusy', 2),
+      sessionsFor('soonResetBusy', 5),
       NOW,
+      SETTINGS,
     );
 
     expect(result.selected?.name).toBe('soonResetBusy');
@@ -83,8 +90,9 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
         ),
         candidate('soonReset', snapshot({ sevenDayReset: NOW + 2 * HOUR })),
       ],
-      sessionsFor('soonReset', LIVE_SESSION_MAX_CONCURRENT_LIMIT - 1),
+      sessionsFor('soonReset', MAX_CONCURRENT_SESSION_COUNT - 1),
       NOW,
+      SETTINGS,
     );
 
     expect(belowLimit.selected?.name).toBe('soonReset');
@@ -99,16 +107,15 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
         ),
         candidate('soonResetFull', snapshot({ sevenDayReset: NOW + 2 * HOUR })),
       ],
-      sessionsFor('soonResetFull', LIVE_SESSION_MAX_CONCURRENT_LIMIT),
+      sessionsFor('soonResetFull', MAX_CONCURRENT_SESSION_COUNT),
       NOW,
+      SETTINGS,
     );
 
     expect(result.selected?.name).toBe('distantResetIdle');
     const full = result.metrics.find((m) => m.name === 'soonResetFull');
     expect(full?.hasConcurrencyHeadroom).toBe(false);
-    expect(full?.concurrentSessionLimit).toBe(
-      LIVE_SESSION_MAX_CONCURRENT_LIMIT,
-    );
+    expect(full?.concurrentSessionLimit).toBe(MAX_CONCURRENT_SESSION_COUNT);
   });
 
   it('lowers the concurrent session limit as the five hour window fills', () => {
@@ -126,50 +133,25 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
           snapshot({ sevenDayReset: NOW + 6 * DAY }),
         ),
       ],
-      sessionsFor('soonResetNarrowFiveHour', 2),
+      sessionsFor('soonResetNarrowFiveHour', 6),
       NOW,
+      SETTINGS,
     );
 
     const narrow = result.metrics.find(
       (m) => m.name === 'soonResetNarrowFiveHour',
     );
-    expect(narrow?.concurrentSessionLimit).toBe(2);
+    expect(narrow?.concurrentSessionLimit).toBe(6);
     expect(result.selected?.name).toBe('distantResetIdle');
   });
 
-  it('lowers the concurrent session limit as the seven day window fills', () => {
+  it('keeps the full concurrent session limit on a nearly used seven day window so the expiring allowance is drained', () => {
     const result = useCase.run(
       [
         candidate(
-          'soonResetNarrowSevenDay',
+          'soonResetNearlyUsedSevenDay',
           snapshot({
             sevenDayReset: NOW + 3 * DAY,
-            sevenDayUtilization: 0.7,
-          }),
-        ),
-        candidate(
-          'distantResetIdle',
-          snapshot({ sevenDayReset: NOW + 6 * DAY }),
-        ),
-      ],
-      sessionsFor('soonResetNarrowSevenDay', 2),
-      NOW,
-    );
-
-    const narrow = result.metrics.find(
-      (m) => m.name === 'soonResetNarrowSevenDay',
-    );
-    expect(narrow?.concurrentSessionLimit).toBe(2);
-    expect(result.selected?.name).toBe('distantResetIdle');
-  });
-
-  it('stops throttling on the seven day window once it resets within the horizon of a new session', () => {
-    const result = useCase.run(
-      [
-        candidate(
-          'aboutToResetNearlyUsed',
-          snapshot({
-            sevenDayReset: NOW + HOUR,
             sevenDayUtilization: 0.9,
           }),
         ),
@@ -178,17 +160,75 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
           snapshot({ sevenDayReset: NOW + 6 * DAY }),
         ),
       ],
-      sessionsFor('aboutToResetNearlyUsed', 2),
+      sessionsFor('soonResetNearlyUsedSevenDay', 5),
       NOW,
+      SETTINGS,
+    );
+
+    const nearlyUsed = result.metrics.find(
+      (m) => m.name === 'soonResetNearlyUsedSevenDay',
+    );
+    expect(nearlyUsed?.concurrentSessionLimit).toBe(
+      MAX_CONCURRENT_SESSION_COUNT,
+    );
+    expect(result.selected?.name).toBe('soonResetNearlyUsedSevenDay');
+  });
+
+  it('keeps the full concurrent session limit on a seven day window that resets within the hour while its five hour window is still half free', () => {
+    const result = useCase.run(
+      [
+        candidate(
+          'aboutToResetHalfFreeFiveHour',
+          snapshot({
+            sevenDayReset: NOW + HOUR,
+            sevenDayUtilization: 0.9,
+            fiveHourUtilization: 0.5,
+          }),
+        ),
+        candidate(
+          'distantResetIdle',
+          snapshot({ sevenDayReset: NOW + 6 * DAY }),
+        ),
+      ],
+      sessionsFor('aboutToResetHalfFreeFiveHour', 5),
+      NOW,
+      SETTINGS,
     );
 
     const aboutToReset = result.metrics.find(
-      (m) => m.name === 'aboutToResetNearlyUsed',
+      (m) => m.name === 'aboutToResetHalfFreeFiveHour',
     );
     expect(aboutToReset?.concurrentSessionLimit).toBe(
-      LIVE_SESSION_MAX_CONCURRENT_LIMIT,
+      MAX_CONCURRENT_SESSION_COUNT,
     );
-    expect(result.selected?.name).toBe('aboutToResetNearlyUsed');
+    expect(result.selected?.name).toBe('aboutToResetHalfFreeFiveHour');
+  });
+
+  it('still throttles a seven day window that resets within the hour once its five hour window falls below half free', () => {
+    const result = useCase.run(
+      [
+        candidate(
+          'aboutToResetNarrowFiveHour',
+          snapshot({
+            sevenDayReset: NOW + HOUR,
+            fiveHourUtilization: 0.7,
+          }),
+        ),
+        candidate(
+          'distantResetIdle',
+          snapshot({ sevenDayReset: NOW + 6 * DAY }),
+        ),
+      ],
+      sessionsFor('aboutToResetNarrowFiveHour', 6),
+      NOW,
+      SETTINGS,
+    );
+
+    const aboutToReset = result.metrics.find(
+      (m) => m.name === 'aboutToResetNarrowFiveHour',
+    );
+    expect(aboutToReset?.concurrentSessionLimit).toBe(6);
+    expect(result.selected?.name).toBe('distantResetIdle');
   });
 
   it('scales the concurrent session limit down by the configured selection weight', () => {
@@ -206,13 +246,40 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
           snapshot({ sevenDayReset: NOW + 6 * DAY }),
         ),
       ],
-      sessionsFor('downWeighted', 2),
+      sessionsFor('downWeighted', 5),
       NOW,
+      SETTINGS,
     );
 
     const downWeighted = result.metrics.find((m) => m.name === 'downWeighted');
-    expect(downWeighted?.concurrentSessionLimit).toBe(2);
+    expect(downWeighted?.concurrentSessionLimit).toBe(5);
     expect(result.selected?.name).toBe('distantResetIdle');
+  });
+
+  it('honours a fleet supplied maximum concurrent session count', () => {
+    const result = useCase.run(
+      [candidate('onlyToken', snapshot({}))],
+      [],
+      NOW,
+      settingsWith({ maxConcurrentSessionCount: 24 }),
+    );
+
+    const onlyToken = result.metrics.find((m) => m.name === 'onlyToken');
+    expect(onlyToken?.concurrentSessionLimit).toBe(24);
+  });
+
+  it('honours a fleet supplied five hour free ratio for the full concurrent session limit', () => {
+    const result = useCase.run(
+      [candidate('narrowFiveHour', snapshot({ fiveHourUtilization: 0.6 }))],
+      [],
+      NOW,
+      settingsWith({ fullSpeedFiveHourFreeRatio: 0.8 }),
+    );
+
+    const narrowFiveHour = result.metrics.find(
+      (m) => m.name === 'narrowFiveHour',
+    );
+    expect(narrowFiveHour?.concurrentSessionLimit).toBe(5);
   });
 
   it('never starves a sole eligible token whose selection weight rounds its limit below one', () => {
@@ -223,6 +290,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       ],
       [],
       NOW,
+      SETTINGS,
     );
 
     expect(result.selected?.name).toBe('tinyWeight');
@@ -240,10 +308,11 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
         candidate('soonResetFull', snapshot({ sevenDayReset: NOW + 2 * HOUR })),
       ],
       [
-        ...sessionsFor('distantResetFull', LIVE_SESSION_MAX_CONCURRENT_LIMIT),
-        ...sessionsFor('soonResetFull', LIVE_SESSION_MAX_CONCURRENT_LIMIT),
+        ...sessionsFor('distantResetFull', MAX_CONCURRENT_SESSION_COUNT),
+        ...sessionsFor('soonResetFull', MAX_CONCURRENT_SESSION_COUNT),
       ],
       NOW,
+      SETTINGS,
     );
 
     expect(result.selected?.name).toBe('soonResetFull');
@@ -257,6 +326,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       ],
       sessionsFor('sameResetBusy', 1),
       NOW,
+      SETTINGS,
     );
 
     expect(result.selected?.name).toBe('sameResetIdle');
@@ -268,8 +338,8 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       candidate('secondOfEqualPair', snapshot({})),
     ];
 
-    const first = useCase.run(candidates, [], NOW);
-    const second = useCase.run(candidates, [], NOW);
+    const first = useCase.run(candidates, [], NOW, SETTINGS);
+    const second = useCase.run(candidates, [], NOW, SETTINGS);
 
     expect(first.selected?.name).toBe(second.selected?.name);
     expect(first.selected?.name).toBe('firstOfEqualPair');
@@ -283,6 +353,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       ],
       [session('busyButFree', 'session-a')],
       NOW,
+      SETTINGS,
     );
 
     expect(result.selected?.name).toBe('busyButFree');
@@ -305,6 +376,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
         session('twoSessions', 'session-c'),
       ],
       NOW,
+      SETTINGS,
     );
 
     expect(result.selected?.name).toBe('oneSession');
@@ -327,6 +399,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
         session('fresh', 'session-fresh'),
       ],
       NOW,
+      SETTINGS,
     );
 
     const resumedHeavy = result.metrics.find((m) => m.name === 'resumedHeavy');
@@ -341,13 +414,14 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       [candidate('blocked', snapshot({ fiveHourUtilization: 0.9 }))],
       [],
       NOW,
+      SETTINGS,
     );
 
     expect(result.selected).toBeNull();
   });
 
   it('returns null selection for an empty candidate list', () => {
-    const result = useCase.run([], [], NOW);
+    const result = useCase.run([], [], NOW, SETTINGS);
 
     expect(result.selected).toBeNull();
     expect(result.metrics).toEqual([]);
@@ -358,6 +432,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       [candidate('lonely', snapshot({}))],
       [session('other', 'session-x')],
       NOW,
+      SETTINGS,
     );
 
     const lonely = result.metrics.find((m) => m.name === 'lonely');
@@ -372,6 +447,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       ],
       [session('active', 'session-a')],
       NOW,
+      SETTINGS,
     );
 
     expect(result.selected?.name).toBe('active');
@@ -390,6 +466,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       ],
       [session('active', 'session-a')],
       NOW,
+      SETTINGS,
     );
 
     expect(result.selected?.name).toBe('active');
@@ -400,50 +477,50 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
 });
 
 describe('liveSessionConcurrentLimitOf', () => {
-  it('gives the full limit while both windows are above the taper threshold', () => {
-    expect(liveSessionConcurrentLimitOf(1, 1, 1)).toBe(
-      LIVE_SESSION_MAX_CONCURRENT_LIMIT,
+  it('gives the full limit while the five hour window is at or above the full speed free ratio', () => {
+    expect(liveSessionConcurrentLimitOf(1, 1, SETTINGS)).toBe(
+      MAX_CONCURRENT_SESSION_COUNT,
     );
     expect(
       liveSessionConcurrentLimitOf(
-        LIVE_SESSION_THROTTLE_START_FREE_RATIO,
-        LIVE_SESSION_THROTTLE_START_FREE_RATIO,
+        SETTINGS.fullSpeedFiveHourFreeRatio,
         1,
+        SETTINGS,
       ),
-    ).toBe(LIVE_SESSION_MAX_CONCURRENT_LIMIT);
+    ).toBe(MAX_CONCURRENT_SESSION_COUNT);
   });
 
-  it('takes the lower limit of the two windows', () => {
-    expect(liveSessionConcurrentLimitOf(1, 0.3, 1)).toBe(2);
-    expect(liveSessionConcurrentLimitOf(0.3, 1, 1)).toBe(2);
+  it('tapers the limit in proportion to the five hour free ratio below the full speed free ratio', () => {
+    expect(liveSessionConcurrentLimitOf(0.25, 1, SETTINGS)).toBe(5);
+    expect(liveSessionConcurrentLimitOf(0.3, 1, SETTINGS)).toBe(6);
   });
 
-  it('never returns less than one even when a window is fully used', () => {
-    expect(liveSessionConcurrentLimitOf(0, 0, 1)).toBe(1);
-    expect(liveSessionConcurrentLimitOf(1, 1, 0)).toBe(1);
+  it('never returns less than one even when the five hour window is fully used', () => {
+    expect(liveSessionConcurrentLimitOf(0, 1, SETTINGS)).toBe(1);
+    expect(liveSessionConcurrentLimitOf(1, 0, SETTINGS)).toBe(1);
   });
 
   it('raises the limit for a weight above one', () => {
-    expect(liveSessionConcurrentLimitOf(1, 1, 1.5)).toBe(6);
+    expect(liveSessionConcurrentLimitOf(1, 1.5, SETTINGS)).toBe(15);
   });
 
-  it('ignores a nearly used seven day window that resets within the horizon of a new session', () => {
+  it('uses the fleet supplied maximum concurrent session count', () => {
     expect(
       liveSessionConcurrentLimitOf(
         1,
-        sevenDayFreeRatioForLimit(0.1, NOW + HOUR, NOW),
         1,
+        settingsWith({ maxConcurrentSessionCount: 24 }),
       ),
-    ).toBe(LIVE_SESSION_MAX_CONCURRENT_LIMIT);
+    ).toBe(24);
   });
 
-  it('keeps honouring a nearly used seven day window that resets beyond the horizon', () => {
+  it('uses the fleet supplied five hour free ratio for the full limit', () => {
     expect(
       liveSessionConcurrentLimitOf(
+        0.4,
         1,
-        sevenDayFreeRatioForLimit(0.1, NOW + 3 * DAY, NOW),
-        1,
+        settingsWith({ fullSpeedFiveHourFreeRatio: 0.8 }),
       ),
-    ).toBe(1);
+    ).toBe(5);
   });
 });
