@@ -55,7 +55,7 @@ class RevertNotReadyReviewQueueIssueUseCase {
                 }
                 try {
                     const { rejections, approvedPrUrl } = await this.issueRejectionEvaluator.evaluate(issue, params.labelsAsLlmAgentName ?? [], {
-                        relatedOpenPrUrls: relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? [],
+                        relatedOpenPrUrls: relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? null,
                     });
                     if (rejections.length > 0) {
                         if (!issue.assignees.includes(params.manager)) {

@@ -1,3 +1,10 @@
+## [1.146.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.9...v1.146.10) (2026-08-08)
+
+
+### Bug Fixes
+
+* **aqc:** fall back to findRelatedOpenPRs when linked PR is absent from allIssues cache ([#1428](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1428)) ([f9546c1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f9546c1545c28707020df541d535de9b99427c0f)), closes [HiromiShikata/secretary#3487](https://github.com/HiromiShikata/secretary/issues/3487)
+
 ## [1.146.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.8...v1.146.9) (2026-08-08)
 
 

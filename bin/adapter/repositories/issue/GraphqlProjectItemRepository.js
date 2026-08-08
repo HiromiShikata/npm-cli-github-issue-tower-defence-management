@@ -336,6 +336,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
         };
         this.mapProjectV2ItemNodeToProjectItem = (item) => {
             if (!item || !item.content || !item.content.repository) {
+                console.warn(`fetchProjectItems: skipping item with null content or repository. itemId: ${item?.id ?? 'unknown'}`);
                 return null;
             }
             return {
