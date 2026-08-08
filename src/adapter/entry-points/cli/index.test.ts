@@ -15,6 +15,8 @@ import {
   parseProjectReadmeConfig,
   mergeConfigs,
   fetchProjectReadme,
+  runCliProgram,
+  reportFatalErrorAndExit,
 } from './index';
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
@@ -2313,6 +2315,86 @@ mysteryKey: 'value'
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         '--session and --self cannot be used together',
       );
+      expect(processExitSpy).toHaveBeenCalledWith(1);
+
+      consoleErrorSpy.mockRestore();
+      processExitSpy.mockRestore();
+    });
+  });
+
+  describe('runCliProgram', () => {
+    const mockCheckUseCaseRejectingWith = (error: Error): void => {
+      const MockedCheckUseCase = jest.mocked(CheckIssueReviewReadinessUseCase);
+      MockedCheckUseCase.mockImplementation(function (
+        this: CheckIssueReviewReadinessUseCase,
+      ) {
+        this.run = jest.fn().mockRejectedValue(error);
+        return this;
+      });
+    };
+
+    const checkIssueReviewReadinessArgv = [
+      'node',
+      'test',
+      'checkIssueReviewReadiness',
+      '--configFilePath',
+      configFilePath,
+      '--issueUrl',
+      'https://github.com/test/repo/issues/1',
+    ];
+
+    it('should pass the rejection of an async action handler to the fatal error handler', async () => {
+      const thrownError = new Error('GitHub API failure');
+      mockCheckUseCaseRejectingWith(thrownError);
+      const handleFatalError = jest.fn();
+
+      await runCliProgram(checkIssueReviewReadinessArgv, handleFatalError);
+
+      expect(handleFatalError).toHaveBeenCalledTimes(1);
+      expect(handleFatalError).toHaveBeenCalledWith(thrownError);
+    });
+
+    it('should not call the fatal error handler when the async action handler succeeds', async () => {
+      const mockRun = jest
+        .fn()
+        .mockResolvedValue({ reviewReady: true, rejections: [] });
+      const MockedCheckUseCase = jest.mocked(CheckIssueReviewReadinessUseCase);
+
+      MockedCheckUseCase.mockImplementation(function (
+        this: CheckIssueReviewReadinessUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+      const stdoutSpy = jest
+        .spyOn(process.stdout, 'write')
+        .mockImplementation(() => true);
+      const handleFatalError = jest.fn();
+
+      await runCliProgram(checkIssueReviewReadinessArgv, handleFatalError);
+
+      expect(mockRun).toHaveBeenCalledTimes(1);
+      expect(handleFatalError).not.toHaveBeenCalled();
+
+      stdoutSpy.mockRestore();
+    });
+  });
+
+  describe('reportFatalErrorAndExit', () => {
+    it('should write the error to stderr and exit with code 1', () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
+      const thrownError = new Error('GitHub API failure');
+
+      expect(() => reportFatalErrorAndExit(thrownError)).toThrow(
+        'process.exit called',
+      );
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(thrownError);
       expect(processExitSpy).toHaveBeenCalledWith(1);
 
       consoleErrorSpy.mockRestore();
