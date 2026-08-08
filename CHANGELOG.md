@@ -1,3 +1,10 @@
+## [1.146.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.8...v1.146.9) (2026-08-08)
+
+
+### Bug Fixes
+
+* **cli:** use parseAsync so async action handlers are awaited ([#1291](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1291)) ([9bb797a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9bb797ad1c71d398fbf6964ed682189f8fd02082)), closes [HiromiShikata/secretary#2238](https://github.com/HiromiShikata/secretary/issues/2238)
+
 ## [1.146.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.7...v1.146.8) (2026-08-08)
 
 
