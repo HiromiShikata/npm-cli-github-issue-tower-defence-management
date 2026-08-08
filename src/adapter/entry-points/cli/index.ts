@@ -1136,7 +1136,23 @@ program
     }
   });
 
+export const reportFatalErrorAndExit = (error: unknown): void => {
+  console.error(error);
+  process.exit(1);
+};
+
+export const runCliProgram = async (
+  argv: string[],
+  handleFatalError: (error: unknown) => void,
+): Promise<void> => {
+  try {
+    await program.parseAsync(argv);
+  } catch (error) {
+    handleFatalError(error);
+  }
+};
+
 /* istanbul ignore next */
 if (process.argv && require.main === module) {
-  program.parse(process.argv);
+  void runCliProgram(process.argv, reportFatalErrorAndExit);
 }

@@ -37,7 +37,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.program = exports.fetchProjectReadme = exports.mergeConfigs = exports.parseProjectReadmeConfig = exports.loadConfigFile = void 0;
+exports.runCliProgram = exports.reportFatalErrorAndExit = exports.program = exports.fetchProjectReadme = exports.mergeConfigs = exports.parseProjectReadmeConfig = exports.loadConfigFile = void 0;
 const fs_1 = __importDefault(require("fs"));
 const commander_1 = require("commander");
 var projectConfig_1 = require("./projectConfig");
@@ -635,8 +635,22 @@ exports.program
         await tmuxSessionRepository.killSession(options.session);
     }
 });
+const reportFatalErrorAndExit = (error) => {
+    console.error(error);
+    process.exit(1);
+};
+exports.reportFatalErrorAndExit = reportFatalErrorAndExit;
+const runCliProgram = async (argv, handleFatalError) => {
+    try {
+        await exports.program.parseAsync(argv);
+    }
+    catch (error) {
+        handleFatalError(error);
+    }
+};
+exports.runCliProgram = runCliProgram;
 /* istanbul ignore next */
 if (process.argv && require.main === module) {
-    exports.program.parse(process.argv);
+    void (0, exports.runCliProgram)(process.argv, exports.reportFatalErrorAndExit);
 }
 //# sourceMappingURL=index.js.map
