@@ -157,6 +157,16 @@ describeWhenCredentials('GoogleSpreadsheetRepository integration tests', () => {
       );
       expect(result).toBeNull();
     });
+
+    test('rejects with the Google Sheets not-found status when the spreadsheet does not exist', async () => {
+      const missingSpreadsheetId =
+        '1AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+      const missingSpreadsheetUrl = `https://docs.google.com/spreadsheets/d/${missingSpreadsheetId}/edit`;
+
+      await expect(
+        repository.getSheet(missingSpreadsheetUrl, 'Sheet1'),
+      ).rejects.toMatchObject({ status: 404 });
+    });
   });
 
   describe('createNewSheetIfNotExists', () => {
