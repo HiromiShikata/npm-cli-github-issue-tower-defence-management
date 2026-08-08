@@ -1,30 +1,28 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.LiveSessionOauthTokenSelectUseCase = exports.liveSessionConcurrentLimitOf = exports.sevenDayFreeRatioForLimit = exports.LIVE_SESSION_HORIZON_SECONDS = exports.LIVE_SESSION_THROTTLE_START_FREE_RATIO = exports.LIVE_SESSION_MAX_CONCURRENT_LIMIT = void 0;
+exports.LiveSessionOauthTokenSelectUseCase = exports.liveSessionConcurrentLimitOf = exports.DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS = void 0;
 const OauthTokenSelectUseCase_1 = require("./OauthTokenSelectUseCase");
-exports.LIVE_SESSION_MAX_CONCURRENT_LIMIT = 4;
-exports.LIVE_SESSION_THROTTLE_START_FREE_RATIO = 0.6;
-exports.LIVE_SESSION_HORIZON_SECONDS = 5 * 3600;
-const sevenDayFreeRatioForLimit = (sevenDayFreeRatio, sevenDayEndEpoch, nowEpochSeconds) => sevenDayEndEpoch - nowEpochSeconds <= exports.LIVE_SESSION_HORIZON_SECONDS
-    ? 1
-    : sevenDayFreeRatio;
-exports.sevenDayFreeRatioForLimit = sevenDayFreeRatioForLimit;
-const liveSessionConcurrentLimitOf = (fiveHourFreeRatio, sevenDayFreeRatio, selectionWeight) => {
-    const taperOf = (freeRatio) => Math.min(freeRatio / exports.LIVE_SESSION_THROTTLE_START_FREE_RATIO, 1);
-    const taper = Math.min(taperOf(fiveHourFreeRatio), taperOf(sevenDayFreeRatio));
-    return Math.max(Math.floor(exports.LIVE_SESSION_MAX_CONCURRENT_LIMIT * selectionWeight * taper), 1);
+exports.DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS = {
+    maxConcurrentSessionCount: 10,
+    fullSpeedFiveHourFreeRatio: 0.5,
+};
+const liveSessionConcurrentLimitOf = (fiveHourFreeRatio, selectionWeight, settings) => {
+    const fiveHourThrottleFactor = Math.min(fiveHourFreeRatio / settings.fullSpeedFiveHourFreeRatio, 1);
+    return Math.max(Math.floor(settings.maxConcurrentSessionCount *
+        selectionWeight *
+        fiveHourThrottleFactor), 1);
 };
 exports.liveSessionConcurrentLimitOf = liveSessionConcurrentLimitOf;
 class LiveSessionOauthTokenSelectUseCase {
     constructor(rateLimitSelectUseCase = new OauthTokenSelectUseCase_1.OauthTokenSelectUseCase()) {
         this.rateLimitSelectUseCase = rateLimitSelectUseCase;
-        this.run = (candidates, liveSessions, nowEpochSeconds) => {
+        this.run = (candidates, liveSessions, nowEpochSeconds, settings) => {
             const rateLimitResult = this.rateLimitSelectUseCase.run(candidates, nowEpochSeconds, () => 0);
             const liveSessionCountByToken = this.liveSessionCountByToken(liveSessions);
             const evaluated = candidates.map((candidate, index) => {
                 const rateLimitMetric = rateLimitResult.metrics[index];
                 const liveSessionCount = liveSessionCountByToken.get(candidate.token) ?? 0;
-                const concurrentSessionLimit = (0, exports.liveSessionConcurrentLimitOf)(rateLimitMetric.fiveHourFreeRatio, (0, exports.sevenDayFreeRatioForLimit)(rateLimitMetric.sevenDayFreeRatio, rateLimitMetric.sevenDayEndEpoch, nowEpochSeconds), (0, OauthTokenSelectUseCase_1.selectionWeightOf)(candidate));
+                const concurrentSessionLimit = (0, exports.liveSessionConcurrentLimitOf)(rateLimitMetric.fiveHourFreeRatio, (0, OauthTokenSelectUseCase_1.selectionWeightOf)(candidate), settings);
                 return {
                     candidate,
                     metric: {

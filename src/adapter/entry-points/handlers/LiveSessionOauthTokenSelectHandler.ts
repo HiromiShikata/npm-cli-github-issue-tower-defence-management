@@ -2,6 +2,7 @@ import { ClaudeLiveSessionRepository } from '../../../domain/usecases/adapter-in
 import {
   LiveSessionOauthTokenSelectResult,
   LiveSessionOauthTokenSelectUseCase,
+  LiveSessionOauthTokenSelectionSettings,
 } from '../../../domain/usecases/LiveSessionOauthTokenSelectUseCase';
 import {
   DEFAULT_SELECTION_WEIGHT,
@@ -21,6 +22,7 @@ export type LiveSessionOauthTokenSelectHandlerInput = {
   tokenListJsonPath: string | null;
   cacheDirectory: string | null;
   nowEpochSeconds: number;
+  selectionSettings: LiveSessionOauthTokenSelectionSettings;
 };
 
 export type LiveSessionOauthTokenSelectHandlerOutput = {
@@ -96,6 +98,7 @@ export class LiveSessionOauthTokenSelectHandler {
       candidates,
       liveSessions,
       input.nowEpochSeconds,
+      input.selectionSettings,
     );
 
     return {
@@ -125,7 +128,7 @@ export class LiveSessionOauthTokenSelectHandler {
       );
     } else {
       lines.push(
-        `Selected ${result.selected.name} (the soonest-resetting 7d window among tokens still under their concurrent session limit).`,
+        `Selected ${result.selected.name} (the soonest-resetting 7d window among tokens still under their concurrent session limit, which is set by the free share of the 5h window alone).`,
       );
     }
 

@@ -5,7 +5,10 @@ import {
   ClaudeLiveSession,
   ClaudeLiveSessionRepository,
 } from '../../../domain/usecases/adapter-interfaces/ClaudeLiveSessionRepository';
-import { LiveSessionOauthTokenSelectUseCase } from '../../../domain/usecases/LiveSessionOauthTokenSelectUseCase';
+import {
+  DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
+  LiveSessionOauthTokenSelectUseCase,
+} from '../../../domain/usecases/LiveSessionOauthTokenSelectUseCase';
 import { FABLE_LIMIT_TYPE, hashToken } from '../../proxy/RateLimitCache';
 import { LiveSessionOauthTokenSelectHandler } from './LiveSessionOauthTokenSelectHandler';
 
@@ -155,6 +158,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
       tokenListJsonPath: tokenListPath,
       cacheDirectory,
       nowEpochSeconds: NOW,
+      selectionSettings: DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
     });
 
     expect(output.selectedName).toBe('active');
@@ -188,12 +192,13 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
       tokenListJsonPath: tokenListPath,
       cacheDirectory,
       nowEpochSeconds: NOW,
+      selectionSettings: DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
     });
 
     expect(output.selectedName).toBe('busy');
     expect(output.selectedToken).toBe('fake-busy');
     expect(output.diagnostics.join('\n')).toContain(
-      'busy: 1/4 live session(s)',
+      'busy: 1/10 live session(s)',
     );
   });
 
@@ -223,6 +228,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
       tokenListJsonPath: tokenListPath,
       cacheDirectory,
       nowEpochSeconds: NOW,
+      selectionSettings: DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
     });
 
     expect(output.selectedName).toBe('soon');
@@ -256,6 +262,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
       tokenListJsonPath: tokenListPath,
       cacheDirectory,
       nowEpochSeconds: NOW,
+      selectionSettings: DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
     });
 
     expect(output.selectedName).toBe('oneSession');
@@ -286,6 +293,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
       tokenListJsonPath: tokenListPath,
       cacheDirectory,
       nowEpochSeconds: NOW,
+      selectionSettings: DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
     });
 
     expect(output.selectedName).toBe('free');
@@ -305,6 +313,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
       tokenListJsonPath: tokenListPath,
       cacheDirectory,
       nowEpochSeconds: NOW,
+      selectionSettings: DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
     });
 
     expect(output.selectedToken).toBeNull();
@@ -330,6 +339,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
       tokenListJsonPath: tokenListPath,
       cacheDirectory,
       nowEpochSeconds: NOW,
+      selectionSettings: DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
     });
 
     expect(output.selectedToken).toBe('fake-free');
@@ -343,6 +353,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
       tokenListJsonPath: null,
       cacheDirectory,
       nowEpochSeconds: NOW,
+      selectionSettings: DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
     });
 
     expect(output.selectedToken).toBeNull();
@@ -357,6 +368,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
       tokenListJsonPath: tokenListPath,
       cacheDirectory,
       nowEpochSeconds: NOW,
+      selectionSettings: DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
     });
 
     expect(output.selectedToken).toBeNull();
@@ -383,6 +395,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
       tokenListJsonPath: tokenListPath,
       cacheDirectory,
       nowEpochSeconds: NOW,
+      selectionSettings: DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
     });
 
     expect(output.selectedName).toBe('active');
@@ -419,6 +432,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
       tokenListJsonPath: tokenListPath,
       cacheDirectory,
       nowEpochSeconds: NOW,
+      selectionSettings: DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
     });
 
     expect(output.selectedName).toBe('active');
@@ -446,6 +460,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
       tokenListJsonPath: tokenListPath,
       cacheDirectory,
       nowEpochSeconds: NOW,
+      selectionSettings: DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
     });
 
     expect(output.selectedToken).toBeNull();

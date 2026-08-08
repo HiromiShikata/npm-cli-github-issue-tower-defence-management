@@ -59,6 +59,10 @@ import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/Iss
 import { OauthTokenSelectHandler } from '../handlers/OauthTokenSelectHandler';
 import { LiveSessionOauthTokenSelectHandler } from '../handlers/LiveSessionOauthTokenSelectHandler';
 import { InTmuxByHumanSessionTokenCountHandler } from '../handlers/InTmuxByHumanSessionTokenCountHandler';
+import {
+  loadLiveSessionOauthTokenSelectionSettings,
+  resolveFleetConfigFilePath,
+} from './fleetConfig';
 
 type StartDaemonOptions = {
   projectUrl?: string;
@@ -127,6 +131,7 @@ type SelectOauthTokenOptions = {
 type SelectLiveSessionOauthTokenOptions = {
   tokenListJsonPath?: string;
   cacheDir?: string;
+  fleetConfigFilePath?: string;
 };
 
 type CountInTmuxByHumanSessionsPerTokenOptions = {
@@ -951,7 +956,7 @@ program
 program
   .command('selectLiveSessionOauthToken')
   .description(
-    'Print exactly one Claude Code OAuth token chosen for a new live interactive session. The choice is deterministic. Each rate-limit-eligible token gets a concurrent session limit that starts from 4, is scaled by its per-token selectionWeight (default 1), and is tapered towards 1 as the free share of its 5h or 7d window falls below 60%; the limit never drops below 1, and the 7d taper is skipped when that window resets within the next 5 hours. Among eligible tokens still under that limit the token whose 7d window resets soonest wins, so allowance that is about to expire is consumed before it is discarded; ties go to the token carrying fewer live sessions (by distinct CLAUDE_CODE_SESSION_ID found in running Claude Code processes). When every eligible token is at its limit the soonest-resetting one is still returned. The token string is written to stdout (pipeable); the per-candidate decision trace is written to stderr. Exits non-zero when no token passes the filter.',
+    'Print exactly one Claude Code OAuth token chosen for a new live interactive session. The choice is deterministic. Each rate-limit-eligible token gets a concurrent session limit of maxConcurrentSessionCount (default 10), scaled by its per-token selectionWeight (default 1). That limit is held at full value while the free share of the 5h window is at or above fullSpeedFiveHourFreeRatio (default 0.5) and is tapered in proportion below it, never dropping under 1; the 7d window never lowers the limit, so a weekly allowance that is about to expire is drained at full speed instead of being discarded unused. Among eligible tokens still under that limit the token whose 7d window resets soonest wins; ties go to the token carrying fewer live sessions (by distinct CLAUDE_CODE_SESSION_ID found in running Claude Code processes). When every eligible token is at its limit the soonest-resetting one is still returned. The token string is written to stdout (pipeable); the per-candidate decision trace is written to stderr. Exits non-zero when no token passes the filter.',
   )
   .option(
     '--tokenListJsonPath <path>',
@@ -961,12 +966,19 @@ program
     '--cacheDir <path>',
     'Directory holding per-token rate-limit cache files. Falls back to the TDPM_RATELIMIT_CACHE_DIR environment variable, then to ${XDG_CACHE_HOME:-~/.cache}/tdpm/ratelimit.',
   )
+  .option(
+    '--fleetConfigFilePath <path>',
+    'Path to the fleet-wide YAML config file holding the liveSessionOauthTokenSelection mapping (maxConcurrentSessionCount, fullSpeedFiveHourFreeRatio). Falls back to the TDPM_FLEET_CONFIG environment variable; when neither is set the built-in values are used. A key the file omits keeps its built-in value, and an unreadable file or an out-of-range value is reported as an error instead of being ignored.',
+  )
   .action((options: SelectLiveSessionOauthTokenOptions) => {
     const handler = new LiveSessionOauthTokenSelectHandler();
     const output = handler.handle({
       tokenListJsonPath: options.tokenListJsonPath ?? null,
       cacheDirectory: options.cacheDir ?? null,
       nowEpochSeconds: Date.now() / 1000,
+      selectionSettings: loadLiveSessionOauthTokenSelectionSettings(
+        resolveFleetConfigFilePath(options.fleetConfigFilePath ?? null),
+      ),
     });
 
     for (const line of output.diagnostics) {

@@ -5,32 +5,32 @@ import {
   selectionWeightOf,
 } from './OauthTokenSelectUseCase';
 
-export const LIVE_SESSION_MAX_CONCURRENT_LIMIT = 4;
-export const LIVE_SESSION_THROTTLE_START_FREE_RATIO = 0.6;
-export const LIVE_SESSION_HORIZON_SECONDS = 5 * 3600;
+export type LiveSessionOauthTokenSelectionSettings = {
+  maxConcurrentSessionCount: number;
+  fullSpeedFiveHourFreeRatio: number;
+};
 
-export const sevenDayFreeRatioForLimit = (
-  sevenDayFreeRatio: number,
-  sevenDayEndEpoch: number,
-  nowEpochSeconds: number,
-): number =>
-  sevenDayEndEpoch - nowEpochSeconds <= LIVE_SESSION_HORIZON_SECONDS
-    ? 1
-    : sevenDayFreeRatio;
+export const DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS: LiveSessionOauthTokenSelectionSettings =
+  {
+    maxConcurrentSessionCount: 10,
+    fullSpeedFiveHourFreeRatio: 0.5,
+  };
 
 export const liveSessionConcurrentLimitOf = (
   fiveHourFreeRatio: number,
-  sevenDayFreeRatio: number,
   selectionWeight: number,
+  settings: LiveSessionOauthTokenSelectionSettings,
 ): number => {
-  const taperOf = (freeRatio: number): number =>
-    Math.min(freeRatio / LIVE_SESSION_THROTTLE_START_FREE_RATIO, 1);
-  const taper = Math.min(
-    taperOf(fiveHourFreeRatio),
-    taperOf(sevenDayFreeRatio),
+  const fiveHourThrottleFactor = Math.min(
+    fiveHourFreeRatio / settings.fullSpeedFiveHourFreeRatio,
+    1,
   );
   return Math.max(
-    Math.floor(LIVE_SESSION_MAX_CONCURRENT_LIMIT * selectionWeight * taper),
+    Math.floor(
+      settings.maxConcurrentSessionCount *
+        selectionWeight *
+        fiveHourThrottleFactor,
+    ),
     1,
   );
 };
@@ -61,6 +61,7 @@ export class LiveSessionOauthTokenSelectUseCase {
     candidates: OauthTokenCandidate[],
     liveSessions: ClaudeLiveSession[],
     nowEpochSeconds: number,
+    settings: LiveSessionOauthTokenSelectionSettings,
   ): LiveSessionOauthTokenSelectResult => {
     const rateLimitResult = this.rateLimitSelectUseCase.run(
       candidates,
@@ -75,12 +76,8 @@ export class LiveSessionOauthTokenSelectUseCase {
         liveSessionCountByToken.get(candidate.token) ?? 0;
       const concurrentSessionLimit = liveSessionConcurrentLimitOf(
         rateLimitMetric.fiveHourFreeRatio,
-        sevenDayFreeRatioForLimit(
-          rateLimitMetric.sevenDayFreeRatio,
-          rateLimitMetric.sevenDayEndEpoch,
-          nowEpochSeconds,
-        ),
         selectionWeightOf(candidate),
+        settings,
       );
       return {
         candidate,

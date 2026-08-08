@@ -57,7 +57,7 @@ class LiveSessionOauthTokenSelectHandler {
                 };
             });
             const liveSessions = this.liveSessionRepository.listLiveSessions();
-            const result = this.useCase.run(candidates, liveSessions, input.nowEpochSeconds);
+            const result = this.useCase.run(candidates, liveSessions, input.nowEpochSeconds, input.selectionSettings);
             return {
                 selectedToken: result.selected?.token ?? null,
                 selectedName: result.selected?.name ?? null,
@@ -76,7 +76,7 @@ class LiveSessionOauthTokenSelectHandler {
                 lines.push(`No eligible token: every token is below the 5h >= ${Math.round(OauthTokenSelectUseCase_1.FIVE_HOUR_MIN_FREE_RATIO * 100)}% free and 7d >= ${Math.round(OauthTokenSelectUseCase_1.SEVEN_DAY_MIN_FREE_RATIO * 100)}% free thresholds required to start a live session.`);
             }
             else {
-                lines.push(`Selected ${result.selected.name} (the soonest-resetting 7d window among tokens still under their concurrent session limit).`);
+                lines.push(`Selected ${result.selected.name} (the soonest-resetting 7d window among tokens still under their concurrent session limit, which is set by the free share of the 5h window alone).`);
             }
             return lines;
         };
