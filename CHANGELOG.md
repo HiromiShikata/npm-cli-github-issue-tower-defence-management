@@ -1,3 +1,10 @@
+## [1.146.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.7...v1.146.8) (2026-08-08)
+
+
+### Bug Fixes
+
+* **oauth-token:** drain the soonest-resetting token first in live session token selection ([#1425](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1425)) ([e8b8471](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e8b8471912468c91cf1c32f73bd955449527c101))
+
 ## [1.146.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.6...v1.146.7) (2026-08-07)
 
 
