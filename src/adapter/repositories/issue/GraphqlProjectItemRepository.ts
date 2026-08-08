@@ -600,6 +600,9 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
     item: ProjectV2ItemNode | null,
   ): ProjectItem | null => {
     if (!item || !item.content || !item.content.repository) {
+      console.warn(
+        `fetchProjectItems: skipping item with null content or repository. itemId: ${item?.id ?? 'unknown'}`,
+      );
       return null;
     }
     return {

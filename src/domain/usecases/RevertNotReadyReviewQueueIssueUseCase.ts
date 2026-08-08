@@ -125,7 +125,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
             params.labelsAsLlmAgentName ?? [],
             {
               relatedOpenPrUrls:
-                relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? [],
+                relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? null,
             },
           );
         if (rejections.length > 0) {
