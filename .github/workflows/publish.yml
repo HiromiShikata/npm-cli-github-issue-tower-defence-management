@@ -5,14 +5,37 @@ on:
     branches:
       - main
 
-env:
-  RELEASE_APP_ID: 795363
-  RELEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
-  PJ_GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-
 jobs:
-  publish:
+  verify-test-workflow-conclusion:
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@v7
+      - name: Require a successful test workflow conclusion for the pushed commit
+        run: ./scripts/testWorkflowRunVerify.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TEST_WORKFLOW_FILE: test.yml
+          VERIFIED_COMMIT_SHA: ${{ github.sha }}
+          REQUIRED_CONCLUSION: success
+          POLL_INTERVAL_SECONDS: 15
+          POLL_TIMEOUT_SECONDS: 1800
+
+  publish:
+    needs: verify-test-workflow-conclusion
+    runs-on: ubuntu-latest
+    concurrency:
+      group: publish-release-${{ github.ref }}
+      cancel-in-progress: false
+    env:
+      RELEASE_APP_ID: 795363
+      RELEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+      PJ_GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
     permissions:
       contents: write
       issues: write
@@ -59,13 +82,23 @@ jobs:
       - run: git config --global user.email "gh-actions"
       - run: git config --global user.name "gh-actions"
 
+      - name: Resolve whether the pushed commit is still the default branch tip
+        id: default-branch-tip
+        run: ./scripts/defaultBranchTipVerify.sh
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          VERIFIED_COMMIT_SHA: ${{ github.sha }}
+
       - run: npx semantic-release
+        if: steps.default-branch-tip.outputs.releasable == 'true'
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-      - run: |
+      - if: steps.default-branch-tip.outputs.releasable == 'true'
+        run: |
           git status
           git add -A
-      - run: |
+      - if: steps.default-branch-tip.outputs.releasable == 'true'
+        run: |
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
