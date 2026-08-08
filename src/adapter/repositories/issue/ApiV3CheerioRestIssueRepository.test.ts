@@ -268,6 +268,114 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('get', () => {
+    it('reads the single project item scoped to the given project without consulting the getAllIssues memo', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const project = buildTestProject('test-project-id');
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:00:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue(null);
+      projectRepository.getProject.mockResolvedValue(project);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+        buildProjectItem('https://github.com/o/r/issues/1', 'live title'),
+      );
+
+      await repository.getAllIssues('test-project-id');
+      const issue = await repository.get(
+        'https://github.com/o/r/issues/1',
+        project,
+      );
+
+      expect(issue?.title).toBe('live title');
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemByUrl.mock.calls,
+      ).toEqual([['https://github.com/o/r/issues/1', 'test-project-id']]);
+    });
+
+    const issueUrlOnTwoProjects = 'https://github.com/o/r/issues/1';
+
+    const buildProjectScopedItem = (
+      itemId: string,
+      status: string,
+      story: string,
+      nextActionHour: string,
+    ): ProjectItem => ({
+      ...buildProjectItem(issueUrlOnTwoProjects, itemId),
+      id: itemId,
+      customFields: [
+        { name: 'Status', value: status },
+        { name: 'story', value: story },
+        { name: 'nextActionHour', value: nextActionHour },
+      ],
+    });
+
+    const itemOnOtherProject = buildProjectScopedItem(
+      'item-on-other-project',
+      'Awaiting Workspace',
+      'other story',
+      '9',
+    );
+    const itemOnRequestedProject = buildProjectScopedItem(
+      'item-on-requested-project',
+      'Preparation',
+      'requested story',
+      '17',
+    );
+
+    const arrangeItemsOnTwoProjects = (
+      graphqlProjectItemRepository: ReturnType<
+        typeof createApiV3CheerioRestIssueRepository
+      >['graphqlProjectItemRepository'],
+    ): void => {
+      const itemsByProjectId = new Map<string, ProjectItem>([
+        ['other-project-id', itemOnOtherProject],
+        ['requested-project-id', itemOnRequestedProject],
+      ]);
+      graphqlProjectItemRepository.fetchProjectItemByUrl.mockImplementation(
+        async (_issueUrl: string, projectId?: string) =>
+          projectId === undefined
+            ? Array.from(itemsByProjectId.values())[0]
+            : (itemsByProjectId.get(projectId) ?? null),
+      );
+    };
+
+    it('returns the project item of the requested project when the issue is on two projects', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      arrangeItemsOnTwoProjects(graphqlProjectItemRepository);
+
+      const issue = await repository.get(
+        issueUrlOnTwoProjects,
+        buildTestProject('requested-project-id'),
+      );
+
+      expect(issue?.itemId).toBe('item-on-requested-project');
+      expect(issue?.status).toBe('Preparation');
+      expect(issue?.story).toBe('requested story');
+      expect(issue?.nextActionHour).toBe(17);
+    });
+
+    it('returns null when the issue has project items only on other projects', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      arrangeItemsOnTwoProjects(graphqlProjectItemRepository);
+
+      const issue = await repository.get(
+        issueUrlOnTwoProjects,
+        buildTestProject('project-without-any-item'),
+      );
+
+      expect(issue).toBeNull();
+    });
+  });
+
   describe('getAllIssues incremental fetch', () => {
     it('light-scans the lastFetchedAt UTC day with no previous-day overlap, detail-fetches changed items by id, and upserts by url', async () => {
       const {
