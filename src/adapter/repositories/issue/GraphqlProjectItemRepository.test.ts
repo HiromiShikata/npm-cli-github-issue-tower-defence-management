@@ -664,6 +664,49 @@ describe('GraphqlProjectItemRepository', () => {
       );
       expect(requestedFirstSeries.every((first) => first === 100)).toBe(true);
     }, 30000);
+
+    it('should emit a console.warn and skip items whose content or repository is null', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            node: {
+              items: {
+                totalCount: 1,
+                pageInfo: {
+                  endCursor: 'cursor-1',
+                  startCursor: 'cursor-start',
+                  hasNextPage: false,
+                },
+                nodes: [
+                  {
+                    id: 'PVTI_null_content',
+                    fieldValues: { nodes: [] },
+                    content: null,
+                  },
+                ],
+              },
+            },
+          },
+        }),
+      );
+
+      const result = await repository.fetchProjectItems('test-project-id');
+
+      expect(result).toHaveLength(0);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'fetchProjectItems: skipping item with null content or repository. itemId: PVTI_null_content',
+        ),
+      );
+      warnSpy.mockRestore();
+    });
   });
 
   const extractRequestedVariablesFromMockCall = (

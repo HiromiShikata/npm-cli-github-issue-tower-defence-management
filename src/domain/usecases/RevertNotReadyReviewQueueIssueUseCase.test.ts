@@ -1,6 +1,7 @@
 import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
+import { RelatedPullRequest } from './adapter-interfaces/IssueRepository';
 
 const createMockProject = (overrides: Partial<Project> = {}): Project => ({
   id: 'project-1',
@@ -713,6 +714,45 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           issue,
           expect.stringContaining('PULL_REQUEST_NOT_FOUND'),
         );
+      });
+
+      it('should fall back to findRelatedOpenPRs when the linked PR is absent from the allIssues cache', async () => {
+        const issue = createMockIssue({
+          status: 'Awaiting Quality Check',
+          url: 'https://github.com/user/repo/issues/99',
+          number: 99,
+        });
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mockProject,
+          issues: [issue],
+          cacheUsed: false,
+        });
+        const readyPr: RelatedPullRequest = {
+          url: 'https://github.com/user/repo/pull/99',
+          branchName: 'fix/issue-99',
+          createdAt: new Date(),
+          isDraft: false,
+          isConflicted: false,
+          mergeable: 'MERGEABLE',
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        };
+        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([readyPr]);
+
+        await useCase.run({
+          manager: 'manager-user',
+          projectUrl: 'https://github.com/users/user/projects/1',
+          allowedIssueAuthors: ['owner'],
+        });
+
+        expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalledWith(
+          'https://github.com/user/repo/issues/99',
+        );
+        expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+        expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
       });
     });
 
