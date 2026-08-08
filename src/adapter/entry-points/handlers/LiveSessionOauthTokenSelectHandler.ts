@@ -2,13 +2,13 @@ import { ClaudeLiveSessionRepository } from '../../../domain/usecases/adapter-in
 import {
   LiveSessionOauthTokenSelectResult,
   LiveSessionOauthTokenSelectUseCase,
+  LiveSessionOauthTokenSelectionSettings,
 } from '../../../domain/usecases/LiveSessionOauthTokenSelectUseCase';
 import {
   DEFAULT_SELECTION_WEIGHT,
   FIVE_HOUR_MIN_FREE_RATIO,
   OauthTokenCandidate,
   SEVEN_DAY_MIN_FREE_RATIO,
-  SelectionRandom,
 } from '../../../domain/usecases/OauthTokenSelectUseCase';
 import { ProcClaudeLiveSessionRepository } from '../../repositories/ProcClaudeLiveSessionRepository';
 import { FABLE_LIMIT_TYPE, readRateLimit } from '../../proxy/RateLimitCache';
@@ -22,6 +22,7 @@ export type LiveSessionOauthTokenSelectHandlerInput = {
   tokenListJsonPath: string | null;
   cacheDirectory: string | null;
   nowEpochSeconds: number;
+  selectionSettings: LiveSessionOauthTokenSelectionSettings;
 };
 
 export type LiveSessionOauthTokenSelectHandlerOutput = {
@@ -34,7 +35,6 @@ export class LiveSessionOauthTokenSelectHandler {
   constructor(
     private readonly useCase: LiveSessionOauthTokenSelectUseCase = new LiveSessionOauthTokenSelectUseCase(),
     private readonly liveSessionRepository: ClaudeLiveSessionRepository = new ProcClaudeLiveSessionRepository(),
-    private readonly random: SelectionRandom = Math.random,
   ) {}
 
   handle = (
@@ -98,7 +98,7 @@ export class LiveSessionOauthTokenSelectHandler {
       candidates,
       liveSessions,
       input.nowEpochSeconds,
-      this.random,
+      input.selectionSettings,
     );
 
     return {
@@ -119,7 +119,7 @@ export class LiveSessionOauthTokenSelectHandler {
       const status = metric.eligible
         ? 'eligible'
         : `excluded (${metric.exclusionReason})`;
-      return `${metric.name}: ${metric.liveSessionCount} live session(s), 5h ${Math.round(metric.fiveHourFreeRatio * 100)}% free, 7d ${Math.round(metric.sevenDayFreeRatio * 100)}% free, 7d-end in ${secondsUntilSevenDayEnd}s -> ${status}`;
+      return `${metric.name}: ${metric.liveSessionCount}/${metric.concurrentSessionLimit} live session(s), 5h ${Math.round(metric.fiveHourFreeRatio * 100)}% free, 7d ${Math.round(metric.sevenDayFreeRatio * 100)}% free, 7d-end in ${secondsUntilSevenDayEnd}s -> ${status}`;
     });
 
     if (result.selected === null) {
@@ -128,7 +128,7 @@ export class LiveSessionOauthTokenSelectHandler {
       );
     } else {
       lines.push(
-        `Selected ${result.selected.name} (weighted by how soon the 7d window resets, how much of it is free, and how few live sessions the token carries).`,
+        `Selected ${result.selected.name} (the soonest-resetting 7d window among tokens still under their concurrent session limit, which is set by the free share of the 5h window alone).`,
       );
     }
 

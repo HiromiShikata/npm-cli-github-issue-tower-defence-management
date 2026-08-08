@@ -1,10 +1,10 @@
 import { ClaudeLiveSessionRepository } from '../../../domain/usecases/adapter-interfaces/ClaudeLiveSessionRepository';
-import { LiveSessionOauthTokenSelectUseCase } from '../../../domain/usecases/LiveSessionOauthTokenSelectUseCase';
-import { SelectionRandom } from '../../../domain/usecases/OauthTokenSelectUseCase';
+import { LiveSessionOauthTokenSelectUseCase, LiveSessionOauthTokenSelectionSettings } from '../../../domain/usecases/LiveSessionOauthTokenSelectUseCase';
 export type LiveSessionOauthTokenSelectHandlerInput = {
     tokenListJsonPath: string | null;
     cacheDirectory: string | null;
     nowEpochSeconds: number;
+    selectionSettings: LiveSessionOauthTokenSelectionSettings;
 };
 export type LiveSessionOauthTokenSelectHandlerOutput = {
     selectedToken: string | null;
@@ -14,8 +14,7 @@ export type LiveSessionOauthTokenSelectHandlerOutput = {
 export declare class LiveSessionOauthTokenSelectHandler {
     private readonly useCase;
     private readonly liveSessionRepository;
-    private readonly random;
-    constructor(useCase?: LiveSessionOauthTokenSelectUseCase, liveSessionRepository?: ClaudeLiveSessionRepository, random?: SelectionRandom);
+    constructor(useCase?: LiveSessionOauthTokenSelectUseCase, liveSessionRepository?: ClaudeLiveSessionRepository);
     handle: (input: LiveSessionOauthTokenSelectHandlerInput) => LiveSessionOauthTokenSelectHandlerOutput;
     private formatDiagnostics;
 }

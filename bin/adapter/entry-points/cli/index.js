@@ -76,6 +76,7 @@ const consoleGithubTokenResolver_1 = require("../console/consoleGithubTokenResol
 const OauthTokenSelectHandler_1 = require("../handlers/OauthTokenSelectHandler");
 const LiveSessionOauthTokenSelectHandler_1 = require("../handlers/LiveSessionOauthTokenSelectHandler");
 const InTmuxByHumanSessionTokenCountHandler_1 = require("../handlers/InTmuxByHumanSessionTokenCountHandler");
+const fleetConfig_1 = require("./fleetConfig");
 const DEFAULT_IN_TMUX_DATA_DIR = '/home/hiromi/0_workspaces/workspace1/jsonpub/in-tmux-by-human';
 const DEFAULT_DASHBOARD_DIR = '/home/hiromi/0_workspaces/workspace1/jsonpub';
 const DEFAULT_DASHBOARD_DATA_DIR = null;
@@ -531,15 +532,17 @@ exports.program
 });
 exports.program
     .command('selectLiveSessionOauthToken')
-    .description('Print exactly one Claude Code OAuth token chosen for a new live interactive session. Among rate-limit-eligible tokens the choice is weighted-random, with each token weighted by its per-token selectionWeight (default 1), multiplied by how urgent its 7d window is (the free share of that window times 168 divided by the hours left before it resets, with those hours floored at 1), and divided by one plus its current live session count (by distinct CLAUDE_CODE_SESSION_ID found in running Claude Code processes). A token whose 7d window still holds unused allowance and resets soon is therefore chosen more often, while occupancy keeps sessions spread across tokens. When every eligible weight is identical, the choice stays deterministic and no random draw is made. The token string is written to stdout (pipeable); the per-candidate decision trace is written to stderr. Exits non-zero when no token passes the filter.')
-    .option('--tokenListJsonPath <path>', 'Path to the JSON array of { name, token, selectionWeight? } records. selectionWeight is an optional positive number (default 1) that biases how often this token is chosen among rate-limit-eligible candidates; a smaller weight is chosen proportionally less often and never bypasses eligibility filtering or starves a sole eligible token. Falls back to the CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH environment variable.')
+    .description('Print exactly one Claude Code OAuth token chosen for a new live interactive session. The choice is deterministic. Each rate-limit-eligible token gets a concurrent session limit of maxConcurrentSessionCount (default 10), scaled by its per-token selectionWeight (default 1). That limit is held at full value while the free share of the 5h window is at or above fullSpeedFiveHourFreeRatio (default 0.5) and is tapered in proportion below it, never dropping under 1; the 7d window never lowers the limit, so a weekly allowance that is about to expire is drained at full speed instead of being discarded unused. Among eligible tokens still under that limit the token whose 7d window resets soonest wins; ties go to the token carrying fewer live sessions (by distinct CLAUDE_CODE_SESSION_ID found in running Claude Code processes). When every eligible token is at its limit the soonest-resetting one is still returned. The token string is written to stdout (pipeable); the per-candidate decision trace is written to stderr. Exits non-zero when no token passes the filter.')
+    .option('--tokenListJsonPath <path>', 'Path to the JSON array of { name, token, selectionWeight? } records. selectionWeight is an optional positive number (default 1) that scales this token concurrent live session limit; a smaller weight allows fewer simultaneous sessions and never bypasses eligibility filtering or starves a sole eligible token. Falls back to the CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH environment variable.')
     .option('--cacheDir <path>', 'Directory holding per-token rate-limit cache files. Falls back to the TDPM_RATELIMIT_CACHE_DIR environment variable, then to ${XDG_CACHE_HOME:-~/.cache}/tdpm/ratelimit.')
+    .option('--fleetConfigFilePath <path>', 'Path to the fleet-wide YAML config file holding the liveSessionOauthTokenSelection mapping (maxConcurrentSessionCount, fullSpeedFiveHourFreeRatio). Falls back to the TDPM_FLEET_CONFIG environment variable; when neither is set the built-in values are used. A key the file omits keeps its built-in value, and an unreadable file or an out-of-range value is reported as an error instead of being ignored.')
     .action((options) => {
     const handler = new LiveSessionOauthTokenSelectHandler_1.LiveSessionOauthTokenSelectHandler();
     const output = handler.handle({
         tokenListJsonPath: options.tokenListJsonPath ?? null,
         cacheDirectory: options.cacheDir ?? null,
         nowEpochSeconds: Date.now() / 1000,
+        selectionSettings: (0, fleetConfig_1.loadLiveSessionOauthTokenSelectionSettings)((0, fleetConfig_1.resolveFleetConfigFilePath)(options.fleetConfigFilePath ?? null)),
     });
     for (const line of output.diagnostics) {
         console.error(line);
