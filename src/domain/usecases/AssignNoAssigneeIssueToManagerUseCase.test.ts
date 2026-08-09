@@ -298,6 +298,7 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
           cacheUsed: false,
           autoAssignManagerAuthors: ['dependabot'],
           projectToAddSearchedIssues: project,
+          queryToAddProjectEnabled: true,
           queryToAddProject: 'repo:testOrg/testRepo is:open no:project',
         });
 
@@ -323,6 +324,7 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
           cacheUsed: false,
           autoAssignManagerAuthors: ['dependabot'],
           projectToAddSearchedIssues: project,
+          queryToAddProjectEnabled: true,
           queryToAddProject: 'repo:testOrg/testRepo is:open no:project',
         });
 
@@ -342,6 +344,7 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
           cacheUsed: false,
           autoAssignManagerAuthors: ['dependabot'],
           projectToAddSearchedIssues: project,
+          queryToAddProjectEnabled: true,
           queryToAddProject: 'repo:testOrg/testRepo is:open no:project',
         });
 
@@ -363,6 +366,7 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
           cacheUsed: false,
           autoAssignManagerAuthors: ['dependabot'],
           projectToAddSearchedIssues: project,
+          queryToAddProjectEnabled: true,
           queryToAddProject: 'repo:testOrg/testRepo is:open no:project',
         });
 
@@ -379,10 +383,40 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
           cacheUsed: false,
           autoAssignManagerAuthors: ['dependabot'],
           projectToAddSearchedIssues: project,
+          queryToAddProjectEnabled: true,
           queryToAddProject: null,
         });
 
         expect(mockIssueRepository.searchIssues.mock.calls).toEqual([]);
+      });
+
+      it('does not search when queryToAddProjectEnabled is false', async () => {
+        await useCase.run({
+          issues: [],
+          manager: 'manager1',
+          cacheUsed: false,
+          autoAssignManagerAuthors: ['dependabot'],
+          projectToAddSearchedIssues: project,
+          queryToAddProjectEnabled: false,
+          queryToAddProject: 'repo:testOrg/testRepo is:open no:project',
+        });
+
+        expect(mockIssueRepository.searchIssues.mock.calls).toEqual([]);
+        expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual([]);
+      });
+
+      it('does not search when queryToAddProjectEnabled is not configured', async () => {
+        await useCase.run({
+          issues: [],
+          manager: 'manager1',
+          cacheUsed: false,
+          autoAssignManagerAuthors: ['dependabot'],
+          projectToAddSearchedIssues: project,
+          queryToAddProject: 'repo:testOrg/testRepo is:open no:project',
+        });
+
+        expect(mockIssueRepository.searchIssues.mock.calls).toEqual([]);
+        expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual([]);
       });
 
       it('logs and continues when adding a matched issue to the project fails', async () => {
@@ -407,6 +441,7 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
           cacheUsed: false,
           autoAssignManagerAuthors: ['dependabot'],
           projectToAddSearchedIssues: project,
+          queryToAddProjectEnabled: true,
           queryToAddProject: 'repo:testOrg/testRepo is:open no:project',
         });
 

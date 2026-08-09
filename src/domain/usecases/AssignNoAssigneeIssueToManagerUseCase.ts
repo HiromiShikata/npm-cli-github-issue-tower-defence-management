@@ -18,6 +18,7 @@ export class AssignNoAssigneeIssueToManagerUseCase {
     cacheUsed: boolean;
     autoAssignManagerAuthors?: string[] | null;
     projectToAddSearchedIssues?: Project | null;
+    queryToAddProjectEnabled?: boolean | null;
     queryToAddProject?: string | null;
   }): Promise<void> => {
     if (input.cacheUsed) {
@@ -51,7 +52,7 @@ export class AssignNoAssigneeIssueToManagerUseCase {
     }
     const project = input.projectToAddSearchedIssues;
     const query = input.queryToAddProject;
-    if (!project || !query) {
+    if (!input.queryToAddProjectEnabled || !project || !query) {
       return;
     }
     const projectItemUrls = new Set(input.issues.map((issue) => issue.url));
