@@ -1,3 +1,10 @@
+## [1.146.19](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.18...v1.146.19) (2026-08-09)
+
+
+### Bug Fixes
+
+* **console:** show the merge conflict state in the top header ([#1447](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1447)) ([6aa659e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6aa659e73a17231eaa9b46f276367c8e58768aa3))
+
 ## [1.146.18](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.17...v1.146.18) (2026-08-09)
 
 
