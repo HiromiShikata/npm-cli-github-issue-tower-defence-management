@@ -55,11 +55,10 @@ test('shows CI and conflict badges in the directly opened PR detail header', asy
     page.locator('.console-detail-topline').getByText('Conflict'),
   ).toBeVisible();
 
-  const statusRow = page.locator('.console-detail-pr-status-row');
-  await expect(statusRow.getByText('CI failing')).toBeVisible();
-  await expect(statusRow.getByText(/missing: build, test/)).toBeVisible();
-  await expect(statusRow.getByText('Conflict')).toHaveCount(0);
-  await expect(statusRow.getByText('Out of date')).toBeVisible();
+  const topline = page.locator('.console-detail-topline');
+  await expect(topline.getByText('CI failing')).toBeVisible();
+  await expect(topline.getByText(/missing: build, test/)).toBeVisible();
+  await expect(topline.getByText('Out of date')).toBeVisible();
 
   await page.locator('.console-detail').screenshot({
     path: '/tmp/after-pr-detail-header.png',
