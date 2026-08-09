@@ -27,6 +27,7 @@ import { ConsoleCopyUrlButton } from './ConsoleCopyUrlButton';
 import type { ConsoleAddInlineComment } from './ConsoleFileDiff';
 import { ConsoleItemIcon } from './ConsoleItemIcon';
 import { ConsolePullRequestDetail } from './ConsolePullRequestDetail';
+import { ConsolePullRequestMergeableChip } from './ConsolePullRequestMergeableChip';
 import { ConsolePullRequestStatusBadges } from './ConsolePullRequestStatusBadges';
 
 export type ConsoleRelatedPullRequestView = {
@@ -159,6 +160,11 @@ export const ConsoleItemDetail = ({
             {closedStateLabel}
           </span>
         )}
+        {item.isPr && pullRequestStatus?.found && (
+          <ConsolePullRequestMergeableChip
+            mergeableStatus={pullRequestStatus.mergeableStatus}
+          />
+        )}
       </h2>
 
       {stateError !== null && (
@@ -176,7 +182,6 @@ export const ConsoleItemDetail = ({
       {item.isPr && pullRequestStatus?.found && (
         <div className="console-detail-pr-status-row">
           <ConsolePullRequestStatusBadges
-            mergeableStatus={pullRequestStatus.mergeableStatus}
             isPassedAllCiJob={pullRequestStatus.isPassedAllCiJob}
             isCiStateSuccess={pullRequestStatus.isCiStateSuccess}
             isBranchOutOfDate={pullRequestStatus.isBranchOutOfDate}

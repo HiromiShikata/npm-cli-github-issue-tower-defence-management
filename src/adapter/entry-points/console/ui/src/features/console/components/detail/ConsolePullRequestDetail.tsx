@@ -11,6 +11,7 @@ import { ConsoleChangedFileList } from './ConsoleChangedFileList';
 import { ConsoleCommitList } from './ConsoleCommitList';
 import { ConsoleCopyUrlButton } from './ConsoleCopyUrlButton';
 import type { ConsoleAddInlineComment } from './ConsoleFileDiff';
+import { ConsolePullRequestMergeableChip } from './ConsolePullRequestMergeableChip';
 import { ConsolePullRequestStatusBadges } from './ConsolePullRequestStatusBadges';
 
 export type ConsolePullRequestSectionProps = {
@@ -63,8 +64,10 @@ export const ConsolePullRequestDetail = ({
         {pullRequest.isDraft && (
           <span className="console-pr-section-state">draft</span>
         )}
-        <ConsolePullRequestStatusBadges
+        <ConsolePullRequestMergeableChip
           mergeableStatus={pullRequest.mergeableStatus}
+        />
+        <ConsolePullRequestStatusBadges
           isPassedAllCiJob={pullRequest.isPassedAllCiJob}
           isCiStateSuccess={pullRequest.isCiStateSuccess}
           isBranchOutOfDate={pullRequest.isBranchOutOfDate}

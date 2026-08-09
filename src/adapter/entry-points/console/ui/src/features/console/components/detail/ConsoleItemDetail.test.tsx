@@ -164,6 +164,52 @@ describe('ConsoleItemDetail', () => {
     expect(title?.contains(getByText('Awaiting Workspace'))).toBe(true);
   });
 
+  it('renders the merge conflict state inside the top header', () => {
+    const { getByText, container } = render(
+      <ConsoleItemDetail
+        item={prItem}
+        {...baseProps}
+        pullRequestStatus={{
+          found: true,
+          isConflicted: true,
+          mergeableStatus: 'CONFLICTING',
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        }}
+      />,
+    );
+    const title = container.querySelector('.console-detail-title');
+    if (title === null) {
+      throw new Error('the top header must render');
+    }
+    expect(title.contains(getByText('Conflict'))).toBe(true);
+  });
+
+  it('renders the absence of a merge conflict inside the top header', () => {
+    const { getByText, container } = render(
+      <ConsoleItemDetail
+        item={prItem}
+        {...baseProps}
+        pullRequestStatus={{
+          found: true,
+          isConflicted: false,
+          mergeableStatus: 'MERGEABLE',
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        }}
+      />,
+    );
+    const title = container.querySelector('.console-detail-title');
+    if (title === null) {
+      throw new Error('the top header must render');
+    }
+    expect(title.contains(getByText('No conflict'))).toBe(true);
+  });
+
   it('renders failing CI, missing checks, and conflict badges on their own row below the title', () => {
     const { getByText, container } = render(
       <ConsoleItemDetail

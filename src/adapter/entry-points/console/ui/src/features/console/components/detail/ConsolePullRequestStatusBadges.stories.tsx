@@ -10,9 +10,8 @@ export default meta;
 
 type Story = StoryObj<typeof ConsolePullRequestStatusBadges>;
 
-export const PassingAndMergeable: Story = {
+export const Passing: Story = {
   args: {
-    mergeableStatus: 'MERGEABLE',
     isPassedAllCiJob: true,
     isCiStateSuccess: true,
     isBranchOutOfDate: false,
@@ -22,7 +21,6 @@ export const PassingAndMergeable: Story = {
 
 export const FailingWithMissingChecks: Story = {
   args: {
-    mergeableStatus: 'MERGEABLE',
     isPassedAllCiJob: false,
     isCiStateSuccess: false,
     isBranchOutOfDate: false,
@@ -30,22 +28,11 @@ export const FailingWithMissingChecks: Story = {
   },
 };
 
-export const ConflictingAndOutOfDate: Story = {
+export const FailingAndOutOfDate: Story = {
   args: {
-    mergeableStatus: 'CONFLICTING',
     isPassedAllCiJob: false,
     isCiStateSuccess: false,
     isBranchOutOfDate: true,
     missingRequiredCheckNames: ['build', 'test'],
-  },
-};
-
-export const CheckingMergeStatus: Story = {
-  args: {
-    mergeableStatus: 'UNKNOWN',
-    isPassedAllCiJob: true,
-    isCiStateSuccess: true,
-    isBranchOutOfDate: false,
-    missingRequiredCheckNames: [],
   },
 };
