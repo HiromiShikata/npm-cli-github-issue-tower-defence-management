@@ -12,6 +12,8 @@ export type DailySecurityScanConfig = {
 
 type KevVulnerability = {
   cveID: string;
+  vendorProject: string;
+  product: string;
   vulnerabilityName: string;
   dateAdded: string;
 };
@@ -27,6 +29,8 @@ const isKevVulnerability = (value: unknown): value is KevVulnerability => {
   const record: Record<string, unknown> = { ...value };
   return (
     typeof record.cveID === 'string' &&
+    typeof record.vendorProject === 'string' &&
+    typeof record.product === 'string' &&
     typeof record.vulnerabilityName === 'string' &&
     typeof record.dateAdded === 'string'
   );
@@ -178,13 +182,21 @@ export class DailySecurityScanUseCase {
       );
     }
 
-    const newKevEntries = parsedKev.vulnerabilities
-      .filter((vulnerability) => vulnerability.dateAdded >= yesterdayYmd)
-      .map(
-        (vulnerability) =>
-          `- ${vulnerability.dateAdded} ${vulnerability.cveID} ${vulnerability.vulnerabilityName}`,
-      );
-    if (newKevEntries.length === 0) {
+    const newKevEntries = parsedKev.vulnerabilities.filter(
+      (vulnerability) => vulnerability.dateAdded >= yesterdayYmd,
+    );
+    const usedKevEntries: KevVulnerability[] = [];
+    for (const vulnerability of newKevEntries) {
+      if (
+        await this.isProductPresentInScannedWorkspace(
+          config.scanBaseDirectory,
+          vulnerability.product,
+        )
+      ) {
+        usedKevEntries.push(vulnerability);
+      }
+    }
+    if (usedKevEntries.length === 0) {
       return;
     }
 
@@ -192,9 +204,54 @@ export class DailySecurityScanUseCase {
       org,
       config.kevReportRepo,
       `CISA KEV new additions since ${yesterdayYmd}`,
-      newKevEntries.join('\n'),
+      usedKevEntries
+        .map(
+          (vulnerability) =>
+            `- ${vulnerability.dateAdded} ${vulnerability.cveID} ${vulnerability.vulnerabilityName}`,
+        )
+        .join('\n'),
       [manager],
       [],
     );
+  };
+
+  private isProductPresentInScannedWorkspace = async (
+    scanBaseDirectory: string,
+    product: string,
+  ): Promise<boolean> => {
+    const { stdout: findOutput } = await this.localCommandRunner.runCommand(
+      'find',
+      [scanBaseDirectory, '-maxdepth', '3', '-name', '.git', '-type', 'd'],
+    );
+    const repositoryDirectories = findOutput
+      .split('\n')
+      .filter((line) => line.length > 0)
+      .map((gitDirectory) => gitDirectory.replace(/\/\.git$/, ''));
+
+    for (const repositoryDirectory of repositoryDirectories) {
+      const { stderr, exitCode } = await this.localCommandRunner.runCommand(
+        'git',
+        [
+          '-C',
+          repositoryDirectory,
+          'grep',
+          '-I',
+          '-i',
+          '-q',
+          '-F',
+          '-e',
+          product,
+        ],
+      );
+      if (exitCode === 0) {
+        return true;
+      }
+      if (exitCode !== 1) {
+        console.error(
+          `Failed to search ${repositoryDirectory} for ${product}: ${stderr}`,
+        );
+      }
+    }
+    return false;
   };
 }
