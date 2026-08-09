@@ -4,6 +4,9 @@ import type { ConsoleFieldOption, ConsoleTabName } from './types';
 export const TOTALLY_WRONG_COMMENT_BODY = 'totally wrong';
 export const UNNECESSARY_COMMENT_BODY = 'This pull request is unnecessary.';
 
+export const buildUnnecessaryIssueCommentBody = (prUrl: string): string =>
+  `The pull request for this issue was unnecessary and has been closed: ${prUrl}\n\nDo not create it again.`;
+
 export type ConsolePendingReviewComment = {
   path: string;
   line: number;

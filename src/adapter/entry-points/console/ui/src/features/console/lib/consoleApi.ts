@@ -25,6 +25,7 @@ export type ConsoleReviewRequest = {
   projectItemId: string;
   issueUrl?: string;
   commentBody?: string;
+  issueCommentBody?: string;
   changedFilePath?: string;
   line?: number;
   side?: ConsoleReviewCommentSide;
