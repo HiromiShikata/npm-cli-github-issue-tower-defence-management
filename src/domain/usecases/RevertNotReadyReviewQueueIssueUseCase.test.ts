@@ -166,6 +166,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
   };
   let mockIssueCommentRepository: {
     createComment: jest.Mock;
+    getCommentsFromIssue: jest.Mock;
   };
   let mockProject: Project;
   let useCase: RevertNotReadyReviewQueueIssueUseCase;
@@ -197,6 +198,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
     mockIssueCommentRepository = {
       createComment: jest.fn().mockResolvedValue(undefined),
+      getCommentsFromIssue: jest.fn().mockResolvedValue([]),
     };
 
     useCase = new RevertNotReadyReviewQueueIssueUseCase(
@@ -277,6 +279,85 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         issue,
         expect.stringContaining('PULL_REQUEST_NOT_FOUND'),
       );
+    });
+
+    it('should not revert an issue whose last agent report declares pullRequestRequired as false', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: 'owner',
+          content:
+            'From: :robot: Agent report\n```json\n{"pullRequestRequired": false}\n```',
+          createdAt: new Date(),
+        },
+      ]);
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('should still revert an issue whose linked PR is conflicted even when the last agent report declares pullRequestRequired as false', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+      });
+      linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
+        { ...createReadyPr(), isConflicted: true },
+      ]);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: 'owner',
+          content:
+            'From: :robot: Agent report\n```json\n{"pullRequestRequired": false}\n```',
+          createdAt: new Date(),
+        },
+      ]);
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        issue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('PULL_REQUEST_CONFLICTED'),
+      );
+    });
+
+    it('should not read the comments of an issue whose linked PR is ready', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+      });
+      linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [createReadyPr()]);
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(
+        mockIssueCommentRepository.getCommentsFromIssue,
+      ).not.toHaveBeenCalled();
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
     });
 
     it('should not revert a story-labeled issue with no linked PR when story is in labelsAsLlmAgentName', async () => {

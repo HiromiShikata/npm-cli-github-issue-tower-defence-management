@@ -208,6 +208,49 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       });
     });
 
+    it('should return reviewReady=true when the last report declares pullRequestRequired as false and no related PR exists', async () => {
+      const issue = createMockIssue();
+      mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: Agent report\n```json\n{"pullRequestRequired": false}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      const result = await useCase.run({
+        issueUrl: 'https://github.com/user/repo/issues/1',
+      });
+
+      expect(result.rejections).toEqual([]);
+      expect(result.reviewReady).toBe(true);
+    });
+
+    it('should keep every rejection other than PULL_REQUEST_NOT_FOUND when the last report declares pullRequestRequired as false', async () => {
+      const issue = createMockIssue();
+      mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: Agent report\n```json\n{"pullRequestRequired": false}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        createReadyPr({ isDraft: true }),
+      ]);
+
+      const result = await useCase.run({
+        issueUrl: 'https://github.com/user/repo/issues/1',
+      });
+
+      expect(result.reviewReady).toBe(false);
+      expect(result.rejections).toContainEqual({
+        type: 'PULL_REQUEST_IS_DRAFT',
+        detail: 'PULL_REQUEST_IS_DRAFT: https://github.com/user/repo/pull/1',
+      });
+    });
+
     it('should return reviewReady=true with empty rejections when all checks pass', async () => {
       const issue = createMockIssue();
       mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
