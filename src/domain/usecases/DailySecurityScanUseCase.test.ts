@@ -381,6 +381,176 @@ describe('DailySecurityScanUseCase', () => {
       expect(mockIssueRepository.createNewIssue.mock.calls).toHaveLength(0);
     });
 
+    it('does not create a KEV report issue when the product is absent from the scanned workspace', async () => {
+      const {
+        useCase,
+        mockLocalCommandRunner,
+        mockIssueRepository,
+        mockHttpRepository,
+      } = buildUseCase();
+
+      mockLocalCommandRunner.runCommand.mockImplementation(async (program) => {
+        if (program === 'grep') {
+          return { stdout: '', stderr: '', exitCode: 1 };
+        }
+        return { stdout: '', stderr: '', exitCode: 0 };
+      });
+      mockHttpRepository.get.mockResolvedValue(
+        JSON.stringify({
+          vulnerabilities: [
+            {
+              cveID: 'CVE-2024-0001',
+              vendorProject: 'Progress',
+              product: 'LoadMaster',
+              vulnerabilityName: 'Progress LoadMaster Command Injection',
+              dateAdded: '2024-01-02',
+            },
+          ],
+        }),
+      );
+
+      await useCase.run({
+        targetDates: [new Date('2024-01-02T05:00:00Z')],
+        org: 'example-org',
+        manager: 'manager-name',
+        dailySecurityScan: {
+          scanBaseDirectory: '/repos',
+          targetHourUtc: 5,
+          enableKevNvdReport: true,
+          kevReportRepo: 'security-reports',
+        },
+      });
+
+      expect(
+        mockLocalCommandRunner.runCommand.mock.calls.filter(
+          (call) => call[0] === 'grep',
+        ),
+      ).toHaveLength(1);
+      expect(
+        mockLocalCommandRunner.runCommand.mock.calls.filter(
+          (call) => call[0] === 'grep',
+        )[0][1],
+      ).toEqual([
+        '-r',
+        '-i',
+        '-q',
+        '-F',
+        '--exclude-dir=.git',
+        '--exclude-dir=node_modules',
+        '--',
+        'LoadMaster',
+        '/repos',
+      ]);
+      expect(mockIssueRepository.createNewIssue.mock.calls).toHaveLength(0);
+    });
+
+    it('reports only the new KEV entries whose product is present in the scanned workspace', async () => {
+      const {
+        useCase,
+        mockLocalCommandRunner,
+        mockIssueRepository,
+        mockHttpRepository,
+      } = buildUseCase();
+
+      mockLocalCommandRunner.runCommand.mockImplementation(
+        async (program, args) => {
+          if (program === 'grep') {
+            return {
+              stdout: '',
+              stderr: '',
+              exitCode: args.includes('LoadMaster') ? 1 : 0,
+            };
+          }
+          return { stdout: '', stderr: '', exitCode: 0 };
+        },
+      );
+      mockHttpRepository.get.mockResolvedValue(
+        JSON.stringify({
+          vulnerabilities: [
+            {
+              cveID: 'CVE-2024-0001',
+              vendorProject: 'Progress',
+              product: 'LoadMaster',
+              vulnerabilityName: 'Progress LoadMaster Command Injection',
+              dateAdded: '2024-01-02',
+            },
+            {
+              cveID: 'CVE-2024-0002',
+              vendorProject: 'Example',
+              product: 'ExampleLibrary',
+              vulnerabilityName: 'Example Library Deserialization',
+              dateAdded: '2024-01-02',
+            },
+          ],
+        }),
+      );
+
+      await useCase.run({
+        targetDates: [new Date('2024-01-02T05:00:00Z')],
+        org: 'example-org',
+        manager: 'manager-name',
+        dailySecurityScan: {
+          scanBaseDirectory: '/repos',
+          targetHourUtc: 5,
+          enableKevNvdReport: true,
+          kevReportRepo: 'security-reports',
+        },
+      });
+
+      expect(mockIssueRepository.createNewIssue.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.createNewIssue.mock.calls[0][3]).toContain(
+        'CVE-2024-0002',
+      );
+      expect(mockIssueRepository.createNewIssue.mock.calls[0][3]).not.toContain(
+        'CVE-2024-0001',
+      );
+    });
+
+    it('throws when the product search fails', async () => {
+      const { useCase, mockLocalCommandRunner, mockHttpRepository } =
+        buildUseCase();
+
+      mockLocalCommandRunner.runCommand.mockImplementation(async (program) => {
+        if (program === 'grep') {
+          return {
+            stdout: '',
+            stderr: 'grep: /repos: No such file or directory',
+            exitCode: 2,
+          };
+        }
+        return { stdout: '', stderr: '', exitCode: 0 };
+      });
+      mockHttpRepository.get.mockResolvedValue(
+        JSON.stringify({
+          vulnerabilities: [
+            {
+              cveID: 'CVE-2024-0001',
+              vendorProject: 'Progress',
+              product: 'LoadMaster',
+              vulnerabilityName: 'Progress LoadMaster Command Injection',
+              dateAdded: '2024-01-02',
+            },
+          ],
+        }),
+      );
+
+      await expect(
+        useCase.run({
+          targetDates: [new Date('2024-01-02T05:00:00Z')],
+          org: 'example-org',
+          manager: 'manager-name',
+          dailySecurityScan: {
+            scanBaseDirectory: '/repos',
+            targetHourUtc: 5,
+            enableKevNvdReport: true,
+            kevReportRepo: 'security-reports',
+          },
+        }),
+      ).rejects.toThrow(
+        'Failed to search the scanned workspace for LoadMaster',
+      );
+    });
+
     it('throws when the KEV catalog format is unexpected', async () => {
       const { useCase, mockLocalCommandRunner, mockHttpRepository } =
         buildUseCase();
