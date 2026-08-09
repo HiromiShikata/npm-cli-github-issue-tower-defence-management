@@ -26,7 +26,7 @@ class GenerateConsoleListsUseCase {
             });
             const buildStatusTab = (selector, excludedStatusNames) => buildStatusTabFromSource(actionableIssues, selector, excludedStatusNames);
             return {
-                'workflow-blocker': buildStatusTabFromSource(visibleIssues.filter((issue) => issue.isClosed === false), this.workflowBlockerSelector(workflowBlockerStoryName), ['done']),
+                'workflow-blocker': buildStatusTabFromSource(issues.filter((issue) => issue.isClosed === false), this.workflowBlockerSelector(workflowBlockerStoryName), ['done']),
                 prs: buildStatusTab((issue) => issue.status !== null &&
                     issue.status.toLowerCase() === 'awaiting quality check', ['awaiting quality check', 'done']),
                 unread: buildStatusTab((issue) => issue.status !== null && issue.status.toLowerCase() === 'unread', ['unread', 'done']),

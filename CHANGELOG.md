@@ -1,3 +1,10 @@
+## [1.146.20](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.19...v1.146.20) (2026-08-09)
+
+
+### Bug Fixes
+
+* **console:** show a workflow blocker while an agent is working it ([#1449](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1449)) ([4ed1b97](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4ed1b9782543215a37ead3a2b5a52efa80031009))
+
 ## [1.146.19](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.18...v1.146.19) (2026-08-09)
 
 
