@@ -336,7 +336,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
       },
 
       {
-        name: 'should skip closed story issues or icebox status',
+        name: 'should skip closed story issues and only place the story view link on icebox story issues',
         input: {
           project: basicProject,
           issues: [
@@ -353,6 +353,45 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           cacheUsed: false,
           urlOfStoryView: 'https://example.com',
           storyObjectMap: basicStoryObjectMap,
+          manager: 'manager',
+          createTaskFromStoryBodyCheckboxEnabled: true,
+        },
+        expectedCreateNewIssueCalls: [],
+        expectedUpdateIssueCalls: [
+          [
+            {
+              ...basicStoryIssue2,
+              status: 'Icebox',
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+
+- [ ] Task 3
+- [ ] Task 4`,
+            },
+          ],
+        ],
+        expectedUpdateStoryCalls: [],
+        expectedGetIssueByUrlCalls: [
+          ['https://github.com/org/repo/issues/456'],
+        ],
+        expectedAddIssueToProjectCalls: [],
+      },
+      {
+        name: 'should consolidate a stale story view link on an icebox story issue without reading it when the link is already correct',
+        input: {
+          project: singleStoryProject,
+          issues: [
+            {
+              ...basicStoryIssue1,
+              status: 'Icebox',
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+
+- [ ] Task 1
+- [ ] Task 2`,
+            },
+          ],
+          cacheUsed: false,
+          urlOfStoryView: 'https://example.com',
+          storyObjectMap: singleStoryObjectMap,
           manager: 'manager',
           createTaskFromStoryBodyCheckboxEnabled: true,
         },
