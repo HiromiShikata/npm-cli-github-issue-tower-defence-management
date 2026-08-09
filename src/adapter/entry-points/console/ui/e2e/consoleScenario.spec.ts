@@ -82,39 +82,39 @@ test('processing tabs drives auto-advance and keeps emptied badges at zero', asy
   await expect(approveButton).toBeVisible();
   await approveButton.click();
 
-  await expect(activeTabLabel(page)).toHaveText('Triage', { timeout: 8000 });
+  await expect(activeTabLabel(page)).toHaveText('Unread', { timeout: 8000 });
   await expect(tabByLabel(page, 'Awaiting Quality Check')).toHaveCount(0, {
     timeout: 8000,
   });
 
   await itemRowByText(
     page,
-    'Add Sonnet to Opus weekly-limit fallback routing per token',
+    'Scaffold React console UI under entry-points with build bundling',
   ).click();
   await processSelectedItemViaStatus(page);
-  await expect(tabBadge(page, 'Triage')).toHaveText('1', { timeout: 8000 });
-  await tabByLabel(page, 'Triage').click();
+  await expect(tabBadge(page, 'Unread')).toHaveText('1', { timeout: 8000 });
+  await tabByLabel(page, 'Unread').click();
 
   await itemRowByText(
     page,
-    'Publish the generated documentation site to GitHub Pages',
+    'Add server-side console API handlers for read and operation endpoints',
   ).click();
   await processSelectedItemViaStatus(page);
 
-  await expect(activeTabLabel(page)).toHaveText('Unread', { timeout: 8000 });
-  await expect(tabByLabel(page, 'Triage')).toHaveCount(0, {
+  await expect(activeTabLabel(page)).toHaveText('Triage', { timeout: 8000 });
+  await expect(tabByLabel(page, 'Unread')).toHaveCount(0, {
     timeout: 8000,
   });
 
   await tabByLabel(page, 'Todo by human').click();
   await expect(activeTabLabel(page)).toHaveText('Todo by human');
-  await expect(tabByLabel(page, 'Triage')).toHaveCount(0);
+  await expect(tabByLabel(page, 'Unread')).toHaveCount(0);
   await expect(tabBadge(page, 'Todo by human')).toHaveText('1');
 
-  await tabByLabel(page, 'Unread').click();
-  await expect(activeTabLabel(page)).toHaveText('Unread');
-  await expect(tabByLabel(page, 'Triage')).toHaveCount(0);
-  await expect(tabBadge(page, 'Unread')).toHaveText('2');
+  await tabByLabel(page, 'Triage').click();
+  await expect(activeTabLabel(page)).toHaveText('Triage');
+  await expect(tabByLabel(page, 'Unread')).toHaveCount(0);
+  await expect(tabBadge(page, 'Triage')).toHaveText('2');
 });
 
 test('renders the Workflow Blocker tab leftmost and shows its detail operations', async ({
