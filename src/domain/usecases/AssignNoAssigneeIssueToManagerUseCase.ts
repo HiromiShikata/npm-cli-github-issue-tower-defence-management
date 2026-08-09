@@ -45,10 +45,7 @@ export class AssignNoAssigneeIssueToManagerUseCase {
       if (!isAssignable(issue)) {
         continue;
       }
-      if (!(await this.assignManager(issue, issue.url, input.manager))) {
-        continue;
-      }
-      await this.waitBeforeNextRequest();
+      await this.assignManager(issue, issue.url, input.manager);
     }
     const project = input.projectToAddSearchedIssues;
     const query = input.queryToAddProject;
