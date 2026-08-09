@@ -129,10 +129,15 @@ jest.mock('./rotationOrderFileWriter', () => ({
 jest.mock('./inTmuxByHumanDataWriter', () => ({
   writeInTmuxByHumanData: jest.fn(),
 }));
+jest.mock('./consoleListsWriter', () => ({
+  ...jest.requireActual('./consoleListsWriter'),
+  writeConsoleLists: jest.fn(),
+}));
 
 import { HandleScheduledEventUseCaseHandler } from './HandleScheduledEventUseCaseHandler';
 import { writeSituationFile } from './situationFileWriter';
 import { writeInTmuxByHumanData } from './inTmuxByHumanDataWriter';
+import { writeConsoleLists } from './consoleListsWriter';
 import { GraphqlProjectRepository } from '../../repositories/GraphqlProjectRepository';
 import { ApiV3IssueRepository } from '../../repositories/issue/ApiV3IssueRepository';
 import { RestIssueRepository } from '../../repositories/issue/RestIssueRepository';
@@ -270,6 +275,46 @@ describe('HandleScheduledEventUseCaseHandler', () => {
     expect(firstCallArg.statusNames.awaitingWorkspaceStatus).toBe(
       'Awaiting Workspace',
     );
+  });
+
+  it('stamps console lists with the GitHub read time the lists were built from', async () => {
+    MockedApiV3CheerioRestIssueRepository.mockImplementationOnce(
+      () =>
+        ({
+          getLastIssuesFetchedAt: jest
+            .fn()
+            .mockReturnValue('2026-08-09T02:02:28.649Z'),
+        }) as unknown as ApiV3CheerioRestIssueRepository,
+    );
+
+    const handler = new HandleScheduledEventUseCaseHandler();
+    await handler.handle('config.yml', false);
+
+    expect(jest.mocked(writeConsoleLists)).toHaveBeenCalledTimes(1);
+    expect(jest.mocked(writeConsoleLists).mock.calls[0][0].generatedAt).toBe(
+      '2026-08-09T02:02:28Z',
+    );
+  });
+
+  it('does not write console lists when no GitHub read time was recorded', async () => {
+    MockedApiV3CheerioRestIssueRepository.mockImplementationOnce(
+      () =>
+        ({
+          getLastIssuesFetchedAt: jest.fn().mockReturnValue(null),
+        }) as unknown as ApiV3CheerioRestIssueRepository,
+    );
+    const consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+
+    const handler = new HandleScheduledEventUseCaseHandler();
+    await handler.handle('config.yml', false);
+
+    expect(jest.mocked(writeConsoleLists)).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('No GitHub read time recorded'),
+    );
+    consoleErrorSpy.mockRestore();
   });
 
   it('should write situation file with numeric defaults when optional fields are absent', async () => {
