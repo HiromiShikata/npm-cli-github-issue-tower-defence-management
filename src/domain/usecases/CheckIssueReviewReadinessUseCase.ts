@@ -5,6 +5,7 @@ import {
   PrRejectedReasonType,
 } from './IssueRejectionEvaluator';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
+import { isPullRequestDeclaredUnnecessary } from './isPullRequestDeclaredUnnecessary';
 
 type RejectedReasonType =
   | 'ISSUE_NOT_FOUND'
@@ -88,7 +89,16 @@ export class CheckIssueReviewReadinessUseCase {
         resolveLabelsNotRequiringPullRequest(params),
       );
 
-    const allRejections = [...rejections, ...prRejections];
+    const requiredPrRejections = isPullRequestDeclaredUnnecessary(
+      comments,
+      isTrustedAuthor,
+    )
+      ? prRejections.filter(
+          (rejection) => rejection.type !== 'PULL_REQUEST_NOT_FOUND',
+        )
+      : prRejections;
+
+    const allRejections = [...rejections, ...requiredPrRejections];
 
     return {
       reviewReady: allRejections.length === 0,

@@ -14,6 +14,7 @@ import {
 } from './IssueRejectionEvaluator';
 import { ChangeTargetPullRequestApprover } from './ChangeTargetPullRequestApprover';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
+import { isPullRequestDeclaredUnnecessary } from './isPullRequestDeclaredUnnecessary';
 
 export class IssueNotFoundError extends Error {
   constructor(issueUrl: string) {
@@ -318,7 +319,18 @@ export class NotifyFinishedIssuePreparationUseCase {
         issue,
         labelsNotRequiringPullRequest,
       );
-    return { rejections: [...rejections, ...prRejections], approvedPrUrl };
+    const requiredPrRejections = isPullRequestDeclaredUnnecessary(
+      comments,
+      isTrustedAuthor,
+    )
+      ? prRejections.filter(
+          (rejection) => rejection.type !== 'PULL_REQUEST_NOT_FOUND',
+        )
+      : prRejections;
+    return {
+      rejections: [...rejections, ...requiredPrRejections],
+      approvedPrUrl,
+    };
   };
 
   private reportBodyHasNextStep = (body: string): boolean => {
