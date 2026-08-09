@@ -177,6 +177,7 @@ export class HandleScheduledEventUseCase {
     } | null;
     thresholdForAutoReject?: number;
     createTaskFromStoryBodyCheckboxEnabled?: boolean;
+    storyProgressCommentEnabled?: boolean;
     dailySecurityScan?: DailySecurityScanConfig | null;
   }): Promise<{
     project: Project;
@@ -483,6 +484,7 @@ ${JSON.stringify(e)}
       targetDates: targetDateTimes,
       project,
       storyObjectMap: storyObjectMap,
+      storyProgressCommentEnabled: input.storyProgressCommentEnabled ?? true,
     });
     await this.actionAnnouncementUseCase.run({
       targetDates: targetDateTimes,

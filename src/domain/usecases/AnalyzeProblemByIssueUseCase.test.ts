@@ -102,11 +102,15 @@ describe('AnalyzeProblemByIssueUseCase', () => {
     });
 
     it('comments on the story issue when the story progress comment option is absent', async () => {
-      await useCase.run({
+      jest.useFakeTimers();
+      const running = useCase.run({
         targetDates: [midnight],
         project: createProject(),
         storyObjectMap: createStoryObjectMap(),
       });
+      await jest.advanceTimersByTimeAsync(5000);
+      await running;
+      jest.useRealTimers();
 
       expect(mockIssueRepository.createComment).toHaveBeenCalledTimes(1);
     });
