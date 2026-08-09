@@ -15,8 +15,9 @@ export declare class ConvertCheckboxToIssueInStoryIssueUseCase {
         manager: Member["name"];
         createTaskFromStoryBodyCheckboxEnabled: boolean;
     }) => Promise<void>;
-    bodyWithStoryViewLinkOnFirstLine: (body: string, storyViewLink: string) => string;
+    bodyWithStoryViewLinkOnFirstLine: (body: string, urlOfStoryView: string, storyName: string) => string;
     buildStoryViewLink: (urlOfStoryView: string, storyName: string) => string;
+    buildStoryViewLinkPattern: (urlOfStoryView: string, storyName: string) => RegExp;
     findCheckboxTextsNotCreatedIssue: (storyIssueBody: string) => string[];
 }
 //# sourceMappingURL=ConvertCheckboxToIssueInStoryIssueUseCase.d.ts.map

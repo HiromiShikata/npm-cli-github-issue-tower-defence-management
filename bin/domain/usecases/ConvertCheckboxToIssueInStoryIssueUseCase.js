@@ -29,8 +29,7 @@ class ConvertCheckboxToIssueInStoryIssueUseCase {
                     console.warn(`ConvertCheckboxToIssueInStoryIssueUseCase: story issue not found by URL (possibly deleted), skipping story. storyIssueUrl: ${storyIssue.url}`);
                     continue;
                 }
-                const storyViewLink = this.buildStoryViewLink(input.urlOfStoryView, storyOption.name);
-                let newBody = this.bodyWithStoryViewLinkOnFirstLine(freshStoryIssue.body, storyViewLink);
+                let newBody = this.bodyWithStoryViewLinkOnFirstLine(freshStoryIssue.body, input.urlOfStoryView, storyOption.name);
                 if (newBody !== freshStoryIssue.body) {
                     await this.issueRepository.updateIssue({
                         ...freshStoryIssue,
@@ -63,11 +62,14 @@ class ConvertCheckboxToIssueInStoryIssueUseCase {
                 }
             }
         };
-        this.bodyWithStoryViewLinkOnFirstLine = (body, storyViewLink) => {
+        this.bodyWithStoryViewLinkOnFirstLine = (body, urlOfStoryView, storyName) => {
+            const storyViewLink = this.buildStoryViewLink(urlOfStoryView, storyName);
+            const storyViewLinkPattern = this.buildStoryViewLinkPattern(urlOfStoryView, storyName);
+            const isStoryViewLinkLine = (line) => storyViewLinkPattern.test(line);
             const lines = body.split('\n');
             const remainingLines = [];
             for (let i = 0; i < lines.length; i++) {
-                if (!lines[i].includes(storyViewLink)) {
+                if (!isStoryViewLinkLine(lines[i])) {
                     remainingLines.push(lines[i]);
                     continue;
                 }
@@ -87,6 +89,12 @@ class ConvertCheckboxToIssueInStoryIssueUseCase {
         };
         this.buildStoryViewLink = (urlOfStoryView, storyName) => {
             return `${urlOfStoryView}?sliceBy%5Bvalue%5D=${(0, utils_1.encodeForURI)(storyName)}`;
+        };
+        this.buildStoryViewLinkPattern = (urlOfStoryView, storyName) => {
+            const escapeForRegularExpression = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const storyViewProjectUrl = urlOfStoryView.split('/views/')[0];
+            const storySliceQuery = `?sliceBy%5Bvalue%5D=${(0, utils_1.encodeForURI)(storyName)}`;
+            return new RegExp(`${escapeForRegularExpression(storyViewProjectUrl)}(/views/\\d+)?${escapeForRegularExpression(storySliceQuery)}(?![\\w%])`);
         };
         this.findCheckboxTextsNotCreatedIssue = (storyIssueBody) => {
             const regexToFindCheckboxes = /^- \[ ] (.*)$/gm;

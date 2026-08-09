@@ -1,3 +1,10 @@
+## [1.147.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.147.3...v1.147.4) (2026-08-09)
+
+
+### Bug Fixes
+
+* **story:** consolidate a story view link written for an earlier view id ([#1464](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1464)) ([31c2035](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/31c2035320933b65544a3c0e3bc88b90d1a20c07))
+
 ## [1.147.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.147.2...v1.147.3) (2026-08-09)
 
 
