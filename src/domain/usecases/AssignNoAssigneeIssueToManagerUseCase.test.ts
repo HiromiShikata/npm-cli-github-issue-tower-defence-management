@@ -79,14 +79,14 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
       },
     },
     {
-      name: 'should skip all operations when cache is used',
+      name: 'should assign manager when cacheUsed is true',
       input: {
         issues: [basicIssue],
         manager: 'manager1',
         cacheUsed: true,
       },
       expectedCalls: {
-        updateAssigneeList: [],
+        updateAssigneeList: [[expect.anything(), ['manager1']]],
       },
     },
     {
@@ -296,6 +296,30 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
           issues: [],
           manager: 'manager1',
           cacheUsed: false,
+          autoAssignManagerAuthors: ['dependabot'],
+          projectToAddSearchedIssues: project,
+          queryToAddProjectEnabled: true,
+          queryToAddProject: 'repo:testOrg/testRepo is:open no:project',
+        });
+
+        expect(mockIssueRepository.searchIssues.mock.calls).toEqual([
+          ['repo:testOrg/testRepo is:open no:project'],
+        ]);
+        expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual([
+          [project, searchedIssue.url],
+        ]);
+        expect(mockIssueRepository.updateAssigneeList.mock.calls).toEqual([
+          [{ org: 'testOrg', repo: 'testRepo', number: 7 }, ['manager1']],
+        ]);
+      });
+
+      it('searches and adds a matched issue when cacheUsed is true', async () => {
+        mockIssueRepository.searchIssues.mockResolvedValueOnce([searchedIssue]);
+
+        await useCase.run({
+          issues: [],
+          manager: 'manager1',
+          cacheUsed: true,
           autoAssignManagerAuthors: ['dependabot'],
           projectToAddSearchedIssues: project,
           queryToAddProjectEnabled: true,

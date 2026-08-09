@@ -21,9 +21,6 @@ export class AssignNoAssigneeIssueToManagerUseCase {
     queryToAddProjectEnabled?: boolean | null;
     queryToAddProject?: string | null;
   }): Promise<void> => {
-    if (input.cacheUsed) {
-      return;
-    }
     const authorAllowList =
       input.autoAssignManagerAuthors &&
       input.autoAssignManagerAuthors.length > 0
