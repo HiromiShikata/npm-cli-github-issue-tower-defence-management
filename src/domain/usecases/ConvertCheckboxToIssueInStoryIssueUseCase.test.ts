@@ -1286,6 +1286,69 @@ Background text`);
         expect(mockIssueRepository.updateIssue).not.toHaveBeenCalled();
       });
     });
+
+    describe('story view link written for an earlier view id', () => {
+      const urlOfStoryView =
+        'https://github.com/users/TestUser/projects/48/views/48';
+      const currentStoryViewLink = `${urlOfStoryView}?sliceBy%5Bvalue%5D=Story%201`;
+      const earlierStoryViewLink =
+        'https://github.com/users/TestUser/projects/48/views/44?sliceBy%5Bvalue%5D=Story%201';
+      const otherStoryViewLink = `${urlOfStoryView}?sliceBy%5Bvalue%5D=Story%202`;
+
+      const runWithBody = async (body: string): Promise<void> => {
+        jest.clearAllMocks();
+        mockIssueRepository.getIssueByUrl.mockResolvedValue({
+          ...basicStoryIssue1,
+          body,
+        });
+        const useCase = new ConvertCheckboxToIssueInStoryIssueUseCase(
+          mockIssueRepository,
+        );
+        await useCase.run({
+          project: singleStoryProject,
+          issues: [basicStoryIssue1],
+          cacheUsed: false,
+          urlOfStoryView,
+          storyObjectMap: singleStoryObjectMap,
+          manager: 'ManagerName',
+          createTaskFromStoryBodyCheckboxEnabled: false,
+        });
+      };
+
+      it('removes a story view link that names an earlier view id of the same project', async () => {
+        await runWithBody(`${currentStoryViewLink}
+
+${earlierStoryViewLink}
+
+- [ ] Task 1`);
+
+        expect(mockIssueRepository.updateIssue.mock.calls).toHaveLength(1);
+        expect(mockIssueRepository.updateIssue.mock.calls[0][0].body)
+          .toBe(`${currentStoryViewLink}
+
+- [ ] Task 1`);
+      });
+
+      it('lifts a story view link that names an earlier view id to the current link on the first line', async () => {
+        await runWithBody(`Background text
+
+${earlierStoryViewLink}`);
+
+        expect(mockIssueRepository.updateIssue.mock.calls).toHaveLength(1);
+        expect(mockIssueRepository.updateIssue.mock.calls[0][0].body)
+          .toBe(`${currentStoryViewLink}
+
+Background text`);
+      });
+
+      it('keeps a story view link that names a different story', async () => {
+        await runWithBody(`${currentStoryViewLink}
+
+${otherStoryViewLink}`);
+
+        expect(mockIssueRepository.updateIssue).not.toHaveBeenCalled();
+      });
+    });
   });
 
   describe('buildStoryViewLink', () => {
