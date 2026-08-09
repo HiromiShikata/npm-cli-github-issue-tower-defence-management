@@ -1,3 +1,10 @@
+## [1.146.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.11...v1.146.12) (2026-08-09)
+
+
+### Bug Fixes
+
+* **console:** order the Unread tab before the Triage tab ([#1432](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1432)) ([b36952b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b36952bdfaab28611785eb929b8b9da3939030ed))
+
 ## [1.146.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.10...v1.146.11) (2026-08-09)
 
 
