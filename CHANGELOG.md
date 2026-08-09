@@ -1,3 +1,10 @@
+## [1.146.21](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.20...v1.146.21) (2026-08-09)
+
+
+### Bug Fixes
+
+* **console:** put the pull request merge state on the first line of the item detail ([#1451](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1451)) ([6fbb94e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6fbb94ecb0d276a5debf87785fbe9752cde0d965))
+
 ## [1.146.20](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.19...v1.146.20) (2026-08-09)
 
 
