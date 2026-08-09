@@ -1,3 +1,10 @@
+## [1.148.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.6...v1.148.7) (2026-08-09)
+
+
+### Bug Fixes
+
+* **security-scan:** select CISA KEV additions by scanned package versions ([#1481](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1481)) ([550a788](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/550a788bf940d08c53e3ff5120dc6c589573f731))
+
 ## [1.148.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.5...v1.148.6) (2026-08-09)
 
 

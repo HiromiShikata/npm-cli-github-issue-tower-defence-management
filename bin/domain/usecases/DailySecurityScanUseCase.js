@@ -20,6 +20,48 @@ const isKevCatalog = (value) => {
     return (Array.isArray(record.vulnerabilities) &&
         record.vulnerabilities.every(isKevVulnerability));
 };
+const parseScannerVulnerabilities = (repositoryName, scannerOutput) => {
+    let parsed;
+    try {
+        parsed = JSON.parse(scannerOutput);
+    }
+    catch (error) {
+        console.error(`Unparsable osv-scanner output for ${repositoryName}: ${String(error)}`);
+        return [];
+    }
+    const toRecord = (value) => typeof value === 'object' && value !== null ? { ...value } : {};
+    const readArray = (value, key) => {
+        const entry = toRecord(value)[key];
+        return Array.isArray(entry) ? entry : [];
+    };
+    const readString = (value, key) => {
+        const entry = toRecord(value)[key];
+        return typeof entry === 'string' ? entry : '';
+    };
+    return readArray(parsed, 'results').flatMap((result) => readArray(result, 'packages').flatMap((scannedPackage) => {
+        const packageDetail = toRecord(scannedPackage).package;
+        return readArray(scannedPackage, 'vulnerabilities').map((vulnerability) => {
+            const vulnerabilityId = readString(vulnerability, 'id');
+            const aliases = readArray(vulnerability, 'aliases').filter((alias) => typeof alias === 'string');
+            return {
+                repositoryName,
+                ecosystem: readString(packageDetail, 'ecosystem'),
+                packageName: readString(packageDetail, 'name'),
+                packageVersion: readString(packageDetail, 'version'),
+                vulnerabilityId,
+                vulnerabilityIdentifiers: [vulnerabilityId, ...aliases],
+                summary: readString(vulnerability, 'summary'),
+            };
+        });
+    }));
+};
+const renderScannerFindings = (today, vulnerablePackages) => [
+    '## OSV-Scanner findings',
+    '',
+    `### ${today}`,
+    '',
+    ...vulnerablePackages.map((vulnerablePackage) => `- ${vulnerablePackage.ecosystem} ${vulnerablePackage.packageName} ${vulnerablePackage.packageVersion} ${vulnerablePackage.vulnerabilityIdentifiers.join(' ')} ${vulnerablePackage.summary}`),
+].join('\n');
 const KEV_CATALOG_URL = 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json';
 class DailySecurityScanUseCase {
     constructor(localCommandRunner, issueRepository, httpRepository) {
@@ -34,8 +76,8 @@ class DailySecurityScanUseCase {
             }
             const lastTargetDate = input.targetDates[input.targetDates.length - 1];
             const today = lastTargetDate.toISOString().slice(0, 10);
-            await this.scanRepositories(input.org, input.manager, today, input.dailySecurityScan);
-            await this.reportKevAdditions(input.org, input.manager, lastTargetDate, input.dailySecurityScan);
+            const scannedVulnerablePackages = await this.scanRepositories(input.org, input.manager, today, input.dailySecurityScan);
+            await this.reportKevAdditions(input.org, input.manager, lastTargetDate, input.dailySecurityScan, scannedVulnerablePackages);
         };
         this.scanRepositories = async (org, manager, today, config) => {
             const { stdout: findOutput } = await this.localCommandRunner.runCommand('find', [
@@ -53,8 +95,9 @@ class DailySecurityScanUseCase {
                 .map((gitDirectory) => gitDirectory.replace(/\/\.git$/, ''));
             if (repositoryDirectories.length === 0) {
                 console.error(`No repositories found in scan base directory: ${config.scanBaseDirectory}`);
-                return;
+                return [];
             }
+            const scannedVulnerablePackages = [];
             for (const repositoryDirectory of repositoryDirectories) {
                 const { stdout: remoteUrl, exitCode: remoteExitCode } = await this.localCommandRunner.runCommand('git', [
                     '-C',
@@ -79,6 +122,8 @@ class DailySecurityScanUseCase {
                     'source',
                     '-r',
                     repositoryDirectory,
+                    '--format',
+                    'json',
                 ]);
                 if (scanExitCode === 0) {
                     continue;
@@ -87,7 +132,9 @@ class DailySecurityScanUseCase {
                     console.error(`osv-scanner failed with exit code ${scanExitCode} for ${repositoryDirectory}: ${scanStderr}`);
                     continue;
                 }
-                const findingsBody = `## OSV-Scanner findings\n\n### ${today}\n\n\`\`\`\n${scanOutput}\n\`\`\``;
+                const vulnerablePackages = parseScannerVulnerabilities(repositoryName, scanOutput);
+                scannedVulnerablePackages.push(...vulnerablePackages);
+                const findingsBody = renderScannerFindings(today, vulnerablePackages);
                 const existingIssues = await this.issueRepository.searchIssue({
                     owner: repositoryOrg,
                     repositoryName,
@@ -103,8 +150,9 @@ class DailySecurityScanUseCase {
                     await this.issueRepository.createNewIssue(repositoryOrg, repositoryName, 'Daily security scan findings', findingsBody, [manager], []);
                 }
             }
+            return scannedVulnerablePackages;
         };
-        this.reportKevAdditions = async (org, manager, lastTargetDate, config) => {
+        this.reportKevAdditions = async (org, manager, lastTargetDate, config, scannedVulnerablePackages) => {
             if (!config.enableKevNvdReport || !config.kevReportRepo) {
                 return;
             }
@@ -117,45 +165,21 @@ class DailySecurityScanUseCase {
                 throw new Error(`Unexpected CISA KEV catalog format from ${KEV_CATALOG_URL}`);
             }
             const newKevEntries = parsedKev.vulnerabilities.filter((vulnerability) => vulnerability.dateAdded >= yesterdayYmd);
-            const usedKevEntries = [];
-            for (const vulnerability of newKevEntries) {
-                if (await this.isProductPresentInScannedWorkspace(config.scanBaseDirectory, vulnerability.product)) {
-                    usedKevEntries.push(vulnerability);
-                }
-            }
-            if (usedKevEntries.length === 0) {
+            const affectingKevEntries = newKevEntries
+                .map((vulnerability) => ({
+                vulnerability,
+                affectedPackages: scannedVulnerablePackages.filter((scannedPackage) => scannedPackage.vulnerabilityIdentifiers.includes(vulnerability.cveID)),
+            }))
+                .filter((entry) => entry.affectedPackages.length > 0);
+            if (affectingKevEntries.length === 0) {
                 return;
             }
-            await this.issueRepository.createNewIssue(org, config.kevReportRepo, `CISA KEV new additions since ${yesterdayYmd}`, usedKevEntries
-                .map((vulnerability) => `- ${vulnerability.dateAdded} ${vulnerability.cveID} ${vulnerability.vulnerabilityName}`)
+            await this.issueRepository.createNewIssue(org, config.kevReportRepo, `CISA KEV new additions since ${yesterdayYmd}`, affectingKevEntries
+                .map((entry) => [
+                `- ${entry.vulnerability.dateAdded} ${entry.vulnerability.cveID} ${entry.vulnerability.vulnerabilityName}`,
+                ...entry.affectedPackages.map((affectedPackage) => `  - ${affectedPackage.repositoryName} ${affectedPackage.ecosystem} ${affectedPackage.packageName} ${affectedPackage.packageVersion}`),
+            ].join('\n'))
                 .join('\n'), [manager], []);
-        };
-        this.isProductPresentInScannedWorkspace = async (scanBaseDirectory, product) => {
-            const { stdout: findOutput } = await this.localCommandRunner.runCommand('find', [scanBaseDirectory, '-maxdepth', '3', '-name', '.git', '-type', 'd']);
-            const repositoryDirectories = findOutput
-                .split('\n')
-                .filter((line) => line.length > 0)
-                .map((gitDirectory) => gitDirectory.replace(/\/\.git$/, ''));
-            for (const repositoryDirectory of repositoryDirectories) {
-                const { stderr, exitCode } = await this.localCommandRunner.runCommand('git', [
-                    '-C',
-                    repositoryDirectory,
-                    'grep',
-                    '-I',
-                    '-i',
-                    '-q',
-                    '-F',
-                    '-e',
-                    product,
-                ]);
-                if (exitCode === 0) {
-                    return true;
-                }
-                if (exitCode !== 1) {
-                    console.error(`Failed to search ${repositoryDirectory} for ${product}: ${stderr}`);
-                }
-            }
-            return false;
         };
     }
 }
