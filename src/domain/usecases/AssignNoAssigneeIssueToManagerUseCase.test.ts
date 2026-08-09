@@ -2,6 +2,8 @@ import { mock } from 'jest-mock-extended';
 import { AssignNoAssigneeIssueToManagerUseCase } from './AssignNoAssigneeIssueToManagerUseCase';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Issue } from '../entities/Issue';
+import { Project } from '../entities/Project';
+import { SearchedIssue } from '../entities/SearchedIssue';
 
 describe('AssignNoAssigneeIssueToManagerUseCase', () => {
   const mockIssueRepository = mock<IssueRepository>();
@@ -273,6 +275,212 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
         [firstIssue, ['manager1']],
         [secondIssue, ['manager1']],
       ]);
+    });
+
+    describe('issues matched by queryToAddProject', () => {
+      const project = { ...mock<Project>(), id: 'project-1' };
+      const searchedIssue: SearchedIssue = {
+        url: 'https://github.com/testOrg/testRepo/pull/7',
+        org: 'testOrg',
+        repo: 'testRepo',
+        number: 7,
+        state: 'OPEN',
+        author: 'dependabot',
+        assignees: [],
+      };
+
+      it('adds a matched issue that is not a project item to the project and assigns the manager', async () => {
+        mockIssueRepository.searchIssues.mockResolvedValueOnce([searchedIssue]);
+
+        await useCase.run({
+          issues: [],
+          manager: 'manager1',
+          cacheUsed: false,
+          autoAssignManagerAuthors: ['dependabot'],
+          projectToAddSearchedIssues: project,
+          queryToAddProjectEnabled: true,
+          queryToAddProject: 'repo:testOrg/testRepo is:open no:project',
+        });
+
+        expect(mockIssueRepository.searchIssues.mock.calls).toEqual([
+          ['repo:testOrg/testRepo is:open no:project'],
+        ]);
+        expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual([
+          [project, searchedIssue.url],
+        ]);
+        expect(mockIssueRepository.updateAssigneeList.mock.calls).toEqual([
+          [{ org: 'testOrg', repo: 'testRepo', number: 7 }, ['manager1']],
+        ]);
+      });
+
+      it('does not add or assign a matched issue whose author is outside autoAssignManagerAuthors', async () => {
+        mockIssueRepository.searchIssues.mockResolvedValueOnce([
+          { ...searchedIssue, author: 'human-author' },
+        ]);
+
+        await useCase.run({
+          issues: [],
+          manager: 'manager1',
+          cacheUsed: false,
+          autoAssignManagerAuthors: ['dependabot'],
+          projectToAddSearchedIssues: project,
+          queryToAddProjectEnabled: true,
+          queryToAddProject: 'repo:testOrg/testRepo is:open no:project',
+        });
+
+        expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual([]);
+        expect(mockIssueRepository.updateAssigneeList.mock.calls).toEqual([]);
+      });
+
+      it('does not add or assign a matched issue that already has an assignee or is not open', async () => {
+        mockIssueRepository.searchIssues.mockResolvedValueOnce([
+          { ...searchedIssue, assignees: ['someone'] },
+          { ...searchedIssue, number: 8, state: 'CLOSED' },
+        ]);
+
+        await useCase.run({
+          issues: [],
+          manager: 'manager1',
+          cacheUsed: false,
+          autoAssignManagerAuthors: ['dependabot'],
+          projectToAddSearchedIssues: project,
+          queryToAddProjectEnabled: true,
+          queryToAddProject: 'repo:testOrg/testRepo is:open no:project',
+        });
+
+        expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual([]);
+        expect(mockIssueRepository.updateAssigneeList.mock.calls).toEqual([]);
+      });
+
+      it('assigns a matched issue that is already a project item only once and does not re-add it', async () => {
+        const projectItem = {
+          ...basicIssue,
+          url: searchedIssue.url,
+          author: 'dependabot',
+        };
+        mockIssueRepository.searchIssues.mockResolvedValueOnce([searchedIssue]);
+
+        await useCase.run({
+          issues: [projectItem],
+          manager: 'manager1',
+          cacheUsed: false,
+          autoAssignManagerAuthors: ['dependabot'],
+          projectToAddSearchedIssues: project,
+          queryToAddProjectEnabled: true,
+          queryToAddProject: 'repo:testOrg/testRepo is:open no:project',
+        });
+
+        expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual([]);
+        expect(mockIssueRepository.updateAssigneeList.mock.calls).toEqual([
+          [projectItem, ['manager1']],
+        ]);
+      });
+
+      it('does not search when no query is configured', async () => {
+        await useCase.run({
+          issues: [],
+          manager: 'manager1',
+          cacheUsed: false,
+          autoAssignManagerAuthors: ['dependabot'],
+          projectToAddSearchedIssues: project,
+          queryToAddProjectEnabled: true,
+          queryToAddProject: null,
+        });
+
+        expect(mockIssueRepository.searchIssues.mock.calls).toEqual([]);
+      });
+
+      it('does not search when queryToAddProjectEnabled is false', async () => {
+        await useCase.run({
+          issues: [],
+          manager: 'manager1',
+          cacheUsed: false,
+          autoAssignManagerAuthors: ['dependabot'],
+          projectToAddSearchedIssues: project,
+          queryToAddProjectEnabled: false,
+          queryToAddProject: 'repo:testOrg/testRepo is:open no:project',
+        });
+
+        expect(mockIssueRepository.searchIssues.mock.calls).toEqual([]);
+        expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual([]);
+      });
+
+      it('does not search when queryToAddProjectEnabled is not configured', async () => {
+        await useCase.run({
+          issues: [],
+          manager: 'manager1',
+          cacheUsed: false,
+          autoAssignManagerAuthors: ['dependabot'],
+          projectToAddSearchedIssues: project,
+          queryToAddProject: 'repo:testOrg/testRepo is:open no:project',
+        });
+
+        expect(mockIssueRepository.searchIssues.mock.calls).toEqual([]);
+        expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual([]);
+      });
+
+      it('logs and returns without throwing when the search fails', async () => {
+        mockIssueRepository.searchIssues.mockRejectedValueOnce(
+          new Error('Validation Failed'),
+        );
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+
+        await useCase.run({
+          issues: [],
+          manager: 'manager1',
+          cacheUsed: false,
+          autoAssignManagerAuthors: ['dependabot'],
+          projectToAddSearchedIssues: project,
+          queryToAddProjectEnabled: true,
+          queryToAddProject: 'repo:testOrg/testRepo is:open no:project',
+        });
+
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          'Failed to search issues by repo:testOrg/testRepo is:open no:project: Validation Failed',
+        );
+        expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual([]);
+        expect(mockIssueRepository.updateAssigneeList.mock.calls).toEqual([]);
+
+        consoleErrorSpy.mockRestore();
+      });
+
+      it('logs and continues when adding a matched issue to the project fails', async () => {
+        mockIssueRepository.searchIssues.mockResolvedValueOnce([
+          searchedIssue,
+          {
+            ...searchedIssue,
+            url: 'https://github.com/testOrg/testRepo/pull/9',
+            number: 9,
+          },
+        ]);
+        mockIssueRepository.addIssueToProject.mockRejectedValueOnce(
+          new Error('Content not found'),
+        );
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+
+        await useCase.run({
+          issues: [],
+          manager: 'manager1',
+          cacheUsed: false,
+          autoAssignManagerAuthors: ['dependabot'],
+          projectToAddSearchedIssues: project,
+          queryToAddProjectEnabled: true,
+          queryToAddProject: 'repo:testOrg/testRepo is:open no:project',
+        });
+
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          'Failed to add issue https://github.com/testOrg/testRepo/pull/7 to project: Content not found',
+        );
+        expect(mockIssueRepository.updateAssigneeList.mock.calls).toEqual([
+          [{ org: 'testOrg', repo: 'testRepo', number: 9 }, ['manager1']],
+        ]);
+
+        consoleErrorSpy.mockRestore();
+      });
     });
 
     it('should rethrow non-Error thrown values without logging', async () => {

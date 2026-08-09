@@ -10,6 +10,7 @@ import {
 } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
+import { SearchedIssue } from '../../../domain/entities/SearchedIssue';
 import { StoryObjectMap } from '../../../domain/entities/StoryObjectMap';
 import { ApiV3IssueRepository } from './ApiV3IssueRepository';
 import { normalizeGitHubRawUrl } from './gitHubRawUrl';
@@ -455,6 +456,7 @@ export class ApiV3CheerioRestIssueRepository
       | 'updateLabels'
       | 'removeLabel'
       | 'updateAssigneeList'
+      | 'searchIssues'
     >,
     readonly graphqlProjectItemRepository: Pick<
       GraphqlProjectItemRepository,
@@ -935,10 +937,13 @@ export class ApiV3CheerioRestIssueRepository
     return this.restIssueRepository.removeLabel(issue, label);
   };
   updateAssigneeList = (
-    issue: Issue,
+    issue: Pick<Issue, 'org' | 'repo' | 'number'>,
     assigneeList: Member['name'][],
   ): Promise<void> => {
     return this.restIssueRepository.updateAssigneeList(issue, assigneeList);
+  };
+  searchIssues = (query: string): Promise<SearchedIssue[]> => {
+    return this.restIssueRepository.searchIssues(query);
   };
   get = async (_issueUrl: string, _project: Project): Promise<Issue | null> => {
     return this.getIssueByUrl(_issueUrl);
