@@ -1,3 +1,10 @@
+## [1.148.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.0...v1.148.1) (2026-08-09)
+
+
+### Bug Fixes
+
+* **story:** place the story view link on icebox story issues too ([#1469](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1469)) ([695a294](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/695a29417491ba7958df6686b77801d3871d3376))
+
 # [1.148.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.147.5...v1.148.0) (2026-08-09)
 
 

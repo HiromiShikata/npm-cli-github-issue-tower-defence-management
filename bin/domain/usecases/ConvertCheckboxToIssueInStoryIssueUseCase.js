@@ -20,8 +20,12 @@ class ConvertCheckboxToIssueInStoryIssueUseCase {
                 else if (!storyIssue || !storyObject) {
                     throw new Error(`Story issue not found: ${storyOption.name}`);
                 }
-                else if (storyIssue.isClosed ||
-                    storyIssue.status === WorkflowStatus_1.ICEBOX_STATUS_NAME) {
+                else if (storyIssue.isClosed) {
+                    continue;
+                }
+                const iced = storyIssue.status === WorkflowStatus_1.ICEBOX_STATUS_NAME;
+                if (iced &&
+                    this.bodyWithStoryViewLinkOnFirstLine(storyIssue.body, input.urlOfStoryView, storyOption.name) === storyIssue.body) {
                     continue;
                 }
                 const freshStoryIssue = await this.issueRepository.getIssueByUrl(storyIssue.url);
@@ -36,7 +40,7 @@ class ConvertCheckboxToIssueInStoryIssueUseCase {
                         body: newBody,
                     });
                 }
-                if (!input.createTaskFromStoryBodyCheckboxEnabled) {
+                if (iced || !input.createTaskFromStoryBodyCheckboxEnabled) {
                     continue;
                 }
                 if (!newBody.includes('- [ ] ')) {
