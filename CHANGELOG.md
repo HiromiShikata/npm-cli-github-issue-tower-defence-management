@@ -1,3 +1,10 @@
+## [1.148.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.2...v1.148.3) (2026-08-09)
+
+
+### Bug Fixes
+
+* **assign:** run manager auto-assignment on incremental fetch cycles ([#1473](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1473)) ([5a6cfe3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5a6cfe365daa5f7516d5b1c0116bc5d436889ba6))
+
 ## [1.148.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.1...v1.148.2) (2026-08-09)
 
 

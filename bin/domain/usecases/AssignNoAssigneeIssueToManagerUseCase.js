@@ -5,9 +5,6 @@ class AssignNoAssigneeIssueToManagerUseCase {
     constructor(issueRepository) {
         this.issueRepository = issueRepository;
         this.run = async (input) => {
-            if (input.cacheUsed) {
-                return;
-            }
             const authorAllowList = input.autoAssignManagerAuthors &&
                 input.autoAssignManagerAuthors.length > 0
                 ? input.autoAssignManagerAuthors
