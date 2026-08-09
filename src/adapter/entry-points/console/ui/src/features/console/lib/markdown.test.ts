@@ -91,6 +91,38 @@ describe('renderMarkdownToSafeHtml', () => {
     });
     expect(html).toContain('href="https://github.com/owner/repo/issues/9"');
   });
+
+  it('links an owner/repo#N reference to the referenced repository issues path', () => {
+    const html = renderMarkdownToSafeHtml(
+      '- close other-owner/other-repo#1547',
+      {
+        owner: 'owner',
+        repo: 'repo',
+      },
+    );
+    expect(html).toContain(
+      'href="https://github.com/other-owner/other-repo/issues/1547"',
+    );
+    expect(html).toContain('>other-owner/other-repo#1547</a>');
+  });
+
+  it('does not link the number of an owner/repo#N reference to the displayed repository', () => {
+    const html = renderMarkdownToSafeHtml(
+      '- close other-owner/other-repo#1547',
+      {
+        owner: 'owner',
+        repo: 'repo',
+      },
+    );
+    expect(html).not.toContain('https://github.com/owner/repo/issues/1547');
+  });
+
+  it('links an owner/repo#N reference even when no repo context is given', () => {
+    const html = renderMarkdownToSafeHtml('close other-owner/other-repo#1547');
+    expect(html).toContain(
+      'href="https://github.com/other-owner/other-repo/issues/1547"',
+    );
+  });
 });
 
 describe('splitMarkdownSegments', () => {
