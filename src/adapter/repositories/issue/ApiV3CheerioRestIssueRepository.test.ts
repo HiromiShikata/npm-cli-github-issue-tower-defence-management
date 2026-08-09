@@ -1245,6 +1245,95 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
     });
 
+    it('records the requested changes as a review comment when GitHub refuses a review by the pull request author', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              message: 'Unprocessable Entity',
+              errors: [
+                {
+                  message:
+                    'Review Can not request changes on your own pull request',
+                },
+              ],
+            }),
+            {
+              status: 422,
+              headers: { 'Content-Type': 'application/json' },
+            },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ head: { sha: 'head-sha' } }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ id: 11 }), {
+            status: 201,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await repository.requestChangesWithInlineComment(
+        'https://github.com/HiromiShikata/test-repository/pull/42',
+        'src/index.ts',
+        'Please address this.',
+        { line: 17, side: 'RIGHT' },
+      );
+
+      expect(fetchSpy).toHaveBeenLastCalledWith(
+        'https://api.github.com/repos/HiromiShikata/test-repository/pulls/42/comments',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            body: 'Please address this.',
+            commit_id: 'head-sha',
+            path: 'src/index.ts',
+            line: 17,
+            side: 'RIGHT',
+          }),
+        }),
+      );
+    });
+
+    it('records the requested changes as a pull request comment when GitHub refuses the review and no line anchor was entered', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            message: 'Unprocessable Entity',
+            errors: [
+              {
+                message:
+                  'Review Can not request changes on your own pull request',
+              },
+            ],
+          }),
+          {
+            status: 422,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      );
+
+      const { repository, restIssueRepository } =
+        createApiV3CheerioRestIssueRepository();
+      await repository.requestChangesWithInlineComment(
+        'https://github.com/HiromiShikata/test-repository/pull/42',
+        'src/index.ts',
+        'Please address this.',
+      );
+
+      expect(restIssueRepository.createComment).toHaveBeenCalledWith(
+        'https://github.com/HiromiShikata/test-repository/pull/42',
+        'Please address this.',
+      );
+    });
+
     it("should surface GitHub's validation reason together with the status when the review POST fails", async () => {
       jest.spyOn(global, 'fetch').mockResolvedValueOnce(
         new Response(

@@ -38,6 +38,9 @@ export const FULL_ISSUE_FETCH_INTERVAL_MS = 60 * 60 * 1000;
 export const INCREMENTAL_FETCH_SKEW_BUFFER_MS = 5 * 60 * 1000;
 export const REQUIRED_CHECKS_CACHE_TTL_MS = 10 * 60 * 1000;
 
+const SELF_AUTHORED_REVIEW_REFUSAL =
+  'Can not request changes on your own pull request';
+
 const isIssueArray = (value: unknown): value is Issue[] =>
   Array.isArray(value) &&
   value.every(
@@ -1862,8 +1865,39 @@ export class ApiV3CheerioRestIssueRepository
     );
     if (!response.ok) {
       const reason = await this.formatGitHubErrorWithStatus(response);
+      if (
+        response.status === 422 &&
+        reason.includes(SELF_AUTHORED_REVIEW_REFUSAL)
+      ) {
+        await this.recordRequestedChangesWithoutReview(
+          prUrl,
+          changedFilePath,
+          commentBody,
+          inlineCommentLocation,
+        );
+        return;
+      }
       throw new Error(`Failed to request changes on PR ${prUrl}: ${reason}`);
     }
+  };
+
+  private recordRequestedChangesWithoutReview = async (
+    prUrl: string,
+    changedFilePath: string,
+    commentBody: string,
+    inlineCommentLocation: PullRequestReviewInlineLocation | null,
+  ): Promise<void> => {
+    if (inlineCommentLocation === null) {
+      await this.createCommentByUrl(prUrl, commentBody);
+      return;
+    }
+    await this.createPullRequestReviewComment(
+      prUrl,
+      changedFilePath,
+      inlineCommentLocation.line,
+      inlineCommentLocation.side,
+      commentBody,
+    );
   };
 
   private fetchPullRequestHeadSha = async (
