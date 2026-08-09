@@ -502,6 +502,62 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('getLastIssuesFetchedAt', () => {
+    it('reports null before any fetch has happened for the project', () => {
+      const { repository } = createApiV3CheerioRestIssueRepository();
+
+      expect(repository.getLastIssuesFetchedAt('test-project-id')).toBeNull();
+    });
+
+    it('reports the full-fetch read time rather than a later moment', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:00:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue(null);
+      projectRepository.getProject.mockResolvedValue(
+        buildTestProject('test-project-id'),
+      );
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      await repository.getAllIssues('test-project-id');
+
+      expect(repository.getLastIssuesFetchedAt('test-project-id')).toBe(
+        '2026-07-07T00:00:00.000Z',
+      );
+    });
+
+    it('reports the incremental-fetch read time and keeps projects independent', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:45:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue({
+        lastFetchedAt: '2026-07-07T00:30:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project: buildTestProject('cached-project'),
+        issues: [],
+      });
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      await repository.getAllIssues('cached-project');
+
+      expect(repository.getLastIssuesFetchedAt('cached-project')).toBe(
+        '2026-07-07T00:45:00.000Z',
+      );
+      expect(repository.getLastIssuesFetchedAt('other-project')).toBeNull();
+    });
+  });
+
   describe('getAllIssues throws when fetchProjectItems throws', () => {
     it('should not write cache and should propagate error when fetchProjectItems throws', async () => {
       const {

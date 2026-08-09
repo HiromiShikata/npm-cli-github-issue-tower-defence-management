@@ -3,7 +3,10 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { writeSituationFile } from './situationFileWriter';
-import { writeConsoleLists } from './consoleListsWriter';
+import {
+  formatConsoleGeneratedAt,
+  writeConsoleLists,
+} from './consoleListsWriter';
 import { writeDashboardRow } from './dashboardRowWriter';
 import { writeMachineStatus } from './machineStatusWriter';
 import { writeTokenStatus } from './tokenStatusWriter';
@@ -549,12 +552,21 @@ export class HandleScheduledEventUseCaseHandler {
       });
 
       try {
+        const issuesFetchedAt = issueRepository.getLastIssuesFetchedAt(
+          result.project.id,
+        );
+        if (issuesFetchedAt === null) {
+          throw new Error(
+            `No GitHub read time recorded for the project the console lists describe. projectId: ${result.project.id}`,
+          );
+        }
         writeConsoleLists({
           consoleDataOutputDir: mergedInput.consoleDataOutputDir ?? null,
           pjcode: input.projectName,
           assigneeLogin: input.manager,
           project: result.project,
           issues: result.issues,
+          generatedAt: formatConsoleGeneratedAt(new Date(issuesFetchedAt)),
           workflowBlockerStoryName:
             mergedInput.workflowBlockerStoryName ?? null,
         });

@@ -482,6 +482,14 @@ export class ApiV3CheerioRestIssueRepository
     { issues: Issue[]; project: Project; cacheUsed: boolean }
   >();
 
+  private readonly lastIssuesFetchedAtByProjectId = new Map<
+    Project['id'],
+    string
+  >();
+
+  getLastIssuesFetchedAt = (projectId: Project['id']): string | null =>
+    this.lastIssuesFetchedAtByProjectId.get(projectId) ?? null;
+
   private fetchWithRateLimitRetry = (
     request: () => Promise<Response>,
   ): Promise<Response> => fetchWithGitHubRateLimitRetry(request, this.sleep);
@@ -702,6 +710,7 @@ export class ApiV3CheerioRestIssueRepository
         project,
         issues,
       } satisfies CachedProjectIssues);
+      this.lastIssuesFetchedAtByProjectId.set(projectId, nowIso);
       return { issues, project, cacheUsed: false };
     }
 
@@ -732,12 +741,14 @@ export class ApiV3CheerioRestIssueRepository
       }
     }
     const issues = Array.from(issuesByUrl.values());
+    const nowIso = now.toISOString();
     await this.localStorageCacheRepository.setSingle(cacheKey, {
-      lastFetchedAt: now.toISOString(),
+      lastFetchedAt: nowIso,
       lastFullFetchAt: cache.lastFullFetchAt,
       project,
       issues,
     } satisfies CachedProjectIssues);
+    this.lastIssuesFetchedAtByProjectId.set(projectId, nowIso);
     return { issues, project, cacheUsed: true };
   };
   createNewIssue = async (
