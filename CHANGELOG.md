@@ -1,3 +1,10 @@
+## [1.148.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.7...v1.148.8) (2026-08-09)
+
+
+### Bug Fixes
+
+* **auto-status-check:** honour a report declaring that no pull request is needed ([#1483](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1483)) ([e17a20b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e17a20bed6e27af856ab80af897e6e9681ecfb4c))
+
 ## [1.148.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.6...v1.148.7) (2026-08-09)
 
 

@@ -5,6 +5,7 @@ const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 const IssueRejectionEvaluator_1 = require("./IssueRejectionEvaluator");
 const ChangeTargetPullRequestApprover_1 = require("./ChangeTargetPullRequestApprover");
 const resolveLabelsNotRequiringPullRequest_1 = require("./resolveLabelsNotRequiringPullRequest");
+const isPullRequestDeclaredUnnecessary_1 = require("./isPullRequestDeclaredUnnecessary");
 class IssueNotFoundError extends Error {
     constructor(issueUrl) {
         super(`Issue not found: ${issueUrl}`);
@@ -134,7 +135,13 @@ class NotifyFinishedIssuePreparationUseCase {
                 });
             }
             const { rejections: prRejections, approvedPrUrl } = await this.issueRejectionEvaluator.evaluate(issue, labelsNotRequiringPullRequest);
-            return { rejections: [...rejections, ...prRejections], approvedPrUrl };
+            const requiredPrRejections = (0, isPullRequestDeclaredUnnecessary_1.isPullRequestDeclaredUnnecessary)(comments, isTrustedAuthor)
+                ? prRejections.filter((rejection) => rejection.type !== 'PULL_REQUEST_NOT_FOUND')
+                : prRejections;
+            return {
+                rejections: [...rejections, ...requiredPrRejections],
+                approvedPrUrl,
+            };
         };
         this.reportBodyHasNextStep = (body) => {
             const reportMatch = body.match(/```json\n([\s\S]*?)\n```/);

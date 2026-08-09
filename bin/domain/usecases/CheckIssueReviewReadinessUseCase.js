@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CheckIssueReviewReadinessUseCase = void 0;
 const IssueRejectionEvaluator_1 = require("./IssueRejectionEvaluator");
 const resolveLabelsNotRequiringPullRequest_1 = require("./resolveLabelsNotRequiringPullRequest");
+const isPullRequestDeclaredUnnecessary_1 = require("./isPullRequestDeclaredUnnecessary");
 class CheckIssueReviewReadinessUseCase {
     constructor(issueRepository, issueCommentRepository) {
         this.issueRepository = issueRepository;
@@ -39,7 +40,10 @@ class CheckIssueReviewReadinessUseCase {
                 });
             }
             const { rejections: prRejections } = await this.issueRejectionEvaluator.evaluate(issue, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params));
-            const allRejections = [...rejections, ...prRejections];
+            const requiredPrRejections = (0, isPullRequestDeclaredUnnecessary_1.isPullRequestDeclaredUnnecessary)(comments, isTrustedAuthor)
+                ? prRejections.filter((rejection) => rejection.type !== 'PULL_REQUEST_NOT_FOUND')
+                : prRejections;
+            const allRejections = [...rejections, ...requiredPrRejections];
             return {
                 reviewReady: allRejections.length === 0,
                 rejections: allRejections,
