@@ -21,5 +21,6 @@ export declare class DailySecurityScanUseCase {
     }) => Promise<void>;
     private scanRepositories;
     private reportKevAdditions;
+    private isProductPresentInScannedWorkspace;
 }
 //# sourceMappingURL=DailySecurityScanUseCase.d.ts.map

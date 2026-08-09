@@ -1,3 +1,10 @@
+## [1.148.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.4...v1.148.5) (2026-08-09)
+
+
+### Bug Fixes
+
+* **security-scan:** report KEV additions only for products present in the workspace ([#1475](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1475)) ([70b9442](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/70b9442f21c46948319a32f8f296b1e290f450ec))
+
 ## [1.148.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.3...v1.148.4) (2026-08-09)
 
 
