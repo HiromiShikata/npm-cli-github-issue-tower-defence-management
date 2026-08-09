@@ -35,6 +35,30 @@ describe('ConsolePullRequestReviewActions', () => {
     expect(getByText('Reject')).not.toBeDisabled();
   });
 
+  it('states on screen why Reject cannot be used', () => {
+    const { getByText } = render(
+      <ConsolePullRequestReviewActions
+        onReview={() => {}}
+        rejectEnabled={false}
+      />,
+    );
+    expect(
+      getByText('Reject needs an inline comment on the diff.'),
+    ).toBeInTheDocument();
+  });
+
+  it('stops stating why Reject cannot be used once an inline comment exists', () => {
+    const { queryByText } = render(
+      <ConsolePullRequestReviewActions
+        onReview={() => {}}
+        rejectEnabled={true}
+      />,
+    );
+    expect(
+      queryByText('Reject needs an inline comment on the diff.'),
+    ).toBeNull();
+  });
+
   it('does not report a reject action while disabled', () => {
     const onReview = jest.fn();
     const { getByText } = render(

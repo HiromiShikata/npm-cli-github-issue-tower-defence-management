@@ -16,11 +16,17 @@ const REVIEW_BUTTONS: {
   { action: 'approve', label: 'Approve', variant: 'approve' },
 ];
 
+const REJECT_REQUIREMENT_MESSAGE =
+  'Reject needs an inline comment on the diff.';
+
 export const ConsolePullRequestReviewActions = ({
   onReview,
   rejectEnabled,
 }: ConsolePullRequestReviewGroupProps) => (
   <div className="console-op-group console-op-group-review">
+    {!rejectEnabled && (
+      <p className="console-op-requirement">{REJECT_REQUIREMENT_MESSAGE}</p>
+    )}
     {REVIEW_BUTTONS.map((button) => {
       const disabled = button.action === 'request_changes' && !rejectEnabled;
       return (
@@ -29,11 +35,6 @@ export const ConsolePullRequestReviewActions = ({
           type="button"
           className={`console-op-button console-op-button-${button.variant}`}
           disabled={disabled}
-          title={
-            disabled
-              ? 'Enter an inline comment on the diff to enable Reject'
-              : undefined
-          }
           onClick={() => onReview(button.action)}
         >
           {button.label}
