@@ -700,9 +700,7 @@ describe('DailySecurityScanUseCase', () => {
             targetHourUtc: 5,
           },
         }),
-      ).rejects.toThrow(
-        'No repositories found in scan base directory: /repos',
-      );
+      ).rejects.toThrow('No repositories found in scan base directory: /repos');
     });
 
     it('logs an error and continues scanning remaining repositories when osv-scanner exits with an unexpected code', async () => {
@@ -778,28 +776,26 @@ describe('DailySecurityScanUseCase', () => {
         },
       ]);
 
-      mockLocalCommandRunner.runCommand.mockImplementation(
-        async (program) => {
-          if (program === 'find') {
-            return {
-              stdout: '/repos/example-org/app/.git\n',
-              stderr: '',
-              exitCode: 0,
-            };
-          }
-          if (program === 'git') {
-            return {
-              stdout: 'git@github.com:example-org/app.git\n',
-              stderr: '',
-              exitCode: 0,
-            };
-          }
-          if (program === 'osv-scanner') {
-            return { stdout: 'vulnerability found', stderr: '', exitCode: 1 };
-          }
-          return { stdout: '', stderr: '', exitCode: 0 };
-        },
-      );
+      mockLocalCommandRunner.runCommand.mockImplementation(async (program) => {
+        if (program === 'find') {
+          return {
+            stdout: '/repos/example-org/app/.git\n',
+            stderr: '',
+            exitCode: 0,
+          };
+        }
+        if (program === 'git') {
+          return {
+            stdout: 'git@github.com:example-org/app.git\n',
+            stderr: '',
+            exitCode: 0,
+          };
+        }
+        if (program === 'osv-scanner') {
+          return { stdout: 'vulnerability found', stderr: '', exitCode: 1 };
+        }
+        return { stdout: '', stderr: '', exitCode: 0 };
+      });
 
       await useCase.run({
         targetDates: [new Date('2024-01-02T05:00:00Z')],
@@ -816,9 +812,9 @@ describe('DailySecurityScanUseCase', () => {
       expect(mockIssueRepository.createCommentByUrl.mock.calls[0][0]).toBe(
         'https://github.com/example-org/app/issues/42',
       );
-      expect(
-        mockIssueRepository.createCommentByUrl.mock.calls[0][1],
-      ).toContain('2024-01-02');
+      expect(mockIssueRepository.createCommentByUrl.mock.calls[0][1]).toContain(
+        '2024-01-02',
+      );
     });
 
     it('creates a new issue when no existing open issue exists for the repository', async () => {
@@ -827,28 +823,26 @@ describe('DailySecurityScanUseCase', () => {
 
       mockIssueRepository.searchIssue.mockResolvedValue([]);
 
-      mockLocalCommandRunner.runCommand.mockImplementation(
-        async (program) => {
-          if (program === 'find') {
-            return {
-              stdout: '/repos/example-org/app/.git\n',
-              stderr: '',
-              exitCode: 0,
-            };
-          }
-          if (program === 'git') {
-            return {
-              stdout: 'git@github.com:example-org/app.git\n',
-              stderr: '',
-              exitCode: 0,
-            };
-          }
-          if (program === 'osv-scanner') {
-            return { stdout: 'vulnerability found', stderr: '', exitCode: 1 };
-          }
-          return { stdout: '', stderr: '', exitCode: 0 };
-        },
-      );
+      mockLocalCommandRunner.runCommand.mockImplementation(async (program) => {
+        if (program === 'find') {
+          return {
+            stdout: '/repos/example-org/app/.git\n',
+            stderr: '',
+            exitCode: 0,
+          };
+        }
+        if (program === 'git') {
+          return {
+            stdout: 'git@github.com:example-org/app.git\n',
+            stderr: '',
+            exitCode: 0,
+          };
+        }
+        if (program === 'osv-scanner') {
+          return { stdout: 'vulnerability found', stderr: '', exitCode: 1 };
+        }
+        return { stdout: '', stderr: '', exitCode: 0 };
+      });
 
       await useCase.run({
         targetDates: [new Date('2024-01-02T05:00:00Z')],
