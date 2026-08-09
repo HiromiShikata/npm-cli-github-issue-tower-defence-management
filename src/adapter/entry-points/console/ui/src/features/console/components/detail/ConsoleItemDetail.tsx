@@ -140,6 +140,16 @@ export const ConsoleItemDetail = ({
             {storyName}
           </span>
         )}
+        {item.isPr && pullRequestStatus?.found && (
+          <ConsolePullRequestStatusBadges
+            isPassedAllCiJob={pullRequestStatus.isPassedAllCiJob}
+            isCiStateSuccess={pullRequestStatus.isCiStateSuccess}
+            isBranchOutOfDate={pullRequestStatus.isBranchOutOfDate}
+            missingRequiredCheckNames={
+              pullRequestStatus.missingRequiredCheckNames
+            }
+          />
+        )}
         {mergeableChips.map((chip) => (
           <ConsolePullRequestMergeableChip
             key={chip.url}
@@ -189,19 +199,6 @@ export const ConsoleItemDetail = ({
         <p role="alert" className="console-detail-fetch-error">
           Failed to load pull request status: {pullRequestStatusError}
         </p>
-      )}
-
-      {item.isPr && pullRequestStatus?.found && (
-        <div className="console-detail-pr-status-row">
-          <ConsolePullRequestStatusBadges
-            isPassedAllCiJob={pullRequestStatus.isPassedAllCiJob}
-            isCiStateSuccess={pullRequestStatus.isCiStateSuccess}
-            isBranchOutOfDate={pullRequestStatus.isBranchOutOfDate}
-            missingRequiredCheckNames={
-              pullRequestStatus.missingRequiredCheckNames
-            }
-          />
-        </div>
       )}
 
       <div className="console-detail-subbar">

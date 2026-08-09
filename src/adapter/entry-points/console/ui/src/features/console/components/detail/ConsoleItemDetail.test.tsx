@@ -249,7 +249,7 @@ describe('ConsoleItemDetail', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders failing CI, missing checks, and conflict badges on their own row below the title', () => {
+  it('renders failing CI, missing checks, and conflict badges on the top line above the title', () => {
     const { getByText, container } = render(
       <ConsoleItemDetail
         item={prItem}
@@ -266,15 +266,15 @@ describe('ConsoleItemDetail', () => {
       />,
     );
     const title = container.querySelector('.console-detail-title');
-    const statusRow = container.querySelector('.console-detail-pr-status-row');
-    if (title === null || statusRow === null) {
-      throw new Error('title and status row must both render');
+    const topline = container.querySelector('.console-detail-topline');
+    if (title === null || topline === null) {
+      throw new Error('title and top line must both render');
     }
     expect(title.contains(getByText('CI failing'))).toBe(false);
-    expect(statusRow.contains(getByText('CI failing'))).toBe(true);
+    expect(topline.contains(getByText('CI failing'))).toBe(true);
+    expect(topline.contains(getByText('Conflict'))).toBe(true);
     expect(
-      title.compareDocumentPosition(statusRow) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
+      topline.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(getByText(/missing: build, test/)).toBeInTheDocument();
     expect(getByText('Conflict')).toBeInTheDocument();
