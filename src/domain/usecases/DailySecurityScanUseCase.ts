@@ -247,7 +247,7 @@ export class DailySecurityScanUseCase {
         return true;
       }
       if (exitCode !== 1) {
-        throw new Error(
+        console.error(
           `Failed to search ${repositoryDirectory} for ${product}: ${stderr}`,
         );
       }

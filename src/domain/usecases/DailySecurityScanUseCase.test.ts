@@ -534,21 +534,34 @@ describe('DailySecurityScanUseCase', () => {
       );
     });
 
-    it('throws when the product search fails', async () => {
-      const { useCase, mockLocalCommandRunner, mockHttpRepository } =
-        buildUseCase();
+    it('logs a failed repository search and keeps searching the remaining repositories', async () => {
+      const {
+        useCase,
+        mockLocalCommandRunner,
+        mockIssueRepository,
+        mockHttpRepository,
+      } = buildUseCase();
+      const errorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
 
       mockLocalCommandRunner.runCommand.mockImplementation(
         async (program, args) => {
           if (program === 'find' && args.includes('-maxdepth')) {
-            return { stdout: '/repos/app/.git\n', stderr: '', exitCode: 0 };
+            return {
+              stdout: '/repos/broken/.git\n/repos/app/.git\n',
+              stderr: '',
+              exitCode: 0,
+            };
           }
           if (program === 'git' && args.includes('grep')) {
-            return {
-              stdout: '',
-              stderr: 'fatal: not a git repository',
-              exitCode: 128,
-            };
+            return args.includes('/repos/broken')
+              ? {
+                  stdout: '',
+                  stderr: 'fatal: not a git repository',
+                  exitCode: 128,
+                }
+              : { stdout: '', stderr: '', exitCode: 0 };
           }
           return { stdout: '', stderr: '', exitCode: 0 };
         },
@@ -567,19 +580,26 @@ describe('DailySecurityScanUseCase', () => {
         }),
       );
 
-      await expect(
-        useCase.run({
-          targetDates: [new Date('2024-01-02T05:00:00Z')],
-          org: 'example-org',
-          manager: 'manager-name',
-          dailySecurityScan: {
-            scanBaseDirectory: '/repos',
-            targetHourUtc: 5,
-            enableKevNvdReport: true,
-            kevReportRepo: 'security-reports',
-          },
-        }),
-      ).rejects.toThrow('Failed to search /repos/app for LoadMaster');
+      await useCase.run({
+        targetDates: [new Date('2024-01-02T05:00:00Z')],
+        org: 'example-org',
+        manager: 'manager-name',
+        dailySecurityScan: {
+          scanBaseDirectory: '/repos',
+          targetHourUtc: 5,
+          enableKevNvdReport: true,
+          kevReportRepo: 'security-reports',
+        },
+      });
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        'Failed to search /repos/broken for LoadMaster: fatal: not a git repository',
+      );
+      expect(mockIssueRepository.createNewIssue.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.createNewIssue.mock.calls[0][3]).toContain(
+        'CVE-2024-0001',
+      );
+      errorSpy.mockRestore();
     });
 
     it('throws when the KEV catalog format is unexpected', async () => {
