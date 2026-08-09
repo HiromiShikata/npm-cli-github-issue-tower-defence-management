@@ -311,14 +311,53 @@ describe('DailySecurityScanUseCase', () => {
         mockHttpRepository,
       } = buildUseCase();
 
-      mockLocalCommandRunner.runCommand.mockImplementation(
-        async (program, args) => {
-          if (program === 'find' && args.includes('-maxdepth')) {
-            return { stdout: '/repos/app/.git\n', stderr: '', exitCode: 0 };
-          }
-          return { stdout: '', stderr: '', exitCode: 0 };
-        },
-      );
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockLocalCommandRunner.runCommand.mockImplementation(async (program) => {
+        if (program === 'find') {
+          return {
+            stdout: '/repos/example-org/app/.git\n',
+            stderr: '',
+            exitCode: 0,
+          };
+        }
+        if (program === 'git') {
+          return {
+            stdout: 'git@github.com:example-org/app.git\n',
+            stderr: '',
+            exitCode: 0,
+          };
+        }
+        if (program === 'osv-scanner') {
+          return {
+            stdout: JSON.stringify({
+              results: [
+                {
+                  source: { path: '/repos/example-org/app', type: 'lockfile' },
+                  packages: [
+                    {
+                      package: {
+                        name: 'example-library',
+                        version: '1.2.3',
+                        ecosystem: 'npm',
+                      },
+                      vulnerabilities: [
+                        {
+                          id: 'GHSA-1111-2222-3333',
+                          aliases: ['CVE-2024-0001', 'CVE-2023-9999'],
+                          summary: 'New Vulnerability',
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            }),
+            stderr: '',
+            exitCode: 1,
+          };
+        }
+        return { stdout: '', stderr: '', exitCode: 0 };
+      });
       mockHttpRepository.get.mockResolvedValue(
         JSON.stringify({
           vulnerabilities: [
@@ -354,22 +393,17 @@ describe('DailySecurityScanUseCase', () => {
 
       expect(mockHttpRepository.get.mock.calls).toHaveLength(1);
       expect(mockHttpRepository.get.mock.calls[0][0]).toBe(KEV_CATALOG_URL);
-      expect(mockIssueRepository.createNewIssue.mock.calls).toHaveLength(1);
-      expect(mockIssueRepository.createNewIssue.mock.calls[0][0]).toBe(
-        'example-org',
-      );
-      expect(mockIssueRepository.createNewIssue.mock.calls[0][1]).toBe(
-        'security-reports',
-      );
-      expect(mockIssueRepository.createNewIssue.mock.calls[0][2]).toBe(
+      const kevIssueCalls =
+        mockIssueRepository.createNewIssue.mock.calls.filter(
+          (call) => call[1] === 'security-reports',
+        );
+      expect(kevIssueCalls).toHaveLength(1);
+      expect(kevIssueCalls[0][0]).toBe('example-org');
+      expect(kevIssueCalls[0][2]).toBe(
         'CISA KEV new additions since 2024-01-01',
       );
-      expect(mockIssueRepository.createNewIssue.mock.calls[0][3]).toContain(
-        'CVE-2024-0001',
-      );
-      expect(mockIssueRepository.createNewIssue.mock.calls[0][3]).not.toContain(
-        'CVE-2023-9999',
-      );
+      expect(kevIssueCalls[0][3]).toContain('CVE-2024-0001');
+      expect(kevIssueCalls[0][3]).not.toContain('CVE-2023-9999');
     });
 
     it('does not create a KEV report issue when there are no new additions', async () => {
@@ -426,218 +460,6 @@ describe('DailySecurityScanUseCase', () => {
       expect(mockHttpRepository.get.mock.calls).toHaveLength(1);
       expect(mockHttpRepository.get.mock.calls[0][0]).toBe(KEV_CATALOG_URL);
       expect(mockIssueRepository.createNewIssue.mock.calls).toHaveLength(0);
-    });
-
-    it('does not create a KEV report issue when the product is absent from the scanned workspace', async () => {
-      const {
-        useCase,
-        mockLocalCommandRunner,
-        mockIssueRepository,
-        mockHttpRepository,
-      } = buildUseCase();
-
-      mockLocalCommandRunner.runCommand.mockImplementation(
-        async (program, args) => {
-          if (program === 'find' && args.includes('-maxdepth')) {
-            return {
-              stdout: '/repos/app/.git\n/repos/site/.git\n',
-              stderr: '',
-              exitCode: 0,
-            };
-          }
-          if (program === 'git' && args.includes('grep')) {
-            return { stdout: '', stderr: '', exitCode: 1 };
-          }
-          return { stdout: '', stderr: '', exitCode: 0 };
-        },
-      );
-      mockHttpRepository.get.mockResolvedValue(
-        JSON.stringify({
-          vulnerabilities: [
-            {
-              cveID: 'CVE-2024-0001',
-              vendorProject: 'Progress',
-              product: 'LoadMaster',
-              vulnerabilityName: 'Progress LoadMaster Command Injection',
-              dateAdded: '2024-01-02',
-            },
-          ],
-        }),
-      );
-
-      await useCase.run({
-        targetDates: [new Date('2024-01-02T05:00:00Z')],
-        org: 'example-org',
-        manager: 'manager-name',
-        dailySecurityScan: {
-          scanBaseDirectory: '/repos',
-          targetHourUtc: 5,
-          enableKevNvdReport: true,
-          kevReportRepo: 'security-reports',
-        },
-      });
-
-      const gitGrepCalls = mockLocalCommandRunner.runCommand.mock.calls.filter(
-        (call) => call[0] === 'git' && call[1].includes('grep'),
-      );
-      expect(gitGrepCalls.map((call) => call[1])).toEqual([
-        [
-          '-C',
-          '/repos/app',
-          'grep',
-          '-I',
-          '-i',
-          '-q',
-          '-F',
-          '-e',
-          'LoadMaster',
-        ],
-        [
-          '-C',
-          '/repos/site',
-          'grep',
-          '-I',
-          '-i',
-          '-q',
-          '-F',
-          '-e',
-          'LoadMaster',
-        ],
-      ]);
-      expect(mockIssueRepository.createNewIssue.mock.calls).toHaveLength(0);
-    });
-
-    it('reports only the new KEV entries whose product is present in the scanned workspace', async () => {
-      const {
-        useCase,
-        mockLocalCommandRunner,
-        mockIssueRepository,
-        mockHttpRepository,
-      } = buildUseCase();
-
-      mockLocalCommandRunner.runCommand.mockImplementation(
-        async (program, args) => {
-          if (program === 'find' && args.includes('-maxdepth')) {
-            return { stdout: '/repos/app/.git\n', stderr: '', exitCode: 0 };
-          }
-          if (program === 'git' && args.includes('grep')) {
-            return {
-              stdout: '',
-              stderr: '',
-              exitCode: args.includes('LoadMaster') ? 1 : 0,
-            };
-          }
-          return { stdout: '', stderr: '', exitCode: 0 };
-        },
-      );
-      mockHttpRepository.get.mockResolvedValue(
-        JSON.stringify({
-          vulnerabilities: [
-            {
-              cveID: 'CVE-2024-0001',
-              vendorProject: 'Progress',
-              product: 'LoadMaster',
-              vulnerabilityName: 'Progress LoadMaster Command Injection',
-              dateAdded: '2024-01-02',
-            },
-            {
-              cveID: 'CVE-2024-0002',
-              vendorProject: 'Example',
-              product: 'ExampleLibrary',
-              vulnerabilityName: 'Example Library Deserialization',
-              dateAdded: '2024-01-02',
-            },
-          ],
-        }),
-      );
-
-      await useCase.run({
-        targetDates: [new Date('2024-01-02T05:00:00Z')],
-        org: 'example-org',
-        manager: 'manager-name',
-        dailySecurityScan: {
-          scanBaseDirectory: '/repos',
-          targetHourUtc: 5,
-          enableKevNvdReport: true,
-          kevReportRepo: 'security-reports',
-        },
-      });
-
-      expect(mockIssueRepository.createNewIssue.mock.calls).toHaveLength(1);
-      expect(mockIssueRepository.createNewIssue.mock.calls[0][3]).toContain(
-        'CVE-2024-0002',
-      );
-      expect(mockIssueRepository.createNewIssue.mock.calls[0][3]).not.toContain(
-        'CVE-2024-0001',
-      );
-    });
-
-    it('logs a failed repository search and keeps searching the remaining repositories', async () => {
-      const {
-        useCase,
-        mockLocalCommandRunner,
-        mockIssueRepository,
-        mockHttpRepository,
-      } = buildUseCase();
-      const errorSpy = jest
-        .spyOn(console, 'error')
-        .mockImplementation(() => undefined);
-
-      mockLocalCommandRunner.runCommand.mockImplementation(
-        async (program, args) => {
-          if (program === 'find' && args.includes('-maxdepth')) {
-            return {
-              stdout: '/repos/broken/.git\n/repos/app/.git\n',
-              stderr: '',
-              exitCode: 0,
-            };
-          }
-          if (program === 'git' && args.includes('grep')) {
-            return args.includes('/repos/broken')
-              ? {
-                  stdout: '',
-                  stderr: 'fatal: not a git repository',
-                  exitCode: 128,
-                }
-              : { stdout: '', stderr: '', exitCode: 0 };
-          }
-          return { stdout: '', stderr: '', exitCode: 0 };
-        },
-      );
-      mockHttpRepository.get.mockResolvedValue(
-        JSON.stringify({
-          vulnerabilities: [
-            {
-              cveID: 'CVE-2024-0001',
-              vendorProject: 'Progress',
-              product: 'LoadMaster',
-              vulnerabilityName: 'Progress LoadMaster Command Injection',
-              dateAdded: '2024-01-02',
-            },
-          ],
-        }),
-      );
-
-      await useCase.run({
-        targetDates: [new Date('2024-01-02T05:00:00Z')],
-        org: 'example-org',
-        manager: 'manager-name',
-        dailySecurityScan: {
-          scanBaseDirectory: '/repos',
-          targetHourUtc: 5,
-          enableKevNvdReport: true,
-          kevReportRepo: 'security-reports',
-        },
-      });
-
-      expect(errorSpy).toHaveBeenCalledWith(
-        'Failed to search /repos/broken for LoadMaster: fatal: not a git repository',
-      );
-      expect(mockIssueRepository.createNewIssue.mock.calls).toHaveLength(1);
-      expect(mockIssueRepository.createNewIssue.mock.calls[0][3]).toContain(
-        'CVE-2024-0001',
-      );
-      errorSpy.mockRestore();
     });
 
     it('throws when the KEV catalog format is unexpected', async () => {
@@ -741,15 +563,41 @@ describe('DailySecurityScanUseCase', () => {
             };
           }
           if (program === 'osv-scanner') {
-            const dir = args[args.length - 1];
-            if (dir.includes('broken')) {
+            const scannedDirectory = args[args.indexOf('-r') + 1];
+            if (scannedDirectory.includes('broken')) {
               return {
                 stdout: '',
                 stderr: 'osv-scanner: command not found',
                 exitCode: 127,
               };
             }
-            return { stdout: 'vulnerability found', stderr: '', exitCode: 1 };
+            return {
+              stdout: JSON.stringify({
+                results: [
+                  {
+                    source: { path: scannedDirectory, type: 'lockfile' },
+                    packages: [
+                      {
+                        package: {
+                          name: 'example-library',
+                          version: '1.2.3',
+                          ecosystem: 'npm',
+                        },
+                        vulnerabilities: [
+                          {
+                            id: 'GHSA-1111-2222-3333',
+                            aliases: [],
+                            summary: 'Example Library Deserialization',
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              }),
+              stderr: '',
+              exitCode: 1,
+            };
           }
           return { stdout: '', stderr: '', exitCode: 0 };
         },
@@ -868,6 +716,220 @@ describe('DailySecurityScanUseCase', () => {
         'Daily security scan findings',
       );
       expect(mockIssueRepository.createCommentByUrl.mock.calls).toHaveLength(0);
+    });
+
+    const osvScanOutput = (
+      vulnerablePackages: {
+        name: string;
+        version: string;
+        ecosystem: string;
+        id: string;
+        aliases: string[];
+        summary: string;
+      }[],
+    ): string =>
+      JSON.stringify({
+        results: [
+          {
+            source: { path: '/repos/example-org/app', type: 'lockfile' },
+            packages: vulnerablePackages.map((vulnerablePackage) => ({
+              package: {
+                name: vulnerablePackage.name,
+                version: vulnerablePackage.version,
+                ecosystem: vulnerablePackage.ecosystem,
+              },
+              vulnerabilities: [
+                {
+                  id: vulnerablePackage.id,
+                  aliases: vulnerablePackage.aliases,
+                  summary: vulnerablePackage.summary,
+                },
+              ],
+            })),
+          },
+        ],
+      });
+
+    const buildScanEnvironment = (scanOutput: string, kevCatalog: unknown) => {
+      const built = buildUseCase();
+      built.mockIssueRepository.searchIssue.mockResolvedValue([]);
+      built.mockLocalCommandRunner.runCommand.mockImplementation(
+        async (program) => {
+          if (program === 'find') {
+            return {
+              stdout: '/repos/example-org/app/.git\n',
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          if (program === 'git') {
+            return {
+              stdout: 'git@github.com:example-org/app.git\n',
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          if (program === 'osv-scanner') {
+            return { stdout: scanOutput, stderr: '', exitCode: 1 };
+          }
+          return { stdout: '', stderr: '', exitCode: 0 };
+        },
+      );
+      built.mockHttpRepository.get.mockResolvedValue(
+        JSON.stringify(kevCatalog),
+      );
+      return built;
+    };
+
+    const kevReportCalls = (
+      calls: [string, string, string, string, string[], string[]][],
+    ) => calls.filter((call) => call[1] === 'security-reports');
+
+    const runWithKevReporting = async (useCase: DailySecurityScanUseCase) =>
+      useCase.run({
+        targetDates: [new Date('2024-01-02T05:00:00Z')],
+        org: 'example-org',
+        manager: 'manager-name',
+        dailySecurityScan: {
+          scanBaseDirectory: '/repos',
+          targetHourUtc: 5,
+          enableKevNvdReport: true,
+          kevReportRepo: 'security-reports',
+        },
+      });
+
+    it('reports a KEV addition whose CVE the scanner found at an installed version', async () => {
+      const { useCase, mockIssueRepository } = buildScanEnvironment(
+        osvScanOutput([
+          {
+            name: 'example-library',
+            version: '1.2.3',
+            ecosystem: 'npm',
+            id: 'GHSA-1111-2222-3333',
+            aliases: ['CVE-2024-0001'],
+            summary: 'Example Library Deserialization',
+          },
+        ]),
+        {
+          vulnerabilities: [
+            {
+              cveID: 'CVE-2024-0001',
+              vendorProject: 'Example',
+              product: 'ExampleLibrary',
+              vulnerabilityName: 'Example Library Deserialization',
+              dateAdded: '2024-01-02',
+            },
+          ],
+        },
+      );
+
+      await runWithKevReporting(useCase);
+
+      const kevCalls = kevReportCalls(
+        mockIssueRepository.createNewIssue.mock.calls,
+      );
+      expect(kevCalls).toHaveLength(1);
+      expect(kevCalls[0][3]).toContain('CVE-2024-0001');
+      expect(kevCalls[0][3]).toContain('app');
+      expect(kevCalls[0][3]).toContain('example-library');
+      expect(kevCalls[0][3]).toContain('1.2.3');
+    });
+
+    it('does not report a KEV addition that the scanner did not find in any repository', async () => {
+      const { useCase, mockIssueRepository } = buildScanEnvironment(
+        osvScanOutput([
+          {
+            name: 'example-library',
+            version: '1.2.3',
+            ecosystem: 'npm',
+            id: 'GHSA-1111-2222-3333',
+            aliases: ['CVE-2024-0001'],
+            summary: 'Example Library Deserialization',
+          },
+        ]),
+        {
+          vulnerabilities: [
+            {
+              cveID: 'CVE-2024-9999',
+              vendorProject: 'Progress',
+              product: 'LoadMaster',
+              vulnerabilityName: 'Progress LoadMaster Command Injection',
+              dateAdded: '2024-01-02',
+            },
+          ],
+        },
+      );
+
+      await runWithKevReporting(useCase);
+
+      expect(
+        kevReportCalls(mockIssueRepository.createNewIssue.mock.calls),
+      ).toHaveLength(0);
+    });
+
+    it('reports a KEV addition whose CVE the scanner returned as the vulnerability id rather than an alias', async () => {
+      const { useCase, mockIssueRepository } = buildScanEnvironment(
+        osvScanOutput([
+          {
+            name: 'example-library',
+            version: '1.2.3',
+            ecosystem: 'npm',
+            id: 'CVE-2024-0001',
+            aliases: [],
+            summary: 'Example Library Deserialization',
+          },
+        ]),
+        {
+          vulnerabilities: [
+            {
+              cveID: 'CVE-2024-0001',
+              vendorProject: 'Example',
+              product: 'ExampleLibrary',
+              vulnerabilityName: 'Example Library Deserialization',
+              dateAdded: '2024-01-02',
+            },
+          ],
+        },
+      );
+
+      await runWithKevReporting(useCase);
+
+      expect(
+        kevReportCalls(mockIssueRepository.createNewIssue.mock.calls),
+      ).toHaveLength(1);
+    });
+
+    it('does not search the repositories for the KEV product name', async () => {
+      const { useCase, mockLocalCommandRunner } = buildScanEnvironment(
+        osvScanOutput([
+          {
+            name: 'example-library',
+            version: '1.2.3',
+            ecosystem: 'npm',
+            id: 'GHSA-1111-2222-3333',
+            aliases: ['CVE-2024-0001'],
+            summary: 'Example Library Deserialization',
+          },
+        ]),
+        {
+          vulnerabilities: [
+            {
+              cveID: 'CVE-2024-0001',
+              vendorProject: 'Example',
+              product: 'ExampleLibrary',
+              vulnerabilityName: 'Example Library Deserialization',
+              dateAdded: '2024-01-02',
+            },
+          ],
+        },
+      );
+
+      await runWithKevReporting(useCase);
+
+      const grepCalls = mockLocalCommandRunner.runCommand.mock.calls.filter(
+        (call) => call[0] === 'git' && call[1].includes('grep'),
+      );
+      expect(grepCalls).toHaveLength(0);
     });
   });
 });
