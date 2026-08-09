@@ -10,9 +10,9 @@ export type DailySecurityScanConfig = {
 };
 export declare class DailySecurityScanUseCase {
     readonly localCommandRunner: LocalCommandRunner;
-    readonly issueRepository: Pick<IssueRepository, 'createNewIssue'>;
+    readonly issueRepository: Pick<IssueRepository, 'createNewIssue' | 'searchIssue' | 'createCommentByUrl'>;
     readonly httpRepository: HttpRepository;
-    constructor(localCommandRunner: LocalCommandRunner, issueRepository: Pick<IssueRepository, 'createNewIssue'>, httpRepository: HttpRepository);
+    constructor(localCommandRunner: LocalCommandRunner, issueRepository: Pick<IssueRepository, 'createNewIssue' | 'searchIssue' | 'createCommentByUrl'>, httpRepository: HttpRepository);
     run: (input: {
         targetDates: Date[];
         org: string;

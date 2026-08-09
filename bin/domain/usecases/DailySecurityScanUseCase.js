@@ -40,10 +40,8 @@ class DailySecurityScanUseCase {
         this.scanRepositories = async (org, manager, today, config) => {
             const { stdout: findOutput } = await this.localCommandRunner.runCommand('find', [
                 config.scanBaseDirectory,
-                '-mindepth',
-                '4',
                 '-maxdepth',
-                '4',
+                '5',
                 '-name',
                 '.git',
                 '-type',
@@ -53,6 +51,10 @@ class DailySecurityScanUseCase {
                 .split('\n')
                 .filter((line) => line.length > 0)
                 .map((gitDirectory) => gitDirectory.replace(/\/\.git$/, ''));
+            if (repositoryDirectories.length === 0) {
+                console.error(`No repositories found in scan base directory: ${config.scanBaseDirectory}`);
+                return;
+            }
             for (const repositoryDirectory of repositoryDirectories) {
                 const { stdout: remoteUrl, exitCode: remoteExitCode } = await this.localCommandRunner.runCommand('git', [
                     '-C',
@@ -72,16 +74,34 @@ class DailySecurityScanUseCase {
                 }
                 const repositoryOrg = remoteMatch[1];
                 const repositoryName = remoteMatch[2];
-                const { stdout: scanOutput, exitCode: scanExitCode } = await this.localCommandRunner.runCommand('osv-scanner', [
+                const { stdout: scanOutput, stderr: scanStderr, exitCode: scanExitCode, } = await this.localCommandRunner.runCommand('osv-scanner', [
                     'scan',
                     'source',
                     '-r',
                     repositoryDirectory,
                 ]);
-                if (scanExitCode !== 1) {
+                if (scanExitCode === 0) {
                     continue;
                 }
-                await this.issueRepository.createNewIssue(repositoryOrg, repositoryName, `Daily security scan findings: ${today}`, `## OSV-Scanner findings\n\n\`\`\`\n${scanOutput}\n\`\`\``, [manager], []);
+                if (scanExitCode !== 1) {
+                    console.error(`osv-scanner failed with exit code ${scanExitCode} for ${repositoryDirectory}: ${scanStderr}`);
+                    continue;
+                }
+                const findingsBody = `## OSV-Scanner findings\n\n### ${today}\n\n\`\`\`\n${scanOutput}\n\`\`\``;
+                const existingIssues = await this.issueRepository.searchIssue({
+                    owner: repositoryOrg,
+                    repositoryName,
+                    type: 'issue',
+                    state: 'open',
+                    title: 'Daily security scan findings',
+                });
+                const existingIssue = existingIssues.find((issue) => issue.title === 'Daily security scan findings');
+                if (existingIssue) {
+                    await this.issueRepository.createCommentByUrl(existingIssue.url, findingsBody);
+                }
+                else {
+                    await this.issueRepository.createNewIssue(repositoryOrg, repositoryName, 'Daily security scan findings', findingsBody, [manager], []);
+                }
             }
         };
         this.reportKevAdditions = async (org, manager, lastTargetDate, config) => {

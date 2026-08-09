@@ -1,3 +1,10 @@
+## [1.148.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.5...v1.148.6) (2026-08-09)
+
+
+### Bug Fixes
+
+* **security-scan:** fix silent scan failures and issue deduplication ([#1479](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1479)) ([7cdc714](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7cdc7149fe1420bfb4581014220e8b70c6043b34))
+
 ## [1.148.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.4...v1.148.5) (2026-08-09)
 
 
