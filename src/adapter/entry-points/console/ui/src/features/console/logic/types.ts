@@ -157,8 +157,8 @@ export type ConsoleTab = {
 export const CONSOLE_TABS: ConsoleTab[] = [
   { name: 'workflow-blocker', label: 'Workflow Blocker' },
   { name: 'prs', label: 'Awaiting Quality Check' },
-  { name: 'triage', label: 'Triage' },
   { name: 'unread', label: 'Unread' },
+  { name: 'triage', label: 'Triage' },
   { name: 'failed-preparation', label: 'Failed Preparation' },
   { name: 'todo-by-human', label: 'Todo by human' },
   { name: 'todo-by-agent', label: 'Todo by agent' },
