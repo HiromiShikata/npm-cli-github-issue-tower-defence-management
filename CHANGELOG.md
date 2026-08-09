@@ -1,3 +1,10 @@
+## [1.146.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.10...v1.146.11) (2026-08-09)
+
+
+### Bug Fixes
+
+* **console:** add the chore label and Awaiting Workspace when a pull request is marked unnecessary ([#1430](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1430)) ([a0bc0a8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a0bc0a8044787a7a3d00f9d783402a192a42ffca))
+
 ## [1.146.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.9...v1.146.10) (2026-08-08)
 
 

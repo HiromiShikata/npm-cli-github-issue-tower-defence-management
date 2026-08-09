@@ -1,10 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleIntmux = exports.handleReviewComment = exports.handleAttachmentUpload = exports.handleComment = exports.handleTriage = exports.handleReview = exports.IN_TMUX_BY_HUMAN_STATUS_NAME = exports.AWAITING_WORKSPACE_STATUS_NAME = void 0;
+exports.handleIntmux = exports.handleReviewComment = exports.handleAttachmentUpload = exports.handleComment = exports.handleTriage = exports.handleReview = exports.CHORE_LABEL_NAME = exports.IN_TMUX_BY_HUMAN_STATUS_NAME = exports.AWAITING_WORKSPACE_STATUS_NAME = void 0;
 const consoleDoneStore_1 = require("./consoleDoneStore");
 const consoleItemUrlLookup_1 = require("./consoleItemUrlLookup");
 exports.AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
 exports.IN_TMUX_BY_HUMAN_STATUS_NAME = 'in tmux by human';
+exports.CHORE_LABEL_NAME = 'chore';
 const ok = () => ({
     statusCode: 200,
     body: { ok: true },
@@ -99,6 +100,20 @@ const updateStatusByName = async (issueRepository, project, issueUrl, projectIte
     await issueRepository.updateStatus(project, projectItemReference(issueUrl, projectItemId), statusId);
     return null;
 };
+const addChoreLabel = async (issueRepository, issueUrl) => {
+    const issue = await issueRepository.getIssueByUrl(issueUrl);
+    if (issue === null) {
+        return badGateway(`issue "${issueUrl}" could not be loaded`);
+    }
+    if (issue.labels.includes(exports.CHORE_LABEL_NAME)) {
+        return null;
+    }
+    await issueRepository.updateLabels(issue, [
+        ...issue.labels,
+        exports.CHORE_LABEL_NAME,
+    ]);
+    return null;
+};
 const handleReview = async (context, body) => {
     const action = body.action;
     const prUrl = body.prUrl;
@@ -131,6 +146,28 @@ const handleReview = async (context, body) => {
         return binding;
     }
     const { project, pjcode } = binding;
+    if (action === 'unnecessary') {
+        const issueUrl = body.issueUrl;
+        if (!isNonEmptyString(issueUrl)) {
+            return badRequest('issueUrl is required for unnecessary');
+        }
+        await context.resolveIssueRepository(prUrl).closePullRequest(prUrl);
+        if (isNonEmptyString(body.commentBody)) {
+            await context
+                .resolveIssueRepository(prUrl)
+                .createCommentByUrl(prUrl, body.commentBody);
+        }
+        const labelFailure = await addChoreLabel(context.resolveIssueRepository(issueUrl), issueUrl);
+        if (labelFailure !== null) {
+            return labelFailure;
+        }
+        const failure = await updateStatusByName(context.resolveIssueRepository(issueUrl), project, issueUrl, projectItemId, exports.AWAITING_WORKSPACE_STATUS_NAME);
+        if (failure !== null) {
+            return failure;
+        }
+        recordDone(context, pjcode, projectItemId);
+        return ok();
+    }
     if (action === 'approve') {
         await context.resolveIssueRepository(prUrl).approvePullRequest(prUrl);
         const failure = await updateStatusByName(context.resolveIssueRepository(prUrl), project, prUrl, projectItemId, exports.AWAITING_WORKSPACE_STATUS_NAME);
