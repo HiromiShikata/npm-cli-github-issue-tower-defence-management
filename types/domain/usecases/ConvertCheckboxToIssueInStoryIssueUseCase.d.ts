@@ -15,6 +15,7 @@ export declare class ConvertCheckboxToIssueInStoryIssueUseCase {
         manager: Member["name"];
         createTaskFromStoryBodyCheckboxEnabled: boolean;
     }) => Promise<void>;
+    bodyWithStoryViewLinkOnFirstLine: (body: string, storyViewLink: string) => string;
     buildStoryViewLink: (urlOfStoryView: string, storyName: string) => string;
     findCheckboxTextsNotCreatedIssue: (storyIssueBody: string) => string[];
 }

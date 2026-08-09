@@ -1,3 +1,10 @@
+## [1.147.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.147.2...v1.147.3) (2026-08-09)
+
+
+### Bug Fixes
+
+* **story:** keep the story view link on the first line of the story issue body ([#1460](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1460)) ([20b911a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/20b911a5062e65d726e9a1a8b8be03f2307b2e17))
+
 ## [1.147.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.147.1...v1.147.2) (2026-08-09)
 
 

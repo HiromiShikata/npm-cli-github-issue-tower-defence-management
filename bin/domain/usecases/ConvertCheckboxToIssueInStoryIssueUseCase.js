@@ -30,9 +30,8 @@ class ConvertCheckboxToIssueInStoryIssueUseCase {
                     continue;
                 }
                 const storyViewLink = this.buildStoryViewLink(input.urlOfStoryView, storyOption.name);
-                let newBody = freshStoryIssue.body;
-                if (!freshStoryIssue.body.includes(storyViewLink)) {
-                    newBody = `${storyViewLink}\n\n${newBody}`;
+                let newBody = this.bodyWithStoryViewLinkOnFirstLine(freshStoryIssue.body, storyViewLink);
+                if (newBody !== freshStoryIssue.body) {
                     await this.issueRepository.updateIssue({
                         ...freshStoryIssue,
                         body: newBody,
@@ -63,6 +62,28 @@ class ConvertCheckboxToIssueInStoryIssueUseCase {
                     await this.issueRepository.updateStory({ ...input.project, story: story }, newIssue, storyOption.id);
                 }
             }
+        };
+        this.bodyWithStoryViewLinkOnFirstLine = (body, storyViewLink) => {
+            const lines = body.split('\n');
+            const remainingLines = [];
+            for (let i = 0; i < lines.length; i++) {
+                if (!lines[i].includes(storyViewLink)) {
+                    remainingLines.push(lines[i]);
+                    continue;
+                }
+                if (i + 1 < lines.length && lines[i + 1].trim() === '') {
+                    i++;
+                    continue;
+                }
+                if (remainingLines.length > 0 &&
+                    remainingLines[remainingLines.length - 1].trim() === '') {
+                    remainingLines.pop();
+                }
+            }
+            while (remainingLines.length > 0 && remainingLines[0].trim() === '') {
+                remainingLines.shift();
+            }
+            return `${storyViewLink}\n\n${remainingLines.join('\n')}`;
         };
         this.buildStoryViewLink = (urlOfStoryView, storyName) => {
             return `${urlOfStoryView}?sliceBy%5Bvalue%5D=${(0, utils_1.encodeForURI)(storyName)}`;
