@@ -680,8 +680,11 @@ describe('DailySecurityScanUseCase', () => {
       ).rejects.toThrow('Unexpected CISA KEV catalog format');
     });
 
-    it('throws an error when no repositories are found in the scan base directory', async () => {
+    it('logs an error and returns without throwing when no repositories are found in the scan base directory', async () => {
       const { useCase, mockLocalCommandRunner } = buildUseCase();
+      const errorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
 
       mockLocalCommandRunner.runCommand.mockImplementation(async (program) => {
         if (program === 'find') {
@@ -700,7 +703,13 @@ describe('DailySecurityScanUseCase', () => {
             targetHourUtc: 5,
           },
         }),
-      ).rejects.toThrow('No repositories found in scan base directory: /repos');
+      ).resolves.toBeUndefined();
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        'No repositories found in scan base directory: /repos',
+      );
+
+      errorSpy.mockRestore();
     });
 
     it('logs an error and continues scanning remaining repositories when osv-scanner exits with an unexpected code', async () => {

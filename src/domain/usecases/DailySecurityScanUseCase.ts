@@ -118,9 +118,10 @@ export class DailySecurityScanUseCase {
       .map((gitDirectory) => gitDirectory.replace(/\/\.git$/, ''));
 
     if (repositoryDirectories.length === 0) {
-      throw new Error(
+      console.error(
         `No repositories found in scan base directory: ${config.scanBaseDirectory}`,
       );
+      return;
     }
 
     for (const repositoryDirectory of repositoryDirectories) {
