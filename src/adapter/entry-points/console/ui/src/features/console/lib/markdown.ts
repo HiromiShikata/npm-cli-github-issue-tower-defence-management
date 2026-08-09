@@ -9,19 +9,65 @@ export type { ConsoleRepoContext } from '../logic/references';
 type IssueReferenceToken = Tokens.Generic & {
   type: 'consoleIssueReference';
   raw: string;
-  numberText: string;
+  href: string;
+  label: string;
 };
 
-const ISSUE_REFERENCE_PATTERN = /^#(\d+)\b/;
+const SAME_REPOSITORY_REFERENCE_PATTERN = /^#(\d+)\b/;
+const CROSS_REPOSITORY_REFERENCE_PATTERN = /^([\w.-]+)\/([\w.-]+)#(\d+)\b/;
+const REFERENCE_START_PATTERN = /[\w.-]+\/[\w.-]+#\d|#\d/g;
+const REFERENCE_PRECEDING_CHARACTER_PATTERN = /[\w/:@-]/;
 
 let activeRepoContext: ConsoleRepoContext | null = null;
 
-const issueReferenceHref = (numberText: string): string | null => {
-  if (activeRepoContext === null) {
-    return null;
+const issuesUrl = (owner: string, repo: string, numberText: string): string =>
+  `https://github.com/${owner}/${repo}/issues/${numberText}`;
+
+const isReferenceBoundary = (source: string, index: number): boolean =>
+  index === 0 || !REFERENCE_PRECEDING_CHARACTER_PATTERN.test(source[index - 1]);
+
+const referenceStartIndex = (source: string): number | undefined => {
+  for (const match of source.matchAll(REFERENCE_START_PATTERN)) {
+    if (match.index !== undefined && isReferenceBoundary(source, match.index)) {
+      return match.index;
+    }
   }
-  const { owner, repo } = activeRepoContext;
-  return `https://github.com/${owner}/${repo}/issues/${numberText}`;
+  return undefined;
+};
+
+const matchIssueReference = (
+  source: string,
+): IssueReferenceToken | undefined => {
+  const crossRepositoryMatch = CROSS_REPOSITORY_REFERENCE_PATTERN.exec(source);
+  if (crossRepositoryMatch !== null) {
+    return {
+      type: 'consoleIssueReference',
+      raw: crossRepositoryMatch[0],
+      href: issuesUrl(
+        crossRepositoryMatch[1],
+        crossRepositoryMatch[2],
+        crossRepositoryMatch[3],
+      ),
+      label: crossRepositoryMatch[0],
+    };
+  }
+  if (activeRepoContext === null) {
+    return undefined;
+  }
+  const sameRepositoryMatch = SAME_REPOSITORY_REFERENCE_PATTERN.exec(source);
+  if (sameRepositoryMatch === null) {
+    return undefined;
+  }
+  return {
+    type: 'consoleIssueReference',
+    raw: sameRepositoryMatch[0],
+    href: issuesUrl(
+      activeRepoContext.owner,
+      activeRepoContext.repo,
+      sameRepositoryMatch[1],
+    ),
+    label: sameRepositoryMatch[0],
+  };
 };
 
 marked.use(
@@ -37,30 +83,14 @@ marked.use({
       name: 'consoleIssueReference',
       level: 'inline',
       start(src: string) {
-        const index = src.indexOf('#');
-        return index === -1 ? undefined : index;
+        return referenceStartIndex(src);
       },
       tokenizer(src: string): IssueReferenceToken | undefined {
-        if (activeRepoContext === null) {
-          return undefined;
-        }
-        const match = ISSUE_REFERENCE_PATTERN.exec(src);
-        if (match === null) {
-          return undefined;
-        }
-        return {
-          type: 'consoleIssueReference',
-          raw: match[0],
-          numberText: match[1],
-        };
+        return matchIssueReference(src);
       },
       renderer(token: Tokens.Generic): string {
         const reference = token as IssueReferenceToken;
-        const href = issueReferenceHref(reference.numberText);
-        if (href === null) {
-          return reference.raw;
-        }
-        return `<a href="${href}">#${reference.numberText}</a>`;
+        return `<a href="${reference.href}">${reference.label}</a>`;
       },
     },
   ],
