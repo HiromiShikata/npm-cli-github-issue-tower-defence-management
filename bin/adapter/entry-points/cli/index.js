@@ -223,6 +223,7 @@ exports.program
             awLogDirectoryPath: config.awLogDirectoryPath,
             awLogStaleThresholdMinutes: config.awLogStaleThresholdMinutes,
             labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
+            labelsNotRequiringPullRequest: config.labelsNotRequiringPullRequest ?? null,
         });
     }
     const claudeTokenUsageRepository = new ProxyClaudeTokenUsageRepository_1.ProxyClaudeTokenUsageRepository(config.claudeCodeOauthTokenListJsonPath ?? null);
@@ -344,6 +345,7 @@ exports.program
         workflowBlockerResolvedWebhookUrl,
         allowedIssueAuthors,
         labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
+        labelsNotRequiringPullRequest: config.labelsNotRequiringPullRequest ?? null,
         changeTargetPathAliases: config.changeTargetPathAliases ?? null,
     });
 });
@@ -395,6 +397,7 @@ exports.program
         issueUrl: options.issueUrl,
         allowedIssueAuthors,
         labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
+        labelsNotRequiringPullRequest: config.labelsNotRequiringPullRequest ?? null,
     });
     process.stdout.write(`${JSON.stringify(result)}\n`);
 });

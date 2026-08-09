@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RevertOrphanedPreparationUseCase = void 0;
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
+const resolveLabelsNotRequiringPullRequest_1 = require("./resolveLabelsNotRequiringPullRequest");
 const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
 class RevertOrphanedPreparationUseCase {
     constructor(projectRepository, issueRepository, issueCommentRepository, localCommandRunner) {
@@ -32,7 +33,7 @@ class RevertOrphanedPreparationUseCase {
                 if (!isOrphaned) {
                     continue;
                 }
-                const { hasRejections, comments } = await this.evaluateHasRejections(issue, params.labelsAsLlmAgentName ?? []);
+                const { hasRejections, comments } = await this.evaluateHasRejections(issue, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params));
                 if (!hasRejections) {
                     if (awaitingQualityCheckStatusOption) {
                         await this.issueRepository.updateStatus(project, issue, awaitingQualityCheckStatusOption.id);
@@ -59,7 +60,7 @@ class RevertOrphanedPreparationUseCase {
                 await this.issueCommentRepository.createComment(issue, rejectionStatusMessage);
             }
         };
-        this.evaluateHasRejections = async (issue, labelsAsLlmAgentName) => {
+        this.evaluateHasRejections = async (issue, labelsNotRequiringPullRequest) => {
             if (issue.isClosed) {
                 return { hasRejections: false, comments: [] };
             }
@@ -73,9 +74,9 @@ class RevertOrphanedPreparationUseCase {
             }
             const categoryLabels = issue.labels.filter((label) => label.startsWith('category:'));
             const hasLlmAgentLabel = issue.labels.some((l) => l === 'llm-agent' || l.startsWith('llm-agent:'));
-            const hasLabelAsLlmAgentName = issue.labels.some((label) => labelsAsLlmAgentName.includes(label));
+            const hasLabelNotRequiringPullRequest = issue.labels.some((label) => labelsNotRequiringPullRequest.includes(label));
             if (hasLlmAgentLabel ||
-                hasLabelAsLlmAgentName ||
+                hasLabelNotRequiringPullRequest ||
                 (categoryLabels.length > 0 && !categoryLabels.includes('category:e2e'))) {
                 return { hasRejections: false, comments };
             }

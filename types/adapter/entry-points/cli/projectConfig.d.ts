@@ -18,6 +18,7 @@ export type ConfigFile = {
     awLogDirectoryPath?: string;
     awLogStaleThresholdMinutes?: number;
     labelsAsLlmAgentName?: string[];
+    labelsNotRequiringPullRequest?: string[];
     changeTargetPathAliases?: Record<string, string>;
     consoleAccessToken?: string;
     consoleProjects?: Record<string, string>;

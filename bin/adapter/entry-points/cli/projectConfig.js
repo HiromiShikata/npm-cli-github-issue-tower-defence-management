@@ -142,6 +142,7 @@ const loadConfigFile = (configFilePath) => {
             awLogDirectoryPath: getStringValue(parsed, 'awLogDirectoryPath'),
             awLogStaleThresholdMinutes: getNumberValue(parsed, 'awLogStaleThresholdMinutes'),
             labelsAsLlmAgentName: getStringArrayValue(parsed, 'labelsAsLlmAgentName'),
+            labelsNotRequiringPullRequest: getStringArrayValue(parsed, 'labelsNotRequiringPullRequest'),
             changeTargetPathAliases: getStringRecordValue(parsed, 'changeTargetPathAliases'),
             consoleAccessToken: getStringValue(parsed, 'consoleAccessToken'),
             consoleProjects: getStringRecordValue(parsed, 'consoleProjects'),
@@ -255,6 +256,9 @@ const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
     labelsAsLlmAgentName: readmeOverrides.labelsAsLlmAgentName ??
         cliOverrides.labelsAsLlmAgentName ??
         configFile.labelsAsLlmAgentName,
+    labelsNotRequiringPullRequest: readmeOverrides.labelsNotRequiringPullRequest ??
+        cliOverrides.labelsNotRequiringPullRequest ??
+        configFile.labelsNotRequiringPullRequest,
     changeTargetPathAliases: readmeOverrides.changeTargetPathAliases ??
         cliOverrides.changeTargetPathAliases ??
         configFile.changeTargetPathAliases,

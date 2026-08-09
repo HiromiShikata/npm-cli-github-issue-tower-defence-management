@@ -4,6 +4,7 @@ exports.NotifyFinishedIssuePreparationUseCase = exports.IllegalIssueStatusError 
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 const IssueRejectionEvaluator_1 = require("./IssueRejectionEvaluator");
 const ChangeTargetPullRequestApprover_1 = require("./ChangeTargetPullRequestApprover");
+const resolveLabelsNotRequiringPullRequest_1 = require("./resolveLabelsNotRequiringPullRequest");
 class IssueNotFoundError extends Error {
     constructor(issueUrl) {
         super(`Issue not found: ${issueUrl}`);
@@ -79,7 +80,7 @@ class NotifyFinishedIssuePreparationUseCase {
             }
             const comments = await this.issueCommentRepository.getCommentsFromIssue(issue);
             const isTrustedAuthor = (author) => this.isAuthorTrusted(author, params.allowedIssueAuthors ?? null);
-            const { rejections, approvedPrUrl } = await this.collectRejections(issue, comments, isTrustedAuthor, params.labelsAsLlmAgentName ?? []);
+            const { rejections, approvedPrUrl } = await this.collectRejections(issue, comments, isTrustedAuthor, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params));
             const rejectionStatusMessage = rejections.length > 0
                 ? `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`
                 : 'Auto Status Check: APPROVED';
@@ -115,7 +116,7 @@ class NotifyFinishedIssuePreparationUseCase {
             await this.issueCommentRepository.createComment(issue, rejectionStatusMessage);
         };
         this.isAuthorTrusted = (author, allowedIssueAuthors) => allowedIssueAuthors === null || allowedIssueAuthors.includes(author);
-        this.collectRejections = async (issue, comments, isTrustedAuthor, labelsAsLlmAgentName) => {
+        this.collectRejections = async (issue, comments, isTrustedAuthor, labelsNotRequiringPullRequest) => {
             const rejections = [];
             const lastComment = comments[comments.length - 1];
             if (!lastComment ||
@@ -132,7 +133,7 @@ class NotifyFinishedIssuePreparationUseCase {
                     detail: 'REPORT_HAS_NEXT_STEP',
                 });
             }
-            const { rejections: prRejections, approvedPrUrl } = await this.issueRejectionEvaluator.evaluate(issue, labelsAsLlmAgentName);
+            const { rejections: prRejections, approvedPrUrl } = await this.issueRejectionEvaluator.evaluate(issue, labelsNotRequiringPullRequest);
             return { rejections: [...rejections, ...prRejections], approvedPrUrl };
         };
         this.reportBodyHasNextStep = (body) => {

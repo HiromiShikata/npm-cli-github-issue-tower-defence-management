@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CheckIssueReviewReadinessUseCase = void 0;
 const IssueRejectionEvaluator_1 = require("./IssueRejectionEvaluator");
+const resolveLabelsNotRequiringPullRequest_1 = require("./resolveLabelsNotRequiringPullRequest");
 class CheckIssueReviewReadinessUseCase {
     constructor(issueRepository, issueCommentRepository) {
         this.issueRepository = issueRepository;
@@ -37,7 +38,7 @@ class CheckIssueReviewReadinessUseCase {
                     detail: 'REPORT_HAS_NEXT_STEP',
                 });
             }
-            const { rejections: prRejections } = await this.issueRejectionEvaluator.evaluate(issue, params.labelsAsLlmAgentName ?? []);
+            const { rejections: prRejections } = await this.issueRejectionEvaluator.evaluate(issue, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params));
             const allRejections = [...rejections, ...prRejections];
             return {
                 reviewReady: allRejections.length === 0,

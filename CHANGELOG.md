@@ -1,3 +1,10 @@
+## [1.147.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.147.1...v1.147.2) (2026-08-09)
+
+
+### Bug Fixes
+
+* **config:** separate the pull request exemption labels from the agent name labels ([#1458](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1458)) ([f0cc892](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f0cc892ee3099d29e123d2df8854a956bc9ad18b))
+
 ## [1.147.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.147.0...v1.147.1) (2026-08-09)
 
 

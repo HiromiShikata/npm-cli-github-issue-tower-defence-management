@@ -4,14 +4,14 @@ exports.IssueRejectionEvaluator = void 0;
 class IssueRejectionEvaluator {
     constructor(issueRepository) {
         this.issueRepository = issueRepository;
-        this.evaluate = async (issue, labelsAsLlmAgentName = [], options = {}) => {
+        this.evaluate = async (issue, labelsNotRequiringPullRequest = [], options = {}) => {
             const rejections = [];
             let approvedPrUrl = null;
             const categoryLabels = issue.labels.filter((label) => label.startsWith('category:'));
             const hasLlmAgentLabel = issue.labels.some((l) => l === 'llm-agent' || l.startsWith('llm-agent:'));
-            const hasLabelAsLlmAgentName = issue.labels.some((label) => labelsAsLlmAgentName.includes(label));
+            const hasLabelNotRequiringPullRequest = issue.labels.some((label) => labelsNotRequiringPullRequest.includes(label));
             if (!hasLlmAgentLabel &&
-                !hasLabelAsLlmAgentName &&
+                !hasLabelNotRequiringPullRequest &&
                 (categoryLabels.length <= 0 || categoryLabels.includes('category:e2e'))) {
                 let prsToCheck;
                 let anyPrResolutionFailed = false;

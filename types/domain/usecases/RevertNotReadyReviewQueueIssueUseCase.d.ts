@@ -12,6 +12,7 @@ export declare class RevertNotReadyReviewQueueIssueUseCase {
         projectUrl: string;
         manager: string;
         labelsAsLlmAgentName?: string[] | null;
+        labelsNotRequiringPullRequest?: string[] | null;
         changeTargetPathAliases?: Record<string, string> | null;
         allowedIssueAuthors?: string[] | null;
     }) => Promise<void>;

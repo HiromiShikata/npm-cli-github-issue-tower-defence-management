@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RevertNotReadyReviewQueueIssueUseCase = void 0;
 const IssueRejectionEvaluator_1 = require("./IssueRejectionEvaluator");
 const ChangeTargetPullRequestApprover_1 = require("./ChangeTargetPullRequestApprover");
+const resolveLabelsNotRequiringPullRequest_1 = require("./resolveLabelsNotRequiringPullRequest");
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 // GitHub rejects field mutations against archived project items with
 // "The item is archived and cannot be updated". Such a failure is specific to
@@ -54,7 +55,7 @@ class RevertNotReadyReviewQueueIssueUseCase {
                     continue;
                 }
                 try {
-                    const { rejections, approvedPrUrl } = await this.issueRejectionEvaluator.evaluate(issue, params.labelsAsLlmAgentName ?? [], {
+                    const { rejections, approvedPrUrl } = await this.issueRejectionEvaluator.evaluate(issue, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params), {
                         relatedOpenPrUrls: relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? null,
                     });
                     if (rejections.length > 0) {
@@ -95,7 +96,7 @@ class RevertNotReadyReviewQueueIssueUseCase {
                     continue;
                 }
                 try {
-                    const { rejections } = await this.issueRejectionEvaluator.evaluate(pullRequest, params.labelsAsLlmAgentName ?? []);
+                    const { rejections } = await this.issueRejectionEvaluator.evaluate(pullRequest, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params));
                     if (rejections.length > 0) {
                         if (!pullRequest.assignees.includes(params.manager)) {
                             continue;

@@ -72,6 +72,7 @@ export declare class HandleScheduledEventUseCase {
         urlOfStoryView: string;
         disabled: boolean;
         labelsAsLlmAgentName?: string[] | null;
+        labelsNotRequiringPullRequest?: string[] | null;
         changeTargetPathAliases?: Record<string, string> | null;
         allowedIssueAuthors?: string[] | null;
         autoAssignManagerAuthors?: string[] | null;

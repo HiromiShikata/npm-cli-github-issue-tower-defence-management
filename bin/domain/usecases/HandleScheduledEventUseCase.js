@@ -232,6 +232,7 @@ ${JSON.stringify(e)}
                 projectUrl: input.projectUrl,
                 manager: input.manager,
                 labelsAsLlmAgentName,
+                labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
                 changeTargetPathAliases: input.changeTargetPathAliases,
                 allowedIssueAuthors,
             });
@@ -258,6 +259,7 @@ ${JSON.stringify(e)}
                         awLogStaleThresholdMinutes: input.startPreparation.awLogStaleThresholdMinutes,
                         awaitingQualityCheckStatus: input.startPreparation.awaitingQualityCheckStatus ?? undefined,
                         labelsAsLlmAgentName,
+                        labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
                     });
                 }
                 const preparationResult = await this.startPreparationUseCase.run({

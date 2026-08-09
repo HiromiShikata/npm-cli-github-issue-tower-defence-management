@@ -23,6 +23,7 @@ export declare class NotifyFinishedIssuePreparationUseCase {
         workflowBlockerResolvedWebhookUrl: string | null;
         allowedIssueAuthors?: string[] | null;
         labelsAsLlmAgentName?: string[] | null;
+        labelsNotRequiringPullRequest?: string[] | null;
         changeTargetPathAliases?: Record<string, string> | null;
     }) => Promise<void>;
     private isAuthorTrusted;
