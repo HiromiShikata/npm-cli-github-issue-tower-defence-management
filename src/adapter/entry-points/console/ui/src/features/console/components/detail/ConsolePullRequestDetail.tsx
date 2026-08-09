@@ -86,7 +86,7 @@ export const ConsolePullRequestDetail = ({
           )}
         </div>
       </div>
-      <ConsolePanel title="Description" defaultCollapsed>
+      <ConsolePanel title="Description">
         {bodyIsLoading ? (
           <p className="console-pr-body-loading">Loading description...</p>
         ) : (
