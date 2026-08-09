@@ -13,6 +13,7 @@ import type {
   ConsoleCommit,
   ConsoleIssueState,
   ConsoleListItem,
+  ConsoleMergeableStatus,
   ConsoleOverlayStatus,
   ConsolePullRequestStatus,
   ConsoleRelatedPullRequest,
@@ -116,11 +117,21 @@ export const ConsoleItemDetail = ({
     commentsAreLoading || commentsError !== null ? null : comments.length;
   const commitsCount =
     commitsAreLoading || commitsError !== null ? null : commits.length;
+  const mergeableChips: {
+    url: string;
+    mergeableStatus: ConsoleMergeableStatus;
+  }[] =
+    item.isPr && pullRequestStatus?.found
+      ? [{ url: item.url, mergeableStatus: pullRequestStatus.mergeableStatus }]
+      : relatedPullRequests.map((view) => ({
+          url: view.pullRequest.url,
+          mergeableStatus: view.pullRequest.mergeableStatus,
+        }));
 
   return (
     <article className="console-detail">
-      {storyName !== null && (
-        <div className="console-detail-story">
+      <div className="console-detail-topline">
+        {storyName !== null && (
           <span className="console-storytag">
             <span
               className="console-story-dot"
@@ -128,8 +139,14 @@ export const ConsoleItemDetail = ({
             />
             {storyName}
           </span>
-        </div>
-      )}
+        )}
+        {mergeableChips.map((chip) => (
+          <ConsolePullRequestMergeableChip
+            key={chip.url}
+            mergeableStatus={chip.mergeableStatus}
+          />
+        ))}
+      </div>
 
       <h2 className="console-detail-title">
         {overlayStatus !== null && statusPalette !== null && (
@@ -159,11 +176,6 @@ export const ConsoleItemDetail = ({
           <span className="console-detail-closed-label">
             {closedStateLabel}
           </span>
-        )}
-        {item.isPr && pullRequestStatus?.found && (
-          <ConsolePullRequestMergeableChip
-            mergeableStatus={pullRequestStatus.mergeableStatus}
-          />
         )}
       </h2>
 

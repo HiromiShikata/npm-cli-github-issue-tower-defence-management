@@ -270,6 +270,13 @@ body {
   padding: 16px 16px 0;
 }
 
+.console-detail-topline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .console-detail-title {
   display: flex;
   align-items: center;

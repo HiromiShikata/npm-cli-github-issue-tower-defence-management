@@ -1,9 +1,10 @@
-import { render } from '@testing-library/react';
+import { render, within } from '@testing-library/react';
 import {
   consoleChangedFilesFixture,
   consoleCommentsFixture,
   consoleCommitsFixture,
   consoleListItemsFixture,
+  consoleRelatedPullRequestsFixture,
 } from '../../testing/fixtures';
 import { ConsoleItemDetail } from './ConsoleItemDetail';
 
@@ -164,7 +165,16 @@ describe('ConsoleItemDetail', () => {
     expect(title?.contains(getByText('Awaiting Workspace'))).toBe(true);
   });
 
-  it('renders the merge conflict state inside the top header', () => {
+  const firstRowOfDetail = (container: HTMLElement): Element => {
+    const detail = container.querySelector('.console-detail');
+    const firstRow = detail?.firstElementChild ?? null;
+    if (firstRow === null) {
+      throw new Error('the item detail must render a first row');
+    }
+    return firstRow;
+  };
+
+  it('renders the merge conflict state on the first row of the detail', () => {
     const { getByText, container } = render(
       <ConsoleItemDetail
         item={prItem}
@@ -180,14 +190,14 @@ describe('ConsoleItemDetail', () => {
         }}
       />,
     );
+    expect(firstRowOfDetail(container).contains(getByText('Conflict'))).toBe(
+      true,
+    );
     const title = container.querySelector('.console-detail-title');
-    if (title === null) {
-      throw new Error('the top header must render');
-    }
-    expect(title.contains(getByText('Conflict'))).toBe(true);
+    expect(title?.contains(getByText('Conflict'))).toBe(false);
   });
 
-  it('renders the absence of a merge conflict inside the top header', () => {
+  it('renders the absence of a merge conflict on the first row of the detail', () => {
     const { getByText, container } = render(
       <ConsoleItemDetail
         item={prItem}
@@ -203,11 +213,40 @@ describe('ConsoleItemDetail', () => {
         }}
       />,
     );
-    const title = container.querySelector('.console-detail-title');
-    if (title === null) {
-      throw new Error('the top header must render');
-    }
-    expect(title.contains(getByText('No conflict'))).toBe(true);
+    expect(firstRowOfDetail(container).contains(getByText('No conflict'))).toBe(
+      true,
+    );
+  });
+
+  it('renders the related pull request merge state on the first row when the item is an issue', () => {
+    const { container } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        state={{
+          state: 'open',
+          merged: false,
+          isPullRequest: false,
+          title: '',
+        }}
+        relatedPullRequests={consoleRelatedPullRequestsFixture.map(
+          (pullRequest) => ({
+            pullRequest,
+            files: [],
+            filesAreLoading: false,
+            filesError: null,
+            commits: [],
+            commitsAreLoading: false,
+            commitsError: null,
+          }),
+        )}
+      />,
+    );
+    expect(
+      within(firstRowOfDetail(container) as HTMLElement).getByText(
+        'No conflict',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('renders failing CI, missing checks, and conflict badges on their own row below the title', () => {
