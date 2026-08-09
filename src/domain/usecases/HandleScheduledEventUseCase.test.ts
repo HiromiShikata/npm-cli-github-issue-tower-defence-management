@@ -324,6 +324,53 @@ describe('HandleScheduledEventUseCase', () => {
       );
     });
 
+    it('should pass storyProgressCommentEnabled true to AnalyzeProblemByIssueUseCase when the field is absent', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+      };
+
+      await useCase.run(input);
+      expect(mockAnalyzeProblemByIssueUseCase.run).toHaveBeenCalledWith(
+        expect.objectContaining({
+          storyProgressCommentEnabled: true,
+        }),
+      );
+    });
+
+    it('should pass storyProgressCommentEnabled false to AnalyzeProblemByIssueUseCase when the field is false', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        storyProgressCommentEnabled: false,
+      };
+
+      await useCase.run(input);
+      expect(mockAnalyzeProblemByIssueUseCase.run).toHaveBeenCalledWith(
+        expect.objectContaining({
+          storyProgressCommentEnabled: false,
+        }),
+      );
+    });
+
     it('should call getAllIssues with the resolved project id', async () => {
       const input = {
         projectName: 'test-project',

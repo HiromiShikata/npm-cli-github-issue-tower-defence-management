@@ -16,9 +16,13 @@ export class AnalyzeProblemByIssueUseCase {
     targetDates: Date[];
     project: Project;
     storyObjectMap: StoryObjectMap;
+    storyProgressCommentEnabled?: boolean;
   }): Promise<void> => {
+    const storyProgressCommentEnabled =
+      input.storyProgressCommentEnabled ?? true;
     const story = input.project.story;
     if (
+      !storyProgressCommentEnabled ||
       !story ||
       !input.targetDates.find(
         (targetDate) =>
