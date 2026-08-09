@@ -756,6 +756,19 @@ body {
   border-color: #484f58;
 }
 
+.console-op-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.console-op-requirement {
+  width: 100%;
+  margin: 0;
+  text-align: right;
+  font-size: 0.75rem;
+  color: #8b949e;
+}
+
 .console-op-button-approve {
   background: #238636;
   border-color: #2ea043;
