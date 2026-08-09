@@ -129,10 +129,12 @@ jest.mock('./rotationOrderFileWriter', () => ({
 jest.mock('./inTmuxByHumanDataWriter', () => ({
   writeInTmuxByHumanData: jest.fn(),
 }));
-jest.mock('./consoleListsWriter', () => ({
-  ...jest.requireActual('./consoleListsWriter'),
-  writeConsoleLists: jest.fn(),
-}));
+jest.mock('./consoleListsWriter', () => {
+  const actual = jest.requireActual<typeof import('./consoleListsWriter')>(
+    './consoleListsWriter',
+  );
+  return { ...actual, writeConsoleLists: jest.fn() };
+});
 
 import { HandleScheduledEventUseCaseHandler } from './HandleScheduledEventUseCaseHandler';
 import { writeSituationFile } from './situationFileWriter';
@@ -158,6 +160,9 @@ const MockedProxyClaudeTokenUsageRepository = jest.mocked(
   ProxyClaudeTokenUsageRepository,
 );
 const MockedWriteInTmuxByHumanData = jest.mocked(writeInTmuxByHumanData);
+const mockGetLastIssuesFetchedAt = jest.fn<string | null, [string]>();
+ApiV3CheerioRestIssueRepository.prototype.getLastIssuesFetchedAt =
+  mockGetLastIssuesFetchedAt;
 
 const validConfig = {
   projectName: 'test-project',
@@ -203,6 +208,7 @@ describe('HandleScheduledEventUseCaseHandler', () => {
     jest.clearAllMocks();
     capturedRunInputs.length = 0;
     jest.mocked(fs.readFileSync).mockReturnValue(YAML.stringify(validConfig));
+    mockGetLastIssuesFetchedAt.mockReturnValue('2026-08-09T02:00:00.000Z');
     mockFetchReturningReadme(null);
   });
 
@@ -278,14 +284,7 @@ describe('HandleScheduledEventUseCaseHandler', () => {
   });
 
   it('stamps console lists with the GitHub read time the lists were built from', async () => {
-    MockedApiV3CheerioRestIssueRepository.mockImplementationOnce(
-      () =>
-        ({
-          getLastIssuesFetchedAt: jest
-            .fn()
-            .mockReturnValue('2026-08-09T02:02:28.649Z'),
-        }) as unknown as ApiV3CheerioRestIssueRepository,
-    );
+    mockGetLastIssuesFetchedAt.mockReturnValue('2026-08-09T02:02:28.649Z');
 
     const handler = new HandleScheduledEventUseCaseHandler();
     await handler.handle('config.yml', false);
@@ -297,12 +296,7 @@ describe('HandleScheduledEventUseCaseHandler', () => {
   });
 
   it('does not write console lists when no GitHub read time was recorded', async () => {
-    MockedApiV3CheerioRestIssueRepository.mockImplementationOnce(
-      () =>
-        ({
-          getLastIssuesFetchedAt: jest.fn().mockReturnValue(null),
-        }) as unknown as ApiV3CheerioRestIssueRepository,
-    );
+    mockGetLastIssuesFetchedAt.mockReturnValue(null);
     const consoleErrorSpy = jest
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);
