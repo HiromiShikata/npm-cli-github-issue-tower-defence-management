@@ -13,4 +13,5 @@ export type ClaudeTokenUsage = {
   fiveHourRejected: boolean;
   modelWeeklyLimits: Record<string, ClaudeModelWeeklyLimit>;
   blockedUntilEpoch: number;
+  selectionWeight?: number;
 };

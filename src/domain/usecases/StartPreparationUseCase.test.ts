@@ -6689,4 +6689,16 @@ describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
     const sevenDayDominant = useCase.getTokenConcurrentLimit(0.85, 0.94);
     expect(sevenDayDominant).toBe(2);
   });
+
+  it('scales the limit down by the token selection weight', () => {
+    expect(useCase.getTokenConcurrentLimit(0.1, 0.1, 0.5)).toBe(3);
+  });
+
+  it('keeps the full limit when the token carries no selection weight', () => {
+    expect(useCase.getTokenConcurrentLimit(0.1, 0.1, undefined)).toBe(6);
+  });
+
+  it('never lets a selection weight take the limit below one slot', () => {
+    expect(useCase.getTokenConcurrentLimit(0.1, 0.1, 0.01)).toBe(1);
+  });
 });

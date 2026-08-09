@@ -792,6 +792,8 @@ describe('ProxyClaudeTokenUsageRepository', () => {
   describe('getTokenInFlightCounts', () => {
     const statWithParent = (parentPid: number): string =>
       `${parentPid + 1} (worker) S ${parentPid} ${parentPid} ${parentPid} 0 -1 4194304`;
+    const takeOwnershipCommandLine =
+      'claude\0Take ownership of https://github.com/o/r/issues/1 and finish it\0';
 
     it('should return empty object when proc directory cannot be read', async () => {
       mockFsReaddirSync.mockImplementation(() => {
@@ -817,6 +819,9 @@ describe('ProxyClaudeTokenUsageRepository', () => {
     it('should count one worker root when one pid has CLAUDE_CODE_OAUTH_TOKEN', async () => {
       mockFsReaddirSync.mockReturnValue(['1234', 'self']);
       mockFsReadFileSync.mockImplementation((filePath: string) => {
+        if (/\/cmdline$/.test(filePath)) {
+          return takeOwnershipCommandLine;
+        }
         if (filePath === '/proc/1234/environ') {
           return 'HOME=/home/user\0CLAUDE_CODE_OAUTH_TOKEN=sk-ant-abc\0PATH=/usr/bin\0';
         }
@@ -850,6 +855,9 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         '105': 104,
       };
       mockFsReadFileSync.mockImplementation((filePath: string) => {
+        if (/\/cmdline$/.test(filePath)) {
+          return takeOwnershipCommandLine;
+        }
         const environMatch = filePath.match(/^\/proc\/(\d+)\/environ$/);
         if (environMatch) {
           return 'CLAUDE_CODE_OAUTH_TOKEN=sk-ant-abc\0OTHER=val\0';
@@ -885,6 +893,9 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         '302': 301,
       };
       mockFsReadFileSync.mockImplementation((filePath: string) => {
+        if (/\/cmdline$/.test(filePath)) {
+          return takeOwnershipCommandLine;
+        }
         const environMatch = filePath.match(/^\/proc\/(\d+)\/environ$/);
         if (environMatch) {
           return 'CLAUDE_CODE_OAUTH_TOKEN=sk-ant-abc\0';
@@ -905,6 +916,9 @@ describe('ProxyClaudeTokenUsageRepository', () => {
     it('should ignore processes without the token env var when counting worker roots', async () => {
       mockFsReaddirSync.mockReturnValue(['1234', '5678', '9999']);
       mockFsReadFileSync.mockImplementation((filePath: string) => {
+        if (/\/cmdline$/.test(filePath)) {
+          return takeOwnershipCommandLine;
+        }
         if (filePath === '/proc/1234/environ') {
           return 'CLAUDE_CODE_OAUTH_TOKEN=sk-ant-abc\0OTHER=val\0';
         }
@@ -929,6 +943,9 @@ describe('ProxyClaudeTokenUsageRepository', () => {
     it('should count worker roots separately when they use different tokens', async () => {
       mockFsReaddirSync.mockReturnValue(['1234', '5678']);
       mockFsReadFileSync.mockImplementation((filePath: string) => {
+        if (/\/cmdline$/.test(filePath)) {
+          return takeOwnershipCommandLine;
+        }
         if (filePath === '/proc/1234/environ') {
           return 'CLAUDE_CODE_OAUTH_TOKEN=sk-ant-abc\0';
         }
@@ -953,6 +970,9 @@ describe('ProxyClaudeTokenUsageRepository', () => {
     it('should treat a worker root whose stat cannot be read as a worker root', async () => {
       mockFsReaddirSync.mockReturnValue(['1234']);
       mockFsReadFileSync.mockImplementation((filePath: string) => {
+        if (/\/cmdline$/.test(filePath)) {
+          return takeOwnershipCommandLine;
+        }
         if (filePath === '/proc/1234/environ') {
           return 'CLAUDE_CODE_OAUTH_TOKEN=sk-ant-abc\0';
         }
@@ -968,6 +988,9 @@ describe('ProxyClaudeTokenUsageRepository', () => {
     it('should parse the parent pid correctly when the process name contains spaces and parentheses', async () => {
       mockFsReaddirSync.mockReturnValue(['400', '401']);
       mockFsReadFileSync.mockImplementation((filePath: string) => {
+        if (/\/cmdline$/.test(filePath)) {
+          return takeOwnershipCommandLine;
+        }
         if (
           filePath === '/proc/400/environ' ||
           filePath === '/proc/401/environ'
@@ -992,6 +1015,9 @@ describe('ProxyClaudeTokenUsageRepository', () => {
     it('should treat a worker root whose stat is malformed as a worker root', async () => {
       mockFsReaddirSync.mockReturnValue(['1234']);
       mockFsReadFileSync.mockImplementation((filePath: string) => {
+        if (/\/cmdline$/.test(filePath)) {
+          return takeOwnershipCommandLine;
+        }
         if (filePath === '/proc/1234/environ') {
           return 'CLAUDE_CODE_OAUTH_TOKEN=sk-ant-abc\0';
         }
@@ -1010,6 +1036,9 @@ describe('ProxyClaudeTokenUsageRepository', () => {
     it('should skip non-numeric proc entries', async () => {
       mockFsReaddirSync.mockReturnValue(['1234', 'self', 'net', 'sys']);
       mockFsReadFileSync.mockImplementation((filePath: string) => {
+        if (/\/cmdline$/.test(filePath)) {
+          return takeOwnershipCommandLine;
+        }
         if (filePath === '/proc/1234/environ') {
           return 'CLAUDE_CODE_OAUTH_TOKEN=sk-ant-abc\0';
         }
@@ -1028,6 +1057,9 @@ describe('ProxyClaudeTokenUsageRepository', () => {
     it('should skip processes whose environ file cannot be read', async () => {
       mockFsReaddirSync.mockReturnValue(['1234', '5678']);
       mockFsReadFileSync.mockImplementation((filePath: string) => {
+        if (/\/cmdline$/.test(filePath)) {
+          return takeOwnershipCommandLine;
+        }
         if (filePath === '/proc/1234/environ') {
           return 'CLAUDE_CODE_OAUTH_TOKEN=sk-ant-abc\0';
         }
@@ -1048,6 +1080,48 @@ describe('ProxyClaudeTokenUsageRepository', () => {
       mockFsReadFileSync.mockReturnValue(
         'CLAUDE_CODE_OAUTH_TOKEN=\0OTHER=val\0',
       );
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getTokenInFlightCounts();
+
+      expect(result).toEqual({});
+    });
+
+    it('should not count an interactive session that holds the token but is not a preparation worker', async () => {
+      mockFsReaddirSync.mockReturnValue(['1234', '5678']);
+      mockFsReadFileSync.mockImplementation((filePath: string) => {
+        if (filePath === '/proc/1234/cmdline') {
+          return takeOwnershipCommandLine;
+        }
+        if (filePath === '/proc/5678/cmdline') {
+          return 'claude\0--name\0https://github.com/o/r/issues/2\0';
+        }
+        if (/\/environ$/.test(filePath)) {
+          return 'CLAUDE_CODE_OAUTH_TOKEN=sk-ant-abc\0';
+        }
+        if (/\/stat$/.test(filePath)) {
+          return statWithParent(1);
+        }
+        throw new Error('ENOENT');
+      });
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getTokenInFlightCounts();
+
+      expect(result).toEqual({ 'sk-ant-abc': 1 });
+    });
+
+    it('should not count a preparation worker whose command line cannot be read', async () => {
+      mockFsReaddirSync.mockReturnValue(['1234']);
+      mockFsReadFileSync.mockImplementation((filePath: string) => {
+        if (/\/environ$/.test(filePath)) {
+          return 'CLAUDE_CODE_OAUTH_TOKEN=sk-ant-abc\0';
+        }
+        if (/\/stat$/.test(filePath)) {
+          return statWithParent(1);
+        }
+        throw new Error('ENOENT');
+      });
       const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
 
       const result = await repository.getTokenInFlightCounts();

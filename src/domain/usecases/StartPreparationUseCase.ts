@@ -4,6 +4,7 @@ import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsageRepository';
 import { TakeOwnershipSpawnRepository } from './adapter-interfaces/TakeOwnershipSpawnRepository';
 import { ClaudeTokenUsage } from '../entities/ClaudeTokenUsage';
+import { DEFAULT_SELECTION_WEIGHT } from './OauthTokenSelectUseCase';
 import {
   AWAITING_WORKSPACE_STATUS_NAME,
   PREPARATION_STATUS_NAME,
@@ -140,6 +141,7 @@ export class StartPreparationUseCase {
   getTokenConcurrentLimit = (
     fiveHourUtilization: number,
     sevenDayUtilization: number,
+    selectionWeight?: number,
   ): number => {
     const sevenDayLimit = this.taperedConcurrentLimit(
       sevenDayUtilization,
@@ -149,7 +151,11 @@ export class StartPreparationUseCase {
       fiveHourUtilization,
       FIVE_HOUR_THROTTLE_START_THRESHOLD,
     );
-    return Math.min(sevenDayLimit, fiveHourLimit);
+    const weight = selectionWeight ?? DEFAULT_SELECTION_WEIGHT;
+    return Math.max(
+      1,
+      Math.floor(Math.min(sevenDayLimit, fiveHourLimit) * weight),
+    );
   };
 
   private selectRotationTokens = (
@@ -206,6 +212,7 @@ export class StartPreparationUseCase {
       limit: this.getTokenConcurrentLimit(
         usage.fiveHourUtilization,
         usage.sevenDayUtilization,
+        usage.selectionWeight,
       ),
       secondsUntilSevenDayReset: this.secondsUntilSevenDayReset(
         usage,
