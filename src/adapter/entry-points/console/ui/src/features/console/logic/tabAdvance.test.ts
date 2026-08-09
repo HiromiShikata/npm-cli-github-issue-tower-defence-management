@@ -2,7 +2,7 @@ import {
   findNextNonEmptyTabToRight,
   resolveDefaultActiveTab,
 } from './tabAdvance';
-import type { ConsoleTabName } from './types';
+import { CONSOLE_TABS, type ConsoleTabName } from './types';
 
 const counts = (
   overrides: Partial<Record<ConsoleTabName, number>>,
@@ -15,6 +15,13 @@ const counts = (
   'todo-by-human': 0,
   'todo-by-agent': 0,
   ...overrides,
+});
+
+describe('CONSOLE_TABS ordering', () => {
+  it('places Unread before Triage so unseen items are worked first', () => {
+    const names = CONSOLE_TABS.map((tab) => tab.name);
+    expect(names.indexOf('unread')).toBeLessThan(names.indexOf('triage'));
+  });
 });
 
 describe('findNextNonEmptyTabToRight', () => {
@@ -45,7 +52,7 @@ describe('findNextNonEmptyTabToRight', () => {
   it('returns the immediately adjacent tab when it is non-empty', () => {
     expect(
       findNextNonEmptyTabToRight('prs', counts({ triage: 12, unread: 7 })),
-    ).toBe('triage');
+    ).toBe('unread');
   });
 
   it('returns null when no tab to the right has any items', () => {
