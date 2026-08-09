@@ -1,3 +1,10 @@
+# [1.148.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.147.5...v1.148.0) (2026-08-09)
+
+
+### Features
+
+* **core:** assign manager to allow-listed authors' pull requests that are not project items ([#1467](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1467)) ([7d2a606](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7d2a606e453b957578fdf75987974f6d8e5458c4))
+
 ## [1.147.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.147.4...v1.147.5) (2026-08-09)
 
 

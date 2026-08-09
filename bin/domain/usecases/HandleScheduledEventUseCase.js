@@ -377,6 +377,9 @@ ${JSON.stringify(e)}
                 manager: input.manager,
                 cacheUsed,
                 autoAssignManagerAuthors: input.autoAssignManagerAuthors ?? null,
+                projectToAddSearchedIssues: project,
+                queryToAddProjectEnabled: input.queryToAddProjectEnabled ?? false,
+                queryToAddProject: input.queryToAddProject ?? null,
             });
             await this.updateIssueStatusByLabelUseCase.run({
                 project,

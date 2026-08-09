@@ -1,6 +1,7 @@
 import { IssueRepository, RelatedPullRequest, IssueComment, PullRequestDetail, PullRequestCommit, PullRequestReviewCommentSide, PullRequestReviewInlineLocation } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
+import { SearchedIssue } from '../../../domain/entities/SearchedIssue';
 import { StoryObjectMap } from '../../../domain/entities/StoryObjectMap';
 import { ApiV3IssueRepository } from './ApiV3IssueRepository';
 import { RestIssueRepository } from './RestIssueRepository';
@@ -23,7 +24,7 @@ export type CachedProjectIssues = {
 };
 export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository implements IssueRepository {
     readonly apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>;
-    readonly restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'createComment' | 'getIssue' | 'updateLabels' | 'removeLabel' | 'updateAssigneeList'>;
+    readonly restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'createComment' | 'getIssue' | 'updateLabels' | 'removeLabel' | 'updateAssigneeList' | 'searchIssues'>;
     readonly graphqlProjectItemRepository: Pick<GraphqlProjectItemRepository, 'fetchProjectItems' | 'fetchProjectItemsLight' | 'fetchProjectItemsByIds' | 'fetchProjectItemByUrl' | 'updateProjectField' | 'clearProjectField' | 'updateProjectTextField' | 'addIssueToProject'>;
     readonly localStorageCacheRepository: Pick<LocalStorageCacheRepository, 'getSingle' | 'setSingle'>;
     readonly projectRepository: Pick<ProjectRepository, 'getProject'>;
@@ -31,7 +32,7 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     readonly localStorageRepository: LocalStorageRepository;
     readonly ghToken: string;
     readonly sleep: Sleep;
-    constructor(apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>, restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'createComment' | 'getIssue' | 'updateLabels' | 'removeLabel' | 'updateAssigneeList'>, graphqlProjectItemRepository: Pick<GraphqlProjectItemRepository, 'fetchProjectItems' | 'fetchProjectItemsLight' | 'fetchProjectItemsByIds' | 'fetchProjectItemByUrl' | 'updateProjectField' | 'clearProjectField' | 'updateProjectTextField' | 'addIssueToProject'>, localStorageCacheRepository: Pick<LocalStorageCacheRepository, 'getSingle' | 'setSingle'>, projectRepository: Pick<ProjectRepository, 'getProject'>, dateRepository: DateRepository, localStorageRepository: LocalStorageRepository, ghToken?: string, sleep?: Sleep);
+    constructor(apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>, restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'createComment' | 'getIssue' | 'updateLabels' | 'removeLabel' | 'updateAssigneeList' | 'searchIssues'>, graphqlProjectItemRepository: Pick<GraphqlProjectItemRepository, 'fetchProjectItems' | 'fetchProjectItemsLight' | 'fetchProjectItemsByIds' | 'fetchProjectItemByUrl' | 'updateProjectField' | 'clearProjectField' | 'updateProjectTextField' | 'addIssueToProject'>, localStorageCacheRepository: Pick<LocalStorageCacheRepository, 'getSingle' | 'setSingle'>, projectRepository: Pick<ProjectRepository, 'getProject'>, dateRepository: DateRepository, localStorageRepository: LocalStorageRepository, ghToken?: string, sleep?: Sleep);
     private readonly getAllIssuesRefreshMemo;
     private readonly lastIssuesFetchedAtByProjectId;
     getLastIssuesFetchedAt: (projectId: Project["id"]) => string | null;
@@ -78,7 +79,8 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     updateProjectTextField: (project: Project, fieldId: string, issue: Issue, text: string) => Promise<void>;
     updateLabels: (issue: Issue, labels: Issue["labels"]) => Promise<void>;
     removeLabel: (issue: Issue, label: string) => Promise<void>;
-    updateAssigneeList: (issue: Issue, assigneeList: Member["name"][]) => Promise<void>;
+    updateAssigneeList: (issue: Pick<Issue, "org" | "repo" | "number">, assigneeList: Member["name"][]) => Promise<void>;
+    searchIssues: (query: string) => Promise<SearchedIssue[]>;
     get: (_issueUrl: string, _project: Project) => Promise<Issue | null>;
     update: (issue: Issue, _project: Project) => Promise<void>;
     private parseIssueUrl;

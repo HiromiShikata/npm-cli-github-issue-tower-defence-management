@@ -119,6 +119,53 @@ class RestIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
                 headers: { Authorization: `token ${this.ghToken}` },
             });
         };
+        this.searchIssues = async (query) => {
+            const perPage = 100;
+            const maxPageCount = 10;
+            const searchedIssues = [];
+            for (let page = 1; page <= maxPageCount; page++) {
+                const response = await ky_1.default
+                    .get('https://api.github.com/search/issues', {
+                    searchParams: {
+                        q: query,
+                        per_page: perPage,
+                        page,
+                        advanced_search: 'true',
+                    },
+                    headers: { Authorization: `token ${this.ghToken}` },
+                })
+                    .json();
+                for (const item of response.items) {
+                    const parsed = this.parseSearchedIssue(item);
+                    if (parsed) {
+                        searchedIssues.push(parsed);
+                    }
+                }
+                if (response.items.length < perPage) {
+                    break;
+                }
+            }
+            return searchedIssues;
+        };
+        this.parseSearchedIssue = (item) => {
+            const matched = item.html_url.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\/(?:issues|pull)\/(\d+)$/);
+            if (!matched) {
+                return null;
+            }
+            return {
+                url: item.html_url,
+                org: matched[1],
+                repo: matched[2],
+                number: Number(matched[3]),
+                state: item.pull_request?.merged_at
+                    ? 'MERGED'
+                    : item.state === 'open'
+                        ? 'OPEN'
+                        : 'CLOSED',
+                author: (item.user?.login ?? '').replace(/\[bot\]$/, ''),
+                assignees: item.assignees.map((assignee) => assignee.login),
+            };
+        };
     }
 }
 exports.RestIssueRepository = RestIssueRepository;

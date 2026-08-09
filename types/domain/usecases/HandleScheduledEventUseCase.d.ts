@@ -94,6 +94,8 @@ export declare class HandleScheduledEventUseCase {
         } | null;
         thresholdForAutoReject?: number;
         createTaskFromStoryBodyCheckboxEnabled?: boolean;
+        queryToAddProjectEnabled?: boolean;
+        queryToAddProject?: string | null;
         storyProgressCommentEnabled?: boolean;
         dailySecurityScan?: DailySecurityScanConfig | null;
     }) => Promise<{
