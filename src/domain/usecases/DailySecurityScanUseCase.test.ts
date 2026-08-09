@@ -295,11 +295,15 @@ describe('DailySecurityScanUseCase', () => {
           vulnerabilities: [
             {
               cveID: 'CVE-2024-0001',
+              vendorProject: 'Example',
+              product: 'NewProduct',
               vulnerabilityName: 'New Vulnerability',
               dateAdded: '2024-01-02',
             },
             {
               cveID: 'CVE-2023-9999',
+              vendorProject: 'Example',
+              product: 'OldProduct',
               vulnerabilityName: 'Old Vulnerability',
               dateAdded: '2023-12-31',
             },
@@ -357,6 +361,8 @@ describe('DailySecurityScanUseCase', () => {
           vulnerabilities: [
             {
               cveID: 'CVE-2023-9999',
+              vendorProject: 'Example',
+              product: 'OldProduct',
               vulnerabilityName: 'Old Vulnerability',
               dateAdded: '2023-12-31',
             },
