@@ -10,6 +10,7 @@ export declare class AnalyzeProblemByIssueUseCase {
         targetDates: Date[];
         project: Project;
         storyObjectMap: StoryObjectMap;
+        storyProgressCommentEnabled?: boolean;
     }) => Promise<void>;
     createSummaryCommentBody: (storyObject: StoryObject & {
         storyIssue: NonNullable<StoryObject["storyIssue"]>;

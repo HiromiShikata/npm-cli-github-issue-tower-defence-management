@@ -1,3 +1,10 @@
+# [1.147.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.21...v1.147.0) (2026-08-09)
+
+
+### Features
+
+* **config:** add storyProgressCommentEnabled to switch off the daily story progress comment ([#1454](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1454)) ([39c6698](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/39c6698fa4d452d663ad4a61fad626877071580c))
+
 ## [1.146.21](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.20...v1.146.21) (2026-08-09)
 
 

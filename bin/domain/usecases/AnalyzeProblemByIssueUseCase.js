@@ -6,8 +6,10 @@ class AnalyzeProblemByIssueUseCase {
         this.issueRepository = issueRepository;
         this.dateRepository = dateRepository;
         this.run = async (input) => {
+            const storyProgressCommentEnabled = input.storyProgressCommentEnabled ?? true;
             const story = input.project.story;
-            if (!story ||
+            if (!storyProgressCommentEnabled ||
+                !story ||
                 !input.targetDates.find((targetDate) => targetDate.getHours() === 0 && targetDate.getMinutes() === 0)) {
                 return;
             }
