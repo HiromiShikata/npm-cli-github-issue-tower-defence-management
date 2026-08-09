@@ -1,3 +1,10 @@
+## [1.147.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.147.4...v1.147.5) (2026-08-09)
+
+
+### Bug Fixes
+
+* **console:** render cross-repository issue references with the referenced repository ([#1462](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1462)) ([d415451](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d415451727639a8f23bbcb44e4153184748fea0d))
+
 ## [1.147.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.147.3...v1.147.4) (2026-08-09)
 
 
