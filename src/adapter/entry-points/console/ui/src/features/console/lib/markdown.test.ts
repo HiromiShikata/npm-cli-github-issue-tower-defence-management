@@ -123,6 +123,22 @@ describe('renderMarkdownToSafeHtml', () => {
       'href="https://github.com/other-owner/other-repo/issues/1547"',
     );
   });
+
+  it('keeps a URL ending in a numeric fragment as a single link', () => {
+    const html = renderMarkdownToSafeHtml(
+      'see https://github.com/other-owner/other-repo#123',
+      {
+        owner: 'owner',
+        repo: 'repo',
+      },
+    );
+    expect(html).toContain(
+      'href="https://github.com/other-owner/other-repo#123"',
+    );
+    expect(html).not.toContain(
+      'href="https://github.com/other-owner/other-repo/issues/123"',
+    );
+  });
 });
 
 describe('splitMarkdownSegments', () => {
