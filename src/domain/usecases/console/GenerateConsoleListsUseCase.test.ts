@@ -313,6 +313,19 @@ describe('GenerateConsoleListsUseCase', () => {
       ...result['todo-by-human'].items,
     ];
 
+    it('shows a workflow-blocker-story In Tmux by agent issue on the workflow blocker tab and nowhere else', () => {
+      const result = run([
+        makeIssue({
+          story: 'regular / WORKFLOW BLOCKER',
+          status: 'In Tmux by agent',
+        }),
+      ]);
+      expect(
+        result['workflow-blocker'].items.map((item) => item.status),
+      ).toEqual(['In Tmux by agent']);
+      expect(allTabItems(result)).toHaveLength(1);
+    });
+
     it('hides a workflow-blocker-story In Tmux by agent issue from every tab', () => {
       const result = run([
         makeIssue({
