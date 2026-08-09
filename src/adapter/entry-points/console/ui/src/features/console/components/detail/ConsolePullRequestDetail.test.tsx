@@ -85,6 +85,27 @@ describe('ConsolePullRequestDetail', () => {
     expect(getByText('Out of date')).toBeInTheDocument();
   });
 
+  it('opens the description panel when the view is first rendered', () => {
+    const { getByRole } = render(
+      <ConsolePullRequestDetail
+        pullRequest={pullRequest}
+        body={pullRequest.summary?.body ?? ''}
+        bodyIsLoading={false}
+        files={consoleChangedFilesFixture}
+        filesAreLoading={false}
+        filesError={null}
+        commits={consoleCommitsFixture}
+        commitsAreLoading={false}
+        commitsError={null}
+        now={now}
+      />,
+    );
+    expect(getByRole('button', { name: /^▾ Description$/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+  });
+
   it('renders a copy URL button for the pull request url', () => {
     const { getByRole } = render(
       <ConsolePullRequestDetail
