@@ -385,6 +385,8 @@ program
         awLogDirectoryPath: config.awLogDirectoryPath,
         awLogStaleThresholdMinutes: config.awLogStaleThresholdMinutes,
         labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
+        labelsNotRequiringPullRequest:
+          config.labelsNotRequiringPullRequest ?? null,
       });
     }
 
@@ -589,6 +591,8 @@ program
       workflowBlockerResolvedWebhookUrl,
       allowedIssueAuthors,
       labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
+      labelsNotRequiringPullRequest:
+        config.labelsNotRequiringPullRequest ?? null,
       changeTargetPathAliases: config.changeTargetPathAliases ?? null,
     });
   });
@@ -686,6 +690,8 @@ program
       issueUrl: options.issueUrl,
       allowedIssueAuthors,
       labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
+      labelsNotRequiringPullRequest:
+        config.labelsNotRequiringPullRequest ?? null,
     });
 
     process.stdout.write(`${JSON.stringify(result)}\n`);

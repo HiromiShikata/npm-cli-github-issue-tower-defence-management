@@ -1472,6 +1472,7 @@ mysteryKey: 'value'
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: null,
         labelsAsLlmAgentName: null,
+        labelsNotRequiringPullRequest: null,
         changeTargetPathAliases: null,
       });
     });
@@ -1508,6 +1509,7 @@ mysteryKey: 'value'
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: null,
         labelsAsLlmAgentName: null,
+        labelsNotRequiringPullRequest: null,
         changeTargetPathAliases: null,
       });
     });
@@ -1789,6 +1791,7 @@ mysteryKey: 'value'
         issueUrl: 'https://github.com/test/repo/issues/1',
         allowedIssueAuthors: null,
         labelsAsLlmAgentName: null,
+        labelsNotRequiringPullRequest: null,
       });
       expect(stdoutSpy).toHaveBeenCalledWith(
         `${JSON.stringify({ reviewReady: true, rejections: [] })}\n`,
@@ -1874,6 +1877,7 @@ mysteryKey: 'value'
         issueUrl: 'https://github.com/test/repo/issues/1',
         allowedIssueAuthors: null,
         labelsAsLlmAgentName: null,
+        labelsNotRequiringPullRequest: null,
       });
 
       stdoutSpy.mockRestore();

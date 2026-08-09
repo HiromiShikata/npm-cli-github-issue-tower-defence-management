@@ -1087,6 +1087,36 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
+  it('should not reject a missing PR when the issue label is only in labelsNotRequiringPullRequest', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      labels: ['story'],
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({ content: 'From: :robot: Test report' }),
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: null,
+      labelsAsLlmAgentName: ['chore', 'accounting'],
+      labelsNotRequiringPullRequest: ['story'],
+    });
+
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('PULL_REQUEST_NOT_FOUND'),
+    );
+  });
+
   it('should reject when multiple PRs are found', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',

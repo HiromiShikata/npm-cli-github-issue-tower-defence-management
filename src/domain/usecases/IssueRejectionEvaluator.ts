@@ -46,7 +46,7 @@ export class IssueRejectionEvaluator {
       labels: string[];
       isPr: boolean;
     },
-    labelsAsLlmAgentName: string[] = [],
+    labelsNotRequiringPullRequest: string[] = [],
     options: EvaluateOptions = {},
   ): Promise<PrRejectionResult> => {
     const rejections: { type: PrRejectedReasonType; detail: string }[] = [];
@@ -58,13 +58,13 @@ export class IssueRejectionEvaluator {
     const hasLlmAgentLabel = issue.labels.some(
       (l) => l === 'llm-agent' || l.startsWith('llm-agent:'),
     );
-    const hasLabelAsLlmAgentName = issue.labels.some((label) =>
-      labelsAsLlmAgentName.includes(label),
+    const hasLabelNotRequiringPullRequest = issue.labels.some((label) =>
+      labelsNotRequiringPullRequest.includes(label),
     );
 
     if (
       !hasLlmAgentLabel &&
-      !hasLabelAsLlmAgentName &&
+      !hasLabelNotRequiringPullRequest &&
       (categoryLabels.length <= 0 || categoryLabels.includes('category:e2e'))
     ) {
       let prsToCheck: RelatedPullRequest[];

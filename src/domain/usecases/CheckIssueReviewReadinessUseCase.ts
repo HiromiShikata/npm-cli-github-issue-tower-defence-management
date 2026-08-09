@@ -4,6 +4,7 @@ import {
   IssueRejectionEvaluator,
   PrRejectedReasonType,
 } from './IssueRejectionEvaluator';
+import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
 
 type RejectedReasonType =
   | 'ISSUE_NOT_FOUND'
@@ -40,6 +41,7 @@ export class CheckIssueReviewReadinessUseCase {
     issueUrl: string;
     allowedIssueAuthors?: string[] | null;
     labelsAsLlmAgentName?: string[] | null;
+    labelsNotRequiringPullRequest?: string[] | null;
   }): Promise<IssueReviewReadinessResult> => {
     const issue = await this.issueRepository.getIssueByUrl(params.issueUrl);
 
@@ -83,7 +85,7 @@ export class CheckIssueReviewReadinessUseCase {
     const { rejections: prRejections } =
       await this.issueRejectionEvaluator.evaluate(
         issue,
-        params.labelsAsLlmAgentName ?? [],
+        resolveLabelsNotRequiringPullRequest(params),
       );
 
     const allRejections = [...rejections, ...prRejections];

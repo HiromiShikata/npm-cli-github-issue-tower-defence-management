@@ -106,6 +106,24 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       ]);
     });
 
+    it('should return reviewReady=true when the issue label is only in labelsNotRequiringPullRequest and no pull request exists', async () => {
+      const issue = createMockIssue({ labels: ['story'] });
+      mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment(),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      const result = await useCase.run({
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        labelsAsLlmAgentName: ['chore'],
+        labelsNotRequiringPullRequest: ['story'],
+      });
+
+      expect(result.rejections).toEqual([]);
+      expect(result.reviewReady).toBe(true);
+    });
+
     it('should return reviewReady=false with NO_REPORT_FROM_AGENT_BOT when no comments exist', async () => {
       const issue = createMockIssue();
       mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);

@@ -156,6 +156,7 @@ export class HandleScheduledEventUseCase {
     urlOfStoryView: string;
     disabled: boolean;
     labelsAsLlmAgentName?: string[] | null;
+    labelsNotRequiringPullRequest?: string[] | null;
     changeTargetPathAliases?: Record<string, string> | null;
     allowedIssueAuthors?: string[] | null;
     autoAssignManagerAuthors?: string[] | null;
@@ -408,6 +409,7 @@ ${JSON.stringify(e)}
       projectUrl: input.projectUrl,
       manager: input.manager,
       labelsAsLlmAgentName,
+      labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
       changeTargetPathAliases: input.changeTargetPathAliases,
       allowedIssueAuthors,
     });
@@ -437,6 +439,7 @@ ${JSON.stringify(e)}
           awaitingQualityCheckStatus:
             input.startPreparation.awaitingQualityCheckStatus ?? undefined,
           labelsAsLlmAgentName,
+          labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
         });
       }
       const preparationResult = await this.startPreparationUseCase.run({

@@ -22,6 +22,7 @@ export type ConfigFile = {
   awLogDirectoryPath?: string;
   awLogStaleThresholdMinutes?: number;
   labelsAsLlmAgentName?: string[];
+  labelsNotRequiringPullRequest?: string[];
   changeTargetPathAliases?: Record<string, string>;
   consoleAccessToken?: string;
   consoleProjects?: Record<string, string>;
@@ -179,6 +180,10 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         'awLogStaleThresholdMinutes',
       ),
       labelsAsLlmAgentName: getStringArrayValue(parsed, 'labelsAsLlmAgentName'),
+      labelsNotRequiringPullRequest: getStringArrayValue(
+        parsed,
+        'labelsNotRequiringPullRequest',
+      ),
       changeTargetPathAliases: getStringRecordValue(
         parsed,
         'changeTargetPathAliases',
@@ -348,6 +353,10 @@ export const mergeConfigs = (
     readmeOverrides.labelsAsLlmAgentName ??
     cliOverrides.labelsAsLlmAgentName ??
     configFile.labelsAsLlmAgentName,
+  labelsNotRequiringPullRequest:
+    readmeOverrides.labelsNotRequiringPullRequest ??
+    cliOverrides.labelsNotRequiringPullRequest ??
+    configFile.labelsNotRequiringPullRequest,
   changeTargetPathAliases:
     readmeOverrides.changeTargetPathAliases ??
     cliOverrides.changeTargetPathAliases ??

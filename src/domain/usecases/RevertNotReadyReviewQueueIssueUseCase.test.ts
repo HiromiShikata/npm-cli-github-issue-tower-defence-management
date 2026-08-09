@@ -301,6 +301,29 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
+    it('should not revert a story-labeled issue with no linked PR when story is only in labelsNotRequiringPullRequest', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+        labels: ['story'],
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        labelsAsLlmAgentName: ['chore', 'accounting'],
+        labelsNotRequiringPullRequest: ['story'],
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
     it('should not revert a chore-labeled issue with no linked PR when chore is in labelsAsLlmAgentName', async () => {
       const issue = createMockIssue({
         status: 'Awaiting Quality Check',

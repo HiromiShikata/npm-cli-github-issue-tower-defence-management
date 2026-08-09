@@ -13,6 +13,7 @@ import {
   PrRejectedReasonType,
 } from './IssueRejectionEvaluator';
 import { ChangeTargetPullRequestApprover } from './ChangeTargetPullRequestApprover';
+import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
 
 export class IssueNotFoundError extends Error {
   constructor(issueUrl: string) {
@@ -76,6 +77,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     workflowBlockerResolvedWebhookUrl: string | null;
     allowedIssueAuthors?: string[] | null;
     labelsAsLlmAgentName?: string[] | null;
+    labelsNotRequiringPullRequest?: string[] | null;
     changeTargetPathAliases?: Record<string, string> | null;
   }): Promise<void> => {
     const project = await this.projectRepository.getByUrl(params.projectUrl);
@@ -181,7 +183,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       issue,
       comments,
       isTrustedAuthor,
-      params.labelsAsLlmAgentName ?? [],
+      resolveLabelsNotRequiringPullRequest(params),
     );
 
     const rejectionStatusMessage =
@@ -287,7 +289,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     issue: { url: string; labels: string[]; isPr: boolean },
     comments: { author: string; content: string }[],
     isTrustedAuthor: (author: string) => boolean,
-    labelsAsLlmAgentName: string[],
+    labelsNotRequiringPullRequest: string[],
   ): Promise<{
     rejections: { type: RejectedReasonType; detail: string }[];
     approvedPrUrl: string | null;
@@ -312,7 +314,10 @@ export class NotifyFinishedIssuePreparationUseCase {
     }
 
     const { rejections: prRejections, approvedPrUrl } =
-      await this.issueRejectionEvaluator.evaluate(issue, labelsAsLlmAgentName);
+      await this.issueRejectionEvaluator.evaluate(
+        issue,
+        labelsNotRequiringPullRequest,
+      );
     return { rejections: [...rejections, ...prRejections], approvedPrUrl };
   };
 
