@@ -89,7 +89,9 @@ describe('isPullRequestDeclaredUnnecessary', () => {
   });
 
   it('returns false when the JSON block cannot be parsed', () => {
-    const consoleWarn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const consoleWarn = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => {});
 
     expect(
       isPullRequestDeclaredUnnecessary(

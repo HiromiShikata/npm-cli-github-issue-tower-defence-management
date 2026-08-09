@@ -5,6 +5,7 @@ import { IssueCommentRepository } from './adapter-interfaces/IssueCommentReposit
 import { IssueRejectionEvaluator } from './IssueRejectionEvaluator';
 import { ChangeTargetPullRequestApprover } from './ChangeTargetPullRequestApprover';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
+import { isPullRequestDeclaredUnnecessary } from './isPullRequestDeclaredUnnecessary';
 import {
   AWAITING_QUALITY_CHECK_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
@@ -59,7 +60,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
     >,
     private readonly issueCommentRepository: Pick<
       IssueCommentRepository,
-      'createComment'
+      'createComment' | 'getCommentsFromIssue'
     >,
   ) {
     this.issueRejectionEvaluator = new IssueRejectionEvaluator(issueRepository);
@@ -130,6 +131,17 @@ export class RevertNotReadyReviewQueueIssueUseCase {
                 relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? null,
             },
           );
+        if (
+          rejections.length === 1 &&
+          rejections[0].type === 'PULL_REQUEST_NOT_FOUND' &&
+          isPullRequestDeclaredUnnecessary(
+            await this.issueCommentRepository.getCommentsFromIssue(issue),
+            (author) =>
+              isAuthorAuthorizedForAutoStatusCheck(author, allowedIssueAuthors),
+          )
+        ) {
+          continue;
+        }
         if (rejections.length > 0) {
           if (!issue.assignees.includes(params.manager)) {
             continue;
