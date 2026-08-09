@@ -3,8 +3,8 @@ import { AnalyzeProblemByIssueUseCase } from './AnalyzeProblemByIssueUseCase';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { DateRepository } from './adapter-interfaces/DateRepository';
 import { Issue } from '../entities/Issue';
-import { StoryObject } from '../entities/StoryObjectMap';
-import { StoryOption } from '../entities/Project';
+import { StoryObject, StoryObjectMap } from '../entities/StoryObjectMap';
+import { Project, StoryOption } from '../entities/Project';
 
 describe('AnalyzeProblemByIssueUseCase', () => {
   const mockIssueRepository = mock<IssueRepository>();
@@ -61,6 +61,54 @@ describe('AnalyzeProblemByIssueUseCase', () => {
       const result = useCase.createSummaryCommentBody(storyObject);
 
       expect(result).toContain(plainTitle);
+    });
+  });
+
+  describe('run', () => {
+    const midnight = new Date(2026, 7, 9, 0, 0, 0);
+
+    const createStoryObjectMap = (): StoryObjectMap => {
+      const storyIssue = mock<Issue>();
+      storyIssue.url = 'https://github.com/org/repo/issues/100';
+      storyIssue.number = 100;
+      storyIssue.title = 'Story';
+      const storyObject: StoryObject = {
+        story: mock<StoryOption>(),
+        storyIssue,
+        issues: [],
+      };
+      return new Map([['story', storyObject]]);
+    };
+
+    const createProject = (): Project => {
+      const project = mock<Project>();
+      project.story = mock<Project['story']>();
+      return project;
+    };
+
+    beforeEach(() => {
+      mockIssueRepository.createComment.mockReset();
+    });
+
+    it('does not comment on any story issue when the story progress comment is disabled', async () => {
+      await useCase.run({
+        targetDates: [midnight],
+        project: createProject(),
+        storyObjectMap: createStoryObjectMap(),
+        storyProgressCommentEnabled: false,
+      });
+
+      expect(mockIssueRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('comments on the story issue when the story progress comment option is absent', async () => {
+      await useCase.run({
+        targetDates: [midnight],
+        project: createProject(),
+        storyObjectMap: createStoryObjectMap(),
+      });
+
+      expect(mockIssueRepository.createComment).toHaveBeenCalledTimes(1);
     });
   });
 });
