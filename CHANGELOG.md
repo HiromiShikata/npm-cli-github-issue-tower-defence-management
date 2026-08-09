@@ -1,3 +1,10 @@
+## [1.146.14](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.13...v1.146.14) (2026-08-09)
+
+
+### Bug Fixes
+
+* **console:** report the item detail state, pull request status and related pull request read failures ([#1436](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1436)) ([241b87d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/241b87dff0af7808f091656f6e15445bb671492d))
+
 ## [1.146.13](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.12...v1.146.13) (2026-08-09)
 
 
