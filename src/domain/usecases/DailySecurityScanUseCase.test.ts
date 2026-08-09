@@ -285,11 +285,14 @@ describe('DailySecurityScanUseCase', () => {
         mockHttpRepository,
       } = buildUseCase();
 
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
+      mockLocalCommandRunner.runCommand.mockImplementation(
+        async (program, args) => {
+          if (program === 'find' && args.includes('-maxdepth')) {
+            return { stdout: '/repos/app/.git\n', stderr: '', exitCode: 0 };
+          }
+          return { stdout: '', stderr: '', exitCode: 0 };
+        },
+      );
       mockHttpRepository.get.mockResolvedValue(
         JSON.stringify({
           vulnerabilities: [
@@ -395,12 +398,21 @@ describe('DailySecurityScanUseCase', () => {
         mockHttpRepository,
       } = buildUseCase();
 
-      mockLocalCommandRunner.runCommand.mockImplementation(async (program) => {
-        if (program === 'grep') {
-          return { stdout: '', stderr: '', exitCode: 1 };
-        }
-        return { stdout: '', stderr: '', exitCode: 0 };
-      });
+      mockLocalCommandRunner.runCommand.mockImplementation(
+        async (program, args) => {
+          if (program === 'find' && args.includes('-maxdepth')) {
+            return {
+              stdout: '/repos/app/.git\n/repos/site/.git\n',
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          if (program === 'git' && args.includes('grep')) {
+            return { stdout: '', stderr: '', exitCode: 1 };
+          }
+          return { stdout: '', stderr: '', exitCode: 0 };
+        },
+      );
       mockHttpRepository.get.mockResolvedValue(
         JSON.stringify({
           vulnerabilities: [
@@ -427,25 +439,32 @@ describe('DailySecurityScanUseCase', () => {
         },
       });
 
-      expect(
-        mockLocalCommandRunner.runCommand.mock.calls.filter(
-          (call) => call[0] === 'grep',
-        ),
-      ).toHaveLength(1);
-      expect(
-        mockLocalCommandRunner.runCommand.mock.calls.filter(
-          (call) => call[0] === 'grep',
-        )[0][1],
-      ).toEqual([
-        '-r',
-        '-i',
-        '-q',
-        '-F',
-        '--exclude-dir=.git',
-        '--exclude-dir=node_modules',
-        '--',
-        'LoadMaster',
-        '/repos',
+      const gitGrepCalls = mockLocalCommandRunner.runCommand.mock.calls.filter(
+        (call) => call[0] === 'git' && call[1].includes('grep'),
+      );
+      expect(gitGrepCalls.map((call) => call[1])).toEqual([
+        [
+          '-C',
+          '/repos/app',
+          'grep',
+          '-I',
+          '-i',
+          '-q',
+          '-F',
+          '-e',
+          'LoadMaster',
+        ],
+        [
+          '-C',
+          '/repos/site',
+          'grep',
+          '-I',
+          '-i',
+          '-q',
+          '-F',
+          '-e',
+          'LoadMaster',
+        ],
       ]);
       expect(mockIssueRepository.createNewIssue.mock.calls).toHaveLength(0);
     });
@@ -460,7 +479,10 @@ describe('DailySecurityScanUseCase', () => {
 
       mockLocalCommandRunner.runCommand.mockImplementation(
         async (program, args) => {
-          if (program === 'grep') {
+          if (program === 'find' && args.includes('-maxdepth')) {
+            return { stdout: '/repos/app/.git\n', stderr: '', exitCode: 0 };
+          }
+          if (program === 'git' && args.includes('grep')) {
             return {
               stdout: '',
               stderr: '',
@@ -516,16 +538,21 @@ describe('DailySecurityScanUseCase', () => {
       const { useCase, mockLocalCommandRunner, mockHttpRepository } =
         buildUseCase();
 
-      mockLocalCommandRunner.runCommand.mockImplementation(async (program) => {
-        if (program === 'grep') {
-          return {
-            stdout: '',
-            stderr: 'grep: /repos: No such file or directory',
-            exitCode: 2,
-          };
-        }
-        return { stdout: '', stderr: '', exitCode: 0 };
-      });
+      mockLocalCommandRunner.runCommand.mockImplementation(
+        async (program, args) => {
+          if (program === 'find' && args.includes('-maxdepth')) {
+            return { stdout: '/repos/app/.git\n', stderr: '', exitCode: 0 };
+          }
+          if (program === 'git' && args.includes('grep')) {
+            return {
+              stdout: '',
+              stderr: 'fatal: not a git repository',
+              exitCode: 128,
+            };
+          }
+          return { stdout: '', stderr: '', exitCode: 0 };
+        },
+      );
       mockHttpRepository.get.mockResolvedValue(
         JSON.stringify({
           vulnerabilities: [
@@ -552,9 +579,7 @@ describe('DailySecurityScanUseCase', () => {
             kevReportRepo: 'security-reports',
           },
         }),
-      ).rejects.toThrow(
-        'Failed to search the scanned workspace for LoadMaster',
-      );
+      ).rejects.toThrow('Failed to search /repos/app for LoadMaster');
     });
 
     it('throws when the KEV catalog format is unexpected', async () => {

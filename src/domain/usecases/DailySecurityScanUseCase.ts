@@ -219,28 +219,39 @@ export class DailySecurityScanUseCase {
     scanBaseDirectory: string,
     product: string,
   ): Promise<boolean> => {
-    const { stderr, exitCode } = await this.localCommandRunner.runCommand(
-      'grep',
-      [
-        '-r',
-        '-i',
-        '-q',
-        '-F',
-        '--exclude-dir=.git',
-        '--exclude-dir=node_modules',
-        '--',
-        product,
-        scanBaseDirectory,
-      ],
+    const { stdout: findOutput } = await this.localCommandRunner.runCommand(
+      'find',
+      [scanBaseDirectory, '-maxdepth', '3', '-name', '.git', '-type', 'd'],
     );
-    if (exitCode === 0) {
-      return true;
+    const repositoryDirectories = findOutput
+      .split('\n')
+      .filter((line) => line.length > 0)
+      .map((gitDirectory) => gitDirectory.replace(/\/\.git$/, ''));
+
+    for (const repositoryDirectory of repositoryDirectories) {
+      const { stderr, exitCode } = await this.localCommandRunner.runCommand(
+        'git',
+        [
+          '-C',
+          repositoryDirectory,
+          'grep',
+          '-I',
+          '-i',
+          '-q',
+          '-F',
+          '-e',
+          product,
+        ],
+      );
+      if (exitCode === 0) {
+        return true;
+      }
+      if (exitCode !== 1) {
+        throw new Error(
+          `Failed to search ${repositoryDirectory} for ${product}: ${stderr}`,
+        );
+      }
     }
-    if (exitCode === 1) {
-      return false;
-    }
-    throw new Error(
-      `Failed to search the scanned workspace for ${product}: ${stderr}`,
-    );
+    return false;
   };
 }
