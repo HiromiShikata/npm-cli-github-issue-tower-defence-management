@@ -262,4 +262,111 @@ describe('RestIssueRepository', () => {
       );
     });
   });
+
+  describe('searchIssues', () => {
+    const buildSearchItem = (
+      overrides: Partial<{
+        html_url: string;
+        state: string;
+        user: { login: string } | null;
+        assignees: { login: string }[];
+        pull_request: { merged_at: string | null } | null;
+      }> = {},
+    ) => ({
+      html_url: 'https://github.com/HiromiShikata/test-repository/pull/12',
+      state: 'open',
+      user: { login: 'dependabot[bot]' },
+      assignees: [],
+      pull_request: { merged_at: null },
+      ...overrides,
+    });
+
+    it('sends the query to the search endpoint and maps the response', async () => {
+      mockGet.mockReturnValueOnce(
+        mockJsonResponse({ items: [buildSearchItem()] }),
+      );
+
+      const searchedIssues = await restIssueRepository.searchIssues(
+        'repo:HiromiShikata/test-repository is:open no:project',
+      );
+
+      expect(mockGet).toHaveBeenCalledWith(
+        'https://api.github.com/search/issues',
+        {
+          searchParams: {
+            q: 'repo:HiromiShikata/test-repository is:open no:project',
+            per_page: 100,
+            page: 1,
+            advanced_search: 'true',
+          },
+          headers: { Authorization: 'token dummy-token' },
+        },
+      );
+      expect(searchedIssues).toEqual([
+        {
+          url: 'https://github.com/HiromiShikata/test-repository/pull/12',
+          org: 'HiromiShikata',
+          repo: 'test-repository',
+          number: 12,
+          state: 'OPEN',
+          author: 'dependabot',
+          assignees: [],
+        },
+      ]);
+    });
+
+    it('keeps the author login of a human account unchanged', async () => {
+      mockGet.mockReturnValueOnce(
+        mockJsonResponse({
+          items: [buildSearchItem({ user: { login: 'HiromiShikata' } })],
+        }),
+      );
+
+      const searchedIssues = await restIssueRepository.searchIssues('anything');
+
+      expect(searchedIssues[0].author).toBe('HiromiShikata');
+    });
+
+    it('maps a merged pull request and a closed issue to their states', async () => {
+      mockGet.mockReturnValueOnce(
+        mockJsonResponse({
+          items: [
+            buildSearchItem({
+              state: 'closed',
+              pull_request: { merged_at: '2026-08-09T00:00:00Z' },
+            }),
+            buildSearchItem({
+              html_url:
+                'https://github.com/HiromiShikata/test-repository/issues/13',
+              state: 'closed',
+              pull_request: null,
+            }),
+          ],
+        }),
+      );
+
+      const searchedIssues = await restIssueRepository.searchIssues('anything');
+
+      expect(searchedIssues.map((issue) => issue.state)).toEqual([
+        'MERGED',
+        'CLOSED',
+      ]);
+    });
+
+    it('requests the next page while a full page is returned', async () => {
+      const fullPage = Array.from({ length: 100 }, (_unused, index) =>
+        buildSearchItem({
+          html_url: `https://github.com/HiromiShikata/test-repository/pull/${index + 1}`,
+        }),
+      );
+      mockGet
+        .mockReturnValueOnce(mockJsonResponse({ items: fullPage }))
+        .mockReturnValueOnce(mockJsonResponse({ items: [buildSearchItem()] }));
+
+      const searchedIssues = await restIssueRepository.searchIssues('anything');
+
+      expect(mockGet).toHaveBeenCalledTimes(2);
+      expect(searchedIssues).toHaveLength(101);
+    });
+  });
 });

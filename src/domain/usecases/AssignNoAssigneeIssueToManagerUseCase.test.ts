@@ -308,10 +308,7 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
           [project, searchedIssue.url],
         ]);
         expect(mockIssueRepository.updateAssigneeList.mock.calls).toEqual([
-          [
-            { org: 'testOrg', repo: 'testRepo', number: 7 },
-            ['manager1'],
-          ],
+          [{ org: 'testOrg', repo: 'testRepo', number: 7 }, ['manager1']],
         ]);
       });
 
@@ -391,7 +388,11 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
       it('logs and continues when adding a matched issue to the project fails', async () => {
         mockIssueRepository.searchIssues.mockResolvedValueOnce([
           searchedIssue,
-          { ...searchedIssue, url: 'https://github.com/testOrg/testRepo/pull/9', number: 9 },
+          {
+            ...searchedIssue,
+            url: 'https://github.com/testOrg/testRepo/pull/9',
+            number: 9,
+          },
         ]);
         mockIssueRepository.addIssueToProject.mockRejectedValueOnce(
           new Error('Content not found'),

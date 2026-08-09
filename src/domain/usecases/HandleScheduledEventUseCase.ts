@@ -178,6 +178,7 @@ export class HandleScheduledEventUseCase {
     } | null;
     thresholdForAutoReject?: number;
     createTaskFromStoryBodyCheckboxEnabled?: boolean;
+    queryToAddProject?: string | null;
     storyProgressCommentEnabled?: boolean;
     dailySecurityScan?: DailySecurityScanConfig | null;
   }): Promise<{
@@ -568,6 +569,8 @@ ${JSON.stringify(e)}
       manager: input.manager,
       cacheUsed,
       autoAssignManagerAuthors: input.autoAssignManagerAuthors ?? null,
+      projectToAddSearchedIssues: project,
+      queryToAddProject: input.queryToAddProject ?? null,
     });
     await this.updateIssueStatusByLabelUseCase.run({
       project,
