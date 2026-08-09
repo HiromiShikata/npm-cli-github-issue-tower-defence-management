@@ -72,7 +72,7 @@ describe('useConsoleOperations', () => {
     });
   });
 
-  it('posts an unnecessary review as a close with the unnecessary comment body', async () => {
+  it('posts an unnecessary review carrying the item url so the server can label it chore', async () => {
     const fetchMock = captureFetch();
     const { result } = setup();
     await act(async () => {
@@ -83,7 +83,8 @@ describe('useConsoleOperations', () => {
       );
     });
     expect(lastBody(fetchMock)).toMatchObject({
-      action: 'close',
+      action: 'unnecessary',
+      issueUrl: prItem.url,
       commentBody: 'This pull request is unnecessary.',
     });
   });

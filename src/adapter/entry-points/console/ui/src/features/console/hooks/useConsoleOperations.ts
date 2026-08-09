@@ -114,9 +114,10 @@ const reviewRequest = (
   }
   return {
     pjcode,
-    action: 'close',
+    action: 'unnecessary',
     prUrl,
     projectItemId: item.projectItemId,
+    issueUrl: item.url,
     commentBody: UNNECESSARY_COMMENT_BODY,
   };
 };

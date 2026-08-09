@@ -23,6 +23,7 @@ export type ConsoleReviewRequest = {
   action: string;
   prUrl: string;
   projectItemId: string;
+  issueUrl?: string;
   commentBody?: string;
   changedFilePath?: string;
   line?: number;
