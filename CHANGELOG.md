@@ -1,3 +1,10 @@
+## [1.146.18](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.17...v1.146.18) (2026-08-09)
+
+
+### Bug Fixes
+
+* **console:** comment on the linked issue when a pull request is marked unnecessary ([#1444](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1444)) ([d687f4e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d687f4e7af9247bd7993dd916342d8067d00f3b2))
+
 ## [1.146.17](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.16...v1.146.17) (2026-08-09)
 
 

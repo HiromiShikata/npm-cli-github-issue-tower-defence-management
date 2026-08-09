@@ -157,6 +157,11 @@ const handleReview = async (context, body) => {
                 .resolveIssueRepository(prUrl)
                 .createCommentByUrl(prUrl, body.commentBody);
         }
+        if (isNonEmptyString(body.issueCommentBody)) {
+            await context
+                .resolveIssueRepository(issueUrl)
+                .createCommentByUrl(issueUrl, body.issueCommentBody);
+        }
         const labelFailure = await addChoreLabel(context.resolveIssueRepository(issueUrl), issueUrl);
         if (labelFailure !== null) {
             return labelFailure;
