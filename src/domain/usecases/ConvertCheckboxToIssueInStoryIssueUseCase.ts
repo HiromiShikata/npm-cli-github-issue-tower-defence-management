@@ -60,9 +60,11 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
         input.urlOfStoryView,
         storyOption.name,
       );
-      let newBody = freshStoryIssue.body;
-      if (!freshStoryIssue.body.includes(storyViewLink)) {
-        newBody = `${storyViewLink}\n\n${newBody}`;
+      let newBody = this.bodyWithStoryViewLinkOnFirstLine(
+        freshStoryIssue.body,
+        storyViewLink,
+      );
+      if (newBody !== freshStoryIssue.body) {
         await this.issueRepository.updateIssue({
           ...freshStoryIssue,
           body: newBody,
@@ -114,6 +116,33 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
         );
       }
     }
+  };
+  bodyWithStoryViewLinkOnFirstLine = (
+    body: string,
+    storyViewLink: string,
+  ): string => {
+    const lines = body.split('\n');
+    const remainingLines: string[] = [];
+    for (let i = 0; i < lines.length; i++) {
+      if (!lines[i].includes(storyViewLink)) {
+        remainingLines.push(lines[i]);
+        continue;
+      }
+      if (i + 1 < lines.length && lines[i + 1].trim() === '') {
+        i++;
+        continue;
+      }
+      if (
+        remainingLines.length > 0 &&
+        remainingLines[remainingLines.length - 1].trim() === ''
+      ) {
+        remainingLines.pop();
+      }
+    }
+    while (remainingLines.length > 0 && remainingLines[0].trim() === '') {
+      remainingLines.shift();
+    }
+    return `${storyViewLink}\n\n${remainingLines.join('\n')}`;
   };
   buildStoryViewLink = (urlOfStoryView: string, storyName: string): string => {
     return `${urlOfStoryView}?sliceBy%5Bvalue%5D=${encodeForURI(storyName)}`;

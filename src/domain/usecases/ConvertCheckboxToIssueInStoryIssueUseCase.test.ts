@@ -1208,6 +1208,84 @@ Some description without checkboxes`,
         }),
       ).rejects.toThrow('GraphQL request failed');
     });
+
+    describe('story view link position', () => {
+      const storyViewLink = 'https://example.com?sliceBy%5Bvalue%5D=Story%201';
+
+      const runWithBody = async (body: string): Promise<void> => {
+        jest.clearAllMocks();
+        mockIssueRepository.getIssueByUrl.mockResolvedValue({
+          ...basicStoryIssue1,
+          body,
+        });
+        const useCase = new ConvertCheckboxToIssueInStoryIssueUseCase(
+          mockIssueRepository,
+        );
+        await useCase.run({
+          project: singleStoryProject,
+          issues: [basicStoryIssue1],
+          cacheUsed: false,
+          urlOfStoryView: 'https://example.com',
+          storyObjectMap: singleStoryObjectMap,
+          manager: 'ManagerName',
+          createTaskFromStoryBodyCheckboxEnabled: false,
+        });
+      };
+
+      it('moves the story view link back to the first line when it sits in the middle of the body', async () => {
+        await runWithBody(`Background text
+
+${storyViewLink}
+
+- [ ] Task 1`);
+
+        expect(mockIssueRepository.updateIssue.mock.calls).toHaveLength(1);
+        expect(mockIssueRepository.updateIssue.mock.calls[0][0].body)
+          .toBe(`${storyViewLink}
+
+Background text
+
+- [ ] Task 1`);
+      });
+
+      it('moves the story view link back to the first line when it sits at the bottom of the body', async () => {
+        await runWithBody(`Background text
+
+- [ ] Task 1
+
+${storyViewLink}`);
+
+        expect(mockIssueRepository.updateIssue.mock.calls).toHaveLength(1);
+        expect(mockIssueRepository.updateIssue.mock.calls[0][0].body)
+          .toBe(`${storyViewLink}
+
+Background text
+
+- [ ] Task 1`);
+      });
+
+      it('leaves a single story view link on the first line when the body holds more than one copy', async () => {
+        await runWithBody(`${storyViewLink}
+
+Background text
+
+${storyViewLink}`);
+
+        expect(mockIssueRepository.updateIssue.mock.calls).toHaveLength(1);
+        expect(mockIssueRepository.updateIssue.mock.calls[0][0].body)
+          .toBe(`${storyViewLink}
+
+Background text`);
+      });
+
+      it('does not update the issue when the story view link is already the first line', async () => {
+        await runWithBody(`${storyViewLink}
+
+- [ ] Task 1`);
+
+        expect(mockIssueRepository.updateIssue).not.toHaveBeenCalled();
+      });
+    });
   });
 
   describe('buildStoryViewLink', () => {
