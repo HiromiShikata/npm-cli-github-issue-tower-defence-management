@@ -46,8 +46,11 @@ export type ConsoleItemDetailData = {
   commits: ConsoleCommit[];
   commitsAreLoading: boolean;
   commitsError: string | null;
+  stateError: string | null;
   pullRequestStatus: ConsolePullRequestStatus | null;
+  pullRequestStatusError: string | null;
   relatedPullRequests: ConsoleRelatedPullRequestView[];
+  relatedPullRequestsError: string | null;
 };
 
 export const useConsoleItemDetailData = (
@@ -180,7 +183,10 @@ export const useConsoleItemDetailData = (
     commits: commits.data,
     commitsAreLoading: commits.isLoading,
     commitsError: commits.error,
+    stateError: state.error,
     pullRequestStatus: isPr ? prStatus.data : null,
+    pullRequestStatusError: isPr ? prStatus.error : null,
     relatedPullRequests: relatedViews,
+    relatedPullRequestsError: isPr ? null : relatedPrs.error,
   };
 };

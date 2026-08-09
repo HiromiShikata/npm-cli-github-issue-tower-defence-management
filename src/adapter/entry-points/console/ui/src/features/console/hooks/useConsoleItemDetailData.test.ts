@@ -90,7 +90,49 @@ const buildCaches = (related: ConsoleRelatedPullRequest[]): ConsoleCaches => {
   };
 };
 
+const buildFailingCaches = (): ConsoleCaches => {
+  const caches = buildCaches([]);
+  return {
+    ...caches,
+    relatedPrs: new ResourceCache<ConsoleRelatedPullRequest[]>(() =>
+      Promise.reject(new Error('related pull request read failed')),
+    ),
+    state: new ResourceCache<ConsoleIssueState>(() =>
+      Promise.reject(new Error('state read failed')),
+    ),
+    prStatus: new ResourceCache<ConsolePullRequestStatus>(() =>
+      Promise.reject(new Error('pull request status read failed')),
+    ),
+  };
+};
+
 describe('useConsoleItemDetailData', () => {
+  it('exposes the related pull request read failure for an issue item', async () => {
+    const caches = buildFailingCaches();
+    const { result } = renderHook(() =>
+      useConsoleItemDetailData(caches, issueItem),
+    );
+    await waitFor(() => {
+      expect(result.current.relatedPullRequestsError).toBe(
+        'related pull request read failed',
+      );
+    });
+    expect(result.current.relatedPullRequests).toEqual([]);
+    expect(result.current.stateError).toBe('state read failed');
+  });
+
+  it('exposes the pull request status read failure for a PR item', async () => {
+    const caches = buildFailingCaches();
+    const { result } = renderHook(() =>
+      useConsoleItemDetailData(caches, prItem),
+    );
+    await waitFor(() => {
+      expect(result.current.pullRequestStatusError).toBe(
+        'pull request status read failed',
+      );
+    });
+  });
+
   it('loads body, files and commits for a PR item', async () => {
     const caches = buildCaches([]);
     const { result } = renderHook(() =>

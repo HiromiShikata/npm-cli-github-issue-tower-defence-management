@@ -57,8 +57,11 @@ export type ConsoleItemDetailProps = {
   commits: ConsoleCommit[];
   commitsAreLoading: boolean;
   commitsError: string | null;
+  stateError: string | null;
   pullRequestStatus: ConsolePullRequestStatus | null;
+  pullRequestStatusError: string | null;
   relatedPullRequests: ConsoleRelatedPullRequestView[];
+  relatedPullRequestsError: string | null;
   now: number;
   commentComposer: ReactNode;
   operationBar: ReactNode;
@@ -85,8 +88,11 @@ export const ConsoleItemDetail = ({
   commits,
   commitsAreLoading,
   commitsError,
+  stateError,
   pullRequestStatus,
+  pullRequestStatusError,
   relatedPullRequests,
+  relatedPullRequestsError,
   now,
   commentComposer,
   operationBar,
@@ -154,6 +160,18 @@ export const ConsoleItemDetail = ({
           </span>
         )}
       </h2>
+
+      {stateError !== null && (
+        <p role="alert" className="console-detail-fetch-error">
+          Failed to load item state: {stateError}
+        </p>
+      )}
+
+      {item.isPr && pullRequestStatusError !== null && (
+        <p role="alert" className="console-detail-fetch-error">
+          Failed to load pull request status: {pullRequestStatusError}
+        </p>
+      )}
 
       {item.isPr && pullRequestStatus?.found && (
         <div className="console-detail-pr-status-row">
@@ -267,6 +285,12 @@ export const ConsoleItemDetail = ({
             now={now}
           />
         </ConsolePanel>
+      )}
+
+      {!item.isPr && relatedPullRequestsError !== null && (
+        <p role="alert" className="console-detail-fetch-error">
+          Failed to load related pull requests: {relatedPullRequestsError}
+        </p>
       )}
 
       {!item.isPr &&
