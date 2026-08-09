@@ -33,9 +33,15 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
     }
 
     for (const storyOption of input.project.story?.stories || []) {
-      const storyIssue = input.issues.find((issue) =>
-        storyOption.name.startsWith(issue.title),
-      );
+      const storyIssue = input.issues
+        .filter((issue) => storyOption.name.startsWith(issue.title))
+        .reduce<Issue | null>(
+          (longest, issue) =>
+            longest === null || issue.title.length > longest.title.length
+              ? issue
+              : longest,
+          null,
+        );
       const storyObject = input.storyObjectMap.get(storyOption.name);
       if (storyOption.name.startsWith('regular / ')) {
         continue;
