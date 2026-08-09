@@ -12,6 +12,7 @@ import {
 } from '../lib/consoleApi';
 import {
   buildRequestChangesBody,
+  buildUnnecessaryIssueCommentBody,
   type ConsoleCloseAction,
   type ConsoleNextActionDateAction,
   type ConsolePendingReviewComment,
@@ -119,6 +120,7 @@ const reviewRequest = (
     projectItemId: item.projectItemId,
     issueUrl: item.url,
     commentBody: UNNECESSARY_COMMENT_BODY,
+    issueCommentBody: buildUnnecessaryIssueCommentBody(prUrl),
   };
 };
 

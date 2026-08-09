@@ -1,5 +1,6 @@
 import {
   buildRequestChangesBody,
+  buildUnnecessaryIssueCommentBody,
   IN_TMUX_BY_HUMAN_NAME,
   isManualTriageTab,
   STATUS_BUTTON_NAMES,
@@ -14,6 +15,14 @@ describe('operation constants', () => {
 
   it('defines the unnecessary comment body', () => {
     expect(UNNECESSARY_COMMENT_BODY).toBe('This pull request is unnecessary.');
+  });
+
+  it('builds an issue comment body that names the closed pull request and forbids creating it again', () => {
+    expect(
+      buildUnnecessaryIssueCommentBody('https://github.com/o/r/pull/1'),
+    ).toBe(
+      'The pull request for this issue was unnecessary and has been closed: https://github.com/o/r/pull/1\n\nDo not create it again.',
+    );
   });
 
   it('lists the status buttons left to right', () => {
