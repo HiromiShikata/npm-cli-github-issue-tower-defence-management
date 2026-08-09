@@ -33,6 +33,8 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     readonly sleep: Sleep;
     constructor(apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>, restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'createComment' | 'getIssue' | 'updateLabels' | 'removeLabel' | 'updateAssigneeList'>, graphqlProjectItemRepository: Pick<GraphqlProjectItemRepository, 'fetchProjectItems' | 'fetchProjectItemsLight' | 'fetchProjectItemsByIds' | 'fetchProjectItemByUrl' | 'updateProjectField' | 'clearProjectField' | 'updateProjectTextField' | 'addIssueToProject'>, localStorageCacheRepository: Pick<LocalStorageCacheRepository, 'getSingle' | 'setSingle'>, projectRepository: Pick<ProjectRepository, 'getProject'>, dateRepository: DateRepository, localStorageRepository: LocalStorageRepository, ghToken?: string, sleep?: Sleep);
     private readonly getAllIssuesRefreshMemo;
+    private readonly lastIssuesFetchedAtByProjectId;
+    getLastIssuesFetchedAt: (projectId: Project["id"]) => string | null;
     private fetchWithRateLimitRetry;
     updateStatus: (project: Project, issue: Issue, statusId: string) => Promise<void>;
     convertProjectItemToIssue: (item: ProjectItem) => Issue;

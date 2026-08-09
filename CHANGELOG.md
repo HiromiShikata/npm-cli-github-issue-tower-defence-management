@@ -1,3 +1,10 @@
+## [1.146.13](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.12...v1.146.13) (2026-08-09)
+
+
+### Bug Fixes
+
+* **console:** stamp console lists with the GitHub read time instead of the file write time ([#1434](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1434)) ([ff0555f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ff0555f33e08ddfe91e2868886c33a0728ef67af))
+
 ## [1.146.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.11...v1.146.12) (2026-08-09)
 
 

@@ -262,12 +262,17 @@ class HandleScheduledEventUseCaseHandler {
                     localCommandRunner: nodeLocalCommandRunner,
                 });
                 try {
+                    const issuesFetchedAt = issueRepository.getLastIssuesFetchedAt(result.project.id);
+                    if (issuesFetchedAt === null) {
+                        throw new Error(`No GitHub read time recorded for the project the console lists describe. projectId: ${result.project.id}`);
+                    }
                     (0, consoleListsWriter_1.writeConsoleLists)({
                         consoleDataOutputDir: mergedInput.consoleDataOutputDir ?? null,
                         pjcode: input.projectName,
                         assigneeLogin: input.manager,
                         project: result.project,
                         issues: result.issues,
+                        generatedAt: (0, consoleListsWriter_1.formatConsoleGeneratedAt)(new Date(issuesFetchedAt)),
                         workflowBlockerStoryName: mergedInput.workflowBlockerStoryName ?? null,
                     });
                 }

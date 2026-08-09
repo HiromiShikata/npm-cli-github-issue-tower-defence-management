@@ -165,6 +165,8 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         this.ghToken = ghToken;
         this.sleep = sleep;
         this.getAllIssuesRefreshMemo = new Map();
+        this.lastIssuesFetchedAtByProjectId = new Map();
+        this.getLastIssuesFetchedAt = (projectId) => this.lastIssuesFetchedAtByProjectId.get(projectId) ?? null;
         this.fetchWithRateLimitRetry = (request) => (0, githubRateLimitRetry_1.fetchWithGitHubRateLimitRetry)(request, this.sleep);
         this.updateStatus = async (project, issue, statusId) => {
             await this.graphqlProjectItemRepository.updateProjectField(project.id, project.status.fieldId, issue.itemId, { singleSelectOptionId: statusId });
@@ -320,6 +322,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                     project,
                     issues,
                 });
+                this.lastIssuesFetchedAtByProjectId.set(projectId, nowIso);
                 return { issues, project, cacheUsed: false };
             }
             const project = cache.project;
@@ -338,12 +341,14 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 }
             }
             const issues = Array.from(issuesByUrl.values());
+            const nowIso = now.toISOString();
             await this.localStorageCacheRepository.setSingle(cacheKey, {
-                lastFetchedAt: now.toISOString(),
+                lastFetchedAt: nowIso,
                 lastFullFetchAt: cache.lastFullFetchAt,
                 project,
                 issues,
             });
+            this.lastIssuesFetchedAtByProjectId.set(projectId, nowIso);
             return { issues, project, cacheUsed: true };
         };
         this.createNewIssue = async (org, repo, title, body, assignees, labels) => {
