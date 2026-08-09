@@ -41,9 +41,17 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
         continue;
       } else if (!storyIssue || !storyObject) {
         throw new Error(`Story issue not found: ${storyOption.name}`);
-      } else if (
-        storyIssue.isClosed ||
-        storyIssue.status === ICEBOX_STATUS_NAME
+      } else if (storyIssue.isClosed) {
+        continue;
+      }
+      const iced = storyIssue.status === ICEBOX_STATUS_NAME;
+      if (
+        iced &&
+        this.bodyWithStoryViewLinkOnFirstLine(
+          storyIssue.body,
+          input.urlOfStoryView,
+          storyOption.name,
+        ) === storyIssue.body
       ) {
         continue;
       }
@@ -67,7 +75,7 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
           body: newBody,
         });
       }
-      if (!input.createTaskFromStoryBodyCheckboxEnabled) {
+      if (iced || !input.createTaskFromStoryBodyCheckboxEnabled) {
         continue;
       }
       if (!newBody.includes('- [ ] ')) {
