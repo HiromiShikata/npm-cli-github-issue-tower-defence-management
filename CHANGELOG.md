@@ -1,3 +1,10 @@
+## [1.148.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.3...v1.148.4) (2026-08-09)
+
+
+### Bug Fixes
+
+* **console:** move the CI result to the top line of the item detail ([#1477](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1477)) ([28cff78](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/28cff78760bf042c15d1a51cd1319a956137e329))
+
 ## [1.148.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.2...v1.148.3) (2026-08-09)
 
 
