@@ -257,6 +257,7 @@ body {
 .console-comment-error,
 .console-files-error,
 .console-commits-error,
+.console-detail-fetch-error,
 .console-detail-body-error {
   color: #f85149;
 }
