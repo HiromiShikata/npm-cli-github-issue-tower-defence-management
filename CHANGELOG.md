@@ -1,3 +1,10 @@
+## [1.146.16](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.15...v1.146.16) (2026-08-09)
+
+
+### Bug Fixes
+
+* **console:** open the pull request description panel by default ([#1443](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1443)) ([aef851e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/aef851eac516be3cb118386722e8a631260410a3))
+
 ## [1.146.15](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.14...v1.146.15) (2026-08-09)
 
 
