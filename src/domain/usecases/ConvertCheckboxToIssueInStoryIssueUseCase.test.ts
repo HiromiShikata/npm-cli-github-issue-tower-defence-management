@@ -376,6 +376,51 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
         expectedAddIssueToProjectCalls: [],
       },
       {
+        name: 'should choose the longest prefix-matching title when several issues prefix-match one story option',
+        input: {
+          project: singleStoryProject,
+          issues: [
+            {
+              ...basicStoryIssue1,
+              title: 'Story',
+              number: 900,
+              url: 'https://github.com/org/repo/issues/900',
+            },
+            {
+              ...basicStoryIssue1,
+              title: 'Story 1',
+              number: 901,
+              url: 'https://github.com/org/repo/issues/901',
+            },
+          ],
+          cacheUsed: false,
+          urlOfStoryView: 'https://example.com',
+          storyObjectMap: singleStoryObjectMap,
+          manager: 'manager',
+          createTaskFromStoryBodyCheckboxEnabled: false,
+        },
+        expectedCreateNewIssueCalls: [],
+        expectedUpdateIssueCalls: [
+          [
+            {
+              ...basicStoryIssue1,
+              title: 'Story 1',
+              number: 901,
+              url: 'https://github.com/org/repo/issues/901',
+              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+
+- [ ] Task 1
+- [ ] Task 2`,
+            },
+          ],
+        ],
+        expectedUpdateStoryCalls: [],
+        expectedGetIssueByUrlCalls: [
+          ['https://github.com/org/repo/issues/901'],
+        ],
+        expectedAddIssueToProjectCalls: [],
+      },
+      {
         name: 'should consolidate a stale story view link on an icebox story issue without reading it when the link is already correct',
         input: {
           project: singleStoryProject,
