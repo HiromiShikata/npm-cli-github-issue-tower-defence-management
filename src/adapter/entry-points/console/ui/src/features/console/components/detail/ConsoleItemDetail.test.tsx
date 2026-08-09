@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, within } from '@testing-library/react';
 import {
   consoleChangedFilesFixture,
   consoleCommentsFixture,
@@ -219,11 +219,16 @@ describe('ConsoleItemDetail', () => {
   });
 
   it('renders the related pull request merge state on the first row when the item is an issue', () => {
-    const { getByText, container } = render(
+    const { container } = render(
       <ConsoleItemDetail
         item={issueItem}
         {...baseProps}
-        state={{ state: 'open', merged: false, isPullRequest: false, title: '' }}
+        state={{
+          state: 'open',
+          merged: false,
+          isPullRequest: false,
+          title: '',
+        }}
         relatedPullRequests={consoleRelatedPullRequestsFixture.map(
           (pullRequest) => ({
             pullRequest,
@@ -237,9 +242,11 @@ describe('ConsoleItemDetail', () => {
         )}
       />,
     );
-    expect(firstRowOfDetail(container).contains(getByText('No conflict'))).toBe(
-      true,
-    );
+    expect(
+      within(firstRowOfDetail(container) as HTMLElement).getByText(
+        'No conflict',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('renders failing CI, missing checks, and conflict badges on their own row below the title', () => {
