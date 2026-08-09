@@ -4,6 +4,7 @@ import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import { IssueRejectionEvaluator } from './IssueRejectionEvaluator';
 import { ChangeTargetPullRequestApprover } from './ChangeTargetPullRequestApprover';
+import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
 import {
   AWAITING_QUALITY_CHECK_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
@@ -71,6 +72,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
     projectUrl: string;
     manager: string;
     labelsAsLlmAgentName?: string[] | null;
+    labelsNotRequiringPullRequest?: string[] | null;
     changeTargetPathAliases?: Record<string, string> | null;
     allowedIssueAuthors?: string[] | null;
   }): Promise<void> => {
@@ -122,7 +124,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
         const { rejections, approvedPrUrl } =
           await this.issueRejectionEvaluator.evaluate(
             issue,
-            params.labelsAsLlmAgentName ?? [],
+            resolveLabelsNotRequiringPullRequest(params),
             {
               relatedOpenPrUrls:
                 relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? null,
@@ -195,7 +197,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
       try {
         const { rejections } = await this.issueRejectionEvaluator.evaluate(
           pullRequest,
-          params.labelsAsLlmAgentName ?? [],
+          resolveLabelsNotRequiringPullRequest(params),
         );
         if (rejections.length > 0) {
           if (!pullRequest.assignees.includes(params.manager)) {

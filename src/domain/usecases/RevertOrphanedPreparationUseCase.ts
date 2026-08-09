@@ -13,6 +13,7 @@ import {
   FAILED_PREPARATION_STATUS_NAME,
   PREPARATION_STATUS_NAME,
 } from '../entities/WorkflowStatus';
+import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
 
 const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
 
@@ -44,6 +45,7 @@ export class RevertOrphanedPreparationUseCase {
     awLogStaleThresholdMinutes?: number;
     awaitingQualityCheckStatus?: string | null;
     labelsAsLlmAgentName?: string[] | null;
+    labelsNotRequiringPullRequest?: string[] | null;
   }): Promise<void> => {
     const projectId = await this.projectRepository.findProjectIdByUrl(
       params.projectUrl,
@@ -87,7 +89,7 @@ export class RevertOrphanedPreparationUseCase {
       }
       const { hasRejections, comments } = await this.evaluateHasRejections(
         issue,
-        params.labelsAsLlmAgentName ?? [],
+        resolveLabelsNotRequiringPullRequest(params),
       );
       if (!hasRejections) {
         if (awaitingQualityCheckStatusOption) {
@@ -150,7 +152,7 @@ export class RevertOrphanedPreparationUseCase {
 
   private evaluateHasRejections = async (
     issue: Issue,
-    labelsAsLlmAgentName: string[],
+    labelsNotRequiringPullRequest: string[],
   ): Promise<{ hasRejections: boolean; comments: Comment[] }> => {
     if (issue.isClosed) {
       return { hasRejections: false, comments: [] };
@@ -171,12 +173,12 @@ export class RevertOrphanedPreparationUseCase {
     const hasLlmAgentLabel = issue.labels.some(
       (l) => l === 'llm-agent' || l.startsWith('llm-agent:'),
     );
-    const hasLabelAsLlmAgentName = issue.labels.some((label) =>
-      labelsAsLlmAgentName.includes(label),
+    const hasLabelNotRequiringPullRequest = issue.labels.some((label) =>
+      labelsNotRequiringPullRequest.includes(label),
     );
     if (
       hasLlmAgentLabel ||
-      hasLabelAsLlmAgentName ||
+      hasLabelNotRequiringPullRequest ||
       (categoryLabels.length > 0 && !categoryLabels.includes('category:e2e'))
     ) {
       return { hasRejections: false, comments };
