@@ -1,3 +1,10 @@
+## [1.146.15](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.14...v1.146.15) (2026-08-09)
+
+
+### Bug Fixes
+
+* **console:** state on screen why Reject cannot be used and grey out disabled operation buttons ([#1439](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1439)) ([41b8a3e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/41b8a3e07bb6fd3d784138da7d2153a86a7ccf27))
+
 ## [1.146.14](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.13...v1.146.14) (2026-08-09)
 
 
