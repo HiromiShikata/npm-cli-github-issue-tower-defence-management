@@ -53,7 +53,7 @@ export class AssignNoAssigneeIssueToManagerUseCase {
       return;
     }
     const projectItemUrls = new Set(input.issues.map((issue) => issue.url));
-    const searchedIssues = await this.issueRepository.searchIssues(query);
+    const searchedIssues = await this.searchIssues(query);
     for (const searchedIssue of searchedIssues) {
       if (
         projectItemUrls.has(searchedIssue.url) ||
@@ -78,6 +78,18 @@ export class AssignNoAssigneeIssueToManagerUseCase {
         continue;
       }
       await this.waitBeforeNextRequest();
+    }
+  };
+
+  private searchIssues = async (query: string): Promise<SearchedIssue[]> => {
+    try {
+      return await this.issueRepository.searchIssues(query);
+    } catch (e) {
+      if (!(e instanceof Error)) {
+        throw e;
+      }
+      console.error(`Failed to search issues by ${query}: ${e.message}`);
+      return [];
     }
   };
 

@@ -419,6 +419,33 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
         expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual([]);
       });
 
+      it('logs and returns without throwing when the search fails', async () => {
+        mockIssueRepository.searchIssues.mockRejectedValueOnce(
+          new Error('Validation Failed'),
+        );
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+
+        await useCase.run({
+          issues: [],
+          manager: 'manager1',
+          cacheUsed: false,
+          autoAssignManagerAuthors: ['dependabot'],
+          projectToAddSearchedIssues: project,
+          queryToAddProjectEnabled: true,
+          queryToAddProject: 'repo:testOrg/testRepo is:open no:project',
+        });
+
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          'Failed to search issues by repo:testOrg/testRepo is:open no:project: Validation Failed',
+        );
+        expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual([]);
+        expect(mockIssueRepository.updateAssigneeList.mock.calls).toEqual([]);
+
+        consoleErrorSpy.mockRestore();
+      });
+
       it('logs and continues when adding a matched issue to the project fails', async () => {
         mockIssueRepository.searchIssues.mockResolvedValueOnce([
           searchedIssue,
