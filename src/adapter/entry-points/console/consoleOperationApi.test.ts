@@ -266,6 +266,33 @@ describe('consoleOperationApi', () => {
       expectRecordedAcrossTabs('PVTI_unnecessary');
     });
 
+    it('tells the linked issue that the unnecessary pull request must not be created again', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        url: 'https://github.com/o/r/issues/9',
+        org: 'o',
+        repo: 'r',
+        number: 9,
+        labels: ['bug'],
+      });
+      const issueCommentBody =
+        'The pull request for this issue was unnecessary and has been closed: https://github.com/o/r/pull/3\n\nDo not create it again.';
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'unnecessary',
+        prUrl: 'https://github.com/o/r/pull/3',
+        issueUrl: 'https://github.com/o/r/issues/9',
+        projectItemId: 'PVTI_unnecessary_issue_comment',
+        commentBody: 'This pull request is unnecessary.',
+        issueCommentBody,
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledWith(
+        'https://github.com/o/r/issues/9',
+        issueCommentBody,
+      );
+    });
+
     it('keeps the chore label once when the unnecessary item already carries it', async () => {
       issueRepository.getIssueByUrl.mockResolvedValue({
         ...issue,

@@ -89,6 +89,21 @@ describe('useConsoleOperations', () => {
     });
   });
 
+  it('posts an unnecessary review carrying the comment the linked issue receives', async () => {
+    const fetchMock = captureFetch();
+    const { result } = setup();
+    await act(async () => {
+      await result.current.operations.reviewPullRequest(
+        prItem,
+        prItem.url,
+        'unnecessary',
+      );
+    });
+    expect(lastBody(fetchMock)).toMatchObject({
+      issueCommentBody: `The pull request for this issue was unnecessary and has been closed: ${prItem.url}\n\nDo not create it again.`,
+    });
+  });
+
   it('posts an approve review and marks the item done in the overlay', async () => {
     captureFetch();
     const { result } = setup();
