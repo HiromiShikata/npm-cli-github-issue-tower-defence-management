@@ -1,3 +1,10 @@
+## [1.148.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.1...v1.148.2) (2026-08-09)
+
+
+### Bug Fixes
+
+* **story:** select the longest prefix-matching title as the story issue ([#1471](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1471)) ([52a77dc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/52a77dca3d58b83a1274d3e95fd8a2820692b59e))
+
 ## [1.148.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.0...v1.148.1) (2026-08-09)
 
 
