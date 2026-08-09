@@ -1,3 +1,10 @@
+## [1.146.17](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.16...v1.146.17) (2026-08-09)
+
+
+### Bug Fixes
+
+* **issue-repository:** record the requested changes when GitHub refuses a self-authored request-changes review ([#1446](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1446)) ([4147833](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/414783393f93e586e7918fab6b9e74a89ea551f4))
+
 ## [1.146.16](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.15...v1.146.16) (2026-08-09)
 
 
