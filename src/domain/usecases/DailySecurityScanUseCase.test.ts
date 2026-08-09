@@ -64,6 +64,8 @@ describe('DailySecurityScanUseCase', () => {
       const { useCase, mockLocalCommandRunner, mockIssueRepository } =
         buildUseCase();
 
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+
       mockLocalCommandRunner.runCommand.mockImplementation(
         async (program, args) => {
           if (program === 'find') {
@@ -107,7 +109,7 @@ describe('DailySecurityScanUseCase', () => {
       );
       expect(mockIssueRepository.createNewIssue.mock.calls[0][1]).toBe('app');
       expect(mockIssueRepository.createNewIssue.mock.calls[0][2]).toBe(
-        'Daily security scan findings: 2024-01-02',
+        'Daily security scan findings',
       );
       expect(mockIssueRepository.createNewIssue.mock.calls[0][4]).toEqual([
         'manager-name',
@@ -233,10 +235,22 @@ describe('DailySecurityScanUseCase', () => {
       const { useCase, mockLocalCommandRunner, mockHttpRepository } =
         buildUseCase();
 
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
+      mockLocalCommandRunner.runCommand.mockImplementation(async (program) => {
+        if (program === 'find') {
+          return {
+            stdout: '/repos/example-org/app/.git\n',
+            stderr: '',
+            exitCode: 0,
+          };
+        }
+        if (program === 'git') {
+          return {
+            stdout: 'git@github.com:example-org/app.git\n',
+            stderr: '',
+            exitCode: 0,
+          };
+        }
+        return { stdout: '', stderr: '', exitCode: 0 };
       });
 
       await useCase.run({
@@ -257,10 +271,22 @@ describe('DailySecurityScanUseCase', () => {
       const { useCase, mockLocalCommandRunner, mockHttpRepository } =
         buildUseCase();
 
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
+      mockLocalCommandRunner.runCommand.mockImplementation(async (program) => {
+        if (program === 'find') {
+          return {
+            stdout: '/repos/example-org/app/.git\n',
+            stderr: '',
+            exitCode: 0,
+          };
+        }
+        if (program === 'git') {
+          return {
+            stdout: 'git@github.com:example-org/app.git\n',
+            stderr: '',
+            exitCode: 0,
+          };
+        }
+        return { stdout: '', stderr: '', exitCode: 0 };
       });
 
       await useCase.run({
@@ -354,10 +380,22 @@ describe('DailySecurityScanUseCase', () => {
         mockHttpRepository,
       } = buildUseCase();
 
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
+      mockLocalCommandRunner.runCommand.mockImplementation(async (program) => {
+        if (program === 'find') {
+          return {
+            stdout: '/repos/example-org/app/.git\n',
+            stderr: '',
+            exitCode: 0,
+          };
+        }
+        if (program === 'git') {
+          return {
+            stdout: 'git@github.com:example-org/app.git\n',
+            stderr: '',
+            exitCode: 0,
+          };
+        }
+        return { stdout: '', stderr: '', exitCode: 0 };
       });
       mockHttpRepository.get.mockResolvedValue(
         JSON.stringify({
@@ -606,10 +644,22 @@ describe('DailySecurityScanUseCase', () => {
       const { useCase, mockLocalCommandRunner, mockHttpRepository } =
         buildUseCase();
 
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
+      mockLocalCommandRunner.runCommand.mockImplementation(async (program) => {
+        if (program === 'find') {
+          return {
+            stdout: '/repos/example-org/app/.git\n',
+            stderr: '',
+            exitCode: 0,
+          };
+        }
+        if (program === 'git') {
+          return {
+            stdout: 'git@github.com:example-org/app.git\n',
+            stderr: '',
+            exitCode: 0,
+          };
+        }
+        return { stdout: '', stderr: '', exitCode: 0 };
       });
       mockHttpRepository.get.mockResolvedValue(
         JSON.stringify({ unexpected: 'structure' }),
@@ -628,6 +678,193 @@ describe('DailySecurityScanUseCase', () => {
           },
         }),
       ).rejects.toThrow('Unexpected CISA KEV catalog format');
+    });
+
+    it('throws an error when no repositories are found in the scan base directory', async () => {
+      const { useCase, mockLocalCommandRunner } = buildUseCase();
+
+      mockLocalCommandRunner.runCommand.mockImplementation(async (program) => {
+        if (program === 'find') {
+          return { stdout: '', stderr: '', exitCode: 0 };
+        }
+        return { stdout: '', stderr: '', exitCode: 0 };
+      });
+
+      await expect(
+        useCase.run({
+          targetDates: [new Date('2024-01-02T05:00:00Z')],
+          org: 'example-org',
+          manager: 'manager-name',
+          dailySecurityScan: {
+            scanBaseDirectory: '/repos',
+            targetHourUtc: 5,
+          },
+        }),
+      ).rejects.toThrow(
+        'No repositories found in scan base directory: /repos',
+      );
+    });
+
+    it('logs an error and continues scanning remaining repositories when osv-scanner exits with an unexpected code', async () => {
+      const { useCase, mockLocalCommandRunner, mockIssueRepository } =
+        buildUseCase();
+      const errorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+
+      mockLocalCommandRunner.runCommand.mockImplementation(
+        async (program, args) => {
+          if (program === 'find') {
+            return {
+              stdout:
+                '/repos/example-org/broken/.git\n/repos/example-org/app/.git\n',
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          if (program === 'git') {
+            const dir = args[1];
+            const repo = dir.split('/').pop() ?? '';
+            return {
+              stdout: `git@github.com:example-org/${repo}.git\n`,
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          if (program === 'osv-scanner') {
+            const dir = args[args.length - 1];
+            if (dir.includes('broken')) {
+              return {
+                stdout: '',
+                stderr: 'osv-scanner: command not found',
+                exitCode: 127,
+              };
+            }
+            return { stdout: 'vulnerability found', stderr: '', exitCode: 1 };
+          }
+          return { stdout: '', stderr: '', exitCode: 0 };
+        },
+      );
+
+      await useCase.run({
+        targetDates: [new Date('2024-01-02T05:00:00Z')],
+        org: 'example-org',
+        manager: 'manager-name',
+        dailySecurityScan: {
+          scanBaseDirectory: '/repos',
+          targetHourUtc: 5,
+        },
+      });
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('osv-scanner failed with exit code 127'),
+      );
+      expect(mockIssueRepository.createNewIssue.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.createNewIssue.mock.calls[0][1]).toBe('app');
+      errorSpy.mockRestore();
+    });
+
+    it('adds a comment to the existing open issue for the repository instead of creating a new one', async () => {
+      const { useCase, mockLocalCommandRunner, mockIssueRepository } =
+        buildUseCase();
+
+      mockIssueRepository.searchIssue.mockResolvedValue([
+        {
+          url: 'https://github.com/example-org/app/issues/42',
+          title: 'Daily security scan findings',
+          number: '42',
+        },
+      ]);
+
+      mockLocalCommandRunner.runCommand.mockImplementation(
+        async (program) => {
+          if (program === 'find') {
+            return {
+              stdout: '/repos/example-org/app/.git\n',
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          if (program === 'git') {
+            return {
+              stdout: 'git@github.com:example-org/app.git\n',
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          if (program === 'osv-scanner') {
+            return { stdout: 'vulnerability found', stderr: '', exitCode: 1 };
+          }
+          return { stdout: '', stderr: '', exitCode: 0 };
+        },
+      );
+
+      await useCase.run({
+        targetDates: [new Date('2024-01-02T05:00:00Z')],
+        org: 'example-org',
+        manager: 'manager-name',
+        dailySecurityScan: {
+          scanBaseDirectory: '/repos',
+          targetHourUtc: 5,
+        },
+      });
+
+      expect(mockIssueRepository.createNewIssue.mock.calls).toHaveLength(0);
+      expect(mockIssueRepository.createCommentByUrl.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.createCommentByUrl.mock.calls[0][0]).toBe(
+        'https://github.com/example-org/app/issues/42',
+      );
+      expect(
+        mockIssueRepository.createCommentByUrl.mock.calls[0][1],
+      ).toContain('2024-01-02');
+    });
+
+    it('creates a new issue when no existing open issue exists for the repository', async () => {
+      const { useCase, mockLocalCommandRunner, mockIssueRepository } =
+        buildUseCase();
+
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+
+      mockLocalCommandRunner.runCommand.mockImplementation(
+        async (program) => {
+          if (program === 'find') {
+            return {
+              stdout: '/repos/example-org/app/.git\n',
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          if (program === 'git') {
+            return {
+              stdout: 'git@github.com:example-org/app.git\n',
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          if (program === 'osv-scanner') {
+            return { stdout: 'vulnerability found', stderr: '', exitCode: 1 };
+          }
+          return { stdout: '', stderr: '', exitCode: 0 };
+        },
+      );
+
+      await useCase.run({
+        targetDates: [new Date('2024-01-02T05:00:00Z')],
+        org: 'example-org',
+        manager: 'manager-name',
+        dailySecurityScan: {
+          scanBaseDirectory: '/repos',
+          targetHourUtc: 5,
+        },
+      });
+
+      expect(mockIssueRepository.createNewIssue.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.createNewIssue.mock.calls[0][2]).toBe(
+        'Daily security scan findings',
+      );
+      expect(mockIssueRepository.createCommentByUrl.mock.calls).toHaveLength(0);
     });
   });
 });
