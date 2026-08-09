@@ -33,13 +33,55 @@ const baseProps = {
   commitsAreLoading: false,
   commitsError: null,
   pullRequestStatus: null,
+  pullRequestStatusError: null,
   relatedPullRequests: [],
+  relatedPullRequestsError: null,
+  stateError: null,
   now,
   commentComposer: <div>comment-composer</div>,
   operationBar: <div>operation-bar</div>,
 };
 
 describe('ConsoleItemDetail', () => {
+  it('reports a failed related pull request read on an issue item', () => {
+    const { getByRole } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        relatedPullRequestsError="API rate limit already exceeded"
+      />,
+    );
+    expect(getByRole('alert')).toHaveTextContent(
+      'Failed to load related pull requests: API rate limit already exceeded',
+    );
+  });
+
+  it('reports a failed pull request status read on a pull request item', () => {
+    const { getByRole } = render(
+      <ConsoleItemDetail
+        item={prItem}
+        {...baseProps}
+        pullRequestStatusError="API rate limit already exceeded"
+      />,
+    );
+    expect(getByRole('alert')).toHaveTextContent(
+      'Failed to load pull request status: API rate limit already exceeded',
+    );
+  });
+
+  it('reports a failed item state read', () => {
+    const { getByRole } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        stateError="API rate limit already exceeded"
+      />,
+    );
+    expect(getByRole('alert')).toHaveTextContent(
+      'Failed to load item state: API rate limit already exceeded',
+    );
+  });
+
   it('renders the PR title with the PR number, sub bar and counted panels', () => {
     const { getByText, getAllByText } = render(
       <ConsoleItemDetail item={prItem} {...baseProps} />,
