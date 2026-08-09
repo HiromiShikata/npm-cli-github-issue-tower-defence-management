@@ -70,26 +70,19 @@ const parseScannerVulnerabilities = (
     );
     return [];
   }
+  const toRecord = (value: unknown): Record<string, unknown> =>
+    typeof value === 'object' && value !== null ? { ...value } : {};
   const readArray = (value: unknown, key: string): unknown[] => {
-    if (typeof value !== 'object' || value === null) {
-      return [];
-    }
-    const entry = Reflect.get(value, key);
+    const entry = toRecord(value)[key];
     return Array.isArray(entry) ? entry : [];
   };
   const readString = (value: unknown, key: string): string => {
-    if (typeof value !== 'object' || value === null) {
-      return '';
-    }
-    const entry = Reflect.get(value, key);
+    const entry = toRecord(value)[key];
     return typeof entry === 'string' ? entry : '';
   };
   return readArray(parsed, 'results').flatMap((result) =>
     readArray(result, 'packages').flatMap((scannedPackage) => {
-      const packageDetail =
-        typeof scannedPackage === 'object' && scannedPackage !== null
-          ? Reflect.get(scannedPackage, 'package')
-          : null;
+      const packageDetail = toRecord(scannedPackage).package;
       return readArray(scannedPackage, 'vulnerabilities').map(
         (vulnerability) => {
           const vulnerabilityId = readString(vulnerability, 'id');
