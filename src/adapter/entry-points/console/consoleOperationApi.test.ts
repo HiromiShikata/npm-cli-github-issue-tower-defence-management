@@ -229,6 +229,92 @@ describe('consoleOperationApi', () => {
       expectRecordedAcrossTabs('PVTI_c');
     });
 
+    it('marks a pull request unnecessary by closing it, labelling the item chore and moving it to Awaiting workspace', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        url: 'https://github.com/o/r/issues/7',
+        org: 'o',
+        repo: 'r',
+        number: 7,
+        labels: ['bug'],
+      });
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'unnecessary',
+        prUrl: 'https://github.com/o/r/pull/1',
+        issueUrl: 'https://github.com/o/r/issues/7',
+        projectItemId: 'PVTI_unnecessary',
+        commentBody: 'This pull request is unnecessary.',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.closePullRequest).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+      );
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+        'This pull request is unnecessary.',
+      );
+      expect(issueRepository.updateLabels).toHaveBeenCalledWith(
+        expect.objectContaining({ url: 'https://github.com/o/r/issues/7' }),
+        ['bug', 'chore'],
+      );
+      expect(issueRepository.updateStatus).toHaveBeenCalledWith(
+        project,
+        expect.objectContaining({ itemId: 'PVTI_unnecessary' }),
+        'status_aw',
+      );
+      expectRecordedAcrossTabs('PVTI_unnecessary');
+    });
+
+    it('keeps the chore label once when the unnecessary item already carries it', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        url: 'https://github.com/o/r/issues/8',
+        org: 'o',
+        repo: 'r',
+        number: 8,
+        labels: ['chore'],
+      });
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'unnecessary',
+        prUrl: 'https://github.com/o/r/pull/2',
+        issueUrl: 'https://github.com/o/r/issues/8',
+        projectItemId: 'PVTI_unnecessary_dup',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.updateLabels).not.toHaveBeenCalled();
+      expect(issueRepository.updateStatus).toHaveBeenCalledWith(
+        project,
+        expect.objectContaining({ itemId: 'PVTI_unnecessary_dup' }),
+        'status_aw',
+      );
+    });
+
+    it('rejects an unnecessary action without an issueUrl', async () => {
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'unnecessary',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_unnecessary_missing',
+      });
+      expect(response.statusCode).toBe(400);
+      expect(issueRepository.closePullRequest).not.toHaveBeenCalled();
+    });
+
+    it('leaves labels and status untouched for the plain close action', async () => {
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'close',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_plain_close',
+        commentBody: 'closing',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.updateLabels).not.toHaveBeenCalled();
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
     it('rejects an unknown review action', async () => {
       const response = await handleReview(context, {
         pjcode: 'acme',

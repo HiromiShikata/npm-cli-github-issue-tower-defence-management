@@ -10,6 +10,7 @@ import { findConsoleItemUrl } from './consoleItemUrlLookup';
 
 export const AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
 export const IN_TMUX_BY_HUMAN_STATUS_NAME = 'in tmux by human';
+export const CHORE_LABEL_NAME = 'chore';
 
 export type ConsoleProjectBinding = {
   pjcode: string;
@@ -192,6 +193,24 @@ const updateStatusByName = async (
   return null;
 };
 
+const addChoreLabel = async (
+  issueRepository: IssueRepository,
+  issueUrl: string,
+): Promise<ConsoleOperationResponse | null> => {
+  const issue = await issueRepository.getIssueByUrl(issueUrl);
+  if (issue === null) {
+    return badGateway(`issue "${issueUrl}" could not be loaded`);
+  }
+  if (issue.labels.includes(CHORE_LABEL_NAME)) {
+    return null;
+  }
+  await issueRepository.updateLabels(issue, [
+    ...issue.labels,
+    CHORE_LABEL_NAME,
+  ]);
+  return null;
+};
+
 export const handleReview = async (
   context: ConsoleOperationContext,
   body: Record<string, unknown>,
@@ -229,6 +248,38 @@ export const handleReview = async (
     return binding;
   }
   const { project, pjcode } = binding;
+
+  if (action === 'unnecessary') {
+    const issueUrl = body.issueUrl;
+    if (!isNonEmptyString(issueUrl)) {
+      return badRequest('issueUrl is required for unnecessary');
+    }
+    await context.resolveIssueRepository(prUrl).closePullRequest(prUrl);
+    if (isNonEmptyString(body.commentBody)) {
+      await context
+        .resolveIssueRepository(prUrl)
+        .createCommentByUrl(prUrl, body.commentBody);
+    }
+    const labelFailure = await addChoreLabel(
+      context.resolveIssueRepository(issueUrl),
+      issueUrl,
+    );
+    if (labelFailure !== null) {
+      return labelFailure;
+    }
+    const failure = await updateStatusByName(
+      context.resolveIssueRepository(issueUrl),
+      project,
+      issueUrl,
+      projectItemId,
+      AWAITING_WORKSPACE_STATUS_NAME,
+    );
+    if (failure !== null) {
+      return failure;
+    }
+    recordDone(context, pjcode, projectItemId);
+    return ok();
+  }
 
   if (action === 'approve') {
     await context.resolveIssueRepository(prUrl).approvePullRequest(prUrl);
