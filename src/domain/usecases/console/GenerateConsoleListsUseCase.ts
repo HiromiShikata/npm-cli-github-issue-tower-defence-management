@@ -141,7 +141,7 @@ export class GenerateConsoleListsUseCase {
 
     return {
       'workflow-blocker': buildStatusTabFromSource(
-        visibleIssues.filter((issue) => issue.isClosed === false),
+        issues.filter((issue) => issue.isClosed === false),
         this.workflowBlockerSelector(workflowBlockerStoryName),
         ['done'],
       ),

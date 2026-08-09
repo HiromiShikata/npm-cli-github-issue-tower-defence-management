@@ -313,24 +313,38 @@ describe('GenerateConsoleListsUseCase', () => {
       ...result['todo-by-human'].items,
     ];
 
-    it('hides a workflow-blocker-story In Tmux by agent issue from every tab', () => {
+    it('shows a workflow-blocker-story In Tmux by agent issue on the workflow blocker tab and nowhere else', () => {
       const result = run([
         makeIssue({
           story: 'regular / WORKFLOW BLOCKER',
           status: 'In Tmux by agent',
         }),
       ]);
+      expect(
+        result['workflow-blocker'].items.map((item) => item.status),
+      ).toEqual(['In Tmux by agent']);
+      expect(allTabItems(result)).toHaveLength(1);
+    });
+
+    it('hides a no-story In Tmux by agent issue from every tab', () => {
+      const result = run([
+        makeIssue({
+          story: 'no story',
+          status: 'In Tmux by agent',
+        }),
+      ]);
       expect(allTabItems(result)).toHaveLength(0);
     });
 
-    it('hides In Tmux by agent case-insensitively from every tab', () => {
+    it('hides In Tmux by agent case-insensitively from every tab other than the workflow blocker tab', () => {
       const result = run([
         makeIssue({
           story: 'regular / WORKFLOW BLOCKER',
           status: 'in tmux by agent',
         }),
       ]);
-      expect(allTabItems(result)).toHaveLength(0);
+      expect(result['workflow-blocker'].items).toHaveLength(1);
+      expect(allTabItems(result)).toHaveLength(1);
     });
 
     it('keeps sibling issues with other statuses displaying as before', () => {
@@ -346,11 +360,16 @@ describe('GenerateConsoleListsUseCase', () => {
         makeIssue({ status: 'Unread' }),
       ]);
       expect(
-        result['workflow-blocker'].items.map((item) => item.status),
-      ).toEqual(['In Tmux by human']);
+        result['workflow-blocker'].items.map((item) => item.status).sort(),
+      ).toEqual(['In Tmux by agent', 'In Tmux by human']);
       expect(result.unread.items.map((item) => item.number)).toEqual([3]);
       expect(
-        allTabItems(result).some((item) => item.status === 'In Tmux by agent'),
+        result.prs.items
+          .concat(result.triage.items)
+          .concat(result.unread.items)
+          .concat(result['failed-preparation'].items)
+          .concat(result['todo-by-human'].items)
+          .some((item) => item.status === 'In Tmux by agent'),
       ).toBe(false);
     });
   });
