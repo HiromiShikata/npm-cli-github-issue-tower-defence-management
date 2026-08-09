@@ -39,6 +39,7 @@ const path = __importStar(require("path"));
 const ensureProxyRunning_1 = require("../proxy/ensureProxyRunning");
 const RateLimitCache_1 = require("../proxy/RateLimitCache");
 const TokenListLoader_1 = require("../proxy/TokenListLoader");
+const TAKE_OWNERSHIP_COMMAND_MARKER = 'Take ownership';
 class ProxyClaudeTokenUsageRepository {
     constructor(tokenListJsonPath, port = RateLimitCache_1.PROXY_PORT) {
         this.tokenListJsonPath = tokenListJsonPath;
@@ -55,7 +56,7 @@ class ProxyClaudeTokenUsageRepository {
                 return [];
             }
             const nowEpochSeconds = Date.now() / 1000;
-            return entries.map(({ name, token }) => {
+            return entries.map(({ name, token, selectionWeight }) => {
                 const snapshot = (0, RateLimitCache_1.readRateLimit)(token);
                 if (snapshot === null) {
                     return {
@@ -68,6 +69,7 @@ class ProxyClaudeTokenUsageRepository {
                         fiveHourRejected: false,
                         modelWeeklyLimits: {},
                         blockedUntilEpoch: 0,
+                        selectionWeight,
                     };
                 }
                 const fiveHourExpired = nowEpochSeconds > snapshot.fiveHourReset;
@@ -116,6 +118,7 @@ class ProxyClaudeTokenUsageRepository {
                     fiveHourRejected: fiveHourRejectionActive,
                     modelWeeklyLimits,
                     blockedUntilEpoch: cooldownActive ? snapshot.blockedUntilEpoch : 0,
+                    selectionWeight,
                 };
             });
         };
@@ -147,6 +150,8 @@ class ProxyClaudeTokenUsageRepository {
                 const token = tokenEntry.slice('CLAUDE_CODE_OAUTH_TOKEN='.length);
                 if (token.length === 0)
                     continue;
+                if (!this.isPreparationWorkerProcess(entry))
+                    continue;
                 tokenByPid.set(Number(entry), token);
             }
             for (const [pid, token] of tokenByPid) {
@@ -156,6 +161,17 @@ class ProxyClaudeTokenUsageRepository {
                 counts[token] = (counts[token] ?? 0) + 1;
             }
             return counts;
+        };
+        this.isPreparationWorkerProcess = (procEntry) => {
+            const commandLinePath = path.join('/proc', procEntry, 'cmdline');
+            let commandLine;
+            try {
+                commandLine = fs.readFileSync(commandLinePath, 'utf8');
+            }
+            catch {
+                return false;
+            }
+            return commandLine.includes(TAKE_OWNERSHIP_COMMAND_MARKER);
         };
         this.readParentPid = (pid) => {
             let stat;

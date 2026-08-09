@@ -27,7 +27,7 @@ export declare class StartPreparationUseCase {
     private secondsUntilSevenDayReset;
     private compareBySevenDayDeadlineThenUtilization;
     private taperedConcurrentLimit;
-    getTokenConcurrentLimit: (fiveHourUtilization: number, sevenDayUtilization: number) => number;
+    getTokenConcurrentLimit: (fiveHourUtilization: number, sevenDayUtilization: number, selectionWeight?: number) => number;
     private selectRotationTokens;
     buildRotationOrder: (tokenUsages: ClaudeTokenUsage[], utilizationPercentageThreshold: number, modelName: string | null) => RotationOrderEntry[];
     run: (params: {

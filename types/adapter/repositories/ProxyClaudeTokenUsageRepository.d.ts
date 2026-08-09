@@ -7,6 +7,7 @@ export declare class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsage
     ensureObservable: () => Promise<void>;
     getAvailableTokenUsages: () => Promise<ClaudeTokenUsage[]>;
     getTokenInFlightCounts: () => Promise<Record<string, number>>;
+    private isPreparationWorkerProcess;
     private readParentPid;
     proxyBaseUrl: () => string;
 }

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StartPreparationUseCase = exports.DEFAULT_FALLBACK_LLM_MODEL_NAME = void 0;
+const OauthTokenSelectUseCase_1 = require("./OauthTokenSelectUseCase");
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 const NORMAL_CONCURRENT_LIMIT = 6;
 const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
@@ -70,10 +71,11 @@ class StartPreparationUseCase {
             const remaining = (1 - utilization) / (1 - throttleStartThreshold);
             return Math.max(1, Math.ceil(NORMAL_CONCURRENT_LIMIT * remaining));
         };
-        this.getTokenConcurrentLimit = (fiveHourUtilization, sevenDayUtilization) => {
+        this.getTokenConcurrentLimit = (fiveHourUtilization, sevenDayUtilization, selectionWeight) => {
             const sevenDayLimit = this.taperedConcurrentLimit(sevenDayUtilization, SEVEN_DAY_THROTTLE_START_THRESHOLD);
             const fiveHourLimit = this.taperedConcurrentLimit(fiveHourUtilization, FIVE_HOUR_THROTTLE_START_THRESHOLD);
-            return Math.min(sevenDayLimit, fiveHourLimit);
+            const weight = selectionWeight ?? OauthTokenSelectUseCase_1.DEFAULT_SELECTION_WEIGHT;
+            return Math.max(1, Math.floor(Math.min(sevenDayLimit, fiveHourLimit) * weight));
         };
         this.selectRotationTokens = (tokenUsages, utilizationPercentageThreshold, defaultModelName, fallbackModelName, maxConcurrent) => {
             const nowEpochSeconds = Date.now() / 1000;
@@ -95,7 +97,7 @@ class StartPreparationUseCase {
             const tokensWithLimits = eligibleTokens.map(({ usage, model }) => ({
                 token: usage.token,
                 model,
-                limit: this.getTokenConcurrentLimit(usage.fiveHourUtilization, usage.sevenDayUtilization),
+                limit: this.getTokenConcurrentLimit(usage.fiveHourUtilization, usage.sevenDayUtilization, usage.selectionWeight),
                 secondsUntilSevenDayReset: this.secondsUntilSevenDayReset(usage, this.weeklyLimitTypeForModel(model), nowEpochSeconds),
             }));
             const totalCapacity = tokensWithLimits.reduce((sum, t) => sum + t.limit, 0);

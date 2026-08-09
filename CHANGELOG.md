@@ -1,3 +1,10 @@
+## [1.147.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.147.0...v1.147.1) (2026-08-09)
+
+
+### Bug Fixes
+
+* **preparation:** count only preparation workers and honour token selectionWeight ([#1456](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1456)) ([81ff2eb](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/81ff2eb1dd67740d7028ec197d04d77bd28f4d1e))
+
 # [1.147.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.146.21...v1.147.0) (2026-08-09)
 
 
