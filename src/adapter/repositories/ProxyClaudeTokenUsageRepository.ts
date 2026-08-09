@@ -6,6 +6,8 @@ import { ensureProxyRunning } from '../proxy/ensureProxyRunning';
 import { PROXY_PORT, readRateLimit } from '../proxy/RateLimitCache';
 import { loadTokenEntries } from '../proxy/TokenListLoader';
 
+const TAKE_OWNERSHIP_COMMAND_MARKER = 'Take ownership';
+
 export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageRepository {
   constructor(
     private readonly tokenListJsonPath: string | null,
@@ -25,7 +27,7 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
       return [];
     }
     const nowEpochSeconds = Date.now() / 1000;
-    return entries.map(({ name, token }) => {
+    return entries.map(({ name, token, selectionWeight }) => {
       const snapshot = readRateLimit(token);
       if (snapshot === null) {
         return {
@@ -38,6 +40,7 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
           fiveHourRejected: false,
           modelWeeklyLimits: {},
           blockedUntilEpoch: 0,
+          selectionWeight,
         };
       }
       const fiveHourExpired = nowEpochSeconds > snapshot.fiveHourReset;
@@ -99,6 +102,7 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
         fiveHourRejected: fiveHourRejectionActive,
         modelWeeklyLimits,
         blockedUntilEpoch: cooldownActive ? snapshot.blockedUntilEpoch : 0,
+        selectionWeight,
       };
     });
   };
@@ -128,6 +132,7 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
       if (tokenEntry === undefined) continue;
       const token = tokenEntry.slice('CLAUDE_CODE_OAUTH_TOKEN='.length);
       if (token.length === 0) continue;
+      if (!this.isPreparationWorkerProcess(entry)) continue;
       tokenByPid.set(Number(entry), token);
     }
     for (const [pid, token] of tokenByPid) {
@@ -136,6 +141,17 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
       counts[token] = (counts[token] ?? 0) + 1;
     }
     return counts;
+  };
+
+  private isPreparationWorkerProcess = (procEntry: string): boolean => {
+    const commandLinePath = path.join('/proc', procEntry, 'cmdline');
+    let commandLine: string;
+    try {
+      commandLine = fs.readFileSync(commandLinePath, 'utf8');
+    } catch {
+      return false;
+    }
+    return commandLine.includes(TAKE_OWNERSHIP_COMMAND_MARKER);
   };
 
   private readParentPid = (pid: number): number | null => {
