@@ -85,12 +85,17 @@ type CacheEntry = { value: object; timestamp: Date } | null;
 const buildCacheStub = (overrides?: {
   getLatest?: jest.Mock;
   set?: jest.Mock;
-}): Pick<LocalStorageCacheRepository, 'getLatest' | 'set'> & {
+}): Pick<
+  LocalStorageCacheRepository,
+  'getLatest' | 'set' | 'getSingle' | 'setSingle'
+> & {
   getLatest: jest.Mock;
   set: jest.Mock;
 } => ({
   getLatest: overrides?.getLatest ?? jest.fn().mockResolvedValue(null),
   set: overrides?.set ?? jest.fn().mockResolvedValue(undefined),
+  getSingle: jest.fn().mockResolvedValue(null),
+  setSingle: jest.fn().mockResolvedValue(undefined),
 });
 
 describe('GraphqlProjectRepository disk cache', () => {

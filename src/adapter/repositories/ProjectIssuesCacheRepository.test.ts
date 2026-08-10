@@ -168,7 +168,9 @@ describe('project issues cache shared by the project repository and the issue re
       { id: null, name: 'New Feature Request', color: 'RED', description: '' },
     ]);
 
-    const cached = await new ProjectIssuesCacheRepository(cache).read(projectId);
+    const cached = await new ProjectIssuesCacheRepository(cache).read(
+      projectId,
+    );
 
     expect(cached?.lastFetchedAt).toBe('2026-01-01T00:00:00.000Z');
     expect(cached?.lastFullFetchAt).toBe('2026-01-01T00:00:00.000Z');

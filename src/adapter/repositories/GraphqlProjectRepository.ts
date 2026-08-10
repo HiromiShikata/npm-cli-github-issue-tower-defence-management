@@ -1,6 +1,7 @@
 import { BaseGitHubRepository } from './BaseGitHubRepository';
 import { postGithubGraphqlJson } from './githubGraphqlClient';
 import { LocalStorageCacheRepository } from './LocalStorageCacheRepository';
+import { ProjectIssuesCacheRepository } from './ProjectIssuesCacheRepository';
 import { LocalStorageRepository } from './LocalStorageRepository';
 import { ProjectRepository } from '../../domain/usecases/adapter-interfaces/ProjectRepository';
 import { FieldOption, Project } from '../../domain/entities/Project';
@@ -55,14 +56,22 @@ export class GraphqlProjectRepository
     LocalStorageCacheRepository,
     'getLatest' | 'set'
   >;
+  private readonly projectIssuesCacheRepository: ProjectIssuesCacheRepository | null;
 
   constructor(
     localStorageRepository: LocalStorageRepository,
     ghToken: string = process.env.GH_TOKEN || 'dummy',
-    projectCache?: Pick<LocalStorageCacheRepository, 'getLatest' | 'set'>,
+    projectCache?: Pick<
+      LocalStorageCacheRepository,
+      'getLatest' | 'set' | 'getSingle' | 'setSingle'
+    >,
   ) {
     super(localStorageRepository, ghToken);
     this.projectCache = projectCache;
+    this.projectIssuesCacheRepository =
+      projectCache === undefined
+        ? null
+        : new ProjectIssuesCacheRepository(projectCache);
   }
 
   private readProjectIdFromDiskCache = async (
@@ -596,7 +605,13 @@ export class GraphqlProjectRepository
       query: mutation,
       variables,
     });
-    return response.data.updateProjectV2Field.projectV2Field.options;
+    const options = response.data.updateProjectV2Field.projectV2Field.options;
+    await this.projectIssuesCacheRepository?.updateFieldOptions(
+      project.id,
+      project.story.fieldId,
+      options,
+    );
+    return options;
   };
   updateStatusList = async (
     project: Project,
@@ -643,6 +658,12 @@ export class GraphqlProjectRepository
       query: mutation,
       variables,
     });
-    return response.data.updateProjectV2Field.projectV2Field.options;
+    const options = response.data.updateProjectV2Field.projectV2Field.options;
+    await this.projectIssuesCacheRepository?.updateFieldOptions(
+      project.id,
+      project.status.fieldId,
+      options,
+    );
+    return options;
   };
 }

@@ -399,6 +399,14 @@ ${JSON.stringify(e)}
         storyObjectMap,
       );
     }
+    await this.createNewStoryByLabelUseCase.run({
+      project,
+      cacheUsed,
+      org: input.org,
+      repo: input.workingReport.repo,
+      storyObjectMap,
+      issues,
+    });
     const labelsAsLlmAgentName = resolveLabelsAsLlmAgentName({
       topLevel: input.labelsAsLlmAgentName,
       startPreparation: input.startPreparation?.labelsAsLlmAgentName,
@@ -556,14 +564,6 @@ ${JSON.stringify(e)}
       org: input.org,
       repo: input.workingReport.repo,
       storyObjectMap: storyObjectMap,
-    });
-    await this.createNewStoryByLabelUseCase.run({
-      project,
-      cacheUsed,
-      org: input.org,
-      repo: input.workingReport.repo,
-      storyObjectMap: storyObjectMap,
-      issues: issues,
     });
     await this.assignNoAssigneeIssueToManagerUseCase.run({
       issues,
