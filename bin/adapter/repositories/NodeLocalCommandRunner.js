@@ -4,10 +4,12 @@ exports.NodeLocalCommandRunner = void 0;
 const child_process_1 = require("child_process");
 const util_1 = require("util");
 const execFileAsync = (0, util_1.promisify)(child_process_1.execFile);
+const MAX_COMMAND_OUTPUT_BYTES = 1024 * 1024 * 256;
 class NodeLocalCommandRunner {
     async runCommand(program, args, options) {
         const execOptions = {
             encoding: 'utf8',
+            maxBuffer: MAX_COMMAND_OUTPUT_BYTES,
         };
         if (options?.env) {
             execOptions.env = { ...process.env, ...options.env };
@@ -26,6 +28,9 @@ class NodeLocalCommandRunner {
                 'stdout' in error &&
                 'stderr' in error &&
                 'code' in error) {
+                if (typeof error.code !== 'number') {
+                    console.error(`${program} did not exit with a numeric status: ${String(error.code)}`);
+                }
                 return {
                     stdout: String(error.stdout),
                     stderr: String(error.stderr),

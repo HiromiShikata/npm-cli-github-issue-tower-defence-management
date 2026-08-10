@@ -1,3 +1,10 @@
+## [1.148.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.8...v1.148.9) (2026-08-10)
+
+
+### Bug Fixes
+
+* **command-runner:** keep command stdout past one mebibyte so security scans are not silently emptied ([#1485](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1485)) ([6a78747](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6a787479c690e9727d153a5ee6195ebf9d10cb3f))
+
 ## [1.148.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.7...v1.148.8) (2026-08-09)
 
 
