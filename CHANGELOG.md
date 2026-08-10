@@ -1,3 +1,10 @@
+## [1.148.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.11...v1.148.12) (2026-08-10)
+
+
+### Bug Fixes
+
+* **story:** log what the new story label handling found and did on each run ([#1491](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1491)) ([3199303](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3199303e085e44c4e820564eeaaa8142a54a6bcc))
+
 ## [1.148.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.10...v1.148.11) (2026-08-10)
 
 
