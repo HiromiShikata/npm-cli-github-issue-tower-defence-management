@@ -34,6 +34,7 @@ describe('NodeLocalCommandRunner', () => {
       });
       expect(mockExecFileAsync).toHaveBeenCalledWith('echo', ['"test"'], {
         encoding: 'utf8',
+        maxBuffer: 1024 * 1024 * 256,
       });
     });
 
@@ -69,6 +70,25 @@ describe('NodeLocalCommandRunner', () => {
         stderr: 'command not found',
         exitCode: 1,
       });
+    });
+
+    it('should report the reason when the command did not exit with a numeric status', async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const error = Object.assign(new Error('Command failed'), {
+        code: 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER',
+        stdout: 'truncated output',
+        stderr: '',
+      });
+      mockExecFileAsync.mockRejectedValue(error);
+
+      await runner.runCommand('osv-scanner', []);
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'osv-scanner did not exit with a numeric status: ERR_CHILD_PROCESS_STDIO_MAXBUFFER',
+      );
+      consoleErrorSpy.mockRestore();
     });
 
     it('should throw error if error format is unexpected', async () => {

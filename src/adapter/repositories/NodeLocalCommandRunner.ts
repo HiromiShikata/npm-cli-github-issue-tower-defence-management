@@ -7,6 +7,8 @@ import { promisify } from 'util';
 
 const execFileAsync = promisify(execFile);
 
+const MAX_COMMAND_OUTPUT_BYTES = 1024 * 1024 * 256;
+
 export class NodeLocalCommandRunner implements LocalCommandRunner {
   async runCommand(
     program: string,
@@ -19,6 +21,7 @@ export class NodeLocalCommandRunner implements LocalCommandRunner {
   }> {
     const execOptions: Parameters<typeof execFileAsync>[2] = {
       encoding: 'utf8',
+      maxBuffer: MAX_COMMAND_OUTPUT_BYTES,
     };
     if (options?.env) {
       execOptions.env = { ...process.env, ...options.env };
@@ -42,6 +45,11 @@ export class NodeLocalCommandRunner implements LocalCommandRunner {
         'stderr' in error &&
         'code' in error
       ) {
+        if (typeof error.code !== 'number') {
+          console.error(
+            `${program} did not exit with a numeric status: ${String(error.code)}`,
+          );
+        }
         return {
           stdout: String(error.stdout),
           stderr: String(error.stderr),
