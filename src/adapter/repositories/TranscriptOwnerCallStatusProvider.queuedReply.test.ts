@@ -94,7 +94,10 @@ describe('TranscriptOwnerCallStatusProvider owner reply typed mid-turn', () => {
       typedReply(earlierReplyTimestamp, 'an earlier answer'),
       ownerCall(callTimestamp),
       enqueued(laterReplyTimestamp, 'CI が通っていないのに許可はできません'),
-      removed('2026-08-10T11:06:07.885Z', 'CI が通っていないのに許可はできません'),
+      removed(
+        '2026-08-10T11:06:07.885Z',
+        'CI が通っていないのに許可はできません',
+      ),
     ]);
 
     expect(await unansweredSecondsOf(transcriptPath, null)).toBeUndefined();
