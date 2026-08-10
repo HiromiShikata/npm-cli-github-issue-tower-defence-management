@@ -186,6 +186,78 @@ describe('GraphqlProjectItemRepository', () => {
       expect(sentQuery).not.toContain('assignees(first: 20)');
     });
 
+    it('requests body field in the Issue content fragment of the GraphQL query', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost.mockReturnValueOnce(makePageResponse(false, 'cursor-1', 1));
+
+      await repository.fetchProjectItems('test-project-id');
+
+      const sentQuery = extractRequestedQueryFromMockCall(
+        mockPost.mock.calls[0],
+      );
+      expect(sentQuery).toContain('body');
+    });
+
+    it('maps body from Issue content node to ProjectItem.body', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost.mockReturnValueOnce(makePageResponse(false, 'cursor-1', 1));
+
+      const result = await repository.fetchProjectItems('test-project-id');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].body).toBe('body');
+    });
+
+    it('sets ProjectItem.body to null when content node has no body', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            node: {
+              items: {
+                totalCount: 1,
+                pageInfo: {
+                  endCursor: 'cursor-1',
+                  startCursor: 'cursor-start',
+                  hasNextPage: false,
+                },
+                nodes: [
+                  {
+                    id: 'item-1',
+                    fieldValues: { nodes: [] },
+                    content: {
+                      repository: { nameWithOwner: 'owner/repo' },
+                      number: 1,
+                      title: 'No Body Issue',
+                      state: 'OPEN',
+                      url: 'https://github.com/owner/repo/issues/1',
+                      createdAt: '2024-01-01T00:00:00Z',
+                      labels: { nodes: [] },
+                      assignees: { nodes: [] },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        }),
+      );
+
+      const result = await repository.fetchProjectItems('test-project-id');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].body).toBeNull();
+    });
+
     it('logs the rateLimit cost of the request in one line', async () => {
       const repository = new GraphqlProjectItemRepository(
         new LocalStorageRepository(),

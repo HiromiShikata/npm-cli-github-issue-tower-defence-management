@@ -287,7 +287,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     allowedIssueAuthors === null || allowedIssueAuthors.includes(author);
 
   private collectRejections = async (
-    issue: { url: string; labels: string[]; isPr: boolean },
+    issue: { url: string; labels: string[]; isPr: boolean; body?: string | null },
     comments: { author: string; content: string }[],
     isTrustedAuthor: (author: string) => boolean,
     labelsNotRequiringPullRequest: string[],

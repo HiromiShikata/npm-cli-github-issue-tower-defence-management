@@ -43,6 +43,7 @@ type ProjectV2ItemContentNode = {
   title: string;
   state: string;
   url: string;
+  body?: string | null;
   createdAt: string;
   updatedAt: string;
   author: { login: string } | null;
@@ -120,6 +121,7 @@ const PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION = `
               title
               state
               url
+              body
               createdAt
               updatedAt
               author {
@@ -396,6 +398,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
               title: string;
               state: string;
               url: string;
+              body?: string | null;
               createdAt: string;
               updatedAt: string;
               author: { login: string } | null;
@@ -445,6 +448,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
                     title: string;
                     state: string;
                     url: string;
+                    body?: string | null;
                     createdAt: string;
                     updatedAt: string;
                     author: { login: string } | null;
@@ -507,6 +511,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
               title: string;
               state: string;
               url: string;
+              body?: string | null;
               createdAt: string;
               updatedAt: string;
               author: { login: string } | null;
@@ -612,7 +617,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
       title: item.content.title,
       state: this.convertStrToState(item.content.state),
       url: item.content.url,
-      body: null,
+      body: item.content.body ?? null,
       labels: item.content.labels?.nodes?.map((l) => l.name) || [],
       assignees: item.content.assignees?.nodes?.map((a) => a.login) || [],
       createdAt: item.content.createdAt || new Date().toISOString(),
