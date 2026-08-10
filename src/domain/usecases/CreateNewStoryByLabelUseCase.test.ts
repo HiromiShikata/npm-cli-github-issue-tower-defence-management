@@ -96,6 +96,222 @@ describe('CreateNewStoryByLabelUseCase', () => {
     );
   });
 
+  describe('logging', () => {
+    let logSpy: jest.SpyInstance;
+    const lines: string[] = [];
+
+    beforeEach(() => {
+      lines.length = 0;
+      logSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation((...args: unknown[]) => {
+          lines.push(args.map((arg) => String(arg)).join(' '));
+        });
+    });
+
+    afterEach(() => {
+      logSpy.mockRestore();
+    });
+
+    const loggedLines = (): string[] => lines;
+
+    it('should record that the option list was left unchanged because every labelled issue title already names a story option', async () => {
+      const projectWithExistingOption: Project = {
+        ...basicProject,
+        story: {
+          name: 'Story Field',
+          fieldId: 'storyFieldId',
+          databaseId: 123,
+          stories: [
+            {
+              id: 'existingNewStoryId',
+              name: 'New Feature Request',
+              color: 'RED',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'workflow1', name: 'Workflow Story' },
+        },
+      };
+
+      await useCase.run({
+        project: projectWithExistingOption,
+        cacheUsed: false,
+        org: 'testOrg',
+        repo: 'testRepo',
+        storyObjectMap: new Map([
+          [
+            'Story 1',
+            {
+              story: mock<StoryOption>(),
+              storyIssue: mock<Issue>(),
+              issues: [issueWithNewStoryLabel],
+            },
+          ],
+        ]),
+        issues: [],
+      });
+
+      expect(mockProjectRepository.updateStoryList).not.toHaveBeenCalled();
+      expect(
+        loggedLines().some((line) =>
+          line.includes(
+            'every labelled issue title already names a story option',
+          ),
+        ),
+      ).toBe(true);
+    });
+
+    it('should record that the run found no labelled issue so that the absence of work is distinguishable from the step never running', async () => {
+      const storyObjectWithoutNewStoryIssues: StoryObject = {
+        story: mock<StoryOption>(),
+        storyIssue: mock<Issue>(),
+        issues: [regularIssue],
+      };
+
+      await useCase.run({
+        project: basicProject,
+        cacheUsed: false,
+        org: 'testOrg',
+        repo: 'testRepo',
+        storyObjectMap: new Map([
+          ['Story 1', storyObjectWithoutNewStoryIssues],
+        ]),
+        issues: [regularIssue],
+      });
+
+      expect(
+        loggedLines().some((line) =>
+          line.includes('found 0 issues carrying the new story label'),
+        ),
+      ).toBe(true);
+    });
+
+    it('should record the project having no story field', async () => {
+      await useCase.run({
+        project: { ...basicProject, story: null },
+        cacheUsed: false,
+        org: 'testOrg',
+        repo: 'testRepo',
+        storyObjectMap: new Map([['Story 1', storyObjectWithNewStoryIssues]]),
+        issues: [],
+      });
+
+      expect(
+        loggedLines().some((line) =>
+          line.includes('the project has no story field'),
+        ),
+      ).toBe(true);
+    });
+
+    it('should record the labelled issues, the submitted options, the story link and the label removal', async () => {
+      mockProjectRepository.updateStoryList.mockResolvedValue([
+        { id: 'story1', name: 'First Story', color: 'BLUE', description: '' },
+        {
+          id: 'newStoryId1',
+          name: 'New Feature Request',
+          color: 'RED',
+          description: '',
+        },
+      ]);
+      const storyObject: StoryObject = {
+        story: {
+          ...mock<StoryOption>(),
+          id: 'story1',
+          name: 'Existing Story',
+          color: 'BLUE',
+        },
+        storyIssue: mock<Issue>(),
+        issues: [issueWithNewStoryLabel],
+      };
+
+      await useCase.run({
+        project: basicProject,
+        cacheUsed: false,
+        org: 'testOrg',
+        repo: 'testRepo',
+        storyObjectMap: new Map([['Story 1', storyObject]]),
+        issues: [],
+      });
+
+      const lines = loggedLines();
+      expect(
+        lines.some((line) =>
+          line.includes('found 1 issues carrying the new story label'),
+        ),
+      ).toBe(true);
+      expect(
+        lines.some(
+          (line) =>
+            line.includes('labelled issues') &&
+            line.includes(issueWithNewStoryLabel.url),
+        ),
+      ).toBe(true);
+      expect(
+        lines.some(
+          (line) =>
+            line.includes('submitting 1 new story options') &&
+            line.includes('New Feature Request'),
+        ),
+      ).toBe(true);
+      expect(
+        lines.some(
+          (line) =>
+            line.includes('linked') &&
+            line.includes(issueWithNewStoryLabel.url) &&
+            line.includes('newStoryId1'),
+        ),
+      ).toBe(true);
+      expect(
+        lines.some(
+          (line) =>
+            line.includes('removed the new story label') &&
+            line.includes(issueWithNewStoryLabel.url),
+        ),
+      ).toBe(true);
+    });
+
+    it('should record that an issue kept its label because no story option matches its title', async () => {
+      const issueWithUnmatchedTitle: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/org/repo/issues/1401',
+        title: 'Unmatched Title',
+        number: 1401,
+        story: 'Existing Story',
+        labels: ['new-story'],
+      };
+      mockProjectRepository.updateStoryList.mockResolvedValue([
+        { id: 'story1', name: 'First Story', color: 'BLUE', description: '' },
+      ]);
+
+      await useCase.run({
+        project: basicProject,
+        cacheUsed: false,
+        org: 'testOrg',
+        repo: 'testRepo',
+        storyObjectMap: new Map([
+          [
+            'Story 1',
+            {
+              story: mock<StoryOption>(),
+              storyIssue: mock<Issue>(),
+              issues: [issueWithUnmatchedTitle],
+            },
+          ],
+        ]),
+        issues: [],
+      });
+
+      expect(
+        loggedLines().some(
+          (line) =>
+            line.includes('no story option matches the title') &&
+            line.includes(issueWithUnmatchedTitle.url),
+        ),
+      ).toBe(true);
+    });
+  });
+
   describe('run', () => {
     it('should not process anything when project has no story field', async () => {
       const projectWithoutStory: Project = {
