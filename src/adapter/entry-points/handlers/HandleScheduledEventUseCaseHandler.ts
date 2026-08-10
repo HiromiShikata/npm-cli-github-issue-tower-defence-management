@@ -18,6 +18,7 @@ import {
   notifySilentTmuxSessions,
   DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS,
 } from './notifySilentTmuxSessions';
+import { ownerReplyMarkerDirectoryResolve } from './ownerReplyMarkerDirectoryResolve';
 import {
   resetDegeneratedTmuxSessions,
   DEFAULT_RESET_DEGENERATED_TMUX_SESSIONS_PARAMS,
@@ -736,12 +737,11 @@ export class HandleScheduledEventUseCaseHandler {
         // The status line writes the reply time it renders here, and the owner sees only that
         // status line, so reading the same file keeps the reminder decision and the owner's view
         // of it from disagreeing.
-        const ownerReplyMarkerDirectory =
-          mergedInput.ownerReplyMarkerDirectory ??
-          process.env.TDPM_SILENT_OWNER_REPLY_MARKER_DIRECTORY ??
-          (getuid === undefined
-            ? null
-            : path.join(os.tmpdir(), `claude-statusline-call-${getuid()}`));
+        const ownerReplyMarkerDirectory = ownerReplyMarkerDirectoryResolve(
+          mergedInput.ownerReplyMarkerDirectory ?? null,
+          process.env,
+          getuid === undefined ? null : getuid(),
+        );
         const subAgentRuntimeRootDirectory =
           mergedInput.subAgentRuntimeRootDirectory ??
           process.env.TDPM_SUBAGENT_RUNTIME_ROOT_DIRECTORY ??
