@@ -1,4 +1,5 @@
-import { render } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
+import { parseGitHubReferenceUrl } from '../../logic/references';
 import {
   consoleChangedFilesFixture,
   consoleCommitsFixture,
@@ -12,6 +13,11 @@ jest.mock('../../lib/mermaidLoader', () => ({
 
 const now = Date.parse('2026-06-19T12:00:00.000Z');
 const pullRequest = consoleRelatedPullRequestsFixture[0];
+const pullRequestReference = parseGitHubReferenceUrl(pullRequest.url);
+
+if (pullRequestReference === null) {
+  throw new Error('the fixture pull request url must be a GitHub url');
+}
 
 describe('ConsolePullRequestDetail', () => {
   it('renders the title, stat bar and changed files', () => {
@@ -103,6 +109,49 @@ describe('ConsolePullRequestDetail', () => {
     expect(getByRole('button', { name: /^▾ Description$/ })).toHaveAttribute(
       'aria-expanded',
       'true',
+    );
+  });
+
+  it('renders an issue reference in the description against the repository owning the pull request', async () => {
+    const referencedIssueNumber = 1234;
+    const renderReferenceLink = jest.fn((href: string) => (
+      <span className="decorated-reference" data-href={href}>
+        decorated
+      </span>
+    ));
+    const { container } = render(
+      <ConsolePullRequestDetail
+        pullRequest={{
+          ...pullRequest,
+          summary:
+            pullRequest.summary === null
+              ? null
+              : {
+                  ...pullRequest.summary,
+                  body: `- close #${referencedIssueNumber}`,
+                },
+        }}
+        body={`- close #${referencedIssueNumber}`}
+        bodyIsLoading={false}
+        files={consoleChangedFilesFixture}
+        filesAreLoading={false}
+        filesError={null}
+        commits={consoleCommitsFixture}
+        commitsAreLoading={false}
+        commitsError={null}
+        now={now}
+        renderReferenceLink={renderReferenceLink}
+      />,
+    );
+    await waitFor(() => {
+      expect(container.querySelectorAll('.decorated-reference').length).toBe(1);
+    });
+    expect(
+      container
+        .querySelector('.decorated-reference')
+        ?.getAttribute('data-href'),
+    ).toBe(
+      `https://github.com/${pullRequestReference.owner}/${pullRequestReference.repo}/issues/${referencedIssueNumber}`,
     );
   });
 
