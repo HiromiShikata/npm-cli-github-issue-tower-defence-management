@@ -155,6 +155,41 @@ describe('ConsolePullRequestDetail', () => {
     );
   });
 
+  it('leaves an issue reference untouched when the pull request url names no repository', async () => {
+    const renderReferenceLink = jest.fn((href: string) => (
+      <span className="decorated-reference" data-href={href}>
+        decorated
+      </span>
+    ));
+    const { container } = render(
+      <ConsolePullRequestDetail
+        pullRequest={{
+          ...pullRequest,
+          url: 'https://example.com/not-a-github-pull-request',
+          summary:
+            pullRequest.summary === null
+              ? null
+              : { ...pullRequest.summary, body: '- close #1234' },
+        }}
+        body={'- close #1234'}
+        bodyIsLoading={false}
+        files={consoleChangedFilesFixture}
+        filesAreLoading={false}
+        filesError={null}
+        commits={consoleCommitsFixture}
+        commitsAreLoading={false}
+        commitsError={null}
+        now={now}
+        renderReferenceLink={renderReferenceLink}
+      />,
+    );
+    await waitFor(() => {
+      expect(container.querySelector('.console-markdown')).not.toBeNull();
+    });
+    expect(container.querySelector('.decorated-reference')).toBeNull();
+    expect(renderReferenceLink).not.toHaveBeenCalled();
+  });
+
   it('renders a copy URL button for the pull request url', () => {
     const { getByRole } = render(
       <ConsolePullRequestDetail
