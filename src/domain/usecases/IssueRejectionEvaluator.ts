@@ -45,6 +45,7 @@ export class IssueRejectionEvaluator {
       url: string;
       labels: string[];
       isPr: boolean;
+      body?: string | null;
     },
     labelsNotRequiringPullRequest: string[] = [],
     options: EvaluateOptions = {},
@@ -65,6 +66,7 @@ export class IssueRejectionEvaluator {
     if (
       !hasLlmAgentLabel &&
       !hasLabelNotRequiringPullRequest &&
+      this.isPullRequestRequiredByBody(issue.body) &&
       (categoryLabels.length <= 0 || categoryLabels.includes('category:e2e'))
     ) {
       let prsToCheck: RelatedPullRequest[];
@@ -259,4 +261,21 @@ export class IssueRejectionEvaluator {
     targetPath: string,
   ): boolean =>
     filePath === targetPath || filePath.startsWith(`${targetPath}/`);
+
+  private isPullRequestRequiredByBody = (
+    body: string | null | undefined,
+  ): boolean => {
+    if (!body) return true;
+    const match = body.trimEnd().match(/```json\n([\s\S]*?)\n```\s*$/);
+    if (!match || !match[1]) return true;
+    let config: unknown;
+    try {
+      config = JSON.parse(match[1]);
+    } catch {
+      return true;
+    }
+    if (typeof config !== 'object' || config === null) return true;
+    if (!('pullRequestRequired' in config)) return true;
+    return Reflect.get(config, 'pullRequestRequired') !== false;
+  };
 }
