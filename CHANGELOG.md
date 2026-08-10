@@ -1,3 +1,10 @@
+## [1.148.14](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.13...v1.148.14) (2026-08-10)
+
+
+### Bug Fixes
+
+* **IssueRejectionEvaluator:** skip PR check when body declares pullRequestRequired false ([#1495](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1495)) ([cf3ae14](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cf3ae141023fd932562994ca0b2820517ede23ad)), closes [HiromiShikata/secretary#3550](https://github.com/HiromiShikata/secretary/issues/3550)
+
 ## [1.148.13](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.12...v1.148.13) (2026-08-10)
 
 

@@ -12,6 +12,7 @@ class IssueRejectionEvaluator {
             const hasLabelNotRequiringPullRequest = issue.labels.some((label) => labelsNotRequiringPullRequest.includes(label));
             if (!hasLlmAgentLabel &&
                 !hasLabelNotRequiringPullRequest &&
+                this.isPullRequestRequiredByBody(issue.body) &&
                 (categoryLabels.length <= 0 || categoryLabels.includes('category:e2e'))) {
                 let prsToCheck;
                 let anyPrResolutionFailed = false;
@@ -180,6 +181,25 @@ class IssueRejectionEvaluator {
             return paths;
         };
         this.isFilePathUnderPath = (filePath, targetPath) => filePath === targetPath || filePath.startsWith(`${targetPath}/`);
+        this.isPullRequestRequiredByBody = (body) => {
+            if (!body)
+                return true;
+            const match = body.trimEnd().match(/```json\n([\s\S]*?)\n```\s*$/);
+            if (!match || !match[1])
+                return true;
+            let config;
+            try {
+                config = JSON.parse(match[1]);
+            }
+            catch {
+                return true;
+            }
+            if (typeof config !== 'object' || config === null)
+                return true;
+            if (!('pullRequestRequired' in config))
+                return true;
+            return Reflect.get(config, 'pullRequestRequired') !== false;
+        };
     }
 }
 exports.IssueRejectionEvaluator = IssueRejectionEvaluator;

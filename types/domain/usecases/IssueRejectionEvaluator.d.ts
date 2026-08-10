@@ -17,10 +17,12 @@ export declare class IssueRejectionEvaluator {
         url: string;
         labels: string[];
         isPr: boolean;
+        body?: string | null;
     }, labelsNotRequiringPullRequest?: string[], options?: EvaluateOptions) => Promise<PrRejectionResult>;
     private resolveOpenPrsForPrItem;
     private resolveOpenPrsFromUrls;
     private extractChangeTargetMustPaths;
     private isFilePathUnderPath;
+    private isPullRequestRequiredByBody;
 }
 //# sourceMappingURL=IssueRejectionEvaluator.d.ts.map
