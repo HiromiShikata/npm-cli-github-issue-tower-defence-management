@@ -1,4 +1,5 @@
 import type { ImageProxyUrlBuilder } from '../../lib/imageProxy';
+import { parseGitHubReferenceUrl } from '../../logic/references';
 import type {
   ConsoleChangedFile,
   ConsoleCommit,
@@ -46,6 +47,14 @@ export const ConsolePullRequestDetail = ({
   onAddInlineComment,
 }: ConsolePullRequestSectionProps) => {
   const summary = pullRequest.summary;
+  const pullRequestReference = parseGitHubReferenceUrl(pullRequest.url);
+  const repoContext =
+    pullRequestReference === null
+      ? undefined
+      : {
+          owner: pullRequestReference.owner,
+          repo: pullRequestReference.repo,
+        };
   const filesCount =
     filesAreLoading || filesError !== null ? null : files.length;
   const commitsCount =
@@ -97,6 +106,7 @@ export const ConsolePullRequestDetail = ({
             body={summary?.body ?? body}
             buildImageProxyUrl={buildImageProxyUrl}
             renderReferenceLink={renderReferenceLink}
+            repoContext={repoContext}
           />
         )}
       </ConsolePanel>
