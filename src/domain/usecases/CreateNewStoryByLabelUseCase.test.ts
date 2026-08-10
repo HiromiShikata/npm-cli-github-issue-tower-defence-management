@@ -98,17 +98,22 @@ describe('CreateNewStoryByLabelUseCase', () => {
 
   describe('logging', () => {
     let logSpy: jest.SpyInstance;
+    const lines: string[] = [];
 
     beforeEach(() => {
-      logSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined);
+      lines.length = 0;
+      logSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation((...args: unknown[]) => {
+          lines.push(args.map((arg) => String(arg)).join(' '));
+        });
     });
 
     afterEach(() => {
       logSpy.mockRestore();
     });
 
-    const loggedLines = (): string[] =>
-      logSpy.mock.calls.map((call) => String(call[0]));
+    const loggedLines = (): string[] => lines;
 
     it('should record that the run found no labelled issue so that the absence of work is distinguishable from the step never running', async () => {
       const storyObjectWithoutNewStoryIssues: StoryObject = {
