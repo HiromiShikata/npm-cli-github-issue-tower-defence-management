@@ -37,10 +37,12 @@ export class CreateNewStoryByLabelUseCase {
       input.storyObjectMap,
       input.issues,
     );
-    const savedNewStoryList = await this.projectRepository.updateStoryList(
-      input.project,
-      newStoryList,
-    );
+    const savedNewStoryList = newStoryList.some((story) => story.id === null)
+      ? await this.projectRepository.updateStoryList(
+          input.project,
+          newStoryList,
+        )
+      : projectStory.stories;
 
     for (const issue of newStoryIssues) {
       const linkedStory = savedNewStoryList.find((s) => s.name === issue.title);
@@ -91,7 +93,13 @@ export class CreateNewStoryByLabelUseCase {
     storyObjectMap: StoryObjectMap,
     issues: Issue[],
   ): (Omit<FieldOption, 'id'> & { id: FieldOption['id'] | null })[] => {
-    const newStoryIssues = this.findNewStoryIssues(storyObjectMap, issues);
+    const existingStoryNames = new Set(
+      projectStory.stories.map((story) => story.name),
+    );
+    const newStoryIssues = this.findNewStoryIssues(
+      storyObjectMap,
+      issues,
+    ).filter((issue) => !existingStoryNames.has(issue.title));
     const newStoryList: (Omit<FieldOption, 'id'> & {
       id: FieldOption['id'] | null;
     })[] = [];

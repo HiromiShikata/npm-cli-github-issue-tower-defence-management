@@ -20,6 +20,12 @@ import {
   ProjectItem,
 } from './GraphqlProjectItemRepository';
 import { LocalStorageCacheRepository } from '../LocalStorageCacheRepository';
+import {
+  CachedProjectIssues,
+  isIssueArray,
+  isProject,
+  ProjectIssuesCacheRepository,
+} from '../ProjectIssuesCacheRepository';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import { fetchGithubGraphql } from '../githubGraphqlClient';
 import { normalizeFieldName } from '../utils';
@@ -41,45 +47,6 @@ export const REQUIRED_CHECKS_CACHE_TTL_MS = 10 * 60 * 1000;
 
 const SELF_AUTHORED_REVIEW_REFUSAL =
   'Can not request changes on your own pull request';
-
-const isIssueArray = (value: unknown): value is Issue[] =>
-  Array.isArray(value) &&
-  value.every(
-    (item: unknown) =>
-      typeof item === 'object' &&
-      item !== null &&
-      'nameWithOwner' in item &&
-      typeof item.nameWithOwner === 'string' &&
-      'number' in item &&
-      typeof item.number === 'number' &&
-      'title' in item &&
-      typeof item.title === 'string' &&
-      'url' in item &&
-      typeof item.url === 'string',
-  );
-
-const isProject = (value: unknown): value is Project => {
-  if (typeof value !== 'object' || value === null) return false;
-  if (!('id' in value) || typeof value.id !== 'string') return false;
-  if (!('url' in value) || typeof value.url !== 'string') return false;
-  if (!('databaseId' in value) || typeof value.databaseId !== 'number')
-    return false;
-  if (!('name' in value) || typeof value.name !== 'string') return false;
-  if (
-    !('status' in value) ||
-    typeof value.status !== 'object' ||
-    value.status === null
-  )
-    return false;
-  return true;
-};
-
-export type CachedProjectIssues = {
-  lastFetchedAt: string;
-  lastFullFetchAt: string;
-  project: Project;
-  issues: Issue[];
-};
 
 type TimelineItem = {
   __typename: string;
@@ -480,7 +447,12 @@ export class ApiV3CheerioRestIssueRepository
     readonly sleep: Sleep = realSleep,
   ) {
     super(localStorageRepository, ghToken);
+    this.projectIssuesCacheRepository = new ProjectIssuesCacheRepository(
+      localStorageCacheRepository,
+    );
   }
+
+  private readonly projectIssuesCacheRepository: ProjectIssuesCacheRepository;
 
   private readonly getAllIssuesRefreshMemo = new Map<
     Project['id'],
@@ -620,9 +592,9 @@ export class ApiV3CheerioRestIssueRepository
   };
 
   private readCachedProjectIssues = async (
-    cacheKey: string,
+    projectId: Project['id'],
   ): Promise<CachedProjectIssues | null> => {
-    const raw = await this.localStorageCacheRepository.getSingle(cacheKey);
+    const raw = await this.projectIssuesCacheRepository.readRaw(projectId);
     if (typeof raw !== 'object' || raw === null) {
       return null;
     }
@@ -657,18 +629,8 @@ export class ApiV3CheerioRestIssueRepository
   // GraphQL project load only when the daemon has not populated the cache yet.
   getCachedProject = async (
     projectId: Project['id'],
-  ): Promise<Project | null> => {
-    const raw = await this.localStorageCacheRepository.getSingle(
-      `allIssues-${projectId}`,
-    );
-    if (typeof raw !== 'object' || raw === null || !('project' in raw)) {
-      return null;
-    }
-    if (!isProject(raw.project)) {
-      return null;
-    }
-    return raw.project;
-  };
+  ): Promise<Project | null> =>
+    this.projectIssuesCacheRepository.readProject(projectId);
 
   private toDateString = (date: Date): string =>
     `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
@@ -692,9 +654,8 @@ export class ApiV3CheerioRestIssueRepository
   private refreshAllIssues = async (
     projectId: Project['id'],
   ): Promise<{ issues: Issue[]; project: Project; cacheUsed: boolean }> => {
-    const cacheKey = `allIssues-${projectId}`;
     const now = await this.dateRepository.now();
-    const cache = await this.readCachedProjectIssues(cacheKey);
+    const cache = await this.readCachedProjectIssues(projectId);
     const isFullFetch =
       cache === null ||
       now.getTime() - new Date(cache.lastFullFetchAt).getTime() >=
@@ -709,12 +670,12 @@ export class ApiV3CheerioRestIssueRepository
         await this.graphqlProjectItemRepository.fetchProjectItems(projectId);
       const issues = items.map((item) => this.convertProjectItemToIssue(item));
       const nowIso = now.toISOString();
-      await this.localStorageCacheRepository.setSingle(cacheKey, {
+      await this.projectIssuesCacheRepository.write(projectId, {
         lastFetchedAt: nowIso,
         lastFullFetchAt: nowIso,
         project,
         issues,
-      } satisfies CachedProjectIssues);
+      });
       this.lastIssuesFetchedAtByProjectId.set(projectId, nowIso);
       return { issues, project, cacheUsed: false };
     }
@@ -747,12 +708,12 @@ export class ApiV3CheerioRestIssueRepository
     }
     const issues = Array.from(issuesByUrl.values());
     const nowIso = now.toISOString();
-    await this.localStorageCacheRepository.setSingle(cacheKey, {
+    await this.projectIssuesCacheRepository.write(projectId, {
       lastFetchedAt: nowIso,
       lastFullFetchAt: cache.lastFullFetchAt,
       project,
       issues,
-    } satisfies CachedProjectIssues);
+    });
     this.lastIssuesFetchedAtByProjectId.set(projectId, nowIso);
     return { issues, project, cacheUsed: true };
   };

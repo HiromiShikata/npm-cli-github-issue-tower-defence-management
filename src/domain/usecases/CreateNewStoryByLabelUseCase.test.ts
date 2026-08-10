@@ -344,6 +344,67 @@ describe('CreateNewStoryByLabelUseCase', () => {
       expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
       expect(mockIssueRepository.updateLabels).not.toHaveBeenCalled();
     });
+
+    it('should link the issue to the existing option and remove the label without rewriting the option list when an option already carries the issue title', async () => {
+      const projectWithExistingOption: Project = {
+        ...basicProject,
+        story: {
+          name: 'Story Field',
+          fieldId: 'storyFieldId',
+          databaseId: 123,
+          stories: [
+            {
+              id: 'story1',
+              name: 'First Story',
+              color: 'BLUE',
+              description: '',
+            },
+            {
+              id: 'existingNewStoryId',
+              name: 'New Feature Request',
+              color: 'RED',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'workflow1', name: 'Workflow Story' },
+        },
+      };
+
+      const storyObject: StoryObject = {
+        story: {
+          ...mock<StoryOption>(),
+          id: 'story1',
+          name: 'Existing Story',
+          color: 'BLUE',
+        },
+        storyIssue: mock<Issue>(),
+        issues: [issueWithNewStoryLabel],
+      };
+
+      await useCase.run({
+        project: projectWithExistingOption,
+        cacheUsed: false,
+        org: 'testOrg',
+        repo: 'testRepo',
+        storyObjectMap: new Map([['Story 1', storyObject]]),
+        issues: [],
+      });
+
+      expect(mockProjectRepository.updateStoryList).not.toHaveBeenCalled();
+      expect(mockIssueRepository.updateStory).toHaveBeenCalledTimes(1);
+      expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
+        {
+          ...projectWithExistingOption,
+          story: projectWithExistingOption.story,
+        },
+        issueWithNewStoryLabel,
+        'existingNewStoryId',
+      );
+      expect(mockIssueRepository.updateLabels).toHaveBeenCalledWith(
+        issueWithNewStoryLabel,
+        ['bug', 'priority-high'],
+      );
+    });
   });
 
   describe('findNewStoryIssues', () => {

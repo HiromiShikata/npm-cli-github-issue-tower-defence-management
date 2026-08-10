@@ -847,7 +847,29 @@ describe('HandleScheduledEventUseCase', () => {
         expect(mockAnalyzeStoriesUseCase.run).not.toHaveBeenCalled();
         expect(mockUpdateIssueStatusByLabelUseCase.run).not.toHaveBeenCalled();
         expect(mockChangeStatusByStoryColorUseCase.run).not.toHaveBeenCalled();
-        expect(mockCreateNewStoryByLabelUseCase.run).not.toHaveBeenCalled();
+      });
+
+      it('should run the new story label use case on a loop where slow sweep is skipped', async () => {
+        const now = new Date('2024-01-01T00:10:00Z');
+        const recentSlowSweep = new Date(
+          now.getTime() - 300 * 1000,
+        ).toISOString();
+        mockSpreadsheetRepository.getSheet.mockResolvedValue([
+          ['LastExecutionDateTime'],
+          [
+            '2024-01-01T00:00:00Z',
+            '',
+            '',
+            'LastSlowSweepDateTime',
+            recentSlowSweep,
+          ],
+        ]);
+        mockDateRepository.now.mockResolvedValue(now);
+
+        await useCase.run(baseInput);
+
+        expect(mockCreateNewStoryByLabelUseCase.run).toHaveBeenCalledTimes(1);
+        expect(mockAnalyzeStoriesUseCase.run).not.toHaveBeenCalled();
       });
 
       it('should still run preparation use cases even when slow sweep is skipped', async () => {
