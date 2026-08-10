@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.GraphqlProjectRepository = exports.convertToFieldOptionColor = void 0;
 const BaseGitHubRepository_1 = require("./BaseGitHubRepository");
 const githubGraphqlClient_1 = require("./githubGraphqlClient");
+const ProjectIssuesCacheRepository_1 = require("./ProjectIssuesCacheRepository");
 const RequiredProjectField_1 = require("../../domain/entities/RequiredProjectField");
 const utils_1 = require("./utils");
 const ONE_HOUR_MS = 60 * 60 * 1000;
@@ -394,7 +395,9 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
                 query: mutation,
                 variables,
             });
-            return response.data.updateProjectV2Field.projectV2Field.options;
+            const options = response.data.updateProjectV2Field.projectV2Field.options;
+            await this.projectIssuesCacheRepository?.updateFieldOptions(project.id, project.story.fieldId, options);
+            return options;
         };
         this.updateStatusList = async (project, newStatusList) => {
             const mutation = `mutation UpdateStatusOptions($fieldId: ID!, $options: [ProjectV2SingleSelectFieldOptionInput!]!) {
@@ -428,9 +431,15 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
                 query: mutation,
                 variables,
             });
-            return response.data.updateProjectV2Field.projectV2Field.options;
+            const options = response.data.updateProjectV2Field.projectV2Field.options;
+            await this.projectIssuesCacheRepository?.updateFieldOptions(project.id, project.status.fieldId, options);
+            return options;
         };
         this.projectCache = projectCache;
+        this.projectIssuesCacheRepository =
+            projectCache === undefined
+                ? null
+                : new ProjectIssuesCacheRepository_1.ProjectIssuesCacheRepository(projectCache);
     }
 }
 exports.GraphqlProjectRepository = GraphqlProjectRepository;

@@ -9,7 +9,8 @@ export declare class GraphqlProjectRepository extends BaseGitHubRepository imple
     private readonly projectIdCache;
     private readonly fetchProjectIdFailedAt;
     private readonly projectCache?;
-    constructor(localStorageRepository: LocalStorageRepository, ghToken?: string, projectCache?: Pick<LocalStorageCacheRepository, 'getLatest' | 'set'>);
+    private readonly projectIssuesCacheRepository;
+    constructor(localStorageRepository: LocalStorageRepository, ghToken?: string, projectCache?: Pick<LocalStorageCacheRepository, 'getLatest' | 'set' | 'getSingle' | 'setSingle'>);
     private readProjectIdFromDiskCache;
     private writeProjectIdToDiskCache;
     extractProjectFromUrl: (projectUrl: string) => {

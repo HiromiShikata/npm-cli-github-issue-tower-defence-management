@@ -15,7 +15,9 @@ class CreateNewStoryByLabelUseCase {
                 return;
             }
             const newStoryList = this.createNewStoryList(projectStory, input.storyObjectMap, input.issues);
-            const savedNewStoryList = await this.projectRepository.updateStoryList(input.project, newStoryList);
+            const savedNewStoryList = newStoryList.some((story) => story.id === null)
+                ? await this.projectRepository.updateStoryList(input.project, newStoryList)
+                : projectStory.stories;
             for (const issue of newStoryIssues) {
                 const linkedStory = savedNewStoryList.find((s) => s.name === issue.title);
                 if (!linkedStory) {
@@ -43,7 +45,8 @@ class CreateNewStoryByLabelUseCase {
             });
         };
         this.createNewStoryList = (projectStory, storyObjectMap, issues) => {
-            const newStoryIssues = this.findNewStoryIssues(storyObjectMap, issues);
+            const existingStoryNames = new Set(projectStory.stories.map((story) => story.name));
+            const newStoryIssues = this.findNewStoryIssues(storyObjectMap, issues).filter((issue) => !existingStoryNames.has(issue.title));
             const newStoryList = [];
             if (projectStory.stories.length > 0) {
                 newStoryList.push(projectStory.stories[0]);

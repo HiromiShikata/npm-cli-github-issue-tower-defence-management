@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ApiV3CheerioRestIssueRepository = exports.REQUIRED_CHECKS_CACHE_TTL_MS = exports.INCREMENTAL_FETCH_SKEW_BUFFER_MS = exports.FULL_ISSUE_FETCH_INTERVAL_MS = void 0;
 const gitHubRawUrl_1 = require("./gitHubRawUrl");
+const ProjectIssuesCacheRepository_1 = require("../ProjectIssuesCacheRepository");
 const BaseGitHubRepository_1 = require("../BaseGitHubRepository");
 const githubGraphqlClient_1 = require("../githubGraphqlClient");
 const utils_1 = require("../utils");
@@ -10,34 +11,6 @@ exports.FULL_ISSUE_FETCH_INTERVAL_MS = 60 * 60 * 1000;
 exports.INCREMENTAL_FETCH_SKEW_BUFFER_MS = 5 * 60 * 1000;
 exports.REQUIRED_CHECKS_CACHE_TTL_MS = 10 * 60 * 1000;
 const SELF_AUTHORED_REVIEW_REFUSAL = 'Can not request changes on your own pull request';
-const isIssueArray = (value) => Array.isArray(value) &&
-    value.every((item) => typeof item === 'object' &&
-        item !== null &&
-        'nameWithOwner' in item &&
-        typeof item.nameWithOwner === 'string' &&
-        'number' in item &&
-        typeof item.number === 'number' &&
-        'title' in item &&
-        typeof item.title === 'string' &&
-        'url' in item &&
-        typeof item.url === 'string');
-const isProject = (value) => {
-    if (typeof value !== 'object' || value === null)
-        return false;
-    if (!('id' in value) || typeof value.id !== 'string')
-        return false;
-    if (!('url' in value) || typeof value.url !== 'string')
-        return false;
-    if (!('databaseId' in value) || typeof value.databaseId !== 'number')
-        return false;
-    if (!('name' in value) || typeof value.name !== 'string')
-        return false;
-    if (!('status' in value) ||
-        typeof value.status !== 'object' ||
-        value.status === null)
-        return false;
-    return true;
-};
 function isIssueTimelineResponse(value) {
     if (typeof value !== 'object' || value === null)
         return false;
@@ -246,13 +219,13 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                     closingIssueReferenceUrls: closingIssueReferenceUrls,
                 };
             });
-            if (isIssueArray(issues)) {
+            if ((0, ProjectIssuesCacheRepository_1.isIssueArray)(issues)) {
                 return issues;
             }
             return null;
         };
-        this.readCachedProjectIssues = async (cacheKey) => {
-            const raw = await this.localStorageCacheRepository.getSingle(cacheKey);
+        this.readCachedProjectIssues = async (projectId) => {
+            const raw = await this.projectIssuesCacheRepository.readRaw(projectId);
             if (typeof raw !== 'object' || raw === null) {
                 return null;
             }
@@ -264,7 +237,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 !('issues' in raw)) {
                 return null;
             }
-            if (!isProject(raw.project)) {
+            if (!(0, ProjectIssuesCacheRepository_1.isProject)(raw.project)) {
                 return null;
             }
             const issues = this.restoreIssuesFromCache(raw.issues);
@@ -282,16 +255,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         // daemon persisted into the `allIssues-${projectId}` cache, without any
         // GraphQL call. Returns null on cache miss so callers can fall back to a
         // GraphQL project load only when the daemon has not populated the cache yet.
-        this.getCachedProject = async (projectId) => {
-            const raw = await this.localStorageCacheRepository.getSingle(`allIssues-${projectId}`);
-            if (typeof raw !== 'object' || raw === null || !('project' in raw)) {
-                return null;
-            }
-            if (!isProject(raw.project)) {
-                return null;
-            }
-            return raw.project;
-        };
+        this.getCachedProject = async (projectId) => this.projectIssuesCacheRepository.readProject(projectId);
         this.toDateString = (date) => `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
         this.getAllIssues = async (projectId) => {
             const memoized = this.getAllIssuesRefreshMemo.get(projectId);
@@ -303,9 +267,8 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             return result;
         };
         this.refreshAllIssues = async (projectId) => {
-            const cacheKey = `allIssues-${projectId}`;
             const now = await this.dateRepository.now();
-            const cache = await this.readCachedProjectIssues(cacheKey);
+            const cache = await this.readCachedProjectIssues(projectId);
             const isFullFetch = cache === null ||
                 now.getTime() - new Date(cache.lastFullFetchAt).getTime() >=
                     exports.FULL_ISSUE_FETCH_INTERVAL_MS;
@@ -317,7 +280,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 const items = await this.graphqlProjectItemRepository.fetchProjectItems(projectId);
                 const issues = items.map((item) => this.convertProjectItemToIssue(item));
                 const nowIso = now.toISOString();
-                await this.localStorageCacheRepository.setSingle(cacheKey, {
+                await this.projectIssuesCacheRepository.write(projectId, {
                     lastFetchedAt: nowIso,
                     lastFullFetchAt: nowIso,
                     project,
@@ -343,7 +306,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             }
             const issues = Array.from(issuesByUrl.values());
             const nowIso = now.toISOString();
-            await this.localStorageCacheRepository.setSingle(cacheKey, {
+            await this.projectIssuesCacheRepository.write(projectId, {
                 lastFetchedAt: nowIso,
                 lastFullFetchAt: cache.lastFullFetchAt,
                 project,
@@ -1450,6 +1413,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 changedFiles: body.changed_files,
             };
         };
+        this.projectIssuesCacheRepository = new ProjectIssuesCacheRepository_1.ProjectIssuesCacheRepository(localStorageCacheRepository);
     }
 }
 exports.ApiV3CheerioRestIssueRepository = ApiV3CheerioRestIssueRepository;

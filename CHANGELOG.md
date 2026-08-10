@@ -1,3 +1,10 @@
+## [1.148.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.10...v1.148.11) (2026-08-10)
+
+
+### Bug Fixes
+
+* **story:** evaluate the new story label on every loop instead of inside the slow sweep ([#1490](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1490)) ([5c9987b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5c9987b50af1f87a80fd01b2d3a480468360359c))
+
 ## [1.148.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.9...v1.148.10) (2026-08-10)
 
 

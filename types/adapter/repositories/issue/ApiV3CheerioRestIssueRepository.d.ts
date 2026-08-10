@@ -16,12 +16,6 @@ import { Sleep } from './githubRateLimitRetry';
 export declare const FULL_ISSUE_FETCH_INTERVAL_MS: number;
 export declare const INCREMENTAL_FETCH_SKEW_BUFFER_MS: number;
 export declare const REQUIRED_CHECKS_CACHE_TTL_MS: number;
-export type CachedProjectIssues = {
-    lastFetchedAt: string;
-    lastFullFetchAt: string;
-    project: Project;
-    issues: Issue[];
-};
 export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository implements IssueRepository {
     readonly apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>;
     readonly restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'createComment' | 'getIssue' | 'updateLabels' | 'removeLabel' | 'updateAssigneeList' | 'searchIssues'>;
@@ -33,6 +27,7 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     readonly ghToken: string;
     readonly sleep: Sleep;
     constructor(apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>, restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'createComment' | 'getIssue' | 'updateLabels' | 'removeLabel' | 'updateAssigneeList' | 'searchIssues'>, graphqlProjectItemRepository: Pick<GraphqlProjectItemRepository, 'fetchProjectItems' | 'fetchProjectItemsLight' | 'fetchProjectItemsByIds' | 'fetchProjectItemByUrl' | 'updateProjectField' | 'clearProjectField' | 'updateProjectTextField' | 'addIssueToProject'>, localStorageCacheRepository: Pick<LocalStorageCacheRepository, 'getSingle' | 'setSingle'>, projectRepository: Pick<ProjectRepository, 'getProject'>, dateRepository: DateRepository, localStorageRepository: LocalStorageRepository, ghToken?: string, sleep?: Sleep);
+    private readonly projectIssuesCacheRepository;
     private readonly getAllIssuesRefreshMemo;
     private readonly lastIssuesFetchedAtByProjectId;
     getLastIssuesFetchedAt: (projectId: Project["id"]) => string | null;
