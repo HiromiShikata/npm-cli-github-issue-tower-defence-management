@@ -21,9 +21,9 @@ const ConfigurableSilentSessionMessageComposer_1 = require("../../repositories/C
 const RealSleeper_1 = require("../../repositories/RealSleeper");
 const FileSystemSilentSessionCandidateStateRepository_1 = require("../../repositories/FileSystemSilentSessionCandidateStateRepository");
 const FileSystemSilentSessionHubTaskStatusCacheRepository_1 = require("../../repositories/FileSystemSilentSessionHubTaskStatusCacheRepository");
-const createOwnerCallStatusProvider = (ownerCallMarker) => {
+const createOwnerCallStatusProvider = (ownerCallMarker, ownerReplyMarkerDirectory) => {
     if (ownerCallMarker !== null && ownerCallMarker.length > 0) {
-        return new TranscriptOwnerCallStatusProvider_1.TranscriptOwnerCallStatusProvider(ownerCallMarker);
+        return new TranscriptOwnerCallStatusProvider_1.TranscriptOwnerCallStatusProvider(ownerCallMarker, ownerReplyMarkerDirectory);
     }
     return new NoUnansweredOwnerCallStatusProvider_1.NoUnansweredOwnerCallStatusProvider();
 };
@@ -40,7 +40,7 @@ const notifySilentTmuxSessions = async (params) => {
         return;
     }
     const messageComposer = new ConfigurableSilentSessionMessageComposer_1.ConfigurableSilentSessionMessageComposer(messageTemplates, new DefaultSilentSessionMessageComposer_1.DefaultSilentSessionMessageComposer());
-    const useCase = new NotifySilentLiveSessionsUseCase_1.NotifySilentLiveSessionsUseCase(new LocalProcessLiveSessionProcessSnapshotProvider_1.LocalProcessLiveSessionProcessSnapshotProvider(localCommandRunner, processEnvironReader ?? new ProcFsProcessEnvironReader_1.ProcFsProcessEnvironReader()), new FileSystemInteractiveLiveSessionTranscriptResolver_1.FileSystemInteractiveLiveSessionTranscriptResolver(), new FileSystemSessionOutputActivityRepository_1.FileSystemSessionOutputActivityRepository(), createSubAgentActivityRepository(subAgentTranscriptRootDirectory, subAgentRuntimeRootDirectory, subAgentProcessMatchPattern, subAgentOutputRootDirectory, localCommandRunner, now), createOwnerCallStatusProvider(ownerCallMarker), new TmuxSilentSessionNotificationRepository_1.TmuxSilentSessionNotificationRepository(localCommandRunner, new RealSleeper_1.RealSleeper(), TmuxSilentSessionNotificationRepository_1.DEFAULT_SUBMIT_PUSH_OUT_ATTEMPT_LIMIT, submitPushOutWaitMilliseconds ??
+    const useCase = new NotifySilentLiveSessionsUseCase_1.NotifySilentLiveSessionsUseCase(new LocalProcessLiveSessionProcessSnapshotProvider_1.LocalProcessLiveSessionProcessSnapshotProvider(localCommandRunner, processEnvironReader ?? new ProcFsProcessEnvironReader_1.ProcFsProcessEnvironReader()), new FileSystemInteractiveLiveSessionTranscriptResolver_1.FileSystemInteractiveLiveSessionTranscriptResolver(), new FileSystemSessionOutputActivityRepository_1.FileSystemSessionOutputActivityRepository(), createSubAgentActivityRepository(subAgentTranscriptRootDirectory, subAgentRuntimeRootDirectory, subAgentProcessMatchPattern, subAgentOutputRootDirectory, localCommandRunner, now), createOwnerCallStatusProvider(ownerCallMarker, params.ownerReplyMarkerDirectory ?? null), new TmuxSilentSessionNotificationRepository_1.TmuxSilentSessionNotificationRepository(localCommandRunner, new RealSleeper_1.RealSleeper(), TmuxSilentSessionNotificationRepository_1.DEFAULT_SUBMIT_PUSH_OUT_ATTEMPT_LIMIT, submitPushOutWaitMilliseconds ??
         TmuxSilentSessionNotificationRepository_1.DEFAULT_SUBMIT_PUSH_OUT_WAIT_MILLISECONDS), candidateDebounceStateFilePath !== null
         ? new FileSystemSilentSessionCandidateStateRepository_1.FileSystemSilentSessionCandidateStateRepository(candidateDebounceStateFilePath)
         : new FileSystemSilentSessionCandidateStateRepository_1.FileSystemSilentSessionCandidateStateRepository(), messageComposer, new RealSleeper_1.RealSleeper(), hubTaskStatusResolver, hubTaskStatusCacheStateFilePath !== null

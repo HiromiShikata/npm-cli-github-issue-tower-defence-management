@@ -7,6 +7,7 @@ export type NotifySilentTmuxSessionsParams = {
     localCommandRunner: LocalCommandRunner;
     processEnvironReader?: ProcessEnvironReader;
     ownerCallMarker: string | null;
+    ownerReplyMarkerDirectory?: string | null;
     subAgentOutputRootDirectory: string | null;
     subAgentProcessMatchPattern: string | null;
     subAgentTranscriptRootDirectory: string | null;

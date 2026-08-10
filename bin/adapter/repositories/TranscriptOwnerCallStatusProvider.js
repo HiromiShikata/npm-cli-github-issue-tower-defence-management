@@ -35,6 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TranscriptOwnerCallStatusProvider = exports.ownerCallMarkerFamilyResolve = void 0;
 const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
 const silentSessionReminderSentinel_1 = require("../../domain/usecases/silentSessionReminderSentinel");
 const isRecord = (value) => typeof value === 'object' && value !== null;
 const readString = (value, key) => {
@@ -120,8 +121,40 @@ const ownerCallMarkerFamilyResolve = (marker) => marker.endsWith(OWNER_CALL_TAG_
     ]
     : [marker];
 exports.ownerCallMarkerFamilyResolve = ownerCallMarkerFamilyResolve;
+// A reply the owner types while the agent is still working is NOT written as a `user` entry: the
+// running turn consumes it from the queue, and the transcript keeps only
+// {"type":"queue-operation","operation":"enqueue","content":"<the text>"} plus its `remove` twin.
+// Reading `user` entries alone therefore misses every mid-turn reply, leaves the call outstanding
+// for the rest of the session, and suppresses the stall reminder of a session the owner has
+// already answered. The exclusions match the ones the status line applies to the same entries, so
+// a system-injected enqueue never counts as an owner reply.
+const INJECTED_ENQUEUE_CONTENT_MARKERS = [
+    silentSessionReminderSentinel_1.SILENT_SESSION_REMINDER_SENTINEL,
+    '<system-reminder>',
+    'UserPromptSubmit hook',
+    '<task-notification>',
+    'SYSTEM NOTIFICATION',
+    '<local-command-stdout>',
+    '<local-command-caveat>',
+    '<command-name>',
+    'This session is being continued from a previous conversation',
+];
+const isOwnerEnqueuedReply = (parsed) => {
+    if (readString(parsed, 'operation') !== 'enqueue') {
+        return false;
+    }
+    const content = readString(parsed, 'content');
+    if (content === null || content.length === 0) {
+        return false;
+    }
+    return !INJECTED_ENQUEUE_CONTENT_MARKERS.some((injectedMarker) => content.includes(injectedMarker));
+};
+const TRANSCRIPT_FILE_EXTENSION = '.jsonl';
+const OWNER_REPLY_MARKER_FILE_EXTENSION = '.reply_ts';
+const UNSAFE_SESSION_ID_CHARACTER_PATTERN = /[^A-Za-z0-9._-]/g;
 class TranscriptOwnerCallStatusProvider {
-    constructor(ownerCallMarker) {
+    constructor(ownerCallMarker, ownerReplyMarkerDirectory = null) {
+        this.ownerReplyMarkerDirectory = ownerReplyMarkerDirectory;
         this.listUnansweredOwnerCallEpochSecondsBySessionName = async (transcriptPathBySessionName) => {
             const unansweredOwnerCallEpochSecondsBySessionName = new Map();
             if (this.ownerCallMarkerFamily.length === 0) {
@@ -178,14 +211,49 @@ class TranscriptOwnerCallStatusProvider {
                     hasOwnerTextReply(messageContent)) {
                     lastOwnerReplyEpochMs = epochMs;
                 }
+                if (type === 'queue-operation' && isOwnerEnqueuedReply(parsed)) {
+                    lastOwnerReplyEpochMs =
+                        lastOwnerReplyEpochMs === null || epochMs > lastOwnerReplyEpochMs
+                            ? epochMs
+                            : lastOwnerReplyEpochMs;
+                }
             }
             if (lastOwnerCallEpochMs === null) {
                 return null;
             }
-            return lastOwnerReplyEpochMs === null ||
-                lastOwnerCallEpochMs > lastOwnerReplyEpochMs
+            const markerReplyEpochMs = this.readOwnerReplyMarkerEpochMs(transcriptPath);
+            const resolvedReplyEpochMs = markerReplyEpochMs !== null &&
+                (lastOwnerReplyEpochMs === null ||
+                    markerReplyEpochMs > lastOwnerReplyEpochMs)
+                ? markerReplyEpochMs
+                : lastOwnerReplyEpochMs;
+            return resolvedReplyEpochMs === null ||
+                lastOwnerCallEpochMs > resolvedReplyEpochMs
                 ? lastOwnerCallEpochMs
                 : null;
+        };
+        // The owner sees only the status line, so the reply time it renders is the value the owner
+        // believes the fleet is acting on. The status line writes that value to a per-session marker
+        // file, and reading it here keeps this decision and the owner's own view of it from diverging.
+        // The transcript-derived value still stands on its own: an absent, unreadable, or older marker
+        // changes nothing, so a fresh host with no markers yet behaves exactly as before.
+        this.readOwnerReplyMarkerEpochMs = (transcriptPath) => {
+            if (this.ownerReplyMarkerDirectory === null) {
+                return null;
+            }
+            const fileName = path.basename(transcriptPath);
+            const sessionId = fileName.endsWith(TRANSCRIPT_FILE_EXTENSION)
+                ? fileName.slice(0, -TRANSCRIPT_FILE_EXTENSION.length)
+                : fileName;
+            const safeSessionId = sessionId.replace(UNSAFE_SESSION_ID_CHARACTER_PATTERN, '_');
+            let markerContent;
+            try {
+                markerContent = fs.readFileSync(path.join(this.ownerReplyMarkerDirectory, `${safeSessionId}${OWNER_REPLY_MARKER_FILE_EXTENSION}`), 'utf8');
+            }
+            catch {
+                return null;
+            }
+            return parseEpochMilliseconds(markerContent.split('\n')[0].trim());
         };
         this.ownerCallMarkerFamily =
             ownerCallMarker === null || ownerCallMarker.length === 0

@@ -1,3 +1,10 @@
+## [1.148.13](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.12...v1.148.13) (2026-08-10)
+
+
+### Bug Fixes
+
+* **silent-monitor:** count the owner reply typed mid-turn so a stalled session is reminded ([#1493](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1493)) ([f93e97d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f93e97de1cede491449a2892245f7a893dcea079))
+
 ## [1.148.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.11...v1.148.12) (2026-08-10)
 
 

@@ -18,6 +18,7 @@ const inTmuxByHumanSessionReconciler_1 = require("./inTmuxByHumanSessionReconcil
 const tokenExhaustionHandover_1 = require("./tokenExhaustionHandover");
 const staleTmuxSessionCleaner_1 = require("./staleTmuxSessionCleaner");
 const notifySilentTmuxSessions_1 = require("./notifySilentTmuxSessions");
+const ownerReplyMarkerDirectoryResolve_1 = require("./ownerReplyMarkerDirectoryResolve");
 const resetDegeneratedTmuxSessions_1 = require("./resetDegeneratedTmuxSessions");
 const rotationOrderFileWriter_1 = require("./rotationOrderFileWriter");
 const projectConfig_1 = require("../cli/projectConfig");
@@ -390,6 +391,10 @@ class HandleScheduledEventUseCaseHandler {
                         process.env.TDPM_SUBAGENT_TRANSCRIPT_ROOT_DIRECTORY ??
                         null;
                     const getuid = process.getuid?.bind(process);
+                    // The status line writes the reply time it renders here, and the owner sees only that
+                    // status line, so reading the same file keeps the reminder decision and the owner's view
+                    // of it from disagreeing.
+                    const ownerReplyMarkerDirectory = (0, ownerReplyMarkerDirectoryResolve_1.ownerReplyMarkerDirectoryResolve)(mergedInput.ownerReplyMarkerDirectory ?? null, process.env, getuid === undefined ? null : getuid());
                     const subAgentRuntimeRootDirectory = mergedInput.subAgentRuntimeRootDirectory ??
                         process.env.TDPM_SUBAGENT_RUNTIME_ROOT_DIRECTORY ??
                         (getuid === undefined
@@ -399,6 +404,7 @@ class HandleScheduledEventUseCaseHandler {
                         enabled: silentNotificationEnabled,
                         localCommandRunner: nodeLocalCommandRunner,
                         ownerCallMarker,
+                        ownerReplyMarkerDirectory,
                         subAgentOutputRootDirectory,
                         subAgentProcessMatchPattern,
                         subAgentTranscriptRootDirectory,
