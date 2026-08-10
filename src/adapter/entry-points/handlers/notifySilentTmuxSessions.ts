@@ -45,6 +45,7 @@ export type NotifySilentTmuxSessionsParams = {
   localCommandRunner: LocalCommandRunner;
   processEnvironReader?: ProcessEnvironReader;
   ownerCallMarker: string | null;
+  ownerReplyMarkerDirectory?: string | null;
   subAgentOutputRootDirectory: string | null;
   subAgentProcessMatchPattern: string | null;
   subAgentTranscriptRootDirectory: string | null;
@@ -67,9 +68,13 @@ export type NotifySilentTmuxSessionsParams = {
 
 const createOwnerCallStatusProvider = (
   ownerCallMarker: string | null,
+  ownerReplyMarkerDirectory: string | null,
 ): OwnerCallStatusProvider => {
   if (ownerCallMarker !== null && ownerCallMarker.length > 0) {
-    return new TranscriptOwnerCallStatusProvider(ownerCallMarker);
+    return new TranscriptOwnerCallStatusProvider(
+      ownerCallMarker,
+      ownerReplyMarkerDirectory,
+    );
   }
   return new NoUnansweredOwnerCallStatusProvider();
 };
@@ -154,7 +159,10 @@ export const notifySilentTmuxSessions = async (
       localCommandRunner,
       now,
     ),
-    createOwnerCallStatusProvider(ownerCallMarker),
+    createOwnerCallStatusProvider(
+      ownerCallMarker,
+      params.ownerReplyMarkerDirectory ?? null,
+    ),
     new TmuxSilentSessionNotificationRepository(
       localCommandRunner,
       new RealSleeper(),

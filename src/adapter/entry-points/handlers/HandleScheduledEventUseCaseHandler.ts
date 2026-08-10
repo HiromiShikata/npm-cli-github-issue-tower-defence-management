@@ -132,6 +132,7 @@ export class HandleScheduledEventUseCaseHandler {
       tokenExhaustionHandoverStateFilePath?: string;
       silentNotificationEnabled?: boolean;
       ownerCallMarker?: string;
+      ownerReplyMarkerDirectory?: string;
       subAgentOutputRootDirectory?: string;
       subAgentProcessMatchPattern?: string;
       subAgentTranscriptRootDirectory?: string;
@@ -732,6 +733,15 @@ export class HandleScheduledEventUseCaseHandler {
           process.env.TDPM_SUBAGENT_TRANSCRIPT_ROOT_DIRECTORY ??
           null;
         const getuid = process.getuid?.bind(process);
+        // The status line writes the reply time it renders here, and the owner sees only that
+        // status line, so reading the same file keeps the reminder decision and the owner's view
+        // of it from disagreeing.
+        const ownerReplyMarkerDirectory =
+          mergedInput.ownerReplyMarkerDirectory ??
+          process.env.TDPM_SILENT_OWNER_REPLY_MARKER_DIRECTORY ??
+          (getuid === undefined
+            ? null
+            : path.join(os.tmpdir(), `claude-statusline-call-${getuid()}`));
         const subAgentRuntimeRootDirectory =
           mergedInput.subAgentRuntimeRootDirectory ??
           process.env.TDPM_SUBAGENT_RUNTIME_ROOT_DIRECTORY ??
@@ -742,6 +752,7 @@ export class HandleScheduledEventUseCaseHandler {
           enabled: silentNotificationEnabled,
           localCommandRunner: nodeLocalCommandRunner,
           ownerCallMarker,
+          ownerReplyMarkerDirectory,
           subAgentOutputRootDirectory,
           subAgentProcessMatchPattern,
           subAgentTranscriptRootDirectory,
