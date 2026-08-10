@@ -115,6 +115,53 @@ describe('CreateNewStoryByLabelUseCase', () => {
 
     const loggedLines = (): string[] => lines;
 
+    it('should record that the option list was left unchanged because every labelled issue title already names a story option', async () => {
+      const projectWithExistingOption: Project = {
+        ...basicProject,
+        story: {
+          name: 'Story Field',
+          fieldId: 'storyFieldId',
+          databaseId: 123,
+          stories: [
+            {
+              id: 'existingNewStoryId',
+              name: 'New Feature Request',
+              color: 'RED',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'workflow1', name: 'Workflow Story' },
+        },
+      };
+
+      await useCase.run({
+        project: projectWithExistingOption,
+        cacheUsed: false,
+        org: 'testOrg',
+        repo: 'testRepo',
+        storyObjectMap: new Map([
+          [
+            'Story 1',
+            {
+              story: mock<StoryOption>(),
+              storyIssue: mock<Issue>(),
+              issues: [issueWithNewStoryLabel],
+            },
+          ],
+        ]),
+        issues: [],
+      });
+
+      expect(mockProjectRepository.updateStoryList).not.toHaveBeenCalled();
+      expect(
+        loggedLines().some((line) =>
+          line.includes(
+            'every labelled issue title already names a story option',
+          ),
+        ),
+      ).toBe(true);
+    });
+
     it('should record that the run found no labelled issue so that the absence of work is distinguishable from the step never running', async () => {
       const storyObjectWithoutNewStoryIssues: StoryObject = {
         story: mock<StoryOption>(),
