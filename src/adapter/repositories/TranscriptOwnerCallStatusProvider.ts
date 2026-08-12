@@ -233,7 +233,9 @@ export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvide
     if (lastOwnerCallEpochMs === null) {
       return null;
     }
-    if (this.isCallSuppressedUndelivered(transcriptPath, lastOwnerCallEpochMs)) {
+    if (
+      this.isCallSuppressedUndelivered(transcriptPath, lastOwnerCallEpochMs)
+    ) {
       return null;
     }
     const markerReplyEpochMs = this.readOwnerReplyMarkerEpochMs(transcriptPath);
