@@ -595,6 +595,107 @@ describe('TranscriptOwnerCallStatusProvider', () => {
 
     expect(result.has(sessionName)).toBe(true);
   });
+
+  const writeCallGateMarker = (
+    markerDirectory: string,
+    transcriptFileName: string,
+    extension: string,
+    timestamp: string,
+  ): void => {
+    fs.mkdirSync(markerDirectory, { recursive: true });
+    fs.writeFileSync(
+      path.join(
+        markerDirectory,
+        `${transcriptFileName.replace(/\.jsonl$/, '')}${extension}`,
+      ),
+      `${timestamp}\n`,
+      'utf8',
+    );
+  };
+
+  it('does not report a session as waiting when the format gate suppressed that owner call and never approved it', async () => {
+    const transcriptPath = writeTranscript('workbench.jsonl', [
+      ownerReply('2026-06-27T10:00:00.000Z'),
+      assistantWithMarker('2026-06-27T10:05:00.000Z'),
+    ]);
+    const markerDirectory = path.join(rootDirectory, 'markers');
+    writeCallGateMarker(
+      markerDirectory,
+      'workbench.jsonl',
+      '.suppress_ts',
+      '2026-06-27T10:05:00.000Z',
+    );
+    const provider = new TranscriptOwnerCallStatusProvider(
+      '<<OWNER_CALL>>',
+      markerDirectory,
+    );
+
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
+
+    expect(result.has(sessionName)).toBe(false);
+  });
+
+  it('reports a session as waiting when the suppressed owner call was afterwards approved', async () => {
+    const transcriptPath = writeTranscript('workbench.jsonl', [
+      ownerReply('2026-06-27T10:00:00.000Z'),
+      assistantWithMarker('2026-06-27T10:05:00.000Z'),
+    ]);
+    const markerDirectory = path.join(rootDirectory, 'markers');
+    writeCallGateMarker(
+      markerDirectory,
+      'workbench.jsonl',
+      '.suppress_ts',
+      '2026-06-27T10:05:00.000Z',
+    );
+    writeCallGateMarker(
+      markerDirectory,
+      'workbench.jsonl',
+      '.call_ts',
+      '2026-06-27T10:05:00.000Z',
+    );
+    const provider = new TranscriptOwnerCallStatusProvider(
+      '<<OWNER_CALL>>',
+      markerDirectory,
+    );
+
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
+
+    expect(result.has(sessionName)).toBe(true);
+  });
+
+  it('reports a session as waiting when the suppression marker names an earlier call than the latest one', async () => {
+    const transcriptPath = writeTranscript('workbench.jsonl', [
+      ownerReply('2026-06-27T10:00:00.000Z'),
+      assistantWithMarker('2026-06-27T10:05:00.000Z'),
+      assistantWithMarker('2026-06-27T10:20:00.000Z'),
+    ]);
+    const markerDirectory = path.join(rootDirectory, 'markers');
+    writeCallGateMarker(
+      markerDirectory,
+      'workbench.jsonl',
+      '.suppress_ts',
+      '2026-06-27T10:05:00.000Z',
+    );
+    const provider = new TranscriptOwnerCallStatusProvider(
+      '<<OWNER_CALL>>',
+      markerDirectory,
+    );
+
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
+
+    expect(result.get(sessionName)).toBe(
+      Math.floor(Date.parse('2026-06-27T10:20:00.000Z') / 1000),
+    );
+  });
 });
 
 describe('ownerCallMarkerFamilyResolve', () => {
