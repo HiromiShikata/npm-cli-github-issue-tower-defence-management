@@ -1,3 +1,10 @@
+## [1.148.17](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.16...v1.148.17) (2026-08-12)
+
+
+### Bug Fixes
+
+* **preparation:** return an issue declared to need no pull request to awaiting workspace ([#1498](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1498)) ([fc9ceb5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/fc9ceb51bf23163276c41d24a15398951b595e1f)), closes [#1497](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1497)
+
 ## [1.148.16](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.15...v1.148.16) (2026-08-12)
 
 
