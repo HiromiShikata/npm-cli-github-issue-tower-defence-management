@@ -135,6 +135,8 @@ const isOwnerEnqueuedReply = (parsed: Record<string, unknown>): boolean => {
 
 const TRANSCRIPT_FILE_EXTENSION = '.jsonl';
 const OWNER_REPLY_MARKER_FILE_EXTENSION = '.reply_ts';
+const SUPPRESSED_OWNER_CALL_MARKER_FILE_EXTENSION = '.suppress_ts';
+const APPROVED_OWNER_CALL_MARKER_FILE_EXTENSION = '.call_ts';
 const UNSAFE_SESSION_ID_CHARACTER_PATTERN = /[^A-Za-z0-9._-]/g;
 
 export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvider {
@@ -231,6 +233,9 @@ export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvide
     if (lastOwnerCallEpochMs === null) {
       return null;
     }
+    if (this.isCallSuppressedUndelivered(transcriptPath, lastOwnerCallEpochMs)) {
+      return null;
+    }
     const markerReplyEpochMs = this.readOwnerReplyMarkerEpochMs(transcriptPath);
     const resolvedReplyEpochMs =
       markerReplyEpochMs !== null &&
@@ -251,6 +256,37 @@ export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvide
   // changes nothing, so a fresh host with no markers yet behaves exactly as before.
   private readOwnerReplyMarkerEpochMs = (
     transcriptPath: string,
+  ): number | null =>
+    this.readMarkerEpochMs(transcriptPath, OWNER_REPLY_MARKER_FILE_EXTENSION);
+
+  // The format gate the owner's sessions run under can hold an owner call instead of delivering
+  // it, and it records that decision beside the reply marker: the held call's timestamp in the
+  // suppression marker, and the timestamp of any call it later approved in the approval marker. A
+  // held call the approval marker does not name never reached the owner, so treating it as a wait
+  // on the owner would silence the session's stall reminder for good — the session would keep its
+  // task and never be woken again. Such a call is therefore not an outstanding owner call here. A
+  // delivered call, and a newer call the suppression marker does not name, are untouched.
+  private isCallSuppressedUndelivered = (
+    transcriptPath: string,
+    ownerCallEpochMs: number,
+  ): boolean => {
+    const suppressedEpochMs = this.readMarkerEpochMs(
+      transcriptPath,
+      SUPPRESSED_OWNER_CALL_MARKER_FILE_EXTENSION,
+    );
+    if (suppressedEpochMs === null || suppressedEpochMs !== ownerCallEpochMs) {
+      return false;
+    }
+    const approvedEpochMs = this.readMarkerEpochMs(
+      transcriptPath,
+      APPROVED_OWNER_CALL_MARKER_FILE_EXTENSION,
+    );
+    return approvedEpochMs !== suppressedEpochMs;
+  };
+
+  private readMarkerEpochMs = (
+    transcriptPath: string,
+    markerFileExtension: string,
   ): number | null => {
     if (this.ownerReplyMarkerDirectory === null) {
       return null;
@@ -268,7 +304,7 @@ export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvide
       markerContent = fs.readFileSync(
         path.join(
           this.ownerReplyMarkerDirectory,
-          `${safeSessionId}${OWNER_REPLY_MARKER_FILE_EXTENSION}`,
+          `${safeSessionId}${markerFileExtension}`,
         ),
         'utf8',
       );
