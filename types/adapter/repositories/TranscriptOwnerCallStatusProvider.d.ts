@@ -7,5 +7,7 @@ export declare class TranscriptOwnerCallStatusProvider implements OwnerCallStatu
     listUnansweredOwnerCallEpochSecondsBySessionName: (transcriptPathBySessionName: Map<string, string>) => Promise<Map<string, number>>;
     private findUnansweredOwnerCallEpochMs;
     private readOwnerReplyMarkerEpochMs;
+    private isCallSuppressedUndelivered;
+    private readMarkerEpochMs;
 }
 //# sourceMappingURL=TranscriptOwnerCallStatusProvider.d.ts.map

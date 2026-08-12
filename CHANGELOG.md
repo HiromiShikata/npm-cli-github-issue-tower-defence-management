@@ -1,3 +1,10 @@
+## [1.148.18](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.17...v1.148.18) (2026-08-12)
+
+
+### Bug Fixes
+
+* **owner-call:** wake a session whose owner call was never delivered ([#1501](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1501)) ([c6577ab](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c6577aba03075ae332ae01472eccac92d32a9273))
+
 ## [1.148.17](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.16...v1.148.17) (2026-08-12)
 
 
