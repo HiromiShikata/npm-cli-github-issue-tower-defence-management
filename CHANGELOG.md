@@ -1,3 +1,10 @@
+## [1.148.15](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.14...v1.148.15) (2026-08-12)
+
+
+### Bug Fixes
+
+* **deps:** update dependency dompurify to v3.4.13 [security] ([#1494](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1494)) ([c887d63](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c887d6362143ca44a560d57d974a6d1251e4c032))
+
 ## [1.148.14](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.13...v1.148.14) (2026-08-10)
 
 
