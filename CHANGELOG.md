@@ -1,3 +1,10 @@
+## [1.148.16](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.15...v1.148.16) (2026-08-12)
+
+
+### Bug Fixes
+
+* **deps:** update all non-major dependencies ([#1426](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1426)) ([398200e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/398200ee96a68afcf23acd3af08467079bfa26d5))
+
 ## [1.148.15](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.14...v1.148.15) (2026-08-12)
 
 
