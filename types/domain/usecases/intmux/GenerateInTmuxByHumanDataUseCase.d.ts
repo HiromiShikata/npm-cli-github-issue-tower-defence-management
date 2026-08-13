@@ -1,5 +1,6 @@
 import { Issue } from '../../entities/Issue';
 import { Project } from '../../entities/Project';
+import { UnansweredOwnerCall } from '../../entities/UnansweredOwnerCall';
 export type InTmuxByHumanUrlEntry = {
     url: string;
     title: string;
@@ -20,6 +21,15 @@ export type InTmuxByHumanGroupV4 = {
     story: string;
     sessions: InTmuxByHumanSession[];
 };
+export type InTmuxByHumanSessionV5 = {
+    name: string;
+    description: string;
+    unansweredCalls: UnansweredOwnerCall[];
+};
+export type InTmuxByHumanGroupV5 = {
+    story: string;
+    sessions: InTmuxByHumanSessionV5[];
+};
 export type InTmuxByHumanV3 = {
     version: 3;
     overviewUrl: string;
@@ -33,11 +43,19 @@ export type InTmuxByHumanV4 = {
     newIssueUrl: string;
     groups: InTmuxByHumanGroupV4[];
 };
+export type InTmuxByHumanV5 = {
+    version: 5;
+    overviewUrl: string;
+    tdpmConsoleUrl: string;
+    newIssueUrl: string;
+    groups: InTmuxByHumanGroupV5[];
+};
 export type InTmuxByHumanData = {
     v1: InTmuxByHumanGroupV1[];
     v2: InTmuxByHumanGroupV2[];
     v3: InTmuxByHumanV3 | null;
     v4: InTmuxByHumanV4 | null;
+    v5: InTmuxByHumanV5 | null;
 };
 export type GenerateInTmuxByHumanDataInput = {
     project: Project;
@@ -49,6 +67,7 @@ export type GenerateInTmuxByHumanDataInput = {
     newIssueRepo?: string;
     consoleBaseUrl: string | null;
     consoleToken: string | null;
+    unansweredCallsByTmuxSessionName: Map<string, UnansweredOwnerCall[]>;
     now: Date;
 };
 export declare class GenerateInTmuxByHumanDataUseCase {

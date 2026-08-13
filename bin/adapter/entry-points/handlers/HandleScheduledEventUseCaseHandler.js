@@ -19,6 +19,11 @@ const tokenExhaustionHandover_1 = require("./tokenExhaustionHandover");
 const staleTmuxSessionCleaner_1 = require("./staleTmuxSessionCleaner");
 const notifySilentTmuxSessions_1 = require("./notifySilentTmuxSessions");
 const ownerReplyMarkerDirectoryResolve_1 = require("./ownerReplyMarkerDirectoryResolve");
+const resolveUnansweredOwnerCalls_1 = require("./resolveUnansweredOwnerCalls");
+const LocalProcessLiveSessionProcessSnapshotProvider_1 = require("../../repositories/LocalProcessLiveSessionProcessSnapshotProvider");
+const ProcFsProcessEnvironReader_1 = require("../../repositories/ProcFsProcessEnvironReader");
+const FileSystemInteractiveLiveSessionTranscriptResolver_1 = require("../../repositories/FileSystemInteractiveLiveSessionTranscriptResolver");
+const TranscriptOwnerCallStatusProvider_1 = require("../../repositories/TranscriptOwnerCallStatusProvider");
 const resetDegeneratedTmuxSessions_1 = require("./resetDegeneratedTmuxSessions");
 const rotationOrderFileWriter_1 = require("./rotationOrderFileWriter");
 const projectConfig_1 = require("../cli/projectConfig");
@@ -315,6 +320,24 @@ class HandleScheduledEventUseCaseHandler {
                     console.error(`Failed to write token status: ${error instanceof Error ? error.message : String(error)}`);
                 }
                 const inTmuxNow = new Date();
+                let unansweredCallsByTmuxSessionName = new Map();
+                try {
+                    const inTmuxOwnerCallMarker = mergedInput.ownerCallMarker ??
+                        process.env.TDPM_SILENT_OWNER_CALL_MARKER ??
+                        null;
+                    if (inTmuxOwnerCallMarker !== null) {
+                        const inTmuxGetuid = process.getuid?.bind(process);
+                        unansweredCallsByTmuxSessionName =
+                            await (0, resolveUnansweredOwnerCalls_1.resolveUnansweredOwnerCallsByTmuxSessionName)({
+                                liveSessionProcessSnapshotProvider: new LocalProcessLiveSessionProcessSnapshotProvider_1.LocalProcessLiveSessionProcessSnapshotProvider(nodeLocalCommandRunner, new ProcFsProcessEnvironReader_1.ProcFsProcessEnvironReader()),
+                                interactiveLiveSessionTranscriptResolver: new FileSystemInteractiveLiveSessionTranscriptResolver_1.FileSystemInteractiveLiveSessionTranscriptResolver(),
+                                unansweredOwnerCallListProvider: new TranscriptOwnerCallStatusProvider_1.TranscriptOwnerCallStatusProvider(inTmuxOwnerCallMarker, (0, ownerReplyMarkerDirectoryResolve_1.ownerReplyMarkerDirectoryResolve)(mergedInput.ownerReplyMarkerDirectory ?? null, process.env, inTmuxGetuid === undefined ? null : inTmuxGetuid())),
+                            });
+                    }
+                }
+                catch (error) {
+                    console.error(`Failed to resolve unanswered owner calls: ${error instanceof Error ? error.message : String(error)}`);
+                }
                 try {
                     (0, inTmuxByHumanDataWriter_1.writeInTmuxByHumanData)({
                         inTmuxDataOutputDir: mergedInput.inTmuxDataOutputDir ?? null,
@@ -330,6 +353,7 @@ class HandleScheduledEventUseCaseHandler {
                         newIssueRepo: mergedInput.newIssueRepo ?? undefined,
                         project: result.project,
                         issues: result.issues,
+                        unansweredCallsByTmuxSessionName,
                         now: inTmuxNow,
                     });
                 }

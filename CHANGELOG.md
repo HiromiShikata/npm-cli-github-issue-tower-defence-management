@@ -1,3 +1,15 @@
+# [1.151.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.150.0...v1.151.0) (2026-08-13)
+
+
+### Bug Fixes
+
+* **test:** return the required title from the session key contract fake ([#1524](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1524)) ([fce465d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/fce465d0e69bb852f68c77393fc6e066368bd299)), closes [#1523](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1523)
+
+
+### Features
+
+* **console:** deliver unanswered owner call bodies and times in a version 5 session definition document ([#1512](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1512)) ([cb9087e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cb9087ef2acb0f5dd308eeb6e3889a513fdd4130))
+
 # [1.150.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.149.1...v1.150.0) (2026-08-13)
 
 

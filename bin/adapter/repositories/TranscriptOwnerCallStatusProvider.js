@@ -172,7 +172,33 @@ class TranscriptOwnerCallStatusProvider {
             }
             return unansweredOwnerCallEpochSecondsBySessionName;
         };
-        this.findUnansweredOwnerCallEpochMs = (transcriptPath, markerFamily) => {
+        this.listUnansweredOwnerCallsBySessionName = async (transcriptPathBySessionName) => {
+            const unansweredOwnerCallsBySessionName = new Map();
+            if (this.ownerCallMarkerFamily.length === 0) {
+                return unansweredOwnerCallsBySessionName;
+            }
+            for (const [sessionName, transcriptPath] of transcriptPathBySessionName) {
+                const transcript = this.scanTranscript(transcriptPath, this.ownerCallMarkerFamily);
+                if (transcript === null) {
+                    continue;
+                }
+                const answeredBeforeEpochMs = this.resolveReplyEpochMs(transcriptPath, transcript.lastOwnerReplyEpochMs);
+                const unansweredCalls = transcript.ownerCalls
+                    .filter((ownerCall) => (answeredBeforeEpochMs === null ||
+                    ownerCall.epochMs > answeredBeforeEpochMs) &&
+                    this.isCallDeliveredToOwner(transcriptPath, ownerCall))
+                    .sort((oneCall, otherCall) => oneCall.epochMs - otherCall.epochMs)
+                    .map((ownerCall) => ({
+                    calledAt: new Date(ownerCall.epochMs).toISOString(),
+                    body: ownerCall.body,
+                }));
+                if (unansweredCalls.length > 0) {
+                    unansweredOwnerCallsBySessionName.set(sessionName, unansweredCalls);
+                }
+            }
+            return unansweredOwnerCallsBySessionName;
+        };
+        this.scanTranscript = (transcriptPath, markerFamily) => {
             let content;
             try {
                 content = fs.readFileSync(transcriptPath, 'utf8');
@@ -180,8 +206,7 @@ class TranscriptOwnerCallStatusProvider {
             catch {
                 return null;
             }
-            let lastOwnerCallEpochMs = null;
-            let lastOwnerCallIsCandidateOnly = false;
+            const ownerCalls = [];
             let lastOwnerReplyEpochMs = null;
             for (const line of content.split('\n')) {
                 const trimmed = line.trim();
@@ -209,8 +234,11 @@ class TranscriptOwnerCallStatusProvider {
                     const assistantText = extractText(messageContent);
                     const matchedMarkers = markerFamily.filter((marker) => assistantText.includes(marker));
                     if (matchedMarkers.length > 0) {
-                        lastOwnerCallEpochMs = epochMs;
-                        lastOwnerCallIsCandidateOnly = matchedMarkers.every(isCandidateOwnerCallMarker);
+                        ownerCalls.push({
+                            epochMs,
+                            body: assistantText,
+                            candidateOnly: matchedMarkers.every(isCandidateOwnerCallMarker),
+                        });
                     }
                 }
                 if (type === 'user' &&
@@ -225,22 +253,34 @@ class TranscriptOwnerCallStatusProvider {
                             : lastOwnerReplyEpochMs;
                 }
             }
-            if (lastOwnerCallEpochMs === null) {
-                return null;
-            }
-            if (this.isCallSuppressedUndelivered(transcriptPath, lastOwnerCallEpochMs)) {
-                return null;
-            }
-            if (lastOwnerCallIsCandidateOnly &&
-                !this.isCandidateCallDelivered(transcriptPath, lastOwnerCallEpochMs)) {
-                return null;
-            }
+            return { ownerCalls, lastOwnerReplyEpochMs };
+        };
+        this.resolveReplyEpochMs = (transcriptPath, lastOwnerReplyEpochMs) => {
             const markerReplyEpochMs = this.readOwnerReplyMarkerEpochMs(transcriptPath);
-            const resolvedReplyEpochMs = markerReplyEpochMs !== null &&
+            return markerReplyEpochMs !== null &&
                 (lastOwnerReplyEpochMs === null ||
                     markerReplyEpochMs > lastOwnerReplyEpochMs)
                 ? markerReplyEpochMs
                 : lastOwnerReplyEpochMs;
+        };
+        this.findUnansweredOwnerCallEpochMs = (transcriptPath, markerFamily) => {
+            const transcript = this.scanTranscript(transcriptPath, markerFamily);
+            if (transcript === null) {
+                return null;
+            }
+            const lastOwnerCall = transcript.ownerCalls[transcript.ownerCalls.length - 1] ?? null;
+            if (lastOwnerCall === null) {
+                return null;
+            }
+            const lastOwnerCallEpochMs = lastOwnerCall.epochMs;
+            if (this.isCallSuppressedUndelivered(transcriptPath, lastOwnerCallEpochMs)) {
+                return null;
+            }
+            if (lastOwnerCall.candidateOnly &&
+                !this.isCandidateCallDelivered(transcriptPath, lastOwnerCallEpochMs)) {
+                return null;
+            }
+            const resolvedReplyEpochMs = this.resolveReplyEpochMs(transcriptPath, transcript.lastOwnerReplyEpochMs);
             return resolvedReplyEpochMs === null ||
                 lastOwnerCallEpochMs > resolvedReplyEpochMs
                 ? lastOwnerCallEpochMs
@@ -259,6 +299,13 @@ class TranscriptOwnerCallStatusProvider {
         // on the owner would silence the session's stall reminder for good — the session would keep its
         // task and never be woken again. Such a call is therefore not an outstanding owner call here. A
         // delivered call, and a newer call the suppression marker does not name, are untouched.
+        this.isCallDeliveredToOwner = (transcriptPath, ownerCall) => {
+            if (this.isCallSuppressedUndelivered(transcriptPath, ownerCall.epochMs)) {
+                return false;
+            }
+            return (!ownerCall.candidateOnly ||
+                this.isCandidateCallDelivered(transcriptPath, ownerCall.epochMs));
+        };
         this.isCallSuppressedUndelivered = (transcriptPath, ownerCallEpochMs) => {
             const suppressedEpochMs = this.readMarkerEpochMs(transcriptPath, SUPPRESSED_OWNER_CALL_MARKER_FILE_EXTENSION);
             if (suppressedEpochMs === null || suppressedEpochMs !== ownerCallEpochMs) {
