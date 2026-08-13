@@ -327,9 +327,10 @@ export const ConsoleItemDetail = ({
           />
         ))}
 
-      {commentComposer}
-
-      <div className="console-actionbar">{operationBar}</div>
+      <div className="console-detail-dock">
+        <div className="console-detail-dock-composer">{commentComposer}</div>
+        <div className="console-actionbar">{operationBar}</div>
+      </div>
     </article>
   );
 };
