@@ -24,9 +24,7 @@ import {
 const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
 
 type OrphanedPreparationOutcome =
-  | 'advanceToQualityCheck'
-  | 'returnToLabelSelectedAgent'
-  | 'reject';
+  'advanceToQualityCheck' | 'returnToLabelSelectedAgent' | 'reject';
 
 export class RevertOrphanedPreparationUseCase {
   constructor(
