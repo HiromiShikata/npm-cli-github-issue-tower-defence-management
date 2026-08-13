@@ -204,13 +204,6 @@ export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvide
       return unansweredOwnerCallsBySessionName;
     }
     for (const [sessionName, transcriptPath] of transcriptPathBySessionName) {
-      const unansweredOwnerCallEpochMs = this.findUnansweredOwnerCallEpochMs(
-        transcriptPath,
-        this.ownerCallMarkerFamily,
-      );
-      if (unansweredOwnerCallEpochMs === null) {
-        continue;
-      }
       const transcript = this.scanTranscript(
         transcriptPath,
         this.ownerCallMarkerFamily,
@@ -225,9 +218,11 @@ export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvide
       const unansweredCalls = transcript.ownerCalls
         .filter(
           (ownerCall) =>
-            answeredBeforeEpochMs === null ||
-            ownerCall.epochMs > answeredBeforeEpochMs,
+            (answeredBeforeEpochMs === null ||
+              ownerCall.epochMs > answeredBeforeEpochMs) &&
+            this.isCallDeliveredToOwner(transcriptPath, ownerCall),
         )
+        .sort((oneCall, otherCall) => oneCall.epochMs - otherCall.epochMs)
         .map((ownerCall) => ({
           calledAt: new Date(ownerCall.epochMs).toISOString(),
           body: ownerCall.body,
@@ -366,6 +361,19 @@ export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvide
   // on the owner would silence the session's stall reminder for good — the session would keep its
   // task and never be woken again. Such a call is therefore not an outstanding owner call here. A
   // delivered call, and a newer call the suppression marker does not name, are untouched.
+  private isCallDeliveredToOwner = (
+    transcriptPath: string,
+    ownerCall: TranscriptOwnerCall,
+  ): boolean => {
+    if (this.isCallSuppressedUndelivered(transcriptPath, ownerCall.epochMs)) {
+      return false;
+    }
+    return (
+      !ownerCall.candidateOnly ||
+      this.isCandidateCallDelivered(transcriptPath, ownerCall.epochMs)
+    );
+  };
+
   private isCallSuppressedUndelivered = (
     transcriptPath: string,
     ownerCallEpochMs: number,
