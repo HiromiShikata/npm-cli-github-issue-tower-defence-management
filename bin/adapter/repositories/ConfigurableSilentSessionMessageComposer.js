@@ -18,7 +18,7 @@ class ConfigurableSilentSessionMessageComposer {
             if (this.templates.mainStalledMessage === null) {
                 return this.fallback.composeMainStalledSection(mainSilentSeconds);
             }
-            return withReminderSentinel(`${this.templates.mainStalledMessage} ${(0, DefaultSilentSessionMessageComposer_1.composeOwnerCallFormatGuidance)()} ${(0, DefaultSilentSessionMessageComposer_1.composeMainStalledSelfDiagnosisGuidance)()}`);
+            return withReminderSentinel(this.templates.mainStalledMessage);
         };
         this.composeMainStalledWithStaleOwnerCallSection = (mainSilentSeconds, unansweredOwnerCallAgeSeconds) => {
             if (this.templates.mainStalledStaleOwnerCallMessage === null) {
