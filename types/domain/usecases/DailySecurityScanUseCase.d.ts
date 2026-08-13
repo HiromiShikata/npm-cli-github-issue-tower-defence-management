@@ -20,6 +20,7 @@ export declare class DailySecurityScanUseCase {
         dailySecurityScan: DailySecurityScanConfig;
     }) => Promise<void>;
     private scanRepositories;
+    private checkoutDefaultBranch;
     private reportKevAdditions;
 }
 //# sourceMappingURL=DailySecurityScanUseCase.d.ts.map

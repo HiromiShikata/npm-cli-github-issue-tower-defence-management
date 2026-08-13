@@ -1,3 +1,10 @@
+## [1.148.22](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.21...v1.148.22) (2026-08-13)
+
+
+### Bug Fixes
+
+* **security-scan:** scan a fresh checkout of the default branch instead of stale working copies ([#1509](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1509)) ([f8033b8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f8033b880ce3b1d2012ab6498c001f5c1c5a6388))
+
 ## [1.148.21](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.20...v1.148.21) (2026-08-13)
 
 
