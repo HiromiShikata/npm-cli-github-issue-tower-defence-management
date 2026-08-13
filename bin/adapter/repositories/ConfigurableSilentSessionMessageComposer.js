@@ -53,6 +53,7 @@ class ConfigurableSilentSessionMessageComposer {
             }
             return withReminderSentinel(sections.join('\n\n'));
         };
+        this.composeSubAgentUnconsumedResultSection = (unconsumedResultSubAgents) => this.fallback.composeSubAgentUnconsumedResultSection(unconsumedResultSubAgents);
         this.composeIdleSection = (idleSubAgents, header, footer) => {
             const lines = idleSubAgents.map((subAgent) => `- ${subAgent.label}: no output for ${formatMinutes(subAgent.silentSeconds)}`);
             const parts = [];

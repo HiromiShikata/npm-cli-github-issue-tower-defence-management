@@ -28,6 +28,7 @@ class ProcessListSessionSubAgentActivityRepository {
                     silentSeconds: this.silentSecondsResolver.resolveSilentSeconds(label),
                     runningSeconds: process.elapsedSeconds,
                     waitingOnExternalProcess: false,
+                    finishedResultUnconsumed: false,
                 };
                 const existing = result.get(sessionName);
                 if (existing === undefined) {

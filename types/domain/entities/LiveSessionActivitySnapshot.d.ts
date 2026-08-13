@@ -3,6 +3,7 @@ export type SubAgentActivity = {
     silentSeconds: number;
     runningSeconds: number;
     waitingOnExternalProcess: boolean;
+    finishedResultUnconsumed: boolean;
 };
 export type LiveSessionActivitySnapshot = {
     sessionName: string;

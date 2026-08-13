@@ -1,3 +1,16 @@
+# [1.149.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.25...v1.149.0) (2026-08-13)
+
+
+### Bug Fixes
+
+* **DailySecurityScanUseCase:** select CISA KEV additions with a persisted watermark ([#1320](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1320)) ([cbac3aa](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cbac3aa4e62721487c0a8b70738bce30ed772d6c))
+* **silent-session-notification:** select the long-running sub-agent advisory on runtime alone ([#1313](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1313)) ([3331ff2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3331ff2d437ef784ef91c9136e0a0e4e857ca427)), closes [#1312](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1312)
+
+
+### Features
+
+* **silent-session-notification:** remind a leader session when a finished subagent result is left unconsumed ([#1303](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1303)) ([3936631](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/39366318499a34cbf64b70203287e601403fa552))
+
 ## [1.148.25](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.24...v1.148.25) (2026-08-13)
 
 

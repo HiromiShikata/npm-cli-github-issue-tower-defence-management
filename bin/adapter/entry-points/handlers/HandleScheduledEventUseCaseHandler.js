@@ -60,6 +60,7 @@ const ProjectRequiredFieldCreateUseCase_1 = require("../../../domain/usecases/Pr
 const SetupTowerDefenceProjectUseCase_1 = require("../../../domain/usecases/SetupTowerDefenceProjectUseCase");
 const DailySecurityScanUseCase_1 = require("../../../domain/usecases/DailySecurityScanUseCase");
 const KyHttpRepository_1 = require("../../repositories/KyHttpRepository");
+const FileSystemKevReportWatermarkRepository_1 = require("../../repositories/FileSystemKevReportWatermarkRepository");
 const WorkflowStatus_1 = require("../../../domain/entities/WorkflowStatus");
 const DEFAULT_DASHBOARD_DATA_DIR = null;
 const readSilentSeconds = (configValue, envValue, defaultValue) => {
@@ -236,7 +237,7 @@ class HandleScheduledEventUseCaseHandler {
             const revertOrphanedPreparationUseCase = new RevertOrphanedPreparationUseCase_1.RevertOrphanedPreparationUseCase(projectRepository, issueRepository, issueCommentRepository, nodeLocalCommandRunner);
             const revertNotReadyReviewQueueIssueUseCase = new RevertNotReadyReviewQueueIssueUseCase_1.RevertNotReadyReviewQueueIssueUseCase(projectRepository, issueRepository, issueCommentRepository);
             const dailySecurityScanUseCase = mergedInput.dailySecurityScan
-                ? new DailySecurityScanUseCase_1.DailySecurityScanUseCase(nodeLocalCommandRunner, issueRepository, new KyHttpRepository_1.KyHttpRepository())
+                ? new DailySecurityScanUseCase_1.DailySecurityScanUseCase(nodeLocalCommandRunner, issueRepository, new KyHttpRepository_1.KyHttpRepository(), new FileSystemKevReportWatermarkRepository_1.FileSystemKevReportWatermarkRepository())
                 : null;
             const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(projectRequiredFieldCreateUseCase, setupTowerDefenceProjectUseCase, actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase, staleTaskPullRequestCloseUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabel, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, revertNotReadyReviewQueueIssueUseCase, updateRateLimitCacheUseCase, dailySecurityScanUseCase, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
             const result = await handleScheduledEventUseCase.run(mergedInput);

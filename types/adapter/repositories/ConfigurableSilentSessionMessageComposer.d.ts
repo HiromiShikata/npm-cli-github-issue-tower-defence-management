@@ -1,3 +1,4 @@
+import { SubAgentActivity } from '../../domain/entities/LiveSessionActivitySnapshot';
 import { SilentSessionMessageComposer, SubAgentStallSections } from '../../domain/usecases/adapter-interfaces/SilentSessionMessageComposer';
 export type SilentSessionMessageTemplates = {
     mainStalledMessage: string | null;
@@ -14,6 +15,7 @@ export declare class ConfigurableSilentSessionMessageComposer implements SilentS
     composeMainStalledSection: (mainSilentSeconds: number) => string;
     composeMainStalledWithStaleOwnerCallSection: (mainSilentSeconds: number, unansweredOwnerCallAgeSeconds: number) => string;
     composeSubAgentSection: (stallSections: SubAgentStallSections) => string;
+    composeSubAgentUnconsumedResultSection: (unconsumedResultSubAgents: SubAgentActivity[]) => string;
     private composeIdleSection;
     private composeLongRunningSection;
 }

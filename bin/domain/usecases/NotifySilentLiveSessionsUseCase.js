@@ -249,18 +249,11 @@ class NotifySilentLiveSessionsUseCase {
                 sections.push(this.messageComposer.composeMainStalledSection(mainSilentSeconds));
                 sectionLabels.push('main-stalled');
             }
-            const idleSubAgents = snapshot.subAgents.filter((subAgent) => !subAgent.waitingOnExternalProcess &&
+            const idleSubAgents = snapshot.subAgents.filter((subAgent) => !subAgent.finishedResultUnconsumed &&
+                !subAgent.waitingOnExternalProcess &&
                 subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds);
-            // The long-running advisory is gated on output recency, mirroring the
-            // idle branch: a sub-agent that produced output recently is working, no
-            // matter how long it has been running, so it is never selected. Only a
-            // sub-agent that is BOTH long-running and quiet (and not waiting on a
-            // live external process) qualifies, and it is re-selected on EVERY cycle
-            // while the condition holds — there is intentionally no fire-once state
-            // and no time-window suppression, matching the idle-branch semantics.
-            const longRunningSubAgents = snapshot.subAgents.filter((subAgent) => !subAgent.waitingOnExternalProcess &&
-                subAgent.runningSeconds >= thresholds.subAgentRunningThresholdSeconds &&
-                subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds);
+            const longRunningSubAgents = snapshot.subAgents.filter((subAgent) => !subAgent.finishedResultUnconsumed &&
+                subAgent.runningSeconds >= thresholds.subAgentRunningThresholdSeconds);
             if (idleSubAgents.length > 0 || longRunningSubAgents.length > 0) {
                 sections.push(this.messageComposer.composeSubAgentSection({
                     idleSubAgents,
@@ -271,6 +264,14 @@ class NotifySilentLiveSessionsUseCase {
                 }
                 for (const subAgent of longRunningSubAgents) {
                     sectionLabels.push(`sub-agent-long-running:${subAgent.label}`);
+                }
+            }
+            const unconsumedResultSubAgents = snapshot.subAgents.filter((subAgent) => subAgent.finishedResultUnconsumed &&
+                subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds);
+            if (unconsumedResultSubAgents.length > 0) {
+                sections.push(this.messageComposer.composeSubAgentUnconsumedResultSection(unconsumedResultSubAgents));
+                for (const subAgent of unconsumedResultSubAgents) {
+                    sectionLabels.push(`sub-agent-result-unconsumed:${subAgent.label}`);
                 }
             }
             if (sections.length === 0) {

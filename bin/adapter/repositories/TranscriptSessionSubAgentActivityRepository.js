@@ -305,14 +305,14 @@ class TranscriptSessionSubAgentActivityRepository {
                     continue;
                 }
                 const filePath = path.join(directory, fileName);
-                const activity = await this.toActivity(filePath, fileName, nowEpochSeconds, loadNormalizedProcessCommandLines);
+                const activity = await this.toActivity(filePath, fileName, nowEpochSeconds, liveSubAgentIds !== null, loadNormalizedProcessCommandLines);
                 if (activity !== null) {
                     activities.push(activity);
                 }
             }
             return activities;
         };
-        this.toActivity = async (filePath, fileName, nowEpochSeconds, loadNormalizedProcessCommandLines) => {
+        this.toActivity = async (filePath, fileName, nowEpochSeconds, listedInRunningSubAgentsRecord, loadNormalizedProcessCommandLines) => {
             let content;
             let stats;
             try {
@@ -323,7 +323,8 @@ class TranscriptSessionSubAgentActivityRepository {
                 return null;
             }
             const transcript = parseTranscript(content);
-            if (transcript.lastEntryIndicatesCompletion) {
+            if (transcript.lastEntryIndicatesCompletion &&
+                !listedInRunningSubAgentsRecord) {
                 return null;
             }
             const silentSeconds = clampToZero(nowEpochSeconds - Math.floor(stats.mtimeMs / 1000));
@@ -336,6 +337,7 @@ class TranscriptSessionSubAgentActivityRepository {
                 runningSeconds,
                 waitingOnExternalProcess: transcript.pendingDelegationToolUse ||
                     (await this.hasLiveMatchingProcess(transcript.pendingToolCommands, loadNormalizedProcessCommandLines)),
+                finishedResultUnconsumed: transcript.lastEntryIndicatesCompletion,
             };
         };
         this.hasLiveMatchingProcess = async (pendingToolCommands, loadNormalizedProcessCommandLines) => {
