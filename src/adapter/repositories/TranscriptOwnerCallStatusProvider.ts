@@ -158,6 +158,11 @@ const isCandidateOwnerCallMarker = (marker: string): boolean =>
 export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvider {
   private readonly ownerCallMarkerFamily: string[];
 
+  private readonly transcriptScanByPath = new Map<
+    string,
+    TranscriptOwnerCallScan | null
+  >();
+
   constructor(
     ownerCallMarker: string | null,
     private readonly ownerReplyMarkerDirectory: string | null = null,
@@ -179,10 +184,8 @@ export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvide
       return unansweredOwnerCallEpochSecondsBySessionName;
     }
     for (const [sessionName, transcriptPath] of transcriptPathBySessionName) {
-      const unansweredOwnerCallEpochMs = this.findUnansweredOwnerCallEpochMs(
-        transcriptPath,
-        this.ownerCallMarkerFamily,
-      );
+      const unansweredOwnerCallEpochMs =
+        this.findUnansweredOwnerCallEpochMs(transcriptPath);
       if (unansweredOwnerCallEpochMs !== null) {
         unansweredOwnerCallEpochSecondsBySessionName.set(
           sessionName,
@@ -204,10 +207,7 @@ export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvide
       return unansweredOwnerCallsBySessionName;
     }
     for (const [sessionName, transcriptPath] of transcriptPathBySessionName) {
-      const transcript = this.scanTranscript(
-        transcriptPath,
-        this.ownerCallMarkerFamily,
-      );
+      const transcript = this.scanTranscript(transcriptPath);
       if (transcript === null) {
         continue;
       }
@@ -236,8 +236,20 @@ export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvide
 
   private scanTranscript = (
     transcriptPath: string,
-    markerFamily: string[],
   ): TranscriptOwnerCallScan | null => {
+    const alreadyScanned = this.transcriptScanByPath.get(transcriptPath);
+    if (alreadyScanned !== undefined) {
+      return alreadyScanned;
+    }
+    const scan = this.readTranscriptScan(transcriptPath);
+    this.transcriptScanByPath.set(transcriptPath, scan);
+    return scan;
+  };
+
+  private readTranscriptScan = (
+    transcriptPath: string,
+  ): TranscriptOwnerCallScan | null => {
+    const markerFamily = this.ownerCallMarkerFamily;
     let content: string;
     try {
       content = fs.readFileSync(transcriptPath, 'utf8');
@@ -311,9 +323,8 @@ export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvide
 
   private findUnansweredOwnerCallEpochMs = (
     transcriptPath: string,
-    markerFamily: string[],
   ): number | null => {
-    const transcript = this.scanTranscript(transcriptPath, markerFamily);
+    const transcript = this.scanTranscript(transcriptPath);
     if (transcript === null) {
       return null;
     }

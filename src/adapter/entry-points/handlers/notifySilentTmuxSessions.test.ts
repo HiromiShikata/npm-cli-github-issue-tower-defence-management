@@ -10,6 +10,9 @@ import {
   notifySilentTmuxSessions,
   DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS,
 } from './notifySilentTmuxSessions';
+import { OwnerCallStatusProvider } from '../../../domain/usecases/adapter-interfaces/OwnerCallStatusProvider';
+import { NoUnansweredOwnerCallStatusProvider } from '../../repositories/NoUnansweredOwnerCallStatusProvider';
+import { TranscriptOwnerCallStatusProvider } from '../../repositories/TranscriptOwnerCallStatusProvider';
 
 const NOW = new Date('2026-06-26T00:00:00.000Z');
 const NOW_EPOCH_SECONDS = Math.floor(NOW.getTime() / 1000);
@@ -135,7 +138,7 @@ describe('notifySilentTmuxSessions', () => {
     enabled: true,
     localCommandRunner: runner,
     processEnvironReader: makeEnvironReader(),
-    ownerCallMarker: null,
+    ownerCallStatusProvider: new NoUnansweredOwnerCallStatusProvider(),
     subAgentOutputRootDirectory: null,
     subAgentProcessMatchPattern: null,
     subAgentTranscriptRootDirectory: null,
@@ -187,6 +190,32 @@ describe('notifySilentTmuxSessions', () => {
     );
     expect(secondSendCall?.[1][2]).toBe(SESSION_NAME);
     expect(secondSendCall?.[1][4]).toContain('No output has been observed for');
+  });
+
+  it('decides from the owner call status provider it was given', async () => {
+    silentAssistantTranscript();
+    seedPreviousCandidates([SESSION_NAME]);
+    const runner = liveSessionRunner();
+    const consultedSessionNames: string[] = [];
+    const injectedProvider: OwnerCallStatusProvider = {
+      listUnansweredOwnerCallEpochSecondsBySessionName: (
+        transcriptPathBySessionName: Map<string, string>,
+      ): Promise<Map<string, number>> => {
+        consultedSessionNames.push(...transcriptPathBySessionName.keys());
+        return Promise.resolve(new Map([[SESSION_NAME, NOW_EPOCH_SECONDS]]));
+      },
+    };
+
+    await notifySilentTmuxSessions({
+      ...baseParams(runner),
+      ownerCallStatusProvider: injectedProvider,
+    });
+
+    expect(consultedSessionNames).toContain(SESSION_NAME);
+    const sendCall = runner.runCommand.mock.calls.find(
+      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
+    );
+    expect(sendCall).toBeUndefined();
   });
 
   it('does not notify a silent github-named live session on its first candidate cycle', async () => {
@@ -323,7 +352,9 @@ describe('notifySilentTmuxSessions', () => {
 
     await notifySilentTmuxSessions({
       ...baseParams(runner),
-      ownerCallMarker: '<<OWNER_CALL>>',
+      ownerCallStatusProvider: new TranscriptOwnerCallStatusProvider(
+        '<<OWNER_CALL>>',
+      ),
     });
 
     const sendCall = runner.runCommand.mock.calls.find(
@@ -359,7 +390,9 @@ describe('notifySilentTmuxSessions', () => {
 
     await notifySilentTmuxSessions({
       ...baseParams(runner),
-      ownerCallMarker: '<<OWNER_CALL>>',
+      ownerCallStatusProvider: new TranscriptOwnerCallStatusProvider(
+        '<<OWNER_CALL>>',
+      ),
     });
 
     const sendCall = runner.runCommand.mock.calls.find(

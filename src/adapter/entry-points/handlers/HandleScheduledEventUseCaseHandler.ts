@@ -24,6 +24,8 @@ import { LocalProcessLiveSessionProcessSnapshotProvider } from '../../repositori
 import { ProcFsProcessEnvironReader } from '../../repositories/ProcFsProcessEnvironReader';
 import { FileSystemInteractiveLiveSessionTranscriptResolver } from '../../repositories/FileSystemInteractiveLiveSessionTranscriptResolver';
 import { TranscriptOwnerCallStatusProvider } from '../../repositories/TranscriptOwnerCallStatusProvider';
+import { NoUnansweredOwnerCallStatusProvider } from '../../repositories/NoUnansweredOwnerCallStatusProvider';
+import { OwnerCallStatusProvider } from '../../../domain/usecases/adapter-interfaces/OwnerCallStatusProvider';
 import { UnansweredOwnerCall } from '../../../domain/entities/UnansweredOwnerCall';
 import {
   resetDegeneratedTmuxSessions,
@@ -638,17 +640,33 @@ export class HandleScheduledEventUseCaseHandler {
 
       const inTmuxNow = new Date();
 
+      const inTmuxGetuid = process.getuid?.bind(process);
+      const ownerCallMarker =
+        mergedInput.ownerCallMarker ??
+        process.env.TDPM_SILENT_OWNER_CALL_MARKER ??
+        null;
+      const ownerReplyMarkerDirectory = ownerReplyMarkerDirectoryResolve(
+        mergedInput.ownerReplyMarkerDirectory ?? null,
+        process.env,
+        inTmuxGetuid === undefined ? null : inTmuxGetuid(),
+      );
+      const transcriptOwnerCallStatusProvider =
+        ownerCallMarker !== null && ownerCallMarker.length > 0
+          ? new TranscriptOwnerCallStatusProvider(
+              ownerCallMarker,
+              ownerReplyMarkerDirectory,
+            )
+          : null;
+      const ownerCallStatusProvider: OwnerCallStatusProvider =
+        transcriptOwnerCallStatusProvider ??
+        new NoUnansweredOwnerCallStatusProvider();
+
       let unansweredCallsByTmuxSessionName = new Map<
         string,
         UnansweredOwnerCall[]
       >();
       try {
-        const inTmuxOwnerCallMarker =
-          mergedInput.ownerCallMarker ??
-          process.env.TDPM_SILENT_OWNER_CALL_MARKER ??
-          null;
-        if (inTmuxOwnerCallMarker !== null) {
-          const inTmuxGetuid = process.getuid?.bind(process);
+        if (transcriptOwnerCallStatusProvider !== null) {
           unansweredCallsByTmuxSessionName =
             await resolveUnansweredOwnerCallsByTmuxSessionName({
               liveSessionProcessSnapshotProvider:
@@ -659,14 +677,7 @@ export class HandleScheduledEventUseCaseHandler {
               interactiveLiveSessionTranscriptResolver:
                 new FileSystemInteractiveLiveSessionTranscriptResolver(),
               unansweredOwnerCallListProvider:
-                new TranscriptOwnerCallStatusProvider(
-                  inTmuxOwnerCallMarker,
-                  ownerReplyMarkerDirectoryResolve(
-                    mergedInput.ownerReplyMarkerDirectory ?? null,
-                    process.env,
-                    inTmuxGetuid === undefined ? null : inTmuxGetuid(),
-                  ),
-                ),
+                transcriptOwnerCallStatusProvider,
             });
         }
       } catch (error) {
@@ -773,23 +784,11 @@ export class HandleScheduledEventUseCaseHandler {
           mergedInput.subAgentProcessMatchPattern ??
           process.env.TDPM_SUBAGENT_PROCESS_MATCH_PATTERN ??
           null;
-        const ownerCallMarker =
-          mergedInput.ownerCallMarker ??
-          process.env.TDPM_SILENT_OWNER_CALL_MARKER ??
-          null;
         const subAgentTranscriptRootDirectory =
           mergedInput.subAgentTranscriptRootDirectory ??
           process.env.TDPM_SUBAGENT_TRANSCRIPT_ROOT_DIRECTORY ??
           null;
         const getuid = process.getuid?.bind(process);
-        // The status line writes the reply time it renders here, and the owner sees only that
-        // status line, so reading the same file keeps the reminder decision and the owner's view
-        // of it from disagreeing.
-        const ownerReplyMarkerDirectory = ownerReplyMarkerDirectoryResolve(
-          mergedInput.ownerReplyMarkerDirectory ?? null,
-          process.env,
-          getuid === undefined ? null : getuid(),
-        );
         const subAgentRuntimeRootDirectory =
           mergedInput.subAgentRuntimeRootDirectory ??
           process.env.TDPM_SUBAGENT_RUNTIME_ROOT_DIRECTORY ??
@@ -799,8 +798,7 @@ export class HandleScheduledEventUseCaseHandler {
         await notifySilentTmuxSessions({
           enabled: silentNotificationEnabled,
           localCommandRunner: nodeLocalCommandRunner,
-          ownerCallMarker,
-          ownerReplyMarkerDirectory,
+          ownerCallStatusProvider,
           subAgentOutputRootDirectory,
           subAgentProcessMatchPattern,
           subAgentTranscriptRootDirectory,
