@@ -1,3 +1,10 @@
+## [1.151.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.151.0...v1.151.1) (2026-08-13)
+
+
+### Bug Fixes
+
+* serve both owner-call paths from one transcript scan per scheduled event ([#1526](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1526)) ([17a37cc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/17a37cc050a0c4effa16afb445c4a23e2fdbbade)), closes [#1522](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1522)
+
 # [1.151.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.150.0...v1.151.0) (2026-08-13)
 
 

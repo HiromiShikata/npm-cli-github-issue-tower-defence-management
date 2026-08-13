@@ -1,4 +1,5 @@
 import { LocalCommandRunner } from '../../../domain/usecases/adapter-interfaces/LocalCommandRunner';
+import { OwnerCallStatusProvider } from '../../../domain/usecases/adapter-interfaces/OwnerCallStatusProvider';
 import { ProcessEnvironReader } from '../../../domain/usecases/adapter-interfaces/ProcessEnvironReader';
 import { HubTaskStatusResolver } from '../../../domain/usecases/NotifySilentLiveSessionsUseCase';
 import { SilentSessionMessageTemplates } from '../../repositories/ConfigurableSilentSessionMessageComposer';
@@ -6,8 +7,7 @@ export type NotifySilentTmuxSessionsParams = {
     enabled: boolean;
     localCommandRunner: LocalCommandRunner;
     processEnvironReader?: ProcessEnvironReader;
-    ownerCallMarker: string | null;
-    ownerReplyMarkerDirectory?: string | null;
+    ownerCallStatusProvider: OwnerCallStatusProvider;
     subAgentOutputRootDirectory: string | null;
     subAgentProcessMatchPattern: string | null;
     subAgentTranscriptRootDirectory: string | null;

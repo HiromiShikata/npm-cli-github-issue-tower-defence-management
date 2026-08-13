@@ -159,13 +159,14 @@ const isCandidateOwnerCallMarker = (marker) => marker.endsWith(OWNER_CALL_CANDID
 class TranscriptOwnerCallStatusProvider {
     constructor(ownerCallMarker, ownerReplyMarkerDirectory = null) {
         this.ownerReplyMarkerDirectory = ownerReplyMarkerDirectory;
+        this.transcriptScanByPath = new Map();
         this.listUnansweredOwnerCallEpochSecondsBySessionName = async (transcriptPathBySessionName) => {
             const unansweredOwnerCallEpochSecondsBySessionName = new Map();
             if (this.ownerCallMarkerFamily.length === 0) {
                 return unansweredOwnerCallEpochSecondsBySessionName;
             }
             for (const [sessionName, transcriptPath] of transcriptPathBySessionName) {
-                const unansweredOwnerCallEpochMs = this.findUnansweredOwnerCallEpochMs(transcriptPath, this.ownerCallMarkerFamily);
+                const unansweredOwnerCallEpochMs = this.findUnansweredOwnerCallEpochMs(transcriptPath);
                 if (unansweredOwnerCallEpochMs !== null) {
                     unansweredOwnerCallEpochSecondsBySessionName.set(sessionName, Math.floor(unansweredOwnerCallEpochMs / 1000));
                 }
@@ -178,7 +179,7 @@ class TranscriptOwnerCallStatusProvider {
                 return unansweredOwnerCallsBySessionName;
             }
             for (const [sessionName, transcriptPath] of transcriptPathBySessionName) {
-                const transcript = this.scanTranscript(transcriptPath, this.ownerCallMarkerFamily);
+                const transcript = this.scanTranscript(transcriptPath);
                 if (transcript === null) {
                     continue;
                 }
@@ -198,7 +199,17 @@ class TranscriptOwnerCallStatusProvider {
             }
             return unansweredOwnerCallsBySessionName;
         };
-        this.scanTranscript = (transcriptPath, markerFamily) => {
+        this.scanTranscript = (transcriptPath) => {
+            const alreadyScanned = this.transcriptScanByPath.get(transcriptPath);
+            if (alreadyScanned !== undefined) {
+                return alreadyScanned;
+            }
+            const scan = this.readTranscriptScan(transcriptPath);
+            this.transcriptScanByPath.set(transcriptPath, scan);
+            return scan;
+        };
+        this.readTranscriptScan = (transcriptPath) => {
+            const markerFamily = this.ownerCallMarkerFamily;
             let content;
             try {
                 content = fs.readFileSync(transcriptPath, 'utf8');
@@ -263,8 +274,8 @@ class TranscriptOwnerCallStatusProvider {
                 ? markerReplyEpochMs
                 : lastOwnerReplyEpochMs;
         };
-        this.findUnansweredOwnerCallEpochMs = (transcriptPath, markerFamily) => {
-            const transcript = this.scanTranscript(transcriptPath, markerFamily);
+        this.findUnansweredOwnerCallEpochMs = (transcriptPath) => {
+            const transcript = this.scanTranscript(transcriptPath);
             if (transcript === null) {
                 return null;
             }
