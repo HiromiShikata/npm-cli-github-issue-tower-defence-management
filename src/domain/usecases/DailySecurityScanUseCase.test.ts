@@ -2,6 +2,7 @@ import { DailySecurityScanUseCase } from './DailySecurityScanUseCase';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { HttpRepository } from './adapter-interfaces/HttpRepository';
+import { KevReportWatermarkRepository } from './adapter-interfaces/KevReportWatermarkRepository';
 import { mock } from 'jest-mock-extended';
 
 const KEV_CATALOG_URL =
@@ -12,16 +13,21 @@ describe('DailySecurityScanUseCase', () => {
     const mockLocalCommandRunner = mock<LocalCommandRunner>();
     const mockIssueRepository = mock<IssueRepository>();
     const mockHttpRepository = mock<HttpRepository>();
+    const mockKevReportWatermarkRepository =
+      mock<KevReportWatermarkRepository>();
+    mockKevReportWatermarkRepository.load.mockResolvedValue({ type: 'absent' });
     const useCase = new DailySecurityScanUseCase(
       mockLocalCommandRunner,
       mockIssueRepository,
       mockHttpRepository,
+      mockKevReportWatermarkRepository,
     );
     return {
       useCase,
       mockLocalCommandRunner,
       mockIssueRepository,
       mockHttpRepository,
+      mockKevReportWatermarkRepository,
     };
   };
 
@@ -1237,6 +1243,210 @@ describe('DailySecurityScanUseCase', () => {
         (call) => call[0] === 'git' && call[1].includes('grep'),
       );
       expect(grepCalls).toHaveLength(0);
+    });
+
+    const scannedExampleLibrary = osvScanOutput([
+      {
+        name: 'example-library',
+        version: '1.2.3',
+        ecosystem: 'npm',
+        id: 'GHSA-1111-2222-3333',
+        aliases: ['CVE-2024-0001', 'CVE-2024-0002', 'CVE-2024-0003'],
+        summary: 'Example Library Deserialization',
+      },
+    ]);
+
+    const kevCatalogOf = (
+      vulnerabilities: { cveID: string; dateAdded: string }[],
+    ) => ({
+      vulnerabilities: vulnerabilities.map((vulnerability) => ({
+        cveID: vulnerability.cveID,
+        vendorProject: 'Example',
+        product: 'ExampleLibrary',
+        vulnerabilityName: `${vulnerability.cveID} Deserialization`,
+        dateAdded: vulnerability.dateAdded,
+      })),
+    });
+
+    it('records every addition it considered in the watermark after the report issue is created', async () => {
+      const { useCase, mockIssueRepository, mockKevReportWatermarkRepository } =
+        buildScanEnvironment(
+          scannedExampleLibrary,
+          kevCatalogOf([
+            { cveID: 'CVE-2024-0001', dateAdded: '2024-01-01' },
+            { cveID: 'CVE-2024-0002', dateAdded: '2024-01-02' },
+          ]),
+        );
+
+      await runWithKevReporting(useCase);
+
+      expect(
+        kevReportCalls(mockIssueRepository.createNewIssue.mock.calls),
+      ).toHaveLength(1);
+      expect(mockKevReportWatermarkRepository.save.mock.calls).toEqual([
+        [
+          {
+            lastReportedDateAdded: '2024-01-02',
+            reportedCveIdsOnLastReportedDateAdded: ['CVE-2024-0002'],
+          },
+        ],
+      ]);
+    });
+
+    it('does not report an addition that the stored watermark already covers', async () => {
+      const { useCase, mockIssueRepository, mockKevReportWatermarkRepository } =
+        buildScanEnvironment(
+          scannedExampleLibrary,
+          kevCatalogOf([{ cveID: 'CVE-2024-0001', dateAdded: '2024-01-02' }]),
+        );
+      mockKevReportWatermarkRepository.load.mockResolvedValue({
+        type: 'stored',
+        watermark: {
+          lastReportedDateAdded: '2024-01-02',
+          reportedCveIdsOnLastReportedDateAdded: ['CVE-2024-0001'],
+        },
+      });
+
+      await runWithKevReporting(useCase);
+
+      expect(
+        kevReportCalls(mockIssueRepository.createNewIssue.mock.calls),
+      ).toHaveLength(0);
+      expect(mockKevReportWatermarkRepository.save.mock.calls).toHaveLength(0);
+    });
+
+    it('reports an addition sharing the stored watermark date that was not reported before', async () => {
+      const { useCase, mockIssueRepository, mockKevReportWatermarkRepository } =
+        buildScanEnvironment(
+          scannedExampleLibrary,
+          kevCatalogOf([
+            { cveID: 'CVE-2024-0001', dateAdded: '2024-01-02' },
+            { cveID: 'CVE-2024-0002', dateAdded: '2024-01-02' },
+          ]),
+        );
+      mockKevReportWatermarkRepository.load.mockResolvedValue({
+        type: 'stored',
+        watermark: {
+          lastReportedDateAdded: '2024-01-02',
+          reportedCveIdsOnLastReportedDateAdded: ['CVE-2024-0001'],
+        },
+      });
+
+      await runWithKevReporting(useCase);
+
+      const kevCalls = kevReportCalls(
+        mockIssueRepository.createNewIssue.mock.calls,
+      );
+      expect(kevCalls).toHaveLength(1);
+      expect(kevCalls[0][3]).toContain('CVE-2024-0002');
+      expect(kevCalls[0][3]).not.toContain('CVE-2024-0001');
+      expect(mockKevReportWatermarkRepository.save.mock.calls).toEqual([
+        [
+          {
+            lastReportedDateAdded: '2024-01-02',
+            reportedCveIdsOnLastReportedDateAdded: [
+              'CVE-2024-0001',
+              'CVE-2024-0002',
+            ],
+          },
+        ],
+      ]);
+    });
+
+    it('does not select an addition dated strictly before the stored watermark date', async () => {
+      const { useCase, mockIssueRepository, mockKevReportWatermarkRepository } =
+        buildScanEnvironment(
+          scannedExampleLibrary,
+          kevCatalogOf([{ cveID: 'CVE-2024-0001', dateAdded: '2024-01-01' }]),
+        );
+      mockKevReportWatermarkRepository.load.mockResolvedValue({
+        type: 'stored',
+        watermark: {
+          lastReportedDateAdded: '2024-01-02',
+          reportedCveIdsOnLastReportedDateAdded: [],
+        },
+      });
+
+      await runWithKevReporting(useCase);
+
+      expect(
+        kevReportCalls(mockIssueRepository.createNewIssue.mock.calls),
+      ).toHaveLength(0);
+      expect(mockKevReportWatermarkRepository.save.mock.calls).toHaveLength(0);
+    });
+
+    it('advances the watermark over an addition that affects no scanned package so it is not weighed again', async () => {
+      const { useCase, mockIssueRepository, mockKevReportWatermarkRepository } =
+        buildScanEnvironment(
+          scannedExampleLibrary,
+          kevCatalogOf([{ cveID: 'CVE-2024-9999', dateAdded: '2024-01-02' }]),
+        );
+
+      await runWithKevReporting(useCase);
+
+      expect(
+        kevReportCalls(mockIssueRepository.createNewIssue.mock.calls),
+      ).toHaveLength(0);
+      expect(mockKevReportWatermarkRepository.save.mock.calls).toEqual([
+        [
+          {
+            lastReportedDateAdded: '2024-01-02',
+            reportedCveIdsOnLastReportedDateAdded: ['CVE-2024-9999'],
+          },
+        ],
+      ]);
+    });
+
+    it('skips the report and leaves the watermark untouched when the stored watermark is unreadable', async () => {
+      const { useCase, mockIssueRepository, mockKevReportWatermarkRepository } =
+        buildScanEnvironment(
+          scannedExampleLibrary,
+          kevCatalogOf([{ cveID: 'CVE-2024-0001', dateAdded: '2024-01-02' }]),
+        );
+      mockKevReportWatermarkRepository.load.mockResolvedValue({
+        type: 'unreadable',
+        reason: 'the stored watermark file holds malformed JSON',
+      });
+      const errorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+
+      await runWithKevReporting(useCase);
+
+      expect(
+        kevReportCalls(mockIssueRepository.createNewIssue.mock.calls),
+      ).toHaveLength(0);
+      expect(mockKevReportWatermarkRepository.save.mock.calls).toHaveLength(0);
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'the stored watermark file holds malformed JSON',
+        ),
+      );
+      errorSpy.mockRestore();
+    });
+
+    it('creates the report issue and logs when the watermark write fails, so the same additions are weighed again', async () => {
+      const { useCase, mockIssueRepository, mockKevReportWatermarkRepository } =
+        buildScanEnvironment(
+          scannedExampleLibrary,
+          kevCatalogOf([{ cveID: 'CVE-2024-0001', dateAdded: '2024-01-02' }]),
+        );
+      mockKevReportWatermarkRepository.save.mockRejectedValue(
+        new Error('disk is read-only'),
+      );
+      const errorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+
+      await runWithKevReporting(useCase);
+
+      expect(
+        kevReportCalls(mockIssueRepository.createNewIssue.mock.calls),
+      ).toHaveLength(1);
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('disk is read-only'),
+      );
+      errorSpy.mockRestore();
     });
   });
 });
