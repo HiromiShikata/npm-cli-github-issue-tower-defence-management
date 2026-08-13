@@ -696,6 +696,130 @@ describe('TranscriptOwnerCallStatusProvider', () => {
       Math.floor(Date.parse('2026-06-27T10:20:00.000Z') / 1000),
     );
   });
+
+  const assistantWithCandidateMarker = (timestamp: string): object => ({
+    type: 'assistant',
+    timestamp,
+    message: {
+      role: 'assistant',
+      content: [
+        { type: 'text', text: 'Waiting for you. <<OWNER_CALL>-pending>' },
+      ],
+    },
+  });
+
+  it('does not report a session as waiting when the candidate owner call tag was never rendered to the owner', async () => {
+    const transcriptPath = writeTranscript('workbench.jsonl', [
+      ownerReply('2026-06-27T10:00:00.000Z'),
+      assistantWithCandidateMarker('2026-06-27T10:05:00.000Z'),
+    ]);
+    const markerDirectory = path.join(rootDirectory, 'markers');
+    fs.mkdirSync(markerDirectory, { recursive: true });
+    const provider = new TranscriptOwnerCallStatusProvider(
+      '<<OWNER_CALL>>',
+      markerDirectory,
+    );
+
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
+
+    expect(result.has(sessionName)).toBe(false);
+  });
+
+  it('reports a session as waiting when the status line recorded that it rendered the candidate owner call', async () => {
+    const transcriptPath = writeTranscript('workbench.jsonl', [
+      ownerReply('2026-06-27T10:00:00.000Z'),
+      assistantWithCandidateMarker('2026-06-27T10:05:00.000Z'),
+    ]);
+    const markerDirectory = path.join(rootDirectory, 'markers');
+    writeCallGateMarker(
+      markerDirectory,
+      'workbench.jsonl',
+      '.call_emitted',
+      '2026-06-27T10:05:00.000Z',
+    );
+    const provider = new TranscriptOwnerCallStatusProvider(
+      '<<OWNER_CALL>>',
+      markerDirectory,
+    );
+
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
+
+    expect(result.has(sessionName)).toBe(true);
+  });
+
+  it('reports a session as waiting when the format gate approved the candidate owner call it has not rendered yet', async () => {
+    const transcriptPath = writeTranscript('workbench.jsonl', [
+      ownerReply('2026-06-27T10:00:00.000Z'),
+      assistantWithCandidateMarker('2026-06-27T10:05:00.000Z'),
+    ]);
+    const markerDirectory = path.join(rootDirectory, 'markers');
+    writeCallGateMarker(
+      markerDirectory,
+      'workbench.jsonl',
+      '.call_ts',
+      '2026-06-27T10:05:00.000Z',
+    );
+    const provider = new TranscriptOwnerCallStatusProvider(
+      '<<OWNER_CALL>>',
+      markerDirectory,
+    );
+
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
+
+    expect(result.has(sessionName)).toBe(true);
+  });
+
+  it('reports a session as waiting on a candidate owner call when no marker directory is configured', async () => {
+    const transcriptPath = writeTranscript('workbench.jsonl', [
+      ownerReply('2026-06-27T10:00:00.000Z'),
+      assistantWithCandidateMarker('2026-06-27T10:05:00.000Z'),
+    ]);
+    const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
+
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
+
+    expect(result.has(sessionName)).toBe(true);
+  });
+
+  it('reports a session as waiting when a rendered candidate call is followed by a rendered later candidate call', async () => {
+    const transcriptPath = writeTranscript('workbench.jsonl', [
+      ownerReply('2026-06-27T10:00:00.000Z'),
+      assistantWithCandidateMarker('2026-06-27T10:05:00.000Z'),
+      assistantWithCandidateMarker('2026-06-27T10:20:00.000Z'),
+    ]);
+    const markerDirectory = path.join(rootDirectory, 'markers');
+    writeCallGateMarker(
+      markerDirectory,
+      'workbench.jsonl',
+      '.call_emitted',
+      '2026-06-27T10:20:00.000Z',
+    );
+    const provider = new TranscriptOwnerCallStatusProvider(
+      '<<OWNER_CALL>>',
+      markerDirectory,
+    );
+
+    const result =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
+
+    expect(result.get(sessionName)).toBe(
+      Math.floor(Date.parse('2026-06-27T10:20:00.000Z') / 1000),
+    );
+  });
 });
 
 describe('ownerCallMarkerFamilyResolve', () => {
