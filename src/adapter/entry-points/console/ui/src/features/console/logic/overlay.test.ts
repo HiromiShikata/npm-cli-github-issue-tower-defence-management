@@ -8,7 +8,11 @@ import {
   overlayStorageKey,
   writeOverlayEntry,
 } from './overlay';
-import type { ConsoleListItem, ConsoleOverlay } from './types';
+import type {
+  ConsoleListItem,
+  ConsoleOverlay,
+  ConsoleOverlayStatus,
+} from './types';
 
 const item = (number: number): ConsoleListItem => ({
   number,
@@ -235,7 +239,10 @@ describe('writeOverlayEntry', () => {
 describe('overlayStatusSinceSnapshot', () => {
   const snapshotGeneratedAt = '2026-08-13T21:52:01.000Z';
   const snapshotEpochMs = Date.parse(snapshotGeneratedAt);
-  const inTmuxByHuman = { name: 'In Tmux by human', color: 'RED' };
+  const inTmuxByHuman: ConsoleOverlayStatus = {
+    name: 'In Tmux by human',
+    color: 'RED',
+  };
 
   const overlayWithStatusAt = (epochMs: number): ConsoleOverlay => ({
     [overlayKeyForItem(item(1))]: {

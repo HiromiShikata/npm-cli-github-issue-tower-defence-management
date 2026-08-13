@@ -2,6 +2,7 @@ import type {
   ConsoleListItem,
   ConsoleOverlay,
   ConsoleOverlayEntry,
+  ConsoleOverlayStatus,
   ConsoleTabName,
 } from './types';
 
@@ -45,6 +46,25 @@ export const overlayEntriesActedSinceSnapshot = (
     }
   }
   return acted;
+};
+
+export const overlayStatusSinceSnapshot = (
+  overlay: ConsoleOverlay,
+  item: ConsoleListItem,
+  snapshotGeneratedAt: string | null,
+): ConsoleOverlayStatus | null => {
+  if (snapshotGeneratedAt === null) {
+    return null;
+  }
+  const snapshotGeneratedAtMs = Date.parse(snapshotGeneratedAt);
+  if (Number.isNaN(snapshotGeneratedAtMs)) {
+    return null;
+  }
+  const entry = overlay[overlayKeyForItem(item)];
+  if (entry === undefined || entry.ts < snapshotGeneratedAtMs) {
+    return null;
+  }
+  return entry.status ?? null;
 };
 
 export const writeOverlayEntry = (

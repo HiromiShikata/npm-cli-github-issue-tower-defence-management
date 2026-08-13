@@ -30,6 +30,7 @@ import {
   filterPendingItems,
   overlayEntriesActedSinceSnapshot,
   overlayKeyForItem,
+  overlayStatusSinceSnapshot,
 } from '../logic/overlay';
 import type { ConsoleSwipeDirection } from '../logic/swipe';
 import { findNextNonEmptyTabToRight } from '../logic/tabAdvance';
@@ -164,8 +165,11 @@ export const ConsolePage = () => {
     if (selectedItem === null) {
       return null;
     }
-    const entry = overlayState.overlay[overlayKeyForItem(selectedItem)];
-    return entry?.status ?? null;
+    return overlayStatusSinceSnapshot(
+      overlayState.overlay,
+      selectedItem,
+      snapshots[activeTab]?.generatedAt ?? null,
+    );
   })();
 
   const storyNameForSelected =
