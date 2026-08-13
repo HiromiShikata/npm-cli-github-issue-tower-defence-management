@@ -450,6 +450,7 @@ ${JSON.stringify(e)}
             input.startPreparation.awaitingQualityCheckStatus ?? undefined,
           labelsAsLlmAgentName,
           labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
+          allowedIssueAuthors,
         });
       }
       const preparationResult = await this.startPreparationUseCase.run({
