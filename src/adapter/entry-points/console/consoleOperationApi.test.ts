@@ -18,6 +18,8 @@ import {
 import {
   CONSOLE_DONE_TAB_NAMES,
   readDoneProjectItemIds,
+  CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES,
+  CONSOLE_DONE_STORY_SELECTED_TAB_NAMES,
 } from './consoleDoneStore';
 
 describe('consoleOperationApi', () => {
@@ -99,6 +101,23 @@ describe('consoleOperationApi', () => {
   const expectRecordedAcrossTabs = (projectItemId: string): void => {
     for (const tab of CONSOLE_DONE_TAB_NAMES) {
       expect(readDoneProjectItemIds(baseDir, 'acme', tab)).toContain(
+        projectItemId,
+      );
+    }
+  };
+
+  const expectRecordedOnlyIn = (
+    projectItemId: string,
+    recordedTabs: string[],
+  ): void => {
+    for (const tab of CONSOLE_DONE_TAB_NAMES) {
+      if (recordedTabs.includes(tab)) {
+        expect(readDoneProjectItemIds(baseDir, 'acme', tab)).toContain(
+          projectItemId,
+        );
+        continue;
+      }
+      expect(readDoneProjectItemIds(baseDir, 'acme', tab)).not.toContain(
         projectItemId,
       );
     }
@@ -430,7 +449,37 @@ describe('consoleOperationApi', () => {
         'status_todo',
       );
       expect(issueRepository.get).not.toHaveBeenCalled();
-      expectRecordedAcrossTabs('PVTI_d');
+      expectRecordedOnlyIn('PVTI_d', CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES);
+    });
+
+    it('keeps a status change out of the story-selected tabs', async () => {
+      const response = await handleTriage(context, {
+        pjcode: 'acme',
+        action: 'set_status',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_status_only',
+        statusName: 'Todo',
+      });
+      expect(response.statusCode).toBe(200);
+      expectRecordedOnlyIn(
+        'PVTI_status_only',
+        CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES,
+      );
+    });
+
+    it('keeps a story change out of the status-selected tabs', async () => {
+      const response = await handleTriage(context, {
+        pjcode: 'acme',
+        action: 'set_story',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_story_only',
+        storyOptionId: 'story_opt_1',
+      });
+      expect(response.statusCode).toBe(200);
+      expectRecordedOnlyIn(
+        'PVTI_story_only',
+        CONSOLE_DONE_STORY_SELECTED_TAB_NAMES,
+      );
     });
 
     it('rejects an unknown status name', async () => {
@@ -460,7 +509,7 @@ describe('consoleOperationApi', () => {
         'story_opt_1',
       );
       expect(issueRepository.get).not.toHaveBeenCalled();
-      expectRecordedAcrossTabs('PVTI_e');
+      expectRecordedOnlyIn('PVTI_e', CONSOLE_DONE_STORY_SELECTED_TAB_NAMES);
     });
 
     it('snoozes for one day via updateNextActionDate', async () => {
