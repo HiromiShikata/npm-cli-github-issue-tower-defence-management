@@ -120,7 +120,8 @@ describe('GenerateInTmuxByHumanDataUseCase', () => {
           ? CONSOLE_TOKEN
           : overrides.consoleToken,
       unansweredCallsByTmuxSessionName:
-        overrides.unansweredCallsByTmuxSessionName ?? new Map(),
+        overrides.unansweredCallsByTmuxSessionName ??
+        new Map<string, UnansweredOwnerCall[]>(),
       now: NOW,
     });
 

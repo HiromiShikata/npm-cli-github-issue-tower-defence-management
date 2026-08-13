@@ -160,10 +160,18 @@ describe('writeInTmuxByHumanData', () => {
 
   it('writes an empty unansweredCalls array when no call is supplied', () => {
     writeInTmuxByHumanData(baseParams(outDir));
-    const document = readJson(file('demo.v5.json')) as {
-      groups: { sessions: { unansweredCalls: unknown[] }[] }[];
-    };
-    expect(document.groups[0].sessions[0].unansweredCalls).toEqual([]);
+    expect(readJson(file('demo.v5.json'))).toMatchObject({
+      groups: [
+        {
+          sessions: [
+            {
+              name: 'https://github.com/demo/repo/issues/1',
+              unansweredCalls: [],
+            },
+          ],
+        },
+      ],
+    });
   });
 
   it('points the v5 index entry at the v5 document of each project', () => {
@@ -190,12 +198,22 @@ describe('writeInTmuxByHumanData', () => {
       ]),
     });
 
-    const document = readJson(file('demo.v4.json')) as {
-      groups: { sessions: unknown[] }[];
-    };
-    expect(document.groups[0].sessions[0]).toEqual({
-      name: 'https://github.com/demo/repo/issues/1',
-      description: 'Issue 1',
+    expect(readJson(file('demo.v4.json'))).toEqual({
+      version: 4,
+      overviewUrl: 'https://github.com/orgs/demo/projects/1',
+      tdpmConsoleUrl: `${CONSOLE_BASE_URL}/projects/demo?k=${CONSOLE_TOKEN}`,
+      newIssueUrl: `https://github.com/demo-org/demo-repo/issues/new?assignees=${ASSIGNEE}`,
+      groups: [
+        {
+          story: 'Story Alpha',
+          sessions: [
+            {
+              name: 'https://github.com/demo/repo/issues/1',
+              description: 'Issue 1',
+            },
+          ],
+        },
+      ],
     });
   });
 
