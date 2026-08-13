@@ -106,6 +106,48 @@ describe('ConsolePage', () => {
     ).toContain('TDPM Console port');
   });
 
+  it('keeps a status the snapshot already superseded out of the detail header', async () => {
+    localStorage.setItem(
+      'pv_overlay_acme',
+      JSON.stringify({
+        PVTI_1: {
+          status: { name: 'In Tmux by human', color: 'RED' },
+          ts: Date.parse('2026-06-18T00:00:00.000Z'),
+          mode: 'prs',
+        },
+      }),
+    );
+    const { getByText, findByText, container } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    expect(await findByText('Approve')).toBeInTheDocument();
+    expect(container.querySelector('.console-detail-status-chip')).toBeNull();
+  });
+
+  it('shows a status the owner set after the snapshot was generated in the detail header', async () => {
+    localStorage.setItem(
+      'pv_overlay_acme',
+      JSON.stringify({
+        PVTI_1: {
+          status: { name: 'In Tmux by human', color: 'RED' },
+          ts: Date.parse('2026-06-19T00:10:00.000Z'),
+          mode: 'prs',
+        },
+      }),
+    );
+    const { getByText, findByText, container } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    expect(await findByText('Approve')).toBeInTheDocument();
+    expect(
+      container.querySelector('.console-detail-status-chip')?.textContent,
+    ).toBe('In Tmux by human');
+  });
+
   it('opens the detail view when an item is selected', async () => {
     const { getByText, findByText } = render(<ConsolePage />);
     await waitFor(() => {

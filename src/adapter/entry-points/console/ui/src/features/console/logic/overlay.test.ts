@@ -282,6 +282,26 @@ describe('overlayStatusSinceSnapshot', () => {
     ).toBeNull();
   });
 
+  it('shows a status set at the exact moment the snapshot was generated', () => {
+    expect(
+      overlayStatusSinceSnapshot(
+        overlayWithStatusAt(snapshotEpochMs),
+        item(1),
+        snapshotGeneratedAt,
+      ),
+    ).toEqual(inTmuxByHuman);
+  });
+
+  it('drops every status when the snapshot time cannot be parsed', () => {
+    expect(
+      overlayStatusSinceSnapshot(
+        overlayWithStatusAt(snapshotEpochMs + 1000),
+        item(1),
+        'not a timestamp',
+      ),
+    ).toBeNull();
+  });
+
   it('returns null when the item has no overlay entry', () => {
     expect(
       overlayStatusSinceSnapshot({}, item(1), snapshotGeneratedAt),
