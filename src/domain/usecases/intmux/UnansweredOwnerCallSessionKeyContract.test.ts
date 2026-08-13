@@ -95,6 +95,7 @@ const tmuxSessionNameTheReconcilerCreatesFor = async (
       state: 'OPEN',
       merged: false,
       isPullRequest: false,
+      title: 'Issue 1',
     }),
   };
 
