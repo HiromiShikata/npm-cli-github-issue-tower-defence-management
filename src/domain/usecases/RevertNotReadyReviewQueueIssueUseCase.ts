@@ -6,6 +6,7 @@ import { IssueRejectionEvaluator } from './IssueRejectionEvaluator';
 import { ChangeTargetPullRequestApprover } from './ChangeTargetPullRequestApprover';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
 import { isPullRequestDeclaredUnnecessary } from './isPullRequestDeclaredUnnecessary';
+import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import {
   AWAITING_QUALITY_CHECK_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
@@ -24,19 +25,6 @@ const isArchivedProjectItemError = (error: unknown): boolean => {
 
 const isTimeoutError = (error: unknown): boolean =>
   error instanceof Error && error.name === 'TimeoutError';
-
-const isAuthorAuthorizedForAutoStatusCheck = (
-  author: string,
-  allowedIssueAuthors: string[] | null | undefined,
-): boolean => {
-  if (allowedIssueAuthors === null || allowedIssueAuthors === undefined) {
-    return false;
-  }
-  if (allowedIssueAuthors.length === 0) {
-    return false;
-  }
-  return allowedIssueAuthors.includes(author);
-};
 
 export class RevertNotReadyReviewQueueIssueUseCase {
   private readonly issueRejectionEvaluator: IssueRejectionEvaluator;

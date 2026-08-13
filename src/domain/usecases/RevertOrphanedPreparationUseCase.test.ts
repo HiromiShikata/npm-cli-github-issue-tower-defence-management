@@ -298,7 +298,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
   });
 
-  it('should advance an orphaned issue to Awaiting Quality Check when the last report declares that no pull request is required', async () => {
+  it('should return an orphaned issue to Awaiting Workspace without a rejection when the last report first declares that no pull request is required', async () => {
     const stuckIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',
       status: 'Preparation',
@@ -314,6 +314,53 @@ describe('RevertOrphanedPreparationUseCase', () => {
       exitCode: 1,
     });
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'agent-bot',
+        content:
+          'From: :robot: agent report\n\n```json\n{ "pullRequestRequired": false, "nextStep": null }\n```\n',
+        createdAt: new Date(),
+      },
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+      allowedIssueAuthors: ['agent-bot'],
+    });
+
+    expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
+    expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toContain(
+      'Auto Status Check: RETURNED_TO_AWAITING_WORKSPACE',
+    );
+  });
+
+  it('should advance an orphaned issue to Awaiting Quality Check when it was already returned to the workspace once for the same declaration', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'agent-bot',
+        content:
+          'Auto Status Check: RETURNED_TO_AWAITING_WORKSPACE\nThe last report declared that this task needs no pull request.',
+        createdAt: new Date(),
+      },
       {
         author: 'agent-bot',
         content:

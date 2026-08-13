@@ -14,8 +14,19 @@ import {
   PREPARATION_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
+import { isPullRequestDeclaredUnnecessary } from './isPullRequestDeclaredUnnecessary';
+import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
+import {
+  RETURNED_TO_AWAITING_WORKSPACE_MESSAGE,
+  RETURNED_TO_AWAITING_WORKSPACE_MESSAGE_HEAD,
+} from './returnedToAwaitingWorkspaceMessage';
 
 const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
+
+type OrphanedPreparationOutcome =
+  | 'advanceToQualityCheck'
+  | 'returnToLabelSelectedAgent'
+  | 'reject';
 
 export class RevertOrphanedPreparationUseCase {
   constructor(
@@ -46,6 +57,7 @@ export class RevertOrphanedPreparationUseCase {
     awaitingQualityCheckStatus?: string | null;
     labelsAsLlmAgentName?: string[] | null;
     labelsNotRequiringPullRequest?: string[] | null;
+    allowedIssueAuthors?: string[] | null;
   }): Promise<void> => {
     const projectId = await this.projectRepository.findProjectIdByUrl(
       params.projectUrl,
@@ -87,11 +99,24 @@ export class RevertOrphanedPreparationUseCase {
       if (!isOrphaned) {
         continue;
       }
-      const { hasRejections, comments } = await this.evaluateHasRejections(
+      const { outcome, comments } = await this.evaluateOutcome(
         issue,
         resolveLabelsNotRequiringPullRequest(params),
+        params.allowedIssueAuthors,
       );
-      if (!hasRejections) {
+      if (outcome === 'returnToLabelSelectedAgent') {
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          awaitingWorkspaceStatusOption.id,
+        );
+        await this.issueCommentRepository.createComment(
+          issue,
+          RETURNED_TO_AWAITING_WORKSPACE_MESSAGE,
+        );
+        continue;
+      }
+      if (outcome === 'advanceToQualityCheck') {
         if (awaitingQualityCheckStatusOption) {
           await this.issueRepository.updateStatus(
             project,
@@ -150,21 +175,42 @@ export class RevertOrphanedPreparationUseCase {
     }
   };
 
-  private evaluateHasRejections = async (
+  private evaluateOutcome = async (
     issue: Issue,
     labelsNotRequiringPullRequest: string[],
-  ): Promise<{ hasRejections: boolean; comments: Comment[] }> => {
+    allowedIssueAuthors: string[] | null | undefined,
+  ): Promise<{
+    outcome: OrphanedPreparationOutcome;
+    comments: Comment[];
+  }> => {
     if (issue.isClosed) {
-      return { hasRejections: false, comments: [] };
+      return { outcome: 'advanceToQualityCheck', comments: [] };
     }
     const comments =
       await this.issueCommentRepository.getCommentsFromIssue(issue);
     const lastComment = comments[comments.length - 1];
     if (!lastComment || !lastComment.content.startsWith('From: :robot:')) {
-      return { hasRejections: true, comments };
+      return { outcome: 'reject', comments };
     }
     if (this.reportBodyHasNextStep(lastComment.content)) {
-      return { hasRejections: true, comments };
+      return { outcome: 'reject', comments };
+    }
+    const isTrustedAuthor = (author: string): boolean =>
+      isAuthorAuthorizedForAutoStatusCheck(author, allowedIssueAuthors);
+    if (isPullRequestDeclaredUnnecessary(comments, isTrustedAuthor)) {
+      const alreadyReturnedToWorkspace = comments.some(
+        (comment) =>
+          isTrustedAuthor(comment.author) &&
+          comment.content.startsWith(
+            RETURNED_TO_AWAITING_WORKSPACE_MESSAGE_HEAD,
+          ),
+      );
+      return {
+        outcome: alreadyReturnedToWorkspace
+          ? 'advanceToQualityCheck'
+          : 'returnToLabelSelectedAgent',
+        comments,
+      };
     }
 
     const categoryLabels = issue.labels.filter((label) =>
@@ -181,7 +227,7 @@ export class RevertOrphanedPreparationUseCase {
       hasLabelNotRequiringPullRequest ||
       (categoryLabels.length > 0 && !categoryLabels.includes('category:e2e'))
     ) {
-      return { hasRejections: false, comments };
+      return { outcome: 'advanceToQualityCheck', comments };
     }
 
     const prsToCheck = issue.isPr
@@ -189,7 +235,7 @@ export class RevertOrphanedPreparationUseCase {
       : await this.issueRepository.findRelatedOpenPRs(issue.url);
 
     if (prsToCheck.length !== 1) {
-      return { hasRejections: true, comments };
+      return { outcome: 'reject', comments };
     }
 
     const pr = prsToCheck[0];
@@ -197,7 +243,10 @@ export class RevertOrphanedPreparationUseCase {
       pr.isConflicted ||
       !pr.isPassedAllCiJob ||
       !pr.isResolvedAllReviewComments;
-    return { hasRejections, comments };
+    return {
+      outcome: hasRejections ? 'reject' : 'advanceToQualityCheck',
+      comments,
+    };
   };
 
   private resolveOpenPrsForPrItem = async (
