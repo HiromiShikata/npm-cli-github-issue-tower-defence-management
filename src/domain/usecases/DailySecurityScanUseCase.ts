@@ -197,7 +197,7 @@ export class DailySecurityScanUseCase {
       return [];
     }
 
-    const scannedVulnerablePackages: ScannedVulnerablePackage[] = [];
+    const remoteUrlByRepositoryName = new Map<string, string>();
     for (const repositoryDirectory of repositoryDirectories) {
       const { stdout: remoteUrl, exitCode: remoteExitCode } =
         await this.localCommandRunner.runCommand('git', [
@@ -217,8 +217,21 @@ export class DailySecurityScanUseCase {
       if (!remoteMatch || remoteMatch[1] !== org) {
         continue;
       }
-      const repositoryOrg = remoteMatch[1];
-      const repositoryName = remoteMatch[2];
+      if (!remoteUrlByRepositoryName.has(remoteMatch[2])) {
+        remoteUrlByRepositoryName.set(remoteMatch[2], remoteUrl.trim());
+      }
+    }
+
+    const scannedVulnerablePackages: ScannedVulnerablePackage[] = [];
+    for (const [repositoryName, remoteUrl] of remoteUrlByRepositoryName) {
+      const repositoryOrg = org;
+      const checkoutDirectory = await this.checkoutDefaultBranch(
+        repositoryName,
+        remoteUrl,
+      );
+      if (checkoutDirectory === null) {
+        continue;
+      }
 
       const {
         stdout: scanOutput,
@@ -228,16 +241,20 @@ export class DailySecurityScanUseCase {
         'scan',
         'source',
         '-r',
-        repositoryDirectory,
+        checkoutDirectory,
         '--format',
         'json',
+      ]);
+      await this.localCommandRunner.runCommand('rm', [
+        '-rf',
+        checkoutDirectory,
       ]);
       if (scanExitCode === 0) {
         continue;
       }
       if (scanExitCode !== 1) {
         console.error(
-          `osv-scanner failed with exit code ${scanExitCode} for ${repositoryDirectory}: ${scanStderr}`,
+          `osv-scanner failed with exit code ${scanExitCode} for ${repositoryName}: ${scanStderr}`,
         );
         continue;
       }
@@ -276,6 +293,44 @@ export class DailySecurityScanUseCase {
       }
     }
     return scannedVulnerablePackages;
+  };
+
+  private checkoutDefaultBranch = async (
+    repositoryName: string,
+    remoteUrl: string,
+  ): Promise<string | null> => {
+    const { stdout: checkoutDirectoryOutput, exitCode: checkoutDirectoryExit } =
+      await this.localCommandRunner.runCommand('mktemp', [
+        '-d',
+        '-t',
+        `tdpm-daily-security-scan-${repositoryName}-XXXXXX`,
+      ]);
+    const checkoutDirectory = checkoutDirectoryOutput.trim();
+    if (checkoutDirectoryExit !== 0 || checkoutDirectory.length === 0) {
+      console.error(
+        `Failed to create a checkout directory for ${repositoryName}`,
+      );
+      return null;
+    }
+    const { stderr: cloneStderr, exitCode: cloneExitCode } =
+      await this.localCommandRunner.runCommand('git', [
+        'clone',
+        '--depth',
+        '1',
+        remoteUrl,
+        checkoutDirectory,
+      ]);
+    if (cloneExitCode !== 0) {
+      console.error(
+        `Failed to clone the default branch of ${repositoryName}: ${cloneStderr}`,
+      );
+      await this.localCommandRunner.runCommand('rm', [
+        '-rf',
+        checkoutDirectory,
+      ]);
+      return null;
+    }
+    return checkoutDirectory;
   };
 
   private reportKevAdditions = async (
