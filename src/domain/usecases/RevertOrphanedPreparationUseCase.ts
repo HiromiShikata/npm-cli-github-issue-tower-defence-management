@@ -15,6 +15,7 @@ import {
 } from '../entities/WorkflowStatus';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
 import { isPullRequestDeclaredUnnecessary } from './isPullRequestDeclaredUnnecessary';
+import { dropTrailingAutoStatusCheckComments } from './autoStatusCheckComments';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import {
   RETURNED_TO_AWAITING_WORKSPACE_MESSAGE,
@@ -186,16 +187,24 @@ export class RevertOrphanedPreparationUseCase {
     }
     const comments =
       await this.issueCommentRepository.getCommentsFromIssue(issue);
-    const lastComment = comments[comments.length - 1];
-    if (!lastComment || !lastComment.content.startsWith('From: :robot:')) {
-      return { outcome: 'reject', comments };
-    }
-    if (this.reportBodyHasNextStep(lastComment.content)) {
-      return { outcome: 'reject', comments };
-    }
     const isTrustedAuthor = (author: string): boolean =>
       isAuthorAuthorizedForAutoStatusCheck(author, allowedIssueAuthors);
-    if (isPullRequestDeclaredUnnecessary(comments, isTrustedAuthor)) {
+    const commentsBeforeOwnStatusComments = dropTrailingAutoStatusCheckComments(
+      comments,
+      isTrustedAuthor,
+    );
+    const lastReport =
+      commentsBeforeOwnStatusComments[
+        commentsBeforeOwnStatusComments.length - 1
+      ] ?? null;
+    if (
+      lastReport !== null &&
+      isPullRequestDeclaredUnnecessary(
+        commentsBeforeOwnStatusComments,
+        isTrustedAuthor,
+      ) &&
+      !this.reportBodyHasNextStep(lastReport.content)
+    ) {
       const alreadyReturnedToWorkspace = comments.some(
         (comment) =>
           isTrustedAuthor(comment.author) &&
@@ -209,6 +218,14 @@ export class RevertOrphanedPreparationUseCase {
           : 'returnToLabelSelectedAgent',
         comments,
       };
+    }
+
+    const lastComment = comments[comments.length - 1];
+    if (!lastComment || !lastComment.content.startsWith('From: :robot:')) {
+      return { outcome: 'reject', comments };
+    }
+    if (this.reportBodyHasNextStep(lastComment.content)) {
+      return { outcome: 'reject', comments };
     }
 
     const categoryLabels = issue.labels.filter((label) =>

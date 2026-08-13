@@ -420,6 +420,99 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
   });
 
+  it('should advance an orphaned issue to Awaiting Quality Check when its own status comments were written after the report declaring no pull request is required', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'agent-bot',
+        content:
+          'From: :robot: agent report\n\n```json\n{ "pullRequestRequired": false, "nextStep": null }\n```\n',
+        createdAt: new Date(),
+      },
+      {
+        author: 'agent-bot',
+        content:
+          'Auto Status Check: RETURNED_TO_AWAITING_WORKSPACE\nThe last report declared that this task needs no pull request.',
+        createdAt: new Date(),
+      },
+      {
+        author: 'agent-bot',
+        content: 'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
+        createdAt: new Date(),
+      },
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+      allowedIssueAuthors: ['agent-bot'],
+    });
+
+    expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(0);
+  });
+
+  it('should keep rejecting an orphaned issue whose own status comments follow a report that declares nothing', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'agent-bot',
+        content: 'From: :robot: agent report of an earlier session',
+        createdAt: new Date(),
+      },
+      {
+        author: 'agent-bot',
+        content: 'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
+        createdAt: new Date(),
+      },
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+      allowedIssueAuthors: ['agent-bot'],
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
+    expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toContain(
+      'Auto Status Check: REJECTED',
+    );
+  });
+
   it('should advance orphaned issue with llm-agent label to Awaiting Quality Check without PR check', async () => {
     const stuckIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',
