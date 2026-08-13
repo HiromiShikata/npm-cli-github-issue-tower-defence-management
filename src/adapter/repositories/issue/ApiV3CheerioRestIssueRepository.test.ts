@@ -2066,7 +2066,12 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         'https://github.com/HiromiShikata/other-repository/issues/656',
       );
 
-      expect(result.title).toBe('Issue title from REST');
+      expect(result).toEqual({
+        state: 'closed',
+        merged: false,
+        isPullRequest: false,
+        title: 'Issue title from REST',
+      });
     });
 
     it('should return the pull request title carried by the same REST payload', async () => {
@@ -2094,7 +2099,12 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         'https://github.com/HiromiShikata/other-repository/pull/42',
       );
 
-      expect(result.title).toBe('PR title from REST');
+      expect(result).toEqual({
+        state: 'open',
+        merged: false,
+        isPullRequest: true,
+        title: 'PR title from REST',
+      });
     });
 
     it('should throw rather than report an empty title when the payload carries no title', async () => {

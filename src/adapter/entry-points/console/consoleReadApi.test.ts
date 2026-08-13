@@ -305,6 +305,7 @@ describe('consoleReadApi', () => {
         isPullRequest: false,
         title: 'Title of an issue outside the board',
       });
+      expect(issueRepository.getIssueByUrl).not.toHaveBeenCalled();
     });
 
     it('re-fetches a non-merged result after the TTL elapses', async () => {
