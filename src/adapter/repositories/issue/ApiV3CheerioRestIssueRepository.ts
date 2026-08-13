@@ -911,8 +911,16 @@ export class ApiV3CheerioRestIssueRepository
   searchIssues = (query: string): Promise<SearchedIssue[]> => {
     return this.restIssueRepository.searchIssues(query);
   };
-  get = async (_issueUrl: string, _project: Project): Promise<Issue | null> => {
-    return this.getIssueByUrl(_issueUrl);
+  get = async (issueUrl: string, project: Project): Promise<Issue | null> => {
+    const projectItem =
+      await this.graphqlProjectItemRepository.fetchProjectItemByUrl(
+        issueUrl,
+        project.id,
+      );
+    if (!projectItem) {
+      return null;
+    }
+    return this.convertProjectItemToIssue(projectItem);
   };
   update = async (issue: Issue, _project: Project): Promise<void> => {
     await this.updateIssue(issue);

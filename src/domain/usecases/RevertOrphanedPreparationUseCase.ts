@@ -6,6 +6,7 @@ import { IssueCommentRepository } from './adapter-interfaces/IssueCommentReposit
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { Issue } from '../entities/Issue';
+import { Project } from '../entities/Project';
 import { Comment } from '../entities/Comment';
 import {
   AWAITING_QUALITY_CHECK_STATUS_NAME,
@@ -39,6 +40,7 @@ export class RevertOrphanedPreparationUseCase {
       | 'updateStatus'
       | 'findRelatedOpenPRs'
       | 'getOpenPullRequest'
+      | 'get'
     >,
     readonly issueCommentRepository: Pick<
       IssueCommentRepository,
@@ -103,6 +105,13 @@ export class RevertOrphanedPreparationUseCase {
         resolveLabelsNotRequiringPullRequest(params),
         params.allowedIssueAuthors,
       );
+      const isStillInPreparation = await this.isStillInPreparation(
+        issue,
+        project,
+      );
+      if (!isStillInPreparation) {
+        continue;
+      }
       if (outcome === 'returnToLabelSelectedAgent') {
         await this.issueRepository.updateStatus(
           project,
@@ -172,6 +181,29 @@ export class RevertOrphanedPreparationUseCase {
         rejectionStatusMessage,
       );
     }
+  };
+
+  private isStillInPreparation = async (
+    issue: Issue,
+    project: Project,
+  ): Promise<boolean> => {
+    let liveIssue: Issue | null;
+    try {
+      liveIssue = await this.issueRepository.get(issue.url, project);
+    } catch (error) {
+      console.error(
+        `Failed to re-read the live status before reverting orphaned preparation. issueUrl: ${issue.url}`,
+        error,
+      );
+      return false;
+    }
+    if (liveIssue === null) {
+      console.error(
+        `Issue not found while re-reading its live status before reverting orphaned preparation. issueUrl: ${issue.url}`,
+      );
+      return false;
+    }
+    return liveIssue.status === PREPARATION_STATUS_NAME;
   };
 
   private evaluateOutcome = async (
