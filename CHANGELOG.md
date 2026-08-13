@@ -1,3 +1,10 @@
+## [1.148.25](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.24...v1.148.25) (2026-08-13)
+
+
+### Bug Fixes
+
+* re-read live status before the orphaned preparation revert writes a status ([#1318](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1318)) ([8d96cd8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8d96cd80a29eb216671e9fc008c602c4352ce849))
+
 ## [1.148.24](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.23...v1.148.24) (2026-08-13)
 
 

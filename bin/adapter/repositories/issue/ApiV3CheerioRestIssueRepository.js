@@ -393,8 +393,12 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         this.searchIssues = (query) => {
             return this.restIssueRepository.searchIssues(query);
         };
-        this.get = async (_issueUrl, _project) => {
-            return this.getIssueByUrl(_issueUrl);
+        this.get = async (issueUrl, project) => {
+            const projectItem = await this.graphqlProjectItemRepository.fetchProjectItemByUrl(issueUrl, project.id);
+            if (!projectItem) {
+                return null;
+            }
+            return this.convertProjectItemToIssue(projectItem);
         };
         this.update = async (issue, _project) => {
             await this.updateIssue(issue);

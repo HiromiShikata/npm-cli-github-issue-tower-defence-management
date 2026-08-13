@@ -4,10 +4,10 @@ import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 export declare class RevertOrphanedPreparationUseCase {
     readonly projectRepository: Pick<ProjectRepository, 'findProjectIdByUrl' | 'getProject'>;
-    readonly issueRepository: Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest'>;
+    readonly issueRepository: Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'get'>;
     readonly issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>;
     readonly localCommandRunner: LocalCommandRunner;
-    constructor(projectRepository: Pick<ProjectRepository, 'findProjectIdByUrl' | 'getProject'>, issueRepository: Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest'>, issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>, localCommandRunner: LocalCommandRunner);
+    constructor(projectRepository: Pick<ProjectRepository, 'findProjectIdByUrl' | 'getProject'>, issueRepository: Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'get'>, issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>, localCommandRunner: LocalCommandRunner);
     run: (params: {
         projectUrl: string;
         preparationProcessCheckCommand: string;
@@ -19,6 +19,7 @@ export declare class RevertOrphanedPreparationUseCase {
         labelsNotRequiringPullRequest?: string[] | null;
         allowedIssueAuthors?: string[] | null;
     }) => Promise<void>;
+    private isStillInPreparation;
     private evaluateOutcome;
     private resolveOpenPrsForPrItem;
     private reportBodyHasNextStep;

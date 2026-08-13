@@ -76,7 +76,7 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     removeLabel: (issue: Issue, label: string) => Promise<void>;
     updateAssigneeList: (issue: Pick<Issue, "org" | "repo" | "number">, assigneeList: Member["name"][]) => Promise<void>;
     searchIssues: (query: string) => Promise<SearchedIssue[]>;
-    get: (_issueUrl: string, _project: Project) => Promise<Issue | null>;
+    get: (issueUrl: string, project: Project) => Promise<Issue | null>;
     update: (issue: Issue, _project: Project) => Promise<void>;
     private parseIssueUrl;
     private computePrStatus;

@@ -38,6 +38,10 @@ class RevertOrphanedPreparationUseCase {
                     continue;
                 }
                 const { outcome, comments } = await this.evaluateOutcome(issue, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params), params.allowedIssueAuthors);
+                const isStillInPreparation = await this.isStillInPreparation(issue, project);
+                if (!isStillInPreparation) {
+                    continue;
+                }
                 if (outcome === 'returnToLabelSelectedAgent') {
                     await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
                     await this.issueCommentRepository.createComment(issue, returnedToAwaitingWorkspaceMessage_1.RETURNED_TO_AWAITING_WORKSPACE_MESSAGE);
@@ -68,6 +72,21 @@ class RevertOrphanedPreparationUseCase {
                 await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
                 await this.issueCommentRepository.createComment(issue, rejectionStatusMessage);
             }
+        };
+        this.isStillInPreparation = async (issue, project) => {
+            let liveIssue;
+            try {
+                liveIssue = await this.issueRepository.get(issue.url, project);
+            }
+            catch (error) {
+                console.error(`Failed to re-read the live status before reverting orphaned preparation. issueUrl: ${issue.url}`, error);
+                return false;
+            }
+            if (liveIssue === null) {
+                console.error(`Issue not found while re-reading its live status before reverting orphaned preparation. issueUrl: ${issue.url}`);
+                return false;
+            }
+            return liveIssue.status === WorkflowStatus_1.PREPARATION_STATUS_NAME;
         };
         this.evaluateOutcome = async (issue, labelsNotRequiringPullRequest, allowedIssueAuthors) => {
             if (issue.isClosed) {
