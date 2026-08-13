@@ -10,6 +10,8 @@ import {
   notifySilentTmuxSessions,
   DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS,
 } from './notifySilentTmuxSessions';
+import { NoUnansweredOwnerCallStatusProvider } from '../../repositories/NoUnansweredOwnerCallStatusProvider';
+import { TranscriptOwnerCallStatusProvider } from '../../repositories/TranscriptOwnerCallStatusProvider';
 
 const NOW = new Date('2026-06-26T00:00:00.000Z');
 const NOW_EPOCH_SECONDS = Math.floor(NOW.getTime() / 1000);
@@ -135,7 +137,7 @@ describe('notifySilentTmuxSessions', () => {
     enabled: true,
     localCommandRunner: runner,
     processEnvironReader: makeEnvironReader(),
-    ownerCallMarker: null,
+    ownerCallStatusProvider: new NoUnansweredOwnerCallStatusProvider(),
     subAgentOutputRootDirectory: null,
     subAgentProcessMatchPattern: null,
     subAgentTranscriptRootDirectory: null,
@@ -323,7 +325,9 @@ describe('notifySilentTmuxSessions', () => {
 
     await notifySilentTmuxSessions({
       ...baseParams(runner),
-      ownerCallMarker: '<<OWNER_CALL>>',
+      ownerCallStatusProvider: new TranscriptOwnerCallStatusProvider(
+        '<<OWNER_CALL>>',
+      ),
     });
 
     const sendCall = runner.runCommand.mock.calls.find(
@@ -359,7 +363,9 @@ describe('notifySilentTmuxSessions', () => {
 
     await notifySilentTmuxSessions({
       ...baseParams(runner),
-      ownerCallMarker: '<<OWNER_CALL>>',
+      ownerCallStatusProvider: new TranscriptOwnerCallStatusProvider(
+        '<<OWNER_CALL>>',
+      ),
     });
 
     const sendCall = runner.runCommand.mock.calls.find(

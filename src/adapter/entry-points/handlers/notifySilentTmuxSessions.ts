@@ -23,8 +23,6 @@ import {
   DEFAULT_SUBMIT_PUSH_OUT_WAIT_MILLISECONDS,
   TmuxSilentSessionNotificationRepository,
 } from '../../repositories/TmuxSilentSessionNotificationRepository';
-import { NoUnansweredOwnerCallStatusProvider } from '../../repositories/NoUnansweredOwnerCallStatusProvider';
-import { TranscriptOwnerCallStatusProvider } from '../../repositories/TranscriptOwnerCallStatusProvider';
 import { TranscriptRefusalTailStatusProvider } from '../../repositories/TranscriptRefusalTailStatusProvider';
 import { ProcessListSessionSubAgentActivityRepository } from '../../repositories/ProcessListSessionSubAgentActivityRepository';
 import { TranscriptSessionSubAgentActivityRepository } from '../../repositories/TranscriptSessionSubAgentActivityRepository';
@@ -44,8 +42,7 @@ export type NotifySilentTmuxSessionsParams = {
   enabled: boolean;
   localCommandRunner: LocalCommandRunner;
   processEnvironReader?: ProcessEnvironReader;
-  ownerCallMarker: string | null;
-  ownerReplyMarkerDirectory?: string | null;
+  ownerCallStatusProvider: OwnerCallStatusProvider;
   subAgentOutputRootDirectory: string | null;
   subAgentProcessMatchPattern: string | null;
   subAgentTranscriptRootDirectory: string | null;
@@ -64,19 +61,6 @@ export type NotifySilentTmuxSessionsParams = {
   messageTemplates: SilentSessionMessageTemplates;
   submitPushOutWaitMilliseconds?: number;
   now: Date;
-};
-
-const createOwnerCallStatusProvider = (
-  ownerCallMarker: string | null,
-  ownerReplyMarkerDirectory: string | null,
-): OwnerCallStatusProvider => {
-  if (ownerCallMarker !== null && ownerCallMarker.length > 0) {
-    return new TranscriptOwnerCallStatusProvider(
-      ownerCallMarker,
-      ownerReplyMarkerDirectory,
-    );
-  }
-  return new NoUnansweredOwnerCallStatusProvider();
 };
 
 const createSubAgentActivityRepository = (
@@ -114,7 +98,7 @@ export const notifySilentTmuxSessions = async (
     enabled,
     localCommandRunner,
     processEnvironReader,
-    ownerCallMarker,
+    ownerCallStatusProvider,
     subAgentOutputRootDirectory,
     subAgentProcessMatchPattern,
     subAgentTranscriptRootDirectory,
@@ -159,10 +143,7 @@ export const notifySilentTmuxSessions = async (
       localCommandRunner,
       now,
     ),
-    createOwnerCallStatusProvider(
-      ownerCallMarker,
-      params.ownerReplyMarkerDirectory ?? null,
-    ),
+    ownerCallStatusProvider,
     new TmuxSilentSessionNotificationRepository(
       localCommandRunner,
       new RealSleeper(),
