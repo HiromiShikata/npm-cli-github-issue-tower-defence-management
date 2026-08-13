@@ -387,7 +387,11 @@ describe('OauthTokenSelectHandler', () => {
     });
 
     const diagnostics = output.diagnostics.join('\n');
-    expect(diagnostics).toMatch(/foo:.*draw weight/);
+    const drawWeightMatch = /foo:.*draw weight (\d+\.\d{2}) ->/.exec(
+      diagnostics,
+    );
+    expect(drawWeightMatch).not.toBeNull();
+    expect(Number(drawWeightMatch?.[1])).toBeGreaterThan(0);
   });
 
   describe('resolveTokenListJsonPath', () => {

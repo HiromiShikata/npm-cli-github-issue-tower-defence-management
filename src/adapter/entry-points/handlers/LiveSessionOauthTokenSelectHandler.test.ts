@@ -365,7 +365,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     });
 
     const diagnostics = output.diagnostics.join('\n');
-    expect(diagnostics).toMatch(/foo:.*weight/);
+    expect(diagnostics).toMatch(/foo:.*, weight 1 ->/);
   });
 
   it('returns a diagnostic when no token list path is resolvable', () => {
