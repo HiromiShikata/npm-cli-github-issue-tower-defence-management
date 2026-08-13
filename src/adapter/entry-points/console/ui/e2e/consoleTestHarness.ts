@@ -473,10 +473,19 @@ const createStubIssueRepository = (
   getPullRequestCommits: async (): Promise<PullRequestCommit[]> => [],
   getIssueOrPullRequestState: async (
     url: string,
-  ): Promise<{ state: string; merged: boolean; isPullRequest: boolean }> => ({
+  ): Promise<{
+    state: string;
+    merged: boolean;
+    isPullRequest: boolean;
+    title: string;
+  }> => ({
     state: 'open',
     merged: false,
     isPullRequest: url.includes('/pull/'),
+    title:
+      url === CONSOLE_E2E_INLINE_COMMENT_PR_URL
+        ? 'Add inline review comments on the related pull request diff'
+        : buildIssueForUrl(url).title,
   }),
   getPullRequestSummary: async (
     url: string,

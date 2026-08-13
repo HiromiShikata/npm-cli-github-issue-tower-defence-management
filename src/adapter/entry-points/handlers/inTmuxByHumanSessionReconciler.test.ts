@@ -47,6 +47,7 @@ const createIssueStateRepository = (
     state,
     merged: false,
     isPullRequest: false,
+    title: 'In tmux by human session issue',
   }),
 });
 

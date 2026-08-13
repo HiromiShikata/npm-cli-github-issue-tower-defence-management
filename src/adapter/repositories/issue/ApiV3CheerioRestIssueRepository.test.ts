@@ -1103,9 +1103,16 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           ),
         )
         .mockResolvedValueOnce(
-          new Response(JSON.stringify({ state: 'open', merged: false }), {
-            status: 200,
-          }),
+          new Response(
+            JSON.stringify({
+              state: 'open',
+              merged: false,
+              title: 'Issue title',
+            }),
+            {
+              status: 200,
+            },
+          ),
         );
 
       const { repository, sleep } = createApiV3CheerioRestIssueRepository();
@@ -2010,6 +2017,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         state: 'closed',
         merged: true,
         isPullRequest: true,
+        title: 'PR title',
       });
       expect(fetchSpy).toHaveBeenCalledWith(
         'https://api.github.com/repos/HiromiShikata/test-repository/pulls/42',
@@ -2019,7 +2027,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
     it('should fetch issue state with merged always false for an issue URL', async () => {
       const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-        new Response(JSON.stringify({ state: 'open' }), {
+        new Response(JSON.stringify({ state: 'open', title: 'Issue title' }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         }),
@@ -2034,6 +2042,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         state: 'open',
         merged: false,
         isPullRequest: false,
+        title: 'Issue title',
       });
       expect(fetchSpy).toHaveBeenCalledWith(
         'https://api.github.com/repos/HiromiShikata/test-repository/issues/42',

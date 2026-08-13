@@ -277,12 +277,17 @@ function isIssueOrPullRequestBodyResponse(
 
 type IssueOrPullRequestStateResponse = {
   state: string;
+  title: string;
 };
 
 function isIssueOrPullRequestStateResponse(
   value: unknown,
 ): value is IssueOrPullRequestStateResponse {
-  return isRecord(value) && typeof value.state === 'string';
+  return (
+    isRecord(value) &&
+    typeof value.state === 'string' &&
+    typeof value.title === 'string'
+  );
 }
 
 type IssueCommentsResponseItem = {
@@ -2273,7 +2278,12 @@ export class ApiV3CheerioRestIssueRepository
 
   getIssueOrPullRequestState = async (
     url: string,
-  ): Promise<{ state: string; merged: boolean; isPullRequest: boolean }> => {
+  ): Promise<{
+    state: string;
+    merged: boolean;
+    isPullRequest: boolean;
+    title: string;
+  }> => {
     const { owner, repo, issueNumber, isPr } = this.parseIssueUrl(url);
     if (isPr) {
       const response = await this.fetchWithRateLimitRetry(() =>
@@ -2298,7 +2308,12 @@ export class ApiV3CheerioRestIssueRepository
           `Unexpected response shape when fetching state for ${url}`,
         );
       }
-      return { state: body.state, merged: body.merged, isPullRequest: true };
+      return {
+        state: body.state,
+        merged: body.merged,
+        isPullRequest: true,
+        title: body.title,
+      };
     }
     const response = await this.fetchWithRateLimitRetry(() =>
       fetch(
@@ -2322,7 +2337,12 @@ export class ApiV3CheerioRestIssueRepository
         `Unexpected response shape when fetching state for ${url}`,
       );
     }
-    return { state: body.state, merged: false, isPullRequest: false };
+    return {
+      state: body.state,
+      merged: false,
+      isPullRequest: false,
+      title: body.title,
+    };
   };
 
   getPullRequestSummary = async (

@@ -91,6 +91,7 @@ const createFakeIssueStateRepository = (
         state: stateByUrl[url] ?? 'open',
         merged: false,
         isPullRequest: false,
+        title: `Title of ${url}`,
       };
     },
   };
