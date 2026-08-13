@@ -476,7 +476,7 @@ describe('OauthTokenCandidateMetrics drawWeight', () => {
 
     const soon = result.metrics.find((m) => m.name === 'soon');
     const far = result.metrics.find((m) => m.name === 'far');
-    expect((soon?.drawWeight ?? 0)).toBeGreaterThan(far?.drawWeight ?? 0);
+    expect(soon?.drawWeight ?? 0).toBeGreaterThan(far?.drawWeight ?? 0);
   });
 
   it('scales draw weight by the configured selection weight', () => {

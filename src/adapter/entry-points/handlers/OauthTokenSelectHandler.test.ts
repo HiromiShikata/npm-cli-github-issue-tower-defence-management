@@ -368,9 +368,7 @@ describe('OauthTokenSelectHandler', () => {
   });
 
   it('includes the draw weight in the diagnostic line for each candidate', () => {
-    writeTokenList([
-      { name: 'foo', token: 'fake-foo' },
-    ]);
+    writeTokenList([{ name: 'foo', token: 'fake-foo' }]);
     writeCache('fake-foo', {
       fiveHourUtilization: 0.1,
       fiveHourReset: NOW + HOUR,
@@ -378,7 +376,10 @@ describe('OauthTokenSelectHandler', () => {
       sevenDayReset: NOW + 2 * DAY,
     });
 
-    const handler = new OauthTokenSelectHandler(new OauthTokenSelectUseCase(), () => 0.5);
+    const handler = new OauthTokenSelectHandler(
+      new OauthTokenSelectUseCase(),
+      () => 0.5,
+    );
     const output = handler.handle({
       tokenListJsonPath: tokenListPath,
       cacheDirectory,
