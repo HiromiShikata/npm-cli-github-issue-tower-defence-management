@@ -1,3 +1,10 @@
+## [1.148.21](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.20...v1.148.21) (2026-08-13)
+
+
+### Bug Fixes
+
+* **preparation:** read the agent report beneath the tool's own status comments ([#1508](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1508)) ([d2308af](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d2308afca1dc6cc496bc930e81934d88c8dbbf47))
+
 ## [1.148.20](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.19...v1.148.20) (2026-08-13)
 
 

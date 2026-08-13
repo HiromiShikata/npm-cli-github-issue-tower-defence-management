@@ -1,0 +1,1 @@
+{"version":3,"file":"autoStatusCheckComments.d.ts","sourceRoot":"","sources":["../../../src/domain/usecases/autoStatusCheckComments.ts"],"names":[],"mappings":"AAAA,eAAO,MAAM,8BAA8B,uBAAuB,CAAC;AAEnE,eAAO,MAAM,mCAAmC,GAC9C,CAAC,SAAS;IAAE,MAAM,EAAE,MAAM,CAAC;IAAC,OAAO,EAAE,MAAM,CAAA;CAAE,EAE7C,UAAU,CAAC,EAAE,EACb,iBAAiB,CAAC,MAAM,EAAE,MAAM,KAAK,OAAO,KAC3C,CAAC,EAUH,CAAC"}

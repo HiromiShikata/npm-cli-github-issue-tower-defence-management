@@ -4,6 +4,7 @@ exports.RevertOrphanedPreparationUseCase = void 0;
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 const resolveLabelsNotRequiringPullRequest_1 = require("./resolveLabelsNotRequiringPullRequest");
 const isPullRequestDeclaredUnnecessary_1 = require("./isPullRequestDeclaredUnnecessary");
+const autoStatusCheckComments_1 = require("./autoStatusCheckComments");
 const isAuthorAuthorizedForAutoStatusCheck_1 = require("./isAuthorAuthorizedForAutoStatusCheck");
 const returnedToAwaitingWorkspaceMessage_1 = require("./returnedToAwaitingWorkspaceMessage");
 const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
@@ -73,15 +74,12 @@ class RevertOrphanedPreparationUseCase {
                 return { outcome: 'advanceToQualityCheck', comments: [] };
             }
             const comments = await this.issueCommentRepository.getCommentsFromIssue(issue);
-            const lastComment = comments[comments.length - 1];
-            if (!lastComment || !lastComment.content.startsWith('From: :robot:')) {
-                return { outcome: 'reject', comments };
-            }
-            if (this.reportBodyHasNextStep(lastComment.content)) {
-                return { outcome: 'reject', comments };
-            }
             const isTrustedAuthor = (author) => (0, isAuthorAuthorizedForAutoStatusCheck_1.isAuthorAuthorizedForAutoStatusCheck)(author, allowedIssueAuthors);
-            if ((0, isPullRequestDeclaredUnnecessary_1.isPullRequestDeclaredUnnecessary)(comments, isTrustedAuthor)) {
+            const commentsBeforeOwnStatusComments = (0, autoStatusCheckComments_1.dropTrailingAutoStatusCheckComments)(comments, isTrustedAuthor);
+            const lastReport = commentsBeforeOwnStatusComments[commentsBeforeOwnStatusComments.length - 1] ?? null;
+            if (lastReport !== null &&
+                (0, isPullRequestDeclaredUnnecessary_1.isPullRequestDeclaredUnnecessary)(commentsBeforeOwnStatusComments, isTrustedAuthor) &&
+                !this.reportBodyHasNextStep(lastReport.content)) {
                 const alreadyReturnedToWorkspace = comments.some((comment) => isTrustedAuthor(comment.author) &&
                     comment.content.startsWith(returnedToAwaitingWorkspaceMessage_1.RETURNED_TO_AWAITING_WORKSPACE_MESSAGE_HEAD));
                 return {
@@ -90,6 +88,13 @@ class RevertOrphanedPreparationUseCase {
                         : 'returnToLabelSelectedAgent',
                     comments,
                 };
+            }
+            const lastComment = comments[comments.length - 1];
+            if (!lastComment || !lastComment.content.startsWith('From: :robot:')) {
+                return { outcome: 'reject', comments };
+            }
+            if (this.reportBodyHasNextStep(lastComment.content)) {
+                return { outcome: 'reject', comments };
             }
             const categoryLabels = issue.labels.filter((label) => label.startsWith('category:'));
             const hasLlmAgentLabel = issue.labels.some((l) => l === 'llm-agent' || l.startsWith('llm-agent:'));
