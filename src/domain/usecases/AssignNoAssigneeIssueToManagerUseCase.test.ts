@@ -1,5 +1,8 @@
 import { mock } from 'jest-mock-extended';
-import { AssignNoAssigneeIssueToManagerUseCase } from './AssignNoAssigneeIssueToManagerUseCase';
+import {
+  AssignNoAssigneeIssueToManagerUseCase,
+  MANAGER_ASSIGNMENT_FAILURE_TASK_TITLE,
+} from './AssignNoAssigneeIssueToManagerUseCase';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
@@ -524,6 +527,111 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
           cacheUsed: false,
         }),
       ).rejects.toBe('string-failure');
+    });
+
+    describe('assignment failure task in manager repository', () => {
+      const failingIssue = {
+        ...basicIssue,
+        url: 'https://github.com/testOrg/testRepo/issues/42',
+      };
+      const assignmentError = new Error(
+        'Request failed with status code 403 Forbidden',
+      );
+
+      beforeEach(() => {
+        mockIssueRepository.updateAssigneeList.mockRejectedValueOnce(
+          assignmentError,
+        );
+        jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      });
+
+      it('creates a new task in the manager repository when no open task exists', async () => {
+        mockIssueRepository.searchIssue.mockResolvedValueOnce([]);
+
+        await useCase.run({
+          issues: [failingIssue],
+          manager: 'manager1',
+          cacheUsed: false,
+          managerOrg: 'testOrg',
+          managerRepo: 'manager-repo',
+        });
+
+        expect(mockIssueRepository.searchIssue).toHaveBeenCalledWith({
+          owner: 'testOrg',
+          repositoryName: 'manager-repo',
+          type: 'issue',
+          state: 'open',
+          title: MANAGER_ASSIGNMENT_FAILURE_TASK_TITLE,
+        });
+        expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
+          'testOrg',
+          'manager-repo',
+          MANAGER_ASSIGNMENT_FAILURE_TASK_TITLE,
+          expect.stringContaining(failingIssue.url),
+          [],
+          [],
+        );
+        expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      });
+
+      it('adds a comment to the existing open task instead of creating a new one', async () => {
+        const existingTaskUrl =
+          'https://github.com/testOrg/manager-repo/issues/1';
+        mockIssueRepository.searchIssue.mockResolvedValueOnce([
+          {
+            url: existingTaskUrl,
+            title: MANAGER_ASSIGNMENT_FAILURE_TASK_TITLE,
+            number: '1',
+          },
+        ]);
+
+        await useCase.run({
+          issues: [failingIssue],
+          manager: 'manager1',
+          cacheUsed: false,
+          managerOrg: 'testOrg',
+          managerRepo: 'manager-repo',
+        });
+
+        expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
+          existingTaskUrl,
+          expect.stringContaining(failingIssue.url),
+        );
+        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+      });
+
+      it('does not call searchIssue or createNewIssue when managerOrg and managerRepo are not provided', async () => {
+        await useCase.run({
+          issues: [failingIssue],
+          manager: 'manager1',
+          cacheUsed: false,
+        });
+
+        expect(mockIssueRepository.searchIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      });
+
+      it('still logs the error and continues to the next issue when assignment fails', async () => {
+        const subsequentIssue = {
+          ...basicIssue,
+          url: 'https://github.com/testOrg/testRepo/issues/43',
+        };
+        mockIssueRepository.searchIssue.mockResolvedValueOnce([]);
+
+        await useCase.run({
+          issues: [failingIssue, subsequentIssue],
+          manager: 'manager1',
+          cacheUsed: false,
+          managerOrg: 'testOrg',
+          managerRepo: 'manager-repo',
+        });
+
+        expect(console.error).toHaveBeenCalledWith(
+          expect.stringContaining(failingIssue.url),
+        );
+        expect(mockIssueRepository.updateAssigneeList).toHaveBeenCalledTimes(2);
+      });
     });
   });
 });

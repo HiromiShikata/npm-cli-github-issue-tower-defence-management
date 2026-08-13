@@ -575,6 +575,8 @@ ${JSON.stringify(e)}
       projectToAddSearchedIssues: project,
       queryToAddProjectEnabled: input.queryToAddProjectEnabled ?? false,
       queryToAddProject: input.queryToAddProject ?? null,
+      managerOrg: input.org,
+      managerRepo: input.workingReport.repo,
     });
     await this.updateIssueStatusByLabelUseCase.run({
       project,

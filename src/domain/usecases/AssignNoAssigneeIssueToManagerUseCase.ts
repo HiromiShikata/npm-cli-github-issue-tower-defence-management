@@ -4,11 +4,19 @@ import { SearchedIssue } from '../entities/SearchedIssue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Member } from '../entities/Member';
 
+export const MANAGER_ASSIGNMENT_FAILURE_TASK_TITLE =
+  'Error in AssignNoAssigneeIssueToManager / failed to assign manager to issue';
+
 export class AssignNoAssigneeIssueToManagerUseCase {
   constructor(
     readonly issueRepository: Pick<
       IssueRepository,
-      'updateAssigneeList' | 'searchIssues' | 'addIssueToProject'
+      | 'updateAssigneeList'
+      | 'searchIssues'
+      | 'addIssueToProject'
+      | 'searchIssue'
+      | 'createNewIssue'
+      | 'createCommentByUrl'
     >,
   ) {}
 
@@ -20,6 +28,8 @@ export class AssignNoAssigneeIssueToManagerUseCase {
     projectToAddSearchedIssues?: Project | null;
     queryToAddProjectEnabled?: boolean | null;
     queryToAddProject?: string | null;
+    managerOrg?: string | null;
+    managerRepo?: string | null;
   }): Promise<void> => {
     const authorAllowList =
       input.autoAssignManagerAuthors &&
@@ -38,11 +48,19 @@ export class AssignNoAssigneeIssueToManagerUseCase {
         authorAllowList === null || authorAllowList.includes(target.author)
       );
     };
+    const managerOrg = input.managerOrg ?? null;
+    const managerRepo = input.managerRepo ?? null;
     for (const issue of input.issues) {
       if (!isAssignable(issue)) {
         continue;
       }
-      await this.assignManager(issue, issue.url, input.manager);
+      await this.assignManager(
+        issue,
+        issue.url,
+        input.manager,
+        managerOrg,
+        managerRepo,
+      );
     }
     const project = input.projectToAddSearchedIssues;
     const query = input.queryToAddProject;
@@ -70,6 +88,8 @@ export class AssignNoAssigneeIssueToManagerUseCase {
           },
           searchedIssue.url,
           input.manager,
+          managerOrg,
+          managerRepo,
         ))
       ) {
         continue;
@@ -112,6 +132,8 @@ export class AssignNoAssigneeIssueToManagerUseCase {
     issue: Pick<Issue, 'org' | 'repo' | 'number'>,
     issueUrl: string,
     manager: Member['name'],
+    managerOrg: string | null,
+    managerRepo: string | null,
   ): Promise<boolean> => {
     try {
       await this.issueRepository.updateAssigneeList(issue, [manager]);
@@ -122,9 +144,48 @@ export class AssignNoAssigneeIssueToManagerUseCase {
       console.error(
         `Failed to update assignee for issue ${issueUrl}: ${e.message}`,
       );
+      if (managerOrg && managerRepo) {
+        await this.reportAssignmentFailure(
+          issueUrl,
+          managerOrg,
+          managerRepo,
+          e.message,
+        );
+      }
       return false;
     }
     return true;
+  };
+
+  private reportAssignmentFailure = async (
+    failedIssueUrl: string,
+    managerOrg: string,
+    managerRepo: string,
+    errorMessage: string,
+  ): Promise<void> => {
+    const taskBody = `Failed to assign manager to ${failedIssueUrl}: ${errorMessage}`;
+    const existingTasks = await this.issueRepository.searchIssue({
+      owner: managerOrg,
+      repositoryName: managerRepo,
+      type: 'issue',
+      state: 'open',
+      title: MANAGER_ASSIGNMENT_FAILURE_TASK_TITLE,
+    });
+    if (existingTasks.length > 0) {
+      await this.issueRepository.createCommentByUrl(
+        existingTasks[0].url,
+        taskBody,
+      );
+    } else {
+      await this.issueRepository.createNewIssue(
+        managerOrg,
+        managerRepo,
+        MANAGER_ASSIGNMENT_FAILURE_TASK_TITLE,
+        taskBody,
+        [],
+        [],
+      );
+    }
   };
 
   private waitBeforeNextRequest = async (): Promise<void> => {
