@@ -924,7 +924,7 @@ describe('DailySecurityScanUseCase', () => {
               'Request failed with status code 403: Repository was archived so is read-only.',
             );
           }
-          return undefined as never;
+          return 1;
         },
       );
 
@@ -1023,7 +1023,8 @@ describe('DailySecurityScanUseCase', () => {
                 {
                   url: 'https://github.com/example-org/oversized/issues/1',
                   title: 'Daily security scan findings',
-                } as never,
+                  number: '1',
+                },
               ]
             : [],
       );
