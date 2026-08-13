@@ -370,11 +370,6 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
       return null;
     }
     const transcript = parseTranscript(content);
-    // A finished sub-agent whose id the leader has already removed from the
-    // running-subagents record — or whose record cannot be read at all — is a
-    // consumed result and stays out of the snapshot. A finished sub-agent the
-    // record still lists is the unconsumed case: the leader has not acted on
-    // its result, so it is reported with its completion state and its age.
     if (
       transcript.lastEntryIndicatesCompletion &&
       !listedInRunningSubAgentsRecord

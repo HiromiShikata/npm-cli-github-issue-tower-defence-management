@@ -470,14 +470,6 @@ export class NotifySilentLiveSessionsUseCase {
       }
     }
 
-    // A sub-agent whose transcript has finished while its id is still listed in
-    // the session's running-subagents record is a result the leader has not
-    // acted on: the leader removes the record line once it has consumed the
-    // result, so a finished transcript still listed there is exactly the
-    // unconsumed state. This selection is deliberately independent of the
-    // main-session silence condition — a leader that keeps producing output
-    // while a finished result sits unread is the case that goes unreminded by
-    // every other path.
     const unconsumedResultSubAgents = snapshot.subAgents.filter(
       (subAgent) =>
         subAgent.finishedResultUnconsumed &&
