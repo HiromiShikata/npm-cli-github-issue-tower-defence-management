@@ -2041,6 +2041,53 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
     });
 
+    it('should return the issue title carried by the same REST payload', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ state: 'closed', title: 'Issue title from REST' }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getIssueOrPullRequestState(
+        'https://github.com/HiromiShikata/other-repository/issues/656',
+      );
+
+      expect(result.title).toBe('Issue title from REST');
+    });
+
+    it('should return the pull request title carried by the same REST payload', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            title: 'PR title from REST',
+            state: 'open',
+            merged: false,
+            draft: false,
+            additions: 1,
+            deletions: 1,
+            changed_files: 1,
+            head: { ref: 'feature/foo' },
+            base: { ref: 'main' },
+            user: { login: 'alice' },
+            body: 'pr body',
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getIssueOrPullRequestState(
+        'https://github.com/HiromiShikata/other-repository/pull/42',
+      );
+
+      expect(result.title).toBe('PR title from REST');
+    });
+
     it('should throw when the API responds with a non-2xx status', async () => {
       jest.spyOn(global, 'fetch').mockResolvedValueOnce(
         new Response('Not Found', {
