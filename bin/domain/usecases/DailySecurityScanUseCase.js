@@ -170,19 +170,24 @@ class DailySecurityScanUseCase {
                 const vulnerablePackages = parseScannerVulnerabilities(repositoryName, scanOutput);
                 scannedVulnerablePackages.push(...vulnerablePackages);
                 const findingsBody = renderScannerFindings(today, vulnerablePackages);
-                const existingIssues = await this.issueRepository.searchIssue({
-                    owner: repositoryOrg,
-                    repositoryName,
-                    type: 'issue',
-                    state: 'open',
-                    title: 'Daily security scan findings',
-                });
-                const existingIssue = existingIssues.find((issue) => issue.title === 'Daily security scan findings');
-                if (existingIssue) {
-                    await this.issueRepository.createCommentByUrl(existingIssue.url, findingsBody);
+                try {
+                    const existingIssues = await this.issueRepository.searchIssue({
+                        owner: repositoryOrg,
+                        repositoryName,
+                        type: 'issue',
+                        state: 'open',
+                        title: 'Daily security scan findings',
+                    });
+                    const existingIssue = existingIssues.find((issue) => issue.title === 'Daily security scan findings');
+                    if (existingIssue) {
+                        await this.issueRepository.createCommentByUrl(existingIssue.url, findingsBody);
+                    }
+                    else {
+                        await this.issueRepository.createNewIssue(repositoryOrg, repositoryName, 'Daily security scan findings', findingsBody, [manager], []);
+                    }
                 }
-                else {
-                    await this.issueRepository.createNewIssue(repositoryOrg, repositoryName, 'Daily security scan findings', findingsBody, [manager], []);
+                catch (error) {
+                    console.error(`The findings of ${repositoryOrg}/${repositoryName} were not written to GitHub: ${String(error)}. The remaining repositories are still scanned and the CISA KEV report still runs.`);
                 }
             }
             return scannedVulnerablePackages;

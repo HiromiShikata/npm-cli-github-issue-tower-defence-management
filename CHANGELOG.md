@@ -1,3 +1,10 @@
+## [1.149.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.149.0...v1.149.1) (2026-08-13)
+
+
+### Bug Fixes
+
+* **DailySecurityScanUseCase:** keep scanning after a repository's findings issue write fails ([#1519](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1519)) ([49d06db](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/49d06db8e110223f71c28a53e315bec7437a2a53))
+
 # [1.149.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.25...v1.149.0) (2026-08-13)
 
 
