@@ -4,6 +4,7 @@ import path from 'path';
 import { Issue } from '../../../domain/entities/Issue';
 import { FieldOption, Project } from '../../../domain/entities/Project';
 import { writeInTmuxByHumanData } from './inTmuxByHumanDataWriter';
+import { toTmuxSessionName } from '../../../domain/usecases/intmux/InTmuxByHumanSessionReconcileUseCase';
 
 const ASSIGNEE = 'owner-login';
 const CONSOLE_BASE_URL = 'https://console.example.test';
@@ -98,20 +99,122 @@ describe('writeInTmuxByHumanData', () => {
 
   const file = (name: string): string => path.join(outDir, name);
 
-  it('writes the four per-project files and the four index files', () => {
+  it('writes the five per-project files and the five index files', () => {
     writeInTmuxByHumanData(baseParams(outDir));
     for (const name of [
       'demo.json',
       'demo.v2.json',
       'demo.v3.json',
       'demo.v4.json',
+      'demo.v5.json',
       'index.json',
       'index.v2.json',
       'index.v3.json',
       'index.v4.json',
+      'index.v5.json',
     ]) {
       expect(fs.existsSync(file(name))).toBe(true);
     }
+  });
+
+  it('writes the v5 shape carrying the unanswered calls of the session', () => {
+    writeInTmuxByHumanData({
+      ...baseParams(outDir),
+      unansweredCallsByTmuxSessionName: new Map([
+        [
+          toTmuxSessionName('https://github.com/demo/repo/issues/1'),
+          [
+            {
+              calledAt: '2026-08-13T10:14:00.000Z',
+              body: 'Please decide whether to merge the release branch',
+            },
+          ],
+        ],
+      ]),
+    });
+
+    expect(readJson(file('demo.v5.json'))).toEqual({
+      version: 5,
+      overviewUrl: 'https://github.com/orgs/demo/projects/1',
+      tdpmConsoleUrl: `${CONSOLE_BASE_URL}/projects/demo?k=${CONSOLE_TOKEN}`,
+      newIssueUrl: `https://github.com/demo-org/demo-repo/issues/new?assignees=${ASSIGNEE}`,
+      groups: [
+        {
+          story: 'Story Alpha',
+          sessions: [
+            {
+              name: 'https://github.com/demo/repo/issues/1',
+              description: 'Issue 1',
+              unansweredCalls: [
+                {
+                  calledAt: '2026-08-13T10:14:00.000Z',
+                  body: 'Please decide whether to merge the release branch',
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('writes an empty unansweredCalls array when no call is supplied', () => {
+    writeInTmuxByHumanData(baseParams(outDir));
+    expect(readJson(file('demo.v5.json'))).toMatchObject({
+      groups: [
+        {
+          sessions: [
+            {
+              name: 'https://github.com/demo/repo/issues/1',
+              unansweredCalls: [],
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('points the v5 index entry at the v5 document of each project', () => {
+    writeInTmuxByHumanData(baseParams(outDir));
+    expect(readJson(file('index.v5.json'))).toEqual({
+      version: 5,
+      projects: [
+        {
+          name: 'demo',
+          path: `/${path.basename(outDir)}/demo.v5.json?k=${CONSOLE_TOKEN}`,
+        },
+      ],
+    });
+  });
+
+  it('keeps the v4 document free of unanswered call data when calls are supplied', () => {
+    writeInTmuxByHumanData({
+      ...baseParams(outDir),
+      unansweredCallsByTmuxSessionName: new Map([
+        [
+          toTmuxSessionName('https://github.com/demo/repo/issues/1'),
+          [{ calledAt: '2026-08-13T10:14:00.000Z', body: 'first call body' }],
+        ],
+      ]),
+    });
+
+    expect(readJson(file('demo.v4.json'))).toEqual({
+      version: 4,
+      overviewUrl: 'https://github.com/orgs/demo/projects/1',
+      tdpmConsoleUrl: `${CONSOLE_BASE_URL}/projects/demo?k=${CONSOLE_TOKEN}`,
+      newIssueUrl: `https://github.com/demo-org/demo-repo/issues/new?assignees=${ASSIGNEE}`,
+      groups: [
+        {
+          story: 'Story Alpha',
+          sessions: [
+            {
+              name: 'https://github.com/demo/repo/issues/1',
+              description: 'Issue 1',
+            },
+          ],
+        },
+      ],
+    });
   });
 
   it('writes pretty-printed JSON ending with a trailing newline', () => {

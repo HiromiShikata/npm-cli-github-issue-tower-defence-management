@@ -19,6 +19,12 @@ import {
   DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS,
 } from './notifySilentTmuxSessions';
 import { ownerReplyMarkerDirectoryResolve } from './ownerReplyMarkerDirectoryResolve';
+import { resolveUnansweredOwnerCallsByTmuxSessionName } from './resolveUnansweredOwnerCalls';
+import { LocalProcessLiveSessionProcessSnapshotProvider } from '../../repositories/LocalProcessLiveSessionProcessSnapshotProvider';
+import { ProcFsProcessEnvironReader } from '../../repositories/ProcFsProcessEnvironReader';
+import { FileSystemInteractiveLiveSessionTranscriptResolver } from '../../repositories/FileSystemInteractiveLiveSessionTranscriptResolver';
+import { TranscriptOwnerCallStatusProvider } from '../../repositories/TranscriptOwnerCallStatusProvider';
+import { UnansweredOwnerCall } from '../../../domain/entities/UnansweredOwnerCall';
 import {
   resetDegeneratedTmuxSessions,
   DEFAULT_RESET_DEGENERATED_TMUX_SESSIONS_PARAMS,
@@ -632,6 +638,45 @@ export class HandleScheduledEventUseCaseHandler {
 
       const inTmuxNow = new Date();
 
+      let unansweredCallsByTmuxSessionName = new Map<
+        string,
+        UnansweredOwnerCall[]
+      >();
+      try {
+        const inTmuxOwnerCallMarker =
+          mergedInput.ownerCallMarker ??
+          process.env.TDPM_SILENT_OWNER_CALL_MARKER ??
+          null;
+        if (inTmuxOwnerCallMarker !== null) {
+          const inTmuxGetuid = process.getuid?.bind(process);
+          unansweredCallsByTmuxSessionName =
+            await resolveUnansweredOwnerCallsByTmuxSessionName({
+              liveSessionProcessSnapshotProvider:
+                new LocalProcessLiveSessionProcessSnapshotProvider(
+                  nodeLocalCommandRunner,
+                  new ProcFsProcessEnvironReader(),
+                ),
+              interactiveLiveSessionTranscriptResolver:
+                new FileSystemInteractiveLiveSessionTranscriptResolver(),
+              unansweredOwnerCallListProvider:
+                new TranscriptOwnerCallStatusProvider(
+                  inTmuxOwnerCallMarker,
+                  ownerReplyMarkerDirectoryResolve(
+                    mergedInput.ownerReplyMarkerDirectory ?? null,
+                    process.env,
+                    inTmuxGetuid === undefined ? null : inTmuxGetuid(),
+                  ),
+                ),
+            });
+        }
+      } catch (error) {
+        console.error(
+          `Failed to resolve unanswered owner calls: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+
       try {
         writeInTmuxByHumanData({
           inTmuxDataOutputDir: mergedInput.inTmuxDataOutputDir ?? null,
@@ -648,6 +693,7 @@ export class HandleScheduledEventUseCaseHandler {
           newIssueRepo: mergedInput.newIssueRepo ?? undefined,
           project: result.project,
           issues: result.issues,
+          unansweredCallsByTmuxSessionName,
           now: inTmuxNow,
         });
       } catch (error) {

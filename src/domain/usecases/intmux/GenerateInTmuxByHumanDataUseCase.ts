@@ -1,5 +1,7 @@
 import { Issue } from '../../entities/Issue';
 import { FieldOption, Project } from '../../entities/Project';
+import { UnansweredOwnerCall } from '../../entities/UnansweredOwnerCall';
+import { toTmuxSessionName } from './InTmuxByHumanSessionReconcileUseCase';
 
 export type InTmuxByHumanUrlEntry = {
   url: string;
@@ -26,6 +28,17 @@ export type InTmuxByHumanGroupV4 = {
   sessions: InTmuxByHumanSession[];
 };
 
+export type InTmuxByHumanSessionV5 = {
+  name: string;
+  description: string;
+  unansweredCalls: UnansweredOwnerCall[];
+};
+
+export type InTmuxByHumanGroupV5 = {
+  story: string;
+  sessions: InTmuxByHumanSessionV5[];
+};
+
 export type InTmuxByHumanV3 = {
   version: 3;
   overviewUrl: string;
@@ -41,11 +54,20 @@ export type InTmuxByHumanV4 = {
   groups: InTmuxByHumanGroupV4[];
 };
 
+export type InTmuxByHumanV5 = {
+  version: 5;
+  overviewUrl: string;
+  tdpmConsoleUrl: string;
+  newIssueUrl: string;
+  groups: InTmuxByHumanGroupV5[];
+};
+
 export type InTmuxByHumanData = {
   v1: InTmuxByHumanGroupV1[];
   v2: InTmuxByHumanGroupV2[];
   v3: InTmuxByHumanV3 | null;
   v4: InTmuxByHumanV4 | null;
+  v5: InTmuxByHumanV5 | null;
 };
 
 export type GenerateInTmuxByHumanDataInput = {
@@ -58,6 +80,7 @@ export type GenerateInTmuxByHumanDataInput = {
   newIssueRepo?: string;
   consoleBaseUrl: string | null;
   consoleToken: string | null;
+  unansweredCallsByTmuxSessionName: Map<string, UnansweredOwnerCall[]>;
   now: Date;
 };
 
@@ -81,6 +104,7 @@ export class GenerateInTmuxByHumanDataUseCase {
       newIssueRepo,
       consoleBaseUrl,
       consoleToken,
+      unansweredCallsByTmuxSessionName,
     } = input;
 
     const storyOrder = project.story
@@ -114,6 +138,17 @@ export class GenerateInTmuxByHumanDataUseCase {
       })),
     }));
 
+    const v5Groups: InTmuxByHumanGroupV5[] = groups.map((group) => ({
+      story: group.story,
+      sessions: group.issues.map((issue) => ({
+        name: issue.url,
+        description: issue.title,
+        unansweredCalls:
+          unansweredCallsByTmuxSessionName.get(toTmuxSessionName(issue.url)) ??
+          [],
+      })),
+    }));
+
     const overviewUrl = project.url;
     const tdpmConsoleUrl = consoleBaseUrl
       ? `${consoleBaseUrl}/projects/${pjcode}`
@@ -139,7 +174,18 @@ export class GenerateInTmuxByHumanDataUseCase {
           }
         : null;
 
-    return { v1, v2, v3, v4 };
+    const v5: InTmuxByHumanV5 | null =
+      tdpmConsoleUrl && consoleToken
+        ? {
+            version: 5,
+            overviewUrl,
+            tdpmConsoleUrl: `${tdpmConsoleUrl}?k=${consoleToken}`,
+            newIssueUrl: `https://github.com/${org}/${newIssueRepo ?? repo}/issues/new?assignees=${assigneeLogin}`,
+            groups: v5Groups,
+          }
+        : null;
+
+    return { v1, v2, v3, v4, v5 };
   };
 
   private isInTmuxByHuman = (issue: Issue, assigneeLogin: string): boolean =>
