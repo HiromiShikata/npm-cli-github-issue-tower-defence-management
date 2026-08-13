@@ -220,6 +220,73 @@ describe('DailySecurityScanUseCase', () => {
       expect(mockIssueRepository.createNewIssue.mock.calls[0][1]).toBe('app');
     });
 
+    it('logs an error and scans nothing for a repository whose default branch clone fails', async () => {
+      const { useCase, mockLocalCommandRunner, mockIssueRepository } =
+        buildUseCase();
+      const errorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockLocalCommandRunner.runCommand.mockImplementation(
+        async (program, args) => {
+          if (program === 'find') {
+            return {
+              stdout: '/repos/workspace1/app/.git\n',
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          if (program === 'mktemp') {
+            return {
+              stdout: '/tmp/tdpm-daily-security-scan-app-abc123\n',
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          if (program === 'git' && args[0] === 'clone') {
+            return {
+              stdout: '',
+              stderr: 'fatal: repository not found',
+              exitCode: 128,
+            };
+          }
+          if (program === 'git') {
+            return {
+              stdout: 'git@github.com:example-org/app.git\n',
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          return { stdout: '', stderr: '', exitCode: 0 };
+        },
+      );
+
+      await useCase.run({
+        targetDates: [new Date('2024-01-02T05:00:00Z')],
+        org: 'example-org',
+        manager: 'manager-name',
+        dailySecurityScan: {
+          scanBaseDirectory: '/repos',
+          targetHourUtc: 5,
+        },
+      });
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to clone the default branch of app'),
+      );
+      const scanCalls = mockLocalCommandRunner.runCommand.mock.calls.filter(
+        (call) => call[0] === 'osv-scanner',
+      );
+      expect(scanCalls).toHaveLength(0);
+      const removeCalls = mockLocalCommandRunner.runCommand.mock.calls.filter(
+        (call) => call[0] === 'rm',
+      );
+      expect(removeCalls).toHaveLength(1);
+      expect(mockIssueRepository.createNewIssue.mock.calls).toHaveLength(0);
+      errorSpy.mockRestore();
+    });
+
     it('removes the temporary checkout after scanning it', async () => {
       const { useCase, mockLocalCommandRunner, mockIssueRepository } =
         buildUseCase();
