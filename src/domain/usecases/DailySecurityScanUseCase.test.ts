@@ -1315,6 +1315,53 @@ describe('DailySecurityScanUseCase', () => {
         },
       });
 
+    it('still reports KEV additions when the scanned repository findings issue cannot be written', async () => {
+      const { useCase, mockIssueRepository } = buildScanEnvironment(
+        osvScanOutput([
+          {
+            name: 'example-library',
+            version: '1.2.3',
+            ecosystem: 'npm',
+            id: 'GHSA-1111-2222-3333',
+            aliases: ['CVE-2024-0001'],
+            summary: 'Example Library Deserialization',
+          },
+        ]),
+        {
+          vulnerabilities: [
+            {
+              cveID: 'CVE-2024-0001',
+              vendorProject: 'Example',
+              product: 'Example Library',
+              vulnerabilityName: 'Example Library Deserialization',
+              dateAdded: '2024-01-02',
+            },
+          ],
+        },
+      );
+      const errorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      mockIssueRepository.createNewIssue.mockImplementation(
+        async (_org, repositoryName) => {
+          if (repositoryName === 'app') {
+            throw new Error(
+              'Request failed with status code 403: Repository was archived so is read-only.',
+            );
+          }
+          return 1;
+        },
+      );
+
+      await runWithKevReporting(useCase);
+
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('app'));
+      expect(
+        kevReportCalls(mockIssueRepository.createNewIssue.mock.calls),
+      ).toHaveLength(1);
+      errorSpy.mockRestore();
+    });
+
     it('reports a KEV addition whose CVE the scanner found at an installed version', async () => {
       const { useCase, mockIssueRepository } = buildScanEnvironment(
         osvScanOutput([
