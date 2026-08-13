@@ -462,7 +462,16 @@ const createStubIssueRepository = (
   addIssueToProject: () => notImplemented('addIssueToProject'),
   setDependedIssueUrl: () => notImplemented('setDependedIssueUrl'),
   getIssueOrPullRequestBody: async (): Promise<string> =>
-    '## Console E2E fixture\n\nThis body is served by the isolated E2E stub.',
+    [
+      '## Console E2E fixture',
+      '',
+      'This body is served by the isolated E2E stub.',
+      '',
+      ...Array.from(
+        { length: 80 },
+        (_, index) => `Description line ${index + 1} of the fixture body.`,
+      ),
+    ].join('\n'),
   getIssueOrPullRequestComments: async (): Promise<IssueComment[]> => [],
   getPullRequestDetail: async (
     url: string,

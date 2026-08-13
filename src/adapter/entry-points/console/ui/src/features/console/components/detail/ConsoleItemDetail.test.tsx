@@ -44,6 +44,16 @@ const baseProps = {
 };
 
 describe('ConsoleItemDetail', () => {
+  it('docks the comment composer with the operation bar so it stays reachable while the body scrolls', () => {
+    const { container, getByText } = render(
+      <ConsoleItemDetail item={issueItem} {...baseProps} />,
+    );
+    const dock = container.querySelector('.console-detail-dock');
+    expect(dock).not.toBeNull();
+    expect(dock).toContainElement(getByText('comment-composer'));
+    expect(dock).toContainElement(getByText('operation-bar'));
+  });
+
   it('reports a failed related pull request read on an issue item', () => {
     const { getByRole } = render(
       <ConsoleItemDetail

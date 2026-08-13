@@ -12,10 +12,10 @@ jest.mock('../../lib/mermaidLoader', () => ({
 const now = Date.parse('2026-06-19T12:00:00.000Z');
 
 describe('ConsoleCommentComposer', () => {
-  it('opens the form by default for an issue item', () => {
+  it('shows the form when it starts open', () => {
     const { getByPlaceholderText } = render(
       <ConsoleCommentComposer
-        isPr={false}
+        initiallyOpen
         now={now}
         onSubmit={async (body) => ({
           author: 'HiromiShikata',
@@ -27,10 +27,10 @@ describe('ConsoleCommentComposer', () => {
     expect(getByPlaceholderText('Leave a comment…')).toBeInTheDocument();
   });
 
-  it('keeps the form closed by default for a pull request item', () => {
+  it('offers the opening control and hides the form when it starts closed', () => {
     const { queryByPlaceholderText, getByText } = render(
       <ConsoleCommentComposer
-        isPr
+        initiallyOpen={false}
         now={now}
         onSubmit={async (body) => ({
           author: 'HiromiShikata',
@@ -43,6 +43,24 @@ describe('ConsoleCommentComposer', () => {
     expect(getByText('💬 Add a comment')).toBeInTheDocument();
   });
 
+  it('opens the form on the control and closes it again so the body regains the height', () => {
+    const { getByText, getByPlaceholderText, queryByPlaceholderText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen={false}
+        now={now}
+        onSubmit={async (body) => ({
+          author: 'HiromiShikata',
+          body,
+          createdAt: '2026-06-19T11:58:00.000Z',
+        })}
+      />,
+    );
+    fireEvent.click(getByText('💬 Add a comment'));
+    expect(getByPlaceholderText('Leave a comment…')).toBeInTheDocument();
+    fireEvent.click(getByText('✕ Close'));
+    expect(queryByPlaceholderText('Leave a comment…')).toBeNull();
+  });
+
   it('submits the comment and shows the posted comment', async () => {
     const onSubmit = jest.fn(
       async (body: string): Promise<ConsoleComment> => ({
@@ -52,7 +70,7 @@ describe('ConsoleCommentComposer', () => {
       }),
     );
     const { getByPlaceholderText, getByText } = render(
-      <ConsoleCommentComposer isPr={false} now={now} onSubmit={onSubmit} />,
+      <ConsoleCommentComposer initiallyOpen now={now} onSubmit={onSubmit} />,
     );
     fireEvent.change(getByPlaceholderText('Leave a comment…'), {
       target: { value: 'Looks good after the rebase.' },
@@ -67,7 +85,7 @@ describe('ConsoleCommentComposer', () => {
   it('shows a failure message when the submission rejects', async () => {
     const { getByPlaceholderText, getByText, findByRole } = render(
       <ConsoleCommentComposer
-        isPr={false}
+        initiallyOpen
         now={now}
         onSubmit={async () => {
           throw new Error('HTTP 500');
@@ -85,7 +103,7 @@ describe('ConsoleCommentComposer', () => {
   it('does not render the attach control when no upload handler is given', () => {
     const { queryByText } = render(
       <ConsoleCommentComposer
-        isPr={false}
+        initiallyOpen
         now={now}
         onSubmit={async (body) => ({
           author: 'HiromiShikata',
@@ -103,7 +121,7 @@ describe('ConsoleCommentComposer', () => {
     );
     const { getByPlaceholderText, getByLabelText } = render(
       <ConsoleCommentComposer
-        isPr={false}
+        initiallyOpen
         now={now}
         onSubmit={async (body) => ({
           author: 'HiromiShikata',
@@ -135,7 +153,7 @@ describe('ConsoleCommentComposer', () => {
     );
     const { getByPlaceholderText } = render(
       <ConsoleCommentComposer
-        isPr={false}
+        initiallyOpen
         now={now}
         onSubmit={async (body) => ({
           author: 'HiromiShikata',
@@ -164,7 +182,7 @@ describe('ConsoleCommentComposer', () => {
     );
     const { getByPlaceholderText } = render(
       <ConsoleCommentComposer
-        isPr={false}
+        initiallyOpen
         now={now}
         onSubmit={async (body) => ({
           author: 'HiromiShikata',
@@ -190,7 +208,7 @@ describe('ConsoleCommentComposer', () => {
   it('shows the upload failure reason when the upload rejects', async () => {
     const { getByLabelText, findByRole } = render(
       <ConsoleCommentComposer
-        isPr={false}
+        initiallyOpen
         now={now}
         onSubmit={async (body) => ({
           author: 'HiromiShikata',
