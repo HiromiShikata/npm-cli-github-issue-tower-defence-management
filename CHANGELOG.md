@@ -1,3 +1,11 @@
+## [1.151.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.151.1...v1.151.2) (2026-08-13)
+
+
+### Bug Fixes
+
+* **console:** record the done exclusion only for the tabs the action resolved ([#1530](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1530)) ([a1c92e0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a1c92e0972ddb6bb4ddbd31e028eadf6b9545702)), closes [#1527](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1527)
+* **console:** stop the item detail from stating a status the snapshot superseded ([#1529](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1529)) ([b2f5bab](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b2f5babe55e3b3a43646bd66105efa583764b6d1)), closes [#1528](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1528)
+
 ## [1.151.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.151.0...v1.151.1) (2026-08-13)
 
 

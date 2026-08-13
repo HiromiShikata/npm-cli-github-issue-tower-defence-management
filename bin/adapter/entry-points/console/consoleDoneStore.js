@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resetDoneProjectItemIdsAcrossTabs = exports.resetDoneProjectItemIds = exports.recordDoneProjectItemIdAcrossTabs = exports.CONSOLE_DONE_TAB_NAMES = exports.recordDoneProjectItemId = exports.readDoneProjectItemIds = exports.doneFilePathForTab = exports.CONSOLE_DONE_FILE_NAME = void 0;
+exports.resetDoneProjectItemIdsAcrossTabs = exports.resetDoneProjectItemIds = exports.recordDoneProjectItemIdAcrossTabs = exports.recordDoneProjectItemIdForTabs = exports.CONSOLE_DONE_STORY_SELECTED_TAB_NAMES = exports.CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES = exports.CONSOLE_DONE_TAB_NAMES = exports.recordDoneProjectItemId = exports.readDoneProjectItemIds = exports.doneFilePathForTab = exports.CONSOLE_DONE_FILE_NAME = void 0;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 exports.CONSOLE_DONE_FILE_NAME = '.done.json';
@@ -96,6 +96,24 @@ exports.CONSOLE_DONE_TAB_NAMES = [
     'todo-by-agent',
     'in-tmux-by-human',
 ];
+exports.CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES = [
+    'prs',
+    'unread',
+    'failed-preparation',
+    'todo-by-human',
+    'todo-by-agent',
+    'in-tmux-by-human',
+];
+exports.CONSOLE_DONE_STORY_SELECTED_TAB_NAMES = [
+    'workflow-blocker',
+    'triage',
+];
+const recordDoneProjectItemIdForTabs = (consoleDataOutputDir, pjcode, projectItemId, tabNames) => {
+    for (const tab of tabNames) {
+        (0, exports.recordDoneProjectItemId)(consoleDataOutputDir, pjcode, tab, projectItemId);
+    }
+};
+exports.recordDoneProjectItemIdForTabs = recordDoneProjectItemIdForTabs;
 const recordDoneProjectItemIdAcrossTabs = (consoleDataOutputDir, pjcode, projectItemId) => {
     for (const tab of exports.CONSOLE_DONE_TAB_NAMES) {
         (0, exports.recordDoneProjectItemId)(consoleDataOutputDir, pjcode, tab, projectItemId);

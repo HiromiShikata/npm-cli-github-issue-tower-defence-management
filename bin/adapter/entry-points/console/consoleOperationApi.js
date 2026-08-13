@@ -65,6 +65,18 @@ const recordDone = (context, pjcode, projectItemId) => {
     }
     (0, consoleDoneStore_1.recordDoneProjectItemIdAcrossTabs)(context.consoleDataOutputDir, pjcode, projectItemId);
 };
+const recordDoneForStatusChange = (context, pjcode, projectItemId) => {
+    if (context.consoleDataOutputDir === null) {
+        return;
+    }
+    (0, consoleDoneStore_1.recordDoneProjectItemIdForTabs)(context.consoleDataOutputDir, pjcode, projectItemId, consoleDoneStore_1.CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES);
+};
+const recordDoneForStoryChange = (context, pjcode, projectItemId) => {
+    if (context.consoleDataOutputDir === null) {
+        return;
+    }
+    (0, consoleDoneStore_1.recordDoneProjectItemIdForTabs)(context.consoleDataOutputDir, pjcode, projectItemId, consoleDoneStore_1.CONSOLE_DONE_STORY_SELECTED_TAB_NAMES);
+};
 const resolveBinding = async (context, body) => {
     const pjcode = body.pjcode;
     if (!isNonEmptyString(pjcode)) {
@@ -179,7 +191,7 @@ const handleReview = async (context, body) => {
         if (failure !== null) {
             return failure;
         }
-        recordDone(context, pjcode, projectItemId);
+        recordDoneForStatusChange(context, pjcode, projectItemId);
         return ok();
     }
     if (action === 'request_changes') {
@@ -202,7 +214,7 @@ const handleReview = async (context, body) => {
         if (failure !== null) {
             return failure;
         }
-        recordDone(context, pjcode, projectItemId);
+        recordDoneForStatusChange(context, pjcode, projectItemId);
         return ok();
     }
     return badRequest(`unknown review action "${action}"`);
@@ -256,7 +268,7 @@ const handleTriage = async (context, body) => {
         if (failure !== null) {
             return failure;
         }
-        recordDone(context, pjcode, projectItemId);
+        recordDoneForStatusChange(context, pjcode, projectItemId);
         return ok();
     }
     if (action === 'set_story') {
@@ -270,7 +282,7 @@ const handleTriage = async (context, body) => {
         await context
             .resolveIssueRepository(issueUrl)
             .updateStory({ ...project, story: project.story }, projectItemReference(issueUrl, projectItemId), storyOptionId);
-        recordDone(context, pjcode, projectItemId);
+        recordDoneForStoryChange(context, pjcode, projectItemId);
         return ok();
     }
     if (action === 'snooze_1day' || action === 'snooze_1week') {
@@ -414,7 +426,7 @@ const handleIntmux = async (context, body) => {
     if (failure !== null) {
         return failure;
     }
-    recordDone(context, pjcode, projectItemId);
+    recordDoneForStatusChange(context, pjcode, projectItemId);
     return ok();
 };
 exports.handleIntmux = handleIntmux;
