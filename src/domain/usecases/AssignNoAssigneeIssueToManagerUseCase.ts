@@ -145,12 +145,21 @@ export class AssignNoAssigneeIssueToManagerUseCase {
         `Failed to update assignee for issue ${issueUrl}: ${e.message}`,
       );
       if (managerOrg && managerRepo) {
-        await this.reportAssignmentFailure(
-          issueUrl,
-          managerOrg,
-          managerRepo,
-          e.message,
-        );
+        try {
+          await this.reportAssignmentFailure(
+            issueUrl,
+            managerOrg,
+            managerRepo,
+            e.message,
+          );
+        } catch (reportError) {
+          if (!(reportError instanceof Error)) {
+            throw reportError;
+          }
+          console.error(
+            `Failed to report assignment failure for ${issueUrl}: ${reportError.message}`,
+          );
+        }
       }
       return false;
     }

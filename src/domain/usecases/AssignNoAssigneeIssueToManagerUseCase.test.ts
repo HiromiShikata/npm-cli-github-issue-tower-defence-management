@@ -632,6 +632,31 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
         );
         expect(mockIssueRepository.updateAssigneeList).toHaveBeenCalledTimes(2);
       });
+
+      it('logs the report error and continues when creating the failure task itself fails', async () => {
+        const subsequentIssue = {
+          ...basicIssue,
+          url: 'https://github.com/testOrg/testRepo/issues/43',
+        };
+        mockIssueRepository.searchIssue.mockRejectedValueOnce(
+          new Error('Permission denied'),
+        );
+
+        await expect(
+          useCase.run({
+            issues: [failingIssue, subsequentIssue],
+            manager: 'manager1',
+            cacheUsed: false,
+            managerOrg: 'testOrg',
+            managerRepo: 'manager-repo',
+          }),
+        ).resolves.toBeUndefined();
+
+        expect(console.error).toHaveBeenCalledWith(
+          expect.stringContaining(failingIssue.url),
+        );
+        expect(mockIssueRepository.updateAssigneeList).toHaveBeenCalledTimes(2);
+      });
     });
   });
 });
