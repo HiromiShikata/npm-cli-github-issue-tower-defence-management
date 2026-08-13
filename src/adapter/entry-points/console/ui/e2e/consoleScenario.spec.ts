@@ -289,6 +289,16 @@ test('keeps the comment control on screen while the item body scrolls, and gives
   await expect(composerToggle).toBeInViewport();
   await expect(page.locator('.console-composer-input')).toHaveCount(0);
 
+  const dockBox = await page.locator('.console-detail-dock').boundingBox();
+  const toggleBox = await composerToggle.boundingBox();
+  if (dockBox === null || toggleBox === null) {
+    throw new Error('the dock and its comment control must both be laid out');
+  }
+  expect(toggleBox.x).toBeGreaterThan(dockBox.x + dockBox.width / 2);
+  expect(
+    dockBox.x + dockBox.width - (toggleBox.x + toggleBox.width),
+  ).toBeLessThan(32);
+
   await composerToggle.click();
   await expect(page.locator('.console-composer-input')).toBeInViewport();
 
