@@ -3,6 +3,8 @@ import * as os from 'os';
 import * as path from 'path';
 import {
   CONSOLE_DONE_FILE_NAME,
+  CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES,
+  CONSOLE_DONE_STORY_SELECTED_TAB_NAMES,
   CONSOLE_DONE_TAB_NAMES,
   doneFilePathForTab,
   readDoneProjectItemIds,
@@ -143,6 +145,25 @@ describe('consoleDoneStore', () => {
       for (const tab of CONSOLE_DONE_TAB_NAMES) {
         expect(readDoneProjectItemIds(baseDir, 'acme', tab)).toEqual([]);
       }
+    });
+  });
+
+  describe('selector partitions of the console done tabs', () => {
+    it('covers every console done tab exactly once across the status and story partitions', () => {
+      expect(
+        [
+          ...CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES,
+          ...CONSOLE_DONE_STORY_SELECTED_TAB_NAMES,
+        ].sort(),
+      ).toEqual([...CONSOLE_DONE_TAB_NAMES].sort());
+    });
+
+    it('places no console done tab in both the status and the story partition', () => {
+      expect(
+        CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES.filter((tab) =>
+          CONSOLE_DONE_STORY_SELECTED_TAB_NAMES.includes(tab),
+        ),
+      ).toEqual([]);
     });
   });
 });

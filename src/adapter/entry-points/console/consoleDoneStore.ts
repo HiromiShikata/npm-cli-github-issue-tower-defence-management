@@ -89,6 +89,31 @@ export const CONSOLE_DONE_TAB_NAMES: string[] = [
   'in-tmux-by-human',
 ];
 
+export const CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES: string[] = [
+  'prs',
+  'unread',
+  'failed-preparation',
+  'todo-by-human',
+  'todo-by-agent',
+  'in-tmux-by-human',
+];
+
+export const CONSOLE_DONE_STORY_SELECTED_TAB_NAMES: string[] = [
+  'workflow-blocker',
+  'triage',
+];
+
+export const recordDoneProjectItemIdForTabs = (
+  consoleDataOutputDir: string,
+  pjcode: string,
+  projectItemId: string,
+  tabNames: string[],
+): void => {
+  for (const tab of tabNames) {
+    recordDoneProjectItemId(consoleDataOutputDir, pjcode, tab, projectItemId);
+  }
+};
+
 export const recordDoneProjectItemIdAcrossTabs = (
   consoleDataOutputDir: string,
   pjcode: string,
