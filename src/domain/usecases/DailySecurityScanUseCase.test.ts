@@ -909,6 +909,209 @@ describe('DailySecurityScanUseCase', () => {
       errorSpy.mockRestore();
     });
 
+    it('logs an error and continues scanning remaining repositories when creating the findings issue fails', async () => {
+      const { useCase, mockLocalCommandRunner, mockIssueRepository } =
+        buildUseCase();
+      const errorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockIssueRepository.createNewIssue.mockImplementation(
+        async (_org, repositoryName) => {
+          if (repositoryName === 'archived') {
+            throw new Error(
+              'Request failed with status code 403: Repository was archived so is read-only.',
+            );
+          }
+          return undefined as never;
+        },
+      );
+
+      mockLocalCommandRunner.runCommand.mockImplementation(
+        async (program, args) => {
+          if (program === 'find') {
+            return {
+              stdout:
+                '/repos/example-org/archived/.git\n/repos/example-org/app/.git\n',
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          if (program === 'mktemp') {
+            return {
+              stdout: `/tmp/${args[args.length - 1].replace('XXXXXX', 'abc123')}\n`,
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          if (program === 'git') {
+            const dir = args[1];
+            const repo = dir.split('/').pop() ?? '';
+            return {
+              stdout: `git@github.com:example-org/${repo}.git\n`,
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          if (program === 'osv-scanner') {
+            return {
+              stdout: JSON.stringify({
+                results: [
+                  {
+                    source: {
+                      path: args[args.indexOf('-r') + 1],
+                      type: 'lockfile',
+                    },
+                    packages: [
+                      {
+                        package: {
+                          name: 'example-library',
+                          version: '1.2.3',
+                          ecosystem: 'npm',
+                        },
+                        vulnerabilities: [
+                          {
+                            id: 'GHSA-1111-2222-3333',
+                            aliases: [],
+                            summary: 'Example Library Deserialization',
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              }),
+              stderr: '',
+              exitCode: 1,
+            };
+          }
+          return { stdout: '', stderr: '', exitCode: 0 };
+        },
+      );
+
+      await useCase.run({
+        targetDates: [new Date('2024-01-02T05:00:00Z')],
+        org: 'example-org',
+        manager: 'manager-name',
+        dailySecurityScan: {
+          scanBaseDirectory: '/repos',
+          targetHourUtc: 5,
+        },
+      });
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('archived'),
+      );
+      expect(
+        mockIssueRepository.createNewIssue.mock.calls.map((call) => call[1]),
+      ).toEqual(['archived', 'app']);
+      errorSpy.mockRestore();
+    });
+
+    it('logs an error and continues scanning remaining repositories when commenting on the existing findings issue fails', async () => {
+      const { useCase, mockLocalCommandRunner, mockIssueRepository } =
+        buildUseCase();
+      const errorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+
+      mockIssueRepository.searchIssue.mockImplementation(
+        async ({ repositoryName }) =>
+          repositoryName === 'oversized'
+            ? [
+                {
+                  url: 'https://github.com/example-org/oversized/issues/1',
+                  title: 'Daily security scan findings',
+                } as never,
+              ]
+            : [],
+      );
+      mockIssueRepository.createCommentByUrl.mockRejectedValue(
+        new Error('Request failed with status code 422: Validation Failed'),
+      );
+
+      mockLocalCommandRunner.runCommand.mockImplementation(
+        async (program, args) => {
+          if (program === 'find') {
+            return {
+              stdout:
+                '/repos/example-org/oversized/.git\n/repos/example-org/app/.git\n',
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          if (program === 'mktemp') {
+            return {
+              stdout: `/tmp/${args[args.length - 1].replace('XXXXXX', 'abc123')}\n`,
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          if (program === 'git') {
+            const dir = args[1];
+            const repo = dir.split('/').pop() ?? '';
+            return {
+              stdout: `git@github.com:example-org/${repo}.git\n`,
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          if (program === 'osv-scanner') {
+            return {
+              stdout: JSON.stringify({
+                results: [
+                  {
+                    source: {
+                      path: args[args.indexOf('-r') + 1],
+                      type: 'lockfile',
+                    },
+                    packages: [
+                      {
+                        package: {
+                          name: 'example-library',
+                          version: '1.2.3',
+                          ecosystem: 'npm',
+                        },
+                        vulnerabilities: [
+                          {
+                            id: 'GHSA-1111-2222-3333',
+                            aliases: [],
+                            summary: 'Example Library Deserialization',
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              }),
+              stderr: '',
+              exitCode: 1,
+            };
+          }
+          return { stdout: '', stderr: '', exitCode: 0 };
+        },
+      );
+
+      await useCase.run({
+        targetDates: [new Date('2024-01-02T05:00:00Z')],
+        org: 'example-org',
+        manager: 'manager-name',
+        dailySecurityScan: {
+          scanBaseDirectory: '/repos',
+          targetHourUtc: 5,
+        },
+      });
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('oversized'),
+      );
+      expect(
+        mockIssueRepository.createNewIssue.mock.calls.map((call) => call[1]),
+      ).toEqual(['app']);
+      errorSpy.mockRestore();
+    });
+
     it('adds a comment to the existing open issue for the repository instead of creating a new one', async () => {
       const { useCase, mockLocalCommandRunner, mockIssueRepository } =
         buildUseCase();
