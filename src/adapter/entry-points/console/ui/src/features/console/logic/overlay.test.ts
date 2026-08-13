@@ -4,10 +4,15 @@ import {
   isOverlayEntryActed,
   overlayEntriesActedSinceSnapshot,
   overlayKeyForItem,
+  overlayStatusSinceSnapshot,
   overlayStorageKey,
   writeOverlayEntry,
 } from './overlay';
-import type { ConsoleListItem, ConsoleOverlay } from './types';
+import type {
+  ConsoleListItem,
+  ConsoleOverlay,
+  ConsoleOverlayStatus,
+} from './types';
 
 const item = (number: number): ConsoleListItem => ({
   number,
@@ -228,5 +233,78 @@ describe('writeOverlayEntry', () => {
       ts: 999,
       mode: 'triage',
     });
+  });
+});
+
+describe('overlayStatusSinceSnapshot', () => {
+  const snapshotGeneratedAt = '2026-08-13T21:52:01.000Z';
+  const snapshotEpochMs = Date.parse(snapshotGeneratedAt);
+  const inTmuxByHuman: ConsoleOverlayStatus = {
+    name: 'In Tmux by human',
+    color: 'RED',
+  };
+
+  const overlayWithStatusAt = (epochMs: number): ConsoleOverlay => ({
+    [overlayKeyForItem(item(1))]: {
+      status: inTmuxByHuman,
+      ts: epochMs,
+      mode: 'todo-by-human',
+    },
+  });
+
+  it('shows a status the owner set after the snapshot was generated', () => {
+    expect(
+      overlayStatusSinceSnapshot(
+        overlayWithStatusAt(snapshotEpochMs + 1000),
+        item(1),
+        snapshotGeneratedAt,
+      ),
+    ).toEqual(inTmuxByHuman);
+  });
+
+  it('drops a status the snapshot already superseded', () => {
+    expect(
+      overlayStatusSinceSnapshot(
+        overlayWithStatusAt(snapshotEpochMs - 1000),
+        item(1),
+        snapshotGeneratedAt,
+      ),
+    ).toBeNull();
+  });
+
+  it('drops every status when the snapshot time is unusable', () => {
+    expect(
+      overlayStatusSinceSnapshot(
+        overlayWithStatusAt(snapshotEpochMs + 1000),
+        item(1),
+        null,
+      ),
+    ).toBeNull();
+  });
+
+  it('shows a status set at the exact moment the snapshot was generated', () => {
+    expect(
+      overlayStatusSinceSnapshot(
+        overlayWithStatusAt(snapshotEpochMs),
+        item(1),
+        snapshotGeneratedAt,
+      ),
+    ).toEqual(inTmuxByHuman);
+  });
+
+  it('drops every status when the snapshot time cannot be parsed', () => {
+    expect(
+      overlayStatusSinceSnapshot(
+        overlayWithStatusAt(snapshotEpochMs + 1000),
+        item(1),
+        'not a timestamp',
+      ),
+    ).toBeNull();
+  });
+
+  it('returns null when the item has no overlay entry', () => {
+    expect(
+      overlayStatusSinceSnapshot({}, item(1), snapshotGeneratedAt),
+    ).toBeNull();
   });
 });
