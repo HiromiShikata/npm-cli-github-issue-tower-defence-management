@@ -112,6 +112,7 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
         state: string;
         merged: boolean;
         isPullRequest: boolean;
+        title: string;
     }>;
     getPullRequestSummary: (prUrl: string) => Promise<{
         title: string;

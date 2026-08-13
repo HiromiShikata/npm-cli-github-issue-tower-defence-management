@@ -1,3 +1,10 @@
+## [1.148.23](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.22...v1.148.23) (2026-08-13)
+
+
+### Bug Fixes
+
+* **console:** resolve a reference title from the REST payload instead of the project board item ([#1514](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1514)) ([9208431](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/920843179f7c61ffae48a899fd7db5b209fc5941)), closes [#1513](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1513)
+
 ## [1.148.22](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.21...v1.148.22) (2026-08-13)
 
 

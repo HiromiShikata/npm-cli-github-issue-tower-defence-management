@@ -65,7 +65,9 @@ function isIssueOrPullRequestBodyResponse(value) {
     return isRecord(value) && isNullableString(value.body);
 }
 function isIssueOrPullRequestStateResponse(value) {
-    return isRecord(value) && typeof value.state === 'string';
+    return (isRecord(value) &&
+        typeof value.state === 'string' &&
+        typeof value.title === 'string');
 }
 function isIssueCommentsResponseItem(value) {
     if (!isRecord(value))
@@ -1366,7 +1368,12 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 if (!isPullRequestDetailResponse(body)) {
                     throw new Error(`Unexpected response shape when fetching state for ${url}`);
                 }
-                return { state: body.state, merged: body.merged, isPullRequest: true };
+                return {
+                    state: body.state,
+                    merged: body.merged,
+                    isPullRequest: true,
+                    title: body.title,
+                };
             }
             const response = await this.fetchWithRateLimitRetry(() => fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}`, {
                 method: 'GET',
@@ -1383,7 +1390,12 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             if (!isIssueOrPullRequestStateResponse(body)) {
                 throw new Error(`Unexpected response shape when fetching state for ${url}`);
             }
-            return { state: body.state, merged: false, isPullRequest: false };
+            return {
+                state: body.state,
+                merged: false,
+                isPullRequest: false,
+                title: body.title,
+            };
         };
         this.getPullRequestSummary = async (prUrl) => {
             const { owner, repo, issueNumber: prNumber, isPr, } = this.parseIssueUrl(prUrl);
