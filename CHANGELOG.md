@@ -1,3 +1,10 @@
+## [1.151.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.151.3...v1.151.4) (2026-08-13)
+
+
+### Bug Fixes
+
+* **console:** move the comment control to the right edge so a right thumb reaches it ([#1534](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1534)) ([2213cb5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2213cb5fddd8e8127935357b8682cfee6bb3b77c))
+
 ## [1.151.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.151.2...v1.151.3) (2026-08-13)
 
 
