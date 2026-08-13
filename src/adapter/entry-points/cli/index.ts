@@ -115,11 +115,17 @@ const parseDashboardProjectNames = (raw: string | undefined): string[] => {
     .map((name) => name.trim())
     .filter((name) => name.length > 0);
   if (names.length === 0) {
-    throw new Error(
+    console.error(
       '--dashboardProjectNames must list at least one project name',
     );
+    return process.exit(1);
   }
-  assertDashboardDisplayLabelsUnique(names);
+  try {
+    assertDashboardDisplayLabelsUnique(names);
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    return process.exit(1);
+  }
   return names;
 };
 
@@ -739,6 +745,10 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     process.exit(1);
   }
 
+  const dashboardProjectNames = parseDashboardProjectNames(
+    options.dashboardProjectNames,
+  );
+
   const projectName = config.projectName ?? 'default';
   const localStorageRepository = new LocalStorageRepository();
   const cachePath = `./tmp/cache/${projectName}`;
@@ -855,9 +865,6 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
   const dashboardDir = options.dashboardDir ?? DEFAULT_DASHBOARD_DIR;
   const dashboardDataDir =
     options.dashboardDataDir ?? DEFAULT_DASHBOARD_DATA_DIR;
-  const dashboardProjectNames = parseDashboardProjectNames(
-    options.dashboardProjectNames,
-  );
 
   await startWebServer({
     accessToken,
