@@ -303,14 +303,6 @@ export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvide
     return approvedEpochMs !== suppressedEpochMs;
   };
 
-  // A candidate tag only reaches the owner once the status line promotes it into the literal tag
-  // the notification application watches, and the status line records each promotion in the
-  // emitted marker. A candidate call that neither the emitted marker nor the format gate's
-  // approval marker names was never shown to the owner: the status line never ran for that
-  // session, so no notification exists for the owner to answer. Counting it as a wait on the
-  // owner would silence the session's stall reminder for good and leave it holding its task with
-  // nobody able to wake it. Where no marker directory is configured the promotion is unknowable,
-  // so the call is taken at face value and behaviour is unchanged.
   private isCandidateCallDelivered = (
     transcriptPath: string,
     ownerCallEpochMs: number,
