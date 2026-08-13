@@ -5,7 +5,12 @@ import {
 import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
 import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
-import { recordDoneProjectItemIdAcrossTabs } from './consoleDoneStore';
+import {
+  recordDoneProjectItemIdAcrossTabs,
+  recordDoneProjectItemIdForTabs,
+  CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES,
+  CONSOLE_DONE_STORY_SELECTED_TAB_NAMES,
+} from './consoleDoneStore';
 import { findConsoleItemUrl } from './consoleItemUrlLookup';
 
 export const AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
@@ -132,6 +137,38 @@ const recordDone = (
     context.consoleDataOutputDir,
     pjcode,
     projectItemId,
+  );
+};
+
+const recordDoneForStatusChange = (
+  context: ConsoleOperationContext,
+  pjcode: string,
+  projectItemId: string,
+): void => {
+  if (context.consoleDataOutputDir === null) {
+    return;
+  }
+  recordDoneProjectItemIdForTabs(
+    context.consoleDataOutputDir,
+    pjcode,
+    projectItemId,
+    CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES,
+  );
+};
+
+const recordDoneForStoryChange = (
+  context: ConsoleOperationContext,
+  pjcode: string,
+  projectItemId: string,
+): void => {
+  if (context.consoleDataOutputDir === null) {
+    return;
+  }
+  recordDoneProjectItemIdForTabs(
+    context.consoleDataOutputDir,
+    pjcode,
+    projectItemId,
+    CONSOLE_DONE_STORY_SELECTED_TAB_NAMES,
   );
 };
 
@@ -298,7 +335,7 @@ export const handleReview = async (
     if (failure !== null) {
       return failure;
     }
-    recordDone(context, pjcode, projectItemId);
+    recordDoneForStatusChange(context, pjcode, projectItemId);
     return ok();
   }
 
@@ -334,7 +371,7 @@ export const handleReview = async (
     if (failure !== null) {
       return failure;
     }
-    recordDone(context, pjcode, projectItemId);
+    recordDoneForStatusChange(context, pjcode, projectItemId);
     return ok();
   }
 
@@ -403,7 +440,7 @@ export const handleTriage = async (
     if (failure !== null) {
       return failure;
     }
-    recordDone(context, pjcode, projectItemId);
+    recordDoneForStatusChange(context, pjcode, projectItemId);
     return ok();
   }
 
@@ -422,7 +459,7 @@ export const handleTriage = async (
         projectItemReference(issueUrl, projectItemId),
         storyOptionId,
       );
-    recordDone(context, pjcode, projectItemId);
+    recordDoneForStoryChange(context, pjcode, projectItemId);
     return ok();
   }
 
@@ -590,6 +627,6 @@ export const handleIntmux = async (
   if (failure !== null) {
     return failure;
   }
-  recordDone(context, pjcode, projectItemId);
+  recordDoneForStatusChange(context, pjcode, projectItemId);
   return ok();
 };
