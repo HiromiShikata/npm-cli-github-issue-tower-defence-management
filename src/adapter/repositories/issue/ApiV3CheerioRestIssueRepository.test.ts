@@ -2097,6 +2097,23 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result.title).toBe('PR title from REST');
     });
 
+    it('should throw rather than report an empty title when the payload carries no title', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ state: 'open' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+
+      await expect(
+        repository.getIssueOrPullRequestState(
+          'https://github.com/HiromiShikata/other-repository/issues/656',
+        ),
+      ).rejects.toThrow('Unexpected response shape when fetching state for');
+    });
+
     it('should throw when the API responds with a non-2xx status', async () => {
       jest.spyOn(global, 'fetch').mockResolvedValueOnce(
         new Response('Not Found', {
