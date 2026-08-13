@@ -347,6 +347,27 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     expect(output.diagnostics.join('\n')).not.toContain('No eligible token');
   });
 
+  it('includes the selection weight in the diagnostic line for each candidate', () => {
+    writeTokenList([{ name: 'foo', token: 'fake-foo' }]);
+    writeCache('fake-foo', {
+      fiveHourUtilization: 0.1,
+      fiveHourReset: NOW + HOUR,
+      sevenDayUtilization: 0.1,
+      sevenDayReset: NOW + DAY,
+    });
+
+    const handler = buildHandler([]);
+    const output = handler.handle({
+      tokenListJsonPath: tokenListPath,
+      cacheDirectory,
+      nowEpochSeconds: NOW,
+      selectionSettings: DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
+    });
+
+    const diagnostics = output.diagnostics.join('\n');
+    expect(diagnostics).toMatch(/foo:.*, weight 1 ->/);
+  });
+
   it('returns a diagnostic when no token list path is resolvable', () => {
     const handler = buildHandler([]);
     const output = handler.handle({

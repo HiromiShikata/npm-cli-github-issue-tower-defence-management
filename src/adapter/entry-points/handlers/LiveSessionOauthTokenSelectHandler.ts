@@ -1,18 +1,18 @@
-import { ClaudeLiveSessionRepository } from '../../../domain/usecases/adapter-interfaces/ClaudeLiveSessionRepository';
+import type { ClaudeLiveSessionRepository } from '../../../domain/usecases/adapter-interfaces/ClaudeLiveSessionRepository';
 import {
-  LiveSessionOauthTokenSelectResult,
+  type LiveSessionOauthTokenSelectionSettings,
+  type LiveSessionOauthTokenSelectResult,
   LiveSessionOauthTokenSelectUseCase,
-  LiveSessionOauthTokenSelectionSettings,
 } from '../../../domain/usecases/LiveSessionOauthTokenSelectUseCase';
 import {
   DEFAULT_SELECTION_WEIGHT,
   FIVE_HOUR_MIN_FREE_RATIO,
-  OauthTokenCandidate,
+  type OauthTokenCandidate,
   SEVEN_DAY_MIN_FREE_RATIO,
 } from '../../../domain/usecases/OauthTokenSelectUseCase';
-import { ProcClaudeLiveSessionRepository } from '../../repositories/ProcClaudeLiveSessionRepository';
 import { FABLE_LIMIT_TYPE, readRateLimit } from '../../proxy/RateLimitCache';
 import { loadTokenEntries } from '../../proxy/TokenListLoader';
+import { ProcClaudeLiveSessionRepository } from '../../repositories/ProcClaudeLiveSessionRepository';
 import {
   resolveCacheDirectory,
   resolveTokenListJsonPath,
@@ -119,7 +119,7 @@ export class LiveSessionOauthTokenSelectHandler {
       const status = metric.eligible
         ? 'eligible'
         : `excluded (${metric.exclusionReason})`;
-      return `${metric.name}: ${metric.liveSessionCount}/${metric.concurrentSessionLimit} live session(s), 5h ${Math.round(metric.fiveHourFreeRatio * 100)}% free, 7d ${Math.round(metric.sevenDayFreeRatio * 100)}% free, 7d-end in ${secondsUntilSevenDayEnd}s -> ${status}`;
+      return `${metric.name}: ${metric.liveSessionCount}/${metric.concurrentSessionLimit} live session(s), 5h ${Math.round(metric.fiveHourFreeRatio * 100)}% free, 7d ${Math.round(metric.sevenDayFreeRatio * 100)}% free, 7d-end in ${secondsUntilSevenDayEnd}s, weight ${metric.selectionWeight} -> ${status}`;
     });
 
     if (result.selected === null) {

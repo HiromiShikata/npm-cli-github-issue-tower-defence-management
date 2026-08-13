@@ -1,6 +1,6 @@
-import { ClaudeLiveSession } from './adapter-interfaces/ClaudeLiveSessionRepository';
+import type { ClaudeLiveSession } from './adapter-interfaces/ClaudeLiveSessionRepository';
 import {
-  OauthTokenCandidate,
+  type OauthTokenCandidate,
   OauthTokenSelectUseCase,
   selectionWeightOf,
 } from './OauthTokenSelectUseCase';
@@ -45,6 +45,7 @@ export type LiveSessionOauthTokenCandidateMetrics = {
   hasConcurrencyHeadroom: boolean;
   eligible: boolean;
   exclusionReason: string | null;
+  selectionWeight: number;
 };
 
 export type LiveSessionOauthTokenSelectResult = {
@@ -91,6 +92,7 @@ export class LiveSessionOauthTokenSelectUseCase {
           hasConcurrencyHeadroom: liveSessionCount < concurrentSessionLimit,
           eligible: rateLimitMetric.eligible,
           exclusionReason: rateLimitMetric.exclusionReason,
+          selectionWeight: selectionWeightOf(candidate),
         },
       };
     });

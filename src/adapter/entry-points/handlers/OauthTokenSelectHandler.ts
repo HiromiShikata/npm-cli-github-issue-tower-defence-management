@@ -1,13 +1,13 @@
 import {
   DEFAULT_SELECTION_WEIGHT,
-  OauthTokenCandidate,
-  OauthTokenSelectResult,
+  type OauthTokenCandidate,
+  type OauthTokenSelectResult,
   OauthTokenSelectUseCase,
-  SelectionRandom,
+  type SelectionRandom,
 } from '../../../domain/usecases/OauthTokenSelectUseCase';
 import {
-  FABLE_LIMIT_TYPE,
   cacheDir,
+  FABLE_LIMIT_TYPE,
   readRateLimit,
 } from '../../proxy/RateLimitCache';
 import { loadTokenEntries } from '../../proxy/TokenListLoader';
@@ -138,7 +138,7 @@ export class OauthTokenSelectHandler {
       const status = metric.eligible
         ? 'eligible'
         : `excluded (${metric.exclusionReason})`;
-      return `${metric.name}: 5h ${Math.round(metric.fiveHourFreeRatio * 100)}% free, 7d ${Math.round(metric.sevenDayFreeRatio * 100)}% free, 7d-end in ${secondsUntilSevenDayEnd}s -> ${status}`;
+      return `${metric.name}: 5h ${Math.round(metric.fiveHourFreeRatio * 100)}% free, 7d ${Math.round(metric.sevenDayFreeRatio * 100)}% free, 7d-end in ${secondsUntilSevenDayEnd}s, draw weight ${metric.drawWeight.toFixed(2)} -> ${status}`;
     });
 
     if (result.selected === null) {

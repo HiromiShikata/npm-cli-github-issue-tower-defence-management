@@ -31,6 +31,7 @@ export type OauthTokenCandidateMetrics = {
   sevenDayEndEpoch: number;
   eligible: boolean;
   exclusionReason: string | null;
+  drawWeight: number;
 };
 
 export type OauthTokenSelectResult = {
@@ -91,13 +92,26 @@ export class OauthTokenSelectUseCase {
     nowEpochSeconds: number,
     random: SelectionRandom = Math.random,
   ): OauthTokenSelectResult => {
-    const evaluated = candidates.map((candidate) => ({
-      candidate,
-      metric: this.evaluate(candidate, nowEpochSeconds),
-    }));
+    const evaluated = candidates.map((candidate) => {
+      const evaluatedMetric = this.evaluate(candidate, nowEpochSeconds);
+      return {
+        candidate,
+        metric: {
+          ...evaluatedMetric,
+          drawWeight: evaluatedMetric.eligible
+            ? selectionWeightOf(candidate) *
+              sevenDayUrgencyFactor(
+                evaluatedMetric.sevenDayFreeRatio,
+                evaluatedMetric.sevenDayEndEpoch,
+                nowEpochSeconds,
+              )
+            : 0,
+        },
+      };
+    });
 
-    const metrics = evaluated.map((entry) => entry.metric);
     const eligible = evaluated.filter((entry) => entry.metric.eligible);
+    const metrics = evaluated.map((entry) => entry.metric);
 
     if (eligible.length === 0) {
       return { selected: null, metrics };
@@ -111,13 +125,7 @@ export class OauthTokenSelectUseCase {
 
     const selected = selectWeightedCandidate(
       eligible,
-      (entry) =>
-        selectionWeightOf(entry.candidate) *
-        sevenDayUrgencyFactor(
-          entry.metric.sevenDayFreeRatio,
-          entry.metric.sevenDayEndEpoch,
-          nowEpochSeconds,
-        ),
+      (entry) => entry.metric.drawWeight,
       deterministicBest,
       random,
     );
@@ -128,7 +136,7 @@ export class OauthTokenSelectUseCase {
   private evaluate = (
     candidate: OauthTokenCandidate,
     nowEpochSeconds: number,
-  ): OauthTokenCandidateMetrics => {
+  ): Omit<OauthTokenCandidateMetrics, 'drawWeight'> => {
     const fiveHourFreeRatio = this.fiveHourFreeRatio(
       candidate.snapshot,
       nowEpochSeconds,

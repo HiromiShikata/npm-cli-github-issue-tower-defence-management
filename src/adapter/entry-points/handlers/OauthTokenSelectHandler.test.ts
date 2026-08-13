@@ -367,6 +367,33 @@ describe('OauthTokenSelectHandler', () => {
     expect(output.selectedName).toBeNull();
   });
 
+  it('includes the draw weight in the diagnostic line for each candidate', () => {
+    writeTokenList([{ name: 'foo', token: 'fake-foo' }]);
+    writeCache('fake-foo', {
+      fiveHourUtilization: 0.1,
+      fiveHourReset: NOW + HOUR,
+      sevenDayUtilization: 0.1,
+      sevenDayReset: NOW + 2 * DAY,
+    });
+
+    const handler = new OauthTokenSelectHandler(
+      new OauthTokenSelectUseCase(),
+      () => 0.5,
+    );
+    const output = handler.handle({
+      tokenListJsonPath: tokenListPath,
+      cacheDirectory,
+      nowEpochSeconds: NOW,
+    });
+
+    const diagnostics = output.diagnostics.join('\n');
+    const drawWeightMatch = /foo:.*draw weight (\d+\.\d{2}) ->/.exec(
+      diagnostics,
+    );
+    expect(drawWeightMatch).not.toBeNull();
+    expect(Number(drawWeightMatch?.[1])).toBeGreaterThan(0);
+  });
+
   describe('resolveTokenListJsonPath', () => {
     it('prefers the explicit path over the environment variable', () => {
       process.env.CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH = '/from/env.json';
