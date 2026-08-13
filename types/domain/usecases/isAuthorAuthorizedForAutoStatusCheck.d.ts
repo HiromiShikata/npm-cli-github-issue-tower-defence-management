@@ -1,0 +1,2 @@
+export declare const isAuthorAuthorizedForAutoStatusCheck: (author: string, allowedIssueAuthors: string[] | null | undefined) => boolean;
+//# sourceMappingURL=isAuthorAuthorizedForAutoStatusCheck.d.ts.map

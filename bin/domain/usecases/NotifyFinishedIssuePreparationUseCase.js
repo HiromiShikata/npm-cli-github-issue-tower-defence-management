@@ -6,6 +6,7 @@ const IssueRejectionEvaluator_1 = require("./IssueRejectionEvaluator");
 const ChangeTargetPullRequestApprover_1 = require("./ChangeTargetPullRequestApprover");
 const resolveLabelsNotRequiringPullRequest_1 = require("./resolveLabelsNotRequiringPullRequest");
 const isPullRequestDeclaredUnnecessary_1 = require("./isPullRequestDeclaredUnnecessary");
+const returnedToAwaitingWorkspaceMessage_1 = require("./returnedToAwaitingWorkspaceMessage");
 class IssueNotFoundError extends Error {
     constructor(issueUrl) {
         super(`Issue not found: ${issueUrl}`);
@@ -20,9 +21,6 @@ class IllegalIssueStatusError extends Error {
     }
 }
 exports.IllegalIssueStatusError = IllegalIssueStatusError;
-const RETURNED_TO_AWAITING_WORKSPACE_MESSAGE_HEAD = 'Auto Status Check: RETURNED_TO_AWAITING_WORKSPACE';
-const RETURNED_TO_AWAITING_WORKSPACE_MESSAGE = `${RETURNED_TO_AWAITING_WORKSPACE_MESSAGE_HEAD}
-The last report declared that this task needs no pull request, so the task returns to the workspace queue to run under the agent its label selects. A later report carrying the same declaration takes the awaiting quality check path instead of returning here again.`;
 class NotifyFinishedIssuePreparationUseCase {
     constructor(projectRepository, issueRepository, issueCommentRepository, webhookRepository) {
         this.projectRepository = projectRepository;
@@ -107,11 +105,11 @@ class NotifyFinishedIssuePreparationUseCase {
             if (rejections.length <= 0 &&
                 (0, isPullRequestDeclaredUnnecessary_1.isPullRequestDeclaredUnnecessary)(comments, isTrustedAuthor) &&
                 !comments.some((comment) => isTrustedAuthor(comment.author) &&
-                    comment.content.startsWith(RETURNED_TO_AWAITING_WORKSPACE_MESSAGE_HEAD))) {
+                    comment.content.startsWith(returnedToAwaitingWorkspaceMessage_1.RETURNED_TO_AWAITING_WORKSPACE_MESSAGE_HEAD))) {
                 issue.status = WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME;
                 await this.issueRepository.update(issue, project);
                 await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
-                await this.issueCommentRepository.createComment(issue, RETURNED_TO_AWAITING_WORKSPACE_MESSAGE);
+                await this.issueCommentRepository.createComment(issue, returnedToAwaitingWorkspaceMessage_1.RETURNED_TO_AWAITING_WORKSPACE_MESSAGE);
                 return;
             }
             if (rejections.length <= 0) {

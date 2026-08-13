@@ -1,3 +1,10 @@
+## [1.148.19](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.18...v1.148.19) (2026-08-13)
+
+
+### Bug Fixes
+
+* **preparation:** honour the no pull request declaration in the orphan sweep ([#1505](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1505)) ([baef92f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/baef92fd98f2a565ac9e877a50ea31a245451c1e))
+
 ## [1.148.18](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.17...v1.148.18) (2026-08-12)
 
 

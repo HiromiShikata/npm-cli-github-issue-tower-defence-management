@@ -268,6 +268,7 @@ ${JSON.stringify(e)}
                         awaitingQualityCheckStatus: input.startPreparation.awaitingQualityCheckStatus ?? undefined,
                         labelsAsLlmAgentName,
                         labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
+                        allowedIssueAuthors,
                     });
                 }
                 const preparationResult = await this.startPreparationUseCase.run({

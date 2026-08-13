@@ -3,6 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RevertOrphanedPreparationUseCase = void 0;
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 const resolveLabelsNotRequiringPullRequest_1 = require("./resolveLabelsNotRequiringPullRequest");
+const isPullRequestDeclaredUnnecessary_1 = require("./isPullRequestDeclaredUnnecessary");
+const isAuthorAuthorizedForAutoStatusCheck_1 = require("./isAuthorAuthorizedForAutoStatusCheck");
+const returnedToAwaitingWorkspaceMessage_1 = require("./returnedToAwaitingWorkspaceMessage");
 const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
 class RevertOrphanedPreparationUseCase {
     constructor(projectRepository, issueRepository, issueCommentRepository, localCommandRunner) {
@@ -33,8 +36,13 @@ class RevertOrphanedPreparationUseCase {
                 if (!isOrphaned) {
                     continue;
                 }
-                const { hasRejections, comments } = await this.evaluateHasRejections(issue, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params));
-                if (!hasRejections) {
+                const { outcome, comments } = await this.evaluateOutcome(issue, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params), params.allowedIssueAuthors);
+                if (outcome === 'returnToLabelSelectedAgent') {
+                    await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
+                    await this.issueCommentRepository.createComment(issue, returnedToAwaitingWorkspaceMessage_1.RETURNED_TO_AWAITING_WORKSPACE_MESSAGE);
+                    continue;
+                }
+                if (outcome === 'advanceToQualityCheck') {
                     if (awaitingQualityCheckStatusOption) {
                         await this.issueRepository.updateStatus(project, issue, awaitingQualityCheckStatusOption.id);
                     }
@@ -60,17 +68,28 @@ class RevertOrphanedPreparationUseCase {
                 await this.issueCommentRepository.createComment(issue, rejectionStatusMessage);
             }
         };
-        this.evaluateHasRejections = async (issue, labelsNotRequiringPullRequest) => {
+        this.evaluateOutcome = async (issue, labelsNotRequiringPullRequest, allowedIssueAuthors) => {
             if (issue.isClosed) {
-                return { hasRejections: false, comments: [] };
+                return { outcome: 'advanceToQualityCheck', comments: [] };
             }
             const comments = await this.issueCommentRepository.getCommentsFromIssue(issue);
             const lastComment = comments[comments.length - 1];
             if (!lastComment || !lastComment.content.startsWith('From: :robot:')) {
-                return { hasRejections: true, comments };
+                return { outcome: 'reject', comments };
             }
             if (this.reportBodyHasNextStep(lastComment.content)) {
-                return { hasRejections: true, comments };
+                return { outcome: 'reject', comments };
+            }
+            const isTrustedAuthor = (author) => (0, isAuthorAuthorizedForAutoStatusCheck_1.isAuthorAuthorizedForAutoStatusCheck)(author, allowedIssueAuthors);
+            if ((0, isPullRequestDeclaredUnnecessary_1.isPullRequestDeclaredUnnecessary)(comments, isTrustedAuthor)) {
+                const alreadyReturnedToWorkspace = comments.some((comment) => isTrustedAuthor(comment.author) &&
+                    comment.content.startsWith(returnedToAwaitingWorkspaceMessage_1.RETURNED_TO_AWAITING_WORKSPACE_MESSAGE_HEAD));
+                return {
+                    outcome: alreadyReturnedToWorkspace
+                        ? 'advanceToQualityCheck'
+                        : 'returnToLabelSelectedAgent',
+                    comments,
+                };
             }
             const categoryLabels = issue.labels.filter((label) => label.startsWith('category:'));
             const hasLlmAgentLabel = issue.labels.some((l) => l === 'llm-agent' || l.startsWith('llm-agent:'));
@@ -78,19 +97,22 @@ class RevertOrphanedPreparationUseCase {
             if (hasLlmAgentLabel ||
                 hasLabelNotRequiringPullRequest ||
                 (categoryLabels.length > 0 && !categoryLabels.includes('category:e2e'))) {
-                return { hasRejections: false, comments };
+                return { outcome: 'advanceToQualityCheck', comments };
             }
             const prsToCheck = issue.isPr
                 ? await this.resolveOpenPrsForPrItem(issue.url)
                 : await this.issueRepository.findRelatedOpenPRs(issue.url);
             if (prsToCheck.length !== 1) {
-                return { hasRejections: true, comments };
+                return { outcome: 'reject', comments };
             }
             const pr = prsToCheck[0];
             const hasRejections = pr.isConflicted ||
                 !pr.isPassedAllCiJob ||
                 !pr.isResolvedAllReviewComments;
-            return { hasRejections, comments };
+            return {
+                outcome: hasRejections ? 'reject' : 'advanceToQualityCheck',
+                comments,
+            };
         };
         this.resolveOpenPrsForPrItem = async (prUrl) => {
             const pr = await this.issueRepository.getOpenPullRequest(prUrl);

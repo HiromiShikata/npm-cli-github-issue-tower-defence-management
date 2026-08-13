@@ -17,8 +17,9 @@ export declare class RevertOrphanedPreparationUseCase {
         awaitingQualityCheckStatus?: string | null;
         labelsAsLlmAgentName?: string[] | null;
         labelsNotRequiringPullRequest?: string[] | null;
+        allowedIssueAuthors?: string[] | null;
     }) => Promise<void>;
-    private evaluateHasRejections;
+    private evaluateOutcome;
     private resolveOpenPrsForPrItem;
     private reportBodyHasNextStep;
     private isOrphanedIssue;
