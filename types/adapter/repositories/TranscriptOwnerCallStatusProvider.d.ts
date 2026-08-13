@@ -8,6 +8,7 @@ export declare class TranscriptOwnerCallStatusProvider implements OwnerCallStatu
     private findUnansweredOwnerCallEpochMs;
     private readOwnerReplyMarkerEpochMs;
     private isCallSuppressedUndelivered;
+    private isCandidateCallDelivered;
     private readMarkerEpochMs;
 }
 //# sourceMappingURL=TranscriptOwnerCallStatusProvider.d.ts.map

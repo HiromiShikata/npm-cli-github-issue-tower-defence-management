@@ -153,7 +153,9 @@ const TRANSCRIPT_FILE_EXTENSION = '.jsonl';
 const OWNER_REPLY_MARKER_FILE_EXTENSION = '.reply_ts';
 const SUPPRESSED_OWNER_CALL_MARKER_FILE_EXTENSION = '.suppress_ts';
 const APPROVED_OWNER_CALL_MARKER_FILE_EXTENSION = '.call_ts';
+const EMITTED_OWNER_CALL_MARKER_FILE_EXTENSION = '.call_emitted';
 const UNSAFE_SESSION_ID_CHARACTER_PATTERN = /[^A-Za-z0-9._-]/g;
+const isCandidateOwnerCallMarker = (marker) => marker.endsWith(OWNER_CALL_CANDIDATE_TAG_SUFFIX);
 class TranscriptOwnerCallStatusProvider {
     constructor(ownerCallMarker, ownerReplyMarkerDirectory = null) {
         this.ownerReplyMarkerDirectory = ownerReplyMarkerDirectory;
@@ -179,6 +181,7 @@ class TranscriptOwnerCallStatusProvider {
                 return null;
             }
             let lastOwnerCallEpochMs = null;
+            let lastOwnerCallIsCandidateOnly = false;
             let lastOwnerReplyEpochMs = null;
             for (const line of content.split('\n')) {
                 const trimmed = line.trim();
@@ -204,8 +207,10 @@ class TranscriptOwnerCallStatusProvider {
                 const messageContent = isRecord(message) ? message.content : null;
                 if (type === 'assistant') {
                     const assistantText = extractText(messageContent);
-                    if (markerFamily.some((marker) => assistantText.includes(marker))) {
+                    const matchedMarkers = markerFamily.filter((marker) => assistantText.includes(marker));
+                    if (matchedMarkers.length > 0) {
                         lastOwnerCallEpochMs = epochMs;
+                        lastOwnerCallIsCandidateOnly = matchedMarkers.every(isCandidateOwnerCallMarker);
                     }
                 }
                 if (type === 'user' &&
@@ -224,6 +229,10 @@ class TranscriptOwnerCallStatusProvider {
                 return null;
             }
             if (this.isCallSuppressedUndelivered(transcriptPath, lastOwnerCallEpochMs)) {
+                return null;
+            }
+            if (lastOwnerCallIsCandidateOnly &&
+                !this.isCandidateCallDelivered(transcriptPath, lastOwnerCallEpochMs)) {
                 return null;
             }
             const markerReplyEpochMs = this.readOwnerReplyMarkerEpochMs(transcriptPath);
@@ -257,6 +266,16 @@ class TranscriptOwnerCallStatusProvider {
             }
             const approvedEpochMs = this.readMarkerEpochMs(transcriptPath, APPROVED_OWNER_CALL_MARKER_FILE_EXTENSION);
             return approvedEpochMs !== suppressedEpochMs;
+        };
+        this.isCandidateCallDelivered = (transcriptPath, ownerCallEpochMs) => {
+            if (this.ownerReplyMarkerDirectory === null) {
+                return true;
+            }
+            const emittedEpochMs = this.readMarkerEpochMs(transcriptPath, EMITTED_OWNER_CALL_MARKER_FILE_EXTENSION);
+            if (emittedEpochMs === ownerCallEpochMs) {
+                return true;
+            }
+            return (this.readMarkerEpochMs(transcriptPath, APPROVED_OWNER_CALL_MARKER_FILE_EXTENSION) === ownerCallEpochMs);
         };
         this.readMarkerEpochMs = (transcriptPath, markerFileExtension) => {
             if (this.ownerReplyMarkerDirectory === null) {
