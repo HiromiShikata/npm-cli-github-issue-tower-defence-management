@@ -116,6 +116,132 @@ describe('DailySecurityScanUseCase', () => {
       ]);
     });
 
+    const buildDefaultBranchScanRunner = () => {
+      const scannerFindings = JSON.stringify({
+        results: [
+          {
+            packages: [
+              {
+                package: {
+                  name: 'example-library',
+                  version: '1.2.3',
+                  ecosystem: 'npm',
+                },
+                vulnerabilities: [
+                  {
+                    id: 'GHSA-1111-2222-3333',
+                    aliases: [],
+                    summary: 'Example Library Deserialization',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+      return async (program: string, args: string[]) => {
+        if (program === 'find') {
+          return {
+            stdout: '/repos/workspace1/app/.git\n/repos/workspace2/app/.git\n',
+            stderr: '',
+            exitCode: 0,
+          };
+        }
+        if (program === 'mktemp') {
+          return {
+            stdout: '/tmp/tdpm-daily-security-scan-app-abc123\n',
+            stderr: '',
+            exitCode: 0,
+          };
+        }
+        if (program === 'git') {
+          return {
+            stdout: 'git@github.com:example-org/app.git\n',
+            stderr: '',
+            exitCode: 0,
+          };
+        }
+        if (program === 'osv-scanner') {
+          return { stdout: scannerFindings, stderr: '', exitCode: 1 };
+        }
+        if (program === 'rm') {
+          return { stdout: args.join(' '), stderr: '', exitCode: 0 };
+        }
+        return { stdout: '', stderr: '', exitCode: 0 };
+      };
+    };
+
+    it('scans one fresh checkout of the default branch instead of the working copies on disk', async () => {
+      const { useCase, mockLocalCommandRunner, mockIssueRepository } =
+        buildUseCase();
+
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockLocalCommandRunner.runCommand.mockImplementation(
+        buildDefaultBranchScanRunner(),
+      );
+
+      await useCase.run({
+        targetDates: [new Date('2024-01-02T05:00:00Z')],
+        org: 'example-org',
+        manager: 'manager-name',
+        dailySecurityScan: {
+          scanBaseDirectory: '/repos',
+          targetHourUtc: 5,
+        },
+      });
+
+      const cloneCalls = mockLocalCommandRunner.runCommand.mock.calls.filter(
+        (call) => call[0] === 'git' && call[1][0] === 'clone',
+      );
+      expect(cloneCalls).toHaveLength(1);
+      expect(cloneCalls[0][1]).toEqual([
+        'clone',
+        '--depth',
+        '1',
+        'git@github.com:example-org/app.git',
+        '/tmp/tdpm-daily-security-scan-app-abc123',
+      ]);
+
+      const scanCalls = mockLocalCommandRunner.runCommand.mock.calls.filter(
+        (call) => call[0] === 'osv-scanner',
+      );
+      expect(scanCalls).toHaveLength(1);
+      expect(scanCalls[0][1][scanCalls[0][1].indexOf('-r') + 1]).toBe(
+        '/tmp/tdpm-daily-security-scan-app-abc123',
+      );
+      expect(mockIssueRepository.createNewIssue.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.createNewIssue.mock.calls[0][1]).toBe('app');
+    });
+
+    it('removes the temporary checkout after scanning it', async () => {
+      const { useCase, mockLocalCommandRunner, mockIssueRepository } =
+        buildUseCase();
+
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockLocalCommandRunner.runCommand.mockImplementation(
+        buildDefaultBranchScanRunner(),
+      );
+
+      await useCase.run({
+        targetDates: [new Date('2024-01-02T05:00:00Z')],
+        org: 'example-org',
+        manager: 'manager-name',
+        dailySecurityScan: {
+          scanBaseDirectory: '/repos',
+          targetHourUtc: 5,
+        },
+      });
+
+      const removeCalls = mockLocalCommandRunner.runCommand.mock.calls.filter(
+        (call) => call[0] === 'rm',
+      );
+      expect(removeCalls).toHaveLength(1);
+      expect(removeCalls[0][1]).toEqual([
+        '-rf',
+        '/tmp/tdpm-daily-security-scan-app-abc123',
+      ]);
+    });
+
     it('does not create an issue when osv-scanner reports no vulnerabilities', async () => {
       const { useCase, mockLocalCommandRunner, mockIssueRepository } =
         buildUseCase();
