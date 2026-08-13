@@ -1,7 +1,19 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { OwnerCallStatusProvider } from '../../domain/usecases/adapter-interfaces/OwnerCallStatusProvider';
+import { UnansweredOwnerCall } from '../../domain/entities/UnansweredOwnerCall';
 import { SILENT_SESSION_REMINDER_SENTINEL } from '../../domain/usecases/silentSessionReminderSentinel';
+
+type TranscriptOwnerCall = {
+  epochMs: number;
+  body: string;
+  candidateOnly: boolean;
+};
+
+type TranscriptOwnerCallScan = {
+  ownerCalls: TranscriptOwnerCall[];
+  lastOwnerReplyEpochMs: number | null;
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -181,18 +193,63 @@ export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvide
     return unansweredOwnerCallEpochSecondsBySessionName;
   };
 
-  private findUnansweredOwnerCallEpochMs = (
+  listUnansweredOwnerCallsBySessionName = async (
+    transcriptPathBySessionName: Map<string, string>,
+  ): Promise<Map<string, UnansweredOwnerCall[]>> => {
+    const unansweredOwnerCallsBySessionName = new Map<
+      string,
+      UnansweredOwnerCall[]
+    >();
+    if (this.ownerCallMarkerFamily.length === 0) {
+      return unansweredOwnerCallsBySessionName;
+    }
+    for (const [sessionName, transcriptPath] of transcriptPathBySessionName) {
+      const unansweredOwnerCallEpochMs = this.findUnansweredOwnerCallEpochMs(
+        transcriptPath,
+        this.ownerCallMarkerFamily,
+      );
+      if (unansweredOwnerCallEpochMs === null) {
+        continue;
+      }
+      const transcript = this.scanTranscript(
+        transcriptPath,
+        this.ownerCallMarkerFamily,
+      );
+      if (transcript === null) {
+        continue;
+      }
+      const answeredBeforeEpochMs = this.resolveReplyEpochMs(
+        transcriptPath,
+        transcript.lastOwnerReplyEpochMs,
+      );
+      const unansweredCalls = transcript.ownerCalls
+        .filter(
+          (ownerCall) =>
+            answeredBeforeEpochMs === null ||
+            ownerCall.epochMs > answeredBeforeEpochMs,
+        )
+        .map((ownerCall) => ({
+          calledAt: new Date(ownerCall.epochMs).toISOString(),
+          body: ownerCall.body,
+        }));
+      if (unansweredCalls.length > 0) {
+        unansweredOwnerCallsBySessionName.set(sessionName, unansweredCalls);
+      }
+    }
+    return unansweredOwnerCallsBySessionName;
+  };
+
+  private scanTranscript = (
     transcriptPath: string,
     markerFamily: string[],
-  ): number | null => {
+  ): TranscriptOwnerCallScan | null => {
     let content: string;
     try {
       content = fs.readFileSync(transcriptPath, 'utf8');
     } catch {
       return null;
     }
-    let lastOwnerCallEpochMs: number | null = null;
-    let lastOwnerCallIsCandidateOnly = false;
+    const ownerCalls: TranscriptOwnerCall[] = [];
     let lastOwnerReplyEpochMs: number | null = null;
     for (const line of content.split('\n')) {
       const trimmed = line.trim();
@@ -221,10 +278,11 @@ export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvide
           assistantText.includes(marker),
         );
         if (matchedMarkers.length > 0) {
-          lastOwnerCallEpochMs = epochMs;
-          lastOwnerCallIsCandidateOnly = matchedMarkers.every(
-            isCandidateOwnerCallMarker,
-          );
+          ownerCalls.push({
+            epochMs,
+            body: assistantText,
+            candidateOnly: matchedMarkers.every(isCandidateOwnerCallMarker),
+          });
         }
       }
       if (
@@ -241,27 +299,50 @@ export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvide
             : lastOwnerReplyEpochMs;
       }
     }
-    if (lastOwnerCallEpochMs === null) {
+    return { ownerCalls, lastOwnerReplyEpochMs };
+  };
+
+  private resolveReplyEpochMs = (
+    transcriptPath: string,
+    lastOwnerReplyEpochMs: number | null,
+  ): number | null => {
+    const markerReplyEpochMs = this.readOwnerReplyMarkerEpochMs(transcriptPath);
+    return markerReplyEpochMs !== null &&
+      (lastOwnerReplyEpochMs === null ||
+        markerReplyEpochMs > lastOwnerReplyEpochMs)
+      ? markerReplyEpochMs
+      : lastOwnerReplyEpochMs;
+  };
+
+  private findUnansweredOwnerCallEpochMs = (
+    transcriptPath: string,
+    markerFamily: string[],
+  ): number | null => {
+    const transcript = this.scanTranscript(transcriptPath, markerFamily);
+    if (transcript === null) {
       return null;
     }
+    const lastOwnerCall =
+      transcript.ownerCalls[transcript.ownerCalls.length - 1] ?? null;
+    if (lastOwnerCall === null) {
+      return null;
+    }
+    const lastOwnerCallEpochMs = lastOwnerCall.epochMs;
     if (
       this.isCallSuppressedUndelivered(transcriptPath, lastOwnerCallEpochMs)
     ) {
       return null;
     }
     if (
-      lastOwnerCallIsCandidateOnly &&
+      lastOwnerCall.candidateOnly &&
       !this.isCandidateCallDelivered(transcriptPath, lastOwnerCallEpochMs)
     ) {
       return null;
     }
-    const markerReplyEpochMs = this.readOwnerReplyMarkerEpochMs(transcriptPath);
-    const resolvedReplyEpochMs =
-      markerReplyEpochMs !== null &&
-      (lastOwnerReplyEpochMs === null ||
-        markerReplyEpochMs > lastOwnerReplyEpochMs)
-        ? markerReplyEpochMs
-        : lastOwnerReplyEpochMs;
+    const resolvedReplyEpochMs = this.resolveReplyEpochMs(
+      transcriptPath,
+      transcript.lastOwnerReplyEpochMs,
+    );
     return resolvedReplyEpochMs === null ||
       lastOwnerCallEpochMs > resolvedReplyEpochMs
       ? lastOwnerCallEpochMs

@@ -1,6 +1,8 @@
 import { Issue } from '../../entities/Issue';
 import { FieldOption, Project } from '../../entities/Project';
 import { GenerateInTmuxByHumanDataUseCase } from './GenerateInTmuxByHumanDataUseCase';
+import { UnansweredOwnerCall } from '../../entities/UnansweredOwnerCall';
+import { toTmuxSessionName } from './InTmuxByHumanSessionReconcileUseCase';
 
 const ASSIGNEE = 'owner-login';
 const CONSOLE_BASE_URL = 'https://console.example.test';
@@ -98,6 +100,7 @@ describe('GenerateInTmuxByHumanDataUseCase', () => {
       consoleBaseUrl?: string | null;
       consoleToken?: string | null;
       newIssueRepo?: string;
+      unansweredCallsByTmuxSessionName?: Map<string, UnansweredOwnerCall[]>;
     } = {},
   ) =>
     usecase.run({
@@ -116,6 +119,8 @@ describe('GenerateInTmuxByHumanDataUseCase', () => {
         overrides.consoleToken === undefined
           ? CONSOLE_TOKEN
           : overrides.consoleToken,
+      unansweredCallsByTmuxSessionName:
+        overrides.unansweredCallsByTmuxSessionName ?? new Map(),
       now: NOW,
     });
 
@@ -330,6 +335,99 @@ describe('GenerateInTmuxByHumanDataUseCase', () => {
         consoleToken: null,
       });
       expect(result.v4).toBeNull();
+      expect(result.v3).not.toBeNull();
+    });
+  });
+
+  describe('v5 document', () => {
+    const callsFor = (
+      issueUrl: string,
+      calls: UnansweredOwnerCall[],
+    ): Map<string, UnansweredOwnerCall[]> =>
+      new Map([[toTmuxSessionName(issueUrl), calls]]);
+
+    it('builds version 5 with key order version, overviewUrl, tdpmConsoleUrl, newIssueUrl, groups', () => {
+      const result = run([makeIssue({ story: 'Story Alpha' })]);
+      expect(result.v5).not.toBeNull();
+      expect(Object.keys(result.v5 ?? {})).toEqual([
+        'version',
+        'overviewUrl',
+        'tdpmConsoleUrl',
+        'newIssueUrl',
+        'groups',
+      ]);
+      expect(result.v5?.version).toBe(5);
+    });
+
+    it('gives a session with no unanswered call an empty unansweredCalls array', () => {
+      const result = run([makeIssue({ story: 'Story Alpha' })]);
+      expect(result.v5?.groups).toEqual([
+        {
+          story: 'Story Alpha',
+          sessions: [
+            {
+              name: 'https://github.com/demo/repo/issues/1',
+              description: 'Issue 1',
+              unansweredCalls: [],
+            },
+          ],
+        },
+      ]);
+    });
+
+    it('carries the unanswered calls of a session looked up by the tmux session name the reconciler derives from the issue url', () => {
+      const issue = makeIssue({ story: 'Story Alpha' });
+      const call: UnansweredOwnerCall = {
+        calledAt: '2026-08-13T10:14:00.000Z',
+        body: 'Please decide whether to merge the release branch',
+      };
+
+      const result = run([issue], {
+        unansweredCallsByTmuxSessionName: callsFor(issue.url, [call]),
+      });
+
+      expect(result.v5?.groups[0].sessions[0].unansweredCalls).toEqual([call]);
+    });
+
+    it('carries every unanswered call of one session in call order with its own time and body', () => {
+      const issue = makeIssue({ story: 'Story Alpha' });
+      const calls: UnansweredOwnerCall[] = [
+        { calledAt: '2026-08-13T10:14:00.000Z', body: 'first call body' },
+        { calledAt: '2026-08-13T10:41:30.000Z', body: 'second call body' },
+      ];
+
+      const result = run([issue], {
+        unansweredCallsByTmuxSessionName: callsFor(issue.url, calls),
+      });
+
+      expect(result.v5?.groups[0].sessions[0].unansweredCalls).toEqual(calls);
+      expect(
+        result.v5?.groups[0].sessions[0].unansweredCalls.map(
+          (unansweredCall) => unansweredCall.calledAt,
+        ),
+      ).toEqual(['2026-08-13T10:14:00.000Z', '2026-08-13T10:41:30.000Z']);
+    });
+
+    it('leaves the version 4 document free of unanswered call data', () => {
+      const issue = makeIssue({ story: 'Story Alpha' });
+
+      const result = run([issue], {
+        unansweredCallsByTmuxSessionName: callsFor(issue.url, [
+          { calledAt: '2026-08-13T10:14:00.000Z', body: 'first call body' },
+        ]),
+      });
+
+      expect(result.v4?.groups[0].sessions[0]).toEqual({
+        name: 'https://github.com/demo/repo/issues/1',
+        description: 'Issue 1',
+      });
+    });
+
+    it('is null when the console token is unset while v3 is still produced', () => {
+      const result = run([makeIssue({ story: 'Story Alpha' })], {
+        consoleToken: null,
+      });
+      expect(result.v5).toBeNull();
       expect(result.v3).not.toBeNull();
     });
   });

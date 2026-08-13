@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import type { Issue } from '../../../domain/entities/Issue';
 import type { Project } from '../../../domain/entities/Project';
+import type { UnansweredOwnerCall } from '../../../domain/entities/UnansweredOwnerCall';
 import {
   GenerateInTmuxByHumanDataUseCase,
   InTmuxByHumanData,
@@ -19,6 +20,7 @@ export type InTmuxByHumanDataWriterParams = {
   newIssueRepo?: string | null | undefined;
   project: Project;
   issues: Issue[];
+  unansweredCallsByTmuxSessionName?: Map<string, UnansweredOwnerCall[]>;
   now: Date;
 };
 
@@ -45,6 +47,7 @@ export const writeInTmuxByHumanData = (
     newIssueRepo,
     project,
     issues,
+    unansweredCallsByTmuxSessionName,
     now,
   } = params;
   if (!inTmuxDataOutputDir || !pjcode || !assigneeLogin) {
@@ -61,6 +64,9 @@ export const writeInTmuxByHumanData = (
     newIssueRepo: newIssueRepo ?? undefined,
     consoleBaseUrl: inTmuxConsoleBaseUrl ?? null,
     consoleToken: inTmuxConsoleToken ?? null,
+    unansweredCallsByTmuxSessionName:
+      unansweredCallsByTmuxSessionName ??
+      new Map<string, UnansweredOwnerCall[]>(),
     now,
   });
 
@@ -76,6 +82,12 @@ export const writeInTmuxByHumanData = (
     writeJsonAtomic(
       path.join(inTmuxDataOutputDir, `${pjcode}.v4.json`),
       data.v4,
+    );
+  }
+  if (data.v5) {
+    writeJsonAtomic(
+      path.join(inTmuxDataOutputDir, `${pjcode}.v5.json`),
+      data.v5,
     );
   }
 
@@ -103,6 +115,13 @@ export const writeInTmuxByHumanData = (
       projects: presentProjects.map((name) => ({
         name,
         path: `/${outputDirBasename}/${name}.v4.json?k=${inTmuxConsoleToken}`,
+      })),
+    });
+    writeJsonAtomic(path.join(inTmuxDataOutputDir, 'index.v5.json'), {
+      version: 5,
+      projects: presentProjects.map((name) => ({
+        name,
+        path: `/${outputDirBasename}/${name}.v5.json?k=${inTmuxConsoleToken}`,
       })),
     });
   }

@@ -820,6 +820,119 @@ describe('TranscriptOwnerCallStatusProvider', () => {
       Math.floor(Date.parse('2026-06-27T10:20:00.000Z') / 1000),
     );
   });
+
+  describe('listUnansweredOwnerCallsBySessionName', () => {
+    const assistantCallSaying = (timestamp: string, text: string): object => ({
+      type: 'assistant',
+      timestamp,
+      message: {
+        role: 'assistant',
+        stop_reason: 'end_turn',
+        content: [{ type: 'text', text: `${text} <<OWNER_CALL>>` }],
+      },
+    });
+
+    it('returns the time and the body of an unanswered owner call', async () => {
+      const transcriptPath = writeTranscript('workbench.jsonl', [
+        ownerReply('2026-06-27T09:00:00.000Z'),
+        assistantCallSaying(
+          '2026-06-27T10:00:00.000Z',
+          'Please decide whether to merge the release branch',
+        ),
+      ]);
+      const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
+
+      const result = await provider.listUnansweredOwnerCallsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
+
+      expect(result.get(sessionName)).toEqual([
+        {
+          calledAt: '2026-06-27T10:00:00.000Z',
+          body: 'Please decide whether to merge the release branch <<OWNER_CALL>>',
+        },
+      ]);
+    });
+
+    it('returns every owner call raised since the last owner reply, oldest first', async () => {
+      const transcriptPath = writeTranscript('workbench.jsonl', [
+        assistantCallSaying('2026-06-27T08:00:00.000Z', 'answered call'),
+        ownerReply('2026-06-27T09:00:00.000Z'),
+        assistantCallSaying('2026-06-27T10:00:00.000Z', 'first waiting call'),
+        assistantCallSaying('2026-06-27T11:30:00.000Z', 'second waiting call'),
+      ]);
+      const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
+
+      const result = await provider.listUnansweredOwnerCallsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
+
+      expect(
+        result.get(sessionName)?.map((ownerCall) => ownerCall.calledAt),
+      ).toEqual(['2026-06-27T10:00:00.000Z', '2026-06-27T11:30:00.000Z']);
+      expect(result.get(sessionName)?.[0].body).toContain('first waiting call');
+      expect(result.get(sessionName)?.[1].body).toContain(
+        'second waiting call',
+      );
+    });
+
+    it('gives each call of one session a distinct time so the calls stay separable', async () => {
+      const transcriptPath = writeTranscript('workbench.jsonl', [
+        assistantCallSaying('2026-06-27T10:00:00.000Z', 'same text'),
+        assistantCallSaying('2026-06-27T11:30:00.000Z', 'same text'),
+      ]);
+      const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
+
+      const result = await provider.listUnansweredOwnerCallsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
+
+      const calls = result.get(sessionName) ?? [];
+      expect(calls).toHaveLength(2);
+      expect(calls[0].body).toBe(calls[1].body);
+      expect(calls[0].calledAt).not.toBe(calls[1].calledAt);
+    });
+
+    it('returns no entry for a session whose last owner call the owner already answered', async () => {
+      const transcriptPath = writeTranscript('workbench.jsonl', [
+        assistantCallSaying('2026-06-27T10:00:00.000Z', 'please decide'),
+        ownerReply('2026-06-27T10:30:00.000Z'),
+      ]);
+      const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
+
+      const result = await provider.listUnansweredOwnerCallsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
+
+      expect(result.has(sessionName)).toBe(false);
+    });
+
+    it('returns no entry for a session that raised no owner call', async () => {
+      const transcriptPath = writeTranscript('workbench.jsonl', [
+        assistantPlain('2026-06-27T10:00:00.000Z'),
+      ]);
+      const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
+
+      const result = await provider.listUnansweredOwnerCallsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
+
+      expect(result.has(sessionName)).toBe(false);
+    });
+
+    it('returns nothing when no owner call marker is configured', async () => {
+      const transcriptPath = writeTranscript('workbench.jsonl', [
+        assistantCallSaying('2026-06-27T10:00:00.000Z', 'please decide'),
+      ]);
+      const provider = new TranscriptOwnerCallStatusProvider(null);
+
+      const result = await provider.listUnansweredOwnerCallsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
+
+      expect(result.size).toBe(0);
+    });
+  });
 });
 
 describe('ownerCallMarkerFamilyResolve', () => {

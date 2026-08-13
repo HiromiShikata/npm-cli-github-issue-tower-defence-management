@@ -570,6 +570,7 @@ For the current project code `{pjcode}` (the configured `projectName`):
 {inTmuxDataOutputDir}/{pjcode}.v2.json    # v2: [{ story, urls: [{ url, title }] }]
 {inTmuxDataOutputDir}/{pjcode}.v3.json    # v3: { version, overviewUrl, tdpmConsoleUrl, groups: [{ story, urls: [{ url, title }] }] }
 {inTmuxDataOutputDir}/{pjcode}.v4.json    # v4: { version, overviewUrl, tdpmConsoleUrl, newIssueUrl, groups: [{ story, sessions: [{ name, description }] }] }
+{inTmuxDataOutputDir}/{pjcode}.v5.json    # v5: v4 plus, on every session, unansweredCalls: [{ calledAt, body }]
 ```
 
 and the cross-project index files:
@@ -579,9 +580,16 @@ and the cross-project index files:
 {inTmuxDataOutputDir}/index.v2.json       # { version: 2, projects: string[] }
 {inTmuxDataOutputDir}/index.v3.json       # { version: 3, projects: string[] }
 {inTmuxDataOutputDir}/index.v4.json       # { version: 4, projects: [{ name, path }] }
+{inTmuxDataOutputDir}/index.v5.json       # { version: 5, projects: [{ name, path }] }
 ```
 
-The index files list every project in `inTmuxProjectOrder` whose `{name}.json` already exists in the output directory, so successive per-project schedule cycles incrementally build the same shared index. In `index.v4.json`, each `path` is `/{basename of inTmuxDataOutputDir}/{name}.v4.json?k={token}`.
+The index files list every project in `inTmuxProjectOrder` whose `{name}.json` already exists in the output directory, so successive per-project schedule cycles incrementally build the same shared index. In `index.v4.json` and `index.v5.json`, each `path` is `/{basename of inTmuxDataOutputDir}/{name}.v4.json?k={token}` and `/{basename of inTmuxDataOutputDir}/{name}.v5.json?k={token}` respectively.
+
+### Unanswered Owner Calls (v5)
+
+Every session of the v5 document carries `unansweredCalls`, the owner calls that session has raised and the owner has not answered, oldest first. Each entry has `calledAt`, the ISO 8601 UTC time at which the call was raised, and `body`, the text of the message that raised it. `calledAt` is the identity of a call: two calls carrying the same text are distinguished by their time. A session with nothing outstanding carries an empty array.
+
+The calls are read from the live session transcripts, so they require `ownerCallMarker` (or `TDPM_SILENT_OWNER_CALL_MARKER`) to be configured; without it every session carries an empty array. A session is keyed by its tmux session name, derived from the issue URL exactly as the in-tmux session reconciler derives it.
 
 ### Field Descriptions
 
