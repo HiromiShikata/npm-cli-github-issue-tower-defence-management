@@ -1,3 +1,10 @@
+## [1.151.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.151.2...v1.151.3) (2026-08-13)
+
+
+### Bug Fixes
+
+* **console:** dock the comment control so it stays reachable while the body scrolls ([#1532](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1532)) ([3767618](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/37676188b0c62f88f0a4480a6b83342feb344d37)), closes [#1531](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1531)
+
 ## [1.151.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.151.1...v1.151.2) (2026-08-13)
 
 
