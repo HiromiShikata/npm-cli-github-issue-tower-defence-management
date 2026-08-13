@@ -1,3 +1,12 @@
+## [1.148.24](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.23...v1.148.24) (2026-08-13)
+
+
+### Bug Fixes
+
+* **cli:** report missing or conflicting dashboard project names instead of throwing ([#1397](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1397)) ([e7a6ea9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e7a6ea96de86be6820f75ec0ffb9f94048d42660))
+* **core:** gate the first status write on a non-manager assignee ([#1294](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1294)) ([67b6ab6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/67b6ab6ccf10a1d03177316747c17c78c568c2db))
+* **silent-monitor:** instruct main-stall reminder to resume work instead of raising an owner-call ([#1330](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1330)) ([b72661d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b72661d91174b22a856274620bebb31e4b51839c))
+
 ## [1.148.23](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.148.22...v1.148.23) (2026-08-13)
 
 
