@@ -940,6 +940,9 @@ describe('TranscriptOwnerCallStatusProvider wired into NotifySilentLiveSessionsU
           .fn()
           .mockReturnValue('MAIN_STALLED_STALE'),
         composeSubAgentSection: jest.fn().mockReturnValue('SUBAGENT'),
+        composeSubAgentUnconsumedResultSection: jest
+          .fn()
+          .mockReturnValue('SUBAGENT_UNCONSUMED'),
       },
       { sleep: jest.fn().mockResolvedValue(undefined) },
     );

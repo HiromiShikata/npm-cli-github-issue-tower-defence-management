@@ -42,6 +42,22 @@ const composeLongRunningSubAgentSection = (
   ].join('\n');
 };
 
+const composeUnconsumedResultSubAgentSection = (
+  unconsumedResultSubAgents: SubAgentActivity[],
+): string => {
+  const lines = unconsumedResultSubAgents.map(
+    (subAgent) =>
+      `- ${subAgent.label}: result unconsumed for ${formatMinutes(
+        subAgent.silentSeconds,
+      )}`,
+  );
+  return [
+    `${SILENT_SESSION_REMINDER_SENTINEL} This is an automated status check. The following sub-process(es) have finished and their results have been waiting unread for about the minutes shown:`,
+    ...lines,
+    'For each one: please read its result, act on it, and then mark the sub-process as finished so it is no longer tracked as running. If you have already acted on the result, marking it finished is all that remains.',
+  ].join('\n');
+};
+
 export const composeOwnerCallFormatGuidance = (): string => {
   return 'Please share it through a new owner-call in the format documented for this session, written to be self-contained so the owner can understand the situation from that single message.';
 };
@@ -98,4 +114,9 @@ export class DefaultSilentSessionMessageComposer implements SilentSessionMessage
     }
     return sections.join('\n\n');
   };
+
+  composeSubAgentUnconsumedResultSection = (
+    unconsumedResultSubAgents: SubAgentActivity[],
+  ): string =>
+    composeUnconsumedResultSubAgentSection(unconsumedResultSubAgents);
 }

@@ -15,12 +15,52 @@ describe('DefaultSilentSessionMessageComposer', () => {
       silentSeconds: 360,
       runningSeconds: 1200,
       waitingOnExternalProcess: false,
+      finishedResultUnconsumed: false,
     };
     const section = composer.composeSubAgentSection({
       idleSubAgents: [subAgent],
       longRunningSubAgents: [subAgent],
     });
     expect(section).toContain(SILENT_SESSION_REMINDER_SENTINEL);
+  });
+
+  it('embeds the reminder sentinel in the unconsumed-result section', () => {
+    const section = composer.composeSubAgentUnconsumedResultSection([
+      {
+        label: 'agent-aaabbbbcccc30001',
+        silentSeconds: 5220,
+        runningSeconds: 5400,
+        waitingOnExternalProcess: false,
+        finishedResultUnconsumed: true,
+      },
+    ]);
+    expect(section).toContain(SILENT_SESSION_REMINDER_SENTINEL);
+  });
+
+  it('names every finished sub-agent and the whole minutes its result has stayed unconsumed', () => {
+    const section = composer.composeSubAgentUnconsumedResultSection([
+      {
+        label: 'agent-aaabbbbcccc30001',
+        silentSeconds: 5220,
+        runningSeconds: 5400,
+        waitingOnExternalProcess: false,
+        finishedResultUnconsumed: true,
+      },
+      {
+        label: 'agent-aaabbbbcccc30002',
+        silentSeconds: 359,
+        runningSeconds: 900,
+        waitingOnExternalProcess: false,
+        finishedResultUnconsumed: true,
+      },
+    ]);
+    expect(section).toContain('This is an automated status check.');
+    expect(section).toContain(
+      'agent-aaabbbbcccc30001: result unconsumed for 87m',
+    );
+    expect(section).toContain(
+      'agent-aaabbbbcccc30002: result unconsumed for 5m',
+    );
   });
 
   it('renders the main-stalled message as a neutral automated status notice with the silent minutes substituted', () => {
@@ -148,6 +188,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
       silentSeconds: 360,
       runningSeconds: 1200,
       waitingOnExternalProcess: false,
+      finishedResultUnconsumed: false,
     };
     const section = composer.composeSubAgentSection({
       idleSubAgents: [subAgent],
@@ -258,6 +299,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
           silentSeconds: 360,
           runningSeconds: 60,
           waitingOnExternalProcess: false,
+          finishedResultUnconsumed: false,
         },
       ],
       longRunningSubAgents: [],
@@ -277,6 +319,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
           silentSeconds: 360,
           runningSeconds: 60,
           waitingOnExternalProcess: false,
+          finishedResultUnconsumed: false,
         },
       ],
       longRunningSubAgents: [],
@@ -296,6 +339,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
           silentSeconds: 360,
           runningSeconds: 60,
           waitingOnExternalProcess: false,
+          finishedResultUnconsumed: false,
         },
       ],
       longRunningSubAgents: [],
@@ -317,6 +361,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
           silentSeconds: 30,
           runningSeconds: 1200,
           waitingOnExternalProcess: false,
+          finishedResultUnconsumed: false,
         },
       ],
     });
@@ -340,6 +385,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
           silentSeconds: 30,
           runningSeconds: 1200,
           waitingOnExternalProcess: false,
+          finishedResultUnconsumed: false,
         },
       ],
     });
@@ -353,6 +399,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
       silentSeconds: 360,
       runningSeconds: 1200,
       waitingOnExternalProcess: false,
+      finishedResultUnconsumed: false,
     };
     const section = composer.composeSubAgentSection({
       idleSubAgents: [subAgent],
@@ -374,6 +421,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
           silentSeconds: 360,
           runningSeconds: 60,
           waitingOnExternalProcess: false,
+          finishedResultUnconsumed: false,
         },
       ],
       longRunningSubAgents: [
@@ -382,6 +430,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
           silentSeconds: 10,
           runningSeconds: 960,
           waitingOnExternalProcess: false,
+          finishedResultUnconsumed: false,
         },
       ],
     });
@@ -411,6 +460,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
       silentSeconds: 360,
       runningSeconds: 1200,
       waitingOnExternalProcess: false,
+      finishedResultUnconsumed: false,
     };
     const composedDefaultTexts = [
       composer.composeMainStalledSection(600),
@@ -419,6 +469,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
         idleSubAgents: [subAgent],
         longRunningSubAgents: [subAgent],
       }),
+      composer.composeSubAgentUnconsumedResultSection([subAgent]),
     ];
     for (const text of composedDefaultTexts) {
       for (const pattern of flaggedPatterns) {
@@ -435,6 +486,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
       silentSeconds: 360,
       runningSeconds: 1200,
       waitingOnExternalProcess: false,
+      finishedResultUnconsumed: false,
     };
     const composedDefaultTexts = [
       composer.composeMainStalledSection(600),
@@ -443,6 +495,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
         idleSubAgents: [subAgent],
         longRunningSubAgents: [subAgent],
       }),
+      composer.composeSubAgentUnconsumedResultSection([subAgent]),
     ];
     for (const text of composedDefaultTexts) {
       expect(text).not.toContain('<');
@@ -462,12 +515,16 @@ describe('DefaultSilentSessionMessageComposer', () => {
       silentSeconds: 360,
       runningSeconds: 1200,
       waitingOnExternalProcess: false,
+      finishedResultUnconsumed: false,
     };
     const subSection = composer.composeSubAgentSection({
       idleSubAgents: [subAgent],
       longRunningSubAgents: [subAgent],
     });
-    const combined = `${mainSection}\n${subSection}`.toLowerCase();
+    const unconsumedResultSection =
+      composer.composeSubAgentUnconsumedResultSection([subAgent]);
+    const combined =
+      `${mainSection}\n${subSection}\n${unconsumedResultSection}`.toLowerCase();
     expect(combined).not.toContain('claude');
     expect(combined).not.toContain('take ownership');
     expect(combined).not.toContain('/home/');

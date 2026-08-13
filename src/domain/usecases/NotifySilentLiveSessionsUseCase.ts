@@ -437,6 +437,7 @@ export class NotifySilentLiveSessionsUseCase {
 
     const idleSubAgents = snapshot.subAgents.filter(
       (subAgent) =>
+        !subAgent.finishedResultUnconsumed &&
         !subAgent.waitingOnExternalProcess &&
         subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds,
     );
@@ -449,6 +450,7 @@ export class NotifySilentLiveSessionsUseCase {
     // and no time-window suppression, matching the idle-branch semantics.
     const longRunningSubAgents = snapshot.subAgents.filter(
       (subAgent) =>
+        !subAgent.finishedResultUnconsumed &&
         !subAgent.waitingOnExternalProcess &&
         subAgent.runningSeconds >= thresholds.subAgentRunningThresholdSeconds &&
         subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds,
@@ -465,6 +467,22 @@ export class NotifySilentLiveSessionsUseCase {
       }
       for (const subAgent of longRunningSubAgents) {
         sectionLabels.push(`sub-agent-long-running:${subAgent.label}`);
+      }
+    }
+
+    const unconsumedResultSubAgents = snapshot.subAgents.filter(
+      (subAgent) =>
+        subAgent.finishedResultUnconsumed &&
+        subAgent.silentSeconds >= thresholds.subAgentSilentThresholdSeconds,
+    );
+    if (unconsumedResultSubAgents.length > 0) {
+      sections.push(
+        this.messageComposer.composeSubAgentUnconsumedResultSection(
+          unconsumedResultSubAgents,
+        ),
+      );
+      for (const subAgent of unconsumedResultSubAgents) {
+        sectionLabels.push(`sub-agent-result-unconsumed:${subAgent.label}`);
       }
     }
 
