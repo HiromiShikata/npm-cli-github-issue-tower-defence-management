@@ -144,7 +144,7 @@ describe('consoleOperationApi', () => {
         'status_aw',
       );
       expect(issueRepository.get).not.toHaveBeenCalled();
-      expectRecordedAcrossTabs('PVTI_a');
+      expectRecordedOnlyIn('PVTI_a', CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES);
     });
 
     it('resolves the issue repository from the url of the operated pull request', async () => {
@@ -192,7 +192,7 @@ describe('consoleOperationApi', () => {
           side: 'RIGHT',
         },
       );
-      expectRecordedAcrossTabs('PVTI_b');
+      expectRecordedOnlyIn('PVTI_b', CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES);
     });
 
     it('requests changes without a line anchor when line and side are missing', async () => {
@@ -213,7 +213,7 @@ describe('consoleOperationApi', () => {
         'please fix',
         null,
       );
-      expectRecordedAcrossTabs('PVTI_b');
+      expectRecordedOnlyIn('PVTI_b', CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES);
     });
 
     it('rejects request_changes without a comment body', async () => {
@@ -843,7 +843,7 @@ describe('consoleOperationApi', () => {
         'status_intmux',
       );
       expect(issueRepository.get).not.toHaveBeenCalled();
-      expectRecordedAcrossTabs('PVTI_i');
+      expectRecordedOnlyIn('PVTI_i', CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES);
     });
 
     it('rejects an unknown intmux action', async () => {
@@ -956,10 +956,12 @@ describe('consoleOperationApi', () => {
         expect.objectContaining({ itemId: 'PVTI_x' }),
         'status_todo',
       );
-      for (const tab of CONSOLE_DONE_TAB_NAMES) {
+      for (const tab of CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES) {
         expect(readDoneProjectItemIds(baseDir, 'globex', tab)).toContain(
           'PVTI_x',
         );
+      }
+      for (const tab of CONSOLE_DONE_TAB_NAMES) {
         expect(readDoneProjectItemIds(baseDir, 'acme', tab)).not.toContain(
           'PVTI_x',
         );
