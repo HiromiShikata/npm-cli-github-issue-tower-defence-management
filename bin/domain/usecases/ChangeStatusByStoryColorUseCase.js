@@ -32,6 +32,12 @@ class ChangeStatusByStoryColorUseCase {
                         if (issue.status && issue.status !== WorkflowStatus_1.ICEBOX_STATUS_NAME) {
                             continue;
                         }
+                        const hasNoStatus = !issue.status;
+                        const isOwnedByNonManagerAssignee = issue.assignees.some((assignee) => assignee !== input.manager);
+                        if (hasNoStatus && isOwnedByNonManagerAssignee) {
+                            console.warn(`ChangeStatusByStoryColorUseCase: skipping the first status write because the issue has no status and is assigned to someone other than the manager. issueUrl: ${issue.url} assignees: ${issue.assignees.join(', ')}`);
+                            continue;
+                        }
                         await this.issueRepository.updateStatus(input.project, issue, firstStatus.id);
                         await this.issueRepository.createComment(issue, `This issue status is changed because the story is enabled.`);
                     }
