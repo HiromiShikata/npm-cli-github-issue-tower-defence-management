@@ -10,6 +10,7 @@ import {
   notifySilentTmuxSessions,
   DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS,
 } from './notifySilentTmuxSessions';
+import { OwnerCallStatusProvider } from '../../../domain/usecases/adapter-interfaces/OwnerCallStatusProvider';
 import { NoUnansweredOwnerCallStatusProvider } from '../../repositories/NoUnansweredOwnerCallStatusProvider';
 import { TranscriptOwnerCallStatusProvider } from '../../repositories/TranscriptOwnerCallStatusProvider';
 
@@ -189,6 +190,32 @@ describe('notifySilentTmuxSessions', () => {
     );
     expect(secondSendCall?.[1][2]).toBe(SESSION_NAME);
     expect(secondSendCall?.[1][4]).toContain('No output has been observed for');
+  });
+
+  it('decides from the owner call status provider it was given', async () => {
+    silentAssistantTranscript();
+    seedPreviousCandidates([SESSION_NAME]);
+    const runner = liveSessionRunner();
+    const consultedSessionNames: string[] = [];
+    const injectedProvider: OwnerCallStatusProvider = {
+      listUnansweredOwnerCallEpochSecondsBySessionName: (
+        transcriptPathBySessionName: Map<string, string>,
+      ): Promise<Map<string, number>> => {
+        consultedSessionNames.push(...transcriptPathBySessionName.keys());
+        return Promise.resolve(new Map([[SESSION_NAME, NOW_EPOCH_SECONDS]]));
+      },
+    };
+
+    await notifySilentTmuxSessions({
+      ...baseParams(runner),
+      ownerCallStatusProvider: injectedProvider,
+    });
+
+    expect(consultedSessionNames).toContain(SESSION_NAME);
+    const sendCall = runner.runCommand.mock.calls.find(
+      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
+    );
+    expect(sendCall).toBeUndefined();
   });
 
   it('does not notify a silent github-named live session on its first candidate cycle', async () => {
