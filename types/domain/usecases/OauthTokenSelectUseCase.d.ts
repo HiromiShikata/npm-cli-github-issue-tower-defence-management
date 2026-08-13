@@ -23,6 +23,7 @@ export type OauthTokenCandidateMetrics = {
     sevenDayEndEpoch: number;
     eligible: boolean;
     exclusionReason: string | null;
+    drawWeight: number;
 };
 export type OauthTokenSelectResult = {
     selected: OauthTokenCandidate | null;

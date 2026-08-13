@@ -1,5 +1,5 @@
-import { ClaudeLiveSession } from './adapter-interfaces/ClaudeLiveSessionRepository';
-import { OauthTokenCandidate, OauthTokenSelectUseCase } from './OauthTokenSelectUseCase';
+import type { ClaudeLiveSession } from './adapter-interfaces/ClaudeLiveSessionRepository';
+import { type OauthTokenCandidate, OauthTokenSelectUseCase } from './OauthTokenSelectUseCase';
 export type LiveSessionOauthTokenSelectionSettings = {
     maxConcurrentSessionCount: number;
     fullSpeedFiveHourFreeRatio: number;
@@ -16,6 +16,7 @@ export type LiveSessionOauthTokenCandidateMetrics = {
     hasConcurrencyHeadroom: boolean;
     eligible: boolean;
     exclusionReason: string | null;
+    selectionWeight: number;
 };
 export type LiveSessionOauthTokenSelectResult = {
     selected: OauthTokenCandidate | null;

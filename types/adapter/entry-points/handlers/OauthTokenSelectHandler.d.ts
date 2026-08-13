@@ -1,4 +1,4 @@
-import { OauthTokenSelectUseCase, SelectionRandom } from '../../../domain/usecases/OauthTokenSelectUseCase';
+import { OauthTokenSelectUseCase, type SelectionRandom } from '../../../domain/usecases/OauthTokenSelectUseCase';
 export type OauthTokenSelectHandlerInput = {
     tokenListJsonPath: string | null;
     cacheDirectory: string | null;

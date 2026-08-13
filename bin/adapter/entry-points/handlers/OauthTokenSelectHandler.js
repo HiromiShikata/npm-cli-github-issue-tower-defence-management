@@ -90,7 +90,7 @@ class OauthTokenSelectHandler {
                 const status = metric.eligible
                     ? 'eligible'
                     : `excluded (${metric.exclusionReason})`;
-                return `${metric.name}: 5h ${Math.round(metric.fiveHourFreeRatio * 100)}% free, 7d ${Math.round(metric.sevenDayFreeRatio * 100)}% free, 7d-end in ${secondsUntilSevenDayEnd}s -> ${status}`;
+                return `${metric.name}: 5h ${Math.round(metric.fiveHourFreeRatio * 100)}% free, 7d ${Math.round(metric.sevenDayFreeRatio * 100)}% free, 7d-end in ${secondsUntilSevenDayEnd}s, draw weight ${metric.drawWeight.toFixed(2)} -> ${status}`;
             });
             if (result.selected === null) {
                 lines.push('No eligible token passed the rate-limit filter.');

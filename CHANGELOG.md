@@ -1,3 +1,10 @@
+# [1.150.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.149.1...v1.150.0) (2026-08-13)
+
+
+### Features
+
+* **OauthTokenSelectUseCase:** expose selection weight in per-candidate metrics and decision trace ([#1521](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1521)) ([11a6ace](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/11a6ace36cf17d93e126825ef4e9b69f8d792de4)), closes [#1417](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1417)
+
 ## [1.149.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.149.0...v1.149.1) (2026-08-13)
 
 

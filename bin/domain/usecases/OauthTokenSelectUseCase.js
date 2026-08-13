@@ -42,20 +42,28 @@ exports.selectWeightedCandidate = selectWeightedCandidate;
 class OauthTokenSelectUseCase {
     constructor() {
         this.run = (candidates, nowEpochSeconds, random = Math.random) => {
-            const evaluated = candidates.map((candidate) => ({
-                candidate,
-                metric: this.evaluate(candidate, nowEpochSeconds),
-            }));
-            const metrics = evaluated.map((entry) => entry.metric);
+            const evaluated = candidates.map((candidate) => {
+                const evaluatedMetric = this.evaluate(candidate, nowEpochSeconds);
+                return {
+                    candidate,
+                    metric: {
+                        ...evaluatedMetric,
+                        drawWeight: evaluatedMetric.eligible
+                            ? (0, exports.selectionWeightOf)(candidate) *
+                                (0, exports.sevenDayUrgencyFactor)(evaluatedMetric.sevenDayFreeRatio, evaluatedMetric.sevenDayEndEpoch, nowEpochSeconds)
+                            : 0,
+                    },
+                };
+            });
             const eligible = evaluated.filter((entry) => entry.metric.eligible);
+            const metrics = evaluated.map((entry) => entry.metric);
             if (eligible.length === 0) {
                 return { selected: null, metrics };
             }
             const deterministicBest = eligible.reduce((bestEntry, currentEntry) => currentEntry.metric.sevenDayEndEpoch < bestEntry.metric.sevenDayEndEpoch
                 ? currentEntry
                 : bestEntry);
-            const selected = (0, exports.selectWeightedCandidate)(eligible, (entry) => (0, exports.selectionWeightOf)(entry.candidate) *
-                (0, exports.sevenDayUrgencyFactor)(entry.metric.sevenDayFreeRatio, entry.metric.sevenDayEndEpoch, nowEpochSeconds), deterministicBest, random);
+            const selected = (0, exports.selectWeightedCandidate)(eligible, (entry) => entry.metric.drawWeight, deterministicBest, random);
             return { selected: selected.candidate, metrics };
         };
         this.evaluate = (candidate, nowEpochSeconds) => {

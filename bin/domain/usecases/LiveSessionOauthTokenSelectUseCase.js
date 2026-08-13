@@ -35,6 +35,7 @@ class LiveSessionOauthTokenSelectUseCase {
                         hasConcurrencyHeadroom: liveSessionCount < concurrentSessionLimit,
                         eligible: rateLimitMetric.eligible,
                         exclusionReason: rateLimitMetric.exclusionReason,
+                        selectionWeight: (0, OauthTokenSelectUseCase_1.selectionWeightOf)(candidate),
                     },
                 };
             });
