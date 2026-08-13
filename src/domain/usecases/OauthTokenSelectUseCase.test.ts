@@ -439,6 +439,67 @@ describe('OauthTokenSelectUseCase selectionWeight', () => {
   });
 });
 
+describe('OauthTokenCandidateMetrics drawWeight', () => {
+  const useCase = new OauthTokenSelectUseCase();
+
+  it('reports draw weight zero for an ineligible candidate', () => {
+    const result = useCase.run(
+      [
+        candidate('busy5h', snapshot({ fiveHourUtilization: 0.9 })),
+        candidate('ok', snapshot({})),
+      ],
+      NOW,
+    );
+
+    const busy = result.metrics.find((m) => m.name === 'busy5h');
+    expect(busy?.drawWeight).toBe(0);
+  });
+
+  it('reports a positive draw weight for an eligible candidate', () => {
+    const result = useCase.run(
+      [candidate('eligible', snapshot({ sevenDayReset: NOW + 2 * DAY }))],
+      NOW,
+    );
+
+    const eligible = result.metrics.find((m) => m.name === 'eligible');
+    expect(eligible?.drawWeight).toBeGreaterThan(0);
+  });
+
+  it('gives a higher draw weight to a candidate whose 7d window resets sooner', () => {
+    const result = useCase.run(
+      [
+        candidate('soon', snapshot({ sevenDayReset: NOW + 2 * DAY })),
+        candidate('far', snapshot({ sevenDayReset: NOW + 6 * DAY })),
+      ],
+      NOW,
+    );
+
+    const soon = result.metrics.find((m) => m.name === 'soon');
+    const far = result.metrics.find((m) => m.name === 'far');
+    expect((soon?.drawWeight ?? 0)).toBeGreaterThan(far?.drawWeight ?? 0);
+  });
+
+  it('scales draw weight by the configured selection weight', () => {
+    const result = useCase.run(
+      [
+        withSelectionWeight(
+          candidate('double', snapshot({ sevenDayReset: NOW + 2 * DAY })),
+          2,
+        ),
+        withSelectionWeight(
+          candidate('single', snapshot({ sevenDayReset: NOW + 2 * DAY })),
+          1,
+        ),
+      ],
+      NOW,
+    );
+
+    const double = result.metrics.find((m) => m.name === 'double');
+    const single = result.metrics.find((m) => m.name === 'single');
+    expect(double?.drawWeight).toBeCloseTo((single?.drawWeight ?? 0) * 2, 5);
+  });
+});
+
 describe('sevenDayUrgencyFactor', () => {
   const now = 1_000_000;
 

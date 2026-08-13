@@ -476,6 +476,39 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
   });
 });
 
+describe('LiveSessionOauthTokenCandidateMetrics selectionWeight', () => {
+  const useCase = new LiveSessionOauthTokenSelectUseCase();
+
+  it('includes the configured selection weight in each candidate metric', () => {
+    const result = useCase.run(
+      [
+        withSelectionWeight(candidate('heavy', snapshot({})), 2),
+        candidate('normal', snapshot({})),
+      ],
+      [],
+      NOW,
+      SETTINGS,
+    );
+
+    const heavy = result.metrics.find((m) => m.name === 'heavy');
+    const normal = result.metrics.find((m) => m.name === 'normal');
+    expect(heavy?.selectionWeight).toBe(2);
+    expect(normal?.selectionWeight).toBe(1);
+  });
+
+  it('reports selection weight one for a candidate without an explicit selectionWeight', () => {
+    const result = useCase.run(
+      [candidate('implicit', snapshot({}))],
+      [],
+      NOW,
+      SETTINGS,
+    );
+
+    const implicit = result.metrics.find((m) => m.name === 'implicit');
+    expect(implicit?.selectionWeight).toBe(1);
+  });
+});
+
 describe('liveSessionConcurrentLimitOf', () => {
   it('gives the full limit while the five hour window is at or above the full speed free ratio', () => {
     expect(liveSessionConcurrentLimitOf(1, 1, SETTINGS)).toBe(
