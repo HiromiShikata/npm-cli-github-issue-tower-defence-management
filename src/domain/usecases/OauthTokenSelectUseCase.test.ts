@@ -498,6 +498,33 @@ describe('OauthTokenCandidateMetrics drawWeight', () => {
     const single = result.metrics.find((m) => m.name === 'single');
     expect(double?.drawWeight).toBeCloseTo((single?.drawWeight ?? 0) * 2, 5);
   });
+
+  it('draws on exactly the weight it reports, so the trace cannot disagree with the draw', () => {
+    const candidates = [
+      withSelectionWeight(
+        candidate('double', snapshot({ sevenDayReset: NOW + 2 * DAY })),
+        2,
+      ),
+      withSelectionWeight(
+        candidate('single', snapshot({ sevenDayReset: NOW + 2 * DAY })),
+        1,
+      ),
+    ];
+
+    const reported = useCase.run(candidates, NOW, () => 0).metrics;
+    const doubleWeight =
+      reported.find((m) => m.name === 'double')?.drawWeight ?? 0;
+    const singleWeight =
+      reported.find((m) => m.name === 'single')?.drawWeight ?? 0;
+    const boundary = doubleWeight / (doubleWeight + singleWeight);
+
+    expect(
+      useCase.run(candidates, NOW, () => boundary - 0.01).selected?.name,
+    ).toBe('double');
+    expect(
+      useCase.run(candidates, NOW, () => boundary + 0.01).selected?.name,
+    ).toBe('single');
+  });
 });
 
 describe('sevenDayUrgencyFactor', () => {
