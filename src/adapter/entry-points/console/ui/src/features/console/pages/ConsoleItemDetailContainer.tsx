@@ -178,7 +178,7 @@ export const ConsoleItemDetailContainer = ({
       onAddInlineComment={addInlineComment}
       commentComposer={
         <ConsoleCommentComposer
-          isPr={item.isPr}
+          initiallyOpen={false}
           now={now}
           onSubmit={(body) => operations.addComment(item, body)}
           onUploadFile={(file) => operations.uploadAttachment(item, file)}

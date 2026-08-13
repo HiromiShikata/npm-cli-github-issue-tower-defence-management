@@ -7,7 +7,7 @@ import type { ConsoleComment } from '../../logic/types';
 import { ConsoleMarkdownContent } from '../content/ConsoleMarkdownContent';
 
 export type ConsoleCommentComposerProps = {
-  isPr: boolean;
+  initiallyOpen: boolean;
   now: number;
   onSubmit: (body: string) => Promise<ConsoleComment>;
   onUploadFile?: (file: File) => Promise<string>;
@@ -37,12 +37,12 @@ export const appendAttachmentMarkdown = (
 };
 
 export const ConsoleCommentComposer = ({
-  isPr,
+  initiallyOpen,
   now,
   onSubmit,
   onUploadFile,
 }: ConsoleCommentComposerProps) => {
-  const [open, setOpen] = useState<boolean>(!isPr);
+  const [open, setOpen] = useState<boolean>(initiallyOpen);
   const [draft, setDraft] = useState<string>('');
   const [status, setStatus] = useState<ComposerStatus>({ kind: 'idle' });
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({
@@ -99,7 +99,7 @@ export const ConsoleCommentComposer = ({
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
-        {open ? '✕ Cancel' : '💬 Add a comment'}
+        {open ? '✕ Close' : '💬 Add a comment'}
       </button>
       {posted.length > 0 && (
         <div className="console-composer-posted">

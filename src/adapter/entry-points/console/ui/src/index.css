@@ -704,13 +704,23 @@ body {
   color: #8b949e;
 }
 
-.console-actionbar {
+.console-detail-dock {
   margin-top: auto;
   position: sticky;
   bottom: 0;
   z-index: 100;
   background: #161b22;
   border-top: 2px solid #30363d;
+}
+
+.console-detail-dock-composer {
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: 8px 16px 0;
+}
+
+.console-actionbar {
+  background: #161b22;
   padding: 10px 16px;
   padding-bottom: calc(10px + env(safe-area-inset-bottom));
 }
