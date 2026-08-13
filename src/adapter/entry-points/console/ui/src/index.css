@@ -841,6 +841,8 @@ body {
 }
 
 .console-composer-toggle {
+  display: block;
+  margin-left: auto;
   background: none;
   border: none;
   color: #8b949e;
