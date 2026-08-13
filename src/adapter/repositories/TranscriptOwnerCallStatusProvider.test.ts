@@ -893,6 +893,71 @@ describe('TranscriptOwnerCallStatusProvider', () => {
       expect(calls[0].calledAt).not.toBe(calls[1].calledAt);
     });
 
+    it('keeps a delivered call listed while the newest call is a candidate the status line has not rendered yet', async () => {
+      const transcriptPath = writeTranscript('workbench.jsonl', [
+        ownerReply('2026-06-27T09:00:00.000Z'),
+        assistantCallSaying('2026-06-27T10:00:00.000Z', 'delivered call'),
+        assistantWithCandidateMarker('2026-06-27T11:00:00.000Z'),
+      ]);
+      const markerDirectory = path.join(rootDirectory, 'markers');
+      fs.mkdirSync(markerDirectory, { recursive: true });
+      const provider = new TranscriptOwnerCallStatusProvider(
+        '<<OWNER_CALL>>',
+        markerDirectory,
+      );
+
+      const result = await provider.listUnansweredOwnerCallsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
+
+      expect(
+        result.get(sessionName)?.map((ownerCall) => ownerCall.calledAt),
+      ).toEqual(['2026-06-27T10:00:00.000Z']);
+    });
+
+    it('omits a call the format gate held and never approved from the listed calls', async () => {
+      const transcriptPath = writeTranscript('workbench.jsonl', [
+        ownerReply('2026-06-27T09:00:00.000Z'),
+        assistantCallSaying('2026-06-27T10:00:00.000Z', 'held by the gate'),
+        assistantCallSaying('2026-06-27T11:00:00.000Z', 'delivered call'),
+      ]);
+      const markerDirectory = path.join(rootDirectory, 'markers');
+      writeCallGateMarker(
+        markerDirectory,
+        'workbench.jsonl',
+        '.suppress_ts',
+        '2026-06-27T10:00:00.000Z',
+      );
+      const provider = new TranscriptOwnerCallStatusProvider(
+        '<<OWNER_CALL>>',
+        markerDirectory,
+      );
+
+      const result = await provider.listUnansweredOwnerCallsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
+
+      expect(
+        result.get(sessionName)?.map((ownerCall) => ownerCall.calledAt),
+      ).toEqual(['2026-06-27T11:00:00.000Z']);
+    });
+
+    it('lists the calls oldest first even when the transcript records a later call before an earlier one', async () => {
+      const transcriptPath = writeTranscript('workbench.jsonl', [
+        assistantCallSaying('2026-06-27T11:00:00.000Z', 'later call'),
+        assistantCallSaying('2026-06-27T10:00:00.000Z', 'earlier call'),
+      ]);
+      const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
+
+      const result = await provider.listUnansweredOwnerCallsBySessionName(
+        new Map([[sessionName, transcriptPath]]),
+      );
+
+      expect(
+        result.get(sessionName)?.map((ownerCall) => ownerCall.calledAt),
+      ).toEqual(['2026-06-27T10:00:00.000Z', '2026-06-27T11:00:00.000Z']);
+    });
+
     it('returns no entry for a session whose last owner call the owner already answered', async () => {
       const transcriptPath = writeTranscript('workbench.jsonl', [
         assistantCallSaying('2026-06-27T10:00:00.000Z', 'please decide'),
