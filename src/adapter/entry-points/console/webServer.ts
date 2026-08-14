@@ -36,6 +36,10 @@ import {
   composeDashboardText,
   dashboardComposeFilesPresent,
 } from './dashboardComposeService';
+import {
+  OWNER_CALL_FILE_DIRECTORY_NAME,
+  OWNER_CALL_FILE_EXTENSION,
+} from '../../../domain/usecases/intmux/OwnerCallFile';
 
 export const DEFAULT_WEB_PORT = 9980;
 
@@ -74,6 +78,7 @@ const MIME_TYPES: Record<string, string> = {
   '.map': 'application/json; charset=utf-8',
   '.woff': 'font/woff',
   '.woff2': 'font/woff2',
+  '.yaml': 'text/yaml; charset=utf-8',
 };
 
 export const hasDotSegment = (requestPath: string): boolean =>
@@ -84,7 +89,8 @@ export const hasDotSegment = (requestPath: string): boolean =>
 export const requiresToken = (requestPath: string): boolean =>
   requestPath.startsWith('/api/') ||
   requestPath === '/api' ||
-  requestPath.endsWith('.json');
+  requestPath.endsWith('.json') ||
+  requestPath.endsWith(OWNER_CALL_FILE_EXTENSION);
 
 const SAFE_PJCODE = /^[A-Za-z0-9._-]+$/;
 
@@ -227,6 +233,12 @@ const FLAT_IN_TMUX_PREFIX = '/in-tmux-by-human/';
 
 const FLAT_IN_TMUX_FILE = /^[A-Za-z0-9._-]+\.json$/;
 
+const NAME_SEGMENT = '[A-Za-z0-9_-][A-Za-z0-9._-]*';
+
+const OWNER_CALL_FILE = new RegExp(
+  `^${OWNER_CALL_FILE_DIRECTORY_NAME}/${NAME_SEGMENT}/${NAME_SEGMENT}${OWNER_CALL_FILE_EXTENSION.replace('.', '\\.')}$`,
+);
+
 export const DASHBOARD_REQUEST_PATH = '/tdpm.txt';
 
 export const IMAGE_PROXY_REQUEST_PATH = '/api/img';
@@ -249,6 +261,10 @@ export const resolveDashboardFilePath = (
   return resolvedCandidate;
 };
 
+export const isOwnerCallFileRequestPath = (requestPath: string): boolean =>
+  requestPath.startsWith(FLAT_IN_TMUX_PREFIX) &&
+  OWNER_CALL_FILE.test(requestPath.slice(FLAT_IN_TMUX_PREFIX.length));
+
 export const resolveFlatInTmuxFilePath = (
   inTmuxDataDir: string,
   requestPath: string,
@@ -256,11 +272,16 @@ export const resolveFlatInTmuxFilePath = (
   if (!requestPath.startsWith(FLAT_IN_TMUX_PREFIX)) {
     return null;
   }
-  const fileName = requestPath.slice(FLAT_IN_TMUX_PREFIX.length);
-  if (fileName.length === 0 || !FLAT_IN_TMUX_FILE.test(fileName)) {
+  const relativePath = requestPath.slice(FLAT_IN_TMUX_PREFIX.length);
+  if (
+    relativePath.length === 0 ||
+    !(
+      FLAT_IN_TMUX_FILE.test(relativePath) || OWNER_CALL_FILE.test(relativePath)
+    )
+  ) {
     return null;
   }
-  const candidate = path.join(inTmuxDataDir, fileName);
+  const candidate = path.join(inTmuxDataDir, relativePath);
   const resolvedRoot = path.resolve(inTmuxDataDir);
   const resolvedCandidate = path.resolve(candidate);
   if (!resolvedCandidate.startsWith(resolvedRoot + path.sep)) {
@@ -530,6 +551,56 @@ const handleOperationApi = async (
   }
 };
 
+const serveFlatInTmuxFile = (
+  options: WebServerOptions,
+  response: http.ServerResponse,
+  requestPath: string,
+): void => {
+  if (options.inTmuxDataDir === null) {
+    sendNotFound(response);
+    return;
+  }
+  const filePath = resolveFlatInTmuxFilePath(
+    options.inTmuxDataDir,
+    requestPath,
+  );
+  const content = filePath === null ? null : readStaticFile(filePath);
+  if (filePath === null || content === null) {
+    sendNotFound(response);
+    return;
+  }
+  response.writeHead(200, {
+    'Content-Type': contentTypeForPath(filePath),
+    'Cache-Control': 'no-store',
+    'Content-Length': String(content.length),
+  });
+  response.end(content);
+};
+
+const removeOwnerCallFile = (
+  options: WebServerOptions,
+  response: http.ServerResponse,
+  requestPath: string,
+): void => {
+  if (options.inTmuxDataDir === null) {
+    sendNotFound(response);
+    return;
+  }
+  const filePath = resolveFlatInTmuxFilePath(
+    options.inTmuxDataDir,
+    requestPath,
+  );
+  if (filePath === null) {
+    sendNotFound(response);
+    return;
+  }
+  fs.rmSync(filePath, { force: true });
+  response.writeHead(204, {
+    'Cache-Control': 'no-store',
+  });
+  response.end();
+};
+
 const handleTokenedRequest = async (
   options: WebServerOptions,
   request: http.IncomingMessage,
@@ -580,31 +651,20 @@ const handleTokenedRequest = async (
     return;
   }
 
-  if (method === 'GET') {
-    if (requestPath.startsWith(FLAT_IN_TMUX_PREFIX)) {
-      if (options.inTmuxDataDir === null) {
-        sendNotFound(response);
-        return;
-      }
-      const flatFilePath = resolveFlatInTmuxFilePath(
-        options.inTmuxDataDir,
-        requestPath,
-      );
-      const flatContent =
-        flatFilePath === null ? null : readStaticFile(flatFilePath);
-      if (flatContent === null) {
-        sendNotFound(response);
-        return;
-      }
-      response.writeHead(200, {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Cache-Control': 'no-store',
-        'Content-Length': String(flatContent.length),
-      });
-      response.end(flatContent);
+  if (requestPath.startsWith(FLAT_IN_TMUX_PREFIX)) {
+    if (method === 'GET') {
+      serveFlatInTmuxFile(options, response, requestPath);
       return;
     }
+    if (method === 'DELETE' && isOwnerCallFileRequestPath(requestPath)) {
+      removeOwnerCallFile(options, response, requestPath);
+      return;
+    }
+    sendNotFound(response);
+    return;
+  }
 
+  if (method === 'GET') {
     const dataRoute = parseConsoleDataRoute(requestPath);
     if (dataRoute !== null && options.consoleDataOutputDir !== null) {
       const dataResponse = buildConsoleDataResponse(

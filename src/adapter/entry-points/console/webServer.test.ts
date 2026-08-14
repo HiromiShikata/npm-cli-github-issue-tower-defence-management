@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { mock } from 'jest-mock-extended';
+import { parseAllDocuments } from 'yaml';
 import {
   DEFAULT_WEB_PORT,
   CONSOLE_TOKEN_HEADER,
@@ -13,6 +14,7 @@ import {
   isConsoleAppRoute,
   extractProvidedToken,
   extractCookieToken,
+  isOwnerCallFileRequestPath,
   resolveFlatInTmuxFilePath,
   resolveDashboardFilePath,
   startWebServer,
@@ -23,6 +25,9 @@ import { readDoneProjectItemIds } from './consoleDoneStore';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
+import { ownerCallFileRelativePath } from '../../../domain/usecases/intmux/OwnerCallFile';
+import { toTmuxSessionName } from '../../../domain/usecases/intmux/InTmuxByHumanSessionReconcileUseCase';
+import { ownerCallFileAppend } from '../handlers/ownerCallFileStore';
 
 describe('webServer pure helpers', () => {
   describe('DEFAULT_WEB_PORT', () => {
@@ -983,6 +988,46 @@ describe('resolveFlatInTmuxFilePath', () => {
       resolveFlatInTmuxFilePath(baseDir, '/in-tmux-by-human/..%2fsecret.json'),
     ).toBeNull();
   });
+
+  it('resolves an owner call file that sits one directory deep', () => {
+    expect(
+      resolveFlatInTmuxFilePath(
+        baseDir,
+        '/in-tmux-by-human/call-to-user/umino/secretary.yaml',
+      ),
+    ).toBe(
+      path.join(
+        path.resolve(baseDir),
+        'call-to-user',
+        'umino',
+        'secretary.yaml',
+      ),
+    );
+  });
+
+  it('returns null for a yaml file outside the owner call directory shape', () => {
+    expect(
+      resolveFlatInTmuxFilePath(baseDir, '/in-tmux-by-human/secretary.yaml'),
+    ).toBeNull();
+    expect(
+      resolveFlatInTmuxFilePath(
+        baseDir,
+        '/in-tmux-by-human/other-directory/umino/secretary.yaml',
+      ),
+    ).toBeNull();
+    expect(
+      resolveFlatInTmuxFilePath(
+        baseDir,
+        '/in-tmux-by-human/call-to-user/umino/nested/secretary.yaml',
+      ),
+    ).toBeNull();
+    expect(
+      resolveFlatInTmuxFilePath(
+        baseDir,
+        '/in-tmux-by-human/call-to-user/umino/secretary.json',
+      ),
+    ).toBeNull();
+  });
 });
 
 describe('resolveDashboardFilePath', () => {
@@ -1939,6 +1984,278 @@ describe('webServer token cookie redirect', () => {
         Cookie: `${CONSOLE_TOKEN_COOKIE}=wrong-token`,
       });
       expect(wrongCookie.statusCode).toBe(401);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
+const toPlainValue = (document: { toJS: () => unknown }): unknown =>
+  document.toJS();
+
+describe('webServer owner call file route', () => {
+  const testToken = 'owner-call-token-value';
+  const sessionName = toTmuxSessionName(
+    'https://github.com/OWNER/REPO/issues/1',
+  );
+  const ownerCall = {
+    sessionName,
+    calledAt: '2026-08-14T04:22:28Z',
+    body: '  the first line of the call body.\n\na later line of the call body.\n',
+  };
+
+  const requestServer = (
+    server: http.Server,
+    requestPath: string,
+    method = 'GET',
+  ): Promise<{
+    statusCode: number;
+    body: string;
+    contentType: string | undefined;
+  }> => {
+    const address = server.address();
+    if (address === null || typeof address === 'string') {
+      throw new Error('server is not listening on a TCP port');
+    }
+    return new Promise((resolve, reject) => {
+      const httpRequest = http.request(
+        { host: '127.0.0.1', port: address.port, path: requestPath, method },
+        (response) => {
+          const chunks: Uint8Array[] = [];
+          response.on('data', (chunk: Uint8Array) => chunks.push(chunk));
+          response.on('end', () => {
+            resolve({
+              statusCode: response.statusCode ?? 0,
+              body: Buffer.concat(chunks).toString('utf-8'),
+              contentType: response.headers['content-type'],
+            });
+          });
+        },
+      );
+      httpRequest.on('error', reject);
+      httpRequest.end();
+    });
+  };
+
+  const closeServer = (server: http.Server): Promise<void> =>
+    new Promise((resolve, reject) => {
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve();
+      });
+    });
+
+  const startWithOwnerCallFile = async (
+    projectCode: string | null,
+  ): Promise<{
+    server: http.Server;
+    tmpDir: string;
+    inTmuxDataDir: string;
+    requestPath: string;
+  }> => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'owner-call-server-'));
+    const inTmuxDataDir = path.join(tmpDir, 'in-tmux-by-human');
+    fs.mkdirSync(inTmuxDataDir, { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, 'secret.yaml'), 'secret: true\n');
+    ownerCallFileAppend({ dataDir: inTmuxDataDir, projectCode, ownerCall });
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      port: 0,
+    });
+    return {
+      server,
+      tmpDir,
+      inTmuxDataDir,
+      requestPath: `/in-tmux-by-human/${ownerCallFileRelativePath(
+        projectCode,
+        sessionName,
+      )}`,
+    };
+  };
+
+  it('requires a token for the owner call file path', () => {
+    expect(
+      requiresToken(
+        `/in-tmux-by-human/${ownerCallFileRelativePath('umino', sessionName)}`,
+      ),
+    ).toBe(true);
+  });
+
+  it('recognizes only the owner call file path as deletable', () => {
+    expect(
+      isOwnerCallFileRequestPath(
+        `/in-tmux-by-human/${ownerCallFileRelativePath('umino', sessionName)}`,
+      ),
+    ).toBe(true);
+    expect(isOwnerCallFileRequestPath('/in-tmux-by-human/index.v4.json')).toBe(
+      false,
+    );
+    expect(
+      isOwnerCallFileRequestPath('/in-tmux-by-human/call-to-user/umino.yaml'),
+    ).toBe(false);
+  });
+
+  it('resolves the owner call file the append entry point writes, without a hardcoded path', () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'owner-call-path-'));
+    try {
+      ownerCallFileAppend({
+        dataDir,
+        projectCode: 'umino',
+        ownerCall,
+      });
+      const relativePath = ownerCallFileRelativePath('umino', sessionName);
+
+      const resolved = resolveFlatInTmuxFilePath(
+        dataDir,
+        `/in-tmux-by-human/${relativePath}`,
+      );
+
+      expect(resolved).not.toBeNull();
+      expect(fs.readFileSync(String(resolved), 'utf-8')).toBe(
+        fs.readFileSync(path.join(dataDir, relativePath), 'utf-8'),
+      );
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  });
+
+  it('serves, then deletes, the file the append entry point wrote', async () => {
+    const { server, tmpDir, requestPath } =
+      await startWithOwnerCallFile('umino');
+    try {
+      const fetched = await requestServer(
+        server,
+        `${requestPath}?k=${testToken}`,
+      );
+      expect(fetched.statusCode).toBe(200);
+      expect(fetched.contentType).toContain('text/yaml');
+      const documents = parseAllDocuments(fetched.body);
+      expect(documents).toHaveLength(1);
+      expect(documents[0].toJS()).toEqual(ownerCall);
+
+      const deleted = await requestServer(
+        server,
+        `${requestPath}?k=${testToken}`,
+        'DELETE',
+      );
+      expect(deleted.statusCode).toBe(204);
+
+      const refetched = await requestServer(
+        server,
+        `${requestPath}?k=${testToken}`,
+      );
+      expect(refetched.statusCode).toBe(404);
+
+      const deletedAgain = await requestServer(
+        server,
+        `${requestPath}?k=${testToken}`,
+        'DELETE',
+      );
+      expect(deletedAgain.statusCode).toBe(204);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('serves two appended documents oldest first', async () => {
+    const { server, tmpDir, inTmuxDataDir, requestPath } =
+      await startWithOwnerCallFile(null);
+    try {
+      ownerCallFileAppend({
+        dataDir: inTmuxDataDir,
+        projectCode: null,
+        ownerCall: {
+          sessionName,
+          calledAt: '2026-08-14T05:00:00Z',
+          body: 'the newer call\n',
+        },
+      });
+
+      const fetched = await requestServer(
+        server,
+        `${requestPath}?k=${testToken}`,
+      );
+      expect(fetched.statusCode).toBe(200);
+      expect(parseAllDocuments(fetched.body).map(toPlainValue)).toEqual([
+        ownerCall,
+        {
+          sessionName,
+          calledAt: '2026-08-14T05:00:00Z',
+          body: 'the newer call\n',
+        },
+      ]);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects a request that carries no access token', async () => {
+    const { server, tmpDir, requestPath } =
+      await startWithOwnerCallFile('umino');
+    try {
+      expect((await requestServer(server, requestPath)).statusCode).toBe(401);
+      expect(
+        (await requestServer(server, requestPath, 'DELETE')).statusCode,
+      ).toBe(401);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects a request whose path escapes the data directory and leaves the outside file untouched', async () => {
+    const { server, tmpDir } = await startWithOwnerCallFile('umino');
+    const escapingPath = '/in-tmux-by-human/call-to-user/../../secret.yaml';
+    try {
+      const fetched = await requestServer(
+        server,
+        `${escapingPath}?k=${testToken}`,
+      );
+      expect(fetched.statusCode).toBe(404);
+      expect(fetched.body).not.toContain('secret: true');
+
+      const deleted = await requestServer(
+        server,
+        `${escapingPath}?k=${testToken}`,
+        'DELETE',
+      );
+      expect(deleted.statusCode).toBe(404);
+      expect(fs.existsSync(path.join(tmpDir, 'secret.yaml'))).toBe(true);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses to delete a flat in-tmux json file through the owner call route', async () => {
+    const { server, tmpDir, inTmuxDataDir } =
+      await startWithOwnerCallFile('umino');
+    fs.writeFileSync(
+      path.join(inTmuxDataDir, 'index.v4.json'),
+      '{"version":4,"projects":[]}\n',
+    );
+    try {
+      const deleted = await requestServer(
+        server,
+        `/in-tmux-by-human/index.v4.json?k=${testToken}`,
+        'DELETE',
+      );
+      expect(deleted.statusCode).toBe(404);
+      expect(fs.existsSync(path.join(inTmuxDataDir, 'index.v4.json'))).toBe(
+        true,
+      );
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
