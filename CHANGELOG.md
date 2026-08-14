@@ -1,3 +1,10 @@
+## [1.152.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.152.0...v1.152.1) (2026-08-14)
+
+
+### Bug Fixes
+
+* **ci:** key concurrency group on sha for default branch to prevent queued run cancellation ([#1547](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1547)) ([b8dc4d0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b8dc4d0bdcb2a07b6568a57acfaa048f518278f8)), closes [#1515](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1515)
+
 # [1.152.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.151.7...v1.152.0) (2026-08-14)
 
 
