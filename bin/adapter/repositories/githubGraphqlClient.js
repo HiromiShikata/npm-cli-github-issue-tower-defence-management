@@ -49,12 +49,12 @@ const extractRateLimit = (responseBody) => {
     }
     return { cost, remaining };
 };
-const logGithubGraphqlCost = (query, responseBody) => {
+const logGithubGraphqlCost = (query, responseBody, now = () => new Date()) => {
     const rateLimit = extractRateLimit(responseBody);
     if (!rateLimit) {
         return;
     }
-    console.log(`githubGraphqlClient: query=${(0, exports.extractGraphqlOperationName)(query)} cost=${rateLimit.cost} remaining=${rateLimit.remaining}`);
+    console.log(`${now().toISOString()} githubGraphqlClient: query=${(0, exports.extractGraphqlOperationName)(query)} cost=${rateLimit.cost} remaining=${rateLimit.remaining}`);
 };
 exports.logGithubGraphqlCost = logGithubGraphqlCost;
 const postGithubGraphqlJson = async (params) => {

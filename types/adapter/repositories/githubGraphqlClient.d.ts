@@ -8,7 +8,7 @@ export type GithubGraphqlRateLimit = {
 export declare const isMutationOperation: (query: string) => boolean;
 export declare const extractGraphqlOperationName: (query: string) => string;
 export declare const injectRateLimitSelection: (query: string) => string;
-export declare const logGithubGraphqlCost: (query: string, responseBody: unknown) => void;
+export declare const logGithubGraphqlCost: (query: string, responseBody: unknown, now?: () => Date) => void;
 export declare const postGithubGraphqlJson: <T>(params: {
     ghToken: string;
     query: string;

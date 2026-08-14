@@ -1,3 +1,10 @@
+## [1.153.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.153.2...v1.153.3) (2026-08-14)
+
+
+### Bug Fixes
+
+* open the GraphQL cost log line with the time the points were charged ([#1566](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1566)) ([f3e8a12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f3e8a12c8012df7b93de822fa0956b5a51c6672a)), closes [#1565](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1565)
+
 ## [1.153.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.153.1...v1.153.2) (2026-08-14)
 
 
