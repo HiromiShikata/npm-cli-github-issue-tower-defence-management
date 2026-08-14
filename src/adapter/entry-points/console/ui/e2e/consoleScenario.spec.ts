@@ -312,4 +312,27 @@ test('opens the comment input with the item detail, keeps it on screen while the
 
   await composerToggle.click();
   await expect(page.locator('.console-composer-input')).toBeInViewport();
+
+  const dockHeightBeforePosting = (
+    await page.locator('.console-detail-dock').boundingBox()
+  )?.height;
+  await page
+    .locator('.console-composer-input')
+    .fill('The dock must not grow with every comment.');
+  await page.locator('.console-composer-submit').click();
+
+  const postedComment = page.locator('.console-comment', {
+    hasText: 'The dock must not grow with every comment.',
+  });
+  await expect(postedComment).toHaveCount(1);
+  await expect(
+    page.locator('.console-detail-dock .console-comment'),
+  ).toHaveCount(0);
+  await expect(page.locator('.console-comment-list')).toContainText(
+    'The dock must not grow with every comment.',
+  );
+  const dockHeightAfterPosting = (
+    await page.locator('.console-detail-dock').boundingBox()
+  )?.height;
+  expect(dockHeightAfterPosting).toBe(dockHeightBeforePosting);
 });
