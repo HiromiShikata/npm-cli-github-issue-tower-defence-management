@@ -34,9 +34,16 @@ const prItem: ConsoleListItem = {
 const issueItem: ConsoleListItem = {
   ...prItem,
   isPr: false,
-  relatedOpenPullRequestUrls: [],
+  relatedOpenPullRequestUrls: ['https://github.com/o/r/pull/9'],
   url: 'https://github.com/o/r/issues/2',
   number: 2,
+};
+
+const issueItemWithoutRelatedPullRequests: ConsoleListItem = {
+  ...issueItem,
+  relatedOpenPullRequestUrls: [],
+  url: 'https://github.com/o/r/issues/3',
+  number: 3,
 };
 
 const buildCaches = (related: ConsoleRelatedPullRequest[]): ConsoleCaches => {
@@ -187,6 +194,29 @@ describe('useConsoleItemDetailData', () => {
       expect(result.current.relatedPullRequests[0].filesAreLoading).toBe(false);
     });
     expect(result.current.relatedPullRequests[0].files.length).toBe(1);
+  });
+
+  it('reads no related pull requests for an issue the board lists no open pull request for', async () => {
+    const fetchRelatedPrs = jest.fn(
+      async (): Promise<ConsoleRelatedPullRequest[]> => [],
+    );
+    const caches: ConsoleCaches = {
+      ...buildCaches([]),
+      relatedPrs: new ResourceCache<ConsoleRelatedPullRequest[]>(
+        fetchRelatedPrs,
+      ),
+    };
+    const { result } = renderHook(() =>
+      useConsoleItemDetailData(caches, issueItemWithoutRelatedPullRequests),
+    );
+
+    await waitFor(() => {
+      expect(result.current.body).toBe('body');
+    });
+
+    expect(fetchRelatedPrs).not.toHaveBeenCalled();
+    expect(result.current.relatedPullRequests).toEqual([]);
+    expect(result.current.relatedPullRequestsError).toBeNull();
   });
 
   it('returns defaults when no item is selected', () => {
