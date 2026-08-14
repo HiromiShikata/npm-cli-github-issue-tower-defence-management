@@ -275,7 +275,7 @@ test('lists a still-open item and keeps its tab visible when the browser overlay
   ).toBeVisible();
 });
 
-test('keeps the comment control on screen while the item body scrolls, and gives the height back when it is closed', async ({
+test('opens the comment input with the item detail, keeps it on screen while the item body scrolls, and gives the height back when it is closed', async ({
   page,
 }) => {
   await page.goto(harness.appRootUrl);
@@ -287,7 +287,7 @@ test('keeps the comment control on screen while the item body scrolls, and gives
 
   const composerToggle = page.locator('.console-composer-toggle');
   await expect(composerToggle).toBeInViewport();
-  await expect(page.locator('.console-composer-input')).toHaveCount(0);
+  await expect(page.locator('.console-composer-input')).toBeInViewport();
 
   const dockBox = await page.locator('.console-detail-dock').boundingBox();
   const toggleBox = await composerToggle.boundingBox();
@@ -300,9 +300,9 @@ test('keeps the comment control on screen while the item body scrolls, and gives
   ).toBeLessThan(32);
 
   await composerToggle.click();
-  await expect(page.locator('.console-composer-input')).toBeInViewport();
-
-  await composerToggle.click();
   await expect(page.locator('.console-composer-input')).toHaveCount(0);
   await expect(composerToggle).toBeInViewport();
+
+  await composerToggle.click();
+  await expect(page.locator('.console-composer-input')).toBeInViewport();
 });
