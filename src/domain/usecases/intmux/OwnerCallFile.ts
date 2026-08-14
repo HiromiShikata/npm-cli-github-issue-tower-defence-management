@@ -1,3 +1,5 @@
+import { toTmuxSessionName } from './InTmuxByHumanSessionReconcileUseCase';
+
 export const OWNER_CALL_FILE_DIRECTORY_NAME = 'call-to-user';
 
 export const OWNER_CALL_FILE_PROJECT_CODE_FOR_NO_PROJECT = 'NA';
@@ -10,13 +12,40 @@ export type OwnerCall = {
   body: string;
 };
 
+// The key one owner call file is named by. It is the tmux session name
+// derivation every other in-tmux caller uses, followed by the replacement of
+// the slashes tmux keeps but a file name cannot hold. Applying it to a name
+// that already went through it gives that same name back, so the writing side,
+// which knows the tmux session name, and the reading side, which knows the
+// issue url, reach the same file.
+export const ownerCallFileSessionKey = (sessionName: string): string =>
+  toTmuxSessionName(sessionName).replace(/\//g, '_');
+
 export const ownerCallFileRelativePath = (
   projectCode: string | null,
   sessionName: string,
 ): string => {
   const directory = projectCode ?? OWNER_CALL_FILE_PROJECT_CODE_FOR_NO_PROJECT;
-  const fileName = sessionName.replace(/\//g, '_');
+  const fileName = ownerCallFileSessionKey(sessionName);
   return `${OWNER_CALL_FILE_DIRECTORY_NAME}/${directory}/${fileName}${OWNER_CALL_FILE_EXTENSION}`;
+};
+
+export type OwnerCallProjectSessionNames = {
+  projectCode: string;
+  sessionNames: string[];
+};
+
+export const ownerCallProjectCodeOfSession = (
+  projects: OwnerCallProjectSessionNames[],
+  sessionName: string,
+): string | null => {
+  const key = ownerCallFileSessionKey(sessionName);
+  const owningProject = projects.find((project) =>
+    project.sessionNames.some(
+      (candidate) => ownerCallFileSessionKey(candidate) === key,
+    ),
+  );
+  return owningProject ? owningProject.projectCode : null;
 };
 
 const CALLED_AT_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;

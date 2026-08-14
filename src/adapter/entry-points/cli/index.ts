@@ -66,8 +66,8 @@ import {
 import { isOwnerCallCalledAtValid } from '../../../domain/usecases/intmux/OwnerCallFile';
 import {
   ownerCallFileAppend,
-  ownerCallFileDelete,
   ownerCallFileDeleteInEveryProject,
+  ownerCallProjectCodeInInTmuxByHumanData,
 } from '../handlers/ownerCallFileStore';
 
 type StartDaemonOptions = {
@@ -109,7 +109,6 @@ type ServeWebOptions = {
 };
 
 type OwnerCallFileAppendOptions = {
-  pjcode: string;
   session: string;
   calledAt: string;
   bodyFile: string;
@@ -117,7 +116,6 @@ type OwnerCallFileAppendOptions = {
 };
 
 type OwnerCallFileDeleteOptions = {
-  pjcode?: string;
   session: string;
   inTmuxDataDir?: string;
 };
@@ -1172,11 +1170,7 @@ program
 program
   .command('ownerCallFileAppend')
   .description(
-    'Append one owner call as a YAML document to the per-session owner call file. The file is created when it does not exist, and every later call is appended after the existing documents so the oldest call stays first. Nothing is written to stdout on success.',
-  )
-  .requiredOption(
-    '--pjcode <code>',
-    'Project code of the session, or NA when the session belongs to no project',
+    'Append one owner call as a YAML document to the per-session owner call file. The project the session belongs to is resolved from the in-tmux-by-human data in the data directory, and a session no project lists is written under NA. The file is created when it does not exist, and every later call is appended after the existing documents so the oldest call stays first. Nothing is written to stdout on success.',
   )
   .requiredOption('--session <name>', 'tmux session name that raised the call')
   .requiredOption(
@@ -1198,9 +1192,13 @@ program
       );
       return process.exit(1);
     }
+    const dataDir = options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR;
     ownerCallFileAppend({
-      dataDir: options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR,
-      projectCode: options.pjcode,
+      dataDir,
+      projectCode: ownerCallProjectCodeInInTmuxByHumanData(
+        dataDir,
+        options.session,
+      ),
       ownerCall: {
         sessionName: options.session,
         calledAt: options.calledAt,
@@ -1212,29 +1210,16 @@ program
 program
   .command('ownerCallFileDelete')
   .description(
-    'Delete the owner call file of one session. It succeeds when the file is already absent, so a reset that runs twice is not an error. When --pjcode is omitted the project code is resolved by searching every project directory. Nothing is written to stdout on success.',
+    'Delete the owner call file of one session, whichever project directory holds it, so a session that moved between projects after its call was appended leaves nothing behind. It succeeds when the file is already absent, so a reset that runs twice is not an error. Nothing is written to stdout on success.',
   )
   .requiredOption('--session <name>', 'tmux session name that raised the call')
-  .option(
-    '--pjcode <code>',
-    'Project code of the session, or NA when the session belongs to no project; when omitted every project directory is searched',
-  )
   .option(
     '--inTmuxDataDir <path>',
     `Directory the owner call files are written under, the same directory serveWeb serves them from (default: ${DEFAULT_IN_TMUX_DATA_DIR})`,
   )
   .action((options: OwnerCallFileDeleteOptions) => {
-    const dataDir = options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR;
-    if (options.pjcode === undefined) {
-      ownerCallFileDeleteInEveryProject({
-        dataDir,
-        sessionName: options.session,
-      });
-      return;
-    }
-    ownerCallFileDelete({
-      dataDir,
-      projectCode: options.pjcode,
+    ownerCallFileDeleteInEveryProject({
+      dataDir: options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR,
       sessionName: options.session,
     });
   });
