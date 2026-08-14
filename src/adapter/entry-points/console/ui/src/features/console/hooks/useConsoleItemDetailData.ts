@@ -87,10 +87,12 @@ export const useConsoleItemDetailData = (
     isPr ? url : null,
     DEFAULT_PR_STATUS,
   );
+  const boardListsRelatedPullRequests =
+    !isPr && (item?.relatedOpenPullRequestUrls.length ?? 0) > 0;
   const relatedPrs = useConsoleResource(
     caches.relatedPrs,
-    !isPr ? key : null,
-    !isPr ? url : null,
+    boardListsRelatedPullRequests ? key : null,
+    boardListsRelatedPullRequests ? url : null,
     EMPTY_RELATED,
   );
 
