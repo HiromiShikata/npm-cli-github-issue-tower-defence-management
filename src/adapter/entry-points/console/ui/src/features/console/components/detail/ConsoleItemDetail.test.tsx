@@ -110,6 +110,33 @@ describe('ConsoleItemDetail', () => {
     );
   });
 
+  it('names a related pull request by its number when its own read failed', () => {
+    const { getByRole } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        relatedPullRequests={consoleRelatedPullRequestsFixture.map(
+          (pullRequest) => ({
+            pullRequest,
+            files: [],
+            filesAreLoading: false,
+            filesError: 'HTTP 502',
+            commits: [],
+            commitsAreLoading: false,
+            commitsError: 'HTTP 502',
+          }),
+        )}
+      />,
+    );
+    const number = Number.parseInt(
+      consoleRelatedPullRequestsFixture[0].url.split('/').slice(-1)[0],
+      10,
+    );
+    expect(getByRole('alert')).toHaveTextContent(
+      `Failed to load changed files of PR #${number} and commits of PR #${number}: HTTP 502`,
+    );
+  });
+
   it('marks a section whose read failed as not loaded instead of showing it as empty', () => {
     const { getAllByText, queryByText } = render(
       <ConsoleItemDetail

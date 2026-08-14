@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react';
 import type { ImageProxyUrlBuilder } from '../../lib/imageProxy';
 import { colorFromEnum } from '../../logic/colors';
-import { parseNameWithOwner } from '../../logic/references';
+import {
+  parseGitHubReferenceUrl,
+  parseNameWithOwner,
+} from '../../logic/references';
 import {
   formatFullTimestamp,
   formatRelativeTime,
@@ -119,6 +122,10 @@ export const ConsoleItemDetail = ({
     commentsAreLoading || commentsError !== null ? null : comments.length;
   const commitsCount =
     commitsAreLoading || commitsError !== null ? null : commits.length;
+  const relatedPullRequestLabel = (url: string): string => {
+    const reference = parseGitHubReferenceUrl(url);
+    return reference === null ? url : `PR #${reference.number}`;
+  };
   const fetchFailures: ConsoleFetchFailure[] = [
     { section: 'item state', message: stateError },
     {
@@ -135,11 +142,11 @@ export const ConsoleItemDetail = ({
     },
     ...relatedPullRequests.flatMap((related) => [
       {
-        section: `changed files of ${related.pullRequest.url}`,
+        section: `changed files of ${relatedPullRequestLabel(related.pullRequest.url)}`,
         message: related.filesError,
       },
       {
-        section: `commits of ${related.pullRequest.url}`,
+        section: `commits of ${relatedPullRequestLabel(related.pullRequest.url)}`,
         message: related.commitsError,
       },
     ]),
