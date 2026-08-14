@@ -51,6 +51,7 @@ export type ConsoleItemDetailProps = {
   bodyIsLoading: boolean;
   bodyError: string | null;
   comments: ConsoleComment[];
+  hasPostedComment?: boolean;
   commentsAreLoading: boolean;
   commentsError: string | null;
   files: ConsoleChangedFile[];
@@ -82,6 +83,7 @@ export const ConsoleItemDetail = ({
   bodyIsLoading,
   bodyError,
   comments,
+  hasPostedComment = false,
   commentsAreLoading,
   commentsError,
   files,
@@ -275,9 +277,10 @@ export const ConsoleItemDetail = ({
       )}
 
       <ConsolePanel
+        key={hasPostedComment ? 'comments-with-posted' : 'comments'}
         title="Comments"
         count={commentsCount}
-        defaultCollapsed={item.isPr}
+        defaultCollapsed={item.isPr && !hasPostedComment}
       >
         <ConsoleCommentList
           comments={comments}

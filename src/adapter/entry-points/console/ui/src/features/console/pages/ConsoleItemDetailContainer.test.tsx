@@ -147,7 +147,7 @@ describe('ConsoleItemDetailContainer', () => {
       body,
       createdAt: '2026-06-19T11:58:00.000Z',
     }));
-    const { container, findByText, getByPlaceholderText, getByText } = render(
+    const { container, getByPlaceholderText, getByText } = render(
       <ConsoleItemDetailContainer
         tab="unread"
         item={issueItem}
@@ -168,16 +168,18 @@ describe('ConsoleItemDetailContainer', () => {
     });
     fireEvent.click(getByText('Comment'));
 
-    const posted = await findByText(
-      'The dock must not grow with every comment.',
-    );
-    const commentList = container.querySelector('.console-comment-list');
-    const dock = container.querySelector('.console-detail-dock');
-    expect(commentList).not.toBeNull();
-    expect(dock).not.toBeNull();
-    expect(commentList?.contains(posted)).toBe(true);
-    expect(dock?.contains(posted)).toBe(false);
-    expect(dock?.querySelectorAll('.console-comment').length).toBe(0);
+    await waitFor(() => {
+      expect(
+        container.querySelector('.console-comment-list')?.textContent,
+      ).toContain('The dock must not grow with every comment.');
+    });
+    expect(
+      container.querySelector('.console-detail-dock')?.textContent,
+    ).not.toContain('The dock must not grow with every comment.');
+    expect(
+      container.querySelectorAll('.console-detail-dock .console-comment')
+        .length,
+    ).toBe(0);
   });
 
   it('opens the comments panel of a pull request item so the posted comment is on screen', async () => {
@@ -187,7 +189,7 @@ describe('ConsoleItemDetailContainer', () => {
       body,
       createdAt: '2026-06-19T11:58:00.000Z',
     }));
-    const { container, findByText, getByPlaceholderText, getByText } = render(
+    const { container, getByPlaceholderText, getByText } = render(
       <ConsoleItemDetailContainer
         tab="prs"
         item={prItem}
@@ -208,10 +210,11 @@ describe('ConsoleItemDetailContainer', () => {
     });
     fireEvent.click(getByText('Comment'));
 
-    const posted = await findByText('Posted from the pull request item.');
-    expect(
-      container.querySelector('.console-comment-list')?.contains(posted),
-    ).toBe(true);
+    await waitFor(() => {
+      expect(
+        container.querySelector('.console-comment-list')?.textContent,
+      ).toContain('Posted from the pull request item.');
+    });
   });
 
   it('shows Approve for an issue item from the generated related open pull request urls before the related pull requests are fetched', () => {
