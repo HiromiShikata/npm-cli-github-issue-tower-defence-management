@@ -855,13 +855,6 @@ body {
   color: #e6edf3;
 }
 
-.console-composer-posted {
-  margin-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
 .console-composer-form {
   margin-top: 8px;
 }
