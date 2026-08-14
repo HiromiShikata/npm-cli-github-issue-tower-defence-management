@@ -83,6 +83,20 @@ const buildOperations = (): ConsoleOperationsApi => ({
   addInlineReviewComment: jest.fn(async () => {}),
 });
 
+const findCommentsPanelToggle = (container: HTMLElement): HTMLElement => {
+  const toggle = Array.from(
+    container.querySelectorAll('.console-panel-toggle'),
+  ).find((element) =>
+    element
+      .querySelector('.console-panel-title')
+      ?.textContent?.startsWith('Comments'),
+  );
+  if (toggle === undefined) {
+    throw new Error('Comments panel toggle is not rendered');
+  }
+  return toggle as HTMLElement;
+};
+
 describe('ConsoleItemDetailContainer', () => {
   it('queues the review action and commits it through the operations api for a PR item', async () => {
     const operations = buildOperations();
@@ -182,7 +196,7 @@ describe('ConsoleItemDetailContainer', () => {
     ).toBe(0);
   });
 
-  it('opens the comments panel of a pull request item so the posted comment is on screen', async () => {
+  it('leaves the collapsed comments panel of a pull request item collapsed after a comment is posted', async () => {
     const operations = buildOperations();
     operations.addComment = jest.fn(async (_item, body) => ({
       author: 'HiromiShikata',
@@ -205,16 +219,78 @@ describe('ConsoleItemDetailContainer', () => {
       />,
     );
 
+    await waitFor(() => {
+      expect(findCommentsPanelToggle(container).textContent).toContain(
+        'Comments (0)',
+      );
+    });
+    expect(
+      findCommentsPanelToggle(container).getAttribute('aria-expanded'),
+    ).toBe('false');
+
     fireEvent.change(getByPlaceholderText('Leave a comment…'), {
       target: { value: 'Posted from the pull request item.' },
     });
     fireEvent.click(getByText('Comment'));
 
     await waitFor(() => {
-      expect(
-        container.querySelector('.console-comment-list')?.textContent,
-      ).toContain('Posted from the pull request item.');
+      expect(findCommentsPanelToggle(container).textContent).toContain(
+        'Comments (1)',
+      );
     });
+    expect(
+      findCommentsPanelToggle(container).getAttribute('aria-expanded'),
+    ).toBe('false');
+    expect(container.querySelector('.console-comment-list')).toBeNull();
+  });
+
+  it('keeps a reader-collapsed comments panel collapsed after a comment is posted on an issue item', async () => {
+    const operations = buildOperations();
+    operations.addComment = jest.fn(async (_item, body) => ({
+      author: 'HiromiShikata',
+      body,
+      createdAt: '2026-06-19T11:58:00.000Z',
+    }));
+    const { container, getByPlaceholderText, getByText } = render(
+      <ConsoleItemDetailContainer
+        tab="unread"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={jest.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(findCommentsPanelToggle(container).textContent).toContain(
+        'Comments (0)',
+      );
+    });
+    fireEvent.click(findCommentsPanelToggle(container));
+    expect(
+      findCommentsPanelToggle(container).getAttribute('aria-expanded'),
+    ).toBe('false');
+
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'Posted from the issue item.' },
+    });
+    fireEvent.click(getByText('Comment'));
+
+    await waitFor(() => {
+      expect(findCommentsPanelToggle(container).textContent).toContain(
+        'Comments (1)',
+      );
+    });
+    expect(
+      findCommentsPanelToggle(container).getAttribute('aria-expanded'),
+    ).toBe('false');
+    expect(container.querySelector('.console-comment-list')).toBeNull();
   });
 
   it('shows Approve for an issue item from the generated related open pull request urls before the related pull requests are fetched', () => {
