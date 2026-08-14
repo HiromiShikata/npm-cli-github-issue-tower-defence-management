@@ -1,3 +1,10 @@
+## [1.152.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.152.1...v1.152.2) (2026-08-14)
+
+
+### Bug Fixes
+
+* **deps:** update package-lock.json to resolve js-yaml vulnerability ([#1550](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1550)) ([b49fb5f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b49fb5f97a40b6ed47865307b318278c317796c8)), closes [hi#severity](https://github.com/hi/issues/severity) [#1549](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1549)
+
 ## [1.152.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.152.0...v1.152.1) (2026-08-14)
 
 
