@@ -129,6 +129,7 @@ const knownProjectReadmeConfigKeys = [
   'claudeCodeOauthTokenListJsonPath',
   'awLogDirectoryPath',
   'awLogStaleThresholdMinutes',
+  'labelsAsLlmAgentName',
   'changeTargetPathAliases',
 ] as const;
 
@@ -270,6 +271,7 @@ export const parseProjectReadmeConfig = (
         parsed,
         'awLogStaleThresholdMinutes',
       ),
+      labelsAsLlmAgentName: getStringArrayValue(parsed, 'labelsAsLlmAgentName'),
       changeTargetPathAliases: getStringRecordValue(
         parsed,
         'changeTargetPathAliases',
