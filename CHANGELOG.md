@@ -1,3 +1,10 @@
+## [1.153.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.153.0...v1.153.1) (2026-08-14)
+
+
+### Bug Fixes
+
+* **console:** stop reading related pull requests the board already lists none of ([#1559](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1559)) ([8f2bbb5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8f2bbb548e4f1922593dc31f3840912848168a46)), closes [#1557](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1557)
+
 # [1.153.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.152.3...v1.153.0) (2026-08-14)
 
 
