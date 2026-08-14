@@ -1,14 +1,8 @@
 import { useRef, useState } from 'react';
-import {
-  formatFullTimestamp,
-  formatRelativeTime,
-} from '../../logic/relativeTime';
 import type { ConsoleComment } from '../../logic/types';
-import { ConsoleMarkdownContent } from '../content/ConsoleMarkdownContent';
 
 export type ConsoleCommentComposerProps = {
   initiallyOpen: boolean;
-  now: number;
   onSubmit: (body: string) => Promise<ConsoleComment>;
   onUploadFile?: (file: File) => Promise<string>;
 };
@@ -38,7 +32,6 @@ export const appendAttachmentMarkdown = (
 
 export const ConsoleCommentComposer = ({
   initiallyOpen,
-  now,
   onSubmit,
   onUploadFile,
 }: ConsoleCommentComposerProps) => {
@@ -48,7 +41,6 @@ export const ConsoleCommentComposer = ({
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({
     kind: 'idle',
   });
-  const [posted, setPosted] = useState<ConsoleComment[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const submit = async (): Promise<void> => {
@@ -58,8 +50,7 @@ export const ConsoleCommentComposer = ({
     }
     setStatus({ kind: 'posting' });
     try {
-      const comment = await onSubmit(body);
-      setPosted((previous) => [...previous, comment]);
+      await onSubmit(body);
       setDraft('');
       setStatus({ kind: 'idle' });
     } catch (error) {
@@ -101,29 +92,6 @@ export const ConsoleCommentComposer = ({
       >
         {open ? '✕ Close' : '💬 Add a comment'}
       </button>
-      {posted.length > 0 && (
-        <div className="console-composer-posted">
-          {posted.map((comment) => (
-            <article
-              key={`${comment.author}:${comment.createdAt}:${comment.body}`}
-              className="console-comment"
-            >
-              <header
-                className="console-comment-header"
-                title={formatFullTimestamp(comment.createdAt)}
-              >
-                <span className="console-comment-author">
-                  {comment.author === '' ? 'you' : comment.author}
-                </span>
-                <span className="console-comment-time">
-                  {formatRelativeTime(comment.createdAt, now)}
-                </span>
-              </header>
-              <ConsoleMarkdownContent body={comment.body} />
-            </article>
-          ))}
-        </div>
-      )}
       {open && (
         <div className="console-composer-form">
           <textarea

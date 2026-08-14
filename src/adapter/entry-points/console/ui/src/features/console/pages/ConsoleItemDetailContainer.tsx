@@ -13,8 +13,10 @@ import type {
   ConsoleOperationHandlers,
   ConsolePendingReviewComment,
 } from '../logic/operations';
+import { mergePostedComments } from '../logic/postedComments';
 import type {
   ConsoleColor,
+  ConsoleComment,
   ConsoleFieldOption,
   ConsoleListItem,
   ConsoleOverlayStatus,
@@ -86,6 +88,15 @@ export const ConsoleItemDetailContainer = ({
       ]);
     },
     [],
+  );
+  const [postedComments, setPostedComments] = useState<ConsoleComment[]>([]);
+  const addComment = useCallback(
+    async (body: string): Promise<ConsoleComment> => {
+      const comment = await operations.addComment(item, body);
+      setPostedComments((previous) => [...previous, comment]);
+      return comment;
+    },
+    [item, operations],
   );
 
   const handlers: ConsoleOperationHandlers = {
@@ -159,7 +170,8 @@ export const ConsoleItemDetailContainer = ({
       body={detail.body}
       bodyIsLoading={detail.bodyIsLoading}
       bodyError={detail.bodyError}
-      comments={detail.comments}
+      comments={mergePostedComments(detail.comments, postedComments)}
+      hasPostedComment={postedComments.length > 0}
       commentsAreLoading={detail.commentsAreLoading}
       commentsError={detail.commentsError}
       files={detail.files}
@@ -179,8 +191,7 @@ export const ConsoleItemDetailContainer = ({
       commentComposer={
         <ConsoleCommentComposer
           initiallyOpen
-          now={now}
-          onSubmit={(body) => operations.addComment(item, body)}
+          onSubmit={addComment}
           onUploadFile={(file) => operations.uploadAttachment(item, file)}
         />
       }

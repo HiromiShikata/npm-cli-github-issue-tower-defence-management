@@ -9,14 +9,11 @@ jest.mock('../../lib/mermaidLoader', () => ({
   renderMermaidToSvg: jest.fn(async () => '<svg></svg>'),
 }));
 
-const now = Date.parse('2026-06-19T12:00:00.000Z');
-
 describe('ConsoleCommentComposer', () => {
   it('shows the form when it starts open', () => {
     const { getByPlaceholderText } = render(
       <ConsoleCommentComposer
         initiallyOpen
-        now={now}
         onSubmit={async (body) => ({
           author: 'HiromiShikata',
           body,
@@ -31,7 +28,6 @@ describe('ConsoleCommentComposer', () => {
     const { queryByPlaceholderText, getByText } = render(
       <ConsoleCommentComposer
         initiallyOpen={false}
-        now={now}
         onSubmit={async (body) => ({
           author: 'HiromiShikata',
           body,
@@ -47,7 +43,6 @@ describe('ConsoleCommentComposer', () => {
     const { getByText, getByPlaceholderText, queryByPlaceholderText } = render(
       <ConsoleCommentComposer
         initiallyOpen={false}
-        now={now}
         onSubmit={async (body) => ({
           author: 'HiromiShikata',
           body,
@@ -61,7 +56,7 @@ describe('ConsoleCommentComposer', () => {
     expect(queryByPlaceholderText('Leave a comment…')).toBeNull();
   });
 
-  it('submits the comment and shows the posted comment', async () => {
+  it('submits the comment, empties the draft and renders no comment of its own', async () => {
     const onSubmit = jest.fn(
       async (body: string): Promise<ConsoleComment> => ({
         author: 'HiromiShikata',
@@ -69,24 +64,25 @@ describe('ConsoleCommentComposer', () => {
         createdAt: '2026-06-19T11:58:00.000Z',
       }),
     );
-    const { getByPlaceholderText, getByText } = render(
-      <ConsoleCommentComposer initiallyOpen now={now} onSubmit={onSubmit} />,
+    const { container, getByPlaceholderText, getByText, queryByText } = render(
+      <ConsoleCommentComposer initiallyOpen onSubmit={onSubmit} />,
     );
     fireEvent.change(getByPlaceholderText('Leave a comment…'), {
       target: { value: 'Looks good after the rebase.' },
     });
     fireEvent.click(getByText('Comment'));
     await waitFor(() => {
-      expect(getByText('Looks good after the rebase.')).toBeInTheDocument();
+      expect(getByPlaceholderText('Leave a comment…')).toHaveValue('');
     });
     expect(onSubmit).toHaveBeenCalledWith('Looks good after the rebase.');
+    expect(queryByText('Looks good after the rebase.')).toBeNull();
+    expect(container.querySelectorAll('.console-comment').length).toBe(0);
   });
 
   it('shows a failure message when the submission rejects', async () => {
     const { getByPlaceholderText, getByText, findByRole } = render(
       <ConsoleCommentComposer
         initiallyOpen
-        now={now}
         onSubmit={async () => {
           throw new Error('HTTP 500');
         }}
@@ -104,7 +100,6 @@ describe('ConsoleCommentComposer', () => {
     const { queryByText } = render(
       <ConsoleCommentComposer
         initiallyOpen
-        now={now}
         onSubmit={async (body) => ({
           author: 'HiromiShikata',
           body,
@@ -122,7 +117,6 @@ describe('ConsoleCommentComposer', () => {
     const { getByPlaceholderText, getByLabelText } = render(
       <ConsoleCommentComposer
         initiallyOpen
-        now={now}
         onSubmit={async (body) => ({
           author: 'HiromiShikata',
           body,
@@ -154,7 +148,6 @@ describe('ConsoleCommentComposer', () => {
     const { getByPlaceholderText } = render(
       <ConsoleCommentComposer
         initiallyOpen
-        now={now}
         onSubmit={async (body) => ({
           author: 'HiromiShikata',
           body,
@@ -183,7 +176,6 @@ describe('ConsoleCommentComposer', () => {
     const { getByPlaceholderText } = render(
       <ConsoleCommentComposer
         initiallyOpen
-        now={now}
         onSubmit={async (body) => ({
           author: 'HiromiShikata',
           body,
@@ -209,7 +201,6 @@ describe('ConsoleCommentComposer', () => {
     const { getByLabelText, findByRole } = render(
       <ConsoleCommentComposer
         initiallyOpen
-        now={now}
         onSubmit={async (body) => ({
           author: 'HiromiShikata',
           body,

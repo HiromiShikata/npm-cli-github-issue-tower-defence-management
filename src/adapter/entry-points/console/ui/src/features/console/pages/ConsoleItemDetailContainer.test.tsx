@@ -140,6 +140,83 @@ describe('ConsoleItemDetailContainer', () => {
     expect(getByPlaceholderText('Leave a comment…')).toBeInTheDocument();
   });
 
+  it('puts a posted comment in the scrolling comment list and leaves the sticky dock holding only the input', async () => {
+    const operations = buildOperations();
+    operations.addComment = jest.fn(async (_item, body) => ({
+      author: 'HiromiShikata',
+      body,
+      createdAt: '2026-06-19T11:58:00.000Z',
+    }));
+    const { container, getByPlaceholderText, getByText } = render(
+      <ConsoleItemDetailContainer
+        tab="unread"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={jest.fn()}
+      />,
+    );
+
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'The dock must not grow with every comment.' },
+    });
+    fireEvent.click(getByText('Comment'));
+
+    await waitFor(() => {
+      expect(
+        container.querySelector('.console-comment-list')?.textContent,
+      ).toContain('The dock must not grow with every comment.');
+    });
+    expect(
+      container.querySelector('.console-detail-dock')?.textContent,
+    ).not.toContain('The dock must not grow with every comment.');
+    expect(
+      container.querySelectorAll('.console-detail-dock .console-comment')
+        .length,
+    ).toBe(0);
+  });
+
+  it('opens the comments panel of a pull request item so the posted comment is on screen', async () => {
+    const operations = buildOperations();
+    operations.addComment = jest.fn(async (_item, body) => ({
+      author: 'HiromiShikata',
+      body,
+      createdAt: '2026-06-19T11:58:00.000Z',
+    }));
+    const { container, getByPlaceholderText, getByText } = render(
+      <ConsoleItemDetailContainer
+        tab="prs"
+        item={prItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={jest.fn()}
+      />,
+    );
+
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'Posted from the pull request item.' },
+    });
+    fireEvent.click(getByText('Comment'));
+
+    await waitFor(() => {
+      expect(
+        container.querySelector('.console-comment-list')?.textContent,
+      ).toContain('Posted from the pull request item.');
+    });
+  });
+
   it('shows Approve for an issue item from the generated related open pull request urls before the related pull requests are fetched', () => {
     const operations = buildOperations();
     const onQueueAction = jest.fn();
