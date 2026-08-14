@@ -69,7 +69,7 @@ describe('FileSystemSubAgentLivenessResolver', () => {
     expect(result).toEqual(new Set());
   });
 
-  it('returns an empty set when the runtime root exists and the session has no running file', async () => {
+  it('returns null when the runtime root exists and the session has no running file', async () => {
     const resolver = new FileSystemSubAgentLivenessResolver(runtimeRoot);
 
     const result = await resolver.resolveLiveSubAgentIds({
@@ -77,7 +77,7 @@ describe('FileSystemSubAgentLivenessResolver', () => {
       mainTranscriptPath,
     });
 
-    expect(result).toEqual(new Set());
+    expect(result).toBeNull();
   });
 
   it('returns null when the configured runtime root directory does not exist', async () => {
@@ -192,7 +192,7 @@ describe('running-subagents record agent id contract with TranscriptSessionSubAg
     ]);
   });
 
-  it('reports no sub-agent when the runtime root exists and the session has no running-subagents record', async () => {
+  it('detects a working sub-agent when the runtime root exists and the session has no running-subagents record', async () => {
     const subAgentsDirectory = path.join(
       transcriptRoot,
       cwdSlug,
@@ -224,6 +224,14 @@ describe('running-subagents record agent id contract with TranscriptSessionSubAg
       new Map([[sessionName, mainTranscriptPath]]),
     );
 
-    expect(result.get(sessionName)).toBeUndefined();
+    expect(result.get(sessionName)).toEqual([
+      {
+        label: `agent-${liveAgentId}`,
+        silentSeconds: 0,
+        runningSeconds: 694800,
+        waitingOnExternalProcess: false,
+        finishedResultUnconsumed: false,
+      },
+    ]);
   });
 });
