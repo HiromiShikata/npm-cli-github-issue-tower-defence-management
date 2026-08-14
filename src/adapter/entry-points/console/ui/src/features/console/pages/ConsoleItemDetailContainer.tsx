@@ -171,7 +171,6 @@ export const ConsoleItemDetailContainer = ({
       bodyIsLoading={detail.bodyIsLoading}
       bodyError={detail.bodyError}
       comments={mergePostedComments(detail.comments, postedComments)}
-      hasPostedComment={postedComments.length > 0}
       commentsAreLoading={detail.commentsAreLoading}
       commentsError={detail.commentsError}
       files={detail.files}
