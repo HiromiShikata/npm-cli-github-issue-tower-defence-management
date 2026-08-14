@@ -93,6 +93,41 @@ describe('ConsoleItemDetail', () => {
     );
   });
 
+  it('gathers every failed section read into a single alert', () => {
+    const { getAllByRole } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        stateError="API rate limit already exceeded"
+        bodyError="API rate limit already exceeded"
+        commentsError="API rate limit already exceeded"
+      />,
+    );
+    const alerts = getAllByRole('alert');
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toHaveTextContent(
+      'Failed to load item state: API rate limit already exceeded',
+    );
+    expect(alerts[0]).toHaveTextContent(
+      'Failed to load description: API rate limit already exceeded',
+    );
+    expect(alerts[0]).toHaveTextContent(
+      'Failed to load comments: API rate limit already exceeded',
+    );
+  });
+
+  it('marks a section whose read failed as not loaded instead of showing it as empty', () => {
+    const { getAllByText, queryByText } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        commentsError="API rate limit already exceeded"
+      />,
+    );
+    expect(queryByText('No comments.')).toBeNull();
+    expect(getAllByText('Not loaded.').length).toBe(1);
+  });
+
   it('renders the PR title with the PR number, sub bar and counted panels', () => {
     const { getByText, getAllByText } = render(
       <ConsoleItemDetail item={prItem} {...baseProps} />,
