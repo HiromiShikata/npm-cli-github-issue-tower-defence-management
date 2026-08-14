@@ -167,6 +167,13 @@ test('shows CI, conflict and out-of-date badges in the related PR header', async
   await expect(prHeader.getByText('Conflict')).toBeVisible();
   await expect(prHeader.getByText('Out of date')).toBeVisible();
 
+  const openPullRequestLink = prHeader.getByRole('link', { name: 'open' });
+  await expect(openPullRequestLink).toBeVisible();
+  await expect(openPullRequestLink).toHaveAttribute(
+    'href',
+    /\/pull\/\d+(\/|$)/,
+  );
+
   await prHeader.screenshot({
     path: '/tmp/after-related-pr-header.png',
   });
