@@ -129,6 +129,9 @@ jest.mock('./rotationOrderFileWriter', () => ({
 jest.mock('./inTmuxByHumanDataWriter', () => ({
   writeInTmuxByHumanData: jest.fn(),
 }));
+jest.mock('./ownerCallFileCleaner', () => ({
+  cleanClosedIssueOwnerCallFiles: jest.fn(),
+}));
 jest.mock('./consoleListsWriter', () => {
   const actual = jest.requireActual<typeof import('./consoleListsWriter')>(
     './consoleListsWriter',
@@ -139,6 +142,7 @@ jest.mock('./consoleListsWriter', () => {
 import { HandleScheduledEventUseCaseHandler } from './HandleScheduledEventUseCaseHandler';
 import { writeSituationFile } from './situationFileWriter';
 import { writeInTmuxByHumanData } from './inTmuxByHumanDataWriter';
+import { cleanClosedIssueOwnerCallFiles } from './ownerCallFileCleaner';
 import { writeConsoleLists } from './consoleListsWriter';
 import { GraphqlProjectRepository } from '../../repositories/GraphqlProjectRepository';
 import { ApiV3IssueRepository } from '../../repositories/issue/ApiV3IssueRepository';
@@ -754,6 +758,37 @@ defaultAgentName: readme-agent
       await handler.handle('config.yml', false, null);
 
       expect(getInTmuxProjectOrderArg()).toBeNull();
+    });
+  });
+
+  describe('owner call file cleanup of closed issues', () => {
+    it('should hand the project issues to the cleanup with the configured project code and data directory', async () => {
+      jest.mocked(fs.readFileSync).mockReturnValue(
+        YAML.stringify({
+          ...validConfig,
+          inTmuxDataOutputDir: '/data/in-tmux-by-human',
+        }),
+      );
+      const closedIssue = {
+        url: 'https://github.com/TestOrg/test-repo/issues/9',
+        isClosed: true,
+      };
+      mockRun.mockResolvedValueOnce({
+        project: { id: 'PVT_kwHOtest123' },
+        issues: [closedIssue],
+        cacheUsed: false,
+        targetDateTimes: [],
+        rotationOrder: null,
+      });
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(jest.mocked(cleanClosedIssueOwnerCallFiles)).toHaveBeenCalledWith({
+        inTmuxDataOutputDir: '/data/in-tmux-by-human',
+        pjcode: validConfig.projectName,
+        issues: [closedIssue],
+      });
     });
   });
 });

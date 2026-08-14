@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import YAML from 'yaml';
 
@@ -2368,6 +2369,138 @@ mysteryKey: 'value'
 
       consoleErrorSpy.mockRestore();
       processExitSpy.mockRestore();
+    });
+  });
+
+  describe('ownerCallFileAppend and ownerCallFileDelete', () => {
+    const sessionName = 'https_//github_com/OWNER/REPO/issues/1';
+    let ownerCallDataDir = '';
+    let bodyFilePath = '';
+
+    beforeEach(() => {
+      ownerCallDataDir = fs.mkdtempSync(
+        path.join(os.tmpdir(), 'owner-call-cli-'),
+      );
+      bodyFilePath = path.join(ownerCallDataDir, 'body.txt');
+      fs.writeFileSync(bodyFilePath, '  the call body\n\nsecond paragraph\n');
+    });
+
+    afterEach(() => {
+      fs.rmSync(ownerCallDataDir, { recursive: true, force: true });
+    });
+
+    const appendedFilePath = (projectCode: string): string =>
+      path.join(
+        ownerCallDataDir,
+        'call-to-user',
+        projectCode,
+        'https___github_com_OWNER_REPO_issues_1.yaml',
+      );
+
+    const runAppend = (calledAt: string, pjcode = 'umino'): Promise<unknown> =>
+      program.parseAsync([
+        'node',
+        'test',
+        'ownerCallFileAppend',
+        '--pjcode',
+        pjcode,
+        '--session',
+        sessionName,
+        '--calledAt',
+        calledAt,
+        '--body-file',
+        bodyFilePath,
+        '--inTmuxDataDir',
+        ownerCallDataDir,
+      ]);
+
+    it('appends the call as a YAML document and writes nothing to stdout', async () => {
+      const stdoutSpy = jest
+        .spyOn(process.stdout, 'write')
+        .mockImplementation(() => true);
+
+      await runAppend('2026-08-14T04:22:28Z');
+
+      const documents = YAML.parseAllDocuments(
+        fs.readFileSync(appendedFilePath('umino'), 'utf-8'),
+      );
+      expect(documents).toHaveLength(1);
+      expect(documents[0].toJS()).toEqual({
+        sessionName,
+        calledAt: '2026-08-14T04:22:28Z',
+        body: '  the call body\n\nsecond paragraph\n',
+      });
+      expect(stdoutSpy).not.toHaveBeenCalled();
+
+      stdoutSpy.mockRestore();
+    });
+
+    it('rejects a calledAt that is not a UTC ISO-8601 timestamp with second precision', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
+
+      await expect(runAppend('2026-08-14 04:22:28')).rejects.toThrow(
+        'process.exit called',
+      );
+      expect(processExitSpy).toHaveBeenCalledWith(1);
+      expect(fs.existsSync(appendedFilePath('umino'))).toBe(false);
+
+      consoleErrorSpy.mockRestore();
+      processExitSpy.mockRestore();
+    });
+
+    it('deletes the file of the named project code', async () => {
+      await runAppend('2026-08-14T04:22:28Z');
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'ownerCallFileDelete',
+        '--pjcode',
+        'umino',
+        '--session',
+        sessionName,
+        '--inTmuxDataDir',
+        ownerCallDataDir,
+      ]);
+
+      expect(fs.existsSync(appendedFilePath('umino'))).toBe(false);
+    });
+
+    it('deletes the file when only the session name is known', async () => {
+      await runAppend('2026-08-14T04:22:28Z', 'NA');
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'ownerCallFileDelete',
+        '--session',
+        sessionName,
+        '--inTmuxDataDir',
+        ownerCallDataDir,
+      ]);
+
+      expect(fs.existsSync(appendedFilePath('NA'))).toBe(false);
+    });
+
+    it('succeeds when the file to delete is already absent', async () => {
+      await expect(
+        program.parseAsync([
+          'node',
+          'test',
+          'ownerCallFileDelete',
+          '--pjcode',
+          'umino',
+          '--session',
+          sessionName,
+          '--inTmuxDataDir',
+          ownerCallDataDir,
+        ]),
+      ).resolves.toBeDefined();
     });
   });
 
