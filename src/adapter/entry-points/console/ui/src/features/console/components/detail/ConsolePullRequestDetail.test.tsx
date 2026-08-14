@@ -207,4 +207,26 @@ describe('ConsolePullRequestDetail', () => {
     );
     expect(getByRole('button', { name: 'Copy PR URL' })).toBeInTheDocument();
   });
+
+  it('offers a link painted as a link that opens the pull request', () => {
+    const { getByRole } = render(
+      <ConsolePullRequestDetail
+        pullRequest={pullRequest}
+        body={pullRequest.summary?.body ?? ''}
+        bodyIsLoading={false}
+        files={consoleChangedFilesFixture}
+        filesAreLoading={false}
+        filesError={null}
+        commits={consoleCommitsFixture}
+        commitsAreLoading={false}
+        commitsError={null}
+        now={now}
+      />,
+    );
+
+    const openLink = getByRole('link', { name: 'open' });
+    expect(openLink).toHaveAttribute('href', pullRequest.url);
+    expect(openLink).toHaveAttribute('target', '_blank');
+    expect(openLink.className).toContain('console-panel-open-link');
+  });
 });

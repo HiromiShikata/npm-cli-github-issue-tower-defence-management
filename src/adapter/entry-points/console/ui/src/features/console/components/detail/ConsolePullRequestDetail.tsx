@@ -82,6 +82,14 @@ export const ConsolePullRequestDetail = ({
           isBranchOutOfDate={pullRequest.isBranchOutOfDate}
           missingRequiredCheckNames={pullRequest.missingRequiredCheckNames}
         />
+        <a
+          href={pullRequest.url}
+          className="console-panel-open-link"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          open
+        </a>
         <ConsoleCopyUrlButton url={pullRequest.url} label="Copy PR URL" />
         <div className="console-pr-statbar">
           {pullRequest.branchName !== null && (
