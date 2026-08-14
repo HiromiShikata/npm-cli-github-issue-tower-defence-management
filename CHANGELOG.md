@@ -1,3 +1,10 @@
+## [1.151.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.151.6...v1.151.7) (2026-08-14)
+
+
+### Bug Fixes
+
+* **console:** move a posted comment into the item comment list so the dock keeps only the input ([#1541](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1541)) ([2fb3506](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2fb3506031026af0472ba861a42e8205f0ff280d))
+
 ## [1.151.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.151.5...v1.151.6) (2026-08-14)
 
 
