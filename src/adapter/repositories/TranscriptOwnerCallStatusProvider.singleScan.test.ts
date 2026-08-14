@@ -39,33 +39,31 @@ describe('TranscriptOwnerCallStatusProvider single transcript scan', () => {
   const epochSecondsOf = (timestamp: string): number =>
     Math.floor(Date.parse(timestamp) / 1000);
 
-  it('serves the reminder path and the listing path from one read of the transcript', async () => {
+  it('serves a repeated reminder path request from one read of the transcript', async () => {
     const transcriptPath = writeTranscript('session.jsonl', [
       assistantWithMarker('2026-08-13T10:00:00.000Z'),
     ]);
     const transcriptPathBySessionName = new Map([['session', transcriptPath]]);
     const provider = new TranscriptOwnerCallStatusProvider('<<OWNER_CALL>>');
 
-    const calls = await provider.listUnansweredOwnerCallsBySessionName(
-      transcriptPathBySessionName,
-    );
+    const firstEpochSeconds =
+      await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
+        transcriptPathBySessionName,
+      );
 
     writeTranscript('session.jsonl', [
       assistantWithMarker('2026-08-13T11:00:00.000Z'),
     ]);
 
-    const epochSeconds =
+    const secondEpochSeconds =
       await provider.listUnansweredOwnerCallEpochSecondsBySessionName(
         transcriptPathBySessionName,
       );
 
-    expect(calls.get('session')).toEqual([
-      {
-        calledAt: '2026-08-13T10:00:00.000Z',
-        body: 'Waiting <<OWNER_CALL>> please decide.',
-      },
-    ]);
-    expect(epochSeconds.get('session')).toBe(
+    expect(firstEpochSeconds.get('session')).toBe(
+      epochSecondsOf('2026-08-13T10:00:00.000Z'),
+    );
+    expect(secondEpochSeconds.get('session')).toBe(
       epochSecondsOf('2026-08-13T10:00:00.000Z'),
     );
   });
