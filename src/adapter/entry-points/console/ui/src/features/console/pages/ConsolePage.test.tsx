@@ -798,7 +798,6 @@ describe('ConsolePage comment composer isolation', () => {
     fireEvent.click(getByText('Add serveConsole subcommand'));
     expect(await findByText('Approve')).toBeInTheDocument();
 
-    fireEvent.click(getByText('💬 Add a comment'));
     fireEvent.change(getByPlaceholderText('Leave a comment…'), {
       target: { value: 'first item only comment' },
     });
