@@ -43,25 +43,57 @@ const pushesCommitsToTheRepository = (fileName: string): boolean => {
   );
 };
 
+const concurrencyGroupForPush = (
+  workflowPrefix: string,
+  ref: string,
+  sha: string,
+): string => `${workflowPrefix}-${ref === defaultBranchRef ? sha : ref}`;
+
+const concurrencyGroupExpression = (workflowPrefix: string): string =>
+  `${workflowPrefix}-\${{ github.ref == '${defaultBranchRef}' && github.sha || github.ref }}`;
+
 const guardedWorkflows = [
-  { fileName: 'test.yml', concurrencyGroup: `test-\${{ github.ref }}` },
-  {
-    fileName: 'console-ui.yml',
-    concurrencyGroup: `console-ui-\${{ github.ref }}`,
-  },
+  { fileName: 'test.yml', workflowPrefix: 'test' },
+  { fileName: 'console-ui.yml', workflowPrefix: 'console-ui' },
 ];
 
 describe('push-triggered workflow run cancellation', () => {
+  describe('concurrency group behavior', () => {
+    it('gives each default-branch commit its own group so queued runs survive incoming commits', () => {
+      expect(
+        concurrencyGroupForPush('test', defaultBranchRef, 'abc123'),
+      ).not.toBe(
+        concurrencyGroupForPush('test', defaultBranchRef, 'def456'),
+      );
+    });
+
+    it('gives all pushes of the same feature branch the same group so superseded runs are cancelled', () => {
+      const featureBranchRef = 'refs/heads/feature/my-feature';
+      expect(
+        concurrencyGroupForPush('test', featureBranchRef, 'abc123'),
+      ).toBe(concurrencyGroupForPush('test', featureBranchRef, 'def456'));
+    });
+
+    it('keeps groups distinct across workflows so unrelated workflows never cancel each other', () => {
+      const groups = guardedWorkflows.map(({ workflowPrefix }) =>
+        concurrencyGroupForPush(workflowPrefix, defaultBranchRef, 'abc123'),
+      );
+      expect(new Set(groups).size).toBe(groups.length);
+    });
+  });
+
   it.each(guardedWorkflows)(
-    'keys the concurrency group of $fileName on the workflow and the pushed ref',
-    ({ fileName, concurrencyGroup }) => {
-      expect(readWorkflowConcurrency(fileName)['group']).toBe(concurrencyGroup);
+    'keys the concurrency group of $fileName on the commit sha for default branch or the ref for other branches',
+    ({ fileName, workflowPrefix }) => {
+      expect(readWorkflowConcurrency(fileName)['group']).toBe(
+        concurrencyGroupExpression(workflowPrefix),
+      );
     },
   );
 
   it('gives every guarded workflow its own concurrency group so unrelated runs never cancel each other', () => {
-    const groups = guardedWorkflows.map(
-      ({ fileName }) => readWorkflowConcurrency(fileName)['group'],
+    const groups = guardedWorkflows.map(({ fileName }) =>
+      readWorkflowConcurrency(fileName)['group'],
     );
     expect(new Set(groups).size).toBe(groups.length);
   });
@@ -78,9 +110,11 @@ describe('push-triggered workflow run cancellation', () => {
   it.each(workflowFileNames().filter(pushesCommitsToTheRepository))(
     'never cancels a run of %s, which pushes commits to the repository',
     (fileName) => {
-      expect([undefined, false]).toContain(
-        readWorkflowConcurrency(fileName)['cancel-in-progress'],
-      );
+      const cancelInProgress =
+        readWorkflowConcurrency(fileName)['cancel-in-progress'];
+      expect(
+        cancelInProgress === undefined || cancelInProgress === false,
+      ).toBe(true);
     },
   );
 });
