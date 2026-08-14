@@ -106,13 +106,7 @@ describe('ConsoleItemDetail', () => {
     const alerts = getAllByRole('alert');
     expect(alerts).toHaveLength(1);
     expect(alerts[0]).toHaveTextContent(
-      'Failed to load item state: API rate limit already exceeded',
-    );
-    expect(alerts[0]).toHaveTextContent(
-      'Failed to load description: API rate limit already exceeded',
-    );
-    expect(alerts[0]).toHaveTextContent(
-      'Failed to load comments: API rate limit already exceeded',
+      'Failed to load item state, description and comments: API rate limit already exceeded',
     );
   });
 

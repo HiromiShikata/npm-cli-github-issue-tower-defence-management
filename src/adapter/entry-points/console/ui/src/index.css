@@ -258,9 +258,8 @@ body {
   color: #f85149;
 }
 
-.console-detail-fetch-error-list {
+.console-detail-fetch-error-line {
   margin: 0;
-  padding-left: 20px;
 }
 
 .console-comment-notloaded,
