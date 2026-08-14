@@ -119,12 +119,25 @@ describe('githubGraphqlClient', () => {
 
   describe('logGithubGraphqlCost', () => {
     it('logs one line with query name, cost and remaining', () => {
-      logGithubGraphqlCost('query GetProjectItems { x }', {
-        data: { rateLimit: { cost: 3, remaining: 4200 } },
-      });
+      logGithubGraphqlCost(
+        'query GetProjectItems { x }',
+        { data: { rateLimit: { cost: 3, remaining: 4200 } } },
+        () => new Date('2026-08-14T09:00:00.000Z'),
+      );
       expect(consoleLogSpy).toHaveBeenCalledTimes(1);
       expect(consoleLogSpy).toHaveBeenCalledWith(
-        'githubGraphqlClient: query=GetProjectItems cost=3 remaining=4200',
+        '2026-08-14T09:00:00.000Z githubGraphqlClient: query=GetProjectItems cost=3 remaining=4200',
+      );
+    });
+
+    it('opens the line with the time the cost was charged, so a point maps to a rate-limit window', () => {
+      logGithubGraphqlCost(
+        'query GetProjectItems { x }',
+        { data: { rateLimit: { cost: 4, remaining: 4200 } } },
+        () => new Date('2026-08-14T23:45:12.345Z'),
+      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        '2026-08-14T23:45:12.345Z githubGraphqlClient: query=GetProjectItems cost=4 remaining=4200',
       );
     });
 
@@ -169,7 +182,9 @@ describe('githubGraphqlClient', () => {
       expect(json.variables).toEqual({ id: 'x' });
       expect(headers.Authorization).toBe('Bearer token-a');
       expect(consoleLogSpy).toHaveBeenCalledWith(
-        'githubGraphqlClient: query=GetItem cost=1 remaining=4999',
+        expect.stringMatching(
+          /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z githubGraphqlClient: query=GetItem cost=1 remaining=4999$/,
+        ),
       );
     });
 
@@ -233,7 +248,9 @@ describe('githubGraphqlClient', () => {
       expect(sentBody.query).toContain(RATE_LIMIT_SELECTION);
       expect(sentBody.variables).toEqual({ a: 1 });
       expect(consoleLogSpy).toHaveBeenCalledWith(
-        'githubGraphqlClient: query=PullRequestStatus cost=2 remaining=4321',
+        expect.stringMatching(
+          /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z githubGraphqlClient: query=PullRequestStatus cost=2 remaining=4321$/,
+        ),
       );
     });
 

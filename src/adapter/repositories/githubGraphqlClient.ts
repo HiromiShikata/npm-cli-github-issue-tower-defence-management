@@ -65,13 +65,14 @@ const extractRateLimit = (
 export const logGithubGraphqlCost = (
   query: string,
   responseBody: unknown,
+  now: () => Date = () => new Date(),
 ): void => {
   const rateLimit = extractRateLimit(responseBody);
   if (!rateLimit) {
     return;
   }
   console.log(
-    `githubGraphqlClient: query=${extractGraphqlOperationName(query)} cost=${rateLimit.cost} remaining=${rateLimit.remaining}`,
+    `${now().toISOString()} githubGraphqlClient: query=${extractGraphqlOperationName(query)} cost=${rateLimit.cost} remaining=${rateLimit.remaining}`,
   );
 };
 
