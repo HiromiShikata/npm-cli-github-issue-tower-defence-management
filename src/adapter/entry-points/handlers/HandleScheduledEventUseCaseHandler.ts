@@ -11,6 +11,7 @@ import { writeDashboardRow } from './dashboardRowWriter';
 import { writeMachineStatus } from './machineStatusWriter';
 import { writeTokenStatus } from './tokenStatusWriter';
 import { writeInTmuxByHumanData } from './inTmuxByHumanDataWriter';
+import { cleanClosedIssueOwnerCallFiles } from './ownerCallFileCleaner';
 import { reconcileInTmuxByHumanSessions } from './inTmuxByHumanSessionReconciler';
 import { handleTokenExhaustionHandover } from './tokenExhaustionHandover';
 import { cleanStaleTmuxSessions } from './staleTmuxSessionCleaner';
@@ -677,6 +678,20 @@ export class HandleScheduledEventUseCaseHandler {
       } catch (error) {
         console.error(
           `Failed to write in-tmux-by-human data: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+
+      try {
+        cleanClosedIssueOwnerCallFiles({
+          inTmuxDataOutputDir: mergedInput.inTmuxDataOutputDir ?? null,
+          pjcode: input.projectName,
+          issues: result.issues,
+        });
+      } catch (error) {
+        console.error(
+          `Failed to clean owner call files of closed issues: ${
             error instanceof Error ? error.message : String(error)
           }`,
         );

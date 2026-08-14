@@ -996,7 +996,12 @@ describe('resolveFlatInTmuxFilePath', () => {
         '/in-tmux-by-human/call-to-user/umino/secretary.yaml',
       ),
     ).toBe(
-      path.join(path.resolve(baseDir), 'call-to-user', 'umino', 'secretary.yaml'),
+      path.join(
+        path.resolve(baseDir),
+        'call-to-user',
+        'umino',
+        'secretary.yaml',
+      ),
     );
   });
 
@@ -1986,6 +1991,9 @@ describe('webServer token cookie redirect', () => {
   });
 });
 
+const toPlainValue = (document: { toJS: () => unknown }): unknown =>
+  document.toJS();
+
 describe('webServer owner call file route', () => {
   const testToken = 'owner-call-token-value';
   const sessionName = toTmuxSessionName(
@@ -2179,9 +2187,7 @@ describe('webServer owner call file route', () => {
         `${requestPath}?k=${testToken}`,
       );
       expect(fetched.statusCode).toBe(200);
-      expect(
-        parseAllDocuments(fetched.body).map((document) => document.toJS()),
-      ).toEqual([
+      expect(parseAllDocuments(fetched.body).map(toPlainValue)).toEqual([
         ownerCall,
         {
           sessionName,

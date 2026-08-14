@@ -10,6 +10,9 @@ import {
 } from './ownerCallFileStore';
 import { ownerCallFileRelativePath } from '../../../domain/usecases/intmux/OwnerCallFile';
 
+const toPlainValue = (document: { toJS: () => unknown }): unknown =>
+  document.toJS();
+
 describe('ownerCallFileStore', () => {
   let dataDir = '';
 
@@ -74,7 +77,7 @@ describe('ownerCallFileStore', () => {
         'utf-8',
       ),
     );
-    expect(documents.map((document) => document.toJS())).toEqual([
+    expect(documents.map(toPlainValue)).toEqual([
       {
         sessionName,
         calledAt: '2026-08-14T04:22:28Z',
