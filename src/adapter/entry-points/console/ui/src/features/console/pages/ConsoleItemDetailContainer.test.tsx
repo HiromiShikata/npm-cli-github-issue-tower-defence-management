@@ -120,6 +120,26 @@ describe('ConsoleItemDetailContainer', () => {
     );
   });
 
+  it('renders the comment input as soon as the item detail opens, without any interaction', () => {
+    const { getByPlaceholderText } = render(
+      <ConsoleItemDetailContainer
+        tab="prs"
+        item={prItem}
+        caches={buildCaches()}
+        operations={buildOperations()}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={jest.fn()}
+      />,
+    );
+
+    expect(getByPlaceholderText('Leave a comment…')).toBeInTheDocument();
+  });
+
   it('shows Approve for an issue item from the generated related open pull request urls before the related pull requests are fetched', () => {
     const operations = buildOperations();
     const onQueueAction = jest.fn();
