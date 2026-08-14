@@ -1,3 +1,10 @@
+## [1.152.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.152.2...v1.152.3) (2026-08-14)
+
+
+### Bug Fixes
+
+* **console:** keep the comments panel as the reader left it when posting ([#1556](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1556)) ([2d7f7ec](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2d7f7ecbb78ac69461a86e166d2a8bfab09e0060)), closes [#1555](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1555)
+
 ## [1.152.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.152.1...v1.152.2) (2026-08-14)
 
 
