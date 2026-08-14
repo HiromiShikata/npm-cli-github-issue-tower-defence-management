@@ -1,3 +1,10 @@
+## [1.151.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.151.4...v1.151.5) (2026-08-14)
+
+
+### Bug Fixes
+
+* **console:** open the comment input with the item detail so no extra tap is needed ([#1537](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1537)) ([b8fecd2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b8fecd237aecad81f2e5ca0503b4130c1d7720f9))
+
 ## [1.151.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.151.3...v1.151.4) (2026-08-13)
 
 
