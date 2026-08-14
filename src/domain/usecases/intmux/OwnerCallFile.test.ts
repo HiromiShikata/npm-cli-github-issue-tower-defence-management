@@ -4,6 +4,7 @@ import {
   OWNER_CALL_FILE_PROJECT_CODE_FOR_NO_PROJECT,
   isOwnerCallCalledAtValid,
   ownerCallFileRelativePath,
+  ownerCallProjectCodeOfSession,
   ownerCallYamlDocument,
 } from './OwnerCallFile';
 import { toTmuxSessionName } from './InTmuxByHumanSessionReconcileUseCase';
@@ -42,6 +43,46 @@ describe('ownerCallFileRelativePath', () => {
         `${OWNER_CALL_FILE_DIRECTORY_NAME}/`,
       ),
     ).toBe(true);
+  });
+
+  it('gives the same path for the raw issue url and for the tmux session name of it', () => {
+    const issueUrl = 'https://github.com/OWNER/REPO/issues/1';
+
+    expect(ownerCallFileRelativePath('umino', issueUrl)).toBe(
+      ownerCallFileRelativePath('umino', toTmuxSessionName(issueUrl)),
+    );
+  });
+});
+
+describe('ownerCallProjectCodeOfSession', () => {
+  const issueUrl = 'https://github.com/OWNER/REPO/issues/1';
+  const otherIssueUrl = 'https://github.com/OWNER/REPO/issues/2';
+
+  it('gives the code of the project whose session list holds the session', () => {
+    expect(
+      ownerCallProjectCodeOfSession(
+        [
+          { projectCode: 'other', sessionNames: [otherIssueUrl] },
+          { projectCode: 'umino', sessionNames: [issueUrl] },
+        ],
+        toTmuxSessionName(issueUrl),
+      ),
+    ).toBe('umino');
+  });
+
+  it('gives null when no project lists the session', () => {
+    expect(
+      ownerCallProjectCodeOfSession(
+        [{ projectCode: 'umino', sessionNames: [otherIssueUrl] }],
+        toTmuxSessionName(issueUrl),
+      ),
+    ).toBeNull();
+  });
+
+  it('gives null when no project data is present at all', () => {
+    expect(
+      ownerCallProjectCodeOfSession([], toTmuxSessionName(issueUrl)),
+    ).toBeNull();
   });
 });
 

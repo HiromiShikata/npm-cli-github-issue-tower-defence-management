@@ -22,6 +22,8 @@ import {
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
 import { CheckIssueReviewReadinessUseCase } from '../../../domain/usecases/CheckIssueReviewReadinessUseCase';
+import { ownerCallFileRelativePath } from '../../../domain/usecases/intmux/OwnerCallFile';
+import { toTmuxSessionName } from '../../../domain/usecases/intmux/InTmuxByHumanSessionReconcileUseCase';
 
 jest.mock('../../../domain/usecases/StartPreparationUseCase');
 jest.mock('../../../domain/usecases/NotifyFinishedIssuePreparationUseCase');
@@ -2373,7 +2375,9 @@ mysteryKey: 'value'
   });
 
   describe('ownerCallFileAppend and ownerCallFileDelete', () => {
-    const sessionName = 'https_//github_com/OWNER/REPO/issues/1';
+    const issueUrl = 'https://github.com/OWNER/REPO/issues/1';
+    const otherIssueUrl = 'https://github.com/OWNER/REPO/issues/2';
+    const sessionName = toTmuxSessionName(issueUrl);
     let ownerCallDataDir = '';
     let bodyFilePath = '';
 
@@ -2389,21 +2393,57 @@ mysteryKey: 'value'
       fs.rmSync(ownerCallDataDir, { recursive: true, force: true });
     });
 
-    const appendedFilePath = (projectCode: string): string =>
+    // The in-tmux-by-human data the scheduled run writes into the same
+    // directory serveWeb serves: one file per project, each listing the
+    // sessions of that project by their raw issue url.
+    type InTmuxByHumanProjectData = {
+      projectCode: string;
+      sessionIssueUrls: string[];
+    };
+
+    const writeInTmuxByHumanData = (
+      projects: InTmuxByHumanProjectData[],
+    ): void => {
+      for (const project of projects) {
+        fs.writeFileSync(
+          path.join(ownerCallDataDir, `${project.projectCode}.v4.json`),
+          `${JSON.stringify({
+            version: 4,
+            overviewUrl: 'https://github.com/orgs/OWNER/projects/1',
+            tdpmConsoleUrl: 'http://localhost/projects/code',
+            newIssueUrl: 'https://github.com/OWNER/REPO/issues/new',
+            groups: [
+              {
+                story: 'a story',
+                sessions: project.sessionIssueUrls.map((url) => ({
+                  name: url,
+                  description: 'an issue title',
+                })),
+              },
+            ],
+          })}\n`,
+        );
+      }
+    };
+
+    const projectCodeListing = (
+      projects: InTmuxByHumanProjectData[],
+      url: string,
+    ): string | null =>
+      projects.find((project) => project.sessionIssueUrls.includes(url))
+        ?.projectCode ?? null;
+
+    const appendedFilePath = (projectCode: string | null): string =>
       path.join(
         ownerCallDataDir,
-        'call-to-user',
-        projectCode,
-        'https___github_com_OWNER_REPO_issues_1.yaml',
+        ownerCallFileRelativePath(projectCode, sessionName),
       );
 
-    const runAppend = (calledAt: string, pjcode = 'umino'): Promise<unknown> =>
+    const runAppend = (calledAt: string): Promise<unknown> =>
       program.parseAsync([
         'node',
         'test',
         'ownerCallFileAppend',
-        '--pjcode',
-        pjcode,
         '--session',
         sessionName,
         '--calledAt',
@@ -2414,7 +2454,12 @@ mysteryKey: 'value'
         ownerCallDataDir,
       ]);
 
-    it('appends the call as a YAML document and writes nothing to stdout', async () => {
+    it('appends the call under the directory of the project whose session list holds the session', async () => {
+      const projects: InTmuxByHumanProjectData[] = [
+        { projectCode: 'other', sessionIssueUrls: [otherIssueUrl] },
+        { projectCode: 'umino', sessionIssueUrls: [issueUrl] },
+      ];
+      writeInTmuxByHumanData(projects);
       const stdoutSpy = jest
         .spyOn(process.stdout, 'write')
         .mockImplementation(() => true);
@@ -2422,7 +2467,10 @@ mysteryKey: 'value'
       await runAppend('2026-08-14T04:22:28Z');
 
       const documents = YAML.parseAllDocuments(
-        fs.readFileSync(appendedFilePath('umino'), 'utf-8'),
+        fs.readFileSync(
+          appendedFilePath(projectCodeListing(projects, issueUrl)),
+          'utf-8',
+        ),
       );
       expect(documents).toHaveLength(1);
       expect(documents[0].toJS()).toEqual({
@@ -2433,6 +2481,18 @@ mysteryKey: 'value'
       expect(stdoutSpy).not.toHaveBeenCalled();
 
       stdoutSpy.mockRestore();
+    });
+
+    it('appends the call under NA when no project lists the session', async () => {
+      const projects: InTmuxByHumanProjectData[] = [
+        { projectCode: 'umino', sessionIssueUrls: [otherIssueUrl] },
+      ];
+      writeInTmuxByHumanData(projects);
+
+      await runAppend('2026-08-14T04:22:28Z');
+
+      expect(projectCodeListing(projects, issueUrl)).toBeNull();
+      expect(fs.existsSync(appendedFilePath(null))).toBe(true);
     });
 
     it('rejects a calledAt that is not a UTC ISO-8601 timestamp with second precision', async () => {
@@ -2447,60 +2507,56 @@ mysteryKey: 'value'
         'process.exit called',
       );
       expect(processExitSpy).toHaveBeenCalledWith(1);
-      expect(fs.existsSync(appendedFilePath('umino'))).toBe(false);
+      expect(fs.existsSync(appendedFilePath(null))).toBe(false);
 
       consoleErrorSpy.mockRestore();
       processExitSpy.mockRestore();
     });
 
-    it('deletes the file of the named project code', async () => {
-      await runAppend('2026-08-14T04:22:28Z');
-
-      await program.parseAsync([
+    const runDelete = (): Promise<unknown> =>
+      program.parseAsync([
         'node',
         'test',
         'ownerCallFileDelete',
-        '--pjcode',
-        'umino',
         '--session',
         sessionName,
         '--inTmuxDataDir',
         ownerCallDataDir,
       ]);
+
+    it('deletes the file of the session whichever project directory holds it', async () => {
+      const projects: InTmuxByHumanProjectData[] = [
+        { projectCode: 'umino', sessionIssueUrls: [issueUrl] },
+      ];
+      writeInTmuxByHumanData(projects);
+      await runAppend('2026-08-14T04:22:28Z');
+      const writtenFilePath = appendedFilePath(
+        projectCodeListing(projects, issueUrl),
+      );
+      expect(fs.existsSync(writtenFilePath)).toBe(true);
+
+      await runDelete();
+
+      expect(fs.existsSync(writtenFilePath)).toBe(false);
+    });
+
+    it('deletes the file left behind under the project the session has since left', async () => {
+      writeInTmuxByHumanData([
+        { projectCode: 'umino', sessionIssueUrls: [issueUrl] },
+      ]);
+      await runAppend('2026-08-14T04:22:28Z');
+      writeInTmuxByHumanData([
+        { projectCode: 'umino', sessionIssueUrls: [] },
+        { projectCode: 'other', sessionIssueUrls: [issueUrl] },
+      ]);
+
+      await runDelete();
 
       expect(fs.existsSync(appendedFilePath('umino'))).toBe(false);
     });
 
-    it('deletes the file when only the session name is known', async () => {
-      await runAppend('2026-08-14T04:22:28Z', 'NA');
-
-      await program.parseAsync([
-        'node',
-        'test',
-        'ownerCallFileDelete',
-        '--session',
-        sessionName,
-        '--inTmuxDataDir',
-        ownerCallDataDir,
-      ]);
-
-      expect(fs.existsSync(appendedFilePath('NA'))).toBe(false);
-    });
-
     it('succeeds when the file to delete is already absent', async () => {
-      await expect(
-        program.parseAsync([
-          'node',
-          'test',
-          'ownerCallFileDelete',
-          '--pjcode',
-          'umino',
-          '--session',
-          sessionName,
-          '--inTmuxDataDir',
-          ownerCallDataDir,
-        ]),
-      ).resolves.toBeDefined();
+      await expect(runDelete()).resolves.toBeDefined();
     });
   });
 

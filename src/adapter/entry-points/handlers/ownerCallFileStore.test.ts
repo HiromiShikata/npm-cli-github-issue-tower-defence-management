@@ -7,8 +7,10 @@ import {
   ownerCallFileDelete,
   ownerCallFileDeleteInEveryProject,
   ownerCallFilePath,
+  ownerCallProjectCodeInInTmuxByHumanData,
 } from './ownerCallFileStore';
 import { ownerCallFileRelativePath } from '../../../domain/usecases/intmux/OwnerCallFile';
+import { toTmuxSessionName } from '../../../domain/usecases/intmux/InTmuxByHumanSessionReconcileUseCase';
 
 const toPlainValue = (document: { toJS: () => unknown }): unknown =>
   document.toJS();
@@ -167,5 +169,118 @@ describe('ownerCallFileStore', () => {
     expect(() =>
       ownerCallFileDeleteInEveryProject({ dataDir, sessionName }),
     ).not.toThrow();
+  });
+});
+
+describe('ownerCallProjectCodeInInTmuxByHumanData', () => {
+  const issueUrl = 'https://github.com/OWNER/REPO/issues/1';
+  const otherIssueUrl = 'https://github.com/OWNER/REPO/issues/2';
+  let dataDir = '';
+
+  beforeEach(() => {
+    dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'owner-call-project-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  });
+
+  const writeProjectData = (projectCode: string, urls: string[]): void => {
+    fs.writeFileSync(
+      path.join(dataDir, `${projectCode}.v4.json`),
+      `${JSON.stringify({
+        version: 4,
+        overviewUrl: 'https://github.com/orgs/OWNER/projects/1',
+        tdpmConsoleUrl: 'http://localhost/projects/code',
+        newIssueUrl: 'https://github.com/OWNER/REPO/issues/new',
+        groups: [
+          {
+            story: 'a story',
+            sessions: urls.map((url) => ({ name: url, description: 'title' })),
+          },
+        ],
+      })}\n`,
+    );
+  };
+
+  it('gives the code of the project whose session list holds the session', () => {
+    writeProjectData('other', [otherIssueUrl]);
+    writeProjectData('umino', [issueUrl]);
+
+    expect(
+      ownerCallProjectCodeInInTmuxByHumanData(
+        dataDir,
+        toTmuxSessionName(issueUrl),
+      ),
+    ).toBe('umino');
+  });
+
+  it('gives null when no project lists the session', () => {
+    writeProjectData('umino', [otherIssueUrl]);
+
+    expect(
+      ownerCallProjectCodeInInTmuxByHumanData(
+        dataDir,
+        toTmuxSessionName(issueUrl),
+      ),
+    ).toBeNull();
+  });
+
+  it('gives null when the directory holds no in-tmux-by-human data at all', () => {
+    expect(
+      ownerCallProjectCodeInInTmuxByHumanData(
+        dataDir,
+        toTmuxSessionName(issueUrl),
+      ),
+    ).toBeNull();
+  });
+
+  it('gives null when the directory itself is absent', () => {
+    expect(
+      ownerCallProjectCodeInInTmuxByHumanData(
+        path.join(dataDir, 'absent'),
+        toTmuxSessionName(issueUrl),
+      ),
+    ).toBeNull();
+  });
+
+  it('reads neither the project index nor the older versions of the project data', () => {
+    fs.writeFileSync(
+      path.join(dataDir, 'index.v4.json'),
+      `${JSON.stringify({
+        version: 4,
+        projects: [{ name: 'umino', path: '/in-tmux-by-human/umino.v4.json' }],
+      })}\n`,
+    );
+    fs.writeFileSync(
+      path.join(dataDir, 'umino.v3.json'),
+      `${JSON.stringify({
+        version: 3,
+        groups: [{ story: 'a story', urls: [{ url: issueUrl, title: 't' }] }],
+      })}\n`,
+    );
+
+    expect(
+      ownerCallProjectCodeInInTmuxByHumanData(
+        dataDir,
+        toTmuxSessionName(issueUrl),
+      ),
+    ).toBeNull();
+  });
+
+  it('skips a project data file that cannot be read as the expected shape', () => {
+    fs.writeFileSync(path.join(dataDir, 'broken.v4.json'), 'not json at all\n');
+    fs.writeFileSync(
+      path.join(dataDir, 'shapeless.v4.json'),
+      `${JSON.stringify({ version: 4, groups: 'not a list' })}\n`,
+    );
+    writeProjectData('umino', [issueUrl]);
+
+    expect(
+      ownerCallProjectCodeInInTmuxByHumanData(
+        dataDir,
+        toTmuxSessionName(issueUrl),
+      ),
+    ).toBe('umino');
   });
 });
