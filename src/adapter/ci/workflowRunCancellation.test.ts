@@ -62,16 +62,14 @@ describe('push-triggered workflow run cancellation', () => {
     it('gives each default-branch commit its own group so queued runs survive incoming commits', () => {
       expect(
         concurrencyGroupForPush('test', defaultBranchRef, 'abc123'),
-      ).not.toBe(
-        concurrencyGroupForPush('test', defaultBranchRef, 'def456'),
-      );
+      ).not.toBe(concurrencyGroupForPush('test', defaultBranchRef, 'def456'));
     });
 
     it('gives all pushes of the same feature branch the same group so superseded runs are cancelled', () => {
       const featureBranchRef = 'refs/heads/feature/my-feature';
-      expect(
-        concurrencyGroupForPush('test', featureBranchRef, 'abc123'),
-      ).toBe(concurrencyGroupForPush('test', featureBranchRef, 'def456'));
+      expect(concurrencyGroupForPush('test', featureBranchRef, 'abc123')).toBe(
+        concurrencyGroupForPush('test', featureBranchRef, 'def456'),
+      );
     });
 
     it('keeps groups distinct across workflows so unrelated workflows never cancel each other', () => {
@@ -92,8 +90,8 @@ describe('push-triggered workflow run cancellation', () => {
   );
 
   it('gives every guarded workflow its own concurrency group so unrelated runs never cancel each other', () => {
-    const groups = guardedWorkflows.map(({ fileName }) =>
-      readWorkflowConcurrency(fileName)['group'],
+    const groups = guardedWorkflows.map(
+      ({ fileName }) => readWorkflowConcurrency(fileName)['group'],
     );
     expect(new Set(groups).size).toBe(groups.length);
   });
@@ -112,9 +110,9 @@ describe('push-triggered workflow run cancellation', () => {
     (fileName) => {
       const cancelInProgress =
         readWorkflowConcurrency(fileName)['cancel-in-progress'];
-      expect(
-        cancelInProgress === undefined || cancelInProgress === false,
-      ).toBe(true);
+      expect(cancelInProgress === undefined || cancelInProgress === false).toBe(
+        true,
+      );
     },
   );
 });
