@@ -28,11 +28,7 @@ export const ConsoleCommentList = ({
   const [showAll, setShowAll] = useState<boolean>(false);
 
   if (error !== null) {
-    return (
-      <p role="alert" className="console-comment-error">
-        Failed to load comments: {error}
-      </p>
-    );
+    return <p className="console-comment-notloaded">Not loaded.</p>;
   }
 
   if (isLoading) {

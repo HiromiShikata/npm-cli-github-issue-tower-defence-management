@@ -24,6 +24,10 @@ export const Empty: Story = {
   args: { comments: [], isLoading: false, error: null },
 };
 
-export const ErrorState: Story = {
-  args: { comments: [], isLoading: false, error: 'HTTP 500' },
+export const NotLoaded: Story = {
+  args: {
+    comments: [],
+    isLoading: false,
+    error: 'API rate limit already exceeded',
+  },
 };

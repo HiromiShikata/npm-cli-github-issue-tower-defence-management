@@ -254,12 +254,20 @@ body {
 }
 
 .console-list-error,
-.console-comment-error,
-.console-files-error,
-.console-commits-error,
-.console-detail-fetch-error,
-.console-detail-body-error {
+.console-detail-fetch-error {
   color: #f85149;
+}
+
+.console-detail-fetch-error-list {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.console-comment-notloaded,
+.console-files-notloaded,
+.console-commits-notloaded,
+.console-detail-body-notloaded {
+  color: #8b949e;
 }
 
 .console-detail {

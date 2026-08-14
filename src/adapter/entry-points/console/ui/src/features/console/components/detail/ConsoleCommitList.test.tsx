@@ -39,8 +39,8 @@ describe('ConsoleCommitList', () => {
     expect(getByText('No commits.')).toBeInTheDocument();
   });
 
-  it('shows the error state', () => {
-    const { getByRole } = render(
+  it('reports a failed read as not loaded, leaving the alert to the detail', () => {
+    const { getByText, queryByRole, queryByText } = render(
       <ConsoleCommitList
         commits={[]}
         isLoading={false}
@@ -48,6 +48,8 @@ describe('ConsoleCommitList', () => {
         now={now}
       />,
     );
-    expect(getByRole('alert')).toHaveTextContent('HTTP 500');
+    expect(getByText('Not loaded.')).toBeInTheDocument();
+    expect(queryByText('No commits.')).toBeNull();
+    expect(queryByRole('alert')).toBeNull();
   });
 });

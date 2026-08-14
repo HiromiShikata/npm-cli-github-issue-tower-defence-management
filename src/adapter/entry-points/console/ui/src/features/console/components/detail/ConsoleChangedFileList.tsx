@@ -128,11 +128,7 @@ export const ConsoleChangedFileList = ({
   onAddInlineComment,
 }: ConsoleChangedFileListProps) => {
   if (error !== null) {
-    return (
-      <p role="alert" className="console-files-error">
-        Failed to load changed files: {error}
-      </p>
-    );
+    return <p className="console-files-notloaded">Not loaded.</p>;
   }
 
   if (isLoading) {

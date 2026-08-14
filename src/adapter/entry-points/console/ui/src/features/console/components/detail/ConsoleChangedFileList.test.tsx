@@ -94,10 +94,12 @@ describe('ConsoleChangedFileList', () => {
     expect(getByText('No changed files.')).toBeInTheDocument();
   });
 
-  it('shows the error state', () => {
-    const { getByRole } = render(
+  it('reports a failed read as not loaded, leaving the alert to the detail', () => {
+    const { getByText, queryByRole, queryByText } = render(
       <ConsoleChangedFileList files={[]} isLoading={false} error="HTTP 502" />,
     );
-    expect(getByRole('alert')).toHaveTextContent('HTTP 502');
+    expect(getByText('Not loaded.')).toBeInTheDocument();
+    expect(queryByText('No changed files.')).toBeNull();
+    expect(queryByRole('alert')).toBeNull();
   });
 });
