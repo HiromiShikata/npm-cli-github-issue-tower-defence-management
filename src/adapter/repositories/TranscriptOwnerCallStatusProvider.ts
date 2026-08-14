@@ -1,12 +1,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { OwnerCallStatusProvider } from '../../domain/usecases/adapter-interfaces/OwnerCallStatusProvider';
-import { UnansweredOwnerCall } from '../../domain/entities/UnansweredOwnerCall';
 import { SILENT_SESSION_REMINDER_SENTINEL } from '../../domain/usecases/silentSessionReminderSentinel';
 
 type TranscriptOwnerCall = {
   epochMs: number;
-  body: string;
   candidateOnly: boolean;
 };
 
@@ -196,44 +194,6 @@ export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvide
     return unansweredOwnerCallEpochSecondsBySessionName;
   };
 
-  listUnansweredOwnerCallsBySessionName = async (
-    transcriptPathBySessionName: Map<string, string>,
-  ): Promise<Map<string, UnansweredOwnerCall[]>> => {
-    const unansweredOwnerCallsBySessionName = new Map<
-      string,
-      UnansweredOwnerCall[]
-    >();
-    if (this.ownerCallMarkerFamily.length === 0) {
-      return unansweredOwnerCallsBySessionName;
-    }
-    for (const [sessionName, transcriptPath] of transcriptPathBySessionName) {
-      const transcript = this.scanTranscript(transcriptPath);
-      if (transcript === null) {
-        continue;
-      }
-      const answeredBeforeEpochMs = this.resolveReplyEpochMs(
-        transcriptPath,
-        transcript.lastOwnerReplyEpochMs,
-      );
-      const unansweredCalls = transcript.ownerCalls
-        .filter(
-          (ownerCall) =>
-            (answeredBeforeEpochMs === null ||
-              ownerCall.epochMs > answeredBeforeEpochMs) &&
-            this.isCallDeliveredToOwner(transcriptPath, ownerCall),
-        )
-        .sort((oneCall, otherCall) => oneCall.epochMs - otherCall.epochMs)
-        .map((ownerCall) => ({
-          calledAt: new Date(ownerCall.epochMs).toISOString(),
-          body: ownerCall.body,
-        }));
-      if (unansweredCalls.length > 0) {
-        unansweredOwnerCallsBySessionName.set(sessionName, unansweredCalls);
-      }
-    }
-    return unansweredOwnerCallsBySessionName;
-  };
-
   private scanTranscript = (
     transcriptPath: string,
   ): TranscriptOwnerCallScan | null => {
@@ -287,7 +247,6 @@ export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvide
         if (matchedMarkers.length > 0) {
           ownerCalls.push({
             epochMs,
-            body: assistantText,
             candidateOnly: matchedMarkers.every(isCandidateOwnerCallMarker),
           });
         }
@@ -364,26 +323,6 @@ export class TranscriptOwnerCallStatusProvider implements OwnerCallStatusProvide
     transcriptPath: string,
   ): number | null =>
     this.readMarkerEpochMs(transcriptPath, OWNER_REPLY_MARKER_FILE_EXTENSION);
-
-  // The format gate the owner's sessions run under can hold an owner call instead of delivering
-  // it, and it records that decision beside the reply marker: the held call's timestamp in the
-  // suppression marker, and the timestamp of any call it later approved in the approval marker. A
-  // held call the approval marker does not name never reached the owner, so treating it as a wait
-  // on the owner would silence the session's stall reminder for good — the session would keep its
-  // task and never be woken again. Such a call is therefore not an outstanding owner call here. A
-  // delivered call, and a newer call the suppression marker does not name, are untouched.
-  private isCallDeliveredToOwner = (
-    transcriptPath: string,
-    ownerCall: TranscriptOwnerCall,
-  ): boolean => {
-    if (this.isCallSuppressedUndelivered(transcriptPath, ownerCall.epochMs)) {
-      return false;
-    }
-    return (
-      !ownerCall.candidateOnly ||
-      this.isCandidateCallDelivered(transcriptPath, ownerCall.epochMs)
-    );
-  };
 
   private isCallSuppressedUndelivered = (
     transcriptPath: string,
