@@ -15,7 +15,7 @@ const writeJsonAtomic = (filePath, data) => {
     fs_1.default.renameSync(tmpPath, filePath);
 };
 const writeInTmuxByHumanData = (params) => {
-    const { inTmuxDataOutputDir, inTmuxConsoleBaseUrl, inTmuxConsoleToken, inTmuxProjectOrder, pjcode, assigneeLogin, org, repo, newIssueRepo, project, issues, unansweredCallsByTmuxSessionName, now, } = params;
+    const { inTmuxDataOutputDir, inTmuxConsoleBaseUrl, inTmuxConsoleToken, inTmuxProjectOrder, pjcode, assigneeLogin, org, repo, newIssueRepo, project, issues, now, } = params;
     if (!inTmuxDataOutputDir || !pjcode || !assigneeLogin) {
         return;
     }
@@ -29,8 +29,6 @@ const writeInTmuxByHumanData = (params) => {
         newIssueRepo: newIssueRepo ?? undefined,
         consoleBaseUrl: inTmuxConsoleBaseUrl ?? null,
         consoleToken: inTmuxConsoleToken ?? null,
-        unansweredCallsByTmuxSessionName: unansweredCallsByTmuxSessionName ??
-            new Map(),
         now,
     });
     writeJsonAtomic(path_1.default.join(inTmuxDataOutputDir, `${pjcode}.json`), data.v1);
@@ -40,9 +38,6 @@ const writeInTmuxByHumanData = (params) => {
     }
     if (data.v4) {
         writeJsonAtomic(path_1.default.join(inTmuxDataOutputDir, `${pjcode}.v4.json`), data.v4);
-    }
-    if (data.v5) {
-        writeJsonAtomic(path_1.default.join(inTmuxDataOutputDir, `${pjcode}.v5.json`), data.v5);
     }
     if (!inTmuxProjectOrder || inTmuxProjectOrder.length === 0) {
         return;
@@ -66,13 +61,6 @@ const writeInTmuxByHumanData = (params) => {
             projects: presentProjects.map((name) => ({
                 name,
                 path: `/${outputDirBasename}/${name}.v4.json?k=${inTmuxConsoleToken}`,
-            })),
-        });
-        writeJsonAtomic(path_1.default.join(inTmuxDataOutputDir, 'index.v5.json'), {
-            version: 5,
-            projects: presentProjects.map((name) => ({
-                name,
-                path: `/${outputDirBasename}/${name}.v5.json?k=${inTmuxConsoleToken}`,
             })),
         });
     }

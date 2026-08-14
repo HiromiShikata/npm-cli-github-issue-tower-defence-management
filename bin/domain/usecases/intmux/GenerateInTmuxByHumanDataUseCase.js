@@ -1,13 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GenerateInTmuxByHumanDataUseCase = void 0;
-const InTmuxByHumanSessionReconcileUseCase_1 = require("./InTmuxByHumanSessionReconcileUseCase");
 const IN_TMUX_BY_HUMAN_STATUS_NAME = 'In Tmux by human';
 const UNKNOWN_STORY_SORT_INDEX = 999999;
 class GenerateInTmuxByHumanDataUseCase {
     constructor() {
         this.run = (input) => {
-            const { project, issues, pjcode, assigneeLogin, org, repo, newIssueRepo, consoleBaseUrl, consoleToken, unansweredCallsByTmuxSessionName, } = input;
+            const { project, issues, pjcode, assigneeLogin, org, repo, newIssueRepo, consoleBaseUrl, consoleToken, } = input;
             const storyOrder = project.story
                 ? project.story.stories.map((option) => option.name)
                 : [];
@@ -31,15 +30,6 @@ class GenerateInTmuxByHumanDataUseCase {
                     description: issue.title,
                 })),
             }));
-            const v5Groups = groups.map((group) => ({
-                story: group.story,
-                sessions: group.issues.map((issue) => ({
-                    name: issue.url,
-                    description: issue.title,
-                    unansweredCalls: unansweredCallsByTmuxSessionName.get((0, InTmuxByHumanSessionReconcileUseCase_1.toTmuxSessionName)(issue.url)) ??
-                        [],
-                })),
-            }));
             const overviewUrl = project.url;
             const tdpmConsoleUrl = consoleBaseUrl
                 ? `${consoleBaseUrl}/projects/${pjcode}`
@@ -61,16 +51,7 @@ class GenerateInTmuxByHumanDataUseCase {
                     groups: v4Groups,
                 }
                 : null;
-            const v5 = tdpmConsoleUrl && consoleToken
-                ? {
-                    version: 5,
-                    overviewUrl,
-                    tdpmConsoleUrl: `${tdpmConsoleUrl}?k=${consoleToken}`,
-                    newIssueUrl: `https://github.com/${org}/${newIssueRepo ?? repo}/issues/new?assignees=${assigneeLogin}`,
-                    groups: v5Groups,
-                }
-                : null;
-            return { v1, v2, v3, v4, v5 };
+            return { v1, v2, v3, v4 };
         };
         this.isInTmuxByHuman = (issue, assigneeLogin) => issue.status === IN_TMUX_BY_HUMAN_STATUS_NAME &&
             issue.isClosed === false &&

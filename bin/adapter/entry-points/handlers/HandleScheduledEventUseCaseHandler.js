@@ -19,10 +19,6 @@ const tokenExhaustionHandover_1 = require("./tokenExhaustionHandover");
 const staleTmuxSessionCleaner_1 = require("./staleTmuxSessionCleaner");
 const notifySilentTmuxSessions_1 = require("./notifySilentTmuxSessions");
 const ownerReplyMarkerDirectoryResolve_1 = require("./ownerReplyMarkerDirectoryResolve");
-const resolveUnansweredOwnerCalls_1 = require("./resolveUnansweredOwnerCalls");
-const LocalProcessLiveSessionProcessSnapshotProvider_1 = require("../../repositories/LocalProcessLiveSessionProcessSnapshotProvider");
-const ProcFsProcessEnvironReader_1 = require("../../repositories/ProcFsProcessEnvironReader");
-const FileSystemInteractiveLiveSessionTranscriptResolver_1 = require("../../repositories/FileSystemInteractiveLiveSessionTranscriptResolver");
 const TranscriptOwnerCallStatusProvider_1 = require("../../repositories/TranscriptOwnerCallStatusProvider");
 const NoUnansweredOwnerCallStatusProvider_1 = require("../../repositories/NoUnansweredOwnerCallStatusProvider");
 const resetDegeneratedTmuxSessions_1 = require("./resetDegeneratedTmuxSessions");
@@ -331,20 +327,6 @@ class HandleScheduledEventUseCaseHandler {
                     : null;
                 const ownerCallStatusProvider = transcriptOwnerCallStatusProvider ??
                     new NoUnansweredOwnerCallStatusProvider_1.NoUnansweredOwnerCallStatusProvider();
-                let unansweredCallsByTmuxSessionName = new Map();
-                try {
-                    if (transcriptOwnerCallStatusProvider !== null) {
-                        unansweredCallsByTmuxSessionName =
-                            await (0, resolveUnansweredOwnerCalls_1.resolveUnansweredOwnerCallsByTmuxSessionName)({
-                                liveSessionProcessSnapshotProvider: new LocalProcessLiveSessionProcessSnapshotProvider_1.LocalProcessLiveSessionProcessSnapshotProvider(nodeLocalCommandRunner, new ProcFsProcessEnvironReader_1.ProcFsProcessEnvironReader()),
-                                interactiveLiveSessionTranscriptResolver: new FileSystemInteractiveLiveSessionTranscriptResolver_1.FileSystemInteractiveLiveSessionTranscriptResolver(),
-                                unansweredOwnerCallListProvider: transcriptOwnerCallStatusProvider,
-                            });
-                    }
-                }
-                catch (error) {
-                    console.error(`Failed to resolve unanswered owner calls: ${error instanceof Error ? error.message : String(error)}`);
-                }
                 try {
                     (0, inTmuxByHumanDataWriter_1.writeInTmuxByHumanData)({
                         inTmuxDataOutputDir: mergedInput.inTmuxDataOutputDir ?? null,
@@ -360,7 +342,6 @@ class HandleScheduledEventUseCaseHandler {
                         newIssueRepo: mergedInput.newIssueRepo ?? undefined,
                         project: result.project,
                         issues: result.issues,
-                        unansweredCallsByTmuxSessionName,
                         now: inTmuxNow,
                     });
                 }

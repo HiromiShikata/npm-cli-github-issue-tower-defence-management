@@ -1,3 +1,10 @@
+# [1.152.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.151.7...v1.152.0) (2026-08-14)
+
+
+### Features
+
+* **intmux:** revert v5 in-tmux-by-human session document delivery ([#1544](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1544)) ([ac91c44](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ac91c44081097ec73645c6e532be008a349c84e0)), closes [#1543](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1543)
+
 ## [1.151.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.151.6...v1.151.7) (2026-08-14)
 
 
