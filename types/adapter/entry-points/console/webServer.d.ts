@@ -36,6 +36,7 @@ export type WebServerOptions = {
 export declare const DASHBOARD_REQUEST_PATH = "/tdpm.txt";
 export declare const IMAGE_PROXY_REQUEST_PATH = "/api/img";
 export declare const resolveDashboardFilePath: (dashboardDir: string, requestPath: string) => string | null;
+export declare const isOwnerCallFileRequestPath: (requestPath: string) => boolean;
 export declare const resolveFlatInTmuxFilePath: (inTmuxDataDir: string, requestPath: string) => string | null;
 export declare const resolveDashboardContent: (options: WebServerOptions, requestPath: string) => Buffer | null;
 export declare const handleWebRequest: (options: WebServerOptions, request: http.IncomingMessage, response: http.ServerResponse) => Promise<void>;

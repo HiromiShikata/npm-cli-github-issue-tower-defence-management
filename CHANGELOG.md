@@ -1,3 +1,10 @@
+# [1.153.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.152.3...v1.153.0) (2026-08-14)
+
+
+### Features
+
+* **intmux:** serve, append to and delete a per-session owner-call file ([#1558](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1558)) ([24c44b3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/24c44b3e0ba76b099d8fd83bc18613976baf1cc2))
+
 ## [1.152.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.152.2...v1.152.3) (2026-08-14)
 
 

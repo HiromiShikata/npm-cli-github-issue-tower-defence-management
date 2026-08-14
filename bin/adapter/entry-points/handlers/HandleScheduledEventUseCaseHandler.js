@@ -14,6 +14,7 @@ const dashboardRowWriter_1 = require("./dashboardRowWriter");
 const machineStatusWriter_1 = require("./machineStatusWriter");
 const tokenStatusWriter_1 = require("./tokenStatusWriter");
 const inTmuxByHumanDataWriter_1 = require("./inTmuxByHumanDataWriter");
+const ownerCallFileCleaner_1 = require("./ownerCallFileCleaner");
 const inTmuxByHumanSessionReconciler_1 = require("./inTmuxByHumanSessionReconciler");
 const tokenExhaustionHandover_1 = require("./tokenExhaustionHandover");
 const staleTmuxSessionCleaner_1 = require("./staleTmuxSessionCleaner");
@@ -347,6 +348,16 @@ class HandleScheduledEventUseCaseHandler {
                 }
                 catch (error) {
                     console.error(`Failed to write in-tmux-by-human data: ${error instanceof Error ? error.message : String(error)}`);
+                }
+                try {
+                    (0, ownerCallFileCleaner_1.cleanClosedIssueOwnerCallFiles)({
+                        inTmuxDataOutputDir: mergedInput.inTmuxDataOutputDir ?? null,
+                        pjcode: input.projectName,
+                        issues: result.issues,
+                    });
+                }
+                catch (error) {
+                    console.error(`Failed to clean owner call files of closed issues: ${error instanceof Error ? error.message : String(error)}`);
                 }
                 try {
                     await (0, tokenExhaustionHandover_1.handleTokenExhaustionHandover)({

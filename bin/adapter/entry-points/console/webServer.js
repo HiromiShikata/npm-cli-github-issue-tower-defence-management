@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.startWebServer = exports.createWebServer = exports.handleWebRequest = exports.resolveDashboardContent = exports.resolveFlatInTmuxFilePath = exports.resolveDashboardFilePath = exports.IMAGE_PROXY_REQUEST_PATH = exports.DASHBOARD_REQUEST_PATH = exports.buildKeylessLocation = exports.buildTokenCookie = exports.extractProvidedToken = exports.extractCookieToken = exports.isTokenValid = exports.isConsoleAppRoute = exports.requiresToken = exports.hasDotSegment = exports.CONSOLE_TOKEN_COOKIE = exports.CONSOLE_TOKEN_HEADER = exports.DEFAULT_WEB_PORT = void 0;
+exports.startWebServer = exports.createWebServer = exports.handleWebRequest = exports.resolveDashboardContent = exports.resolveFlatInTmuxFilePath = exports.isOwnerCallFileRequestPath = exports.resolveDashboardFilePath = exports.IMAGE_PROXY_REQUEST_PATH = exports.DASHBOARD_REQUEST_PATH = exports.buildKeylessLocation = exports.buildTokenCookie = exports.extractProvidedToken = exports.extractCookieToken = exports.isTokenValid = exports.isConsoleAppRoute = exports.requiresToken = exports.hasDotSegment = exports.CONSOLE_TOKEN_COOKIE = exports.CONSOLE_TOKEN_HEADER = exports.DEFAULT_WEB_PORT = void 0;
 const http = __importStar(require("http"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
@@ -42,6 +42,7 @@ const consoleReadApi_1 = require("./consoleReadApi");
 const consoleOperationApi_1 = require("./consoleOperationApi");
 const consoleImageProxy_1 = require("./consoleImageProxy");
 const dashboardComposeService_1 = require("./dashboardComposeService");
+const OwnerCallFile_1 = require("../../../domain/usecases/intmux/OwnerCallFile");
 exports.DEFAULT_WEB_PORT = 9980;
 exports.CONSOLE_TOKEN_HEADER = 'x-pv-token';
 exports.CONSOLE_TOKEN_COOKIE = 'pv_token';
@@ -75,6 +76,7 @@ const MIME_TYPES = {
     '.map': 'application/json; charset=utf-8',
     '.woff': 'font/woff',
     '.woff2': 'font/woff2',
+    '.yaml': 'text/yaml; charset=utf-8',
 };
 const hasDotSegment = (requestPath) => requestPath
     .split('/')
@@ -82,7 +84,8 @@ const hasDotSegment = (requestPath) => requestPath
 exports.hasDotSegment = hasDotSegment;
 const requiresToken = (requestPath) => requestPath.startsWith('/api/') ||
     requestPath === '/api' ||
-    requestPath.endsWith('.json');
+    requestPath.endsWith('.json') ||
+    requestPath.endsWith(OwnerCallFile_1.OWNER_CALL_FILE_EXTENSION);
 exports.requiresToken = requiresToken;
 const SAFE_PJCODE = /^[A-Za-z0-9._-]+$/;
 const isConsoleAppRoute = (requestPath) => {
@@ -186,6 +189,8 @@ const readStaticFile = (filePath) => {
 };
 const FLAT_IN_TMUX_PREFIX = '/in-tmux-by-human/';
 const FLAT_IN_TMUX_FILE = /^[A-Za-z0-9._-]+\.json$/;
+const NAME_SEGMENT = '[A-Za-z0-9_-][A-Za-z0-9._-]*';
+const OWNER_CALL_FILE = new RegExp(`^${OwnerCallFile_1.OWNER_CALL_FILE_DIRECTORY_NAME}/${NAME_SEGMENT}/${NAME_SEGMENT}${OwnerCallFile_1.OWNER_CALL_FILE_EXTENSION.replace('.', '\\.')}$`);
 exports.DASHBOARD_REQUEST_PATH = '/tdpm.txt';
 exports.IMAGE_PROXY_REQUEST_PATH = '/api/img';
 const DASHBOARD_FILE_NAME = 'tdpm.txt';
@@ -202,15 +207,19 @@ const resolveDashboardFilePath = (dashboardDir, requestPath) => {
     return resolvedCandidate;
 };
 exports.resolveDashboardFilePath = resolveDashboardFilePath;
+const isOwnerCallFileRequestPath = (requestPath) => requestPath.startsWith(FLAT_IN_TMUX_PREFIX) &&
+    OWNER_CALL_FILE.test(requestPath.slice(FLAT_IN_TMUX_PREFIX.length));
+exports.isOwnerCallFileRequestPath = isOwnerCallFileRequestPath;
 const resolveFlatInTmuxFilePath = (inTmuxDataDir, requestPath) => {
     if (!requestPath.startsWith(FLAT_IN_TMUX_PREFIX)) {
         return null;
     }
-    const fileName = requestPath.slice(FLAT_IN_TMUX_PREFIX.length);
-    if (fileName.length === 0 || !FLAT_IN_TMUX_FILE.test(fileName)) {
+    const relativePath = requestPath.slice(FLAT_IN_TMUX_PREFIX.length);
+    if (relativePath.length === 0 ||
+        !(FLAT_IN_TMUX_FILE.test(relativePath) || OWNER_CALL_FILE.test(relativePath))) {
         return null;
     }
-    const candidate = path.join(inTmuxDataDir, fileName);
+    const candidate = path.join(inTmuxDataDir, relativePath);
     const resolvedRoot = path.resolve(inTmuxDataDir);
     const resolvedCandidate = path.resolve(candidate);
     if (!resolvedCandidate.startsWith(resolvedRoot + path.sep)) {
@@ -415,6 +424,40 @@ const handleOperationApi = async (options, requestPath, body) => {
         };
     }
 };
+const serveFlatInTmuxFile = (options, response, requestPath) => {
+    if (options.inTmuxDataDir === null) {
+        sendNotFound(response);
+        return;
+    }
+    const filePath = (0, exports.resolveFlatInTmuxFilePath)(options.inTmuxDataDir, requestPath);
+    const content = filePath === null ? null : readStaticFile(filePath);
+    if (filePath === null || content === null) {
+        sendNotFound(response);
+        return;
+    }
+    response.writeHead(200, {
+        'Content-Type': contentTypeForPath(filePath),
+        'Cache-Control': 'no-store',
+        'Content-Length': String(content.length),
+    });
+    response.end(content);
+};
+const removeOwnerCallFile = (options, response, requestPath) => {
+    if (options.inTmuxDataDir === null) {
+        sendNotFound(response);
+        return;
+    }
+    const filePath = (0, exports.resolveFlatInTmuxFilePath)(options.inTmuxDataDir, requestPath);
+    if (filePath === null) {
+        sendNotFound(response);
+        return;
+    }
+    fs.rmSync(filePath, { force: true });
+    response.writeHead(204, {
+        'Cache-Control': 'no-store',
+    });
+    response.end();
+};
 const handleTokenedRequest = async (options, request, response, requestPath, searchParams) => {
     const method = (request.method ?? 'GET').toUpperCase();
     if (requestPath.startsWith('/api/')) {
@@ -449,26 +492,19 @@ const handleTokenedRequest = async (options, request, response, requestPath, sea
         sendNotFound(response);
         return;
     }
-    if (method === 'GET') {
-        if (requestPath.startsWith(FLAT_IN_TMUX_PREFIX)) {
-            if (options.inTmuxDataDir === null) {
-                sendNotFound(response);
-                return;
-            }
-            const flatFilePath = (0, exports.resolveFlatInTmuxFilePath)(options.inTmuxDataDir, requestPath);
-            const flatContent = flatFilePath === null ? null : readStaticFile(flatFilePath);
-            if (flatContent === null) {
-                sendNotFound(response);
-                return;
-            }
-            response.writeHead(200, {
-                'Content-Type': 'application/json; charset=utf-8',
-                'Cache-Control': 'no-store',
-                'Content-Length': String(flatContent.length),
-            });
-            response.end(flatContent);
+    if (requestPath.startsWith(FLAT_IN_TMUX_PREFIX)) {
+        if (method === 'GET') {
+            serveFlatInTmuxFile(options, response, requestPath);
             return;
         }
+        if (method === 'DELETE' && (0, exports.isOwnerCallFileRequestPath)(requestPath)) {
+            removeOwnerCallFile(options, response, requestPath);
+            return;
+        }
+        sendNotFound(response);
+        return;
+    }
+    if (method === 'GET') {
         const dataRoute = (0, consoleDataDelivery_1.parseConsoleDataRoute)(requestPath);
         if (dataRoute !== null && options.consoleDataOutputDir !== null) {
             const dataResponse = (0, consoleDataDelivery_1.buildConsoleDataResponse)(options.consoleDataOutputDir, dataRoute);
