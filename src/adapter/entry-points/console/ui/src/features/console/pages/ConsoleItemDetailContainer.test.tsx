@@ -408,6 +408,10 @@ describe('ConsoleItemDetailContainer', () => {
     const operations = buildOperations();
     const onQueueAction = jest.fn();
     const relatedPullRequest = consoleRelatedPullRequestsFixture[0];
+    const issueItemWithRelatedPullRequest = {
+      ...issueItem,
+      relatedOpenPullRequestUrls: [relatedPullRequest.url],
+    };
     const {
       container,
       findByRole,
@@ -417,7 +421,7 @@ describe('ConsoleItemDetailContainer', () => {
     } = render(
       <ConsoleItemDetailContainer
         tab="unread"
-        item={issueItem}
+        item={issueItemWithRelatedPullRequest}
         caches={buildCaches({
           relatedPrs: [relatedPullRequest],
           prFiles: consoleChangedFilesFixture,

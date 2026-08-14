@@ -243,13 +243,16 @@ export const CONSOLE_E2E_TAB_ITEMS: Record<string, ConsoleFixtureListItem[]> = {
     ),
   ],
   'failed-preparation': [
-    issueItem(
-      911,
-      'Add inline review comments on the related pull request diff',
-      'FPR00911',
-      'TDPM Console port',
-      '2026-06-18T03:12:00.000Z',
-    ),
+    {
+      ...issueItem(
+        911,
+        'Add inline review comments on the related pull request diff',
+        'FPR00911',
+        'TDPM Console port',
+        '2026-06-18T03:12:00.000Z',
+      ),
+      relatedOpenPullRequestUrls: [CONSOLE_E2E_INLINE_COMMENT_PR_URL],
+    },
   ],
   'todo-by-human': [
     issueItem(
