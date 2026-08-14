@@ -19,11 +19,7 @@ export const ConsoleCommitList = ({
   now,
 }: ConsoleCommitListProps) => {
   if (error !== null) {
-    return (
-      <p role="alert" className="console-commits-error">
-        Failed to load commits: {error}
-      </p>
-    );
+    return <p className="console-commits-notloaded">Not loaded.</p>;
   }
 
   if (isLoading) {

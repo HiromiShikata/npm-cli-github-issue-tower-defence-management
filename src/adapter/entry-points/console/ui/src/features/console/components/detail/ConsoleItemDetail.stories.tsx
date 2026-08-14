@@ -229,3 +229,30 @@ export const IssueWithLinkedPullRequest: Story = {
     },
   },
 };
+
+export const IssueWithEveryReadFailedByOneCause: Story = {
+  args: {
+    item: consoleListItemsFixture[2],
+    storyName: 'TDPM Console port',
+    storyColorEnum: 'BLUE',
+    overlayStatus: null,
+    state: null,
+    body: '',
+    bodyIsLoading: false,
+    bodyError: 'API rate limit already exceeded',
+    stateError: 'API rate limit already exceeded',
+    pullRequestStatusError: null,
+    relatedPullRequestsError: 'API rate limit already exceeded',
+    comments: [],
+    commentsAreLoading: false,
+    commentsError: 'API rate limit already exceeded',
+    files: [],
+    filesAreLoading: false,
+    filesError: null,
+    commits: [],
+    commitsAreLoading: false,
+    commitsError: null,
+    pullRequestStatus: null,
+    relatedPullRequests: [],
+  },
+};

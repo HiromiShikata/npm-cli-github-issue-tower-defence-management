@@ -41,8 +41,8 @@ describe('ConsoleCommentList', () => {
     expect(getByText('No comments.')).toBeInTheDocument();
   });
 
-  it('shows the error state', () => {
-    const { getByRole } = render(
+  it('reports a failed read as not loaded, leaving the alert to the detail', () => {
+    const { getByText, queryByRole, queryByText } = render(
       <ConsoleCommentList
         comments={[]}
         isLoading={false}
@@ -50,6 +50,8 @@ describe('ConsoleCommentList', () => {
         now={now}
       />,
     );
-    expect(getByRole('alert')).toHaveTextContent('HTTP 500');
+    expect(getByText('Not loaded.')).toBeInTheDocument();
+    expect(queryByText('No comments.')).toBeNull();
+    expect(queryByRole('alert')).toBeNull();
   });
 });

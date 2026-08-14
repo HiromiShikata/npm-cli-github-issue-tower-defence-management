@@ -93,6 +93,62 @@ describe('ConsoleItemDetail', () => {
     );
   });
 
+  it('gathers every failed section read into a single alert', () => {
+    const { getAllByRole } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        stateError="API rate limit already exceeded"
+        bodyError="API rate limit already exceeded"
+        commentsError="API rate limit already exceeded"
+      />,
+    );
+    const alerts = getAllByRole('alert');
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toHaveTextContent(
+      'Failed to load item state, description and comments: API rate limit already exceeded',
+    );
+  });
+
+  it('names a related pull request by its number when its own read failed', () => {
+    const { getByRole } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        relatedPullRequests={consoleRelatedPullRequestsFixture.map(
+          (pullRequest) => ({
+            pullRequest,
+            files: [],
+            filesAreLoading: false,
+            filesError: 'HTTP 502',
+            commits: [],
+            commitsAreLoading: false,
+            commitsError: 'HTTP 502',
+          }),
+        )}
+      />,
+    );
+    const number = Number.parseInt(
+      consoleRelatedPullRequestsFixture[0].url.split('/').slice(-1)[0],
+      10,
+    );
+    expect(getByRole('alert')).toHaveTextContent(
+      `Failed to load changed files of PR #${number} and commits of PR #${number}: HTTP 502`,
+    );
+  });
+
+  it('marks a section whose read failed as not loaded instead of showing it as empty', () => {
+    const { getAllByText, queryByText } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        commentsError="API rate limit already exceeded"
+      />,
+    );
+    expect(queryByText('No comments.')).toBeNull();
+    expect(getAllByText('Not loaded.').length).toBe(1);
+  });
+
   it('renders the PR title with the PR number, sub bar and counted panels', () => {
     const { getByText, getAllByText } = render(
       <ConsoleItemDetail item={prItem} {...baseProps} />,

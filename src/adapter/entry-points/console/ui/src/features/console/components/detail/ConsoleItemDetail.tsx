@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react';
 import type { ImageProxyUrlBuilder } from '../../lib/imageProxy';
 import { colorFromEnum } from '../../logic/colors';
-import { parseNameWithOwner } from '../../logic/references';
+import {
+  parseGitHubReferenceUrl,
+  parseNameWithOwner,
+} from '../../logic/references';
 import {
   formatFullTimestamp,
   formatRelativeTime,
@@ -25,6 +28,8 @@ import { ConsoleChangedFileList } from './ConsoleChangedFileList';
 import { ConsoleCommentList } from './ConsoleCommentList';
 import { ConsoleCommitList } from './ConsoleCommitList';
 import { ConsoleCopyUrlButton } from './ConsoleCopyUrlButton';
+import type { ConsoleFetchFailure } from './ConsoleFetchFailureAlert';
+import { ConsoleFetchFailureAlert } from './ConsoleFetchFailureAlert';
 import type { ConsoleAddInlineComment } from './ConsoleFileDiff';
 import { ConsoleItemIcon } from './ConsoleItemIcon';
 import { ConsolePullRequestDetail } from './ConsolePullRequestDetail';
@@ -117,6 +122,39 @@ export const ConsoleItemDetail = ({
     commentsAreLoading || commentsError !== null ? null : comments.length;
   const commitsCount =
     commitsAreLoading || commitsError !== null ? null : commits.length;
+  const relatedPullRequestLabel = (url: string): string => {
+    const reference = parseGitHubReferenceUrl(url);
+    return reference === null ? url : `PR #${reference.number}`;
+  };
+  const fetchFailures: ConsoleFetchFailure[] = [
+    { section: 'item state', message: stateError },
+    {
+      section: 'pull request status',
+      message: item.isPr ? pullRequestStatusError : null,
+    },
+    { section: 'description', message: bodyError },
+    { section: 'comments', message: commentsError },
+    { section: 'changed files', message: item.isPr ? filesError : null },
+    { section: 'commits', message: item.isPr ? commitsError : null },
+    {
+      section: 'related pull requests',
+      message: item.isPr ? null : relatedPullRequestsError,
+    },
+    ...relatedPullRequests.flatMap((related) => [
+      {
+        section: `changed files of ${relatedPullRequestLabel(related.pullRequest.url)}`,
+        message: related.filesError,
+      },
+      {
+        section: `commits of ${relatedPullRequestLabel(related.pullRequest.url)}`,
+        message: related.commitsError,
+      },
+    ]),
+  ].flatMap((candidate) =>
+    candidate.message === null
+      ? []
+      : [{ section: candidate.section, message: candidate.message }],
+  );
   const mergeableChips: {
     url: string;
     mergeableStatus: ConsoleMergeableStatus;
@@ -189,17 +227,7 @@ export const ConsoleItemDetail = ({
         )}
       </h2>
 
-      {stateError !== null && (
-        <p role="alert" className="console-detail-fetch-error">
-          Failed to load item state: {stateError}
-        </p>
-      )}
-
-      {item.isPr && pullRequestStatusError !== null && (
-        <p role="alert" className="console-detail-fetch-error">
-          Failed to load pull request status: {pullRequestStatusError}
-        </p>
-      )}
+      <ConsoleFetchFailureAlert failures={fetchFailures} />
 
       <div className="console-detail-subbar">
         <a
@@ -248,9 +276,7 @@ export const ConsoleItemDetail = ({
         }
       >
         {bodyError !== null ? (
-          <p role="alert" className="console-detail-body-error">
-            Failed to load description: {bodyError}
-          </p>
+          <p className="console-detail-body-notloaded">Not loaded.</p>
         ) : bodyIsLoading ? (
           <p className="console-detail-body-loading">Loading description...</p>
         ) : (
@@ -299,12 +325,6 @@ export const ConsoleItemDetail = ({
             now={now}
           />
         </ConsolePanel>
-      )}
-
-      {!item.isPr && relatedPullRequestsError !== null && (
-        <p role="alert" className="console-detail-fetch-error">
-          Failed to load related pull requests: {relatedPullRequestsError}
-        </p>
       )}
 
       {!item.isPr &&
