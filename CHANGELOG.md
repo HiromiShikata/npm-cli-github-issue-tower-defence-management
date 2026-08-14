@@ -1,3 +1,10 @@
+## [1.153.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.153.1...v1.153.2) (2026-08-14)
+
+
+### Bug Fixes
+
+* state one console detail read failure instead of one alert per section ([#1564](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1564)) ([08cd7e4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/08cd7e48690c0f9fb339d2f4f6d3738cf72255d1)), closes [#1554](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1554)
+
 ## [1.153.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.153.0...v1.153.1) (2026-08-14)
 
 
