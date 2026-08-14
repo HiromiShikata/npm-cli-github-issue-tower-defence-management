@@ -333,5 +333,4 @@ describe('GenerateInTmuxByHumanDataUseCase', () => {
       expect(result.v3).not.toBeNull();
     });
   });
-
 });
