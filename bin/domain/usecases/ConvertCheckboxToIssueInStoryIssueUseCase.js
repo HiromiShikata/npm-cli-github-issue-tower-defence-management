@@ -28,8 +28,9 @@ class ConvertCheckboxToIssueInStoryIssueUseCase {
                     continue;
                 }
                 const iced = storyIssue.status === WorkflowStatus_1.ICEBOX_STATUS_NAME;
-                if (iced &&
-                    this.bodyWithStoryViewLinkOnFirstLine(storyIssue.body, input.urlOfStoryView, storyOption.name) === storyIssue.body) {
+                const noCheckboxWorkFollows = iced || !input.createTaskFromStoryBodyCheckboxEnabled;
+                const storyViewLinkAlreadyOnFirstLine = this.bodyWithStoryViewLinkOnFirstLine(storyIssue.body, input.urlOfStoryView, storyOption.name) === storyIssue.body;
+                if (noCheckboxWorkFollows && storyViewLinkAlreadyOnFirstLine) {
                     continue;
                 }
                 const freshStoryIssue = await this.issueRepository.getIssueByUrl(storyIssue.url);

@@ -1,3 +1,10 @@
+## [1.153.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.153.4...v1.153.5) (2026-08-15)
+
+
+### Bug Fixes
+
+* skip the per-story issue refetch when no checkbox work follows and the story view link is already placed ([#1573](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1573)) ([3168014](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3168014a08cfbe62154cb2b91419d07b093b1fac)), closes [#1572](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1572)
+
 ## [1.153.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.153.3...v1.153.4) (2026-08-15)
 
 
