@@ -7,10 +7,10 @@ import type { Project } from '../../../../../domain/entities/Project';
 import type {
   IssueComment,
   IssueRepository,
+  OpenPullRequestCiStatus,
   PullRequestCommit,
   PullRequestDetail,
   PullRequestFile,
-  OpenPullRequestCiStatus,
   RelatedPullRequest,
 } from '../../../../../domain/usecases/adapter-interfaces/IssueRepository';
 import type { ConsoleProjectBinding } from '../../consoleOperationApi';
