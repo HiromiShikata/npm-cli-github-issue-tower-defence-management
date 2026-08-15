@@ -105,6 +105,19 @@ export class RestIssueRepository
     );
   };
 
+  updateIssueBody = async (
+    issue: Pick<Issue, 'org' | 'repo' | 'number'>,
+    body: string,
+  ): Promise<void> => {
+    await ky.patch(
+      `https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}`,
+      {
+        json: { body },
+        headers: { Authorization: `token ${this.ghToken}` },
+      },
+    );
+  };
+
   updateLabels = async (
     issue: Issue,
     labels: Issue['labels'],

@@ -1533,6 +1533,88 @@ ${otherStoryViewLink}`);
         ]);
       });
     });
+
+    describe('story body read and write over REST', () => {
+      const storyViewLink = 'https://example.com?sliceBy%5Bvalue%5D=Story%201';
+      const bodyWithStoryViewLinkOnFirstLine = `${storyViewLink}
+
+- [ ] Task 1`;
+
+      const runSingleStory = async (
+        createTaskFromStoryBodyCheckboxEnabled = false,
+      ): Promise<void> => {
+        const useCase = new ConvertCheckboxToIssueInStoryIssueUseCase(
+          mockIssueRepository,
+        );
+        await useCase.run({
+          project: singleStoryProject,
+          issues: [basicStoryIssue1],
+          cacheUsed: false,
+          urlOfStoryView: 'https://example.com',
+          storyObjectMap: singleStoryObjectMap,
+          manager: 'ManagerName',
+          createTaskFromStoryBodyCheckboxEnabled,
+        });
+      };
+
+      it('reads the story body through the issue body endpoint and issues no project item query for it', async () => {
+        jest.clearAllMocks();
+        mockIssueRepository.getIssueBodyByUrl.mockResolvedValue(
+          bodyWithStoryViewLinkOnFirstLine,
+        );
+
+        await runSingleStory();
+
+        expect(mockIssueRepository.getIssueBodyByUrl.mock.calls).toEqual([
+          [basicStoryIssue1.url],
+        ]);
+        expect(mockIssueRepository.getIssueByUrl).not.toHaveBeenCalled();
+      });
+
+      it('writes only the body when the story view link has to be placed on the first line', async () => {
+        jest.clearAllMocks();
+        mockIssueRepository.getIssueBodyByUrl.mockResolvedValue('- [ ] Task 1');
+
+        await runSingleStory();
+
+        expect(mockIssueRepository.updateIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.updateIssueBody.mock.calls).toEqual([
+          [
+            expect.objectContaining({
+              org: basicStoryIssue1.org,
+              repo: basicStoryIssue1.repo,
+              number: basicStoryIssue1.number,
+            }),
+            `${storyViewLink}
+
+- [ ] Task 1`,
+          ],
+        ]);
+      });
+
+      it('skips the story when its issue no longer exists', async () => {
+        jest.clearAllMocks();
+        mockIssueRepository.getIssueBodyByUrl.mockResolvedValue(null);
+
+        await runSingleStory();
+
+        expect(mockIssueRepository.getIssueBodyByUrl).toHaveBeenCalledWith(
+          basicStoryIssue1.url,
+        );
+        expect(mockIssueRepository.updateIssueBody).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+      });
+
+      it('propagates a transient read failure instead of treating it as a deleted issue', async () => {
+        jest.clearAllMocks();
+        mockIssueRepository.getIssueBodyByUrl.mockRejectedValue(
+          new Error('Failed to fetch body: 502 Bad Gateway'),
+        );
+
+        await expect(runSingleStory()).rejects.toThrow('502 Bad Gateway');
+        expect(mockIssueRepository.updateIssueBody).not.toHaveBeenCalled();
+      });
+    });
   });
 
   describe('buildStoryViewLink', () => {

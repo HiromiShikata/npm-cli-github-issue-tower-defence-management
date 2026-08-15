@@ -399,9 +399,12 @@ const createStubIssueRepository = (
   getAllIssues: () => notImplemented('getAllIssues'),
   getIssueByUrl: async (url: string): Promise<Issue | null> =>
     buildIssueForUrl(url),
+  getIssueBodyByUrl: async (url: string): Promise<string | null> =>
+    buildIssueForUrl(url)?.body ?? null,
   createNewIssue: () => notImplemented('createNewIssue'),
   searchIssue: () => notImplemented('searchIssue'),
   updateIssue: () => notImplemented('updateIssue'),
+  updateIssueBody: () => notImplemented('updateIssueBody'),
   updateNextActionDate: async (): Promise<void> => undefined,
   updateNextActionHour: () => notImplemented('updateNextActionHour'),
   updateProjectTextField: () => notImplemented('updateProjectTextField'),
