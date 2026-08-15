@@ -196,5 +196,12 @@ describeWhenCredentials('GraphqlProjectRepository', () => {
         },
       });
     });
+
+    it('should return the same project from the REST read as from the GraphQL cold start read', async () => {
+      const fromGraphql = await repository.getProject(projectId);
+      const fromRest = await repository.getProject(projectId);
+
+      expect(fromRest).toEqual(fromGraphql);
+    }, 60000);
   });
 });

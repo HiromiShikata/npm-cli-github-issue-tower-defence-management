@@ -111,7 +111,7 @@ describe('GraphqlProjectRepository disk cache', () => {
   });
 
   describe('getProject', () => {
-    it('always fetches the project fresh via GraphQL without reading or writing the disk cache', async () => {
+    it('fetches the project fresh on a cold start and writes only the immutable project location to the disk cache', async () => {
       const cache = buildCacheStub();
       mockPost.mockReturnValueOnce(mockJsonResponse(getProjectResponse));
       const repository = new GraphqlProjectRepository(
@@ -124,8 +124,15 @@ describe('GraphqlProjectRepository disk cache', () => {
 
       expect(project).toEqual(expectedProject);
       expect(mockPost).toHaveBeenCalledTimes(1);
-      expect(cache.getLatest).not.toHaveBeenCalled();
-      expect(cache.set).not.toHaveBeenCalled();
+      expect(cache.getLatest.mock.calls).toEqual([
+        [`projectLocation-${projectId}`],
+      ]);
+      expect(cache.set.mock.calls).toEqual([
+        [
+          `projectLocation-${projectId}`,
+          { owner: 'owner', ownerType: 'users', projectNumber: 49 },
+        ],
+      ]);
     });
 
     it('does not serve a project from the disk cache even when one is present', async () => {
@@ -146,7 +153,12 @@ describe('GraphqlProjectRepository disk cache', () => {
 
       expect(project).toEqual(expectedProject);
       expect(mockPost).toHaveBeenCalledTimes(1);
-      expect(cache.set).not.toHaveBeenCalled();
+      expect(cache.set.mock.calls).toEqual([
+        [
+          `projectLocation-${projectId}`,
+          { owner: 'owner', ownerType: 'users', projectNumber: 49 },
+        ],
+      ]);
     });
   });
 

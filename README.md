@@ -428,14 +428,16 @@ When `consoleAccessToken` is unset, no console server is started automatically; 
 
 ## Project ID Cache
 
-The mapping from `owner/projectNumber` to the immutable GitHub Project node ID that `GraphqlProjectRepository.fetchProjectId` resolves is cached on disk so it is shared across processes. Because every TDPM invocation is a fresh process, an in-memory cache alone would re-resolve this mapping over GraphQL on every loop and every worker start; the on-disk cache eliminates that repeated GraphQL traffic. The cache reuses the same `${XDG_CACHE_HOME:-$HOME/.cache}/tdpm/cache/{projectName}/` directory convention as the issue cache and writes each entry atomically (to a `.tmp` file then renamed) so concurrent processes never corrupt or read a partial file.
+The mapping from `owner/projectNumber` to the immutable GitHub Project node ID that `GraphqlProjectRepository.fetchProjectId` resolves is cached on disk so it is shared across processes, and so is the reverse mapping from that node ID back to the owner, owner type and project number. Because every TDPM invocation is a fresh process, an in-memory cache alone would re-resolve these mappings on every loop and every worker start. The cache reuses the same `${XDG_CACHE_HOME:-$HOME/.cache}/tdpm/cache/{projectName}/` directory convention as the issue cache and writes each entry atomically (to a `.tmp` file then renamed) so concurrent processes never corrupt or read a partial file.
 
 ```
 ${XDG_CACHE_HOME:-$HOME/.cache}/tdpm/cache/{projectName}/projectId-{owner}:{projectNumber}/{timestamp}.json
+${XDG_CACHE_HOME:-$HOME/.cache}/tdpm/cache/{projectName}/projectLocation-{projectId}/{timestamp}.json
 ```
 
 - The `projectId` mapping (`owner/projectNumber` to project node ID) is permanently static, so it is reused with no time-to-live.
-- Only the immutable project node ID is cached. Project metadata that can change — the project's fields and single-select status and story options resolved by `getProject` — is intentionally not cached on disk and is fetched fresh from GraphQL on every call, so newly created status and story options are never missed.
+- The `projectLocation` mapping (project node ID to `{owner, ownerType, projectNumber}`) is the same mapping read the other way round and is equally static, so it too carries no time-to-live. It exists because the Projects V2 REST routes are addressed by owner and project number while the code passes the project node ID around. It is written whenever either direction becomes known: when `fetchProjectId` resolves a project URL, and when a cold start GraphQL read of the project returns the project URL.
+- Only these immutable mappings are cached. Project metadata that can change — the project's fields and single-select status and story options resolved by `getProject` — is intentionally not cached on disk and is fetched fresh on every call, so newly created status and story options are never missed. With the location known, `getProject` and `listFieldNames` read that fresh metadata from the Projects V2 REST endpoints (`GET /{ownerType}/{owner}/projectsV2/{projectNumber}` and `.../fields`), which spend the core rate-limit budget instead of GraphQL points; the GraphQL project query remains as the cold start path for the first read in a workspace.
 - A malformed or absent cache file falls back to a live GraphQL fetch and never crashes.
 
 ## Per-Project Situation Snapshot
