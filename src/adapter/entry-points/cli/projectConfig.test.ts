@@ -1,7 +1,11 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { loadConfigFile, mergeConfigs } from './projectConfig';
+import {
+  loadConfigFile,
+  mergeConfigs,
+  parseProjectReadmeConfig,
+} from './projectConfig';
 
 describe('loadConfigFile disks', () => {
   let dir: string;
@@ -71,5 +75,35 @@ describe('mergeConfigs disks', () => {
 
   it('yields undefined disks when neither source provides them', () => {
     expect(mergeConfigs({}, {}, {}).disks).toBeUndefined();
+  });
+});
+
+describe('parseProjectReadmeConfig labelsAsLlmAgentName', () => {
+  const makeReadme = (yaml: string) =>
+    `<details>\n<summary>config</summary>\n${yaml}\n</details>`;
+
+  it('returns labelsAsLlmAgentName from the README config section', () => {
+    const readme = makeReadme(
+      'labelsAsLlmAgentName:\n  - chore\n  - accounting\n',
+    );
+    const result = parseProjectReadmeConfig(readme);
+    expect(result.labelsAsLlmAgentName).toEqual(['chore', 'accounting']);
+  });
+
+  it('does not emit a warning for labelsAsLlmAgentName', () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const readme = makeReadme('labelsAsLlmAgentName:\n  - chore\n');
+    parseProjectReadmeConfig(readme, 'https://example.com/project');
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('labelsAsLlmAgentName'),
+    );
+    warnSpy.mockRestore();
+  });
+
+  it('yields undefined labelsAsLlmAgentName when the key is absent', () => {
+    const readme = makeReadme('defaultAgentName: impl\n');
+    expect(
+      parseProjectReadmeConfig(readme).labelsAsLlmAgentName,
+    ).toBeUndefined();
   });
 });
