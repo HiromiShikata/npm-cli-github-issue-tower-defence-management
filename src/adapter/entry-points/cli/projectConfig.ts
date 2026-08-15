@@ -130,6 +130,7 @@ const knownProjectReadmeConfigKeys = [
   'awLogDirectoryPath',
   'awLogStaleThresholdMinutes',
   'labelsAsLlmAgentName',
+  'labelsNotRequiringPullRequest',
   'changeTargetPathAliases',
 ] as const;
 
@@ -272,6 +273,10 @@ export const parseProjectReadmeConfig = (
         'awLogStaleThresholdMinutes',
       ),
       labelsAsLlmAgentName: getStringArrayValue(parsed, 'labelsAsLlmAgentName'),
+      labelsNotRequiringPullRequest: getStringArrayValue(
+        parsed,
+        'labelsNotRequiringPullRequest',
+      ),
       changeTargetPathAliases: getStringRecordValue(
         parsed,
         'changeTargetPathAliases',

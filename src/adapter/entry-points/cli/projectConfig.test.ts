@@ -78,6 +78,39 @@ describe('mergeConfigs disks', () => {
   });
 });
 
+describe('parseProjectReadmeConfig labelsNotRequiringPullRequest', () => {
+  const makeReadme = (yaml: string) =>
+    `<details>\n<summary>config</summary>\n${yaml}\n</details>`;
+
+  it('returns labelsNotRequiringPullRequest from the README config section', () => {
+    const readme = makeReadme(
+      'labelsNotRequiringPullRequest:\n  - chore\n  - accounting\n',
+    );
+    const result = parseProjectReadmeConfig(readme);
+    expect(result.labelsNotRequiringPullRequest).toEqual([
+      'chore',
+      'accounting',
+    ]);
+  });
+
+  it('does not emit a warning for labelsNotRequiringPullRequest', () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const readme = makeReadme('labelsNotRequiringPullRequest:\n  - chore\n');
+    parseProjectReadmeConfig(readme, 'https://example.com/project');
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('labelsNotRequiringPullRequest'),
+    );
+    warnSpy.mockRestore();
+  });
+
+  it('yields undefined labelsNotRequiringPullRequest when the key is absent', () => {
+    const readme = makeReadme('defaultAgentName: impl\n');
+    expect(
+      parseProjectReadmeConfig(readme).labelsNotRequiringPullRequest,
+    ).toBeUndefined();
+  });
+});
+
 describe('parseProjectReadmeConfig labelsAsLlmAgentName', () => {
   const makeReadme = (yaml: string) =>
     `<details>\n<summary>config</summary>\n${yaml}\n</details>`;
