@@ -1,9 +1,10 @@
+import { localStorageCacheBaseDirectory } from './localStorageCacheDirectory';
 import { LocalStorageRepository } from './LocalStorageRepository';
 
 export class LocalStorageCacheRepository {
   constructor(
     readonly localStorageRepository: LocalStorageRepository,
-    readonly cachePath = './tmp/cache',
+    readonly cachePath = localStorageCacheBaseDirectory(),
   ) {}
 
   getLatest = async (

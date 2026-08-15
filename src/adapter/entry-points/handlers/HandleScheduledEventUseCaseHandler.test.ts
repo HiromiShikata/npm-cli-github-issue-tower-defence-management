@@ -1,5 +1,6 @@
 import fs from 'fs';
 import YAML from 'yaml';
+import { projectCacheDirectory } from '../../repositories/localStorageCacheDirectory';
 import type { HandleScheduledEventUseCase } from '../../../domain/usecases/HandleScheduledEventUseCase';
 
 jest.mock('fs');
@@ -271,7 +272,7 @@ describe('HandleScheduledEventUseCaseHandler', () => {
     const handler = new HandleScheduledEventUseCaseHandler();
     await handler.handle('config.yml', false);
 
-    const expectedCachePath = `./tmp/cache/${validConfig.projectName}`;
+    const expectedCachePath = projectCacheDirectory(validConfig.projectName);
     const firstCallArg = jest.mocked(writeSituationFile).mock.calls[0][0];
     expect(firstCallArg.cachePath).toBe(expectedCachePath);
     expect(firstCallArg.projectId).toBe('PVT_kwHOtest123');

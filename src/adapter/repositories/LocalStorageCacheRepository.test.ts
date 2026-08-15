@@ -1,4 +1,5 @@
 import { LocalStorageCacheRepository } from './LocalStorageCacheRepository';
+import { localStorageCacheBaseDirectory } from './localStorageCacheDirectory';
 import { LocalStorageRepository } from './LocalStorageRepository';
 
 describe('LocalStorageCacheRepository', () => {
@@ -19,11 +20,20 @@ describe('LocalStorageCacheRepository', () => {
       mkdir: jest.fn(),
       remove: jest.fn(),
     };
-    repository = new LocalStorageCacheRepository(localStorageRepository);
+    repository = new LocalStorageCacheRepository(
+      localStorageRepository,
+      './tmp/cache',
+    );
   });
 
   afterEach(() => {
     jest.useRealTimers();
+  });
+
+  test('defaults its base to the shared cache directory, so a process started in any working directory reads what the others cached', () => {
+    const defaulted = new LocalStorageCacheRepository(localStorageRepository);
+
+    expect(defaulted.cachePath).toBe(localStorageCacheBaseDirectory());
   });
 
   describe('getLatest', () => {
