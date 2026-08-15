@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ApiV3CheerioRestIssueRepository = exports.REQUIRED_CHECKS_CACHE_TTL_MS = exports.INCREMENTAL_FETCH_SKEW_BUFFER_MS = exports.FULL_ISSUE_FETCH_INTERVAL_MS = void 0;
+exports.ApiV3CheerioRestIssueRepository = exports.graphqlMergeableFromRestMergeable = exports.REQUIRED_CHECKS_CACHE_TTL_MS = exports.INCREMENTAL_FETCH_SKEW_BUFFER_MS = exports.FULL_ISSUE_FETCH_INTERVAL_MS = void 0;
 const gitHubRawUrl_1 = require("./gitHubRawUrl");
 const ProjectIssuesCacheRepository_1 = require("../ProjectIssuesCacheRepository");
 const BaseGitHubRepository_1 = require("../BaseGitHubRepository");
@@ -62,6 +62,31 @@ function isPullRequestFilesResponse(value) {
 function isRecord(value) {
     return typeof value === 'object' && value !== null;
 }
+function isRestPullRequestCiStatusResponse(value) {
+    if (!isRecord(value))
+        return false;
+    const head = value.head;
+    const base = value.base;
+    return (typeof value.html_url === 'string' &&
+        typeof value.state === 'string' &&
+        typeof value.draft === 'boolean' &&
+        (value.mergeable === null || typeof value.mergeable === 'boolean') &&
+        isRecord(head) &&
+        typeof head.ref === 'string' &&
+        typeof head.sha === 'string' &&
+        isRecord(base) &&
+        typeof base.ref === 'string');
+}
+const graphqlMergeableFromRestMergeable = (mergeable) => {
+    if (mergeable === true) {
+        return 'MERGEABLE';
+    }
+    if (mergeable === false) {
+        return 'CONFLICTING';
+    }
+    return 'UNKNOWN';
+};
+exports.graphqlMergeableFromRestMergeable = graphqlMergeableFromRestMergeable;
 function isNullableString(value) {
     return value === null || typeof value === 'string';
 }
@@ -952,6 +977,68 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 return null;
             }
             return this.buildRelatedPullRequestFromSlim(owner, repo, slimPullRequest);
+        };
+        this.fetchRestPullRequestCiStatus = async (owner, repo, prNumber, prUrl) => {
+            const maxAttempts = 3;
+            const retryDelayMilliseconds = 1000;
+            let lastPullRequest = null;
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                if (attempt > 0) {
+                    await this.sleep(retryDelayMilliseconds);
+                }
+                const response = await this.fetchWithRateLimitRetry(() => fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}`, {
+                    method: 'GET',
+                    headers: {
+                        Authorization: `Bearer ${this.ghToken}`,
+                        Accept: 'application/vnd.github+json',
+                    },
+                }));
+                if (response.status === 404) {
+                    return null;
+                }
+                if (!response.ok) {
+                    const reason = await this.formatGitHubErrorWithStatus(response);
+                    throw new Error(`Failed to fetch pull request status for ${prUrl}: ${reason}`);
+                }
+                const body = await response.json();
+                if (!isRestPullRequestCiStatusResponse(body)) {
+                    throw new Error(`Unexpected response shape when fetching pull request status for ${prUrl}`);
+                }
+                lastPullRequest = body;
+                if (body.state !== 'open' || body.mergeable !== null) {
+                    return body;
+                }
+            }
+            return lastPullRequest;
+        };
+        this.getOpenPullRequestCiStatus = async (prUrl) => {
+            const parsedUrl = this.parseIssueUrl(prUrl);
+            if (!parsedUrl.isPr) {
+                return null;
+            }
+            const { owner, repo, issueNumber: prNumber } = parsedUrl;
+            const pullRequest = await this.fetchRestPullRequestCiStatus(owner, repo, prNumber, prUrl);
+            if (!pullRequest || pullRequest.state !== 'open') {
+                return null;
+            }
+            const requiredCheckNames = await this.getRequiredCheckNames(owner, repo, pullRequest.base.ref);
+            const ciContexts = await this.getCommitCiContexts(owner, repo, pullRequest.head.sha);
+            const status = this.computePrStatus(pullRequest.html_url, pullRequest.head.ref, {
+                isDraft: pullRequest.draft,
+                mergeable: (0, exports.graphqlMergeableFromRestMergeable)(pullRequest.mergeable),
+                requiredCheckNames,
+                ciContexts,
+                reviewThreads: [],
+            });
+            return {
+                url: status.url,
+                isConflicted: status.isConflicted,
+                mergeable: status.mergeable,
+                isPassedAllCiJob: status.isPassedAllCiJob,
+                isCiStateSuccess: status.isCiStateSuccess,
+                isBranchOutOfDate: status.isBranchOutOfDate,
+                missingRequiredCheckNames: status.missingRequiredCheckNames,
+            };
         };
         // Resolves many pull requests with one GraphQL query per hundred instead of
         // one query per pull request. A URL this cannot settle is left out of the

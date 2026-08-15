@@ -11,7 +11,7 @@ export declare const injectRateLimitSelection: (query: string) => string;
 export declare const GRAPHQL_CALL_SITE_FRAME_COUNT = 3;
 export declare const GRAPHQL_CALL_SITE_SEPARATOR = "<-";
 export declare const UNKNOWN_GRAPHQL_CALL_SITE = "unknown";
-export declare const extractGraphqlCallSite: (stack: string | undefined) => string;
+export declare const extractGraphqlCallSite: (stack: string | undefined, modulePath?: string) => string;
 export declare const captureGraphqlCallSite: () => string;
 export declare const logGithubGraphqlCost: (params: {
     query: string;

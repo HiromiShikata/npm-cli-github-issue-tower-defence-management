@@ -1,3 +1,15 @@
+# [1.156.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.155.0...v1.156.0) (2026-08-15)
+
+
+### Bug Fixes
+
+* name the GraphQL caller when the package runs from node_modules ([#1585](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1585)) ([e0caa90](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e0caa906194a032591f85b7b1164b5ad14be42ef)), closes [#1584](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1584)
+
+
+### Features
+
+* serve console pull request status over REST ([#1583](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1583)) ([5ab092c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5ab092ccdb6425b714dd980449d76f4fb86133d8)), closes [#1582](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1582)
+
 # [1.155.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.154.1...v1.155.0) (2026-08-15)
 
 

@@ -1,4 +1,4 @@
-import { IssueRepository, RelatedPullRequest, IssueComment, PullRequestDetail, PullRequestCommit, PullRequestReviewCommentSide, PullRequestReviewInlineLocation } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+import { IssueRepository, RelatedPullRequest, OpenPullRequestCiStatus, IssueComment, PullRequestDetail, PullRequestCommit, PullRequestReviewCommentSide, PullRequestReviewInlineLocation } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
 import { SearchedIssue } from '../../../domain/entities/SearchedIssue';
@@ -16,6 +16,7 @@ import { Sleep } from './githubRateLimitRetry';
 export declare const FULL_ISSUE_FETCH_INTERVAL_MS: number;
 export declare const INCREMENTAL_FETCH_SKEW_BUFFER_MS: number;
 export declare const REQUIRED_CHECKS_CACHE_TTL_MS: number;
+export declare const graphqlMergeableFromRestMergeable: (mergeable: boolean | null) => string;
 export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository implements IssueRepository {
     readonly apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>;
     readonly restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'updateIssueBody' | 'createComment' | 'getIssue' | 'updateLabels' | 'removeLabel' | 'updateAssigneeList' | 'searchIssues'>;
@@ -92,6 +93,8 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     getAllOpened: (project: Project) => Promise<Issue[]>;
     getStoryObjectMap: (project: Project) => Promise<StoryObjectMap>;
     getOpenPullRequest: (prUrl: string) => Promise<RelatedPullRequest | null>;
+    private fetchRestPullRequestCiStatus;
+    getOpenPullRequestCiStatus: (prUrl: string) => Promise<OpenPullRequestCiStatus | null>;
     getOpenPullRequests: (prUrls: string[]) => Promise<Map<string, RelatedPullRequest | null>>;
     private requireParsedPullRequest;
     private fetchSlimPullRequestsInOneQuery;
