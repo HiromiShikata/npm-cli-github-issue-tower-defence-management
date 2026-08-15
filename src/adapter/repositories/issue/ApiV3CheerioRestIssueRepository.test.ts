@@ -4010,6 +4010,171 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('getOpenPullRequestCiStatus', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    const prUrl = 'https://github.com/HiromiShikata/test-repository/pull/42';
+
+    const jsonResponse = (body: unknown): Response =>
+      new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+    const openPullRequestBody = (mergeable: boolean | null): unknown => ({
+      html_url: prUrl,
+      state: 'open',
+      draft: false,
+      mergeable,
+      head: { ref: 'feature/x', sha: 'sha-1' },
+      base: { ref: 'main' },
+    });
+
+    const requestedUrl = (input: RequestInfo | URL): string => {
+      if (typeof input === 'string') {
+        return input;
+      }
+      if (input instanceof URL) {
+        return input.href;
+      }
+      return input.url;
+    };
+
+    const mockGitHubRest = (pullRequestBodies: unknown[]): string[] => {
+      const requestedUrls: string[] = [];
+      let pullRequestReadCount = 0;
+      jest
+        .spyOn(global, 'fetch')
+        .mockImplementation((input: RequestInfo | URL): Promise<Response> => {
+          const url = requestedUrl(input);
+          requestedUrls.push(url);
+          if (url.includes('/pulls/42')) {
+            const index = Math.min(
+              pullRequestReadCount,
+              pullRequestBodies.length - 1,
+            );
+            pullRequestReadCount += 1;
+            return Promise.resolve(jsonResponse(pullRequestBodies[index]));
+          }
+          if (url.includes('/rules/branches/')) {
+            return Promise.resolve(jsonResponse([]));
+          }
+          if (url.includes('/branches/')) {
+            return Promise.resolve(jsonResponse({}));
+          }
+          if (url.includes('/check-runs')) {
+            return Promise.resolve(
+              jsonResponse({
+                total_count: 1,
+                check_runs: [{ name: 'test', conclusion: 'success', id: 1 }],
+              }),
+            );
+          }
+          if (url.includes('/status')) {
+            return Promise.resolve(jsonResponse({ statuses: [] }));
+          }
+          return Promise.reject(new Error(`unexpected request: ${url}`));
+        });
+      return requestedUrls;
+    };
+
+    it('resolves every status field over REST without issuing a GraphQL request', async () => {
+      const requestedUrls = mockGitHubRest([openPullRequestBody(true)]);
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const status = await repository.getOpenPullRequestCiStatus(prUrl);
+
+      expect(status).toEqual({
+        url: prUrl,
+        isConflicted: false,
+        mergeable: 'MERGEABLE',
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+      });
+      expect(
+        requestedUrls.filter((url) => url.includes('/graphql')),
+      ).toHaveLength(0);
+      expect(requestedUrls).toContain(
+        'https://api.github.com/repos/HiromiShikata/test-repository/pulls/42',
+      );
+    });
+
+    it('reports a conflicting pull request as conflicted', async () => {
+      mockGitHubRest([openPullRequestBody(false)]);
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const status = await repository.getOpenPullRequestCiStatus(prUrl);
+
+      expect(status?.isConflicted).toBe(true);
+      expect(status?.mergeable).toBe('CONFLICTING');
+    });
+
+    it('re-reads while GitHub is still computing mergeability and returns the settled value', async () => {
+      const requestedUrls = mockGitHubRest([
+        openPullRequestBody(null),
+        openPullRequestBody(true),
+      ]);
+
+      const { repository, sleep } = createApiV3CheerioRestIssueRepository();
+      const status = await repository.getOpenPullRequestCiStatus(prUrl);
+
+      expect(status?.mergeable).toBe('MERGEABLE');
+      expect(sleep).toHaveBeenCalledTimes(1);
+      const pullRequestReads = requestedUrls.filter((url) =>
+        url.endsWith('/pulls/42'),
+      );
+      expect(pullRequestReads).toHaveLength(2);
+    });
+
+    it('reports unknown mergeability rather than looping when GitHub never settles it', async () => {
+      const requestedUrls = mockGitHubRest([openPullRequestBody(null)]);
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const status = await repository.getOpenPullRequestCiStatus(prUrl);
+
+      expect(status?.mergeable).toBe('UNKNOWN');
+      expect(status?.isConflicted).toBe(false);
+      const pullRequestReads = requestedUrls.filter((url) =>
+        url.endsWith('/pulls/42'),
+      );
+      expect(pullRequestReads).toHaveLength(3);
+    });
+
+    it('returns null for a pull request that is no longer open', async () => {
+      mockGitHubRest([
+        {
+          html_url: prUrl,
+          state: 'closed',
+          draft: false,
+          mergeable: null,
+          head: { ref: 'feature/x', sha: 'sha-1' },
+          base: { ref: 'main' },
+        },
+      ]);
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+
+      expect(await repository.getOpenPullRequestCiStatus(prUrl)).toBeNull();
+    });
+
+    it('returns null for a url that is not a pull request', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch');
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+
+      expect(
+        await repository.getOpenPullRequestCiStatus(
+          'https://github.com/HiromiShikata/test-repository/issues/42',
+        ),
+      ).toBeNull();
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+  });
+
   const createApiV3CheerioRestIssueRepository = () => {
     const apiV3IssueRepository = mock<ApiV3IssueRepository>();
     const restIssueRepository = mock<RestIssueRepository>();

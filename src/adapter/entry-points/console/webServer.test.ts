@@ -674,16 +674,12 @@ describe('webServer new routes integration', () => {
   it('serves the pull request status read api when a status cache is injected', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
     const issueRepository = mock<IssueRepository>();
-    issueRepository.getOpenPullRequest.mockResolvedValue({
+    issueRepository.getOpenPullRequestCiStatus.mockResolvedValue({
       url: 'https://github.com/o/r/pull/1',
-      branchName: 'feature',
-      createdAt: new Date('2026-06-18T03:21:00.000Z'),
-      isDraft: false,
       isConflicted: true,
       mergeable: 'CONFLICTING',
       isPassedAllCiJob: false,
       isCiStateSuccess: false,
-      isResolvedAllReviewComments: false,
       isBranchOutOfDate: true,
       missingRequiredCheckNames: ['build'],
     });

@@ -7,6 +7,7 @@ import type { Project } from '../../../../../domain/entities/Project';
 import type {
   IssueComment,
   IssueRepository,
+  OpenPullRequestCiStatus,
   PullRequestCommit,
   PullRequestDetail,
   PullRequestFile,
@@ -428,6 +429,21 @@ const createStubIssueRepository = (
   ): Promise<RelatedPullRequest | null> =>
     url === CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL
       ? awaitingQualityCheckPullRequest
+      : null,
+  getOpenPullRequestCiStatus: async (
+    url: string,
+  ): Promise<OpenPullRequestCiStatus | null> =>
+    url === CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL
+      ? {
+          url: awaitingQualityCheckPullRequest.url,
+          isConflicted: awaitingQualityCheckPullRequest.isConflicted,
+          mergeable: awaitingQualityCheckPullRequest.mergeable,
+          isPassedAllCiJob: awaitingQualityCheckPullRequest.isPassedAllCiJob,
+          isCiStateSuccess: awaitingQualityCheckPullRequest.isCiStateSuccess,
+          isBranchOutOfDate: awaitingQualityCheckPullRequest.isBranchOutOfDate,
+          missingRequiredCheckNames:
+            awaitingQualityCheckPullRequest.missingRequiredCheckNames,
+        }
       : null,
   getOpenPullRequests: async (
     urls: string[],

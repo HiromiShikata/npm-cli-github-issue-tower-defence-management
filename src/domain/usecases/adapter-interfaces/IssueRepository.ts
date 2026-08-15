@@ -18,6 +18,16 @@ export type RelatedPullRequest = {
   missingRequiredCheckNames: string[];
 };
 
+export type OpenPullRequestCiStatus = {
+  url: string;
+  isConflicted: boolean;
+  mergeable: string | null;
+  isPassedAllCiJob: boolean;
+  isCiStateSuccess: boolean;
+  isBranchOutOfDate: boolean;
+  missingRequiredCheckNames: string[];
+};
+
 export type IssueComment = {
   author: string;
   body: string;
@@ -141,6 +151,9 @@ export interface IssueRepository {
   update: (issue: Issue, project: Project) => Promise<void>;
   findRelatedOpenPRs: (issueUrl: string) => Promise<RelatedPullRequest[]>;
   getOpenPullRequest: (prUrl: string) => Promise<RelatedPullRequest | null>;
+  getOpenPullRequestCiStatus: (
+    prUrl: string,
+  ) => Promise<OpenPullRequestCiStatus | null>;
   getOpenPullRequests: (
     prUrls: string[],
   ) => Promise<Map<string, RelatedPullRequest | null>>;

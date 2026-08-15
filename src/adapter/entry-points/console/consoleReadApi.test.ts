@@ -355,14 +355,10 @@ describe('consoleReadApi', () => {
   describe('handlePullRequestStatus with the TTL cache', () => {
     const openPullRequest = {
       url: 'https://github.com/o/r/pull/1',
-      branchName: 'feature',
-      createdAt: new Date('2026-01-02T03:04:05Z'),
-      isDraft: false,
       isConflicted: true,
       mergeable: 'CONFLICTING',
       isPassedAllCiJob: false,
       isCiStateSuccess: false,
-      isResolvedAllReviewComments: false,
       isBranchOutOfDate: true,
       missingRequiredCheckNames: ['build', 'test'],
     };
@@ -380,7 +376,9 @@ describe('consoleReadApi', () => {
 
     it('serializes the open pull request status fields', async () => {
       const issueRepository = mock<IssueRepository>();
-      issueRepository.getOpenPullRequest.mockResolvedValue(openPullRequest);
+      issueRepository.getOpenPullRequestCiStatus.mockResolvedValue(
+        openPullRequest,
+      );
       const cache = new PullRequestStatusCache(() => 0);
       const response = await handlePullRequestStatus(
         issueRepository,
@@ -403,7 +401,7 @@ describe('consoleReadApi', () => {
 
     it('reports not found when the repository returns no open pull request', async () => {
       const issueRepository = mock<IssueRepository>();
-      issueRepository.getOpenPullRequest.mockResolvedValue(null);
+      issueRepository.getOpenPullRequestCiStatus.mockResolvedValue(null);
       const cache = new PullRequestStatusCache(() => 0);
       const response = await handlePullRequestStatus(
         issueRepository,
@@ -413,9 +411,25 @@ describe('consoleReadApi', () => {
       expect(response.body).toEqual({ found: false, status: null });
     });
 
+    it('does not reach the review thread read, which no field of this response needs', async () => {
+      const issueRepository = mock<IssueRepository>();
+      issueRepository.getOpenPullRequestCiStatus.mockResolvedValue(
+        openPullRequest,
+      );
+      const cache = new PullRequestStatusCache(() => 0);
+      await handlePullRequestStatus(
+        issueRepository,
+        cache,
+        openPullRequest.url,
+      );
+      expect(issueRepository.getOpenPullRequest).not.toHaveBeenCalled();
+    });
+
     it('caches within the TTL and re-fetches after the TTL elapses', async () => {
       const issueRepository = mock<IssueRepository>();
-      issueRepository.getOpenPullRequest.mockResolvedValue(openPullRequest);
+      issueRepository.getOpenPullRequestCiStatus.mockResolvedValue(
+        openPullRequest,
+      );
       let now = 0;
       const cache = new PullRequestStatusCache(() => now);
       await handlePullRequestStatus(
@@ -429,14 +443,18 @@ describe('consoleReadApi', () => {
         cache,
         openPullRequest.url,
       );
-      expect(issueRepository.getOpenPullRequest).toHaveBeenCalledTimes(1);
+      expect(issueRepository.getOpenPullRequestCiStatus).toHaveBeenCalledTimes(
+        1,
+      );
       now = PULL_REQUEST_STATUS_CACHE_TTL_MS;
       await handlePullRequestStatus(
         issueRepository,
         cache,
         openPullRequest.url,
       );
-      expect(issueRepository.getOpenPullRequest).toHaveBeenCalledTimes(2);
+      expect(issueRepository.getOpenPullRequestCiStatus).toHaveBeenCalledTimes(
+        2,
+      );
     });
   });
 });
