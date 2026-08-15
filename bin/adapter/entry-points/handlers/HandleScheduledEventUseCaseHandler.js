@@ -35,6 +35,7 @@ const GraphqlProjectItemRepository_1 = require("../../repositories/issue/Graphql
 const ApiV3CheerioRestIssueRepository_1 = require("../../repositories/issue/ApiV3CheerioRestIssueRepository");
 const HandleScheduledEventUseCase_1 = require("../../../domain/usecases/HandleScheduledEventUseCase");
 const LocalStorageCacheRepository_1 = require("../../repositories/LocalStorageCacheRepository");
+const localStorageCacheDirectory_1 = require("../../repositories/localStorageCacheDirectory");
 const ActionAnnouncementUseCase_1 = require("../../../domain/usecases/ActionAnnouncementUseCase");
 const SetWorkflowManagementIssueToStoryUseCase_1 = require("../../../domain/usecases/SetWorkflowManagementIssueToStoryUseCase");
 const ClearPastNextActionDateHourUseCase_1 = require("../../../domain/usecases/ClearPastNextActionDateHourUseCase");
@@ -204,7 +205,7 @@ class HandleScheduledEventUseCaseHandler {
             const systemDateRepository = new SystemDateRepository_1.SystemDateRepository();
             const localStorageRepository = new LocalStorageRepository_1.LocalStorageRepository();
             const googleSpreadsheetRepository = new GoogleSpreadsheetRepository_1.GoogleSpreadsheetRepository(localStorageRepository, input.credentials.manager.googleServiceAccount.serviceAccountKey);
-            const cachePath = `./tmp/cache/${input.projectName}`;
+            const cachePath = (0, localStorageCacheDirectory_1.projectCacheDirectory)(input.projectName);
             const localStorageCacheRepository = new LocalStorageCacheRepository_1.LocalStorageCacheRepository(localStorageRepository, cachePath);
             const githubRepositoryParams = [localStorageRepository, input.credentials.bot.github.token];
             const projectRepository = new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams, localStorageCacheRepository);

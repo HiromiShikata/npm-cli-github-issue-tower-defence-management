@@ -1,3 +1,10 @@
+## [1.153.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.153.3...v1.153.4) (2026-08-15)
+
+
+### Bug Fixes
+
+* resolve the issues cache to a shared directory instead of the process working directory ([#1570](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1570)) ([de942d4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/de942d491b55bab1864854ef171d335e64438c19)), closes [#1560](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1560)
+
 ## [1.153.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.153.2...v1.153.3) (2026-08-14)
 
 

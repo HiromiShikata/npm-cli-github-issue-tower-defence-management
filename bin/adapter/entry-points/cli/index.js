@@ -58,6 +58,7 @@ const RestIssueRepository_1 = require("../../repositories/issue/RestIssueReposit
 const GraphqlProjectItemRepository_1 = require("../../repositories/issue/GraphqlProjectItemRepository");
 const ApiV3CheerioRestIssueRepository_1 = require("../../repositories/issue/ApiV3CheerioRestIssueRepository");
 const LocalStorageCacheRepository_1 = require("../../repositories/LocalStorageCacheRepository");
+const localStorageCacheDirectory_1 = require("../../repositories/localStorageCacheDirectory");
 const SystemDateRepository_1 = require("../../repositories/SystemDateRepository");
 const LocalCommandIssueAttachmentRepository_1 = require("../../repositories/LocalCommandIssueAttachmentRepository");
 const NodeLocalCommandRunner_1 = require("../../repositories/NodeLocalCommandRunner");
@@ -212,7 +213,7 @@ exports.program
     console.log(`maximumPreparingIssuesCount: ${maximumPreparingIssuesCount ?? 'null (default: 6 per available Claude OAuth token, otherwise 6)'}`);
     const projectName = config.projectName ?? 'default';
     const localStorageRepository = new LocalStorageRepository_1.LocalStorageRepository();
-    const cachePath = `./tmp/cache/${projectName}`;
+    const cachePath = (0, localStorageCacheDirectory_1.projectCacheDirectory)(projectName);
     const localStorageCacheRepository = new LocalStorageCacheRepository_1.LocalStorageCacheRepository(localStorageRepository, cachePath);
     const githubRepositoryParams = buildGithubRepositoryParams(localStorageRepository, token);
     const projectRepository = new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams, localStorageCacheRepository);
@@ -329,7 +330,7 @@ exports.program
     const workflowBlockerResolvedWebhookUrl = config.workflowBlockerResolvedWebhookUrl ?? null;
     const projectName = config.projectName ?? 'default';
     const localStorageRepository = new LocalStorageRepository_1.LocalStorageRepository();
-    const cachePath = `./tmp/cache/${projectName}`;
+    const cachePath = (0, localStorageCacheDirectory_1.projectCacheDirectory)(projectName);
     const localStorageCacheRepository = new LocalStorageCacheRepository_1.LocalStorageCacheRepository(localStorageRepository, cachePath);
     const githubRepositoryParams = buildGithubRepositoryParams(localStorageRepository, token);
     const projectRepository = new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams, localStorageCacheRepository);
@@ -385,7 +386,7 @@ exports.program
     const config = (0, projectConfig_2.mergeConfigs)(configFileValues, cliOverrides, readmeOverrides);
     const projectName = config.projectName ?? 'default';
     const localStorageRepository = new LocalStorageRepository_1.LocalStorageRepository();
-    const cachePath = `./tmp/cache/${projectName}`;
+    const cachePath = (0, localStorageCacheDirectory_1.projectCacheDirectory)(projectName);
     const localStorageCacheRepository = new LocalStorageCacheRepository_1.LocalStorageCacheRepository(localStorageRepository, cachePath);
     const githubRepositoryParams = buildGithubRepositoryParams(localStorageRepository, token);
     const apiV3IssueRepository = new ApiV3IssueRepository_1.ApiV3IssueRepository(...githubRepositoryParams);
@@ -442,7 +443,7 @@ const runServeWeb = async (options) => {
     const dashboardProjectNames = parseDashboardProjectNames(options.dashboardProjectNames);
     const projectName = config.projectName ?? 'default';
     const localStorageRepository = new LocalStorageRepository_1.LocalStorageRepository();
-    const cachePath = `./tmp/cache/${projectName}`;
+    const cachePath = (0, localStorageCacheDirectory_1.projectCacheDirectory)(projectName);
     const localStorageCacheRepository = new LocalStorageCacheRepository_1.LocalStorageCacheRepository(localStorageRepository, cachePath);
     const githubRepositoryParams = buildGithubRepositoryParams(localStorageRepository, token);
     const projectRepository = new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams, localStorageCacheRepository);
@@ -596,7 +597,7 @@ exports.program
     }
     const projectName = config.projectName ?? 'default';
     const localStorageRepository = new LocalStorageRepository_1.LocalStorageRepository();
-    const cachePath = `./tmp/cache/${projectName}`;
+    const cachePath = (0, localStorageCacheDirectory_1.projectCacheDirectory)(projectName);
     const localStorageCacheRepository = new LocalStorageCacheRepository_1.LocalStorageCacheRepository(localStorageRepository, cachePath);
     const githubRepositoryParams = buildGithubRepositoryParams(localStorageRepository, token);
     const projectRepository = new GraphqlProjectRepository_1.GraphqlProjectRepository(...githubRepositoryParams, localStorageCacheRepository);

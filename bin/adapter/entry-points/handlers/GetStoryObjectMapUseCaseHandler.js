@@ -13,6 +13,7 @@ const RestIssueRepository_1 = require("../../repositories/issue/RestIssueReposit
 const GraphqlProjectItemRepository_1 = require("../../repositories/issue/GraphqlProjectItemRepository");
 const ApiV3CheerioRestIssueRepository_1 = require("../../repositories/issue/ApiV3CheerioRestIssueRepository");
 const LocalStorageCacheRepository_1 = require("../../repositories/LocalStorageCacheRepository");
+const localStorageCacheDirectory_1 = require("../../repositories/localStorageCacheDirectory");
 const SystemDateRepository_1 = require("../../repositories/SystemDateRepository");
 const GetStoryObjectMapUseCase_1 = require("../../../domain/usecases/GetStoryObjectMapUseCase");
 class GetStoryObjectMapUseCaseHandler {
@@ -48,7 +49,7 @@ class GetStoryObjectMapUseCaseHandler {
                 throw new Error(`Invalid input: required fields projectName and credentials.bot.github.token must be strings. Got: ${JSON.stringify(input)}`);
             }
             const localStorageRepository = new LocalStorageRepository_1.LocalStorageRepository();
-            const cachePath = `./tmp/cache/${input.projectName}`;
+            const cachePath = (0, localStorageCacheDirectory_1.projectCacheDirectory)(input.projectName);
             const localStorageCacheRepository = new LocalStorageCacheRepository_1.LocalStorageCacheRepository(localStorageRepository, cachePath);
             const githubRepositoryParams = [localStorageRepository, input.credentials.bot.github.token];
             const projectRepository = {

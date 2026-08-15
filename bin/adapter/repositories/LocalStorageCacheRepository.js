@@ -1,8 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.LocalStorageCacheRepository = void 0;
+const localStorageCacheDirectory_1 = require("./localStorageCacheDirectory");
 class LocalStorageCacheRepository {
-    constructor(localStorageRepository, cachePath = './tmp/cache') {
+    constructor(localStorageRepository, cachePath = (0, localStorageCacheDirectory_1.localStorageCacheBaseDirectory)()) {
         this.localStorageRepository = localStorageRepository;
         this.cachePath = cachePath;
         this.getLatest = async (key) => {
