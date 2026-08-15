@@ -426,6 +426,17 @@ const createStubIssueRepository = (
     url === CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL
       ? awaitingQualityCheckPullRequest
       : null,
+  getOpenPullRequests: async (
+    urls: string[],
+  ): Promise<Map<string, RelatedPullRequest | null>> =>
+    new Map(
+      urls.map((url) => [
+        url,
+        url === CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL
+          ? awaitingQualityCheckPullRequest
+          : null,
+      ]),
+    ),
   getPullRequestChangedFilePaths: async (): Promise<string[]> => [],
   approvePullRequest: async (): Promise<void> => undefined,
   requestChangesWithInlineComment: async (
