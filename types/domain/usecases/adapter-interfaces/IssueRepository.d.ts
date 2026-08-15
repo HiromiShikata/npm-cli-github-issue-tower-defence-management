@@ -60,6 +60,7 @@ export interface IssueRepository {
         cacheUsed: boolean;
     }>;
     getIssueByUrl: (url: string) => Promise<Issue | null>;
+    getIssueBodyByUrl: (url: string) => Promise<string | null>;
     createNewIssue: (org: string, repo: string, title: string, body: string, assignees: Member['name'][], labels: Label[]) => Promise<number>;
     searchIssue: (query: {
         owner: string;
@@ -75,6 +76,7 @@ export interface IssueRepository {
         number: string;
     }[]>;
     updateIssue: (issue: Issue) => Promise<void>;
+    updateIssueBody: (issue: Pick<Issue, 'org' | 'repo' | 'number'>, body: string) => Promise<void>;
     updateNextActionDate: (issueUrl: string, project: Project, date: Date, projectItemId?: string) => Promise<void>;
     updateNextActionHour: (project: Project & {
         nextActionHour: NonNullable<Project['nextActionHour']>;

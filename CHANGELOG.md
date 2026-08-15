@@ -1,3 +1,10 @@
+# [1.154.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.153.6...v1.154.0) (2026-08-15)
+
+
+### Features
+
+* read and write the story issue body over REST in the slow sweep ([#1577](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1577)) ([5dc770f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5dc770fe3944416645a5c35095ffbfe38c662c70)), closes [#1576](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1576)
+
 ## [1.153.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.153.5...v1.153.6) (2026-08-15)
 
 
