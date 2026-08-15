@@ -1,7 +1,7 @@
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 import { SilentSessionCandidateStateRepository } from '../../domain/usecases/adapter-interfaces/SilentSessionCandidateStateRepository';
+import { tdpmCacheDirectory } from './localStorageCacheDirectory';
 
 type StoredCandidateEntry = {
   sessionName: string;
@@ -13,10 +13,8 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 export const DEFAULT_STATE_RETENTION_WINDOW_SECONDS = 60 * 60;
 
-const defaultStateFilePath = (): string => {
-  const base = process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), '.cache');
-  return path.join(base, 'tdpm', 'silent-session-candidates.json');
-};
+export const defaultSilentSessionCandidateStateFilePath = (): string =>
+  path.join(tdpmCacheDirectory(), 'silent-session-candidates.json');
 
 // Persists only the candidate set used by the two-consecutive-cycle
 // debounce. The formerly persisted announced-running-sub-agent labels
@@ -28,7 +26,7 @@ const defaultStateFilePath = (): string => {
 // write.
 export class FileSystemSilentSessionCandidateStateRepository implements SilentSessionCandidateStateRepository {
   constructor(
-    private readonly stateFilePath: string = defaultStateFilePath(),
+    private readonly stateFilePath: string = defaultSilentSessionCandidateStateFilePath(),
     private readonly retentionWindowSeconds: number = DEFAULT_STATE_RETENTION_WINDOW_SECONDS,
   ) {}
 

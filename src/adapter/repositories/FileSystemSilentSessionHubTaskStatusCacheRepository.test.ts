@@ -3,6 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 import {
   DEFAULT_HUB_TASK_STATUS_RETENTION_WINDOW_SECONDS,
+  defaultSilentSessionHubTaskStatusCacheFilePath,
   FileSystemSilentSessionHubTaskStatusCacheRepository,
 } from './FileSystemSilentSessionHubTaskStatusCacheRepository';
 
@@ -247,5 +248,38 @@ describe('FileSystemSilentSessionHubTaskStatusCacheRepository', () => {
 
   it('exposes the default retention window as a named constant', () => {
     expect(DEFAULT_HUB_TASK_STATUS_RETENTION_WINDOW_SECONDS).toBe(60 * 60);
+  });
+});
+
+describe('defaultSilentSessionHubTaskStatusCacheFilePath', () => {
+  const originalXdgCacheHome = process.env.XDG_CACHE_HOME;
+
+  afterEach(() => {
+    if (originalXdgCacheHome === undefined) {
+      delete process.env.XDG_CACHE_HOME;
+    } else {
+      process.env.XDG_CACHE_HOME = originalXdgCacheHome;
+    }
+  });
+
+  it('places the state file at tdpm/silent-session-hub-task-status.json below XDG_CACHE_HOME when set', () => {
+    process.env.XDG_CACHE_HOME = '/custom/cache';
+
+    expect(defaultSilentSessionHubTaskStatusCacheFilePath()).toBe(
+      '/custom/cache/tdpm/silent-session-hub-task-status.json',
+    );
+  });
+
+  it('places the state file at tdpm/silent-session-hub-task-status.json below the home cache directory when XDG_CACHE_HOME is absent', () => {
+    delete process.env.XDG_CACHE_HOME;
+
+    expect(defaultSilentSessionHubTaskStatusCacheFilePath()).toBe(
+      path.join(
+        os.homedir(),
+        '.cache',
+        'tdpm',
+        'silent-session-hub-task-status.json',
+      ),
+    );
   });
 });

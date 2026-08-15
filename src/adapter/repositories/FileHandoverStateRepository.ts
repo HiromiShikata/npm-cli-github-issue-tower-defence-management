@@ -1,20 +1,17 @@
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 import {
   TokenExhaustionHandoverState,
   TokenExhaustionHandoverStateEntry,
 } from '../../domain/entities/TokenExhaustionHandoverState';
 import { TokenExhaustionHandoverStateRepository } from '../../domain/usecases/adapter-interfaces/TokenExhaustionHandoverStateRepository';
+import { tdpmCacheDirectory } from './localStorageCacheDirectory';
 
-export const defaultHandoverStateFilePath = (): string => {
-  const base = process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), '.cache');
-  return path.join(
-    base,
-    'tdpm',
+export const defaultHandoverStateFilePath = (): string =>
+  path.join(
+    tdpmCacheDirectory(),
     'token-exhaustion-handover-state-tdpm-native.json',
   );
-};
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);

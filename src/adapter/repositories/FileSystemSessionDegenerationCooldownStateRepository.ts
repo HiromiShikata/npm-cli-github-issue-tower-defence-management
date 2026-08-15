@@ -1,7 +1,7 @@
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 import { SessionDegenerationCooldownStateRepository } from '../../domain/usecases/adapter-interfaces/SessionDegenerationCooldownStateRepository';
+import { tdpmCacheDirectory } from './localStorageCacheDirectory';
 
 type StoredResetEntry = {
   sessionName: string;
@@ -13,14 +13,12 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 export const DEFAULT_RESET_RETENTION_WINDOW_SECONDS = 60 * 60;
 
-const defaultStateFilePath = (): string => {
-  const base = process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), '.cache');
-  return path.join(base, 'tdpm', 'output-degeneration-cooldown.json');
-};
+export const defaultSessionDegenerationCooldownStateFilePath = (): string =>
+  path.join(tdpmCacheDirectory(), 'output-degeneration-cooldown.json');
 
 export class FileSystemSessionDegenerationCooldownStateRepository implements SessionDegenerationCooldownStateRepository {
   constructor(
-    private readonly stateFilePath: string = defaultStateFilePath(),
+    private readonly stateFilePath: string = defaultSessionDegenerationCooldownStateFilePath(),
     private readonly retentionWindowSeconds: number = DEFAULT_RESET_RETENTION_WINDOW_SECONDS,
   ) {}
 

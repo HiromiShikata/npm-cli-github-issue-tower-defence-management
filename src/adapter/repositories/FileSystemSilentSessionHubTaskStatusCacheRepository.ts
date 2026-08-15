@@ -1,11 +1,11 @@
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 import { Issue } from '../../domain/entities/Issue';
 import {
   SilentSessionHubTaskStatusCacheEntry,
   SilentSessionHubTaskStatusCacheRepository,
 } from '../../domain/usecases/adapter-interfaces/SilentSessionHubTaskStatusCacheRepository';
+import { tdpmCacheDirectory } from './localStorageCacheDirectory';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -15,14 +15,12 @@ const isIssueState = (value: unknown): value is Issue['state'] =>
 
 export const DEFAULT_HUB_TASK_STATUS_RETENTION_WINDOW_SECONDS = 60 * 60;
 
-const defaultStateFilePath = (): string => {
-  const base = process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), '.cache');
-  return path.join(base, 'tdpm', 'silent-session-hub-task-status.json');
-};
+export const defaultSilentSessionHubTaskStatusCacheFilePath = (): string =>
+  path.join(tdpmCacheDirectory(), 'silent-session-hub-task-status.json');
 
 export class FileSystemSilentSessionHubTaskStatusCacheRepository implements SilentSessionHubTaskStatusCacheRepository {
   constructor(
-    private readonly stateFilePath: string = defaultStateFilePath(),
+    private readonly stateFilePath: string = defaultSilentSessionHubTaskStatusCacheFilePath(),
     private readonly retentionWindowSeconds: number = DEFAULT_HUB_TASK_STATUS_RETENTION_WINDOW_SECONDS,
   ) {}
 

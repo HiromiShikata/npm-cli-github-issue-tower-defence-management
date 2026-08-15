@@ -3,6 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 import {
   DEFAULT_STATE_RETENTION_WINDOW_SECONDS,
+  defaultSilentSessionCandidateStateFilePath,
   FileSystemSilentSessionCandidateStateRepository,
 } from './FileSystemSilentSessionCandidateStateRepository';
 
@@ -249,5 +250,38 @@ describe('FileSystemSilentSessionCandidateStateRepository', () => {
         },
       ],
     });
+  });
+});
+
+describe('defaultSilentSessionCandidateStateFilePath', () => {
+  const originalXdgCacheHome = process.env.XDG_CACHE_HOME;
+
+  afterEach(() => {
+    if (originalXdgCacheHome === undefined) {
+      delete process.env.XDG_CACHE_HOME;
+    } else {
+      process.env.XDG_CACHE_HOME = originalXdgCacheHome;
+    }
+  });
+
+  it('places the state file at tdpm/silent-session-candidates.json below XDG_CACHE_HOME when set', () => {
+    process.env.XDG_CACHE_HOME = '/custom/cache';
+
+    expect(defaultSilentSessionCandidateStateFilePath()).toBe(
+      '/custom/cache/tdpm/silent-session-candidates.json',
+    );
+  });
+
+  it('places the state file at tdpm/silent-session-candidates.json below the home cache directory when XDG_CACHE_HOME is absent', () => {
+    delete process.env.XDG_CACHE_HOME;
+
+    expect(defaultSilentSessionCandidateStateFilePath()).toBe(
+      path.join(
+        os.homedir(),
+        '.cache',
+        'tdpm',
+        'silent-session-candidates.json',
+      ),
+    );
   });
 });

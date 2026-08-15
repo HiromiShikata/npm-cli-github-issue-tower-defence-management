@@ -1,7 +1,10 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { FileSystemSessionDegenerationCooldownStateRepository } from './FileSystemSessionDegenerationCooldownStateRepository';
+import {
+  defaultSessionDegenerationCooldownStateFilePath,
+  FileSystemSessionDegenerationCooldownStateRepository,
+} from './FileSystemSessionDegenerationCooldownStateRepository';
 
 describe('FileSystemSessionDegenerationCooldownStateRepository', () => {
   let temporaryDirectory: string;
@@ -81,5 +84,38 @@ describe('FileSystemSessionDegenerationCooldownStateRepository', () => {
     const reloaded = await repository.loadLastResetEpochSecondsBySessionName();
     expect(reloaded.has('stale-session')).toBe(false);
     expect(reloaded.has('fresh-session')).toBe(true);
+  });
+});
+
+describe('defaultSessionDegenerationCooldownStateFilePath', () => {
+  const originalXdgCacheHome = process.env.XDG_CACHE_HOME;
+
+  afterEach(() => {
+    if (originalXdgCacheHome === undefined) {
+      delete process.env.XDG_CACHE_HOME;
+    } else {
+      process.env.XDG_CACHE_HOME = originalXdgCacheHome;
+    }
+  });
+
+  it('places the state file at tdpm/output-degeneration-cooldown.json below XDG_CACHE_HOME when set', () => {
+    process.env.XDG_CACHE_HOME = '/custom/cache';
+
+    expect(defaultSessionDegenerationCooldownStateFilePath()).toBe(
+      '/custom/cache/tdpm/output-degeneration-cooldown.json',
+    );
+  });
+
+  it('places the state file at tdpm/output-degeneration-cooldown.json below the home cache directory when XDG_CACHE_HOME is absent', () => {
+    delete process.env.XDG_CACHE_HOME;
+
+    expect(defaultSessionDegenerationCooldownStateFilePath()).toBe(
+      path.join(
+        os.homedir(),
+        '.cache',
+        'tdpm',
+        'output-degeneration-cooldown.json',
+      ),
+    );
   });
 });
