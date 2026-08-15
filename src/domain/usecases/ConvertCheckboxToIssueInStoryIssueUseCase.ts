@@ -51,14 +51,15 @@ export class ConvertCheckboxToIssueInStoryIssueUseCase {
         continue;
       }
       const iced = storyIssue.status === ICEBOX_STATUS_NAME;
-      if (
-        iced &&
+      const noCheckboxWorkFollows =
+        iced || !input.createTaskFromStoryBodyCheckboxEnabled;
+      const storyViewLinkAlreadyOnFirstLine =
         this.bodyWithStoryViewLinkOnFirstLine(
           storyIssue.body,
           input.urlOfStoryView,
           storyOption.name,
-        ) === storyIssue.body
-      ) {
+        ) === storyIssue.body;
+      if (noCheckboxWorkFollows && storyViewLinkAlreadyOnFirstLine) {
         continue;
       }
       const freshStoryIssue = await this.issueRepository.getIssueByUrl(

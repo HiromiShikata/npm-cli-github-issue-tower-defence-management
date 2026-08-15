@@ -1478,6 +1478,61 @@ ${otherStoryViewLink}`);
         expect(mockIssueRepository.updateIssue).not.toHaveBeenCalled();
       });
     });
+
+    describe('story issue refetch', () => {
+      const storyViewLink = 'https://example.com?sliceBy%5Bvalue%5D=Story%201';
+      const storyIssueWithLinkOnFirstLine: Issue = {
+        ...basicStoryIssue1,
+        body: `${storyViewLink}
+
+- [ ] Task 1`,
+      };
+
+      const runWithBoardIssue = async (
+        boardIssue: Issue,
+        createTaskFromStoryBodyCheckboxEnabled: boolean,
+      ): Promise<void> => {
+        jest.clearAllMocks();
+        mockIssueRepository.getIssueByUrl.mockResolvedValue(
+          storyIssueWithLinkOnFirstLine,
+        );
+        const useCase = new ConvertCheckboxToIssueInStoryIssueUseCase(
+          mockIssueRepository,
+        );
+        await useCase.run({
+          project: singleStoryProject,
+          issues: [boardIssue],
+          cacheUsed: false,
+          urlOfStoryView: 'https://example.com',
+          storyObjectMap: singleStoryObjectMap,
+          manager: 'ManagerName',
+          createTaskFromStoryBodyCheckboxEnabled,
+        });
+      };
+
+      it('does not fetch the story issue again when task creation from story body checkboxes is disabled and the story view link is already the first line', async () => {
+        await runWithBoardIssue(storyIssueWithLinkOnFirstLine, false);
+
+        expect(mockIssueRepository.getIssueByUrl).not.toHaveBeenCalled();
+        expect(mockIssueRepository.updateIssue).not.toHaveBeenCalled();
+      });
+
+      it('fetches the story issue when task creation from story body checkboxes is enabled', async () => {
+        await runWithBoardIssue(storyIssueWithLinkOnFirstLine, true);
+
+        expect(mockIssueRepository.getIssueByUrl.mock.calls[0]).toEqual([
+          storyIssueWithLinkOnFirstLine.url,
+        ]);
+      });
+
+      it('fetches the story issue when the story view link is missing from the body', async () => {
+        await runWithBoardIssue(basicStoryIssue1, false);
+
+        expect(mockIssueRepository.getIssueByUrl.mock.calls).toEqual([
+          [basicStoryIssue1.url],
+        ]);
+      });
+    });
   });
 
   describe('buildStoryViewLink', () => {
