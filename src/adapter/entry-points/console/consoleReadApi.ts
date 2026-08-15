@@ -263,7 +263,7 @@ export const handlePullRequestStatus = async (
   if (cached !== null) {
     return ok(cached);
   }
-  const pullRequest = await issueRepository.getOpenPullRequest(url);
+  const pullRequest = await issueRepository.getOpenPullRequestCiStatus(url);
   const response: PullRequestStatusResponse =
     pullRequest === null
       ? { found: false, status: null }
